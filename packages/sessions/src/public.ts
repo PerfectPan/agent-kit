@@ -37,6 +37,9 @@ export {
   translateCodexRecords
 } from "./agents/codex/index.js";
 
+// Grok rules
+export { GROK_CAPABILITIES, grokUsage, type GrokTranslateOptions, translateGrokRecords } from "./agents/grok/index.js";
+
 // Published language and the rules a viewer needs to interpret events
 export {
   type CapabilityUnsupported,

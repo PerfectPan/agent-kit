@@ -72,6 +72,16 @@ describe("sessionAdapterConformance", () => {
       "resolves every reference between events and lanes",
       (t) => void (t.events[0]!.parentId = "x")
     ],
+    [
+      "a spawnEventId that names a missing event",
+      "resolves every reference between events and lanes",
+      (t) => {
+        const lane = t.agents.find((agent) => agent.spawnEventId !== undefined);
+        if (lane) {
+          lane.spawnEventId = "missing";
+        }
+      }
+    ],
     ["an unknown lane", "resolves every reference between events and lanes", (t) => void (t.events[0]!.agentId = "x")],
     [
       "a missing orphan flag",

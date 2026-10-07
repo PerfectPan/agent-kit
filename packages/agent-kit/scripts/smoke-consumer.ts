@@ -26,7 +26,8 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     agent: "codex",
     fixture: "codex/conformance/rollout-plain.jsonl",
     target: ".codex/sessions/2026/01/01/rollout-plain.jsonl"
-  }
+  },
+  { agent: "grok", fixture: "grok/conformance/plain", target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session" }
 ];
 
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);

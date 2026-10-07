@@ -1,0 +1,4 @@
+{"method":"session/update","params":{"sessionId":"g","update":{"sessionUpdate":"user_message_chunk","content":{"type":"text","text":"Start"},"_meta":{"promptIndex":0,"modelId":"grok-test"}}},"timestamp":1767225600}
+{"method":"session/update","params":{"sessionId":"g","update":{"sessionUpdate":"auto_compact_started","tokens_used":500,"context_window":1000,"percentage":50,"reason":"threshold"}},"timestamp":1767225601}
+{"method":"session/update","params":{"sessionId":"g","update":{"sessionUpdate":"auto_compact_completed","tokens_before":500,"tokens_after":80,"elapsed_ms":10,"summary_preview":null}},"timestamp":1767225602}
+{"method":"session/update","params":{"sessionId":"g","update":{"sessionUpdate":"user_message_chunk","content":{"type":"text","text":"After"},"_meta":{"promptIndex":1,"modelId":"grok-test","hideFromScrollback":true}}},"timestamp":1767225603}

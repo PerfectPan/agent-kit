@@ -5,7 +5,9 @@ import {
   type Capability,
   foldTranscript,
   isSessionHead,
+  laneOf,
   latestSnapshot,
+  mainAgentId,
   readLines,
   readOriginal,
   type SessionAdapter,
@@ -262,6 +264,7 @@ export function sessionAdapterConformance(
         await eachTranscript((transcript, session) => {
           const events = new Map(transcript.events.map((event) => [event.id, event]));
           const lanes = new Map(transcript.agents.map((lane) => [lane.id, lane]));
+          const rootId = mainAgentId(transcript);
           const requests = new Set(
             transcript.events.flatMap((event) => (event.kind === "request" ? [event.requestId] : []))
           );
@@ -275,9 +278,14 @@ export function sessionAdapterConformance(
               seen.add(at);
             }
             if (lane.spawnEventId !== undefined) {
+              const spawn = events.get(lane.spawnEventId);
+              const kind = spawn?.kind;
               check(
-                events.get(lane.spawnEventId)?.kind === "tool_call",
-                `lane ${lane.id}: spawn event is not a tool_call`
+                spawn !== undefined &&
+                  lane.parentId !== undefined &&
+                  laneOf(spawn, rootId) === lane.parentId &&
+                  (kind === "tool_call" || kind === "system"),
+                `lane ${lane.id}: spawn event is not a tool_call or system event on the parent lane`
               );
             }
           }

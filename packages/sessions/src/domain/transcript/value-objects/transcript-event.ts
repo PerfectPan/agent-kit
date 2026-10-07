@@ -102,6 +102,15 @@ export interface RequestPayload {
   durationMs?: number;
   /** gen_ai.response.finish_reasons[0] */
   finishReason?: string;
+  /**
+   * What `usage` covers: one model request, one turn, or the whole session. An aggregate stays an aggregate
+   * and is not split into invented per-request records.
+   */
+  granularity?: "request" | "turn" | "session";
+  /** How many model calls a `turn` or `session` aggregate covers. */
+  modelCalls?: number;
+  /** The same usage split by model. A total uses `usage` or this split, not the two added together. */
+  usageByModel?: Record<string, { usage: Usage; modelCalls?: number }>;
 }
 
 export interface CompactionPayload {

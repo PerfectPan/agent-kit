@@ -66,6 +66,21 @@ export function nodeReadFs(): Pick<PlatformFs, "stat" | "realpath" | "list" | "r
   };
 }
 
+/** The Grok fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
+export function grokSessions(root: string): ConformanceSession[] {
+  const at = (path: string) => `${root}/${path}`;
+  return [
+    {
+      path: at("plain/updates.jsonl"),
+      records: 9,
+      capabilities: ["requests", "usage", "durations", "reasoning", "hooks", "systemPrompt", "toolSchemas"]
+    },
+    { path: at("compaction/updates.jsonl"), records: 4, capabilities: ["compaction", "compactionTokens"] },
+    { path: at("subagent/updates.jsonl"), records: 6, capabilities: ["subagents"] },
+    { path: at("unknown-type/updates.jsonl"), records: 1, capabilities: [] }
+  ];
+}
+
 /** The Claude Code fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function claudeCodeSessions(root: string): ConformanceSession[] {
   const at = (path: string) => `${root}/${path}`;

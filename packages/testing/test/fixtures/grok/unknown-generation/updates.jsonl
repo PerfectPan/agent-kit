@@ -1,0 +1,1 @@
+{"method":"session/update","params":{"sessionId":"g","update":{"sessionUpdate":"user_message_chunk","schema_version":4,"content":{"type":"text","text":"x"}}},"timestamp":1767225600}

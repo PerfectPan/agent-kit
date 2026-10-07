@@ -33,7 +33,7 @@ export const CAPABILITIES: readonly Capability[] = [
 export interface Lane {
   id: string;
   parentId?: string;
-  /** The `tool_call` event that started this subagent, when the log records it. */
+  /** The `tool_call` or `system` event on the parent lane that started this subagent, when the log records it. */
   spawnEventId?: string;
   title?: string;
   /** This lane's own system prompt, when the agent records one per lane. */

@@ -1,0 +1,16 @@
+{
+  "subagent_id": "child-1",
+  "child_session_id": "child-session-1",
+  "parent_session_id": "g-sub",
+  "description": "Look around",
+  "subagent_type": "explore",
+  "status": "completed",
+  "child_cwd": "/u/me/work",
+  "effective_context_source": "fresh",
+  "effective_model_id": "grok-test",
+  "started_at": "2026-01-01T00:00:01Z",
+  "completed_at": "2026-01-01T00:00:02Z",
+  "duration_ms": 12,
+  "tool_calls": 1,
+  "turns": 1
+}

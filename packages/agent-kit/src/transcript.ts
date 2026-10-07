@@ -4,6 +4,8 @@ export {
   claudeCodeUsage,
   CODEX_CAPABILITIES,
   codexUsage,
+  GROK_CAPABILITIES,
+  grokUsage,
   foldTranscript,
   isPrompt,
   laneOf,
@@ -23,13 +25,15 @@ export {
   summarizeSession,
   TRANSCRIPT_EVENT_KINDS,
   translateClaudeCodeRecords,
-  translateCodexRecords
+  translateCodexRecords,
+  translateGrokRecords
 } from "@rivus/agent-kit-sessions/public";
 export type {
   CapabilityUnsupported,
   Capability,
   ClaudeCodeTranslateOptions,
   CodexTranslateOptions,
+  GrokTranslateOptions,
   CompactionPayload,
   HookPayload,
   Lane,
