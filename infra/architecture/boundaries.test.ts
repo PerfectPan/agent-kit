@@ -22,13 +22,6 @@ const CATALOG = "@rivus/agent-kit-catalog";
 const SESSIONS = "@rivus/agent-kit-sessions";
 const TESTING = "@rivus/agent-kit-testing";
 
-/** Planned packages that do not exist yet. */
-const costPackage: WorkspacePackage = {
-  name: "@rivus/agent-kit-cost",
-  folder: "packages/cost",
-  workspaceDependencies: []
-};
-
 /** The real workspace plus fixture packages and files. */
 function withFiles(files: Record<string, string>, extraPackages: WorkspacePackage[] = []): Workspace {
   const entryFiles = extraPackages.flatMap((pkg) =>
@@ -107,13 +100,18 @@ describe("allowed imports", () => {
   });
 
   it("lets domain/ use import type from a declared upstream context, but not its values", () => {
-    const rules: BoundaryRules = {
-      ...boundaries,
-      packages: { ...boundaries.packages, [costPackage.name]: { dependsOn: [SESSIONS], external: [] } }
-    };
-    const cost = (source: string) => withFiles({ "packages/cost/src/domain/pricing/price.ts": source }, [costPackage]);
-    expect(rulesOf(cost(`import type { UsageRecord } from "${SESSIONS}";`), rules)).toEqual([]);
-    expect(rulesOf(cost(`import { decodeUsage } from "${SESSIONS}";`), rules)).toEqual(["layer"]);
+    const cost = (source: string) => withFiles({ "packages/cost/src/domain/pricing/fixture.ts": source });
+    expect(rulesOf(cost(`import type { UsageRecord } from "${SESSIONS}";`))).toEqual([]);
+    expect(rulesOf(cost(`import { decodeUsage } from "${SESSIONS}";`))).toEqual(["layer"]);
+  });
+
+  it("keeps a types-only dependency to types in every file of the package, its entry files included", () => {
+    const cost = (path: string, source: string) => withFiles({ [`packages/cost/src/${path}`]: source });
+    expect(rulesOf(cost("extra.ts", `export type { UsageRecord } from "${SESSIONS}";`))).toEqual([]);
+    expect(rulesOf(cost("extra.ts", `export { decodeUsage } from "${SESSIONS}";`))).toEqual(["types-only"]);
+    expect(rulesOf(cost("extra.ts", `export * from "${SESSIONS}";`))).toEqual(["types-only"]);
+    expect(rulesOf(cost("extra.ts", `import { type UsageRecord } from "${SESSIONS}";`))).toEqual(["types-only"]);
+    expect(rulesOf(cost("extra.ts", `import { ok } from "${CATALOG}";`))).toEqual([]);
   });
 
   it("allows Effect only in the listed application/ and adapters/ paths", () => {

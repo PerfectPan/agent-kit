@@ -5,6 +5,7 @@
   "description": "Platform port types and the byte-stream line splitter. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./effect": "./src/effect.ts",

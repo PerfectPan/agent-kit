@@ -5,6 +5,7 @@
   "description": "Detection of the coding agents installed on this machine. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./public": "./src/public.ts"

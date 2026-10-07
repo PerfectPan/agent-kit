@@ -5,6 +5,7 @@
   "description": "Shared kernel: coding agent identity, home directories and the Result type. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./public": "./src/public.ts"

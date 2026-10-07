@@ -5,6 +5,7 @@
   "description": "In-memory Platform and conformance tests for each context. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./public": "./src/public.ts"
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@rivus/agent-kit-cost": "workspace:*",
     "@types/node": "24.19.1",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",

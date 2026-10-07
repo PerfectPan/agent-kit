@@ -19,7 +19,8 @@ import { fileURLToPath } from "node:url";
 
 // Packs the shell, installs the tarball into a throwaway consumer project the way a user would, and checks it from
 // there: the tarball holds only what it should, every entry type-checks under node16 and bundler resolution, every
-// entry loads in Node and reads sessions from a temporary home, and the hook entry starts fast in a fresh process.
+// entry loads in Node and reads sessions and their usage from a temporary home, `/cost` prices that usage, and the hook
+// entry starts fast in a fresh process.
 // That consumer does not install effect, so it loads only the plain entries. A second consumer installs effect itself
 // and runs a program on the Effect entries with exactly one copy of effect in its tree. The real home directory is
 // never read.
@@ -120,6 +121,7 @@ function consumerSource(manifest: Manifest, home: string, bin: string): string {
   return `import assert from "node:assert/strict";
 
 ${namespaces.join("\n")}
+import { createPricing, summarize } from "${manifest.name}/cost";
 import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
 import { detectAgents } from "${manifest.name}/discovery";
@@ -129,7 +131,8 @@ import {
   addUsage,
   isUsageRecord,
   scanUsage,
-  type Usage
+  type Usage,
+  type UsageRecord
 } from "${manifest.name}/transcript/usage";
 
 const entries: Record<string, object> = {
@@ -148,6 +151,11 @@ assert.deepEqual(
 
 // An empty env keeps the caller's CLAUDE_CONFIG_DIR, CODEX_HOME and the like from pointing at real agent homes.
 const platform: Platform = createNodePlatform({ home: ${JSON.stringify(home)}, env: {} });
+// Prices for the seeded sessions' models; Grok's session carries the cost Grok logged.
+const pricing = createPricing({
+  "claude-test": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75, cacheWrite1h: 6 },
+  "gpt-test": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 }
+});
 for (const agent of seeded) {
   const heads: SessionHead[] = [];
   for await (const item of listSessions(platform, { agents: [agent] })) {
@@ -171,16 +179,24 @@ for (const agent of seeded) {
   // The zero-dependency usage entry agrees with the transcript on the same session. The seeded files were last
   // written an hour ago, so the scan treats them as complete.
   let decoded: Usage = {};
+  const records: UsageRecord[] = [];
   for await (const item of scanUsage(platform, { agents: [agent] })) {
     if (!isUsageRecord(item)) {
       assert.equal(item.error._tag, "RootMissing", \`\${agent}: cannot scan usage at \${item.path}\`);
       continue;
     }
     decoded = addUsage(decoded, item.usage);
+    records.push(item);
   }
   assert.ok((decoded.totalTokens ?? 0) > 0, \`\${agent}: scanUsage found no usage\`);
   assert.deepEqual(decoded, expected, \`\${agent}: scanUsage and loadTranscript disagree\`);
-  console.log(\`\${agent}: \${transcript.value.events.length} events, \${decoded.totalTokens} tokens\`);
+
+  // /cost prices the decoded session and counts its tokens once.
+  const summary = summarize(records, pricing);
+  assert.deepEqual(summary.total.usage, decoded, \`\${agent}: summarize and scanUsage disagree\`);
+  const cost = summary.total.costUsd;
+  assert.ok(cost !== undefined && cost > 0, \`\${agent}: /cost priced nothing\`);
+  console.log(\`\${agent}: \${transcript.value.events.length} events, \${decoded.totalTokens} tokens, $\${cost.toPrecision(3)}\`);
 }
 
 // Only the fake codex is on PATH; detection runs it for its version and, when asked to, its login status.

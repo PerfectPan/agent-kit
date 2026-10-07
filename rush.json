@@ -47,6 +47,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@rivus/agent-kit-cost",
+      "projectFolder": "packages/cost",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@rivus/agent-kit-testing",
       "projectFolder": "packages/testing",
       "shouldPublish": false
