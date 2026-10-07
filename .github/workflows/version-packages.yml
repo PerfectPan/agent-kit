@@ -53,6 +53,12 @@ jobs:
         with:
           node-version-file: .node-version
       - run: node common/scripts/install-run-rush.js install
+      - name: Set a Git identity for rush version
+        # rush version reads git config user.email and fails without it. The release PR commit itself is created and
+        # signed through the GitHub API by create-pull-request, so this identity does not appear on it.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Bump versions and write changelogs with Rush
         env:
           BUMP: ${{ inputs.bump || 'policy' }}
