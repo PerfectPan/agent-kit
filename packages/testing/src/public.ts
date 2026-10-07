@@ -1,4 +1,9 @@
 export {
+  type HookDialectFixtures,
+  hookDialectConformance,
+  type HookDialectSample
+} from "./hook-dialect-conformance.js";
+export {
   createMemoryPlatform,
   type MemoryFile,
   type MemoryPlatform,

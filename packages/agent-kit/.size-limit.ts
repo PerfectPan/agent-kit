@@ -7,9 +7,10 @@ const nodeOnly = {
 
 export default [
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.2 kB" },
+  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "4.8 kB" },
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "3 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "14 kB" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "18 kB", ...nodeOnly },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "23 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "14.5 kB" }
 ] satisfies SizeLimitConfig;

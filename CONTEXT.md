@@ -158,6 +158,13 @@ One agent's hook facts: event names, timeout unit, permission semantics and resp
 **LifecycleEvent**:
 A hook payload translated into orthogonal fields: `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`), optional `scope`, `outcome`, `blocker`, `turnId`, `subagent`, `tool`, and identity fields. `agent` is the real source after sniffing.
 
+**LifecycleState**:
+What `reduceLifecycle` keeps per session: a status (`idle`, `working`, `blocked`, `unknown`), the current turn, recently ended turns and the time of the last event. A busy status reads as `unknown` after the TTL.
+
+**Gate**:
+A hook event whose response decides whether the operation it announces proceeds, such as Cursor's `preToolUse`. An observing hook registered on a gate prints the dialect's pass-through output.
+_Avoid_: guessing gates from event name prefixes
+
 ## acp
 
 **Connection**:

@@ -23,11 +23,6 @@ const SESSIONS = "@rivus/agent-kit-sessions";
 const TESTING = "@rivus/agent-kit-testing";
 
 /** Planned packages that do not exist yet. */
-const harnessPackage: WorkspacePackage = {
-  name: "@rivus/agent-kit-harness",
-  folder: "packages/harness",
-  workspaceDependencies: []
-};
 const costPackage: WorkspacePackage = {
   name: "@rivus/agent-kit-cost",
   folder: "packages/cost",
@@ -122,16 +117,18 @@ describe("allowed imports", () => {
   });
 
   it("allows Effect only in the listed application/ and adapters/ paths", () => {
-    const rules: BoundaryRules = {
-      ...boundaries,
-      packages: { ...boundaries.packages, [harnessPackage.name]: { dependsOn: [CATALOG], external: [] } }
-    };
     const harness = (path: string) =>
-      withFiles({ [`packages/harness/src/${path}`]: `import { Effect } from "effect";` }, [harnessPackage]);
-    expect(rulesOf(harness("application/apply-install.ts"), rules)).toEqual([]);
-    expect(rulesOf(harness("adapters/ledger-store.ts"), rules)).toEqual([]);
-    expect(rulesOf(harness("domain/ledger/ledger.ts"), rules)).toEqual(["effect"]);
-    expect(rulesOf(harness("events.ts"), rules)).toEqual(["effect"]);
+      withFiles({ [`packages/harness/src/${path}`]: `import { Effect } from "effect";` });
+    expect(rulesOf(harness("application/apply-install.ts"))).toEqual([]);
+    expect(rulesOf(harness("adapters/ledger-store.ts"))).toEqual([]);
+    expect(rulesOf(harness("domain/ledger/ledger.ts"))).toEqual(["effect"]);
+    expect(rulesOf(harness("events.ts"))).toEqual(["effect"]);
+  });
+
+  it("lets a shell entry re-export from a lighter public entry of an internal package", () => {
+    const entry = (source: string) => withFiles({ "packages/agent-kit/src/extra.ts": source });
+    expect(rulesOf(entry(`export { readHookEvent } from "@rivus/agent-kit-harness/public/events";`))).toEqual([]);
+    expect(rulesOf(entry(`export { readHookEvent } from "@rivus/agent-kit-harness/events";`))).toEqual(["shell-entry"]);
   });
 });
 

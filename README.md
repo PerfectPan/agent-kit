@@ -18,14 +18,15 @@ browsers.
 
 ## Entries
 
-| Entry                         | Main exports                                                                                     | Runs in                   |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------- |
-| `@rivus/agent-kit/catalog`    | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`            | anywhere                  |
-| `@rivus/agent-kit/platform`   | `Platform` and its port types, `splitLines`                                                      | anywhere                  |
-| `@rivus/agent-kit/node`       | `createNodePlatform`                                                                             | Node                      |
-| `@rivus/agent-kit/sessions`   | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                      | anywhere, with a platform |
-| `@rivus/agent-kit/transcript` | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules | anywhere, with a platform |
-| `@rivus/agent-kit/testing`    | `createMemoryPlatform`, `sessionAdapterConformance`, `oversizedSession`                          | Node                      |
+| Entry                             | Main exports                                                                                      | Runs in                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
+| `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
+| `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
+| `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
+| `@rivus/agent-kit/node`           | `createNodePlatform`                                                                              | Node                      |
+| `@rivus/agent-kit/sessions`       | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
+| `@rivus/agent-kit/transcript`     | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
+| `@rivus/agent-kit/testing`        | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession` | Node                      |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -65,6 +66,29 @@ through `agentId`, `parentId`, `requestId`, `payload.callId` and `shadowedBy`. U
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
 record is absent, not 0.
 
+### Hook events
+
+`/harness/events` is for hook processes: it is synchronous, does no IO and imports no npm package or Node built-in.
+
+```ts
+import { readFileSync } from "node:fs";
+
+import { readHookEvent } from "@rivus/agent-kit/harness/events";
+
+// In a hook command registered for Claude Code; the payload is the JSON the agent wrote to stdin.
+const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), process.env);
+// { agent: "claude-code", phase: "start", scope: "turn", nativeEvent: "UserPromptSubmit", sessionId, cwd, turnId }
+```
+
+`agent` is the agent that really ran the hook: Grok and Cursor also run the hooks in Claude Code's settings. `phase`
+is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the agent says
+more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
+copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
+`reduceLifecycle(state, event, { ttlMs, now })` folds one session's events into `idle`, `working`, `blocked` or
+`unknown`, drops late events of older turns and falls back to `unknown` after the TTL; `heartbeatSignal(event)` gives
+the start / heartbeat / finish reading of a heartbeat-based tracker. `builtinHookDialects` holds each agent's hook
+facts: event names, the timeout unit, which events are permission gates and what an observing hook should print.
+
 ## Errors
 
 - A function that returns a `Promise` resolves to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
@@ -74,8 +98,9 @@ record is absent, not 0.
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
   goes on with the next one.
 - When the `signal` option aborts, the call rejects with `signal.reason`.
-- Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`
-  throws an `AgentKitError` with `code: "capability-unsupported"`; test for it with `isAgentKitError`.
+- Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or
+  without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`; test
+  for it with `isAgentKitError`. `readHookEvent` never throws because of a payload.
 
 ## Agents
 
@@ -87,12 +112,15 @@ record is absent, not 0.
 | Gemini CLI  | `gemini-cli` (alias `gemini`)  | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` | catalog identity only    |
 | opencode    | `opencode`                     | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    | catalog identity only    |
 | Pi          | `pi`                           | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
+| Cursor      | `cursor`                       | `~/.cursor`                                             | added after 0.1.0        |
+
+Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0).
 
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
 (`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
 
-Discovery, usage decoding and cost, harness (injection and hook events), ACP and redaction come in later releases,
-as does `@rivus/agent-kit-collab` (leases, process locks, lanes); see
+Discovery, usage decoding and cost, harness injection, ACP and redaction come in later releases, as does
+`@rivus/agent-kit-collab` (leases, process locks, lanes); see
 [plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the phases.
 
 ## Repository

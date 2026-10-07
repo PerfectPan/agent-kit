@@ -15,6 +15,10 @@
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
     },
+    "./harness/events": {
+      "types": "./dist/harness/events.d.ts",
+      "default": "./dist/harness/events.js"
+    },
     "./node": {
       "types": "./dist/node.d.ts",
       "default": "./dist/node.js"
@@ -63,6 +67,7 @@
     "@arethetypeswrong/cli": "0.18.5",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
     "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",

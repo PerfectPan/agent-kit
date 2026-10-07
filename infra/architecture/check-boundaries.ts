@@ -264,11 +264,12 @@ function checkShellEntry(file: SourceFile, body: readonly Statement[], internal:
       });
     } else {
       const { name, subpath } = splitSpecifier(node.source.value);
-      if (!internal.has(name) || subpath !== "/public") {
+      // "<package>/public/<name>" is a lighter public entry, such as the hook path of harness.
+      if (!internal.has(name) || !/^\/public(?:\/[a-z0-9-]+)?$/.test(subpath)) {
         violations.push({
           file: file.path,
           rule: "shell-entry",
-          message: `${node.source.value}: re-export from an internal package's public entry, "<package>/public"`
+          message: `${node.source.value}: re-export from an internal package's public entry, "<package>/public[/<name>]"`
         });
       }
     }

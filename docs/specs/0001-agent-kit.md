@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries and `/harness/events` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -20,7 +20,9 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
-Included as planned behavior: `/transcript/usage` and `/cost` (P2), `/harness` and `/harness/events` (P3), `/discovery` (P4), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi, and Cursor's identity in `/catalog`.
+
+Included as planned behavior: `/transcript/usage` and `/cost` (P2), `/harness` (P3), `/discovery` (P4), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -34,7 +36,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
 - No 0.1.0 entry may depend on `effect`, in either its module graph or its published `.d.ts` graph. A consumer that never installs `effect` can import and type-check every 0.1.0 entry.
-- `/catalog`, `/platform`, `/sessions` and `/transcript` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node` and `/testing` are exempt.
+- `/catalog`, `/platform`, `/sessions`, `/transcript` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -42,6 +44,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - A `CodingAgentId` has documented aliases (for example `claude` for `claude-code`); an alias identifies the same agent as its canonical id.
 - `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
 - `catalog` holds identity, home directory rules and `Result` only. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
+- Built-in identities: `claude-code`, `codex`, `cursor`, `gemini-cli`, `grok`, `opencode` and `pi`. Cursor has no home override variable; its home is `~/.cursor`.
 
 ### `/platform`
 
@@ -79,10 +82,24 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Usage numbers exposed by `/transcript` follow the `Usage` interface definition in plan 3.11: input includes cached tokens, output includes reasoning, and a missing value stays missing instead of becoming 0.
 - Turn trees, timelines, context reconstruction, truncation of long text, prompt deduplication and source file numbering are not part of `/transcript`.
 
+### `/harness/events`
+
+- Exports `readHookEvent(agent, payload, env, { adapters }?)`, `builtinHookDialects`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal` and `INITIAL_LIFECYCLE_STATE`, with the types `LifecycleEvent` (and its `LifecyclePhase`, `LifecycleScope`, `LifecycleOutcome`, `LifecycleBlocker`, `TerminalHost`, `TerminalIdentity`, `LifecycleMapping`), `LifecycleState`, `LifecycleStatus`, `LifecycleClock`, `HeartbeatSignal`, `ReadHookEventOptions`, and the dialect types `HookDialect`, `HookDialects`, `HookEventSpec`, `HookOutput`, `HookTimeout`, `ForeignHooks`, `PayloadFields`, `FieldSource`, `FieldPath` and `LifecycleSwitch`.
+- The entry is synchronous, does no IO and has zero dependencies: its built files and chunks import no npm package and no Node built-in, so a hook process loads only this entry. Payload fields are read with `typeof` checks, not a validation library.
+- `readHookEvent` returns a LifecycleEvent with `agent`, `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`), `nativeEvent` (the event name as the payload carried it, or `""`) and, when the payload has them, `scope` (`session` or `turn`), `outcome` (`completed`, `failed`, `cancelled`), `blocker` (`permission`, `question`, `elicitation`), `turnId`, `subagent` (`id`, `type`), `tool` (`name`, `callId`), `sessionId`, `cwd`, `transcriptPath` and `terminal`. A field the payload does not carry is absent. Tool arguments are never copied.
+- The reported agent is the real source: `env.GROK_SESSION_ID` or a payload with `hookEventName` means Grok; `payload.cursor_version` or `env.CURSOR_VERSION` means Cursor; otherwise the declared agent. The payload is then read with that agent's dialect, which also understands the other agent's event names it runs (Cursor reads Claude Code's `PreToolUse` as its `preToolUse`).
+- `terminal` comes from the environment, the first set of `HERDR_PANE_ID` (herdr), `CMUX_SURFACE_ID` or `CMUX_PANEL_ID` (cmux), `SUPERSET_TERMINAL_ID` or `SUPERSET_PANE_ID` (Superset), `TMUX_PANE` (tmux).
+- A payload of an unknown shape, or an event the dialect does not map, reads as phase `unknown`; `readHookEvent` never throws because of its payload or environment. Naming an agent that has no dialect, in the built-in table or in `adapters`, throws an `AgentKitError` with code `capability-unsupported`.
+- `subagent` is set on a subagent's own start and stop and on every event the agent reports from inside a subagent.
+- `reduceLifecycle(state, event, { ttlMs, now })` returns the next `LifecycleState`, whose `status` is `idle`, `working`, `blocked` or `unknown`. A turn start moves to `working`, activity to `working`, a blocker to `blocked`, any end or a session start to `idle`. An event naming a turn that already ended or was superseded is dropped; an unseen turn id is a new turn. Without turn ids, only a turn start leaves `idle`. Subagent events never change the status but keep a busy session alive. `lifecycleStatus(state, { ttlMs, now })` reads `working` and `blocked` as `unknown` once no event arrived within the TTL.
+- `heartbeatSignal(event)` returns `start` for a turn start or a subagent start, `heartbeat` for activity and blockers, `finish` for any end, and nothing for a session start or an unknown event.
+- Each `HookDialect` carries `specificationVersion: 'harness-v1'` and records the agent's hook facts: how hooks are delivered (`command` or an in-process `plugin` that forwards each event), the timeout unit (`seconds` for Claude Code, Codex, Cursor and Grok, `milliseconds` for Gemini CLI, none for plugins), the payload field paths, each native event's LifecycleEvent mapping and aliases, which events are permission gates, how exit codes and stdout are read and what an observing hook prints (`passThrough`), the trust model, and the other agents' hooks it runs (Grok runs Claude Code's and Cursor's; Cursor runs Claude Code's). A fact the agent's documentation does not confirm carries an `unverified` note.
+
 ### `/testing`
 
-- Exports `createMemoryPlatform({ files })`, an in-memory `Platform` (without `process` and `sqlite`) whose file system holds the given files, and the conformance suite of each context that has one. In 0.1.0 that is `sessionAdapterConformance`, with `oversizedSession` to build its large sample; each check is a named function that rejects on failure, so any test runner can run it.
+- Exports `createMemoryPlatform({ files })`, an in-memory `Platform` (without `process` and `sqlite`) whose file system holds the given files, and the conformance suite of each context that has one: `sessionAdapterConformance`, with `oversizedSession` to build its large sample, and `hookDialectConformance` with the types `HookDialectFixtures` and `HookDialectSample`. Each check is a named function that rejects on failure, so any test runner can run it.
 - Readers produce the same results on the memory platform as on the Node platform over the same files.
+- The hook dialect conformance suite checks a `HookDialect` against sample payloads: it declares `harness-v1`, a command dialect has a timeout unit and output rules, every mapped event (and every case of a field-dependent mapping) resolves to a known phase with consistent `outcome` and `blocker`, every gate event declares its own response format whose `passThrough` is valid for it, foreign event renames point at mapped events, every event has a sample, every sample reads to its expected LifecycleEvent through `readHookEvent`, and probe payloads (wrong types, inherited object keys such as `constructor`, unmapped names) read as phase `unknown` without throwing.
 - The sessions conformance suite checks a `SessionAdapter` against sample logs: listing reads at most 128 KB per file, event ids are stable and unique, every record is accounted for, tool results are paired, compaction shadowing holds, references between events and lanes resolve (a `spawnEventId` names an existing `tool_call` or `system` event on the parent lane), source pointers read back, declared capabilities match the output, and summaries equal the folded transcript. Built-in adapters and third-party adapters run the same suite; keeping `node:*` out of adapters is the boundary test's job.
 
 ### Planned entries
@@ -109,13 +126,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - `uninstall` removes only what the ledger records for that owner, and only when the file still matches what was installed; a user-modified file is kept and reported.
 - Every ledger modification happens while one LedgerLock is held. Without `platform.sqlite` and without an injected LedgerLock, ledger modification is refused with `ledger-lock-unavailable`. A ledger with an unknown `schemaVersion` is refused or kept whole, never cleared.
 - Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
-
-#### `/harness/events` (P3)
-
-- `readHookEvent(agent, payload, env)` is synchronous, does no IO and has zero dependencies; a hook process loads only this entry.
-- It returns a LifecycleEvent with `agent`, `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`) and the optional `scope`, `outcome`, `blocker`, `turnId`, `subagent`, `tool` (name only), `sessionId`, `cwd`, `transcriptPath`, `terminal` and `nativeEvent` fields of plan 3.8.
-- The reported agent is the real source: `env.GROK_SESSION_ID` or a payload with `hookEventName` means Grok; `payload.cursor_version` or `env.CURSOR_VERSION` means Cursor; otherwise the declared agent.
-- `reduceLifecycle(state, event, { ttlMs })` returns `idle`, `working`, `blocked` or `unknown`, ignores late events from older turns, and falls back after the TTL.
 
 #### `/discovery` (P4)
 
@@ -329,17 +339,17 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `costOf` prices them
 - Then the first uses the reported cost, the second uses the bucket formula, and both are multiplied by 2
 
-### S30 (planned, P3): Hook events name the real source
+### S30: Hook events name the real source
 
 - Given a Claude-style hook payload delivered with `GROK_SESSION_ID` in the environment
 - When `readHookEvent('claude-code', payload, env)` is called
 - Then it returns synchronously with `agent` set to Grok
 
-### S31 (planned, P3): Late events from older turns are ignored
+### S31: Late events from older turns are ignored
 
-- Given a `finish` event for turn 2 followed by a late `activity` event for turn 1
+- Given turn 1 started, then turn 2 started and finished, followed by a late `activity` event for turn 1
 - When `reduceLifecycle` folds them
-- Then the state stays `idle`
+- Then the status stays `idle`
 
 ### S32 (planned, P3): A stale or conflicting plan is refused
 
@@ -395,6 +405,54 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When one key is woken three times while its activation runs, and two other keys are woken
 - Then the first key has one activation running and at most one pending, at most one activation runs in total, and the number of queued activations never exceeds `maxQueued`
 
+### S41: An unknown payload reads as `unknown` without throwing
+
+- Given payloads that are not objects, name no event, name an event as a number, or name `constructor`, for every built-in agent
+- When `readHookEvent` reads them
+- Then each returns phase `unknown` with the agent and a string `nativeEvent`, and nothing throws; an agent without a dialect throws `AgentKitError` with code `capability-unsupported`
+
+### S42: Only the tool's name and call id are kept
+
+- Given a Codex `PreToolUse` payload whose `tool_input` holds a command
+- When `readHookEvent('codex', payload, env)` reads it
+- Then `tool` is `{ name, callId }` and the event contains nothing from `tool_input`
+
+### S43: The terminal pane is kept apart from the session
+
+- Given a hook environment with `TMUX_PANE=%4` and `SUPERSET_TERMINAL_ID=t-9`
+- When `readHookEvent` reads any payload
+- Then `terminal` is `{ host: 'superset', paneId: 't-9' }` and `sessionId` still comes from the payload
+
+### S44: Every dialect states its timeout unit (agent-presence#85)
+
+- Given the built-in dialects
+- When their timeout units are read
+- Then Claude Code, Codex, Cursor and Grok use seconds, Gemini CLI uses milliseconds, and the plugin-delivered opencode and Pi have no hook timeout
+
+### S45: Gemini CLI uses its own event names (agent-presence#86)
+
+- Given the Gemini CLI dialect
+- When its events are listed, and a payload named `UserPromptSubmit`, `PreToolUse`, `PostToolUse` or `Stop` is read
+- Then the events are exactly `SessionStart`, `SessionEnd`, `BeforeAgent`, `AfterAgent`, `BeforeTool`, `AfterTool`, `BeforeModel`, `AfterModel`, `BeforeToolSelection`, `PreCompress` and `Notification`, and the Claude Code names read as `unknown`
+
+### S46: Cursor's permission hooks are gates, including Claude Code's PreToolUse (agent-presence#89)
+
+- Given the Cursor dialect
+- When its gate events and its rename of Claude Code's events are read
+- Then the gates are `beforeShellExecution`, `beforeMCPExecution`, `beforeReadFile`, `beforeTabFileRead`, `subagentStart` and `preToolUse`; Claude Code's `PreToolUse` runs as `preToolUse`, where invalid output blocks, exit code 2 denies and empty output is marked undocumented; and an observing hook prints `{}`, which is also what Claude Code and Grok accept
+
+### S47: Subagents and silence do not fake the main session's state
+
+- Given a working session, a subagent's `finish` event, and later no event for longer than the TTL
+- When `reduceLifecycle` folds the subagent event and `lifecycleStatus` reads the state
+- Then the status stays `working` within the TTL counted from the subagent event, and reads `unknown` after it
+
+### S48: The hook entry imports nothing and starts fast
+
+- Given the packed tarball installed into a fresh consumer
+- When the built `/harness/events` files and chunks are checked, and a fresh Node process imports the entry and reads one payload
+- Then no file imports an npm package or Node built-in, and the import plus the read take less than 100 ms
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
@@ -405,5 +463,5 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 by the architecture boundary test and the package checks; S22 by the line splitter unit tests. Planned scenarios S26–S40 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 by the architecture boundary test and the package checks; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`) and by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads; S48 by the dist check and the consumer smoke test. Planned scenarios S26–S29 and S32–S40 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch.

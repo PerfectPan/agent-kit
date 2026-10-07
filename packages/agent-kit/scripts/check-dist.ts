@@ -9,6 +9,9 @@ import { rolldown } from "rolldown";
 
 // Entries that only run on Node; every other entry must bundle for a browser without Node built-ins.
 const NODE_ONLY_ENTRIES = new Set(["./node", "./testing"]);
+// Entries whose code and declarations import nothing outside the package, not even its dependencies: a host that
+// cannot install dependencies bundles or loads them on their own.
+const ZERO_DEPENDENCY_ENTRIES = new Set(["./harness/events"]);
 
 interface Manifest {
   exports: Record<string, string | { types?: string; default?: string }>;
@@ -112,9 +115,12 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
     continue;
   }
   const browserSafe = !NODE_ONLY_ENTRIES.has(subpath);
+  const zeroDependency = ZERO_DEPENDENCY_ENTRIES.has(subpath);
   for (const file of [target.default, target.types]) {
     for (const [specifier, importer] of externalImports(join(packageRoot, file))) {
-      if (isBuiltin(specifier)) {
+      if (zeroDependency) {
+        errors.push(`${subpath}: ${show(importer)} imports ${specifier}, but this entry must import nothing`);
+      } else if (isBuiltin(specifier)) {
         if (browserSafe) {
           errors.push(`${subpath}: ${show(importer)} imports Node built-in ${specifier}`);
         }
@@ -128,7 +134,7 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
       errors.push(`${subpath}: browser bundle ${problem}`);
     }
   }
-  checked.push(`${subpath}${browserSafe ? " (browser)" : ""}`);
+  checked.push(`${subpath}${browserSafe ? " (browser)" : ""}${zeroDependency ? " (no imports)" : ""}`);
 }
 
 if (errors.length > 0) {

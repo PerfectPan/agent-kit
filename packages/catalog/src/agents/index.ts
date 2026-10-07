@@ -11,6 +11,7 @@ import {
 } from "../domain/coding-agent/index.js";
 import { claudeCode } from "./claude-code.js";
 import { codex } from "./codex.js";
+import { cursor } from "./cursor.js";
 import { geminiCli } from "./gemini-cli.js";
 import { grok } from "./grok.js";
 import { opencode } from "./opencode.js";
@@ -19,6 +20,7 @@ import { pi } from "./pi.js";
 export const builtinCodingAgents: Readonly<Record<BuiltinCodingAgentId, CodingAgent>> = {
   "claude-code": claudeCode,
   codex,
+  cursor,
   "gemini-cli": geminiCli,
   grok,
   opencode,
