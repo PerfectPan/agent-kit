@@ -1,0 +1,487 @@
+{
+  "source": "agent-finder listProviders(): the MoonBit catalog of provider specs",
+  "providers": [
+    {
+      "id": "opencode",
+      "displayName": "OpenCode",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "opencode"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.config/opencode"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.config/opencode/opencode.json"
+      ],
+      "versionProbe": "--version",
+      "warnings": [
+        "Provider metadata is conservative until exact OpenCode install variants are verified."
+      ]
+    },
+    {
+      "id": "openhands",
+      "displayName": "OpenHands",
+      "kind": "app",
+      "adapterMode": "app-only",
+      "commandCandidates": [
+        "openhands"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.openhands"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": null,
+      "warnings": [
+        "OpenHands may be local, containerized, or remote; discovery is conservative."
+      ]
+    },
+    {
+      "id": "claude-code",
+      "displayName": "Claude Code",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "claude"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.claude",
+        "~/.claude.json"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.claude.json",
+        "~/.claude/settings.json"
+      ],
+      "versionProbe": "--version",
+      "warnings": []
+    },
+    {
+      "id": "cline",
+      "displayName": "Cline",
+      "kind": "extension",
+      "adapterMode": "extension",
+      "commandCandidates": [],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.vscode/extensions"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": null,
+      "warnings": [
+        "Cline extension presence is not validated without reading extension metadata."
+      ]
+    },
+    {
+      "id": "codebuddy",
+      "displayName": "CodeBuddy",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "codebuddy"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.codebuddy"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "CodeBuddy command and config paths may vary by distribution."
+      ]
+    },
+    {
+      "id": "codex",
+      "displayName": "Codex",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "codex"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.codex"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.codex/config.toml"
+      ],
+      "versionProbe": "--version",
+      "warnings": []
+    },
+    {
+      "id": "command-code",
+      "displayName": "Command Code",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "command-code"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.command-code"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Command Code provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "kiro-cli",
+      "displayName": "Kiro CLI",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "kiro"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.kiro"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Kiro CLI provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "cursor",
+      "displayName": "Cursor",
+      "kind": "app",
+      "adapterMode": "app-only",
+      "commandCandidates": [
+        "cursor"
+      ],
+      "appPathCandidates": [
+        "/Applications/Cursor.app"
+      ],
+      "configPathCandidates": [
+        "~/Library/Application Support/Cursor/User",
+        "~/.config/Cursor/User",
+        "~/AppData/Roaming/Cursor/User"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.cursor/mcp.json",
+        "~/Library/Application Support/Cursor/User/mcp.json"
+      ],
+      "versionProbe": null,
+      "warnings": []
+    },
+    {
+      "id": "antigravity",
+      "displayName": "Antigravity",
+      "kind": "app",
+      "adapterMode": "app-only",
+      "commandCandidates": [
+        "antigravity"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.antigravity"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": null,
+      "warnings": [
+        "Antigravity provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "roo-code",
+      "displayName": "Roo Code",
+      "kind": "extension",
+      "adapterMode": "extension",
+      "commandCandidates": [],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.vscode/extensions"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": null,
+      "warnings": [
+        "Roo Code extension presence is not validated without reading extension metadata."
+      ]
+    },
+    {
+      "id": "github-copilot",
+      "displayName": "GitHub Copilot",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "gh",
+        "copilot"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.config/gh"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "GitHub Copilot CLI support is detected conservatively through command metadata."
+      ]
+    },
+    {
+      "id": "amp",
+      "displayName": "Amp",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "amp"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.amp"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Amp provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "openclaw",
+      "displayName": "OpenClaw",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "openclaw"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.openclaw"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "OpenClaw provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "neovate",
+      "displayName": "Neovate",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "neovate"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.neovate"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Neovate provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "pi",
+      "displayName": "Pi",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "pi"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.pi"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Pi provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "qoder",
+      "displayName": "Qoder",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "qoder"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.qoder"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Qoder provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "zencoder",
+      "displayName": "Zencoder",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "zencoder"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.zencoder"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Zencoder provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "kimi-code-cli",
+      "displayName": "Kimi Code CLI",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "kimi"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.kimi"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Kimi Code CLI provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "gemini-cli",
+      "displayName": "Gemini CLI",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "gemini"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.gemini"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.gemini/settings.json"
+      ],
+      "versionProbe": "--version",
+      "warnings": []
+    },
+    {
+      "id": "windsurf",
+      "displayName": "Windsurf",
+      "kind": "app",
+      "adapterMode": "app-only",
+      "commandCandidates": [
+        "windsurf"
+      ],
+      "appPathCandidates": [
+        "/Applications/Windsurf.app"
+      ],
+      "configPathCandidates": [
+        "~/Library/Application Support/Windsurf/User",
+        "~/.config/Windsurf/User",
+        "~/.codeium"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.codeium/windsurf/mcp_config.json",
+        "~/Library/Application Support/Windsurf/User/mcp.json"
+      ],
+      "versionProbe": null,
+      "warnings": []
+    },
+    {
+      "id": "vscode-copilot",
+      "displayName": "VS Code Copilot",
+      "kind": "extension",
+      "adapterMode": "extension",
+      "commandCandidates": [
+        "code"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/Library/Application Support/Code/User",
+        "~/.config/Code/User",
+        "~/AppData/Roaming/Code/User"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/Library/Application Support/Code/User/mcp.json"
+      ],
+      "versionProbe": null,
+      "warnings": [
+        "VS Code Copilot extension presence is not validated without reading extension metadata."
+      ]
+    },
+    {
+      "id": "codex-desktop",
+      "displayName": "Codex Desktop",
+      "kind": "app",
+      "adapterMode": "app-only",
+      "commandCandidates": [],
+      "appPathCandidates": [
+        "/Applications/Codex.app"
+      ],
+      "configPathCandidates": [
+        "~/.codex"
+      ],
+      "mcpConfigPathCandidates": [
+        "~/.codex/config.toml"
+      ],
+      "versionProbe": null,
+      "warnings": []
+    },
+    {
+      "id": "aider",
+      "displayName": "aider",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "aider"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.aider.conf.yml",
+        "~/.config/aider"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": []
+    },
+    {
+      "id": "hermes",
+      "displayName": "Hermes",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "hermes"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.hermes"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Hermes provider metadata needs validation."
+      ]
+    },
+    {
+      "id": "trae",
+      "displayName": "Trae",
+      "kind": "cli",
+      "adapterMode": "versioned-cli",
+      "commandCandidates": [
+        "trae"
+      ],
+      "appPathCandidates": [],
+      "configPathCandidates": [
+        "~/.trae"
+      ],
+      "mcpConfigPathCandidates": [],
+      "versionProbe": "--version",
+      "warnings": [
+        "Trae provider metadata needs validation."
+      ]
+    }
+  ]
+}

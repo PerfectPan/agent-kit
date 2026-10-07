@@ -22,6 +22,7 @@ that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 | Entry                               | Main exports                                                                                                         | Runs in                               |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                              |
+| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform             |
 | `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                  |
 | `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                              |
 | `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                  |
@@ -30,7 +31,7 @@ that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 | `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform             |
 | `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules                     | anywhere, with a platform             |
 | `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports |
-| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession`                    | Node                                  |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                  |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -168,20 +169,31 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                 | In 0.1.0                 |
-| ----------- | ------------------------------- | ------------------------------------------------------- | ------------------------ |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                        | sessions and transcripts |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)   | sessions and transcripts |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                  | sessions and transcripts |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` | catalog identity only    |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    | catalog identity only    |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
-| Cursor      | `cursor` (alias `cursor-agent`) | `~/.cursor` only (overrides not modelled)               | added after 0.1.0        |
+| Agent       | Id                              | Home: override, default                                           | In 0.1.0                 |
+| ----------- | ------------------------------- | ----------------------------------------------------------------- | ------------------------ |
+| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  | sessions and transcripts |
+| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             | sessions and transcripts |
+| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            | sessions and transcripts |
+| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           | catalog identity only    |
+| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              | catalog identity only    |
+| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                | catalog identity only    |
+| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` | added after 0.1.0        |
 
 Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/transcript/usage` reads the usage of every agent in the table except
 Cursor (added after 0.1.0).
 
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
 (`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
+
+`detectAgents(platform)` from `/discovery` reports, for each of 27 agents (the seven above, aider, Amp, Antigravity,
+Cline, CodeBuddy, Codex Desktop, Command Code, GitHub Copilot, Hermes, Kimi Code CLI, Kiro CLI, Neovate,
+OpenClaw, OpenHands, Qoder, Roo Code, Trae, VS Code Copilot, Windsurf and Zencoder), whether it is `runnable`,
+`found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
+the login state comes only from credential files and environment variables, without running anything and without
+returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each
+recipe lists. Version probes run by default and make an agent `runnable`; `versionProbe: false` runs nothing at all.
+Commands run without a shell and with a time limit; a check that fails is reported in `problems`. `/catalog` has an identity for each of them, and a
+home rule where upstream documents one: Cline, CodeBuddy, Codex Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI,
+Neovate, OpenHands and Qoder.
 
 MIT licensed. Source and design documents: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit).

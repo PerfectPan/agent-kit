@@ -5,7 +5,10 @@ import type {
   FileStat,
   OperatingSystem,
   Platform,
-  PlatformFs
+  PlatformFs,
+  PlatformProcess,
+  RunOptions,
+  RunResult
 } from "@rivus/agent-kit-platform";
 
 /** A seeded file: its content, or its content and modification time. */
@@ -21,13 +24,37 @@ export interface MemoryPlatformOptions {
   readonly now?: () => number;
   /** Largest chunk `fs.read` yields, so tests can cross chunk boundaries; defaults to 64 KB. */
   readonly chunkSize?: number;
+  /**
+   * Programs `process.run` can run, by absolute path. Seeding a program also creates an empty file at its path, so
+   * that `stat` and `PATH` lookups find it.
+   */
+  readonly commands?: Readonly<Record<string, MemoryCommand>>;
+}
+
+/** What a scripted program does in one run; `code` defaults to 0 and the output to empty. */
+export interface MemoryRunResult {
+  readonly code?: number | null;
+  readonly signal?: string | null;
+  readonly stdout?: string;
+  readonly stderr?: string;
 }
 
 /**
- * The part of Platform that `createMemoryPlatform` implements. It has no processes and no SQLite, so it runs in a
- * browser as well as in Node.
+ * A scripted program: a fixed result, or a function of the arguments and the run options (with `env` defaulted to
+ * the platform's). A function that does not settle within `timeoutMs` times out; what one throws rejects the run, so
+ * a test throws an error with an errno `code`, such as `ENOENT`, for a program that fails to start.
  */
-export type MemoryPlatform = Pick<Platform, "env" | "home" | "os" | "fs" | "clock">;
+export type MemoryCommand =
+  | MemoryRunResult
+  | ((args: readonly string[], options: RunOptions) => MemoryRunResult | Promise<MemoryRunResult>);
+
+/**
+ * The part of Platform that `createMemoryPlatform` implements. Its processes are the scripted `commands`, run only
+ * through `process.run`; it has no SQLite, so it runs in a browser as well as in Node.
+ */
+export type MemoryPlatform = Pick<Platform, "env" | "home" | "os" | "fs" | "clock"> & {
+  readonly process: Pick<PlatformProcess, "run">;
+};
 
 interface StoredFile {
   bytes: Uint8Array;
@@ -38,8 +65,10 @@ interface StoredFile {
  * An in-memory Platform for tests. Paths are normalized (`//`, `.`, `..` and a trailing `/`); there are no special
  * files or symlinks, so `followSymlinks` changes nothing. `list` rejects for a missing path or a file; writing a file
  * creates its parent directories; removing a missing path resolves; `rename` follows POSIX (it replaces a file or an
- * empty directory, and needs the target's parent). Stored bytes are copied on the way in and out. Errors carry
- * Node's `code` (`ENOENT`, `EISDIR`, `ENOTDIR`, `ENOTEMPTY`, `EINVAL`), as the Node platform's do.
+ * empty directory, and needs the target's parent). Stored bytes are copied on the way in and out. `process.run`
+ * runs a seeded program only while its file exists, refuses a `.cmd` or `.bat` file on Windows as Node does, honors
+ * `timeoutMs` and `signal`, and passes the platform's `env` unless the run gives one. Errors carry Node's `code`
+ * (`ENOENT`, `EACCES`, `EISDIR`, `ENOTDIR`, `ENOTEMPTY`, `EINVAL`), as the Node platform's do.
  */
 export function createMemoryPlatform(options: MemoryPlatformOptions = {}): MemoryPlatform {
   const now = options.now ?? Date.now;
@@ -77,6 +106,15 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
     const mtimeMs = typeof file === "string" || file instanceof Uint8Array ? now() : (file.mtimeMs ?? now());
     putFile(normalize(path), toBytes(content), mtimeMs);
   }
+  const commands = new Map<string, MemoryCommand>();
+  for (const [path, command] of Object.entries(options.commands ?? {})) {
+    const key = normalize(path);
+    commands.set(key, command);
+    if (!files.has(key)) {
+      putFile(key, new Uint8Array(0), now());
+    }
+  }
+  const env: Env = Object.freeze({ ...options.env });
 
   const fs: PlatformFs = {
     async stat(path): Promise<FileStat | undefined> {
@@ -183,11 +221,66 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
     }
   };
 
+  const os = options.os ?? "linux";
+  // Like a spawn: a missing program or working directory is ENOENT, a file that is not a program is EACCES, and on
+  // Windows a .cmd or .bat file is EINVAL, because Node refuses to run one without a shell.
+  const run = async (command: string, args: readonly string[], runOptions: RunOptions): Promise<RunResult> => {
+    const { signal } = runOptions;
+    signal?.throwIfAborted();
+    if (os === "win32" && /\.(?:cmd|bat)$/i.test(command)) {
+      throw fsError("EINVAL", command);
+    }
+    const key = normalize(command);
+    if (!files.has(key)) {
+      throw fsError("ENOENT", command);
+    }
+    if (runOptions.cwd !== undefined && !dirs.has(normalize(runOptions.cwd))) {
+      throw fsError("ENOENT", runOptions.cwd);
+    }
+    const program = commands.get(key);
+    if (program === undefined) {
+      throw fsError("EACCES", command);
+    }
+    const effective: RunOptions = { ...runOptions, env: runOptions.env ?? env };
+    const result = typeof program === "function" ? Promise.resolve(program(args, effective)) : Promise.resolve(program);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    try {
+      const settled = await Promise.race([
+        result.then((value) => ({ value })),
+        new Promise<{ timedOut: true }>((resolve) => {
+          timer = setTimeout(() => resolve({ timedOut: true }), runOptions.timeoutMs);
+        }),
+        new Promise<never>((_, reject) => {
+          onAbort = () => reject(signal?.reason);
+          signal?.addEventListener("abort", onAbort, { once: true });
+        })
+      ]);
+      if ("timedOut" in settled) {
+        return { code: null, signal: "SIGTERM", stdout: "", stderr: "", timedOut: true };
+      }
+      const { value } = settled;
+      return {
+        code: value.code === undefined ? 0 : value.code,
+        signal: value.signal ?? null,
+        stdout: value.stdout ?? "",
+        stderr: value.stderr ?? "",
+        timedOut: false
+      };
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) {
+        signal?.removeEventListener("abort", onAbort);
+      }
+    }
+  };
+
   return {
-    env: Object.freeze({ ...options.env }),
+    env,
     home: options.home ?? "/u/me",
-    os: options.os ?? "linux",
+    os,
     fs,
+    process: { run },
     clock: { now, monotonic: () => performance.now() }
   };
 }

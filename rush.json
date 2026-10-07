@@ -42,6 +42,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@rivus/agent-kit-discovery",
+      "projectFolder": "packages/discovery",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@rivus/agent-kit-testing",
       "projectFolder": "packages/testing",
       "shouldPublish": false

@@ -23,19 +23,23 @@ The value `{ ok: true, value } | { ok: false, error }` that plain TS functions r
 ## discovery
 
 **Installation**:
-What is known about one CodingAgent on this machine: its evidence, DetectionStatus, version and AuthState.
+What is known about one CodingAgent on this machine: its evidence, DetectionStatus, version, AuthState and the ProbeProblems of checks that could not complete.
 
 **Evidence**:
-One observation that an agent is present: a command on `PATH`, an application path, a configuration directory, or version output.
+One observation that an agent is present: a command on `PATH`, version output, an application path, a configuration path, or an MCP configuration path.
 
 **DetectionStatus**:
-The classification of an Installation from its evidence: `runnable`, `found`, `missing` or `unknown`.
+The classification of an Installation from its evidence: `runnable` (the version probe succeeded), `found` (other evidence), `missing` (every check completed and found nothing) or `unknown` (nothing found, but a check could not complete).
 
 **AuthState**:
-Whether the agent is logged in, as far as detection can tell.
+Whether the agent is logged in, as far as detection can tell: `logged-in`, `logged-out` or `unknown`. By default it comes from credential files and authenticating variables, which can only say `logged-in`; the agent's own status command, run only on request, is the only source of `logged-out`.
+_Avoid_: reading a missing credential file as logged out
 
 **ProbeRecipe**:
-How discovery detects one agent: executables, application paths, version arguments and the login check.
+How discovery detects one agent: executable names, application, configuration and MCP paths, the version probe and the login checks, with the caveats about its facts.
+
+**ProbeProblem**:
+A check that could not complete: a path that could not be checked (`StatFailed`), a probe command that could not start, timed out or printed something its parser does not recognize (`CommandFailed`), or a credential file that could not be read or recognized (`CredentialFileFailed`).
 
 ## sessions
 

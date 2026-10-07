@@ -17,7 +17,13 @@ import { grokHookDialect } from "./grok/hook-dialect.js";
 import { opencodeHookDialect } from "./opencode/hook-dialect.js";
 import { piHookDialect } from "./pi/hook-dialect.js";
 
-export const builtinHookDialects: Readonly<Record<BuiltinCodingAgentId, HookDialect>> = {
+/** The agents with a built-in dialect; catalog knows more agents than have hooks. */
+type HookAgentId = Extract<
+  BuiltinCodingAgentId,
+  "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode" | "pi"
+>;
+
+export const builtinHookDialects: Readonly<Record<HookAgentId, HookDialect>> = {
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
   cursor: cursorHookDialect,

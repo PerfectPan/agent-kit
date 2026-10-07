@@ -6,6 +6,8 @@ export type {
   BuiltinCodingAgentId,
   CodingAgent,
   CodingAgentId,
+  CodingAgentIdWithHome,
+  CodingAgentWithHome,
   HomeContext,
   HomeRule,
   InvalidCodingAgentId

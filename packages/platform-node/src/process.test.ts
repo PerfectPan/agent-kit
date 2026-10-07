@@ -94,7 +94,10 @@ describe("run", () => {
 
   it("fails instead of buffering unbounded output", async () => {
     const script = 'process.stdout.write("x".repeat(5 * 1024 * 1024))';
-    await expect(platform.process.run(node, ["-e", script], { timeoutMs: 10_000 })).rejects.toThrow("wrote more than");
+    await expect(platform.process.run(node, ["-e", script], { timeoutMs: 10_000 })).rejects.toMatchObject({
+      message: expect.stringContaining("wrote more than"),
+      code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+    });
   });
 });
 

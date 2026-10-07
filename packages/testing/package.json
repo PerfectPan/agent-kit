@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",

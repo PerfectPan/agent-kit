@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect` and `/node/effect` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect` and `/discovery` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -20,9 +20,9 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
-Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi, and Cursor's identity in `/catalog`.
+Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`.
 
-Included as planned behavior: `/transcript/usage` and `/cost` (P2), `/harness` (P3), `/discovery` (P4), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included as planned behavior: `/transcript/usage` and `/cost` (P2), `/harness` (P3), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -36,15 +36,16 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
 - Only Effect entries (`/platform/effect`, `/node/effect`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
-- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
+- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript`, `/discovery` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
-- Exports `CodingAgentId`, `BuiltinCodingAgentId`, `parseCodingAgentId`, `isBuiltinCodingAgentId`, the identities of the built-in agents (`builtinCodingAgents`, `CodingAgent`), `AgentHome`, `HomeRule`, `resolveHome(id, { env, home })`, `homeFromRule`, `Result`, `ok`, `err`, and `AgentKitError` with `isAgentKitError`.
+- Exports `CodingAgentId`, `BuiltinCodingAgentId`, `CodingAgentIdWithHome`, `parseCodingAgentId`, `isBuiltinCodingAgentId`, the identities of the built-in agents (`builtinCodingAgents`, `CodingAgent`, `CodingAgentWithHome`), `AgentHome`, `HomeRule`, `resolveHome(id, { env, home })`, `homeFromRule`, `Result`, `ok`, `err`, and `AgentKitError` with `isAgentKitError`.
+- Every agent that a context supports has an identity: an id, a display name and its aliases. A home rule is part of the identity only when upstream sources or the agent's documentation confirm it; `resolveHome` takes the ids that have one (`CodingAgentIdWithHome`), and for any other agent `builtinCodingAgents[id].home` is absent.
 - A `CodingAgentId` has documented aliases (for example `claude` for `claude-code`); an alias identifies the same agent as its canonical id.
-- `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
+- `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME` for Codex and the Codex app, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`, `CLINE_DIR`, `CODEBUDDY_CONFIG_DIR`, `COPILOT_HOME`, `KIMI_SHARE_DIR`, `KIRO_HOME`, `OPENHANDS_PERSISTENCE_DIR`, `QODER_CONFIG_DIR`; Neovate has none), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
 - `catalog` holds identity, home directory rules and `Result` only. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
-- Built-in identities: `claude-code`, `codex`, `cursor`, `gemini-cli`, `grok`, `opencode` and `pi`. Cursor's home rule covers only its default `~/.cursor`, not `CURSOR_CONFIG_DIR` or `$XDG_CONFIG_HOME/cursor`.
+- Built-in identities: the 27 agents that `/discovery` detects. `cursor` (alias `cursor-agent`) has no home rule: Cursor uses `CURSOR_CONFIG_DIR`, then `$XDG_CONFIG_HOME/cursor`, then `~/.cursor`, which one HomeRule cannot express.
 
 ### `/platform`
 
@@ -101,9 +102,21 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - `heartbeatSignal(before, after, event)` takes the session's state before and after `reduceLifecycle` folded the event. It returns `start` for a turn start and for any main-agent event that makes a session busy that was not (a turn whose start hook was lost), `heartbeat` for activity and blockers while the session stays busy, `finish` for any end, and nothing for a session start, an unknown event or a late event of an ended or superseded turn. A subagent event, whose payload can carry the parent's session id, never starts or finishes the session; it only beats while the session is busy.
 - Each `HookDialect` carries `specificationVersion: 'harness-v1'` and records the agent's hook facts: how hooks are delivered (`command` or an in-process `plugin` that forwards each event), the timeout unit (`seconds` for Claude Code, Codex, Cursor and Grok, `milliseconds` for Gemini CLI, none for plugins), the payload field paths, each native event's LifecycleEvent mapping and aliases, which events are permission gates, how exit codes and stdout are read (including where plain text becomes model context, as on Codex's `SessionStart`, `UserPromptSubmit` and `SubagentStart`) and what an observing hook prints (`passThrough`), the trust model, and the other agents' hooks it runs (Grok runs Claude Code's and Cursor's; Cursor runs Claude Code's). A fact the agent's documentation does not confirm carries an `unverified` note.
 
+### `/discovery`
+
+- Exports `detectAgents(platform, opts)`, the probe recipe table `builtinProbeRecipes`, the rules `classifyInstallation`, `resolveAuthState` and `versionFromOutput`, `DETECTION_STATUSES`, and the types `Installation`, `Evidence`, `DetectionStatus`, `AuthState`, `AuthSource`, `Version`, `ProbeProblem`, `ProbeRecipe`, `ProbeRecipes`, `ProbePath`, `CredentialFileProbe`, `AuthVariable`, `DiscoveryPlatform` and `DetectAgentsOptions`. A `ProbeRecipe` carries `specificationVersion: 'discovery-v1'`.
+- `detectAgents` uses only `env`, `home`, `os`, `fs.stat`, `fs.read` (credential files) and `process.run`. It accepts `agents` (ids or aliases), `recipes`, `signal`, `timeoutMs` (per probe command, default 5 seconds), `versionProbe` (default `true`) and `authProbe` (`files` by default, or `commands`), and resolves to one `Installation` per agent, in table order. Naming an agent without a recipe throws `AgentKitError` with code `capability-unsupported`; an abort rejects with `signal.reason` and stops the running commands.
+- An `Installation` has the agent's id, display name and kind (`cli`, `app` or `extension`), a `status`, the resolved `command`, the first existing `appPath`, the `version` (the trimmed output and its first dotted number), the login state `auth`, the `evidence` behind the status (command on `PATH`, version output, application path, configuration path, MCP configuration path, in that order), the `problems` of checks that could not complete, and the recipe's `warnings`, which also name the facts upstream sources do not confirm.
+- `status` is `runnable` when the version probe succeeded, `found` when any other evidence exists, `missing` when every check completed without evidence, and `unknown` when nothing was found but a check could not complete. A version probe that times out, cannot start (a spawn error with an errno code), prints more than the platform collects (`output-too-large`) or prints nothing it recognizes is a problem; the agent stays `found`. Any other rejection is a defect and rejects `detectAgents`. On Windows a command that is a `.cmd` or `.bat` file, as npm installs agents, is not run, because Node runs those only through a shell and detection runs none: the agent is `found` with a `shell-shim-not-run` problem and a warning.
+- Commands are looked up in the absolute directories of `PATH`, in order, as regular files (on Windows with each `PATHEXT` extension, under any spelling of the variable names, with quotes around an entry dropped); empty and relative entries are skipped. A candidate that cannot be checked is a `StatFailed` problem. Platform reports no permission bits, so a non-executable file earlier on `PATH` shadows later ones, and running it is a `start-failed` problem. Probe commands run without a shell, with fixed arguments, the platform's environment, the user's home directory as working directory and a time limit. The version probe runs the agent's own command, so it has whatever effects that command has on start; each recipe lists the known ones in `version.sideEffects` (Codex creates `$CODEX_HOME/tmp/arg0`). With `versionProbe: false` and the default `authProbe`, detection runs nothing and has no side effects, and no agent is `runnable`.
+- With `authProbe: 'files'` the login state comes only from credential files and environment variables: a file's existence, or for a file the recipe parses, non-secret facts such as whether any credential is stored (at most 8 MiB is read). Secret values never leave the parser and file content is never reported. With `authProbe: 'commands'` detection also runs each agent's login status command, whose answer wins; the command runs only when its executable is on `PATH` and, if it is the agent's version-probed command, only after the version probe succeeded. Each recipe lists the command's side effects in `auth.command.sideEffects`. Only a status command can report `logged-out`; without an answer the state is `unknown`. Nothing starts a login.
+- `builtinProbeRecipes` covers 27 agents: agent-finder's 26 and Grok. It starts from agent-finder's facts and corrects those that upstream sources contradict (for example Kiro CLI's command `kiro-cli`, Command Code's `~/.commandcode`, Copilot CLI's `copilot` and `~/.copilot`, Windsurf's rename to Devin Desktop, the Codex app installed as `ChatGPT.app`, Trae as an application); the parity test lists every corrected fact with its source; paths under a catalog home follow its override variable. Login checks: Claude Code (`oauthAccount` in `~/.claude.json`, `.credentials.json`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`; `claude auth status --json`), Codex (`auth.json`; `codex login status`), Gemini CLI (`oauth_creds.json`, `GEMINI_API_KEY`), opencode (`auth.json`, `OPENCODE_AUTH_CONTENT`), Grok (`auth.json`, `XAI_API_KEY`), Amp (`secrets.json`) and Cursor (the CLI's `auth.json`; `cursor-agent status --format json`).
+
 ### `/testing`
 
-- Exports `createMemoryPlatform({ files })`, an in-memory `Platform` (without `process` and `sqlite`) whose file system holds the given files, and the conformance suite of each context that has one: `sessionAdapterConformance`, with `oversizedSession` to build its large sample, and `hookDialectConformance` with the types `HookDialectFixtures` and `HookDialectSample`. Each check is a named function that rejects on failure, so any test runner can run it.
+- Exports `createMemoryPlatform({ files, commands })`, an in-memory `Platform` (without `process.spawn` and `sqlite`) whose file system holds the given files and whose `process.run` runs the given scripted programs, and the conformance suite of each context that has one: `sessionAdapterConformance`, with `oversizedSession` to build its large sample, `hookDialectConformance` with the types `HookDialectFixtures` and `HookDialectSample`, and `probeRecipeConformance`. Each check is a named function that rejects on failure, so any test runner can run it.
+- A scripted program behaves like a spawned one: it runs only while its file exists, a missing program or working directory is `ENOENT`, a file that is not a program is `EACCES`, a `.cmd` or `.bat` file on a Windows platform is `EINVAL`, it gets the platform's environment unless the run gives one, and it honors `timeoutMs` and `signal`.
+- The probe recipe conformance suite checks that a recipe names a catalog agent by its canonical id and display name (or a third-party agent by a canonical id), probes bare command names with fixed arguments, names a login command from its own commands and lists that command's side effects, checks only absolute, home-relative or agent-home paths, has version, login and credential file parsers that return a well-formed value or `undefined` for any input, reads its sample outputs and credential files as stated, passes on no value from its login inputs (a canary placed in every string position of the samples never reaches a reading), and that detection on a machine with everything and on an empty machine reports the expected status the same way every time.
 - Readers produce the same results on the memory platform as on the Node platform over the same files.
 - The hook dialect conformance suite checks a `HookDialect` against sample payloads: it declares `harness-v1`, a command dialect has a timeout unit and output rules, every mapped event (and every case of a field-dependent mapping) resolves to a known phase with consistent `outcome` and `blocker`, every gate event declares its own response format whose `passThrough` is valid for it, foreign event renames point at mapped events, every event has a sample, every sample reads to its expected LifecycleEvent through `readHookEvent`, and probe payloads (wrong types, inherited object keys such as `constructor`, unmapped names) read as phase `unknown` without throwing.
 - The sessions conformance suite checks a `SessionAdapter` against sample logs: listing reads at most 128 KB per file, event ids are stable and unique, every record is accounted for, tool results are paired, compaction shadowing holds, references between events and lanes resolve (a `spawnEventId` names an existing `tool_call` or `system` event on the parent lane), source pointers read back, declared capabilities match the output, and summaries equal the folded transcript. Built-in adapters and third-party adapters run the same suite; keeping `node:*` out of adapters is the boundary test's job.
@@ -133,9 +146,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Every ledger modification happens while one LedgerLock is held. Without `platform.sqlite` and without an injected LedgerLock, ledger modification is refused with `ledger-lock-unavailable`. A ledger with an unknown `schemaVersion` is refused or kept whole, never cleared.
 - Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
 
-#### `/discovery` (P4)
-
-- `detectAgents` returns `Installation[]` with evidence (command on `PATH`, application path, configuration directory, version output), a status of `runnable`, `found`, `missing` or `unknown`, the version and the login state. Probe commands run with a timeout.
 
 #### `/redact` (P5)
 
@@ -165,6 +175,7 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Event references (`agentId`, `parentId`, `requestId`, `callId`, `shadowedBy`, `agents[]`) are set during translation and point to events or agents of the same session.
 - Each event's source pointer reads back to its original record.
 - Expected failures are values with a `_tag`; only defects throw.
+- Detection never reports an agent `missing` while one of its checks could not complete, never reports `logged-out` from anything but the agent's own status command, never runs a status command unless asked to, and never returns a credential's value.
 - Aggregate classes never appear in the public surface; aggregates are exposed as handle interfaces and read-only snapshots.
 - Planned contexts add their own invariants (plan 3.1 and 3.9): an InstallPlan is immutable and refused when stale or conflicting; ledger revisions strictly increase and an unknown ledger version is never cleared; a lease generation never decreases; an ACP session runs one turn at a time; a lane runs one activation per key.
 
@@ -381,7 +392,7 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `applyInstall` runs
 - Then it fails with `ledger-lock-unavailable` and changes nothing
 
-### S36 (planned, P4): Detection reports a status per agent
+### S36: Detection reports a status per agent
 
 - Given an agent whose command is on `PATH` and whose version command succeeds, and an agent with only a configuration directory
 - When `detectAgents` runs
@@ -465,6 +476,30 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When it type-checks and runs a program that reads `PlatformService` with `Effect.runPromiseExit`, provided by `NodePlatformLive`
 - Then every Effect entry imports, the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package (by real path), every Effect entry resolves the same one as the consumer at 4.0.1, and no built file bundles a module from `node_modules`
 
+### S53: A check that cannot complete is not a missing agent
+
+- Given an agent whose only configuration path cannot be checked (a permission error), and an agent whose version probe times out
+- When `detectAgents` runs
+- Then the first is `unknown` with a `StatFailed` problem, and the second is `found` with a `CommandFailed` problem of reason `timed-out`
+
+### S54: Only the agent's status command reports logged out
+
+- Given a Codex whose `codex login status` prints `Not logged in`, and an agent whose credential file is absent
+- When `detectAgents` runs with `authProbe: 'commands'`
+- Then Codex is `logged-out` with the command as source, and the other agent's login state is `unknown`
+
+### S55: Probes run no shell and nothing from the working directory
+
+- Given `PATH` with an empty entry, a relative entry and an absolute entry, each holding the agent's command
+- When `detectAgents` runs
+- Then the command from the absolute entry is used, and every probe command runs without a shell, in the user's home directory, with the platform's environment and the time limit
+
+### S56: Login state is read from files unless commands are asked for
+
+- Given a Codex whose `auth.json` records a ChatGPT login and whose `codex login status` prints `Not logged in`
+- When `detectAgents` runs without options, and then with `authProbe: 'commands'`
+- Then the first run reports `logged-in` with method `chatgpt` from the file without running the status command, and without any credential value in the result; the second runs it and reports `logged-out`
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
@@ -475,5 +510,5 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test. Planned scenarios S26–S29 and S32–S40 are linked when their phase starts.
-- Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. Planned scenarios S26–S29, S32–S35 and S37–S40 are linked when their phase starts.
+- Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

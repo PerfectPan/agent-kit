@@ -4,15 +4,42 @@ import { builtinCodingAgents, isBuiltinCodingAgentId, parseCodingAgentId, resolv
 
 const home = "/u/me";
 
+/** Every `CodingAgentIdWithHome`, sorted. */
+const HOMED = [
+  "claude-code",
+  "cline",
+  "codebuddy",
+  "codex",
+  "codex-desktop",
+  "gemini-cli",
+  "github-copilot",
+  "grok",
+  "kimi-code-cli",
+  "kiro-cli",
+  "neovate",
+  "opencode",
+  "openhands",
+  "pi",
+  "qoder"
+];
+
 describe("resolveHome", () => {
   it.each([
     ["claude-code", "/u/me/.claude"],
     ["codex", "/u/me/.codex"],
-    ["cursor", "/u/me/.cursor"],
     ["gemini-cli", "/u/me/.gemini"],
     ["grok", "/u/me/.grok"],
     ["opencode", "/u/me/.local/share/opencode"],
-    ["pi", "/u/me/.pi/agent"]
+    ["pi", "/u/me/.pi/agent"],
+    ["cline", "/u/me/.cline"],
+    ["codebuddy", "/u/me/.codebuddy"],
+    ["codex-desktop", "/u/me/.codex"],
+    ["github-copilot", "/u/me/.copilot"],
+    ["kimi-code-cli", "/u/me/.kimi"],
+    ["kiro-cli", "/u/me/.kiro"],
+    ["neovate", "/u/me/.neovate"],
+    ["openhands", "/u/me/.openhands"],
+    ["qoder", "/u/me/.qoder"]
   ] as const)("defaults %s to %s", (id, path) => {
     expect(resolveHome(id, { env: {}, home })).toEqual({ agent: id, path, source: { kind: "default" } });
   });
@@ -23,7 +50,15 @@ describe("resolveHome", () => {
     ["gemini-cli", "GEMINI_CLI_HOME", "/alt", "/alt/.gemini"],
     ["grok", "GROK_HOME", "/cfg/grok", "/cfg/grok"],
     ["opencode", "XDG_DATA_HOME", "/data", "/data/opencode"],
-    ["pi", "PI_CODING_AGENT_DIR", "/cfg/pi", "/cfg/pi"]
+    ["pi", "PI_CODING_AGENT_DIR", "/cfg/pi", "/cfg/pi"],
+    ["cline", "CLINE_DIR", "/cfg/cline", "/cfg/cline"],
+    ["codebuddy", "CODEBUDDY_CONFIG_DIR", "/cfg/codebuddy", "/cfg/codebuddy"],
+    ["codex-desktop", "CODEX_HOME", "/cfg/codex", "/cfg/codex"],
+    ["github-copilot", "COPILOT_HOME", "/cfg/copilot", "/cfg/copilot"],
+    ["kimi-code-cli", "KIMI_SHARE_DIR", "/cfg/kimi", "/cfg/kimi"],
+    ["kiro-cli", "KIRO_HOME", "/cfg/kiro", "/cfg/kiro"],
+    ["openhands", "OPENHANDS_PERSISTENCE_DIR", "/cfg/openhands", "/cfg/openhands"],
+    ["qoder", "QODER_CONFIG_DIR", "/cfg/qoder", "/cfg/qoder"]
   ] as const)("lets %s's %s override the default", (id, variable, value, path) => {
     expect(resolveHome(id, { env: { [variable]: value }, home })).toEqual({
       agent: id,
@@ -59,6 +94,12 @@ describe("resolveHome", () => {
     }
     expect(isBuiltinCodingAgentId("toString")).toBe(false);
   });
+
+  it("has a home rule exactly for the agents resolveHome takes", () => {
+    const withHome = Object.values(builtinCodingAgents).filter((agent) => agent.home !== undefined);
+    expect(withHome.map((agent) => agent.id).toSorted()).toEqual(HOMED);
+    expect(Object.keys(builtinCodingAgents)).toHaveLength(27);
+  });
 });
 
 describe("parseCodingAgentId", () => {
@@ -66,6 +107,20 @@ describe("parseCodingAgentId", () => {
     expect(parseCodingAgentId("claude")).toEqual({ ok: true, value: "claude-code" });
     expect(parseCodingAgentId(" Gemini ")).toEqual({ ok: true, value: "gemini-cli" });
     expect(parseCodingAgentId("codex")).toEqual({ ok: true, value: "codex" });
+  });
+
+  it("maps the command names of agents that discovery added", () => {
+    expect(parseCodingAgentId("kimi")).toEqual({ ok: true, value: "kimi-code-cli" });
+    expect(parseCodingAgentId("cursor-agent")).toEqual({ ok: true, value: "cursor" });
+    expect(parseCodingAgentId("codex-desktop")).toEqual({ ok: true, value: "codex-desktop" });
+  });
+
+  it("gives every id and alias to one agent only", () => {
+    const names = Object.values(builtinCodingAgents).flatMap((agent) => [agent.id, ...agent.aliases]);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) {
+      expect(name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    }
   });
 
   it("accepts a third-party id of the right shape and rejects anything else", () => {

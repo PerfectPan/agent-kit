@@ -1,6 +1,6 @@
-import type { CodingAgent } from "../domain/coding-agent/index.js";
+import type { CodingAgentWithHome } from "../domain/coding-agent/index.js";
 
-export const grok: CodingAgent = {
+export const grok: CodingAgentWithHome = {
   id: "grok",
   displayName: "Grok",
   aliases: [],

@@ -98,7 +98,8 @@ export interface ProcessIdentity {
 export interface PlatformProcess {
   /**
    * Runs a short command without a shell and with stdin closed. A non-zero exit or a terminating signal resolves;
-   * failing to start, or writing more than 4 MiB to stdout or stderr, rejects. Output stops being collected shortly
+   * failing to start rejects with the spawn error (an errno `code`); writing more than 4 MiB to stdout or stderr rejects
+   * with code `ERR_CHILD_PROCESS_STDIO_MAXBUFFER`. Output stops being collected shortly
    * after the command exits, even if a grandchild keeps stdout open.
    */
   run(command: string, args: readonly string[], options: RunOptions): Promise<RunResult>;

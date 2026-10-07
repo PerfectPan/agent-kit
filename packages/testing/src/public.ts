@@ -5,9 +5,11 @@ export {
 } from "./hook-dialect-conformance.js";
 export {
   createMemoryPlatform,
+  type MemoryCommand,
   type MemoryFile,
   type MemoryPlatform,
-  type MemoryPlatformOptions
+  type MemoryPlatformOptions,
+  type MemoryRunResult
 } from "./memory-platform.js";
 export {
   type ConformanceCheck,
@@ -16,3 +18,4 @@ export {
   sessionAdapterConformance,
   type SessionAdapterFixtures
 } from "./session-adapter-conformance.js";
+export { probeRecipeConformance, type ProbeRecipeSamples } from "./probe-recipe-conformance.js";
