@@ -21,6 +21,8 @@ const PLATFORM = "@rivus/agent-kit-platform";
 const CATALOG = "@rivus/agent-kit-catalog";
 const SESSIONS = "@rivus/agent-kit-sessions";
 const TESTING = "@rivus/agent-kit-testing";
+const SHELL = "@rivus/agent-kit";
+const COLLAB = "@rivus/agent-kit-collab";
 
 /** The real workspace plus fixture packages and files. */
 function withFiles(files: Record<string, string>, extraPackages: WorkspacePackage[] = []): Workspace {
@@ -34,6 +36,7 @@ function withFiles(files: Record<string, string>, extraPackages: WorkspacePackag
 }
 
 const sessionsFile = (path: string, source: string) => withFiles({ [`packages/sessions/src/${path}`]: source });
+const collabFile = (path: string, source: string) => withFiles({ [`packages/agent-kit-collab/src/${path}`]: source });
 
 const key = (violation: Violation) => `${violation.file} ${violation.rule} ${violation.message}`;
 const realViolations = new Set(checkBoundaries(real, boundaries).map(key));
@@ -128,6 +131,24 @@ describe("allowed imports", () => {
     const layer = `${service}\nimport * as Layer from "effect/Layer";`;
     expect(rulesOf(withFiles({ "packages/platform-node/src/effect.ts": layer }))).toEqual([]);
     expect(rulesOf(withFiles({ "packages/harness/src/application/apply-install.ts": service }))).toEqual([]);
+  });
+
+  it.each([
+    ["lease/domain/lease/policies/x.ts", `import { ok } from "${SHELL}/catalog";`],
+    ["lease/domain/lease/x.ts", `import type { Result } from "${SHELL}/catalog";\nimport "./policies/x.js";`],
+    [
+      "lease/application/x.ts",
+      `import { PlatformService } from "${SHELL}/platform/effect";\nimport * as Effect from "effect/Effect";`
+    ],
+    [
+      "lease/adapters/x.ts",
+      `import type { Platform } from "${SHELL}/platform";\nimport * as z from "zod/mini";\n` +
+        `import { acquire } from "../../process-lock/application/x.js";`
+    ],
+    ["process-lock/application/x.ts", `import { holderLiveness } from "../../lease/domain/lease/index.js";`],
+    ["lease/public.ts", `export { x } from "./application/x.js";`]
+  ])("lets collab, which keeps its code per entry, use agent-kit's public entries: %s", (path, source) => {
+    expect(rulesOf(collabFile(path, source))).toEqual([]);
   });
 
   it("lets a shell entry re-export from a lighter public entry of an internal package", () => {
@@ -272,6 +293,57 @@ describe("violations", () => {
     ]
   ])("rejects %s", (_name, path, source, rule) => {
     expect(rulesOf(withFiles({ [`packages/${path}`]: source }))).toEqual([rule]);
+  });
+
+  it.each<[string, string, string, RuleId]>([
+    [
+      "Platform types in its domain/",
+      "lease/domain/lease/x.ts",
+      `import type { Platform } from "${SHELL}/platform";`,
+      "layer"
+    ],
+    [
+      "the Platform service in the plain process lock",
+      "process-lock/application/x.ts",
+      `import { PlatformService } from "${SHELL}/platform/effect";`,
+      "effect"
+    ],
+    [
+      "Effect in the plain process lock",
+      "process-lock/application/x.ts",
+      `import * as Effect from "effect";`,
+      "effect"
+    ],
+    [
+      "an agent-kit entry outside publicImports",
+      "lease/adapters/x.ts",
+      `import { createNodePlatform } from "${SHELL}/node";`,
+      "public-entry"
+    ],
+    [
+      "agent-kit's internal packages",
+      "lease/application/x.ts",
+      `import { ok } from "${CATALOG}";`,
+      "package-dependency"
+    ],
+    [
+      "a layer violation inside an entry folder",
+      "lease/domain/lease/x.ts",
+      `import "../../application/x.js";`,
+      "layer"
+    ],
+    ["a Node built-in", "process-lock/application/x.ts", `import { open } from "node:fs/promises";`, "node-builtin"]
+  ])("rejects in collab: %s", (_name, path, source, rule) => {
+    expect(rulesOf(collabFile(path, source))).toEqual([rule]);
+  });
+
+  it("keeps collab out of the shell: no dependency and no re-export", () => {
+    const packages = real.packages.map((pkg) =>
+      pkg.name === SHELL ? { ...pkg, workspaceDependencies: [...pkg.workspaceDependencies, COLLAB] } : pkg
+    );
+    expect(rulesOf({ ...real, packages })).toEqual(["package-dependency"]);
+    const entry = `export { acquireProcessLock } from "${COLLAB}/public";`;
+    expect(rulesOf(withFiles({ "packages/agent-kit/src/extra.ts": entry }))).toEqual(["shell-entry"]);
   });
 
   it.each(["domain/bridge.d.ts", "domain/bridge.js", "application/x.mts"])("rejects %s under src/", (path) => {

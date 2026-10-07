@@ -17,18 +17,20 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-// Packs the shell, installs the tarball into a throwaway consumer project the way a user would, and checks it from
-// there: the tarball holds only what it should, every entry type-checks under node16 and bundler resolution, every
-// entry loads in Node and reads sessions and their usage from a temporary home, `/cost` prices that usage, and the hook
-// entry starts fast in a fresh process.
-// That consumer does not install effect, so it loads only the plain entries. A second consumer installs effect itself
-// and runs a program on the Effect entries with exactly one copy of effect in its tree. The real home directory is
-// never read.
+// Packs the shell and the other packages of its release set with pnpm, as `rush publish` does, installs the tarballs
+// into a throwaway consumer project the way a user would, and checks them from there: each tarball holds only what it
+// should, every entry type-checks under node16 and bundler resolution, every entry loads in Node and reads sessions
+// and their usage from a temporary home, `/cost` prices that usage, `/discovery` finds a fake agent, the companions
+// run their own checks, and the hook entry starts fast in a fresh process. That consumer does not install effect, so
+// it loads only the plain entries. A second consumer installs effect itself and runs a program on the Effect entries
+// with exactly one copy of effect and of the shell in its tree. The real home directory is never read.
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = resolve(packageRoot, "../..");
 const fixtures = join(repoRoot, "packages/testing/test/fixtures");
 const tsc = join(packageRoot, "node_modules/.bin/tsc");
+// Rush's own pnpm: it rewrites `workspace:` ranges in the packed manifests the way publishing does.
+const pnpm = join(repoRoot, "common/temp/pnpm-local/node_modules/.bin/pnpm");
 const nodeTypes = join(packageRoot, "node_modules/@types");
 
 /**
@@ -58,10 +60,72 @@ const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 /** The entries that import the optional `effect` peer, as in check-dist.ts; a stale list fails one of the consumers. */
 const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);
 
+/** What a companion package adds to a consumer: imports at the top, statements after the shell's checks. */
+interface ConsumerCode {
+  readonly imports: string;
+  readonly body: string;
+}
+
+interface Companion {
+  /** Its Effect entries, as in its own check-dist.ts. */
+  readonly effectEntries: ReadonlySet<string>;
+  /** Code for the consumer without effect, which has `platform` (on the temporary home) and `work` in scope. */
+  plain(): ConsumerCode;
+  /** Code for the consumer with effect, which has `work` in scope. */
+  effect(): ConsumerCode;
+}
+
+/**
+ * The other packages of the shell's lockstep version policy in rush.json, released and installed together with it.
+ * The smoke test fails when the policy has a package this table lacks.
+ */
+const COMPANIONS: Readonly<Record<string, Companion>> = {
+  "@rivus/agent-kit-collab": {
+    effectEntries: new Set(["./lease"]),
+    plain: () => ({
+      imports: `import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";`,
+      body: `const lockPath = join(work, "smoke.lock");
+const lock = await acquireProcessLock(platform, lockPath);
+assert.ok(lock.ok, "acquireProcessLock refused a free lock");
+const again = await acquireProcessLock(platform, lockPath);
+assert.equal(again.ok ? "acquired twice" : again.error._tag, "ProcessLockHeld");
+await lock.value.release();
+console.log(\`process lock: \${lock.value.mechanism}\`);`
+    }),
+    effect: () => ({
+      imports: `import * as Layer from "effect/Layer";
+import { createLeaseManager, sqliteLeaseStore } from "@rivus/agent-kit-collab/lease";`,
+      body: `const leaseProgram = Effect.gen(function* () {
+  const leases = yield* createLeaseManager({ ttlMs: 2000, heartbeatMs: 500 });
+  const fenced = yield* Effect.scoped(
+    Effect.flatMap(leases.acquire("smoke"), (lease) => lease.runFenced((token) => Effect.succeed(token.generation)))
+  );
+  const again = yield* Effect.scoped(Effect.map(leases.acquire("smoke"), (lease) => lease.token.generation));
+  return [fenced, again];
+});
+const leaseLive = sqliteLeaseStore({ path: join(work, "leases.db") }).pipe(Layer.provideMerge(NodePlatformLive));
+const leaseExit = await Effect.runPromiseExit(leaseProgram.pipe(Effect.provide(leaseLive)));
+if (!Exit.isSuccess(leaseExit)) {
+  assert.fail(\`the lease program failed: \${Cause.pretty(leaseExit.cause)}\`);
+}
+assert.deepEqual(leaseExit.value, [1, 2]);
+console.log("lease generations 1, 2");`
+    })
+  }
+};
+
 interface Manifest {
   name: string;
+  version: string;
   exports: Record<string, unknown>;
   peerDependencies: { effect: string };
+}
+
+interface ReleasePackage {
+  readonly folder: string;
+  readonly manifest: Manifest;
+  readonly effectEntries: ReadonlySet<string>;
+  readonly companion: Companion | undefined;
 }
 
 interface PackResult {
@@ -106,19 +170,27 @@ function tarballProblems(files: readonly string[], installed: string): string[] 
   return problems;
 }
 
+/** Every `<package>/<subpath>` of the release set whose entry does, or does not, import effect. */
+function entrySpecifiers(packages: readonly ReleasePackage[], effect: boolean): string[] {
+  return packages.flatMap(({ manifest, effectEntries }) =>
+    Object.keys(manifest.exports)
+      .filter((subpath) => subpath !== "./package.json" && effectEntries.has(subpath) === effect)
+      .map((subpath) => `${manifest.name}/${subpath.slice(2)}`)
+  );
+}
+
 /**
- * A consumer module that imports every plain entry, lists and reads the seeded sessions through Node, and detects
- * the fake `codex` in `bin`.
+ * A consumer module that imports every plain entry of the release set, lists and reads the seeded sessions through
+ * Node, detects the fake `codex` in `bin`, and runs the companions' plain checks.
  */
-function consumerSource(manifest: Manifest, home: string, bin: string): string {
-  const subpaths = Object.keys(manifest.exports).filter(
-    (subpath) => subpath !== "./package.json" && !EFFECT_ENTRIES.has(subpath)
-  );
-  const namespaces = subpaths.map(
-    (subpath, index) => `import * as entry${index} from "${manifest.name}/${subpath.slice(2)}";`
-  );
-  const entries = subpaths.map((subpath, index) => `  ${JSON.stringify(subpath)}: entry${index},`);
+function consumerSource(packages: readonly ReleasePackage[], home: string, work: string, bin: string): string {
+  const [{ manifest } = shellOnly()] = packages;
+  const specifiers = entrySpecifiers(packages, false);
+  const namespaces = specifiers.map((specifier, index) => `import * as entry${index} from "${specifier}";`);
+  const entries = specifiers.map((specifier, index) => `  ${JSON.stringify(specifier)}: entry${index},`);
+  const companions = packages.flatMap(({ companion }) => (companion === undefined ? [] : [companion.plain()]));
   return `import assert from "node:assert/strict";
+import { join } from "node:path";
 
 ${namespaces.join("\n")}
 import { createPricing, summarize } from "${manifest.name}/cost";
@@ -134,12 +206,14 @@ import {
   type Usage,
   type UsageRecord
 } from "${manifest.name}/transcript/usage";
+${companions.map((code) => code.imports).join("\n")}
 
+const work = ${JSON.stringify(work)};
 const entries: Record<string, object> = {
 ${entries.join("\n")}
 };
-for (const [subpath, namespace] of Object.entries(entries)) {
-  assert.ok(Object.keys(namespace).length > 0, \`\${subpath} exports nothing at runtime\`);
+for (const [specifier, namespace] of Object.entries(entries)) {
+  assert.ok(Object.keys(namespace).length > 0, \`\${specifier} exports nothing at runtime\`);
 }
 
 const seeded: readonly string[] = ${JSON.stringify(SEEDS.map((seed) => seed.agent))};
@@ -207,7 +281,12 @@ assert.equal(codex.status, "runnable", \`codex: \${JSON.stringify(codex.problems
 assert.equal(codex.version?.number, "9.9.9");
 assert.equal(codex.auth.status, "logged-out");
 console.log(\`discovery: codex \${codex.status} \${codex.version?.output}\`);
+${companions.map((code) => code.body).join("\n")}
 `;
+}
+
+function shellOnly(): never {
+  throw new Error("the release set is empty");
 }
 
 /**
@@ -239,17 +318,22 @@ function hookColdStartMs(consumer: string): number {
 
 /**
  * A host that installs effect itself: it imports every Effect entry, checks that each resolves the host's effect at
- * the peer version, and runs a program that reads PlatformService through NodePlatformLive under the temporary home.
+ * the peer version and that every companion entry resolves the host's copy of the shell, and runs a program that
+ * reads PlatformService through NodePlatformLive under the temporary home.
  */
-function effectConsumerSource(manifest: Manifest, home: string): string {
-  const subpaths = [...EFFECT_ENTRIES];
-  const namespaces = subpaths.map(
-    (subpath, index) => `import * as entry${index} from "${manifest.name}/${subpath.slice(2)}";`
-  );
-  const entries = subpaths.map((subpath, index) => `  ${JSON.stringify(subpath)}: entry${index},`);
+function effectConsumerSource(packages: readonly ReleasePackage[], home: string, work: string): string {
+  const [{ manifest } = shellOnly()] = packages;
+  const specifiers = entrySpecifiers(packages, true);
+  const namespaces = specifiers.map((specifier, index) => `import * as entry${index} from "${specifier}";`);
+  const entries = specifiers.map((specifier, index) => `  ${JSON.stringify(specifier)}: entry${index},`);
+  const companionEntries = packages
+    .slice(1)
+    .flatMap((release) => [...entrySpecifiers([release], false), ...entrySpecifiers([release], true)]);
+  const companions = packages.flatMap(({ companion }) => (companion === undefined ? [] : [companion.effect()]));
   return `import assert from "node:assert/strict";
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as Cause from "effect/Cause";
@@ -258,16 +342,24 @@ import * as Exit from "effect/Exit";
 ${namespaces.join("\n")}
 import { NodePlatformLive } from "${manifest.name}/node/effect";
 import { PlatformService } from "${manifest.name}/platform/effect";
+${companions.map((code) => code.imports).join("\n")}
 
+const work = ${JSON.stringify(work)};
 const entries: Record<string, object> = {
 ${entries.join("\n")}
 };
 const host = realpathSync(fileURLToPath(import.meta.resolve("effect/package.json")));
-for (const [subpath, namespace] of Object.entries(entries)) {
-  assert.ok(Object.keys(namespace).length > 0, \`\${subpath} exports nothing at runtime\`);
-  const entryFile = fileURLToPath(import.meta.resolve(\`${manifest.name}/\${subpath.slice(2)}\`));
+for (const [specifier, namespace] of Object.entries(entries)) {
+  assert.ok(Object.keys(namespace).length > 0, \`\${specifier} exports nothing at runtime\`);
+  const entryFile = fileURLToPath(import.meta.resolve(specifier));
   const kit = realpathSync(createRequire(entryFile).resolve("effect/package.json"));
-  assert.equal(kit, host, \`\${subpath} resolves another copy of effect than the host\`);
+  assert.equal(kit, host, \`\${specifier} resolves another copy of effect than the host\`);
+}
+const shell = realpathSync(fileURLToPath(import.meta.resolve("${manifest.name}/package.json")));
+for (const specifier of ${JSON.stringify(companionEntries)}) {
+  const entryFile = fileURLToPath(import.meta.resolve(specifier));
+  const resolved = realpathSync(createRequire(entryFile).resolve("${manifest.name}/package.json"));
+  assert.equal(resolved, shell, \`\${specifier} resolves another copy of ${manifest.name} than the host\`);
 }
 const { version } = JSON.parse(readFileSync(host, "utf8")) as { version: string };
 assert.equal(version, ${JSON.stringify(manifest.peerDependencies.effect)});
@@ -281,6 +373,7 @@ if (!Exit.isSuccess(exit)) {
   assert.fail(\`the program failed: \${Cause.pretty(exit.cause)}\`);
 }
 assert.equal(exit.value, ${JSON.stringify(home)});
+${companions.map((code) => code.body).join("\n")}
 console.log(\`effect \${version}\`);
 `;
 }
@@ -372,25 +465,55 @@ function tsconfig(module: string, moduleResolution: string, lib: readonly string
   return `${JSON.stringify({ compilerOptions, files: ["consumer.ts"] }, null, 2)}\n`;
 }
 
+/** The shell first, then the other packages of its version policy in rush.json, which are released with it. */
+function releaseSet(shell: Manifest): ReleasePackage[] {
+  const { projects } = JSON.parse(readFileSync(join(repoRoot, "rush.json"), "utf8")) as {
+    projects: { packageName: string; projectFolder: string; versionPolicyName?: string }[];
+  };
+  const policy = projects.find((project) => project.packageName === shell.name)?.versionPolicyName;
+  const others = projects.filter(
+    (project) => policy !== undefined && project.versionPolicyName === policy && project.packageName !== shell.name
+  );
+  return [
+    { folder: packageRoot, manifest: shell, effectEntries: EFFECT_ENTRIES, companion: undefined },
+    ...others.map((project) => {
+      const companion = COMPANIONS[project.packageName];
+      if (companion === undefined) {
+        throw new Error(`${project.packageName} is released with ${shell.name}; add it to COMPANIONS`);
+      }
+      const folder = join(repoRoot, project.projectFolder);
+      const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as Manifest;
+      return { folder, manifest, effectEntries: companion.effectEntries, companion };
+    })
+  ];
+}
+
+function pack(folder: string, destination: string): PackResult {
+  const packed = JSON.parse(
+    run(pnpm, ["pack", "--json", "--pack-destination", destination], folder, npmEnv)
+  ) as PackResult;
+  return { ...packed, filename: resolve(destination, packed.filename) };
+}
+
 const started = performance.now();
 const work = mkdtempSync(join(tmpdir(), "agent-kit-smoke-"));
 try {
   const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as Manifest;
-  const [packed] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", work], packageRoot, npmEnv)) as [
-    PackResult
-  ];
-
-  const tarball = join(work, packed.filename);
+  const packages = releaseSet(manifest);
+  const packs = packages.map(({ folder }) => pack(folder, work));
+  const tarballs = packs.map((packed) => packed.filename);
   const consumer = join(work, "consumer");
   mkdirSync(consumer);
-  npmInstall(consumer, [tarball]);
+  npmInstall(consumer, tarballs);
   if (effectCopies(join(consumer, "node_modules")).length > 0) {
     throw new Error("npm installed effect, which must stay an optional peer");
   }
 
-  const problems = tarballProblems(
-    packed.files.map((file) => file.path),
-    join(consumer, "node_modules", manifest.name)
+  const problems = packages.flatMap((release, index) =>
+    tarballProblems(
+      (packs[index]?.files ?? []).map((file) => file.path),
+      join(consumer, "node_modules", release.manifest.name)
+    ).map((problem) => `${release.manifest.name}: ${problem}`)
   );
   if (problems.length > 0) {
     throw new Error(problems.join("\n"));
@@ -413,7 +536,7 @@ try {
   writeFileSync(join(bin, "codex"), FAKE_CODEX);
   chmodSync(join(bin, "codex"), 0o755);
 
-  writeFileSync(join(consumer, "consumer.ts"), consumerSource(manifest, home, bin));
+  writeFileSync(join(consumer, "consumer.ts"), consumerSource(packages, home, work, bin));
   typecheck(consumer, ["ES2024"]);
   const output = run(process.execPath, ["consumer.ts"], consumer).trim();
 
@@ -425,12 +548,12 @@ try {
 
   const effectConsumer = join(work, "effect-consumer");
   mkdirSync(effectConsumer);
-  npmInstall(effectConsumer, [tarball, `effect@${manifest.peerDependencies.effect}`]);
+  npmInstall(effectConsumer, [...tarballs, `effect@${manifest.peerDependencies.effect}`]);
   const copies = effectCopies(join(effectConsumer, "node_modules"));
   if (copies.length !== 1) {
     throw new Error(`expected one copy of effect, found ${copies.length}: ${copies.join(", ")}`);
   }
-  writeFileSync(join(effectConsumer, "consumer.ts"), effectConsumerSource(manifest, home));
+  writeFileSync(join(effectConsumer, "consumer.ts"), effectConsumerSource(packages, home, work));
   // effect's own declarations name DOM types such as TextDecoderOptions.
   typecheck(effectConsumer, ["ES2024", "DOM"]);
   // os.homedir() reads HOME, so NodePlatformLive builds its platform with the temporary home.
@@ -438,8 +561,10 @@ try {
 
   const seconds = ((performance.now() - started) / 1000).toFixed(1);
   console.log(
-    `smoke-consumer: ok in ${seconds}s (${packed.files.length} files; ${output.split("\n").join(", ")}; ` +
-      `/harness/events cold start ${coldStart.toFixed(1)} ms; ${effectOutput} once, shared with the host)`
+    `smoke-consumer: ok in ${seconds}s (${packages.map((release) => release.manifest.name).join(" + ")}; ` +
+      `${output.split("\n").join(", ")}; ` +
+      `/harness/events cold start ${coldStart.toFixed(1)} ms; ${effectOutput.split("\n").join(", ")}; ` +
+      "effect once, shared with the host)"
   );
 } catch (error) {
   console.error(`smoke-consumer: ${error instanceof Error ? error.message : String(error)}`);

@@ -43,6 +43,10 @@
       "types": "./dist/platform/effect.d.ts",
       "default": "./dist/platform/effect.js"
     },
+    "./redact": {
+      "types": "./dist/redact.d.ts",
+      "default": "./dist/redact.js"
+    },
     "./sessions": {
       "types": "./dist/sessions.d.ts",
       "default": "./dist/sessions.js"
@@ -92,6 +96,7 @@
     "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
+    "@rivus/agent-kit-redact": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",
     "@size-limit/preset-small-lib": "14.1.0",

@@ -28,6 +28,8 @@ export interface PackageManifest {
   repository?: string | { url?: string };
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
 }
 
 export function readJson<T>(root: string, path: string): T {
@@ -186,11 +188,24 @@ export interface ReleaseInput {
   policy: VersionPolicy;
   packages: { project: RushProject; manifest: PackageManifest }[];
   pendingChangeFiles: string[];
+  /** Names of the workspace projects that are not published, such as the internal packages a shell bundles. */
+  unpublished: readonly string[];
 }
 
+/** Dependency fields that npm installs for a consumer; devDependencies are not among them. */
+const INSTALLED_FIELDS = ["dependencies", "peerDependencies", "optionalDependencies"] as const;
+
 /** Returns every reason the release cannot be published; an empty list means the release set is valid. */
-export function releaseErrors({ tag, repository, policy, packages, pendingChangeFiles }: ReleaseInput): string[] {
+export function releaseErrors({
+  tag,
+  repository,
+  policy,
+  packages,
+  pendingChangeFiles,
+  unpublished
+}: ReleaseInput): string[] {
   const errors: string[] = [];
+  const members = new Set(packages.map(({ project }) => project.packageName));
   if (!/^[^/\s]+\/[^/\s]+$/.test(repository)) {
     errors.push(`repository must be owner/name, got "${repository}"`);
   }
@@ -231,10 +246,37 @@ export function releaseErrors({ tag, repository, policy, packages, pendingChange
     if (!identifiesRepository(repositoryUrl(manifest), repository)) {
       errors.push(`${name} repository.url must identify github.com/${repository}`);
     }
+    errors.push(...installedDependencyErrors(name, manifest, members, unpublished));
   }
 
   if (pendingChangeFiles.length > 0) {
     errors.push(`unreleased change files remain; merge the release PR first: ${pendingChangeFiles.join(", ")}`);
+  }
+  return errors;
+}
+
+/**
+ * A package of the release set that a consumer installs with another member must name it with the `workspace:`
+ * protocol, which publishing replaces with a range of the version being released (`workspace:^` becomes
+ * `^<version>`); a fixed range would drift from the lockstep version. A private workspace package is never on the
+ * registry, so a published package bundles it as a devDependency instead of installing it.
+ */
+function installedDependencyErrors(
+  name: string,
+  manifest: PackageManifest,
+  members: ReadonlySet<string>,
+  unpublished: readonly string[]
+): string[] {
+  const errors: string[] = [];
+  for (const field of INSTALLED_FIELDS) {
+    for (const [dependency, spec] of Object.entries(manifest[field] ?? {})) {
+      if (members.has(dependency) && !spec.startsWith("workspace:")) {
+        errors.push(`${name} ${field} must name ${dependency} with the workspace: protocol, got "${spec}"`);
+      }
+      if (unpublished.includes(dependency)) {
+        errors.push(`${name} ${field} names ${dependency}, which is not published; make it a devDependency`);
+      }
+    }
   }
   return errors;
 }

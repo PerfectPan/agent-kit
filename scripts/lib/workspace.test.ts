@@ -134,7 +134,22 @@ function input(overrides: Partial<ReleaseInput> = {}): ReleaseInput {
       }
     ],
     pendingChangeFiles: [],
+    unpublished: ["@scope/lib-core", "repo-scripts"],
     ...overrides
+  };
+}
+
+function publishable(name: string, extra: PackageManifest = {}): ReleaseInput["packages"][number] {
+  return {
+    project: projects.find((project) => project.packageName === name)!,
+    manifest: {
+      name,
+      version: "1.2.3",
+      files: ["dist"],
+      publishConfig: { access: "public" },
+      repository: { url: "git+https://github.com/owner/repo.git" },
+      ...extra
+    }
   };
 }
 
@@ -164,6 +179,26 @@ describe("releaseErrors", () => {
     ).toEqual([
       "@scope/lib repository.url must identify github.com/owner/repo",
       "unreleased change files remain; merge the release PR first: @scope/lib/x.json"
+    ]);
+  });
+
+  it("accepts two packages of one lockstep policy when the second names the first with workspace:", () => {
+    const tool = publishable("@scope/tool", {
+      dependencies: { zod: "^4.6.5" },
+      peerDependencies: { "@scope/lib": "workspace:^", effect: "4.0.1" },
+      devDependencies: { "@scope/lib": "workspace:*", "@scope/lib-core": "workspace:*" }
+    });
+    expect(releaseErrors(input({ packages: [publishable("@scope/lib"), tool] }))).toEqual([]);
+  });
+
+  it("rejects a fixed range on another member and an installed dependency on an unpublished package", () => {
+    const tool = publishable("@scope/tool", {
+      peerDependencies: { "@scope/lib": "^1.2.3" },
+      dependencies: { "@scope/lib-core": "workspace:*" }
+    });
+    expect(releaseErrors(input({ packages: [publishable("@scope/lib"), tool] }))).toEqual([
+      "@scope/tool dependencies names @scope/lib-core, which is not published; make it a devDependency",
+      '@scope/tool peerDependencies must name @scope/lib with the workspace: protocol, got "^1.2.3"'
     ]);
   });
 });

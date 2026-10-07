@@ -57,6 +57,16 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@rivus/agent-kit-redact",
+      "projectFolder": "packages/redact",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "projectFolder": "packages/agent-kit-collab",
+      "versionPolicyName": "main"
+    },
+    {
       "packageName": "architecture-boundaries",
       "projectFolder": "infra/architecture",
       "shouldPublish": false

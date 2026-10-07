@@ -21,6 +21,18 @@ export interface PackageRule {
    */
   readonly external: readonly string[];
   readonly nodeBuiltins?: true;
+  /**
+   * A published package that keeps its own code instead of re-exporting internal packages: each public entry's code
+   * lives under `src/<entry>/`, with the layers at `src/<entry>/<layer>/` and the entry file `src/<entry>/public.ts`.
+   * Shells cannot depend on it.
+   */
+  readonly entries?: readonly string[];
+  /**
+   * Exact public entries of a published workspace package that this package may import, each mapped to the internal
+   * specifier it publishes, so that the layer and Effect rules treat `/catalog` as the shared kernel, `/platform` as
+   * the Platform port and `/platform/effect` as its Effect entry. Any other import of that package is refused.
+   */
+  readonly publicImports?: Readonly<Record<string, string>>;
 }
 
 export interface LayerRule {
@@ -62,6 +74,8 @@ const SESSIONS = "@rivus/agent-kit-sessions";
 const DISCOVERY = "@rivus/agent-kit-discovery";
 const HARNESS = "@rivus/agent-kit-harness";
 const COST = "@rivus/agent-kit-cost";
+const SHELL = "@rivus/agent-kit";
+const COLLAB = "@rivus/agent-kit-collab";
 
 export const boundaries: BoundaryRules = {
   packages: {
@@ -81,9 +95,23 @@ export const boundaries: BoundaryRules = {
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       external: ["es-toolkit"]
+    },
+    // A utility module of pure functions; it stays free of npm packages.
+    "@rivus/agent-kit-redact": { dependsOn: [], external: [] },
+    // The second published package. It reaches agent-kit only through its public entries, which are peers at
+    // runtime, so a process holds one copy of the Platform types and the Result helpers.
+    [COLLAB]: {
+      dependsOn: [SHELL],
+      external: ["zod/mini"],
+      entries: ["lease", "process-lock"],
+      publicImports: {
+        [`${SHELL}/catalog`]: CATALOG,
+        [`${SHELL}/platform`]: PLATFORM,
+        [`${SHELL}/platform/effect`]: `${PLATFORM}/effect`
+      }
     }
   },
-  shells: ["@rivus/agent-kit"],
+  shells: [SHELL],
   sharedKernel: CATALOG,
   layers: {
     // The domain does no IO, so it never sees the Platform port, not even its types.
@@ -104,12 +132,7 @@ export const boundaries: BoundaryRules = {
       [PLATFORM_NODE]: ["src/effect.ts"],
       "@rivus/agent-kit-harness": ["src/application/", "src/adapters/"],
       "@rivus/agent-kit-acp": ["src/application/", "src/adapters/"],
-      "@rivus/agent-kit-collab": [
-        "src/lease/application/",
-        "src/lease/adapters/",
-        "src/lanes/application/",
-        "src/lanes/adapters/"
-      ]
+      [COLLAB]: ["src/lease/application/", "src/lease/adapters/", "src/lanes/application/", "src/lanes/adapters/"]
     }
   }
 };

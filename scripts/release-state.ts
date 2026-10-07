@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import process from "node:process";
 import { parseArgs } from "node:util";
 
-import { readPendingChangeFiles, readPolicies, releaseState, remoteTagCommit } from "./lib/workspace.ts";
+import { readPendingChangeFiles, readPolicies, readProjects, releaseState, remoteTagCommit } from "./lib/workspace.ts";
 
 const USAGE = `usage: node scripts/release-state.ts [--remote <name>]
 Prints state=<version|publish|none> and tag=v<policy version> as GitHub Actions output lines.`;
@@ -28,6 +28,10 @@ if (policies.length !== 1 || policy?.definitionName !== "lockStepVersion" || pol
   process.exit(1);
 }
 
+// Every package of the lockstep policy shares this version and the one tag; they are released together.
+const releaseSet = readProjects(root)
+  .filter((project) => project.versionPolicyName === policy.policyName)
+  .map((project) => project.packageName);
 const tag = `v${policy.version}`;
 const pendingChangeFiles = readPendingChangeFiles(root);
 const head = git("rev-parse", "HEAD");
@@ -36,6 +40,7 @@ const state = releaseState({ pendingChangeFiles, version: policy.version, head, 
 
 console.error(
   `release-state: ${state} (${pendingChangeFiles.length} pending change file(s), policy ${policy.policyName} ` +
-    `${policy.version}, ${values.remote} ${tag} at ${taggedCommit ?? "(none)"}, HEAD ${head})`
+    `${policy.version} for ${releaseSet.join(", ")}, ${values.remote} ${tag} at ${taggedCommit ?? "(none)"}, ` +
+    `HEAD ${head})`
 );
 console.log(`state=${state}\ntag=${tag}`);

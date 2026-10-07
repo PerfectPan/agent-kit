@@ -1,0 +1,72 @@
+{
+  "name": "@rivus/agent-kit-collab",
+  "version": "0.2.0",
+  "description": "Collaboration primitives between coding agents: fenced leases and single-instance process locks.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PerfectPan/agent-kit.git",
+    "directory": "packages/agent-kit-collab"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./lease": {
+      "types": "./dist/lease.d.ts",
+      "default": "./dist/lease.js"
+    },
+    "./process-lock": {
+      "types": "./dist/process-lock.d.ts",
+      "default": "./dist/process-lock.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts",
+    "lint": "oxlint",
+    "typecheck": "tsc -p src/tsconfig.json && tsc -p test/tsconfig.json && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json . '!CHANGELOG.*'",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check . '!CHANGELOG.*'"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@effect/vitest": "4.0.1",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@rivus/agent-kit": "workspace:*",
+    "@size-limit/preset-small-lib": "14.1.0",
+    "@types/node": "24.19.1",
+    "effect": "4.0.1",
+    "oxc-parser": "0.153.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "publint": "0.3.25",
+    "size-limit": "14.1.0",
+    "tsdown": "0.23.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  },
+  "peerDependencies": {
+    "@rivus/agent-kit": "workspace:^",
+    "effect": "4.0.1"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    }
+  }
+}

@@ -1,9 +1,11 @@
 # npm Release Runbook
 
-Rush owns change records, version bumps, changelogs and publishing. `@rivus/agent-kit` (`packages/agent-kit`) is the
-only package in the `main` version policy and the only one published to npm, by GitHub Actions with npm Trusted
-Publishing (OIDC) and provenance. The internal packages under `packages/` are private (`"shouldPublish": false`)
-and ship inside its `dist`. No long-lived npm token is stored in the repository or its secrets.
+Rush owns change records, version bumps, changelogs and publishing. Two packages are published to npm, both in the
+`main` version policy: `@rivus/agent-kit` (`packages/agent-kit`) and `@rivus/agent-kit-collab`
+(`packages/agent-kit-collab`). They share one version, one tag `v<version>`, one release PR and one publish run,
+by GitHub Actions with npm Trusted Publishing (OIDC) and provenance. The internal packages under `packages/` are
+private (`"shouldPublish": false`) and ship inside the shell's `dist`; collab bundles only its own code and names
+`@rivus/agent-kit` as a peer. No long-lived npm token is stored in the repository or its secrets.
 
 | Step | Where | Result |
 | --- | --- | --- |
@@ -33,13 +35,27 @@ resumes the release. Pushes to `rush-release/main` and tags start neither workfl
 
 `common/config/rush/version-policies.json` defines one `lockStepVersion` policy named `main`, starting at `0.0.0`
 with `nextBump: "minor"`, so the first release PR releases `0.1.0`. Every package in the policy shares one version
-and is released together. A lockstep bump comes from `nextBump`, not from the bump types in change files. Pushes
+and is released together: `@rivus/agent-kit` and `@rivus/agent-kit-collab`. Collab joined the policy at `0.2.0`,
+which `@rivus/agent-kit` had already released alone, so collab is first published with the next version. A lockstep bump comes from `nextBump`, not from the bump types in change files. Pushes
 use it (`minor`, right for new agents, event types or capabilities); for a release that only corrects agent facts or
 fixes bugs, run Version Packages manually with `patch` (see [Cutting a Release](#cutting-a-release)).
 
 Rush asks for change files only for published projects, so a change inside an internal package would not prompt one.
 `scripts/release-intent.ts check`, which CI runs on every PR, requires a change file for `@rivus/agent-kit` whenever
 a package it bundles (a private `workspace:` dependency) changes shipped files; `release-intent.ts add` writes it.
+With two published packages, `add` needs `--package <name>`, and a change to both needs one file for each.
+
+Two packages in one policy:
+
+- Collab names `@rivus/agent-kit` as a peer with `"workspace:^"`. `pnpm publish`, which `rush publish` runs,
+  replaces it with `^<version>` of the same release, so the published pair always matches. `release:check` refuses a
+  member that names another member without the `workspace:` protocol, and a published package that installs a
+  private workspace package (bundle it as a devDependency instead).
+- `rush publish` publishes the policy's packages in `rush.json` order: `@rivus/agent-kit` first, then collab, so the
+  peer a collab release needs is on npm before collab is.
+- The consumer smoke test in `packages/agent-kit/scripts/smoke-consumer.ts` packs every package of the policy with
+  pnpm, installs the tarballs together, and checks that collab resolves the consumer's copies of `@rivus/agent-kit`
+  and `effect`. A new member of the policy needs a row in its `COMPANIONS` table.
 
 To version packages independently, switch the policy to `individualVersion`:
 
@@ -102,7 +118,22 @@ exists. For each package:
    trusted workflow can publish.
 
 One package's trusted publisher does not authorize another. A publish for an unconfigured package fails with an
-authentication error for that package only.
+authentication error for that package; since the publish run goes through the packages in order, it also stops
+there.
+
+#### `@rivus/agent-kit-collab`
+
+Collab first ships with the release after `0.2.0`. Before merging that release PR, the owner:
+
+1. Publishes the placeholder `@rivus/agent-kit-collab@0.0.0` (step 1 above, with the collab name) and deprecates it.
+2. Configures its trusted publisher within 2 days of the merge (step 2):
+   `npm trust github @rivus/agent-kit-collab --repo PerfectPan/agent-kit --file publish-npm.yml --allow-publish`,
+   then `npm trust list @rivus/agent-kit-collab`.
+3. Sets **Publishing access** as in step 3.
+
+If the merge publishes before collab's trusted publisher exists, `@rivus/agent-kit` is published and the run fails at
+collab with an authentication error. Configure the publisher and re-run the failed run, as under
+[Failure Recovery](#failure-recovery); the tag and Release stay, and Rush publishes only collab.
 
 ## Cutting a Release
 
@@ -126,8 +157,9 @@ authentication error for that package only.
    generated notes, and runs `rush publish --include-all --version-policy main --publish --set-access-level public`.
    Rush skips versions that already exist on npm. The remote refuses to move an existing tag, so two runs cannot
    release one version from different commits.
-6. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z` and a clean
-   `npm install` in a scratch project. Registry reads can lag the publish by a minute; retry the read, not the
+6. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z`,
+   `npm view @rivus/agent-kit-collab@X.Y.Z` and a clean `npm install @rivus/agent-kit @rivus/agent-kit-collab` in a
+   scratch project. Registry reads can lag the publish by a minute; retry the read, not the
    publish. The npm package page shows a provenance badge linking to the workflow run.
 
 `npm run publish:dry-run` runs the same `rush publish` command without `--publish`: it lists what would be published

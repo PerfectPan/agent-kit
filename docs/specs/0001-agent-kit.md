@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery` and `/cost` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -18,12 +18,16 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 | What recorded usage costs, over a caller's price table | `/cost` |
 | What is installed on this machine | `/discovery` |
 | How to drive an agent | `/acp` |
+| Hiding home paths and secrets in what an application shows or exports | `/redact` |
+| Mutual exclusion between agent processes | `@rivus/agent-kit-collab/lease`, `@rivus/agent-kit-collab/process-lock` |
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
 Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in.
 
-Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included in P5: `/redact` in `@rivus/agent-kit`, and the second published package `@rivus/agent-kit-collab` with `/lease` and `/process-lock`, released in lockstep with `@rivus/agent-kit` (one version).
+
+Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -36,8 +40,8 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
-- Only Effect entries (`/platform/effect`, `/node/effect`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
-- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript`, `/discovery`, `/cost` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
+- Only Effect entries (`/platform/effect`, `/node/effect`, collab's `/lease`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
+- `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -132,6 +136,29 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - The hook dialect conformance suite checks a `HookDialect` against sample payloads: it declares `harness-v1`, a command dialect has a timeout unit and output rules, every mapped event (and every case of a field-dependent mapping) resolves to a known phase with consistent `outcome` and `blocker`, every gate event declares its own response format whose `passThrough` is valid for it, foreign event renames point at mapped events, every event has a sample, every sample reads to its expected LifecycleEvent through `readHookEvent`, and probe payloads (wrong types, inherited object keys such as `constructor`, unmapped names) read as phase `unknown` without throwing.
 - The sessions conformance suite checks a `SessionAdapter` against sample logs: listing reads at most 128 KB per file, event ids are stable and unique, every record is accounted for, tool results are paired, compaction shadowing holds, references between events and lanes resolve (a `spawnEventId` names an existing `tool_call` or `system` event on the parent lane), source pointers read back, declared capabilities match the output, and summaries equal the folded transcript. Built-in adapters and third-party adapters run the same suite; keeping `node:*` out of adapters is the boundary test's job.
 
+### `/redact`
+
+- `redact(value, { home })` returns a copy of a JSON-like value with every string, object keys included, passed through `redactText`; arrays and plain objects are copied, other objects are returned as they are, and nothing is mutated. `redactText(text, { home })` does the same for one string. Both are pure, synchronous, browser-safe and import nothing.
+- Every spelling of the home directory becomes `~`: the native path anywhere in a string (also inside `a/<home>` or a file URL), its JSON-escaped form, its URL-encoded form, the POSIX path without its leading slash when no name character precedes it, a Windows home with either separator, JSON-escaped and as MSYS spells it (`/c/Profiles/me`), Claude Code's project slug (`-u-me`) where a path segment starts, the percent-encoded folder name (`%2Fu%2Fme`), and `~<user>`, also right after a JSON escape (`\n~me`). A home followed by a character that continues the path segment (`<home>x`, `<home>.bak`, `<home>-old`) is another path and stays. A home of one segment (`/root`) has no slash-less spelling, so the word `root` stays. Matching ignores case. An empty home or a file system root hides no path.
+- Secret-shaped strings become `[redacted]`: `sk-` keys, AWS key ids (`AKIA`, `ASIA`), GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`), Slack tokens (`xox[abprs]-`), npm tokens (`npm_`) and PEM private key blocks; a block without its END line is hidden to the end of its base64 lines. A token counts at the start, after a character that is not a letter or digit, or right after a JSON escape (`\n`, `\u0022`) or URL encoding (`%22`, `%3D`); a prefix inside a longer word (`task-…`) is not a key.
+
+### `@rivus/agent-kit-collab/process-lock`
+
+- `acquireProcessLock(platform, path, { wait?, retryMs?, signal? })` resolves to `Result<ProcessLock, ProcessLockHeld>`. Plain TS; it never reaches `effect`. `ProcessLock` has `path`, `mechanism` (`sqlite` or `file`), `holder` and `release()`, which is idempotent. `ProcessLockHeld` carries the holder the lock recorded, for diagnostics; it may be stale.
+- With `platform.sqlite`, `path` is a SQLite database held with `locking_mode=EXCLUSIVE`: the kernel releases it the moment the holder exits or crashes. The holder's identity goes into `<path>.holder`. Without SQLite, `path` is a lock file holding the identity; a file whose holder is dead (same host, and an earlier boot, no process with that pid, or a reused pid) is reclaimed, and only one reclaimer at a time may remove it (`<path>.stale`). A holder on another host is never judged dead. After writing its stamp, a holder reads it back and gives the lock up if another stamp replaced it. Known gaps of the fallback: a crash between creating the file and writing the stamp leaves an empty file that counts as held for 30 s, and a holder stalled longer than that between the two steps can end up holding the lock together with its reclaimer.
+- Without `wait`, a held lock resolves to `ProcessLockHeld` at once; with `wait`, the call retries until the lock is free, with pauses that double from `retryMs` up to 16 times it. Only the first attempt may block the thread (for at most a few 10 ms SQLite busy waits, which settle processes that start together); retries do not. Aborting `signal` rejects with `signal.reason`, releasing a lock taken after the abort. A second acquisition in the same process is refused like another process's.
+- Local directories only (not NFS), on darwin and linux, where the platform identifies processes. Holder and contenders must see one process table: same host name and boot id are taken to mean that, so containers sharing a host name and kernel but not a PID namespace are not supported, and after a host is renamed its earlier holders look remote.
+
+### `@rivus/agent-kit-collab/lease` (Effect)
+
+- `createLeaseManager({ ttlMs, heartbeatMs, retryMs? })` needs `LeaseStore` and `PlatformService` and fails with `LeaseConfigInvalid` unless every duration is positive and `heartbeatMs × 2 ≤ ttlMs`. The manager's `acquire(key, { wait? })` returns a `LeaseHandle` in the caller's Scope (`key`, `token`, `lost`, `runFenced`) or fails with `LeaseHeld` or `LeaseStoreFailure`; `read(key)` returns the stored `LeaseSnapshot`.
+- `LeaseStore` is a `Context.Service` keyed `@rivus/agent-kit-collab/lease/LeaseStore/v1` (`read`, `compareAndSet` on the record's revision, `fence` per key). `sqliteLeaseStore({ path })` compares inside `BEGIN IMMEDIATE`; `fileLeaseStore({ dir })` keeps one JSON file per key and compares under a per-key process lock, reporting `busy` when that lock stays held for 1 s; `memoryLeaseStore()` serves one process. Each returns a Layer that requires `PlatformService`. A stored record that is unreadable, breaks the invariants, or has an unknown schema version is refused (`LeaseStoreFailure`) and never overwritten.
+- A lease has one holder at a time. Its generation (the fencing token, `{ key, generation }`) grows by one on every acquisition and never decreases; release keeps the record as a tombstone. Every write increases the revision.
+- A holder on the observer's host is judged by pid, start time and boot id: a holder whose process is gone, or whose pid belongs to another process now, is taken over at once. A holder the platform fails to look up counts as unknown. Any other holder keeps the lease while its record changes at least once per `ttlMs`, as the observer's monotonic clock measures from the moment it first read the current revision.
+- The holder renews every `heartbeatMs` in a fiber of the acquiring Scope. A refused renewal, or no confirmed renewal for `ttlMs`, completes `lost` with `LeaseLost`. Closing the Scope stops the heartbeat, then writes the tombstone.
+- `runFenced(work)` waits for the store's fence for the key (failing with `LeaseLost` if the lease is lost meanwhile), re-reads the record, and fails with `FenceRejected` unless this acquisition still holds that generation; otherwise it runs `work(token)`, interrupting it and failing with `LeaseLost` when the lease is lost. The fence is released when `work`'s fiber has ended. An interrupted fiber ends at once while a Promise it started keeps running, so a write that cannot be cancelled must sit in `Effect.uninterruptible` (or settle only after the AbortSignal of `Effect.tryPromise` has stopped it) to keep a successor's fenced work from starting before it settles; a resource that can compare atomically also checks the token with `checkFence`. Pure rules for resources and hosts: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence` (refuses a smaller generation than the highest seen), `holderLiveness`.
+- Local directories only (not NFS), on darwin and linux, with the process-table limits of `/process-lock`.
+
 ### Planned entries
 
 These entries are not part of 0.1.0. The phase in brackets is the phase in plan 6.3 that ships them.
@@ -153,20 +180,11 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
 
 
-#### `/redact` (P5)
-
-- `redact(value, { home })` and `redactText` replace the spellings of the home path and secret keys (such as `sk-`, `ghp_`, `xox*`) in values and text.
-
 #### `/acp` (P6, Effect)
 
 - `connectAgent` starts the agent, completes the handshake and probes login; the connection belongs to the caller's Scope. The connection offers `newSession`, `loadSession`, `prompt` (an event stream), `cancel` and `close`.
 - A session runs at most one turn at a time. Permission requests go to the caller's callback and are denied by default. When a cancel does not settle within its deadline (send cancel plus wait for the turn to end), the session binding is invalidated and the process closed. A closed session refuses every operation.
 - The event stream yields deltas named after AI SDK stream events (`text-delta`, `reasoning-delta`, `tool-input-*`, `finish`) and completed `TranscriptEvent`s. The child process receives only the environment variables given explicitly.
-
-#### `@rivus/agent-kit-collab` `/lease` and `/process-lock` (P5)
-
-- `/lease` (Effect): `createLeaseManager` with SQLite, file and memory stores; pure rules `isFresh`, `canAcquire`, `nextFencingToken`. A lease has one holder; its generation never decreases, including after release; holder liveness checks pid and start time; expiry uses the observer's monotonic clock. Losing the lease interrupts fenced work. Only local directories are supported.
-- `/process-lock`: `acquireProcessLock(path)` is a single-instance lock released when the process exits; a second instance is refused.
 
 #### `@rivus/agent-kit-collab` `/lanes` (P6, Effect)
 
@@ -183,7 +201,8 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Expected failures are values with a `_tag`; only defects throw.
 - Detection never reports an agent `missing` while one of its checks could not complete, never reports `logged-out` from anything but the agent's own status command, never runs a status command unless asked to, and never returns a credential's value.
 - Aggregate classes never appear in the public surface; aggregates are exposed as handle interfaces and read-only snapshots.
-- Planned contexts add their own invariants (plan 3.1 and 3.9): an InstallPlan is immutable and refused when stale or conflicting; ledger revisions strictly increase and an unknown ledger version is never cleared; a lease generation never decreases; an ACP session runs one turn at a time; a lane runs one activation per key.
+- A lease has one holder at a time; its generation never decreases, release and takeover included, and every write increases its revision. A recorded holder is the same process only when host, boot id, pid and start time all match.
+- Planned contexts add their own invariants (plan 3.1 and 3.9): an InstallPlan is immutable and refused when stale or conflicting; ledger revisions strictly increase and an unknown ledger version is never cleared; an ACP session runs one turn at a time; a lane runs one activation per key.
 
 ## Acceptance Examples
 
@@ -404,17 +423,17 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `detectAgents` runs
 - Then the first is reported `runnable` with its version, and the second is reported from its evidence without being `runnable`
 
-### S37 (planned, P5): Lease generations never go backwards
+### S37: Lease generations never go backwards
 
-- Given a lease acquired at generation 3 and then released
-- When it is acquired again, including by the same holder after losing it
-- Then the new generation is greater than 3, and a fenced write carrying generation 3 is rejected
+- Given a lease acquired and released, with each store (memory, SQLite, file)
+- When it is acquired again, and again after the persistent store is reopened
+- Then the released record keeps generation 1 as a tombstone without a holder, and the next acquisitions get generations 2 and 3
 
-### S38 (planned, P5): A second instance is refused
+### S38: A second instance is refused
 
-- Given a process holding `acquireProcessLock(path)`
-- When a second process tries the same path, and later the first process exits
-- Then the second attempt is refused, and an attempt after the exit succeeds
+- Given a process holding `acquireProcessLock(path)`, with SQLite and with the lock-file fallback
+- When a second process tries the same path, a third waits for it, and the first process is killed
+- Then the second attempt resolves to `ProcessLockHeld` naming the first process, and the waiting one acquires the lock within 1.5 s of the kill
 
 ### S39 (planned, P6): An ACP session runs one turn at a time and denies permission by default
 
@@ -536,15 +555,63 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `fromLiteLLM` converts them
 - Then the prices are per million tokens, missing cache prices are the input price, and the entry without an output price is left out
 
+### S60: Redaction hides every spelling of the home directory and secret-shaped strings
+
+- Given the home `/u/me` (or `C:\Profiles\me`) and text that names it as a path, inside a diff header or a file URL, JSON-escaped, percent-encoded, as a Claude Code project slug, as `~me`, and next to `/u/meeting`, together with `sk-`, AWS, GitHub, Slack and npm tokens and a PEM private key
+- When `redactText` or `redact` runs
+- Then each spelling of the home becomes `~`, `/u/meeting` stays, each secret becomes `[redacted]`, object keys are redacted too, and the input is not mutated
+
+### S61: Two reclaimers at once, exactly one wins
+
+- Given a process lock or a lease (SQLite store, and file store without SQLite) whose holder process was killed
+- When four processes try to take it at the same moment
+- Then exactly one gets it (the lease at generation 2) and the other three are refused
+
+### S62: Losing and regaining a lease gives a new generation
+
+- Given a holder at generation 1 whose lease is taken over by another holder
+- When the same process acquires it again
+- Then it holds generation 3, its old handle's fenced work fails with `LeaseLost`, and `checkFence` refuses the old token at a resource that has seen generation 3
+
+### S63: A reused pid is not the holder
+
+- Given a lease record or lock file whose holder has a live process's pid but another start time
+- When a process acquires it
+- Then it is taken over at once, without waiting for the TTL
+
+### S64: Losing the lease interrupts fenced work
+
+- Given a holder running fenced work, in the same process or in another process that is stopped (`SIGSTOP`) until another process takes the lease over after the TTL
+- When the holder's heartbeat finds the lease lost (after `SIGCONT`)
+- Then the fenced work is interrupted and fails with `LeaseLost`, and the successor's fenced work starts only after the interrupted work has stopped
+
+### S65: A heartbeat must fit twice into the TTL
+
+- Given `createLeaseManager({ ttlMs: 100, heartbeatMs: 60 })`, or a duration that is not positive
+- When the manager is created
+- Then it fails with `LeaseConfigInvalid`
+
+### S66: collab reaches agent-kit only through its public entries, as a peer
+
+- Given the packed `@rivus/agent-kit` and `@rivus/agent-kit-collab` installed together, and a consumer that also installs `effect` 4.0.1
+- When the consumers import every entry, take and release a process lock, and run a lease program on `sqliteLeaseStore` with `NodePlatformLive`
+- Then `/process-lock` loads without `effect`, every collab entry resolves the consumer's copies of `@rivus/agent-kit` and `effect`, the lease generations are 1 then 2, and collab's `dist` inlines nothing outside its own `src/`
+
+### S67: A non-cancellable fenced write keeps the fence until it settles
+
+- Given a holder whose fenced work runs a 600 ms Promise write inside `Effect.uninterruptible`, and whose lease is taken over 50 ms into it
+- When a successor acquires the lease and runs fenced work, and in another case a holder waits for a fence that another holder keeps
+- Then the successor's work starts only after the old write has settled and the old `runFenced` fails with `LeaseLost`; the waiting holder stops waiting with `LeaseLost` within a few heartbeats of the loss, without running its work
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
-- Persisted data: 0.1.0 writes nothing and opens agent logs read-only. Planned harness state (the ledger and its lock files) lives under `$XDG_STATE_HOME`, outside dotfiles source directories.
+- Persisted data: 0.1.0 writes nothing and opens agent logs read-only. Planned harness state (the ledger and its lock files) lives under `$XDG_STATE_HOME`, outside dotfiles source directories. collab writes only where the caller points it: a process lock's database or lock file and its `.holder` file; a SQLite lease store's database (schema version in `user_version`) and its `<path>.<key>.fence` locks; a file lease store's `<key>.lease.json` (with `schemaVersion`) and lock files.
 - Configuration: agent home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) are read from the `env` passed to the kit, never from the global process environment directly.
-- Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Planned lock-based features support local directories only, not NFS.
-- Dependencies: `zod/mini` is the only validation library, except in `/harness/events` and `/cost`, which use no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries.
+- Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Lock-based features support local directories only, not NFS; collab's locks and leases need darwin or linux.
+- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, `/cost` and `/redact`, which use no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries. `@rivus/agent-kit-collab` names `@rivus/agent-kit` as a peer at the same version (`^<version>`).
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. Planned scenarios S26–S28, S32–S35 and S37–S40 are linked when their phase starts.
-- Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. Planned scenarios S26–S28, S32–S35, S39 and S40 are linked when their phase starts.
+- Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell and on collab; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

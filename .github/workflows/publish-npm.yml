@@ -97,6 +97,11 @@ jobs:
           fi
       - name: Publish packages with Rush
         if: steps.pending.outputs.state != 'none'
+        # Publishes every package of the main policy at the one version, in rush.json order: @rivus/agent-kit
+        # first, then @rivus/agent-kit-collab, whose peer range (`workspace:^`, packed as ^<version>) names it, so
+        # the peer is on npm before the package that needs it. Each package needs its own trusted publisher; a
+        # missing one stops the publish at that package, and once it is configured a re-run publishes only what is
+        # missing (see docs/development/release.md).
         # Rush runs `pnpm publish`, which ignores NPM_CONFIG_* variables. pnpm attaches provenance on its own after
         # the OIDC exchange when both the repository and the package are public, and skips it otherwise.
         run: >-

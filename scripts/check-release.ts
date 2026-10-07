@@ -4,6 +4,7 @@ import process from "node:process";
 import { parseArgs } from "node:util";
 
 import {
+  isPublished,
   type PackageManifest,
   readJson,
   readPendingChangeFiles,
@@ -44,7 +45,8 @@ if (policy === undefined) {
   process.exit(1);
 }
 
-const packages = readProjects(root)
+const projects = readProjects(root);
+const packages = projects
   .filter((project) => project.versionPolicyName === policy.policyName)
   .map((project) => ({
     project,
@@ -56,7 +58,8 @@ const errors = releaseErrors({
   repository,
   policy,
   packages,
-  pendingChangeFiles: readPendingChangeFiles(root)
+  pendingChangeFiles: readPendingChangeFiles(root),
+  unpublished: projects.filter((project) => !isPublished(project)).map((project) => project.packageName)
 });
 
 if (values["verify-git"] === true) {
