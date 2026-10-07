@@ -155,15 +155,15 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 ### S1: Claude home honors `CLAUDE_CONFIG_DIR`
 
-- Given `env` contains `CLAUDE_CONFIG_DIR=/tmp/claude-config` and `home` is `/home/user`
+- Given `env` contains `CLAUDE_CONFIG_DIR=/tmp/claude-config` and `home` is `/u/me`
 - When `resolveHome('claude-code', { env, home })` is called
-- Then it returns `/tmp/claude-config`; without the variable it returns `/home/user/.claude`
+- Then it returns `/tmp/claude-config`; without the variable it returns `/u/me/.claude`
 
 ### S2: Codex home honors `CODEX_HOME`
 
-- Given `env` contains `CODEX_HOME=/tmp/codex-home` and `home` is `/home/user`
+- Given `env` contains `CODEX_HOME=/tmp/codex-home` and `home` is `/u/me`
 - When `resolveHome('codex', { env, home })` is called
-- Then it returns `/tmp/codex-home`; without the variable it returns `/home/user/.codex`
+- Then it returns `/tmp/codex-home`; without the variable it returns `/u/me/.codex`
 
 ### S3: An alias identifies the same agent
 
