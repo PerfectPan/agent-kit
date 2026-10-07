@@ -29,6 +29,14 @@ export {
   translateClaudeCodeRecords
 } from "./agents/claude-code/index.js";
 
+// Codex rules
+export {
+  CODEX_CAPABILITIES,
+  codexUsage,
+  type CodexTranslateOptions,
+  translateCodexRecords
+} from "./agents/codex/index.js";
+
 // Published language and the rules a viewer needs to interpret events
 export {
   type CapabilityUnsupported,

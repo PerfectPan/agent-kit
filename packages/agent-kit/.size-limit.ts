@@ -9,7 +9,7 @@ export default [
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.2 kB" },
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "3 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "8.5 kB" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "13 kB", ...nodeOnly },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "9.5 kB" }
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "11.2 kB" },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "15.3 kB", ...nodeOnly },
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "11.8 kB" }
 ] satisfies SizeLimitConfig;

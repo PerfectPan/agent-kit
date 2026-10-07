@@ -303,8 +303,10 @@ describe("sessions use cases over Claude Code", () => {
       files: { "/cfg/claude/projects/p/a.jsonl": '{"type":"user","sessionId":"a","message":{"content":"Hi"}}\n' },
       env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }
     });
-    expect(await list({}, moved)).toMatchObject([{ ref: { path: "/cfg/claude/projects/p/a.jsonl" }, title: "Hi" }]);
-    expect(await list({}, createMemoryPlatform())).toEqual([
+    expect(await list({ agents: ["claude-code"] }, moved)).toMatchObject([
+      { ref: { path: "/cfg/claude/projects/p/a.jsonl" }, title: "Hi" }
+    ]);
+    expect(await list({ agents: ["claude-code"] }, createMemoryPlatform())).toEqual([
       {
         ref: { agent: "claude-code", path: "/u/me/.claude/projects" },
         error: { _tag: "RootMissing", path: "/u/me/.claude/projects" }
@@ -313,7 +315,7 @@ describe("sessions use cases over Claude Code", () => {
   });
 
   it("throws capability-unsupported for an agent without a session adapter", async () => {
-    const error = await rejection(list({ agents: ["codex"] }));
+    const error = await rejection(list({ agents: ["gemini-cli"] }));
     expect(error).toMatchObject({ code: "capability-unsupported" });
   });
 
@@ -328,9 +330,9 @@ describe("sessions use cases over Claude Code", () => {
       ok: false,
       error: { _tag: "SessionNotFound", path: "/nowhere.jsonl" }
     });
-    expect(await loadTranscript(platform, { agent: "codex", path: session("plain") })).toEqual({
+    expect(await loadTranscript(platform, { agent: "gemini-cli", path: session("plain") })).toEqual({
       ok: false,
-      error: { _tag: "CapabilityUnsupported", agent: "codex" }
+      error: { _tag: "CapabilityUnsupported", agent: "gemini-cli" }
     });
     expect(await summarizeSession(platform, { path: "/nowhere.jsonl" })).toEqual({
       ok: false,

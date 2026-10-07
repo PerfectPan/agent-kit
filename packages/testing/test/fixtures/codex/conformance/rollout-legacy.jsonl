@@ -1,0 +1,9 @@
+{"id":"cx-legacy","timestamp":"2025-09-01T10:00:00.000Z","instructions":null,"git":{"branch":"main"}}
+{"record_type":"state"}
+{"type":"message","id":null,"role":"user","content":[{"type":"input_text","text":"List the files"}]}
+{"record_type":"state"}
+{"type":"reasoning","id":"rs-1","summary":[{"type":"summary_text","text":"Use ls."}],"encrypted_content":null}
+{"type":"function_call","id":"fc-1","name":"shell","arguments":"{\"command\":[\"ls\"]}","call_id":"call-l1"}
+{"type":"function_call_output","call_id":"call-l1","output":"{\"output\":\"a.txt\\n\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":0.1}}"}
+{"type":"message","id":"msg-l2","role":"assistant","content":[{"type":"output_text","text":"One file: a.txt"}]}
+{"record_type":"state"}

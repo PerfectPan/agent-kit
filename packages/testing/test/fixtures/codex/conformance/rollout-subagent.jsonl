@@ -1,0 +1,9 @@
+{"timestamp":"2026-01-01T00:00:00.000Z","type":"session_meta","payload":{"id":"cx-sub","session_id":"cx-sub","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/app","originator":"codex_cli","cli_version":"0.1.0","source":"cli","model_provider":"openai","history_mode":"full","base_instructions":{"text":"Be brief."}}}
+{"timestamp":"2026-01-01T00:00:00.500Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"Host instructions"}]}}
+{"timestamp":"2026-01-01T00:00:00.700Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<hook_prompt>\nCheck the plan first.\n</hook_prompt>"}]}}
+{"timestamp":"2026-01-01T00:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Delegate"}]}}
+{"timestamp":"2026-01-01T00:00:02.000Z","type":"response_item","payload":{"type":"function_call","name":"spawn_agent","arguments":"{\"task\":\"Look around\"}","call_id":"call-s"}}
+{"timestamp":"2026-01-01T00:00:03.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call-s","output":"{\"agent_id\":\"child-1\",\"nickname\":\"Helper\"}"}}
+{"timestamp":"2026-01-01T00:00:04.000Z","type":"inter_agent_communication_metadata","payload":{"trigger_turn":true}}
+{"timestamp":"2026-01-01T00:00:05.000Z","type":"response_item","payload":{"type":"agent_message","author":"/root/child","recipient":"/root","content":[{"type":"input_text","text":"Done"}],"internal_chat_message_metadata_passthrough":{"turn_id":"turn-1"}}}
+{"timestamp":"2026-01-01T00:00:06.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"cx-sub","turn_id":"turn-1","completed_at_ms":1767225606000,"item":{"type":"SubAgentActivity","id":"act-2","agent_thread_id":"child-1","agent_path":"/root/child","kind":"completed"}}}

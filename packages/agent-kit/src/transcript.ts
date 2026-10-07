@@ -2,6 +2,8 @@ export {
   CAPABILITIES,
   CLAUDE_CODE_CAPABILITIES,
   claudeCodeUsage,
+  CODEX_CAPABILITIES,
+  codexUsage,
   foldTranscript,
   isPrompt,
   laneOf,
@@ -20,12 +22,14 @@ export {
   snapshotHasTools,
   summarizeSession,
   TRANSCRIPT_EVENT_KINDS,
-  translateClaudeCodeRecords
+  translateClaudeCodeRecords,
+  translateCodexRecords
 } from "@rivus/agent-kit-sessions/public";
 export type {
   CapabilityUnsupported,
   Capability,
   ClaudeCodeTranslateOptions,
+  CodexTranslateOptions,
   CompactionPayload,
   HookPayload,
   Lane,

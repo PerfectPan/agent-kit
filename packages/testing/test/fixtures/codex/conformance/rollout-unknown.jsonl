@@ -1,0 +1,7 @@
+{"timestamp":"2026-01-01T00:00:00.000Z","type":"session_meta","payload":{"id":"cx-unk","session_id":"cx-unk","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/app","originator":"codex_cli","cli_version":"0.1.0","source":"cli","model_provider":"openai","history_mode":"full","base_instructions":{"text":"Be brief."}}}
+{"timestamp":"2026-01-01T00:00:01.000Z","type":"mystery_box","payload":{"type":"nope"}}
+{"timestamp":"2026-01-01T00:00:02.000Z","type":"response_item","payload":{"type":"web_search_call","status":"completed","action":{"type":"search","query":"vitest","queries":["vitest"]}}}
+{"timestamp":"2026-01-01T00:00:02.500Z","type":"response_item","payload":
+{"timestamp":"2026-01-01T00:00:03.000Z","type":"event_msg","payload":{"type":"mystery_event"}}
+{"timestamp":"2026-01-01T00:00:04.000Z","type":"response_item","payload":{"type":"tool_search_call","call_id":"call-ts","execution":"client","status":"completed","arguments":{"query":"calendar","limit":5}}}
+{"timestamp":"2026-01-01T00:00:05.000Z","type":"response_item","payload":{"type":"tool_search_output","call_id":"call-ts","execution":"client","status":"completed","tools":[{"type":"namespace","name":"calendar","description":"Calendar tools","tools":[]}]}}
