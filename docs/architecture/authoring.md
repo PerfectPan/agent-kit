@@ -79,14 +79,19 @@ Read-only contexts have no aggregates. sessions, discovery, cost and catalog onl
 - An aggregate never receives a repository, a port or a Platform. Use cases load it, call a transition and save the result.
 
 ```ts
-// Illustrative shape; real aggregates arrive with harness, acp and collab.
+// Illustrative shape; harness's Ledger and InstallPlan follow it.
 type AcpSessionTransition = { readonly state: AcpSession; readonly events: readonly AcpSessionEvent[] }
 
 export class AcpSession {
   static create(input: CreateAcpSessionInput): Result<AcpSession, AcpSessionError>
   static restore(snapshot: AcpSessionSnapshot): Result<AcpSession, AcpSessionError>
 
-  private constructor(private readonly snapshot: AcpSessionSnapshot) {
+  // A declared field, not a constructor parameter property: the shell package type-checks the bundled sources with
+  // `erasableSyntaxOnly`.
+  private readonly snapshot: AcpSessionSnapshot
+
+  private constructor(snapshot: AcpSessionSnapshot) {
+    this.snapshot = snapshot
     Object.freeze(this)
   }
 
