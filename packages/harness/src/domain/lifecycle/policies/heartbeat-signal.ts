@@ -11,8 +11,9 @@ const busy = (state: LifecycleState): boolean => state.status === "working" || s
  * an ended or superseded turn says nothing, and a subagent event (whose payload can carry the parent's session id)
  * never starts or finishes the main session, it only keeps a busy one alive.
  *
- * Otherwise a turn start starts, activity and blocking keep alive while the session is busy, and any end finishes.
- * An agent that only opened is not working yet. "Done but not yet viewed" is a view over `finish`, not a signal.
+ * Otherwise a turn start starts, and so does any main-agent event that makes a session busy that was not (a new turn
+ * whose start hook was lost). Activity and blocking keep a busy session alive, and any end finishes. An agent that
+ * only opened is not working yet. "Done but not yet viewed" is a view over `finish`, not a signal.
  */
 export function heartbeatSignal(
   before: LifecycleState,
@@ -30,7 +31,10 @@ export function heartbeatSignal(
       return event.scope === "session" ? undefined : "start";
     case "activity":
     case "blocked":
-      return busy(after) ? "heartbeat" : undefined;
+      if (!busy(after)) {
+        return undefined;
+      }
+      return busy(before) ? "heartbeat" : "start";
     case "finish":
       return "finish";
   }

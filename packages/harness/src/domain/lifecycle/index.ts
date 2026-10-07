@@ -26,6 +26,7 @@ export type {
   TerminalIdentity
 } from "./value-objects/lifecycle-event.js";
 export {
+  type BlockSource,
   INITIAL_LIFECYCLE_STATE,
   type LifecycleClock,
   type LifecycleState,

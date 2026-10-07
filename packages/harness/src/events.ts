@@ -2,6 +2,7 @@
 // the lifecycle domain and the per-agent hook dialects.
 export { builtinHookDialects, readHookEvent, type ReadHookEventOptions } from "./agents/hook-dialects.js";
 export {
+  type BlockSource,
   type FieldPath,
   type FieldSource,
   type ForeignHooks,

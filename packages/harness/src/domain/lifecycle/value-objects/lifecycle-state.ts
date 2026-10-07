@@ -1,9 +1,14 @@
 /** herdr's names; they map one-to-one to the Claude Agent SDK's `idle`, `running` and `requires_action`. */
 export type LifecycleStatus = "idle" | "working" | "blocked" | "unknown";
 
+/** Who raised an open block: the main agent, or a subagent, by id when the agent reports one. */
+export type BlockSource = { readonly kind: "main" } | { readonly kind: "subagent"; readonly id?: string };
+
 /** What `reduceLifecycle` remembers about one session between hook events. */
 export interface LifecycleState {
   readonly status: LifecycleStatus;
+  /** While `blocked`: every source whose prompt is still open. */
+  readonly blockedBy?: readonly BlockSource[];
   /** The turn in progress, when the agent reports turn ids. */
   readonly turnId?: string;
   /** Recent turns that ended or were superseded, oldest first; an event naming one of them arrived late. */

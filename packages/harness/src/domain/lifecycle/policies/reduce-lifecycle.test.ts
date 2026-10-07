@@ -87,6 +87,47 @@ describe("reduceLifecycle", () => {
     expect(status([{ phase: "finish" }, { phase: "blocked", blocker: "permission", subagent }])).toBe("idle");
   });
 
+  it("keeps a block open until its own source or the main agent moves, not a parallel subagent", () => {
+    const a1 = { id: "a1" };
+    const a2 = { id: "a2" };
+    const main = fold([
+      { phase: "start", scope: "turn", turnId: "t1" },
+      { phase: "blocked", blocker: "permission", turnId: "t1" },
+      { phase: "activity", turnId: "t1", subagent: a1 }
+    ]);
+    expect(main).toMatchObject({ status: "blocked", blockedBy: [{ kind: "main" }] });
+    expect(fold([{ phase: "activity", turnId: "t1" }], main).status).toBe("working");
+    expect(fold([{ phase: "activity", turnId: "t1" }], main).blockedBy).toBeUndefined();
+
+    const sibling = fold([
+      { phase: "start", scope: "turn", turnId: "t1" },
+      { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
+      { phase: "activity", turnId: "t1", subagent: a2 }
+    ]);
+    expect(sibling).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent", id: "a1" }] });
+    expect(fold([{ phase: "activity", turnId: "t1", subagent: a1 }], sibling).status).toBe("working");
+
+    const both = fold(
+      [
+        { phase: "blocked", blocker: "permission", turnId: "t1" },
+        { phase: "activity", turnId: "t1", subagent: a1 }
+      ],
+      sibling
+    );
+    expect(both).toMatchObject({ status: "blocked", blockedBy: [{ kind: "main" }] });
+  });
+
+  it("leaves a block raised by a subagent without an id to the TTL", () => {
+    const blocked = fold([
+      { phase: "start", scope: "turn", at: 0 },
+      { phase: "blocked", blocker: "permission", subagent: { type: "explore" }, at: 1000 },
+      { phase: "activity", subagent: { type: "explore" }, at: 2000 }
+    ]);
+    expect(blocked.status).toBe("blocked");
+    expect(lifecycleStatus(blocked, { ttlMs: TTL, now: 2000 + TTL + 1 })).toBe("unknown");
+    expect(fold([{ phase: "activity", at: 3000 }], blocked).status).toBe("working");
+  });
+
   it("S31: ignores a late event of an older turn", () => {
     const state = fold([
       { phase: "start", scope: "turn", turnId: "t1" },

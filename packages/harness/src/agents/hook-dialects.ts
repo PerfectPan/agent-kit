@@ -36,9 +36,9 @@ export interface ReadHookEventOptions {
  * Translates one hook payload, synchronously and without IO, so a hook process can load nothing else. The payload
  * is whatever the agent sent (parsed JSON on stdin, or the event object a plugin forwards), and `env` is the hook
  * process's environment. The agent is sniffed first, because Grok and Cursor also run hooks registered for Claude
- * Code: payload evidence (Grok's `hookEventName`, Cursor's `cursor_version`) wins, and the inherited
- * `GROK_SESSION_ID` or `CURSOR_VERSION` only counts for an agent whose hooks that host runs. An unknown payload shape
- * or event reads as phase `unknown` with the event name it carried; it never throws.
+ * Code: payload evidence (Grok's `hookEventName`, Cursor's `cursor_version`) decides, and the inherited
+ * `CURSOR_VERSION` only counts for an agent whose hooks Cursor runs. An unknown payload shape or event reads as phase
+ * `unknown` with the event name it carried; it never throws.
  *
  * Naming an agent without a dialect is a programming error: it throws an `AgentKitError` with code
  * `capability-unsupported`, whatever the payload.

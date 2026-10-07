@@ -8,14 +8,13 @@ describe("readHookEvent", () => {
   it("S30: names the agent that really ran a hook registered for Claude Code", () => {
     const payload = { hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash" };
     expect(readHookEvent("claude-code", payload, {}).agent).toBe("claude-code");
-    expect(readHookEvent("claude-code", payload, { GROK_SESSION_ID: "g1" }).agent).toBe("grok");
     expect(readHookEvent("claude-code", { ...payload, hookEventName: "pre_tool_use" }, {}).agent).toBe("grok");
     expect(readHookEvent("claude-code", { ...payload, cursor_version: "3.13.25" }, {}).agent).toBe("cursor");
     expect(readHookEvent("claude-code", payload, { CURSOR_VERSION: "3.13.25" }).agent).toBe("cursor");
     expect(readHookEvent("claude-code", payload, { GROK_SESSION_ID: "" }).agent).toBe("claude-code");
   });
 
-  it("lets payload evidence win over an inherited environment, which counts only for agents the host runs", () => {
+  it("S30: lets payload evidence decide; GROK_SESSION_ID never names Grok, CURSOR_VERSION only for agents Cursor runs", () => {
     const codex = { hook_event_name: "PreToolUse", session_id: "c1", turn_id: "t1", tool_name: "Bash" };
     expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }).agent).toBe("codex");
     expect(readHookEvent("codex", codex, { CURSOR_VERSION: "3.13.25" }).agent).toBe("codex");
@@ -24,7 +23,12 @@ describe("readHookEvent", () => {
     );
     const fromCursor = { hook_event_name: "preToolUse", cursor_version: "3.13.25", conversation_id: "x" };
     expect(readHookEvent("claude-code", fromCursor, { GROK_SESSION_ID: "g1" }).agent).toBe("cursor");
-    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { GROK_SESSION_ID: "g1" }).agent).toBe("grok");
+    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { GROK_SESSION_ID: "g1" }).agent).toBe(
+      "claude-code"
+    );
+    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { CURSOR_VERSION: "3.13.25" }).agent).toBe(
+      "cursor"
+    );
   });
 
   it("reads Cursor's rename of a Claude Code event as Cursor's event", () => {

@@ -56,6 +56,7 @@ const sequences: Record<string, Sequence> = {
       ["PostToolUse", "working"],
       ["SubagentStart", "working"],
       ["PermissionRequest inside a subagent", "blocked"],
+      ["PostToolUse inside a sibling subagent", "blocked"],
       ["PreToolUse inside a subagent", "working"],
       ["SubagentStop", "working"],
       ["Stop", "idle"],
@@ -168,6 +169,27 @@ describe("hook payloads folded in an agent's order", () => {
       expect(steps.map((step) => step.signal)).toEqual(["start", undefined]);
     });
   }
+
+  it("codex: a sibling subagent's activity does not close another subagent's or the main agent's prompt", () => {
+    const names = [
+      "UserPromptSubmit",
+      "PermissionRequest",
+      "PreToolUse inside a subagent",
+      "PostToolUse",
+      "PermissionRequest inside a subagent",
+      "PostToolUse inside a sibling subagent",
+      "PreToolUse inside a subagent"
+    ];
+    expect(fold("codex", codexSamples, names).map((step) => step.status)).toEqual([
+      "working",
+      "blocked",
+      "blocked",
+      "working",
+      "blocked",
+      "blocked",
+      "working"
+    ]);
+  });
 
   it("grok: the late StopCancelled and the subagent stop do not finish the main session", () => {
     const names = sequences.grok!.turn.map(([name]) => name);

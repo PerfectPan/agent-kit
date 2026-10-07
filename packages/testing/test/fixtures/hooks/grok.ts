@@ -191,17 +191,17 @@ export const grokSamples: readonly HookDialectSample[] = [
     }
   },
   {
-    name: "GROK_SESSION_ID alone names Grok and supplies the session id",
+    name: "an inherited GROK_SESSION_ID does not name Grok without a Grok payload",
     declaredAgent: "claude-code",
-    payload: { hook_event_name: "Stop", reason: "end_turn", cwd: common.cwd },
+    payload: { hook_event_name: "Stop", session_id: "claude-session-1", cwd: common.cwd },
     env: { GROK_SESSION_ID: common.sessionId, HERDR_PANE_ID: "w1:p2", TMUX_PANE: "%1" },
     expected: {
-      agent: "grok",
+      agent: "claude-code",
       nativeEvent: "Stop",
       phase: "finish",
       scope: "turn",
       outcome: "completed",
-      sessionId: common.sessionId,
+      sessionId: "claude-session-1",
       cwd: common.cwd,
       terminal: { host: "herdr", paneId: "w1:p2" }
     }

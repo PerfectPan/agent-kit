@@ -62,6 +62,18 @@ describe("heartbeatSignal", () => {
     ).toEqual(["start", "heartbeat", "heartbeat", "finish", undefined]);
   });
 
+  it("starts when a main event makes an idle or unknown session busy, as when a turn's start hook was lost", () => {
+    expect(
+      signals([
+        event({ phase: "start", scope: "turn", turnId: "t1" }),
+        event({ phase: "finish", scope: "turn", turnId: "t1" }),
+        event({ phase: "activity", turnId: "t2" }),
+        event({ phase: "activity", turnId: "t2" })
+      ])
+    ).toEqual(["start", "finish", "start", "heartbeat"]);
+    expect(signals([event({ phase: "blocked", blocker: "permission" })])).toEqual(["start"]);
+  });
+
   it("ignores a late StopCancelled of a turn the next turn already superseded", () => {
     expect(
       signals([

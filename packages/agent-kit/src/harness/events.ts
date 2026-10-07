@@ -7,6 +7,7 @@ export {
   reduceLifecycle
 } from "@rivus/agent-kit-harness/public/events";
 export type {
+  BlockSource,
   FieldPath,
   FieldSource,
   ForeignHooks,
