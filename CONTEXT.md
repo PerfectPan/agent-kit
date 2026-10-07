@@ -156,6 +156,12 @@ The Ledger's record of one Artifact: owners, content hash, pre-image and the ver
 **Pre-image**:
 What existed at an Artifact's location before harness wrote it, kept so that uninstall can restore it.
 
+**Pending operation**:
+A PlanStep recorded in the Ledger before its target is touched and cleared once its outcome is known. After a crash, the next holder of the LedgerLock probes the target and resolves the operation instead of replaying it.
+
+**Legacy marker**:
+A substring by which an Owner recognizes what its older versions installed without a Ledger, such as their hook command lines, so that a plan replaces or removes those Artifacts instead of installing them a second time.
+
 **LedgerLock**:
 The lock held for the whole of each Ledger modification. By default it is an SQLite exclusive lock that the kernel releases when the holding process exits.
 
