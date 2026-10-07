@@ -191,6 +191,16 @@ describe("hook payloads folded in an agent's order", () => {
     ]);
   });
 
+  it("codex: main-agent activity leaves a subagent's prompt open until that subagent stops", () => {
+    const names = ["UserPromptSubmit", "PermissionRequest inside a subagent", "PostToolUse", "SubagentStop"];
+    expect(fold("codex", codexSamples, names).map((step) => step.status)).toEqual([
+      "working",
+      "blocked",
+      "blocked",
+      "working"
+    ]);
+  });
+
   it("grok: the late StopCancelled and the subagent stop do not finish the main session", () => {
     const names = sequences.grok!.turn.map(([name]) => name);
     const signals = fold("grok", grokSamples, names).map((step) => step.signal);

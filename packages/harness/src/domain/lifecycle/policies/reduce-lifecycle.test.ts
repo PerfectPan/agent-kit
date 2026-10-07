@@ -117,15 +117,42 @@ describe("reduceLifecycle", () => {
     expect(both).toMatchObject({ status: "blocked", blockedBy: [{ kind: "main" }] });
   });
 
-  it("leaves a block raised by a subagent without an id to the TTL", () => {
+  it("leaves a block raised by a subagent without an id to the TTL, which its own activity does not extend", () => {
+    const explore = { type: "explore" };
     const blocked = fold([
       { phase: "start", scope: "turn", at: 0 },
-      { phase: "blocked", blocker: "permission", subagent: { type: "explore" }, at: 1000 },
-      { phase: "activity", subagent: { type: "explore" }, at: 2000 }
+      { phase: "blocked", blocker: "permission", subagent: explore, at: 1000 },
+      { phase: "activity", subagent: explore, at: 2000 },
+      { phase: "blocked", blocker: "permission", subagent: explore, at: 3000 }
     ]);
-    expect(blocked.status).toBe("blocked");
-    expect(lifecycleStatus(blocked, { ttlMs: TTL, now: 2000 + TTL + 1 })).toBe("unknown");
-    expect(fold([{ phase: "activity", at: 3000 }], blocked).status).toBe("working");
+    expect(blocked).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent" }], updatedAt: 1000 });
+    expect(lifecycleStatus(blocked, { ttlMs: TTL, now: 1000 + TTL + 1 })).toBe("unknown");
+    expect(fold([{ phase: "activity", at: 4000 }], blocked).status).toBe("blocked");
+    expect(fold([{ phase: "finish", scope: "turn", at: 4000 }], blocked).status).toBe("idle");
+  });
+
+  it("lets main-agent activity close only the main agent's own block", () => {
+    const a1 = { id: "a1" };
+    const subagentWaits = fold([
+      { phase: "start", scope: "turn", turnId: "t1" },
+      { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
+      { phase: "activity", turnId: "t1" }
+    ]);
+    expect(subagentWaits).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent", id: "a1" }] });
+
+    const waiting = fold([
+      { phase: "start", scope: "turn", turnId: "t1" },
+      { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
+      { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
+      { phase: "blocked", blocker: "permission", turnId: "t1" },
+      { phase: "blocked", blocker: "permission", turnId: "t1" }
+    ]);
+    expect(waiting.blockedBy).toEqual([{ kind: "subagent", id: "a1" }, { kind: "main" }]);
+    const both = fold([{ phase: "activity", turnId: "t1" }], waiting);
+    expect(both).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent", id: "a1" }] });
+    expect(fold([{ phase: "finish", turnId: "t1", subagent: a1 }], both).status).toBe("working");
+    expect(fold([{ phase: "start", scope: "turn", turnId: "t2" }], both)).not.toHaveProperty("blockedBy");
+    expect(fold([{ phase: "activity", turnId: "t2" }], both).status).toBe("working");
   });
 
   it("S31: ignores a late event of an older turn", () => {

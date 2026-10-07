@@ -4,8 +4,20 @@ import type { BlockSource, LifecycleClock, LifecycleState, LifecycleStatus } fro
 const ENDED_TURNS_KEPT = 16;
 const MAIN: BlockSource = { kind: "main" };
 
-const sameSource = (a: BlockSource, b: BlockSource): boolean =>
-  a.kind === b.kind && (a.kind === "main" || (b.kind === "subagent" && a.id !== undefined && a.id === b.id));
+/** Whether an event from `source` answers the block `open` raised; a subagent without an id matches nothing. */
+const answers = (open: BlockSource, source: BlockSource): boolean =>
+  open.kind === source.kind &&
+  (open.kind === "main" || (source.kind === "subagent" && open.id !== undefined && open.id === source.id));
+
+const unmatchable = (blockers: readonly BlockSource[]): boolean =>
+  blockers.some((blocker) => blocker.kind === "subagent" && blocker.id === undefined);
+
+/** `blockers` with `source` added once. */
+function withBlocker(blockers: readonly BlockSource[], source: BlockSource): readonly BlockSource[] {
+  const id = (blocker: BlockSource) => (blocker.kind === "subagent" ? blocker.id : undefined);
+  const known = blockers.some((blocker) => blocker.kind === source.kind && id(blocker) === id(source));
+  return known ? blockers : [...blockers, source];
+}
 
 /** The status at `now`: `working` and `blocked` fall back to `unknown` once no event arrived within the TTL. */
 export function lifecycleStatus(state: LifecycleState, clock: LifecycleClock): LifecycleStatus {
@@ -25,9 +37,11 @@ export function lifecycleStatus(state: LifecycleState, clock: LifecycleClock): L
  *
  * Subagent events keep a busy session alive without changing it, with one exception: a subagent's permission
  * request is a prompt the user must answer (Claude Code and Codex fire it when the dialog is about to show), so the
- * session is `blocked`. The state records who raised each open block. A later event of the same subagent closes
- * that subagent's block, and any main-agent event closes all of them; a sibling subagent's activity does not. A
- * subagent without an id (Grok, Cursor) cannot close its block, so the TTL does.
+ * session is `blocked`. The state records who raised each open block. Main-agent activity closes only the main
+ * agent's own block; a subagent's block closes on a later event of the same subagent (its stop included), or when
+ * the main turn starts or finishes. A sibling subagent's activity closes nothing. A subagent without an id (Grok,
+ * Cursor) cannot be matched, so its block is left to the TTL, and while it is open subagent events do not count as
+ * signs of life.
  */
 export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, clock: LifecycleClock): LifecycleState {
   const current: LifecycleState = { ...state, status: lifecycleStatus(state, clock) };
@@ -40,15 +54,17 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
   if (event.subagent !== undefined) {
     const source: BlockSource =
       event.subagent.id === undefined ? { kind: "subagent" } : { kind: "subagent", id: event.subagent.id };
+    // A block nobody can answer must expire, so subagent events do not keep it alive.
+    const alive = unmatchable(open) ? {} : { updatedAt: clock.now };
     if (event.phase === "blocked" && event.blocker === "permission" && current.status !== "idle") {
-      return { ...current, status: "blocked", blockedBy: [...open, source], updatedAt: clock.now };
+      return { ...current, status: "blocked", blockedBy: withBlocker(open, source), ...alive };
     }
     if (!busy || event.phase === "unknown") {
       return current;
     }
-    const still = event.phase === "blocked" ? open : open.filter((blocker) => !sameSource(blocker, source));
+    const still = event.phase === "blocked" ? open : open.filter((blocker) => !answers(blocker, source));
     if (still.length > 0) {
-      return { ...current, blockedBy: still, updatedAt: clock.now };
+      return { ...current, blockedBy: still, ...alive };
     }
     const working: LifecycleState = { status: "working", endedTurns: current.endedTurns, updatedAt: clock.now };
     return current.turnId === undefined ? working : { ...working, turnId: current.turnId };
@@ -75,11 +91,13 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
       if (current.status === "idle" && !newTurn) {
         return current;
       }
-      if (event.phase === "blocked") {
-        const blockedBy = [...open.filter((blocker) => blocker.kind !== "main"), MAIN];
-        return { ...next("blocked", turnId ?? current.turnId, [current.turnId]), blockedBy };
+      {
+        // A new turn (an unseen turn id) leaves the previous turn's blocks behind; otherwise subagent blocks stay.
+        const subagents = newTurn ? [] : open.filter((blocker) => blocker.kind === "subagent");
+        const blockedBy = event.phase === "blocked" ? withBlocker(subagents, MAIN) : subagents;
+        const turn = next(blockedBy.length > 0 ? "blocked" : "working", turnId ?? current.turnId, [current.turnId]);
+        return blockedBy.length > 0 ? { ...turn, blockedBy } : turn;
       }
-      return next("working", turnId ?? current.turnId, [current.turnId]);
     case "finish":
       return next("idle", undefined, [current.turnId, turnId]);
   }
