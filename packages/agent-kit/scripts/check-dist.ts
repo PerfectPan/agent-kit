@@ -8,10 +8,14 @@ import { parseSync, Visitor } from "oxc-parser";
 import { rolldown } from "rolldown";
 
 // Entries that only run on Node; every other entry must bundle for a browser without Node built-ins.
-const NODE_ONLY_ENTRIES = new Set(["./node", "./testing"]);
+const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
 // Entries whose code and declarations import nothing outside the package, not even its dependencies: a host that
 // cannot install dependencies bundles or loads them on their own.
 const ZERO_DEPENDENCY_ENTRIES = new Set(["./harness/events"]);
+// Entries that import the optional `effect` peer, which must stay an external import. Every other entry is plain:
+// neither its code nor its declarations may reach `effect`, so a consumer without Effect can load and type-check it.
+const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);
+const EFFECT = /^(?:effect|@effect\/[^/]+)(?:\/|$)/;
 
 interface Manifest {
   exports: Record<string, string | { types?: string; default?: string }>;
@@ -116,10 +120,17 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
   }
   const browserSafe = !NODE_ONLY_ENTRIES.has(subpath);
   const zeroDependency = ZERO_DEPENDENCY_ENTRIES.has(subpath);
+  const effectEntry = EFFECT_ENTRIES.has(subpath);
   for (const file of [target.default, target.types]) {
-    for (const [specifier, importer] of externalImports(join(packageRoot, file))) {
+    const imports = externalImports(join(packageRoot, file));
+    if (effectEntry && ![...imports.keys()].some((specifier) => EFFECT.test(specifier))) {
+      errors.push(`${subpath}: ${file} imports no effect module; effect must stay external instead of being inlined`);
+    }
+    for (const [specifier, importer] of imports) {
       if (zeroDependency) {
         errors.push(`${subpath}: ${show(importer)} imports ${specifier}, but this entry must import nothing`);
+      } else if (!effectEntry && EFFECT.test(specifier)) {
+        errors.push(`${subpath}: ${show(importer)} imports ${specifier}, but this plain entry must not reach effect`);
       } else if (isBuiltin(specifier)) {
         if (browserSafe) {
           errors.push(`${subpath}: ${show(importer)} imports Node built-in ${specifier}`);
@@ -134,7 +145,9 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
       errors.push(`${subpath}: browser bundle ${problem}`);
     }
   }
-  checked.push(`${subpath}${browserSafe ? " (browser)" : ""}${zeroDependency ? " (no imports)" : ""}`);
+  checked.push(
+    `${subpath}${browserSafe ? " (browser)" : ""}${zeroDependency ? " (no imports)" : ""}${effectEntry ? " (effect)" : ""}`
+  );
 }
 
 if (errors.length > 0) {

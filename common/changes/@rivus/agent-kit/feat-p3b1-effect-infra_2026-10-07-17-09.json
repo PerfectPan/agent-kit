@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Add the Effect entries /platform/effect (PlatformService) and /node/effect (NodePlatformLive). effect 4.0.1 is an optional peer that only these entries need.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

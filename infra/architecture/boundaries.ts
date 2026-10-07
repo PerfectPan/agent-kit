@@ -42,6 +42,11 @@ export interface BoundaryRules {
   readonly layers: Readonly<Record<Layer, LayerRule>>;
   readonly effect: {
     readonly specifier: RegExp;
+    /**
+     * Subpath of a workspace package's Effect entry, such as `@rivus/agent-kit-platform/effect`. Siblings import it
+     * instead of the package's `index.ts`, which stays free of Effect, and importing it counts as importing Effect.
+     */
+    readonly workspaceEntry: string;
     /** Package-relative path prefixes that may import Effect, even with `import type`. */
     readonly allowedPaths: Readonly<Record<string, readonly string[]>>;
   };
@@ -80,7 +85,11 @@ export const boundaries: BoundaryRules = {
   },
   effect: {
     specifier: /^(?:effect|@effect\/[^/]+)(?:\/|$)/,
+    workspaceEntry: "/effect",
     allowedPaths: {
+      // The Platform port as an Effect service and its Node Layer; `/platform` and `/node` stay plain.
+      [PLATFORM]: ["src/effect.ts"],
+      [PLATFORM_NODE]: ["src/effect.ts"],
       "@rivus/agent-kit-harness": ["src/application/", "src/adapters/"],
       "@rivus/agent-kit-acp": ["src/application/", "src/adapters/"],
       "@rivus/agent-kit-collab": [

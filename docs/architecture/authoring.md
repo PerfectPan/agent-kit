@@ -130,30 +130,47 @@ These rules apply to every domain layer and to the contexts that do not use Effe
 - Dependencies: the platform, or the part of it the function uses, is the first parameter. There is no kit object bound to a platform.
 - Validation of external data uses `zod/mini`; it is the only validation library. The exception is `/harness/events`, which must stay synchronous with zero dependencies, reads only a few fields with `typeof` checks, and says so in a comment.
 - Prefer existing libraries and built-ins over hand-written equivalents: `es-toolkit` instead of lodash-es; `Object.groupBy`, `toSorted`, `structuredClone`, `crypto.randomUUID()`, `AbortSignal.timeout` and `AbortSignal.any` where they suffice.
-- A plain TS context must not import `effect`, and its module graph and published `.d.ts` graph must not reach it. The boundary test checks this.
+- A plain TS context must not import `effect`, and the module graph and published `.d.ts` graph of a plain entry must not reach it. The boundary test checks each file's imports; the shell's dist check follows the graph of every built entry.
 - A plain context moves its reading layer to Effect only when it gains live following, file watching, background index refresh or concurrent scanning with backpressure. Its translation functions stay plain.
 
 ## Effect Rules
 
-These rules apply to the use cases and port adapters of harness execution (apply, verify, uninstall, the LedgerLock), acp, collab's lease and lanes.
+These rules apply to the use cases and port adapters of harness execution (apply, verify, uninstall, the LedgerLock), acp, collab's lease and lanes, and to the Platform service.
 
-- Only `application/` and `adapters/` of these contexts may import `effect`. Their `domain/` and `agents/` stay plain TS, like every other domain layer.
-- Ports are `Context.Service`s keyed `@rivus/agent-kit/<context>/<port>/v1` (for example LedgerStore, LedgerLock, AcpTransport, SessionBindingStore, LeaseStore); the version changes only for an incompatible interface. Implementations are Layers. Platform stays a plain TS interface, provided by a Layer such as `PlatformLive` built from `createNodePlatform()`; do not turn each Platform method into its own service.
-- Entries return `Effect`, `Stream` or `Layer`. Cancellation is fiber interruption, and long-lived resources (ACP connections, lease managers, lanes) belong to a Scope the caller provides.
-- Errors use the same `_tag` unions as the plain TS side, in the typed error channel. A `Result` from a plain function is unwrapped first with `fromResult` (`r.ok ? Effect.succeed(r.value) : Effect.fail(r.error)`); `catchTag` does not see an `{ ok: false }` value that was never failed.
-- There is no Promise facade. Consumers run Effects at their assembly root.
+- Only `application/` and `adapters/` of these contexts, and the `src/effect.ts` files of the next rule, may import `effect`. Their `domain/` and `agents/` stay plain TS, like every other domain layer.
+- A package whose entries must stay plain keeps its Effect counterpart in `src/effect.ts`, exported to siblings as `<package>/effect` and to the shell as `<package>/public/effect`: platform's `PlatformService` (published as `/platform/effect`) and platform-node's `NodePlatformLive` (`/node/effect`). The boundary test counts an import of `<package>/effect` as an Effect import. Every published Effect entry is listed in `EFFECT_ENTRIES` of the shell's `scripts/check-dist.ts` and `scripts/smoke-consumer.ts`; every other entry is checked as plain.
+- A port is a class-style `Context.Service` named after the port and keyed `@rivus/agent-kit/<context>/<Port>/v1`, for example `LedgerLock` keyed `@rivus/agent-kit/harness/LedgerLock/v1`. When a plain interface already has the port's name, the service adds `Service`: `PlatformService`, keyed `@rivus/agent-kit/platform/Platform/v1`, holds a `Platform`. The key is the service's runtime identity; it moves to `v2` only for an incompatible interface. `isolatedDeclarations` rejects a call in `extends`, so the generated base gets an explicit type:
+
+  ```ts
+  const KEY = "@rivus/agent-kit/harness/LedgerLock/v1";
+  const LedgerLockBase: Context.ServiceClass<LedgerLock, typeof KEY, LedgerLockShape> = Context.Service<
+    LedgerLock,
+    LedgerLockShape
+  >()(KEY);
+  export class LedgerLock extends LedgerLockBase {}
+  ```
+
+- A port's implementation is a Layer in the context's `adapters/`, named `<Variant><Port>Live` (`SqliteLedgerLockLive`, `SqliteLeaseStoreLive`); a context's default set, such as `HarnessLive`, is composed there too, because `application/` may not import `adapters/`. Kit Layers require `PlatformService` and never provide it; the application provides `NodePlatformLive` or its own `Layer.succeed(PlatformService, platform)`. A Layer that captures the environment builds it lazily (`Layer.sync`, `Layer.effect`), never at import. Platform stays one service; do not turn each Platform method into its own service.
 - Compose Layers with `Layer.provide` or `Layer.provideMerge`. `Layer.mergeAll` only merges outputs; it does not feed one Layer's output into another Layer of the same group.
-- Use Scope and supervision for real. Wrapping an async function in `tryPromise` and moving its parameters into a service is not enough: a `tryPromise` around a write that cannot be cancelled lets a timeout release the lock before the write finishes.
+- Entries return `Effect`, `Stream` or `Layer`. Cancellation is fiber interruption, and long-lived resources (ACP connections, lease managers, lanes) belong to a Scope the caller provides.
+- Errors use the same `_tag` unions as the plain TS side, in the typed error channel. A `Result` from a plain function enters it through `fromResult`, one expression that each Effect context declares in its `application/`; `catchTag` does not see an `{ ok: false }` value that was never failed:
+
+  ```ts
+  const fromResult = <A, E>(result: Result<A, E>): Effect.Effect<A, E> =>
+    result.ok ? Effect.succeed(result.value) : Effect.fail(result.error);
+  ```
+
+- External data is validated with `zod/mini` here too; `Effect.try` (or `safeParse` and `fromResult`) turns a failed parse into a `_tag` error. `effect/Schema` is not used.
+- There is no Promise facade: kit code never calls `Effect.runPromise`, `Effect.runSync`, `Effect.runFork` or builds a `ManagedRuntime` outside tests. Consumers run Effects at their assembly root.
 - Child processes go through `Platform.spawn`, not `effect/process`.
-- `effect` is an optional peer of the published packages, pinned to an exact version, and a devDependency; it stays external and is never bundled.
+- `effect` is an optional peer of the published packages, pinned to an exact version, and a devDependency; it stays external and is never bundled. The dist check fails when an Effect entry inlines it or a plain entry reaches it, and the consumer smoke test runs the Effect entries on the host's single copy.
 
-Execution rules for locks, writes and retries:
+Execution rules for locks, writes and retries. Wrapping an async function in `tryPromise` and moving its parameters into a service is not enough: a `tryPromise` around a write that cannot be cancelled lets a timeout release the lock before the write finishes.
 
-- Ownership must not be lost between acquiring a lock and registering its finalizer. A lock acquired after its waiter was cancelled is released immediately.
-- Persist pending operations first. Cancellation takes effect only at recoverable step boundaries.
-- Do not release a lock before an in-flight write and its record are finished. A non-cancellable write wrapped in `tryPromise` goes in an uninterruptible region, but a whole installation is never made uninterruptible.
-- Do not retry partially executed installations, ACP prompts or commands with unknown results automatically. Use `Effect.retry` only for operations that are explicitly retryable.
-- A failed lease renewal is supervised and interrupts the fenced work. Writes after losing a lease still go through fencing.
+- A lock is a scoped resource acquired with `Effect.acquireRelease`. Its acquire step is uninterruptible and registers the release in the same step, so ownership is never lost in between. When waiting for the lock must be interruptible, the acquire step itself releases a lock it obtains after the interruption.
+- Persist pending operations before touching a target. Each write and its record form one `Effect.uninterruptible` region, so interruption lands only between steps, and the lock, released when its Scope closes, outlives every write in flight. The installation as a whole stays interruptible.
+- Retry with `Effect.retry` only operations that are explicitly retryable; never a partly executed installation, an ACP prompt or a command whose result is unknown.
+- A lease's heartbeat runs in the lease's Scope. A failed renewal interrupts the fenced work, and writes after losing the lease still go through fencing.
 
 ## Assemble In The Application
 

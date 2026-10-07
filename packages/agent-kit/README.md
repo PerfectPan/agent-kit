@@ -13,20 +13,23 @@ Status: 0.x. A minor release may contain breaking changes.
 npm install @rivus/agent-kit
 ```
 
-ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node` and `/testing` also bundles for
-browsers.
+ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
+bundles for browsers. The Effect entries `/platform/effect` and `/node/effect` need `effect` 4.0.1, an optional peer
+that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 
 ## Entries
 
-| Entry                             | Main exports                                                                                      | Runs in                   |
-| --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
-| `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
-| `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
-| `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
-| `@rivus/agent-kit/node`           | `createNodePlatform`                                                                              | Node                      |
-| `@rivus/agent-kit/sessions`       | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
-| `@rivus/agent-kit/transcript`     | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
-| `@rivus/agent-kit/testing`        | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession` | Node                      |
+| Entry                              | Main exports                                                                                      | Runs in                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
+| `@rivus/agent-kit/catalog`         | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
+| `@rivus/agent-kit/harness/events`  | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
+| `@rivus/agent-kit/platform`        | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
+| `@rivus/agent-kit/node`            | `createNodePlatform`                                                                              | Node                      |
+| `@rivus/agent-kit/platform/effect` | `PlatformService`: the `Platform` as an Effect service                                            | anywhere, with `effect`   |
+| `@rivus/agent-kit/node/effect`     | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`           | Node, with `effect`       |
+| `@rivus/agent-kit/sessions`        | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
+| `@rivus/agent-kit/transcript`      | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
+| `@rivus/agent-kit/testing`         | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession` | Node                      |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -89,6 +92,26 @@ copied, only the tool's name and call id. `terminal` names the herdr, cmux, Supe
 `heartbeatSignal(before, after, event)` gives the start / heartbeat / finish reading of a heartbeat-based tracker from
 the states around one `reduceLifecycle` step. `builtinHookDialects` holds each agent's hook facts: event names, the
 timeout unit, which events are permission gates and what an observing hook should print.
+
+### Effect
+
+Effect entries return Effects and Layers that read the platform from `PlatformService`. Your application provides it
+and runs the program; the kit has no Promise wrapper.
+
+```ts
+import * as Effect from "effect/Effect";
+
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import { PlatformService } from "@rivus/agent-kit/platform/effect";
+
+const program = Effect.gen(function* () {
+  const platform = yield* PlatformService;
+  return platform.home;
+});
+const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatformLive)));
+```
+
+For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodePlatform({ env, home }))` instead.
 
 ## Errors
 

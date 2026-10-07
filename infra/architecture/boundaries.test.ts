@@ -125,6 +125,13 @@ describe("allowed imports", () => {
     expect(rulesOf(harness("events.ts"))).toEqual(["effect"]);
   });
 
+  it("lets Effect code import a sibling's Effect entry, such as the Platform service", () => {
+    const service = `import { PlatformService } from "${PLATFORM}/effect";`;
+    const layer = `${service}\nimport * as Layer from "effect/Layer";`;
+    expect(rulesOf(withFiles({ "packages/platform-node/src/effect.ts": layer }))).toEqual([]);
+    expect(rulesOf(withFiles({ "packages/harness/src/application/apply-install.ts": service }))).toEqual([]);
+  });
+
   it("lets a shell entry re-export from a lighter public entry of an internal package", () => {
     const entry = (source: string) => withFiles({ "packages/agent-kit/src/extra.ts": source });
     expect(rulesOf(entry(`export { readHookEvent } from "@rivus/agent-kit-harness/public/events";`))).toEqual([]);
@@ -213,6 +220,41 @@ describe("violations", () => {
     ]
   ])("rejects %s", (_name, path, source, rule) => {
     expect(rulesOf(sessionsFile(path, source))).toEqual([rule]);
+  });
+
+  it.each<[string, string, string, RuleId]>([
+    [
+      "Effect in the plain Platform port",
+      "platform/src/platform.ts",
+      `import type { Effect } from "effect/Effect";`,
+      "effect"
+    ],
+    [
+      "Effect in the plain Node platform",
+      "platform-node/src/create-node-platform.ts",
+      `import * as Layer from "effect/Layer";`,
+      "effect"
+    ],
+    [
+      "a sibling's Effect entry in a plain package",
+      "sessions/src/application/x.ts",
+      `import { PlatformService } from "${PLATFORM}/effect";`,
+      "effect"
+    ],
+    [
+      "a sibling's Effect entry in an Effect context's domain/",
+      "harness/src/domain/lifecycle/x.ts",
+      `import type { PlatformService } from "${PLATFORM}/effect";`,
+      "effect"
+    ],
+    [
+      "the shell's Effect entry of a sibling",
+      "harness/src/application/x.ts",
+      `import { PlatformService } from "${PLATFORM}/public/effect";`,
+      "deep-import"
+    ]
+  ])("rejects %s", (_name, path, source, rule) => {
+    expect(rulesOf(withFiles({ [`packages/${path}`]: source }))).toEqual([rule]);
   });
 
   it.each(["domain/bridge.d.ts", "domain/bridge.js", "application/x.mts"])("rejects %s under src/", (path) => {
