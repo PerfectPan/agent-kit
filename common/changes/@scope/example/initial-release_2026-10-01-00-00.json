@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@scope/example",
+      "comment": "Initial release.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@scope/example",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

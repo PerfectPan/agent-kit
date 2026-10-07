@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Cache dependency downloads
+        # Rush's pnpm store and the npm cache install-run-rush uses for Rush itself. The prefix names the
+        # pnpm store layout (v11 since pnpm 11), so a store from an older pnpm is never restored and carried along.
+        uses: actions/cache@v6
+        with:
+          path: |
+            common/temp/pnpm-store
+            ~/.npm/_cacache
+          key: ${{ runner.os }}-pnpm-store-v11-dependency-downloads-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml', 'common/config/rush/pnpm-config.json') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-v11-dependency-downloads-
+      - run: node common/scripts/install-run-rush.js install
+      - run: npm run check
+      - name: Require change files for package changes
+        # The version PR consumes change files, and dependency bots cannot write them.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.head_ref != 'rush-release/main' &&
+          !startsWith(github.head_ref, 'dependabot/')
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="$(git merge-base "$BASE_SHA" HEAD)"
+          node common/scripts/install-run-rush.js change --verify --no-fetch --target-branch "$base"
+          node scripts/release-intent.ts check --base "$base"

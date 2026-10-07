@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
+  "commands": [
+    {
+      "commandKind": "bulk",
+      "name": "lint",
+      "summary": "Run oxlint in every project.",
+      "enableParallelism": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "typecheck",
+      "summary": "Type-check every project with tsc.",
+      "enableParallelism": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "test",
+      "summary": "Run unit tests in every project.",
+      "enableParallelism": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "format",
+      "summary": "Format every project with oxfmt.",
+      "enableParallelism": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "format:check",
+      "summary": "Check formatting in every project with oxfmt.",
+      "enableParallelism": true
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+name: Publish npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-npm-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish release set
+    if: github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # npm Trusted Publishing exchanges the workflow's OIDC token for a publish credential.
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: node common/scripts/install-run-rush.js install
+      - name: Verify tag, versions and main ancestry
+        run: npm run release:check -- "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
+      - name: Run release gates
+        run: npm run check
+      - name: Publish packages with Rush
+        # Rush runs `pnpm publish`, which ignores NPM_CONFIG_* variables. pnpm attaches provenance on its own after
+        # the OIDC exchange when both the repository and the package are public, and skips it otherwise.
+        run: >-
+          node common/scripts/install-run-rush.js publish
+          --include-all --version-policy main --publish
+          --set-access-level public

@@ -1,0 +1,59 @@
+name: Version Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump for the lockstep policy (policy uses its nextBump when left as "policy")
+        required: true
+        default: policy
+        type: choice
+        options: [policy, patch, minor, major]
+
+permissions: {}
+
+concurrency:
+  group: version-packages
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: prepare version pull request
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: node common/scripts/install-run-rush.js install
+      - name: Bump versions and write changelogs with Rush
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          if [[ "$BUMP" == "policy" ]]; then
+            npm run version-packages
+          else
+            node common/scripts/install-run-rush.js version --bump --version-policy main --override-bump "$BUMP"
+            node common/scripts/install-run-rush.js update
+          fi
+      - name: Create or update the version pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: rush-release/main
+          base: main
+          sign-commits: true
+          commit-message: "chore(release): version packages"
+          title: "chore(release): version packages"
+          draft: always-true
+          body: |
+            Coordinated Rush release prepared by the Version Packages workflow.
+
+            Pull requests created with the workflow token do not start CI. Review the version and changelog
+            diff, then select **Ready for review** (or close and reopen the PR) to run CI before merging.

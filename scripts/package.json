@@ -1,0 +1,24 @@
+{
+  "name": "repo-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository automation for this monorepo: release intent and release identity checks.",
+  "type": "module",
+  "scripts": {
+    "build": "",
+    "lint": "oxlint",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@types/node": "24.19.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

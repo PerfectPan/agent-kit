@@ -1,0 +1,22 @@
+{
+  "name": "project-template-rush",
+  "private": true,
+  "description": "Command shortcuts for this Rush monorepo. It is not a Rush project and has no dependencies.",
+  "scripts": {
+    "build": "node common/scripts/install-run-rush.js build",
+    "lint": "node common/scripts/install-run-rush.js lint",
+    "typecheck": "node common/scripts/install-run-rush.js typecheck",
+    "test": "node common/scripts/install-run-rush.js test",
+    "format": "node common/scripts/install-run-rush.js format",
+    "format:check": "node common/scripts/install-run-rush.js format:check",
+    "change": "node common/scripts/install-run-rush.js change",
+    "change:verify": "node common/scripts/install-run-rush.js change --verify && node scripts/release-intent.ts check",
+    "check": "npm run format:check && npm run build && npm run lint && npm run typecheck && npm run test",
+    "version-packages": "node common/scripts/install-run-rush.js version --bump --version-policy main && node common/scripts/install-run-rush.js update",
+    "release:check": "node scripts/check-release.ts",
+    "publish:dry-run": "node common/scripts/install-run-rush.js publish --include-all --version-policy main --set-access-level public"
+  },
+  "engines": {
+    "node": "^24.11.0"
+  }
+}
