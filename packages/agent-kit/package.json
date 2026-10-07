@@ -23,9 +23,17 @@
       "types": "./dist/node.d.ts",
       "default": "./dist/node.js"
     },
+    "./node/effect": {
+      "types": "./dist/node/effect.d.ts",
+      "default": "./dist/node/effect.js"
+    },
     "./platform": {
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
+    },
+    "./platform/effect": {
+      "types": "./dist/platform/effect.d.ts",
+      "default": "./dist/platform/effect.js"
     },
     "./sessions": {
       "types": "./dist/sessions.d.ts",
@@ -74,6 +82,7 @@
     "@rivus/agent-kit-testing": "workspace:*",
     "@size-limit/preset-small-lib": "14.1.0",
     "@types/node": "24.19.1",
+    "effect": "4.0.1",
     "oxc-parser": "0.153.0",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
@@ -83,5 +92,13 @@
     "size-limit": "14.1.0",
     "tsdown": "0.23.0",
     "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "effect": "4.0.1"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    }
   }
 }

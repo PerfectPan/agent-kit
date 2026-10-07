@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries and `/harness/events` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect` and `/node/effect` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -35,8 +35,8 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
-- No 0.1.0 entry may depend on `effect`, in either its module graph or its published `.d.ts` graph. A consumer that never installs `effect` can import and type-check every 0.1.0 entry.
-- `/catalog`, `/platform`, `/sessions`, `/transcript` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node` and `/testing` are exempt.
+- Only Effect entries (`/platform/effect`, `/node/effect`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
+- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -58,7 +58,13 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Exports `createNodePlatform({ env?, home? })`, the Node implementation of `Platform`. Without arguments it uses the current process environment and the OS home directory; `env` and `home` replace them (for example a temporary `HOME` in tests).
 - `process.spawn` passes only the `env` it is given and never inherits the parent environment. When its `signal` aborts, the child receives `SIGTERM`, then `SIGKILL` after a grace period. `stdin`, `stdout` and `stderr` are Web Streams.
 - `process.self` is the identity of the current process (`host`, `bootId`, `pid`, `startTime`). `process.identify(pid)` returns `undefined` when no process has that pid; when the pid was reused, its `startTime` differs from the recorded identity.
-- `/node` is the only entry that binds to Node.
+- `/node` and its Effect counterpart `/node/effect` are the only entries that bind to Node.
+
+### `/platform/effect` and `/node/effect`
+
+- `/platform/effect` exports `PlatformService`, the `Context.Service` keyed `@rivus/agent-kit/platform/Platform/v1` whose value is the plain `Platform`. Effect entries read the platform from it.
+- `/node/effect` exports `NodePlatformLive`, a Layer that provides `PlatformService` with `createNodePlatform()`, called when the Layer is built. An application that needs another `env` or `home` provides `Layer.succeed(PlatformService, createNodePlatform({ env, home }))`.
+- Both require the host to install `effect` itself, at the exact version of the kit's optional peer (4.0.1). The kit resolves the host's copy and ships none of its own.
 
 ### `/sessions`
 
@@ -285,11 +291,11 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When the bundles are built
 - Then they contain no `node:*` module or Node builtin
 
-### S21: 0.1.0 works without Effect
+### S21: Plain entries work without Effect
 
-- Given a consumer project that does not install `effect`
-- When it imports and type-checks every 0.1.0 entry
-- Then both succeed, and neither the module graph nor the `.d.ts` graph of any entry reaches `effect`
+- Given a consumer project that installs the packed kit but not `effect`
+- When it imports and type-checks every entry except the Effect entries
+- Then npm has not installed `effect`, both steps succeed, and neither the module graph nor the `.d.ts` graph of any of those entries reaches `effect`
 
 ### S22: The line splitter keeps bytes and line numbers exact
 
@@ -453,15 +459,21 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When the built `/harness/events` files and chunks are checked, and a fresh Node process imports the entry and reads one payload
 - Then no file imports an npm package or Node built-in, and the import plus the read take less than 100 ms
 
+### S49: Effect entries run on the host's single copy of Effect
+
+- Given a consumer project that installs the packed kit and `effect` 4.0.1
+- When it type-checks and runs a program that reads `PlatformService` with `Effect.runPromiseExit`, provided by `NodePlatformLive`
+- Then every Effect entry imports, the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package (by real path), every Effect entry resolves the same one as the consumer at 4.0.1, and no built file bundles a module from `node_modules`
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
 - Persisted data: 0.1.0 writes nothing and opens agent logs read-only. Planned harness state (the ledger and its lock files) lives under `$XDG_STATE_HOME`, outside dotfiles source directories.
 - Configuration: agent home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) are read from the `env` passed to the kit, never from the global process environment directly.
 - Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Planned lock-based features support local directories only, not NFS.
-- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, which uses no dependencies. `effect` becomes an optional peer pinned to exactly 4.0.1 with the first Effect entry (P3); consumers of plain TS entries never need it.
+- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, which uses no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries.
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 by the architecture boundary test and the package checks; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test. Planned scenarios S26–S29 and S32–S40 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test. Planned scenarios S26–S29 and S32–S40 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch.

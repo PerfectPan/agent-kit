@@ -1,5 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import process from "node:process";
@@ -8,7 +18,9 @@ import { fileURLToPath } from "node:url";
 // Packs the shell, installs the tarball into a throwaway consumer project the way a user would, and checks it from
 // there: the tarball holds only what it should, every entry type-checks under node16 and bundler resolution, every
 // entry loads in Node and reads sessions from a temporary home, and the hook entry starts fast in a fresh process.
-// The real home directory is never read.
+// That consumer does not install effect, so it loads only the plain entries. A second consumer installs effect itself
+// and runs a program on the Effect entries with exactly one copy of effect in its tree. The real home directory is
+// never read.
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = resolve(packageRoot, "../..");
@@ -33,9 +45,13 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
 
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 
+/** The entries that import the optional `effect` peer, as in check-dist.ts; a stale list fails one of the consumers. */
+const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);
+
 interface Manifest {
   name: string;
   exports: Record<string, unknown>;
+  peerDependencies: { effect: string };
 }
 
 interface PackResult {
@@ -80,9 +96,11 @@ function tarballProblems(files: readonly string[], installed: string): string[] 
   return problems;
 }
 
-/** A consumer module that imports every entry, then lists and reads the seeded sessions through the Node platform. */
+/** A consumer module that imports every plain entry, then lists and reads the seeded sessions through Node. */
 function consumerSource(manifest: Manifest, home: string): string {
-  const subpaths = Object.keys(manifest.exports).filter((subpath) => subpath !== "./package.json");
+  const subpaths = Object.keys(manifest.exports).filter(
+    (subpath) => subpath !== "./package.json" && !EFFECT_ENTRIES.has(subpath)
+  );
   const namespaces = subpaths.map(
     (subpath, index) => `import * as entry${index} from "${manifest.name}/${subpath.slice(2)}";`
   );
@@ -160,12 +178,129 @@ function hookColdStartMs(consumer: string): number {
   return runs[Math.floor(runs.length / 2)] ?? Number.NaN;
 }
 
-function tsconfig(module: string, moduleResolution: string): string {
+/**
+ * A host that installs effect itself: it imports every Effect entry, checks that each resolves the host's effect at
+ * the peer version, and runs a program that reads PlatformService through NodePlatformLive under the temporary home.
+ */
+function effectConsumerSource(manifest: Manifest, home: string): string {
+  const subpaths = [...EFFECT_ENTRIES];
+  const namespaces = subpaths.map(
+    (subpath, index) => `import * as entry${index} from "${manifest.name}/${subpath.slice(2)}";`
+  );
+  const entries = subpaths.map((subpath, index) => `  ${JSON.stringify(subpath)}: entry${index},`);
+  return `import assert from "node:assert/strict";
+import { readFileSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+
+import * as Cause from "effect/Cause";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+${namespaces.join("\n")}
+import { NodePlatformLive } from "${manifest.name}/node/effect";
+import { PlatformService } from "${manifest.name}/platform/effect";
+
+const entries: Record<string, object> = {
+${entries.join("\n")}
+};
+const host = realpathSync(fileURLToPath(import.meta.resolve("effect/package.json")));
+for (const [subpath, namespace] of Object.entries(entries)) {
+  assert.ok(Object.keys(namespace).length > 0, \`\${subpath} exports nothing at runtime\`);
+  const entryFile = fileURLToPath(import.meta.resolve(\`${manifest.name}/\${subpath.slice(2)}\`));
+  const kit = realpathSync(createRequire(entryFile).resolve("effect/package.json"));
+  assert.equal(kit, host, \`\${subpath} resolves another copy of effect than the host\`);
+}
+const { version } = JSON.parse(readFileSync(host, "utf8")) as { version: string };
+assert.equal(version, ${JSON.stringify(manifest.peerDependencies.effect)});
+
+const program = Effect.gen(function* () {
+  const platform = yield* PlatformService;
+  return platform.home;
+});
+const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatformLive)));
+if (!Exit.isSuccess(exit)) {
+  assert.fail(\`the program failed: \${Cause.pretty(exit.cause)}\`);
+}
+assert.equal(exit.value, ${JSON.stringify(home)});
+console.log(\`effect \${version}\`);
+`;
+}
+
+/**
+ * Real paths of the packages named effect that Node resolution can reach from `nodeModules`: top-level, scoped and
+ * nested folders, followed through links. Each `node_modules` folder is read once, so a link cycle ends.
+ */
+function effectCopies(nodeModules: string): string[] {
+  const copies = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (dir: string): void => {
+    if (!existsSync(dir)) {
+      return;
+    }
+    const real = realpathSync(dir);
+    if (visited.has(real)) {
+      return;
+    }
+    visited.add(real);
+    for (const name of readdirSync(real)) {
+      if (name.startsWith(".")) {
+        continue;
+      }
+      const folders = name.startsWith("@")
+        ? readdirSync(join(real, name)).map((child) => join(real, name, child))
+        : [join(real, name)];
+      for (const folder of folders) {
+        const manifest = join(folder, "package.json");
+        if (
+          existsSync(manifest) &&
+          (JSON.parse(readFileSync(manifest, "utf8")) as { name?: string }).name === "effect"
+        ) {
+          copies.add(realpathSync(folder));
+        }
+        visit(join(folder, "node_modules"));
+      }
+    }
+  };
+  visit(nodeModules);
+  return [...copies];
+}
+
+function npmInstall(cwd: string, specs: readonly string[]): void {
+  writeFileSync(join(cwd, "package.json"), `${JSON.stringify({ private: true, type: "module" }, null, 2)}\n`);
+  run(
+    "npm",
+    [
+      "install",
+      ...specs,
+      "--registry",
+      "https://registry.npmjs.org/",
+      "--no-audit",
+      "--no-fund",
+      "--loglevel",
+      "error"
+    ],
+    cwd,
+    npmEnv
+  );
+}
+
+/** Type-checks `consumer.ts` in `cwd` under node16 and bundler resolution. */
+function typecheck(cwd: string, lib: readonly string[]): void {
+  for (const [name, module, moduleResolution] of [
+    ["node16", "node16", "node16"],
+    ["bundler", "preserve", "bundler"]
+  ] as const) {
+    writeFileSync(join(cwd, `tsconfig.${name}.json`), tsconfig(module, moduleResolution, lib));
+    run(tsc, ["-p", `tsconfig.${name}.json`], cwd);
+  }
+}
+
+function tsconfig(module: string, moduleResolution: string, lib: readonly string[]): string {
   const compilerOptions = {
     module,
     moduleResolution,
     target: "ES2024",
-    lib: ["ES2024"],
+    lib,
     strict: true,
     exactOptionalPropertyTypes: true,
     noUncheckedIndexedAccess: true,
@@ -186,24 +321,13 @@ try {
     PackResult
   ];
 
+  const tarball = join(work, packed.filename);
   const consumer = join(work, "consumer");
   mkdirSync(consumer);
-  writeFileSync(join(consumer, "package.json"), `${JSON.stringify({ private: true, type: "module" }, null, 2)}\n`);
-  run(
-    "npm",
-    [
-      "install",
-      join(work, packed.filename),
-      "--registry",
-      "https://registry.npmjs.org/",
-      "--no-audit",
-      "--no-fund",
-      "--loglevel",
-      "error"
-    ],
-    consumer,
-    npmEnv
-  );
+  npmInstall(consumer, [tarball]);
+  if (effectCopies(join(consumer, "node_modules")).length > 0) {
+    throw new Error("npm installed effect, which must stay an optional peer");
+  }
 
   const problems = tarballProblems(
     packed.files.map((file) => file.path),
@@ -220,13 +344,7 @@ try {
   }
 
   writeFileSync(join(consumer, "consumer.ts"), consumerSource(manifest, home));
-  for (const [name, module, moduleResolution] of [
-    ["node16", "node16", "node16"],
-    ["bundler", "preserve", "bundler"]
-  ] as const) {
-    writeFileSync(join(consumer, `tsconfig.${name}.json`), tsconfig(module, moduleResolution));
-    run(tsc, ["-p", `tsconfig.${name}.json`], consumer);
-  }
+  typecheck(consumer, ["ES2024"]);
   const output = run(process.execPath, ["consumer.ts"], consumer).trim();
 
   writeFileSync(join(consumer, "cold-start.mjs"), coldStartSource(manifest));
@@ -235,10 +353,23 @@ try {
     throw new Error(`/harness/events took ${coldStart} ms to import and read one payload`);
   }
 
+  const effectConsumer = join(work, "effect-consumer");
+  mkdirSync(effectConsumer);
+  npmInstall(effectConsumer, [tarball, `effect@${manifest.peerDependencies.effect}`]);
+  const copies = effectCopies(join(effectConsumer, "node_modules"));
+  if (copies.length !== 1) {
+    throw new Error(`expected one copy of effect, found ${copies.length}: ${copies.join(", ")}`);
+  }
+  writeFileSync(join(effectConsumer, "consumer.ts"), effectConsumerSource(manifest, home));
+  // effect's own declarations name DOM types such as TextDecoderOptions.
+  typecheck(effectConsumer, ["ES2024", "DOM"]);
+  // os.homedir() reads HOME, so NodePlatformLive builds its platform with the temporary home.
+  const effectOutput = run(process.execPath, ["consumer.ts"], effectConsumer, { ...process.env, HOME: home }).trim();
+
   const seconds = ((performance.now() - started) / 1000).toFixed(1);
   console.log(
     `smoke-consumer: ok in ${seconds}s (${packed.files.length} files; ${output.split("\n").join(", ")}; ` +
-      `/harness/events cold start ${coldStart.toFixed(1)} ms)`
+      `/harness/events cold start ${coldStart.toFixed(1)} ms; ${effectOutput} once, shared with the host)`
   );
 } catch (error) {
   console.error(`smoke-consumer: ${error instanceof Error ? error.message : String(error)}`);

@@ -241,7 +241,7 @@ The longest one Activation may run.
 ## Technical terms
 
 **Platform**:
-The port through which the kit reaches files, processes, environment variables, clocks and SQLite. It has no domain language. `/node` implements it for Node and `/testing` provides an in-memory version.
+The port through which the kit reaches files, processes, environment variables, clocks and SQLite. It has no domain language. `/node` implements it for Node and `/testing` provides an in-memory version. Effect code reads it from `PlatformService` (`/platform/effect`), which `NodePlatformLive` (`/node/effect`) provides.
 
 **redact**:
 A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.

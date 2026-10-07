@@ -186,6 +186,16 @@ interface ImportContext {
   readonly workspaceNames: ReadonlySet<string>;
 }
 
+const EFFECT_VIOLATION = {
+  rule: "effect",
+  text: `Effect is only allowed in the paths listed under effect in ${MANIFEST}`
+} as const;
+
+function effectAllowed(rules: BoundaryRules, pkg: WorkspacePackage, file: SourceFile): boolean {
+  const relativePath = file.path.slice(pkg.folder.length + 1);
+  return (rules.effect.allowedPaths[pkg.name] ?? []).some((prefix) => relativePath.startsWith(prefix));
+}
+
 function checkImport(context: ImportContext): { rule: RuleId; text: string } | undefined {
   const { rules, rule, pkg, layer, file, ref, workspaceNames } = context;
   const layerRule = layer === undefined ? undefined : rules.layers[layer];
@@ -195,6 +205,11 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     if (!target.startsWith(`${pkg.folder}/`)) {
       return { rule: "relative-escape", text: `leaves ${pkg.name}; import another package by its name` };
     }
+    // The package's own Effect entry (`src/effect.ts`) is an Effect import too, so that a plain file cannot re-export it.
+    const effectEntry = `${pkg.folder}/src${rules.effect.workspaceEntry}`;
+    if (target.replace(/\.[cm]?[jt]s$/, "") === effectEntry && !effectAllowed(rules, pkg, file)) {
+      return EFFECT_VIOLATION;
+    }
     const targetLayer = layerOf(pkg, target);
     if (layerRule !== undefined && (targetLayer === undefined || !layerRule.layers.includes(targetLayer))) {
       return { rule: "layer", text: `${layer}/ may not import ${targetLayer ?? "files outside the layers"}/` };
@@ -202,12 +217,15 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     return undefined;
   }
 
-  if (rules.effect.specifier.test(ref.specifier)) {
-    const relativePath = file.path.slice(pkg.folder.length + 1);
-    const allowed = rules.effect.allowedPaths[pkg.name] ?? [];
-    return allowed.some((prefix) => relativePath.startsWith(prefix))
-      ? undefined
-      : { rule: "effect", text: `Effect is only allowed in the paths listed under effect in ${MANIFEST}` };
+  const { name, subpath } = splitSpecifier(ref.specifier);
+  const workspaceEffect = workspaceNames.has(name) && subpath === rules.effect.workspaceEntry;
+  if (workspaceEffect || rules.effect.specifier.test(ref.specifier)) {
+    if (!effectAllowed(rules, pkg, file)) {
+      return EFFECT_VIOLATION;
+    }
+    if (!workspaceEffect) {
+      return undefined;
+    }
   }
 
   if (isBuiltin(ref.specifier)) {
@@ -216,9 +234,8 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
       : { rule: "node-builtin", text: "only the Node platform package may import Node built-ins" };
   }
 
-  const { name, subpath } = splitSpecifier(ref.specifier);
   if (workspaceNames.has(name)) {
-    if (subpath !== "") {
+    if (subpath !== "" && !workspaceEffect) {
       return { rule: "deep-import", text: `import ${name} itself, which resolves to its index.ts` };
     }
     if (!rule.dependsOn.includes(name)) {
