@@ -68,7 +68,7 @@
     "@rivus/agent-kit-sessions": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",
     "@size-limit/preset-small-lib": "14.1.0",
-    "@types/node": "24.19.0",
+    "@types/node": "24.19.1",
     "oxc-parser": "0.153.0",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
