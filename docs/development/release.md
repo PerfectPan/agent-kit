@@ -71,6 +71,17 @@ exists. For each package:
    already exists on npm.
 2. On npmjs.com open the package **Settings → Trusted Publisher → GitHub Actions** and enter the owner, the
    repository, the workflow filename `publish-npm.yml`, and no environment (unless you add one to the workflow).
+   Enable **direct publishing** ("Allow npm publish"): new configurations default to staged publishing only, and
+   `rush publish` → `pnpm publish` then fails with an authorization error. The CLI equivalent (npm 11.15 or later,
+   two-factor authentication on the account) is:
+
+   ```bash
+   npm trust github @rivus/agent-kit --repo PerfectPan/agent-kit --file publish-npm.yml --allow-publish
+   npm trust list @rivus/agent-kit
+   ```
+
+   A new configuration expires unless a publish uses it within 2 days, so create it right before the first
+   release, not days ahead.
 3. Under **Publishing access**, select "Require two-factor authentication and disallow tokens" so that only the
    trusted workflow can publish.
 

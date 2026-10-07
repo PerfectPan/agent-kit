@@ -38,11 +38,8 @@ export const codexSessionAdapter: SessionAdapter = {
     if (looksLikeCodexSession(ref.path, undefined)) {
       return true;
     }
-    try {
-      return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
-    } catch {
-      return false;
-    }
+    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
+    return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
   },
   load: loadCodex
 };

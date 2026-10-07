@@ -53,11 +53,8 @@ export const claudeCodeSessionAdapter: SessionAdapter = {
     if (looksLikeClaudeCodeSession(ref.path, undefined)) {
       return true;
     }
-    try {
-      return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
-    } catch {
-      return false;
-    }
+    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
+    return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
   },
   load: loadClaudeCode
 };

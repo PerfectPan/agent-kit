@@ -498,4 +498,17 @@ describe("sessions use cases over Claude Code", () => {
       contextShape: [13, 27]
     });
   });
+
+  it("returns ReadFailed when automatic detection cannot read an exported session", async () => {
+    const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+    const exported = createMemoryPlatform({ files: { "/export/session.jsonl": "{}\n" } });
+    const locked = { fs: { ...exported.fs, read: () => failing(denied) } };
+    const options = { adapters: { "claude-code": builtinSessionAdapters["claude-code"] } };
+    for (const run of [loadTranscript, summarizeSession]) {
+      expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
+        ok: false,
+        error: { _tag: "ReadFailed", path: "/export/session.jsonl", message: denied.message, cause: denied }
+      });
+    }
+  });
 });
