@@ -1,0 +1,17 @@
+{
+  "name": "@rivus/agent-kit",
+  "entries": [
+    {
+      "version": "0.1.0",
+      "tag": "@rivus/agent-kit_v0.1.0",
+      "date": "Wed, 07 Oct 2026 13:02:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "First release: the agent catalog (ids, aliases and home rules for six coding agents, Result, AgentKitError), the Platform port and its Node implementation, session listing and transcripts for Claude Code, Codex and Grok, and testing utilities (in-memory platform, session adapter conformance suite)."
+          }
+        ]
+      }
+    }
+  ]
+}
