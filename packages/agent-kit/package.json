@@ -48,7 +48,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts",
+    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts && node scripts/smoke-consumer.ts",
     "lint": "oxlint",
     "typecheck": "tsc -p tsconfig.json",
     "test": "",
