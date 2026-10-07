@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -43,6 +44,13 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
   },
   { agent: "grok", fixture: "grok/conformance/plain", target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session" }
 ];
+
+/** A stand-in `codex` for `/discovery`: it prints a version and reports that nobody is logged in. */
+const FAKE_CODEX = `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "codex-cli 9.9.9"; exit 0; fi
+if [ "$1 $2" = "login status" ]; then echo "Not logged in" >&2; exit 1; fi
+exit 2
+`;
 
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 
@@ -97,8 +105,11 @@ function tarballProblems(files: readonly string[], installed: string): string[] 
   return problems;
 }
 
-/** A consumer module that imports every plain entry, then lists and reads the seeded sessions through Node. */
-function consumerSource(manifest: Manifest, home: string): string {
+/**
+ * A consumer module that imports every plain entry, lists and reads the seeded sessions through Node, and detects
+ * the fake `codex` in `bin`.
+ */
+function consumerSource(manifest: Manifest, home: string, bin: string): string {
   const subpaths = Object.keys(manifest.exports).filter(
     (subpath) => subpath !== "./package.json" && !EFFECT_ENTRIES.has(subpath)
   );
@@ -111,6 +122,7 @@ function consumerSource(manifest: Manifest, home: string): string {
 ${namespaces.join("\n")}
 import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
+import { detectAgents } from "${manifest.name}/discovery";
 import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
 import { loadTranscript, type RequestPayload } from "${manifest.name}/transcript";
 import {
@@ -170,6 +182,15 @@ for (const agent of seeded) {
   assert.deepEqual(decoded, expected, \`\${agent}: scanUsage and loadTranscript disagree\`);
   console.log(\`\${agent}: \${transcript.value.events.length} events, \${decoded.totalTokens} tokens\`);
 }
+
+// Only the fake codex is on PATH; detection runs it for its version and, when asked to, its login status.
+const detection = createNodePlatform({ home: ${JSON.stringify(home)}, env: { PATH: ${JSON.stringify(bin)} } });
+const [codex] = await detectAgents(detection, { agents: ["codex"], authProbe: "commands" });
+assert.ok(codex);
+assert.equal(codex.status, "runnable", \`codex: \${JSON.stringify(codex.problems)}\`);
+assert.equal(codex.version?.number, "9.9.9");
+assert.equal(codex.auth.status, "logged-out");
+console.log(\`discovery: codex \${codex.status} \${codex.version?.output}\`);
 `;
 }
 
@@ -371,7 +392,12 @@ try {
     }
   }
 
-  writeFileSync(join(consumer, "consumer.ts"), consumerSource(manifest, home));
+  const bin = join(work, "bin");
+  mkdirSync(bin);
+  writeFileSync(join(bin, "codex"), FAKE_CODEX);
+  chmodSync(join(bin, "codex"), 0o755);
+
+  writeFileSync(join(consumer, "consumer.ts"), consumerSource(manifest, home, bin));
   typecheck(consumer, ["ES2024"]);
   const output = run(process.execPath, ["consumer.ts"], consumer).trim();
 

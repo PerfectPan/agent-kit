@@ -1,7 +1,7 @@
 {
   "name": "@rivus/agent-kit",
   "version": "0.1.0",
-  "description": "Connect to third-party coding agents: identity, session logs, transcripts and the host platform port.",
+  "description": "Connect to third-party coding agents: identity, installed-agent detection, session logs, transcripts and the host platform port.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,6 +14,10 @@
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
+    },
+    "./discovery": {
+      "types": "./dist/discovery.d.ts",
+      "default": "./dist/discovery.js"
     },
     "./harness/events": {
       "types": "./dist/harness/events.d.ts",
@@ -79,6 +83,7 @@
     "@arethetypeswrong/cli": "0.18.5",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
     "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",

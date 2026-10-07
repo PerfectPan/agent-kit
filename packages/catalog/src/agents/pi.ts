@@ -1,6 +1,6 @@
-import type { CodingAgent } from "../domain/coding-agent/index.js";
+import type { CodingAgentWithHome } from "../domain/coding-agent/index.js";
 
-export const pi: CodingAgent = {
+export const pi: CodingAgentWithHome = {
   id: "pi",
   displayName: "Pi",
   aliases: [],

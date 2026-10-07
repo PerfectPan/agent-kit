@@ -1,0 +1,36 @@
+export {
+  builtinProbeRecipes,
+  classifyInstallation,
+  DETECTION_STATUSES,
+  detectAgents,
+  resolveAuthState,
+  versionFromOutput
+} from "@rivus/agent-kit-discovery/public";
+export type {
+  AuthCommandProbe,
+  AuthObservation,
+  AuthProbe,
+  AuthReading,
+  AuthSource,
+  AuthState,
+  AuthVariable,
+  CommandFailed,
+  CommandOutput,
+  CredentialFileFailed,
+  CredentialFileProbe,
+  DetectAgentsOptions,
+  DetectionStatus,
+  DiscoveryErrorCode,
+  DiscoveryPlatform,
+  Evidence,
+  EvidenceKind,
+  Installation,
+  InstallationKind,
+  ProbePath,
+  ProbeProblem,
+  ProbeRecipe,
+  ProbeRecipes,
+  StatFailed,
+  Version,
+  VersionProbe
+} from "@rivus/agent-kit-discovery/public";

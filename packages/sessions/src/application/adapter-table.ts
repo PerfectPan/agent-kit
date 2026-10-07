@@ -1,12 +1,12 @@
 import {
   type AgentHome,
+  builtinCodingAgents,
   type CodingAgentId,
   type HomeContext,
   homeFromRule,
   type HomeRule,
   isBuiltinCodingAgentId,
-  parseCodingAgentId,
-  resolveHome
+  parseCodingAgentId
 } from "@rivus/agent-kit-catalog";
 
 import { capabilityUnsupported } from "./errors.js";
@@ -30,17 +30,16 @@ export function selectAdapters<Adapter>(
   return [...selected.values()];
 }
 
-/** The home an adapter reads: its own home rule, else catalog's rule for a built-in agent. */
+/** The home an adapter reads: its own home rule, else catalog's rule for a built-in agent that has one. */
 export function adapterHome(
   adapter: { readonly agent: CodingAgentId; readonly home?: HomeRule },
   context: HomeContext,
   kind: string
 ): AgentHome {
-  if (adapter.home) {
-    return homeFromRule(adapter.agent, adapter.home, context);
+  const rule =
+    adapter.home ?? (isBuiltinCodingAgentId(adapter.agent) ? builtinCodingAgents[adapter.agent].home : undefined);
+  if (rule) {
+    return homeFromRule(adapter.agent, rule, context);
   }
-  if (isBuiltinCodingAgentId(adapter.agent)) {
-    return resolveHome(adapter.agent, context);
-  }
-  throw capabilityUnsupported(adapter.agent, `has a ${kind} without a home rule, and catalog does not know it`);
+  throw capabilityUnsupported(adapter.agent, `has a ${kind} without a home rule, and catalog has none for it`);
 }

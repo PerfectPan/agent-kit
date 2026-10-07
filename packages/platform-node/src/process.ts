@@ -19,6 +19,8 @@ import { createIdentify } from "./process-identity.js";
 const KILL_GRACE_MS = 2_000;
 /** Per stream. `run` is for short commands, so more output than this fails the run instead of being truncated. */
 const MAX_RUN_OUTPUT_BYTES = 4 * 1024 * 1024;
+/** Node's own code for the same failure in `execFile`, so callers can tell it from a failure to start. */
+const OUTPUT_LIMIT_CODE = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
 /** How long a `run` grandchild that inherited stdout or stderr may hold them open after the child exits. */
 const STDIO_DRAIN_MS = 1_000;
 /** Larger `setTimeout` delays overflow and fire at once. */
@@ -64,7 +66,9 @@ function run(command: string, args: readonly string[], options: RunOptions, defa
       }
     };
     const overflow = (stream: string) => () => {
-      failure ??= new Error(`${command} wrote more than ${MAX_RUN_OUTPUT_BYTES} bytes to ${stream}`);
+      failure ??= Object.assign(new Error(`${command} wrote more than ${MAX_RUN_OUTPUT_BYTES} bytes to ${stream}`), {
+        code: OUTPUT_LIMIT_CODE
+      });
       stop();
     };
     const stdout = collect(child.stdout, overflow("stdout"));

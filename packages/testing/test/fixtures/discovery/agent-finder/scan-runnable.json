@@ -1,0 +1,525 @@
+{
+  "source": "MoonBit scanner test 'scan derives runnable status with evidence and json nulls' and tests/discover.test.ts",
+  "probe": {
+    "os": "darwin",
+    "arch": "arm64",
+    "home": "/tmp/agent-finder-home",
+    "generatedAt": "2026-05-03T00:00:00+08:00",
+    "commands": {
+      "codex": "/opt/homebrew/bin/codex"
+    },
+    "executablePaths": {
+      "/opt/homebrew/bin/codex": true
+    },
+    "existingPaths": {
+      "/tmp/agent-finder-home/.codex": true,
+      "/tmp/agent-finder-home/.codex/config.toml": true
+    },
+    "versions": {
+      "/opt/homebrew/bin/codex --version": "codex 0.1.0"
+    }
+  },
+  "report": {
+    "schema_version": "0.1",
+    "generated_at": "2026-05-03T00:00:00+08:00",
+    "host": {
+      "os": "darwin",
+      "arch": "arm64"
+    },
+    "agents": [
+      {
+        "id": "opencode",
+        "name": "OpenCode",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.config/opencode"
+        ],
+        "mcp_config_paths": [
+          "~/.config/opencode/opencode.json"
+        ],
+        "warnings": [
+          "Provider metadata is conservative until exact OpenCode install variants are verified."
+        ]
+      },
+      {
+        "id": "openhands",
+        "name": "OpenHands",
+        "type": "app",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.openhands"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "OpenHands may be local, containerized, or remote; discovery is conservative."
+        ]
+      },
+      {
+        "id": "claude-code",
+        "name": "Claude Code",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.claude",
+          "~/.claude.json"
+        ],
+        "mcp_config_paths": [
+          "~/.claude.json",
+          "~/.claude/settings.json"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "cline",
+        "name": "Cline",
+        "type": "extension",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.vscode/extensions"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Cline extension presence is not validated without reading extension metadata."
+        ]
+      },
+      {
+        "id": "codebuddy",
+        "name": "CodeBuddy",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.codebuddy"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "CodeBuddy command and config paths may vary by distribution."
+        ]
+      },
+      {
+        "id": "codex",
+        "name": "Codex",
+        "type": "cli",
+        "status": "runnable",
+        "command": "/opt/homebrew/bin/codex",
+        "app_path": null,
+        "version": "codex 0.1.0",
+        "evidence": [
+          {
+            "kind": "command",
+            "value": "/opt/homebrew/bin/codex",
+            "exists": true,
+            "reason": "command resolved on PATH"
+          },
+          {
+            "kind": "version",
+            "value": "/opt/homebrew/bin/codex --version",
+            "exists": true,
+            "reason": "version probe exited successfully"
+          },
+          {
+            "kind": "config",
+            "value": "/tmp/agent-finder-home/.codex",
+            "exists": true,
+            "reason": "config path exists"
+          },
+          {
+            "kind": "mcp_config",
+            "value": "/tmp/agent-finder-home/.codex/config.toml",
+            "exists": true,
+            "reason": "MCP config path exists"
+          }
+        ],
+        "config_paths": [
+          "~/.codex"
+        ],
+        "mcp_config_paths": [
+          "~/.codex/config.toml"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "command-code",
+        "name": "Command Code",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.command-code"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Command Code provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "kiro-cli",
+        "name": "Kiro CLI",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.kiro"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Kiro CLI provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "cursor",
+        "name": "Cursor",
+        "type": "app",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/Library/Application Support/Cursor/User",
+          "~/.config/Cursor/User",
+          "~/AppData/Roaming/Cursor/User"
+        ],
+        "mcp_config_paths": [
+          "~/.cursor/mcp.json",
+          "~/Library/Application Support/Cursor/User/mcp.json"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "antigravity",
+        "name": "Antigravity",
+        "type": "app",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.antigravity"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Antigravity provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "roo-code",
+        "name": "Roo Code",
+        "type": "extension",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.vscode/extensions"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Roo Code extension presence is not validated without reading extension metadata."
+        ]
+      },
+      {
+        "id": "github-copilot",
+        "name": "GitHub Copilot",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.config/gh"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "GitHub Copilot CLI support is detected conservatively through command metadata."
+        ]
+      },
+      {
+        "id": "amp",
+        "name": "Amp",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.amp"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Amp provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "openclaw",
+        "name": "OpenClaw",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.openclaw"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "OpenClaw provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "neovate",
+        "name": "Neovate",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.neovate"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Neovate provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "pi",
+        "name": "Pi",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.pi"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Pi provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "qoder",
+        "name": "Qoder",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.qoder"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Qoder provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "zencoder",
+        "name": "Zencoder",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.zencoder"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Zencoder provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "kimi-code-cli",
+        "name": "Kimi Code CLI",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.kimi"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Kimi Code CLI provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "gemini-cli",
+        "name": "Gemini CLI",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.gemini"
+        ],
+        "mcp_config_paths": [
+          "~/.gemini/settings.json"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "windsurf",
+        "name": "Windsurf",
+        "type": "app",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/Library/Application Support/Windsurf/User",
+          "~/.config/Windsurf/User",
+          "~/.codeium"
+        ],
+        "mcp_config_paths": [
+          "~/.codeium/windsurf/mcp_config.json",
+          "~/Library/Application Support/Windsurf/User/mcp.json"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "vscode-copilot",
+        "name": "VS Code Copilot",
+        "type": "extension",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/Library/Application Support/Code/User",
+          "~/.config/Code/User",
+          "~/AppData/Roaming/Code/User"
+        ],
+        "mcp_config_paths": [
+          "~/Library/Application Support/Code/User/mcp.json"
+        ],
+        "warnings": [
+          "VS Code Copilot extension presence is not validated without reading extension metadata."
+        ]
+      },
+      {
+        "id": "codex-desktop",
+        "name": "Codex Desktop",
+        "type": "app",
+        "status": "found",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [
+          {
+            "kind": "config",
+            "value": "/tmp/agent-finder-home/.codex",
+            "exists": true,
+            "reason": "config path exists"
+          },
+          {
+            "kind": "mcp_config",
+            "value": "/tmp/agent-finder-home/.codex/config.toml",
+            "exists": true,
+            "reason": "MCP config path exists"
+          }
+        ],
+        "config_paths": [
+          "~/.codex"
+        ],
+        "mcp_config_paths": [
+          "~/.codex/config.toml"
+        ],
+        "warnings": []
+      },
+      {
+        "id": "aider",
+        "name": "aider",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.aider.conf.yml",
+          "~/.config/aider"
+        ],
+        "mcp_config_paths": [],
+        "warnings": []
+      },
+      {
+        "id": "hermes",
+        "name": "Hermes",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.hermes"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Hermes provider metadata needs validation."
+        ]
+      },
+      {
+        "id": "trae",
+        "name": "Trae",
+        "type": "cli",
+        "status": "missing",
+        "command": null,
+        "app_path": null,
+        "version": null,
+        "evidence": [],
+        "config_paths": [
+          "~/.trae"
+        ],
+        "mcp_config_paths": [],
+        "warnings": [
+          "Trae provider metadata needs validation."
+        ]
+      }
+    ]
+  }
+}
