@@ -208,9 +208,10 @@ Commands run without a shell and with a time limit; a check that fails is report
 Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI, Neovate, OpenHands and Qoder.
 
 [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), released with the same version, adds fenced
-leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform.
-Harness injection, ACP and lanes come in later releases; see
-[plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the phases.
+leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform,
+and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency cap and a bounded queue. Harness
+injection and ACP come in later releases; see [plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the
+phases.
 
 ## Repository
 

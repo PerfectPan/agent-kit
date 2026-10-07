@@ -68,7 +68,7 @@ Use the lifecycle as the criterion. A concept is an aggregate when it keeps one 
 | Ledger (harness) | Revisions strictly increase; every entry has an owner; modifications happen only under the LedgerLock; an unknown version is never cleared |
 | AcpSession (acp) | A state machine (starting, ready, turn in progress or awaiting permission, cancelling, closed) with one turn at a time and nothing allowed after close |
 | Lease (collab) | One holder at a time; the generation never decreases, including across release and takeover |
-| Lane (collab) | An in-memory state machine (idle, running, pending) with at most one activation per key |
+| Lane (collab) | An in-memory state machine (idle, queued, running, with a pending activation while queued or woken again while running) with at most one activation per key |
 
 Read-only contexts have no aggregates. sessions, discovery, cost and catalog only project data that agents wrote; their models are value objects, policies and domain services such as `foldTranscript`. Do not invent an aggregate to make a read-only context look like the others.
 

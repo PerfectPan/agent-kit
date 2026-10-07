@@ -103,7 +103,7 @@ export const boundaries: BoundaryRules = {
     [COLLAB]: {
       dependsOn: [SHELL],
       external: ["zod/mini"],
-      entries: ["lease", "process-lock"],
+      entries: ["lanes", "lease", "process-lock"],
       publicImports: {
         [`${SHELL}/catalog`]: CATALOG,
         [`${SHELL}/platform`]: PLATFORM,

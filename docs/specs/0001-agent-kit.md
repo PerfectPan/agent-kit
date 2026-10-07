@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact` and `@rivus/agent-kit-collab`'s `/lease`, `/process-lock` and `/lanes` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -20,6 +20,7 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 | How to drive an agent | `/acp` |
 | Hiding home paths and secrets in what an application shows or exports | `/redact` |
 | Mutual exclusion between agent processes | `@rivus/agent-kit-collab/lease`, `@rivus/agent-kit-collab/process-lock` |
+| Scheduling work per key under a concurrency cap | `@rivus/agent-kit-collab/lanes` |
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
@@ -27,7 +28,9 @@ Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Cod
 
 Included in P5: `/redact` in `@rivus/agent-kit`, and the second published package `@rivus/agent-kit-collab` with `/lease` and `/process-lock`, released in lockstep with `@rivus/agent-kit` (one version).
 
-Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included in P6: collab's `/lanes`.
+
+Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/acp` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -40,7 +43,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
-- Only Effect entries (`/platform/effect`, `/node/effect`, collab's `/lease`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
+- Only Effect entries (`/platform/effect`, `/node/effect`, collab's `/lease` and `/lanes`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
 - `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
@@ -159,6 +162,15 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - `runFenced(work)` waits for the store's fence for the key (failing with `LeaseLost` if the lease is lost meanwhile), re-reads the record, and fails with `FenceRejected` unless this acquisition still holds that generation; otherwise it runs `work(token)`, interrupting it and failing with `LeaseLost` when the lease is lost. The fence is released when `work`'s fiber has ended. An interrupted fiber ends at once while a Promise it started keeps running, so a write that cannot be cancelled must sit in `Effect.uninterruptible` (or settle only after the AbortSignal of `Effect.tryPromise` has stopped it) to keep a successor's fenced work from starting before it settles; a resource that can compare atomically also checks the token with `checkFence`. Pure rules for resources and hosts: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence` (refuses a smaller generation than the highest seen), `holderLiveness`.
 - Local directories only (not NFS), on darwin and linux, with the process-table limits of `/process-lock`.
 
+### `@rivus/agent-kit-collab/lanes` (Effect)
+
+- `createLanes({ maxConcurrent, maxQueued?, turnTimeoutMs?, activate, onExit? })` returns, in the caller's Scope, lanes with `wake(key)`, `cancel(key)`, `status` and `close`, or fails with `LanesConfigInvalid` unless `maxConcurrent` is a positive integer, `maxQueued` a non-negative integer and `turnTimeoutMs` a positive duration. It needs no service of its own; `activate(key)` and `onExit` may require services, which the lanes take from the context `createLanes` ran in. Nothing is persisted.
+- A lane (one key) is idle, queued, or running one activation; at most one activation per key runs at a time, and at most `maxConcurrent` run in total. A wake that arrives before an activation starts is served by it: a queued lane stays queued, and a running lane owes exactly one more activation however often it is woken (`pending`).
+- `wake(key)` never waits for an activation. An idle lane starts when a slot is free and no lane waits, otherwise it joins the end of the queue; when `maxQueued` lanes already wait, `wake` fails with `LaneQueueFull` and nothing changes. It resolves to `started`, `queued` or `coalesced`, and fails with `LanesClosed` after `close`. Without `maxQueued`, the queue holds at most one entry per key.
+- A slot that frees goes to the lane that has waited longest. A running lane that owes an activation joins the end of the queue when its activation ends, so lanes queued meanwhile go first.
+- Each activation runs in a Scope of its own, raced against its interruption by `cancel`, `close` or the turn timeout (`turnTimeoutMs`, measured from the start of the activation). The slot passes on only after the activation's Scope has closed and `onExit` has run with `ActivationSucceeded`, `ActivationFailed` (failure, defect or self-interruption, with the cause) or `ActivationInterrupted` (`cancel`, `close` or `timeout`). An activation that succeeded or failed by itself keeps that exit when a cancel, close or timeout comes while its Scope closes, with what the cleanup added but without that interruption; `ActivationInterrupted` names whichever of cancel, close and the timeout came first and means the lanes cut it short, or stopped it before it started, in which case `activate` is never called. A failed activation does not stop the lane, and a defect in `onExit` is logged as a warning.
+- `cancel(key)` drops the key's place in the queue or the activation it owes, interrupts its running activation and returns once that activation has ended; later wakes are served as usual. `close` (also run when the creating Scope closes) refuses later wakes, drops the queue and every owed activation, interrupts the running activations and returns once all have ended; it is idempotent. `status` reports the number running and queued, whether the lanes are closed, and the snapshot (`key`, `state`, `pending`) of every lane that is not idle: the running ones, then the queued ones in queue order.
+
 ### Planned entries
 
 These entries are not part of 0.1.0. The phase in brackets is the phase in plan 6.3 that ships them.
@@ -185,10 +197,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - `connectAgent` starts the agent, completes the handshake and probes login; the connection belongs to the caller's Scope. The connection offers `newSession`, `loadSession`, `prompt` (an event stream), `cancel` and `close`.
 - A session runs at most one turn at a time. Permission requests go to the caller's callback and are denied by default. When a cancel does not settle within its deadline (send cancel plus wait for the turn to end), the session binding is invalidated and the process closed. A closed session refuses every operation.
 - The event stream yields deltas named after AI SDK stream events (`text-delta`, `reasoning-delta`, `tool-input-*`, `finish`) and completed `TranscriptEvent`s. The child process receives only the environment variables given explicitly.
-
-#### `@rivus/agent-kit-collab` `/lanes` (P6, Effect)
-
-- `createLanes({ maxConcurrent, maxQueued?, activate })` returns `wake`, `cancel`, `status` and `close`. At most one activation runs per key, repeated wakes for a key coalesce, total concurrency stays within `maxConcurrent`, and the queue is bounded.
 
 ## Domain Invariants
 
@@ -441,11 +449,65 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When a second `prompt` is sent and the agent asks for permission
 - Then the second prompt is refused and the permission request is denied
 
-### S40 (planned, P6): Lanes coalesce wakes and bound the queue
+### S40: Lanes coalesce wakes and bound the queue
 
-- Given `createLanes({ maxConcurrent: 1, maxQueued: 1, activate })`
-- When one key is woken three times while its activation runs, and two other keys are woken
-- Then the first key has one activation running and at most one pending, at most one activation runs in total, and the number of queued activations never exceeds `maxQueued`
+- Given `createLanes({ maxConcurrent: 1, maxQueued: 1, activate })` with key `a` running
+- When `a` is woken three more times, `b` twice and `c` once, and then each activation finishes
+- Then the wakes of `a` coalesce into one pending activation, `b` is queued once, `c` fails with `LaneQueueFull`, at most one activation runs at any time, and the activations run in the order `a`, `b`, `a`
+
+### S100: Lanes share the capacity in wake order
+
+- Given `createLanes({ maxConcurrent: 2, activate })`
+- When `a`, `a`, `b` and `c` are woken, then `a`'s activation ends, then `b`'s
+- Then `a` and `b` start, `c` waits, `c` takes the slot `a` frees, and `a`'s pending activation starts only when `b` ends
+
+### S101: An activation that outlives the turn timeout is interrupted
+
+- Given `createLanes({ maxConcurrent: 1, turnTimeoutMs: 1000, activate, onExit })` with `a` running and `b` queued, on a test clock
+- When 999 ms pass, then 1 ms more
+- Then nothing changes at 999 ms; at 1000 ms `a` is interrupted, its Scope closes and `onExit` reports `ActivationInterrupted` with `timeout` before `b` starts, and `b`'s timeout counts from its own start
+
+### S102: Cancel drops what a key owes and waits for its activation
+
+- Given one slot with `a` running and owing an activation, and `b` and `c` queued
+- When `b` is cancelled, then `a`
+- Then `b` leaves the queue; `cancel(a)` returns after `a`'s Scope has closed and `onExit` has reported `cancel`, `a` does not run again, `c` holds the slot; cancelling an idle key returns at once, and a later wake of `a` is served
+
+### S103: Closing the lanes interrupts what runs and refuses what comes
+
+- Given lanes with `a` and `b` running, `c` queued and `a` owing an activation
+- When `close` runs, or the Scope that created the lanes closes
+- Then `a` and `b` are interrupted and reported with `close`, `c` never starts, `status` shows nothing running or queued, later wakes fail with `LanesClosed`, and a second `close` returns at once
+
+### S104: A failed activation is reported and the lane goes on
+
+- Given an activation that fails, then one that dies, then one that succeeds; an `activate` that throws instead of returning an Effect; and an `onExit` that blocks for one key and dies for another
+- When each is woken, and the blocked key is cancelled while its `onExit` waits
+- Then `onExit` reports `ActivationFailed` with the failure and with the defect, then `ActivationSucceeded`, each after the activation's Scope closed; the throwing `activate` is reported as a defect; the queued key starts and `cancel` returns only after the blocked `onExit` has finished; and a dying `onExit` is logged as a warning while the next wake still starts
+
+### S105: Lane limits out of range are refused
+
+- Given `maxConcurrent: 0`, `maxQueued: -1` or `turnTimeoutMs: 0`
+- When `createLanes` runs
+- Then it fails with `LanesConfigInvalid`
+
+### S106: An activation that ended by itself keeps its exit
+
+- Given an activation whose body succeeds, or fails with `session lost`, after 90 ms and whose Scope takes 30 ms more to close, under a 100 ms turn timeout, or with a cancel or `close` arriving while the Scope closes
+- When the timeout, the cancel or the close comes during that cleanup
+- Then `onExit` reports `ActivationSucceeded`, or `ActivationFailed` with `session lost`, not `ActivationInterrupted`
+
+### S107: A key stopped before its activation starts never calls `activate`
+
+- Given a key whose activation was recorded but whose fiber has not run yet: woken and then cancelled or closed at once, or given the slot by a cancel that the next statement follows with `close`
+- When its fiber runs
+- Then `activate` is not called and `onExit` reports `ActivationInterrupted` with `cancel` or `close`
+
+### S108: The first stop names the reason
+
+- Given activations that never end by themselves, whose Scope takes 100 ms to close, under a 50 ms turn timeout
+- When one is cancelled at 10 ms, another's lanes close at 45 ms, and a third is cancelled at 60 ms, after its timeout
+- Then they are reported as interrupted by `cancel`, `close` and `timeout`, although every cleanup outlasts the deadline
 
 ### S41: An unknown payload reads as `unknown` without throwing
 
@@ -613,5 +675,5 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. Planned scenarios S26–S28, S32–S35, S39 and S40 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. S40 and S100–S108 by the Lane domain tests (`packages/agent-kit-collab/src/lanes/domain/lane/aggregate/lane.test.ts`) and the lanes tests on Effect's test clock (`test/lanes.test.ts`), which also run three fibers of random wakes, cancels, completions, cleanups and clock moves, with turn timeouts and a `close` in the middle, and check after each step that the cap, the queue bound and one activation per key hold and that nothing calls `activate` after `close`; the consumer smoke test runs one lanes program through the installed tarballs. Planned scenarios S26–S28, S32–S35 and S39 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell and on collab; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

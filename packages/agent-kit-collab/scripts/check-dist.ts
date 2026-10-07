@@ -9,7 +9,7 @@ import { parseSync, Visitor } from "oxc-parser";
 // Checks the built entries the way the shell's check-dist.ts does, with the rules of this package: it bundles only
 // its own src/, reaches @rivus/agent-kit through that package's public entries (a peer, so one copy serves the
 // process), imports no Node built-in, and only its Effect entries import the optional effect peer.
-const EFFECT_ENTRIES = new Set(["./lease"]);
+const EFFECT_ENTRIES = new Set(["./lanes", "./lease"]);
 const EFFECT = /^(?:effect|@effect\/[^/]+)(?:\/|$)/;
 const KIT = "@rivus/agent-kit";
 

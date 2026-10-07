@@ -246,22 +246,22 @@ A single-instance lock for a path, released by the kernel when the process exits
 ## lanes (collab)
 
 **Lane (lanes)**:
-A scheduling unit identified by a key; work for one key runs serially.
+A scheduling unit identified by a key; work for one key runs serially. A Lane is idle, queued (waiting for Capacity) or running one Activation.
 
 **Activation**:
-One run of the work for a Lane.
+One run of the work for a Lane, in a Scope of its own.
 
 **Wake**:
-A request to run a Lane. Wakes that arrive while the Lane is active coalesce into one pending activation.
+A request to run a Lane. Wakes that arrive before an Activation starts coalesce into it: a queued Lane stays queued, and a running Lane owes one pending Activation however often it is woken.
 
 **Capacity**:
 The maximum number of activations running at once across all Lanes.
 
 **QueueBound**:
-The maximum number of activations waiting for Capacity.
+The maximum number of Lanes waiting for Capacity. A Lane waits at most once, and a running Lane's pending Activation is not counted until it waits.
 
 **TurnTimeout**:
-The longest one Activation may run.
+The longest one Activation may run, from its start; then it is interrupted.
 
 ## Technical terms
 

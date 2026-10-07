@@ -307,7 +307,14 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
       yield* takeOver(identity(platform));
       let ran = false;
       const exit = yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true))));
-      expect(failureOf(exit)).toEqual({ _tag: "FenceRejected", key: KEY, generation: 1, current: 2 });
+      // The live heartbeat may notice the takeover before runFenced checks the fence (slow CI runners), so either
+      // refusal is correct; what matters is that the old holder's work never runs.
+      const failure = failureOf(exit) as { readonly _tag?: string } | undefined;
+      if (failure?._tag === "FenceRejected") {
+        expect(failure).toEqual({ _tag: "FenceRejected", key: KEY, generation: 1, current: 2 });
+      } else {
+        expect(failure).toMatchObject({ _tag: "LeaseLost" });
+      }
       expect(ran).toBe(false);
     }).pipe(Effect.scoped, Effect.provide(layer));
   });
