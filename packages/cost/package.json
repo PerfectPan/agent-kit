@@ -1,15 +1,14 @@
 {
-  "name": "@rivus/agent-kit-harness",
+  "name": "@rivus/agent-kit-cost",
   "version": "0.0.0",
   "private": true,
-  "description": "Hook dialects and lifecycle events for each coding agent. Bundled into @rivus/agent-kit.",
+  "description": "Pricing formulas, price lookup and usage summaries over injected price tables. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./public": "./src/public.ts",
-    "./public/events": "./src/events.ts"
+    "./public": "./src/public.ts"
   },
   "scripts": {
     "build": "",
@@ -20,7 +19,8 @@
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
   },
   "dependencies": {
-    "@rivus/agent-kit-catalog": "workspace:*"
+    "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-sessions": "workspace:*"
   },
   "devDependencies": {
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",

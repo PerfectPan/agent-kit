@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect` and `/discovery` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery` and `/cost` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -15,14 +15,15 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 | Identity and home directories | `/catalog` |
 | What an agent stores and how to read it | `/sessions`, `/transcript`, `/transcript/usage` |
 | What can be extended and how to install it | `/harness`, `/harness/events` |
+| What recorded usage costs, over a caller's price table | `/cost` |
 | What is installed on this machine | `/discovery` |
 | How to drive an agent | `/acp` |
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
-Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`.
+Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in.
 
-Included as planned behavior: `/transcript/usage` and `/cost` (P2), `/harness` (P3), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/redact` and `@rivus/agent-kit-collab`'s `/lease` and `/process-lock` (P5), `/acp` and collab's `/lanes` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -36,7 +37,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
 - Only Effect entries (`/platform/effect`, `/node/effect`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
-- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript`, `/discovery` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
+- `/catalog`, `/platform`, `/platform/effect`, `/sessions`, `/transcript`, `/discovery`, `/cost` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -89,6 +90,16 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Usage numbers exposed by `/transcript` follow the `Usage` interface definition in plan 3.11: input includes cached tokens, output includes reasoning, and a missing value stays missing instead of becoming 0.
 - Turn trees, timelines, context reconstruction, truncation of long text, prompt deduplication and source file numbering are not part of `/transcript`.
 
+### `/cost`
+
+- Exports `createPricing(table, { overrides, fallback })`, `costOf`, `calendarWindow`, `summarize` and `fromLiteLLM`, with the types `Price`, `PricingTable`, `PriceOverrides`, `PricingOptions`, `Pricing`, `Cost`, `CalendarWindow`, `CalendarWindowOptions`, `SummarizeOptions`, `UsageSummary`, `UsageTotals`, `UsageGroup`, `UsageGroupKey` and `CostErrorCode`. The kit ships no price data; the caller passes the table. The entry is pure computation and, like `/harness/events`, its built files import nothing.
+- A `Price` gives USD per million tokens for input without cache, output, cache reads, cache writes and, optionally, one-hour cache writes. `createPricing` matches keys regardless of case: a model takes the entry of a matching override key when there is one, else of a table or fallback key (the table's entry wins for the same key); among each set of keys, its own id wins, then the longest key its id contains. A partial override takes its missing prices from the table's, else the fallback's, entry with the same key. A model that no key matches, or that only an incomplete override matches, has no price.
+- `costOf(record, pricing)` applies three rules in order: a cost the record carries (`costUsd`, such as an amount the agent logged) wins; otherwise each count is charged at the model's price: `noCacheInputTokens` at the input price, cache reads at the cache read price, cache writes other than one-hour ones at the cache write price, one-hour cache writes at their own price or else the cache write price, and output at the output price; that amount is multiplied by `pricingMultiplier`. An amount the record carries is not multiplied. A record split by model (`usageByModel`) is charged per model, each from its own cost or at its own price, and its aggregate is not charged again: when the agent logged an amount for the record and for every model, the models' amounts are used. The record stays whole only when the agent logged an amount for it that the split does not divide among every model; an amount from a price table on a split record (`{ ...record, ...costOf(record, pricing) }`) does not keep it whole. `summarize` charges records by the same rules. A missing count costs nothing; a record without a model, or with a model that has no price, has no cost (`undefined`, never 0). A `Cost` is `{ costUsd, costSource }`, the record's own field names.
+- `calendarWindow(days, { now, timeZone })` returns `{ since, until }`: from the midnight that started the day `days − 1` days before the day of `now`, in the given IANA time zone or the host's, to `now`. The start is a midnight also when a daylight saving change falls inside the window, the earlier midnight of a day whose clocks turned back over midnight, and the first moment of a day whose midnight the clocks skipped. A `days` that is not a positive integer, a `now` that is not finite and an unknown time zone throw `AgentKitError` with code `invalid-window`.
+- `summarize(records, pricing, { window, groupBy })` totals the records with `since ≤ timestamp < until`: tokens in the `Usage` convention, the number of records, and the sum of the costs `costOf`'s rules know, per group (by agent and model unless `groupBy` says otherwise; groups in the order of their first record) and overall. A group's cost is absent when none of its records had a known cost. The total adds up the groups, as presence adds up its sources, and counts each record once. A record split by model adds its split, so its tokens count once and each model's tokens land in that model's group.
+- `fromLiteLLM(json)` turns LiteLLM's model price list (USD per token) into a `PricingTable` under LiteLLM's keys. It reads `input_cost_per_token` and `output_cost_per_token` (both required), `cache_creation_input_token_cost`, `cache_creation_input_token_cost_above_1hr` and `cache_read_input_token_cost`; a missing cache price is the input price. Tiered, batch, flex and priority prices are not read.
+- presence keeps four buckets per record. From a `Usage` they are `noCacheInputTokens(usage)`, `cacheReadTokens`, `cacheWriteTokens` (with `cacheWrite1hTokens` as its one-hour part) and `outputTokens`, and presence's token count is `inputTokens + outputTokens`. On these buckets `costOf` gives presence's dollars exactly.
+
 ### `/harness/events`
 
 - Exports `readHookEvent(agent, payload, env, { adapters }?)`, `builtinHookDialects`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal` and `INITIAL_LIFECYCLE_STATE`, with the types `LifecycleEvent` (and its `LifecyclePhase`, `LifecycleScope`, `LifecycleOutcome`, `LifecycleBlocker`, `TerminalHost`, `TerminalIdentity`, `LifecycleMapping`), `LifecycleState` (with `BlockSource`), `LifecycleStatus`, `LifecycleClock`, `HeartbeatSignal`, `ReadHookEventOptions`, and the dialect types `HookDialect`, `HookDialects`, `HookEventSpec`, `HookOutput`, `HookTimeout`, `ForeignHooks`, `PayloadFields`, `FieldSource`, `FieldPath` and `LifecycleSwitch`.
@@ -131,11 +142,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - A `UsageRecord` has `granularity` `request`, `turn` or `session`. Per-request data is `request` and carries `model`. An aggregate stays an aggregate (`turn` or `session`) with `modelCalls`; it is never split into invented per-request records. `usageByModel` splits the record's usage and cost by model, and totals take either the record or its split, never both.
 - `noCacheInputTokens`, `toAiSdkUsage` and `toOtelAttributes` convert usage for pricing, AI SDK and OTel (`cacheWriteKey` defaults to `cache_creation`).
 - Per-agent mapping follows plan 3.11: Claude Code input is input + cache read + cache creation; Codex prefers `last_token_usage` and otherwise takes differences of cumulative values, skipping the replay at the start of a forked session; Grok's turn aggregate is a `turn` record.
-
-#### `/cost` (P2)
-
-- `createPricing(table, { overrides })`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`. The kit ships no price data; the caller injects the table.
-- Pricing applies three rules in order: a cost reported by the record (`costSource: 'agent'`) wins; otherwise cost is computed per bucket (non-cached input, cache read, 5-minute cache write, 1-hour cache write falling back to the 5-minute price, output); the result is multiplied by `pricingMultiplier`.
 
 #### `/harness` (P3, Effect)
 
@@ -350,11 +356,11 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `decodeUsage` decodes it
 - Then one record with `granularity: 'turn'`, `modelCalls: 3` and `usageByModel` is produced, and a summary counts its tokens once
 
-### S29 (planned, P2): Pricing rules apply in order
+### S29: Pricing rules apply in order
 
-- Given one record with an agent-reported cost and one without, and a pricing multiplier of 2
+- Given one record with an agent-reported cost and one without, both with a pricing multiplier of 2
 - When `costOf` prices them
-- Then the first uses the reported cost, the second uses the bucket formula, and both are multiplied by 2
+- Then the first costs the reported amount as it is, and the second costs the bucket formula multiplied by 2
 
 ### S30: Hook events name the real source
 
@@ -500,15 +506,45 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `detectAgents` runs without options, and then with `authProbe: 'commands'`
 - Then the first run reports `logged-in` with method `chatgpt` from the file without running the status command, and without any credential value in the result; the second runs it and reports `logged-out`
 
+### S70: A model finds its price by its id, then the longest key it contains
+
+- Given a table with `claude-opus-4-8` and a fallback with the alias `opus`
+- When `createPricing` looks up `claude-opus-4-8-20260101`, `CLAUDE-OPUS-4-8`, `claude-3-opus` and `mystery`, and then `claude-opus-4-8` with the override `{ opus: { input: 99 } }`
+- Then the first two take `claude-opus-4-8`, the third takes `opus`, `mystery` has no price, and the override wins with its other prices taken from `opus`
+
+### S71: A turn split by model is priced per model
+
+- Given a turn record whose `usageByModel` splits it between two priced models, and the same turn with one unpriced model added
+- When `costOf` prices them
+- Then the first costs each model's share at that model's price, without charging the aggregate again, and the second has no cost
+
+### S72: A calendar window starts at a midnight across a daylight saving change
+
+- Given `now` on March 10, 2026 at 12:00 UTC and the time zone `America/New_York`, which moved to daylight saving time on March 8
+- When `calendarWindow(7, { now, timeZone })` is called
+- Then `since` is midnight of March 4 in New York (05:00 UTC), not six times 24 hours before the midnight of March 10, and `until` is `now`
+
+### S73: A summary's cost covers only what is priced
+
+- Given a priced record, a record of an unpriced model and a record without a model
+- When `summarize` totals them by agent and model
+- Then the total counts the tokens of all three and the cost of the first, and the groups of the other two have no cost
+
+### S74: LiteLLM's per-token prices become a pricing table
+
+- Given LiteLLM entries with input, output, cache creation, one-hour cache creation and cache read prices per token, one without cache prices and one without an output price
+- When `fromLiteLLM` converts them
+- Then the prices are per million tokens, missing cache prices are the input price, and the entry without an output price is left out
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
 - Persisted data: 0.1.0 writes nothing and opens agent logs read-only. Planned harness state (the ledger and its lock files) lives under `$XDG_STATE_HOME`, outside dotfiles source directories.
 - Configuration: agent home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) are read from the `env` passed to the kit, never from the global process environment directly.
 - Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Planned lock-based features support local directories only, not NFS.
-- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, which uses no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries.
+- Dependencies: `zod/mini` is the only validation library, except in `/harness/events` and `/cost`, which use no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries.
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. Planned scenarios S26–S29, S32–S35 and S37–S40 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. Planned scenarios S26–S28, S32–S35 and S37–S40 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

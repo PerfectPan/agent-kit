@@ -13,6 +13,8 @@ export type Layer = "domain" | "agents" | "protocols" | "application" | "adapter
 export interface PackageRule {
   /** Workspace packages this package may import, always by bare name, which resolves to the target's `index.ts`. */
   readonly dependsOn: readonly string[];
+  /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
+  readonly typesOnly?: readonly string[];
   /**
    * Exact npm import specifiers this package may use outside `domain/`, so that a subpath such as `zod` versus
    * `zod/mini` is a reviewed choice. Effect is governed by `effect` instead.
@@ -59,6 +61,7 @@ const CATALOG = "@rivus/agent-kit-catalog";
 const SESSIONS = "@rivus/agent-kit-sessions";
 const DISCOVERY = "@rivus/agent-kit-discovery";
 const HARNESS = "@rivus/agent-kit-harness";
+const COST = "@rivus/agent-kit-cost";
 
 export const boundaries: BoundaryRules = {
   packages: {
@@ -71,9 +74,12 @@ export const boundaries: BoundaryRules = {
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
     // The hook path (`src/events.ts`) must stay free of npm packages; check-dist enforces it on the built entry.
     [HARNESS]: { dependsOn: [CATALOG, PLATFORM], external: [] },
+    // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
+    // the built `/cost` entry free of imports.
+    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: [] },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
-      dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS],
+      dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       external: ["es-toolkit"]
     }
   },

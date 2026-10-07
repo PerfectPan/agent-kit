@@ -9,6 +9,7 @@ const nodeOnly = {
 // copy of effect would exceed their budgets.
 export default [
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
+  { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "2 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "4.8 kB" },
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "3 kB", ...nodeOnly },

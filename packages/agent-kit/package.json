@@ -15,6 +15,10 @@
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
     },
+    "./cost": {
+      "types": "./dist/cost.d.ts",
+      "default": "./dist/cost.js"
+    },
     "./discovery": {
       "types": "./dist/discovery.d.ts",
       "default": "./dist/discovery.js"
@@ -83,6 +87,7 @@
     "@arethetypeswrong/cli": "0.18.5",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
     "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-cost": "workspace:*",
     "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",

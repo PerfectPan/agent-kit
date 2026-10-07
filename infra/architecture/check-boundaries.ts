@@ -30,6 +30,7 @@ export type RuleId =
   | "entry-file"
   | "source-file"
   | "package-dependency"
+  | "types-only"
   | "deep-import"
   | "relative-escape"
   | "layer"
@@ -246,15 +247,21 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     }
     const mode = layerRule?.workspace ?? "any";
     const allowed = mode === "any" || name === rules.sharedKernel || (mode === "kernel-and-types" && ref.typeOnly);
-    return allowed
-      ? undefined
-      : {
-          rule: "layer",
-          text:
-            mode === "kernel"
-              ? `${layer}/ may only import the shared kernel ${rules.sharedKernel}`
-              : `${layer}/ may only use import type / export type from ${name}`
-        };
+    if (!allowed) {
+      return {
+        rule: "layer",
+        text:
+          mode === "kernel"
+            ? `${layer}/ may only import the shared kernel ${rules.sharedKernel}`
+            : `${layer}/ may only use import type / export type from ${name}`
+      };
+    }
+    return rule.typesOnly?.includes(name) === true && !ref.typeOnly
+      ? {
+          rule: "types-only",
+          text: `${pkg.name} may only use import type / export type from ${name} (see ${MANIFEST})`
+        }
+      : undefined;
   }
 
   if (layerRule !== undefined && !layerRule.external) {

@@ -103,22 +103,22 @@ A decode of every UsageSource of the chosen agents that continues from the previ
 ## cost
 
 **PricingTable**:
-Prices per model, injected by the caller; the kit ships no price data.
+Prices per model, injected by the caller; the kit ships no price data. A key is a model id or a part of model ids, such as a family alias; a model takes its own id, else the longest key it contains.
 
 **Price**:
-The per-token prices of one model for input, cache read, cache write (5-minute and 1-hour) and output.
+The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output.
 
 **Cost**:
-An amount in USD computed for a UsageRecord or a summary.
+An amount in USD for a UsageRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
 
 **CostSource**:
 Where a cost comes from: `agent` (reported by the agent itself) or `pricing-table` (computed by the kit).
 
 **CalendarWindow**:
-A calendar period, such as a day or a week, over which usage is summarized.
+The last N calendar days up to now, from a midnight in a time zone, over which usage is summarized: 1 is today, 7 is today and the six days before.
 
 **UsageSummary**:
-Usage and cost totals over a CalendarWindow, grouped by model.
+Usage and cost totals over a CalendarWindow, overall and grouped by agent, model or both.
 
 ## harness
 

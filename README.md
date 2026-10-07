@@ -21,6 +21,7 @@ browsers.
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
 | `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
+| `@rivus/agent-kit/cost`           | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                           | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
 | `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
@@ -130,6 +131,38 @@ passed back as `from`, continues where it stopped; memory does not grow with the
 requests that may still get records where the file ends stay in the cursor. After `SourceChanged` (the file was
 rewritten) the cursor is `undefined`, so the next decode reads the file again. opencode keeps its messages in SQLite,
 which needs `platform.sqlite`; without it the decode yields `SqliteUnavailable`.
+
+### Cost
+
+`/cost` prices usage records with a table you pass in, in USD per million tokens; the kit ships no prices. It is pure
+computation and imports nothing.
+
+```ts
+import { calendarWindow, createPricing, summarize } from "@rivus/agent-kit/cost";
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
+
+const pricing = createPricing(
+  { "claude-opus-4-8": { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25, cacheWrite1h: 10 } },
+  { fallback: { opus: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 } } }
+);
+const week = calendarWindow(7, { now: Date.now() }); // today and the six days before, from local midnight
+const records: UsageRecord[] = [];
+for await (const item of scanUsage(createNodePlatform(), week)) {
+  if (isUsageRecord(item)) {
+    records.push(item);
+  }
+}
+const { total, groups } = summarize(records, pricing, { window: week, groupBy: ["agent"] });
+```
+
+`costOf(record, pricing)` is the cost of one record: the amount the agent logged when there is one (Pi, opencode,
+Grok), otherwise each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes,
+output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model takes its own id's entry, else
+the longest key its id contains, regardless of case; `overrides` replace a key's prices, also in part, and `fallback`
+holds entries such as family aliases. A model without a price has no cost (`undefined`, not 0), and a summary's
+`costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
+`fromLiteLLM(json)` turns LiteLLM's model price list into a table.
 
 ## Errors
 
