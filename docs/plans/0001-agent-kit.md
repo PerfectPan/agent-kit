@@ -2,7 +2,7 @@
 
 agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each implement their own code for working with third-party coding agents. This plan moves that code into two npm packages: `@rivus/agent-kit` (connect to external coding agents) and `@rivus/agent-kit-collab` (agent collaboration primitives). The Effect-based host application that runs agents stays independent.
 
-- Status: accepted (all decisions confirmed, see section 7); P0 and P1 implemented, 0.1.0 ready to release (6.3); the kit side of P5 implemented
+- Status: accepted (all decisions confirmed, see section 7); P0 and P1 implemented, 0.1.0 ready to release (6.3); the kit side of P5 implemented; collab's `/lanes` of P6 implemented
 - Owner: PerfectPan
 - Reviewer: codex (review rounds in [A.5](#a5-review-record))
 - Last updated: 2026-10-07
@@ -216,7 +216,7 @@ through the public interfaces (conformist)
 | Aspect | Content |
 | --- | --- |
 | Ubiquitous language | Lane (per key), Activation, Wake (coalesced wake-up), Capacity, QueueBound, TurnTimeout |
-| Model | Aggregate Lane (in-memory state machine: idle / running / pending). Scheduling invariants: at most one activation per key, concurrency within the limit, a bounded queue; no persistence |
+| Model | Aggregate Lane (in-memory state machine: idle / queued / running, where a queued lane and a running lane woken again have a pending activation). Scheduling invariants: at most one activation per key, concurrency within the limit, a bounded queue; no persistence |
 | Use cases | `createLanes` → `wake`, `cancel`, `status`, `close` |
 | Ports and anti-corruption layer | Clock |
 | Exposure and relationships | Used by room-web and the host application |
@@ -396,9 +396,10 @@ agent-kit-collab/src/
     factories/        create-lease.ts, restore-lease.ts
     errors/           lease-held.ts, lease-lost.ts, fence-rejected.ts
   lanes/domain/lane/
-    aggregate/        lane.ts
-    value-objects/    capacity.ts, queue-bound.ts
-    policies/         coalescing-wake.ts, admission.ts
+    aggregate/        lane.ts (coalescing is the Lane's own wake transition)
+    value-objects/    lane-limits.ts (Capacity, QueueBound, TurnTimeout), lane-snapshot.ts
+    policies/         admission.ts
+    errors/           lane-queue-full.ts, lanes-config-invalid.ts
 ```
 
 Rules (checked by the architecture tests):
@@ -443,7 +444,7 @@ Entries of `@rivus/agent-kit-collab`:
 | --- | --- | --- |
 | `@rivus/agent-kit-collab/lease` | Effect: `createLeaseManager`, `sqliteLeaseStore`, `fileLeaseStore`, `memoryLeaseStore`; pure rules `isFresh` / `canAcquire` / `nextFencingToken` | sqlite or fs, `process.identify`, clock |
 | `/process-lock` | `acquireProcessLock(path)`: a single-instance lock, released when the process exits | sqlite (falls back to fs) |
-| `/lanes` | Effect: `createLanes({ maxConcurrent, maxQueued?, activate })` → `wake`, `cancel`, `status`, `close` | clock |
+| `/lanes` | Effect: `createLanes({ maxConcurrent, maxQueued?, turnTimeoutMs?, activate, onExit? })` → `wake`, `cancel`, `status`, `close` | clock |
 
 ### 3.5 API conventions
 
@@ -834,6 +835,13 @@ Implementation decisions (P5):
 | Design reference | Vercel AI SDK HarnessV1: interfaces carry version literals; session "resume" and turn "continue" are separate; lifecycle state is serializable and schema-validated; sessions and turns have separate state machines |
 | Adoption | room-web adopts first (ACP and lanes replaced; ToolServer stays in agent-orchestration for now); agent-task-loop's agent-orchestration keeps only the room-specific parts and ToolServer; the host application may replace its ACP loop with `/acp` and compose the kit's Layers directly; room-web holds a `ManagedRuntime` in RoomLabHost, and its wake / cancel callbacks must run Effects explicitly and observe failures |
 | Exit condition | Both sides' existing ACP tests pass on the new implementation; local smoke tests cover claude-agent-acp, codex-acp, opencode, Gemini and Grok; with a global limit set, room-web no longer starts ACP processes without bound; the ACP cancel deadline covers "send cancel + wait for the turn to end", after which the binding is invalidated and the process closed, and force-killing a shared connection invalidates the other sessions on it |
+| Status | `/lanes` done (2026-10-08): `createLanes` in `@rivus/agent-kit-collab/lanes` (Spec S40, S100–S108), with the coalescing, cancel, close and timeout tests of agent-orchestration's AgentRuntime and the capacity, queue-bound and fairness tests of the host application's scheduler restated on Effect's test clock. Adoption by room-web and the host application is open |
+
+Implementation decisions (P6, `/lanes`):
+
+- The Lane states are idle, queued and running, plus `pending`: a wake no started activation has served. Wakes of a queued lane change nothing and a running lane owes at most one more activation, so the queue holds each key at most once. Only an idle lane is admitted (`admit`: start while a slot is free and nobody waits, otherwise queue while there is room, otherwise `LaneQueueFull`); a coalesced wake is never refused. A running lane that owes an activation re-enters at the end of the queue when its activation ends and the freed slot goes to the head first, which keeps the queue within its bound and gives the host scheduler's fairness: a key woken again while it ran does not pass keys that waited. `maxQueued` is optional; without it the queue is bounded by the number of keys.
+- Interruption is signalled, not delivered to fibers: each started activation gets a `stop` Deferred and an `ended` Deferred in the same synchronous step that records it, its work races `stop`, and `cancel`, `close` and the turn timer complete `stop` and `cancel` and `close` wait on `ended`; a Deferred keeps its first value, so the first of them names the reason even when the cleanup it starts outlasts the deadline. `stop` comes first in the race, which forks its contenders in order and stops at the first that has ended, so an activation stopped before its fiber ran never calls `activate`. The work loses the race only once its Scope has closed, so the exit `activate` reached is recorded inside the Scope: a success or failure that a cancel, close or timeout meets during the cleanup is reported as it is (keeping a defect the cleanup adds, dropping the interruption), and `ActivationInterrupted` only when the body itself was cut short (review of the first `/lanes` commit, whose probes reported a 90 ms success with 30 ms cleanup under a 100 ms timeout as a timeout, and called `activate` after `close`). The activation fiber is forked detached and uninterruptible, so it always reaches the step that frees its slot, even when `cancel` or `close` come before it has started. Every state change is one synchronous step (JavaScript runs one fiber at a time), so no lock is needed; `wake` is uninterruptible so that an activation recorded as started always gets its fiber. A Deferred resumes its waiters synchronously, so `ended` is completed after the slot has passed on (found by a test with asynchronous finalizers).
+- Each activation runs in a Scope of its own and the lanes capture the context `createLanes` ran in. `onExit` reports how each activation ended (succeeded, failed with its cause, or interrupted by cancel, close or timeout) before the lane can start again, and a defect it raises is logged with `Effect.logWarning`, because agent-orchestration's afterTurn needs the timeout distinguished and must finish before the next activation; the lease, the agent connection and the prompt stay in the caller's `activate`, which keeps lanes free of ACP and of any store.
 
 ### 6.4 Validation ledger
 

@@ -81,7 +81,7 @@ interface Companion {
  */
 const COMPANIONS: Readonly<Record<string, Companion>> = {
   "@rivus/agent-kit-collab": {
-    effectEntries: new Set(["./lease"]),
+    effectEntries: new Set(["./lanes", "./lease"]),
     plain: () => ({
       imports: `import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";`,
       body: `const lockPath = join(work, "smoke.lock");
@@ -94,6 +94,7 @@ console.log(\`process lock: \${lock.value.mechanism}\`);`
     }),
     effect: () => ({
       imports: `import * as Layer from "effect/Layer";
+import { createLanes } from "@rivus/agent-kit-collab/lanes";
 import { createLeaseManager, sqliteLeaseStore } from "@rivus/agent-kit-collab/lease";`,
       body: `const leaseProgram = Effect.gen(function* () {
   const leases = yield* createLeaseManager({ ttlMs: 2000, heartbeatMs: 500 });
@@ -109,7 +110,30 @@ if (!Exit.isSuccess(leaseExit)) {
   assert.fail(\`the lease program failed: \${Cause.pretty(leaseExit.cause)}\`);
 }
 assert.deepEqual(leaseExit.value, [1, 2]);
-console.log("lease generations 1, 2");`
+console.log("lease generations 1, 2");
+
+const served: string[] = [];
+const lanesProgram = Effect.scoped(
+  Effect.gen(function* () {
+    const lanes = yield* createLanes({
+      maxConcurrent: 1,
+      maxQueued: 1,
+      activate: (key) => Effect.sync(() => served.push(key))
+    });
+    const wakes = [yield* lanes.wake("a"), yield* lanes.wake("a"), yield* lanes.wake("b")];
+    while ((yield* lanes.status).lanes.length > 0) {
+      yield* Effect.sleep(5);
+    }
+    return wakes;
+  })
+);
+const lanesExit = await Effect.runPromiseExit(lanesProgram);
+if (!Exit.isSuccess(lanesExit)) {
+  assert.fail(\`the lanes program failed: \${Cause.pretty(lanesExit.cause)}\`);
+}
+assert.deepEqual(lanesExit.value, ["started", "coalesced", "queued"]);
+assert.deepEqual(served, ["a", "b", "a"]);
+console.log(\`lanes served \${served.join(", ")}\`);`
     })
   }
 };
