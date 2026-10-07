@@ -1,0 +1,2 @@
+{"timestamp":"2025-12-31T00:00:00.000Z","type":"session_meta","payload":{"id":"cx-archived"}}
+{"timestamp":"2025-12-31T00:00:01.000Z","type":"token_usage_record","payload":{"response_id":"resp-archived","usage":{"input_tokens":5,"output_tokens":1,"total_tokens":6}}}

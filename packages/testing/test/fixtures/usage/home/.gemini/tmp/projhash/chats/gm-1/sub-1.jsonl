@@ -1,0 +1,2 @@
+{"sessionId":"sub-1","projectHash":"projhash","startTime":"2026-01-01T00:00:02.500Z","lastUpdated":"2026-01-01T00:00:02.900Z","kind":"subagent"}
+{"id":"s1","timestamp":"2026-01-01T00:00:02.800Z","type":"gemini","content":"","model":"gemini-flash-test","tokens":{"input":40,"output":5,"cached":0,"thoughts":0,"tool":0,"total":45}}

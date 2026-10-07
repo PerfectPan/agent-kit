@@ -1,0 +1,10 @@
+{"sessionId":"gm-1","projectHash":"projhash","startTime":"2026-01-01T00:00:00.000Z","lastUpdated":"2026-01-01T00:00:05.000Z","kind":"main"}
+{"id":"u1","timestamp":"2026-01-01T00:00:01.000Z","type":"user","content":"hi"}
+{"id":"g1","timestamp":"2026-01-01T00:00:02.000Z","type":"gemini","content":"","model":"gemini-test","tokens":{"input":1000,"output":200,"cached":300,"thoughts":50,"tool":10,"total":1260}}
+{"$set":{"lastUpdated":"2026-01-01T00:00:02.000Z"}}
+{"id":"g1","timestamp":"2026-01-01T00:00:02.000Z","type":"gemini","content":"","model":"gemini-test","tokens":{"input":1000,"output":200,"cached":300,"thoughts":50,"tool":10,"total":1260},"toolCalls":[{"id":"t1","name":"read_file"}]}
+{"id":"g2","timestamp":"2026-01-01T00:00:03.000Z","type":"gemini","content":"","model":"gemini-test"}
+{"id":"g2","timestamp":"2026-01-01T00:00:03.000Z","type":"gemini","content":"","model":"gemini-test","tokens":{"input":500,"output":120,"cached":0,"thoughts":0,"tool":0,"total":620}}
+{"$patch":{"id":"g2","content":"edited"}}
+{"id":"g-old","timestamp":"2025-12-01T00:00:00.000Z","type":"gemini","content":"","model":"gemini-test","tokens":{"input":999,"output":999,"cached":0,"thoughts":0,"tool":0,"total":1998}}
+{"id":"g3","timestamp":"2026-01-01T00:00:04.000Z","type":"gemini","content":"","model":"gemini-test"}
