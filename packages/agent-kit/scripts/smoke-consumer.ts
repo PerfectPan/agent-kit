@@ -1,5 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import process from "node:process";
@@ -73,10 +83,6 @@ function tarballProblems(files: readonly string[], installed: string): string[] 
     const content = readFileSync(join(installed, file), "utf8");
     if (content.includes(repoRoot)) {
       problems.push(`${file} contains the absolute repository path`);
-    }
-    // Every Effect module carries "~effect/<Module>" type ids, in code and declarations alike.
-    if (content.includes("~effect/")) {
-      problems.push(`${file} inlines code or declarations from effect`);
     }
     if (file.endsWith(".map")) {
       const { sources = [] } = JSON.parse(content) as { sources?: string[] };
@@ -173,10 +179,15 @@ function hookColdStartMs(consumer: string): number {
 }
 
 /**
- * A host that installs effect itself: it checks that it and the kit resolve the same effect at the peer version, and
- * runs a program that reads PlatformService through NodePlatformLive under the temporary home.
+ * A host that installs effect itself: it imports every Effect entry, checks that each resolves the host's effect at
+ * the peer version, and runs a program that reads PlatformService through NodePlatformLive under the temporary home.
  */
 function effectConsumerSource(manifest: Manifest, home: string): string {
+  const subpaths = [...EFFECT_ENTRIES];
+  const namespaces = subpaths.map(
+    (subpath, index) => `import * as entry${index} from "${manifest.name}/${subpath.slice(2)}";`
+  );
+  const entries = subpaths.map((subpath, index) => `  ${JSON.stringify(subpath)}: entry${index},`);
   return `import assert from "node:assert/strict";
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -185,13 +196,20 @@ import { fileURLToPath } from "node:url";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+${namespaces.join("\n")}
 import { NodePlatformLive } from "${manifest.name}/node/effect";
 import { PlatformService } from "${manifest.name}/platform/effect";
 
+const entries: Record<string, object> = {
+${entries.join("\n")}
+};
 const host = realpathSync(fileURLToPath(import.meta.resolve("effect/package.json")));
-const kitEntry = fileURLToPath(import.meta.resolve("${manifest.name}/node/effect"));
-const kit = realpathSync(createRequire(kitEntry).resolve("effect/package.json"));
-assert.equal(kit, host, "the kit resolves another copy of effect than the host");
+for (const [subpath, namespace] of Object.entries(entries)) {
+  assert.ok(Object.keys(namespace).length > 0, \`\${subpath} exports nothing at runtime\`);
+  const entryFile = fileURLToPath(import.meta.resolve(\`${manifest.name}/\${subpath.slice(2)}\`));
+  const kit = realpathSync(createRequire(entryFile).resolve("effect/package.json"));
+  assert.equal(kit, host, \`\${subpath} resolves another copy of effect than the host\`);
+}
 const { version } = JSON.parse(readFileSync(host, "utf8")) as { version: string };
 assert.equal(version, ${JSON.stringify(manifest.peerDependencies.effect)});
 
@@ -208,14 +226,43 @@ console.log(\`effect \${version}\`);
 `;
 }
 
-/** Package folders named effect anywhere under `nodeModules`, nested copies included. */
+/**
+ * Real paths of the packages named effect that Node resolution can reach from `nodeModules`: top-level, scoped and
+ * nested folders, followed through links. Each `node_modules` folder is read once, so a link cycle ends.
+ */
 function effectCopies(nodeModules: string): string[] {
-  return readdirSync(nodeModules, { recursive: true, encoding: "utf8" })
-    .filter((path) => /(?:^|[\\/])effect[\\/]package\.json$/.test(path))
-    .filter(
-      (path) => (JSON.parse(readFileSync(join(nodeModules, path), "utf8")) as { name?: string }).name === "effect"
-    )
-    .map((path) => dirname(path));
+  const copies = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (dir: string): void => {
+    if (!existsSync(dir)) {
+      return;
+    }
+    const real = realpathSync(dir);
+    if (visited.has(real)) {
+      return;
+    }
+    visited.add(real);
+    for (const name of readdirSync(real)) {
+      if (name.startsWith(".")) {
+        continue;
+      }
+      const folders = name.startsWith("@")
+        ? readdirSync(join(real, name)).map((child) => join(real, name, child))
+        : [join(real, name)];
+      for (const folder of folders) {
+        const manifest = join(folder, "package.json");
+        if (
+          existsSync(manifest) &&
+          (JSON.parse(readFileSync(manifest, "utf8")) as { name?: string }).name === "effect"
+        ) {
+          copies.add(realpathSync(folder));
+        }
+        visit(join(folder, "node_modules"));
+      }
+    }
+  };
+  visit(nodeModules);
+  return [...copies];
 }
 
 function npmInstall(cwd: string, specs: readonly string[]): void {
@@ -278,7 +325,7 @@ try {
   const consumer = join(work, "consumer");
   mkdirSync(consumer);
   npmInstall(consumer, [tarball]);
-  if (existsSync(join(consumer, "node_modules/effect"))) {
+  if (effectCopies(join(consumer, "node_modules")).length > 0) {
     throw new Error("npm installed effect, which must stay an optional peer");
   }
 

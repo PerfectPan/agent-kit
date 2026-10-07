@@ -463,7 +463,7 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 - Given a consumer project that installs the packed kit and `effect` 4.0.1
 - When it type-checks and runs a program that reads `PlatformService` with `Effect.runPromiseExit`, provided by `NodePlatformLive`
-- Then the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package, the consumer and the kit resolve the same one at 4.0.1, and no file in the tarball contains Effect code or declarations
+- Then every Effect entry imports, the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package (by real path), every Effect entry resolves the same one as the consumer at 4.0.1, and no built file bundles a module from `node_modules`
 
 ## Compatibility And Constraints
 

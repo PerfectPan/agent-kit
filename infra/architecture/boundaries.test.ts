@@ -252,6 +252,25 @@ describe("violations", () => {
       "harness/src/application/x.ts",
       `import { PlatformService } from "${PLATFORM}/public/effect";`,
       "deep-import"
+    ],
+    [
+      "a plain public entry re-exporting the package's Effect entry",
+      "platform/src/public.ts",
+      `export { PlatformService } from "./effect.js";`,
+      "effect"
+    ],
+    ["the sibling surface re-exporting it", "platform/src/index.ts", `export * from "./effect";`, "effect"],
+    [
+      "a plain module importing its types",
+      "platform/src/lines.ts",
+      `import type { PlatformService } from "./effect.ts";`,
+      "effect"
+    ],
+    [
+      "the Node platform importing its Layer",
+      "platform-node/src/create-node-platform.ts",
+      `import { NodePlatformLive } from "./effect.js";`,
+      "effect"
     ]
   ])("rejects %s", (_name, path, source, rule) => {
     expect(rulesOf(withFiles({ [`packages/${path}`]: source }))).toEqual([rule]);

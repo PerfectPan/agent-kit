@@ -43,8 +43,9 @@ export interface BoundaryRules {
   readonly effect: {
     readonly specifier: RegExp;
     /**
-     * Subpath of a workspace package's Effect entry, such as `@rivus/agent-kit-platform/effect`. Siblings import it
-     * instead of the package's `index.ts`, which stays free of Effect, and importing it counts as importing Effect.
+     * Subpath of a workspace package's Effect entry, such as `@rivus/agent-kit-platform/effect` for its
+     * `src/effect.ts`. Siblings import it instead of the package's `index.ts`, which stays free of Effect. Importing
+     * it, by name from a sibling or by a relative path inside the package, counts as importing Effect.
      */
     readonly workspaceEntry: string;
     /** Package-relative path prefixes that may import Effect, even with `import type`. */

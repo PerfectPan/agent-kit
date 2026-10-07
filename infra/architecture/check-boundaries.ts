@@ -186,6 +186,16 @@ interface ImportContext {
   readonly workspaceNames: ReadonlySet<string>;
 }
 
+const EFFECT_VIOLATION = {
+  rule: "effect",
+  text: `Effect is only allowed in the paths listed under effect in ${MANIFEST}`
+} as const;
+
+function effectAllowed(rules: BoundaryRules, pkg: WorkspacePackage, file: SourceFile): boolean {
+  const relativePath = file.path.slice(pkg.folder.length + 1);
+  return (rules.effect.allowedPaths[pkg.name] ?? []).some((prefix) => relativePath.startsWith(prefix));
+}
+
 function checkImport(context: ImportContext): { rule: RuleId; text: string } | undefined {
   const { rules, rule, pkg, layer, file, ref, workspaceNames } = context;
   const layerRule = layer === undefined ? undefined : rules.layers[layer];
@@ -194,6 +204,11 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     const target = posix.normalize(posix.join(posix.dirname(file.path), ref.specifier));
     if (!target.startsWith(`${pkg.folder}/`)) {
       return { rule: "relative-escape", text: `leaves ${pkg.name}; import another package by its name` };
+    }
+    // The package's own Effect entry (`src/effect.ts`) is an Effect import too, so that a plain file cannot re-export it.
+    const effectEntry = `${pkg.folder}/src${rules.effect.workspaceEntry}`;
+    if (target.replace(/\.[cm]?[jt]s$/, "") === effectEntry && !effectAllowed(rules, pkg, file)) {
+      return EFFECT_VIOLATION;
     }
     const targetLayer = layerOf(pkg, target);
     if (layerRule !== undefined && (targetLayer === undefined || !layerRule.layers.includes(targetLayer))) {
@@ -205,10 +220,8 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
   const { name, subpath } = splitSpecifier(ref.specifier);
   const workspaceEffect = workspaceNames.has(name) && subpath === rules.effect.workspaceEntry;
   if (workspaceEffect || rules.effect.specifier.test(ref.specifier)) {
-    const relativePath = file.path.slice(pkg.folder.length + 1);
-    const allowed = rules.effect.allowedPaths[pkg.name] ?? [];
-    if (!allowed.some((prefix) => relativePath.startsWith(prefix))) {
-      return { rule: "effect", text: `Effect is only allowed in the paths listed under effect in ${MANIFEST}` };
+    if (!effectAllowed(rules, pkg, file)) {
+      return EFFECT_VIOLATION;
     }
     if (!workspaceEffect) {
       return undefined;

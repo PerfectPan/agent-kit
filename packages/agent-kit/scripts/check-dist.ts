@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { dirname, join, relative } from "node:path";
 import process from "node:process";
@@ -78,6 +78,28 @@ function externalImports(entryFile: string): Map<string, string> {
   return external;
 }
 
+/**
+ * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a `//#region <source>`
+ * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders.
+ */
+function inlinedDependencies(): string[] {
+  const problems: string[] = [];
+  let regions = 0;
+  const dist = join(packageRoot, "dist");
+  for (const file of readdirSync(dist, { recursive: true, encoding: "utf8" })) {
+    if (!/\.(?:d\.ts|js)$/.test(file)) {
+      continue;
+    }
+    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
+      regions += 1;
+      if (source.includes("node_modules/")) {
+        problems.push(`dist/${file} inlines ${source}; dependencies and peers such as effect stay external`);
+      }
+    }
+  }
+  return regions > 0 ? problems : ["dist has no //#region comments, so inlined dependencies cannot be detected"];
+}
+
 async function browserBundleProblems(entryFile: string): Promise<string[]> {
   const problems: string[] = [];
   const bundle = await rolldown({
@@ -108,7 +130,7 @@ async function browserBundleProblems(entryFile: string): Promise<string[]> {
   return problems;
 }
 
-const errors: string[] = [];
+const errors: string[] = inlinedDependencies();
 const checked: string[] = [];
 for (const [subpath, target] of Object.entries(manifest.exports)) {
   if (subpath === "./package.json") {
