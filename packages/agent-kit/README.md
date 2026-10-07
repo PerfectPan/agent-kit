@@ -19,17 +19,18 @@ that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 
 ## Entries
 
-| Entry                              | Main exports                                                                                      | Runs in                   |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
-| `@rivus/agent-kit/catalog`         | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
-| `@rivus/agent-kit/harness/events`  | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
-| `@rivus/agent-kit/platform`        | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
-| `@rivus/agent-kit/node`            | `createNodePlatform`                                                                              | Node                      |
-| `@rivus/agent-kit/platform/effect` | `PlatformService`: the `Platform` as an Effect service                                            | anywhere, with `effect`   |
-| `@rivus/agent-kit/node/effect`     | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`           | Node, with `effect`       |
-| `@rivus/agent-kit/sessions`        | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
-| `@rivus/agent-kit/transcript`      | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
-| `@rivus/agent-kit/testing`         | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession` | Node                      |
+| Entry                               | Main exports                                                                                                         | Runs in                               |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                              |
+| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                  |
+| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                              |
+| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                  |
+| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`               |
+| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                   |
+| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform             |
+| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules                     | anywhere, with a platform             |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `oversizedSession`                    | Node                                  |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -93,6 +94,45 @@ copied, only the tool's name and call id. `terminal` names the herdr, cmux, Supe
 the states around one `reduceLifecycle` step. `builtinHookDialects` holds each agent's hook facts: event names, the
 timeout unit, which events are permission gates and what an observing hook should print.
 
+### Usage records
+
+`/transcript/usage` decodes token usage without building transcripts, and imports nothing outside the package, so a
+host that cannot install dependencies can bundle it alone. `scanUsage` reads every agent's usage under its home and
+returns a state to pass to the next scan, which then reads only what was written since:
+
+```ts
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { addUsage, isUsageRecord, scanUsage, type Usage, type UsageScanState } from "@rivus/agent-kit/transcript/usage";
+
+const platform = createNodePlatform();
+const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+let state: UsageScanState | undefined; // keep it between runs, as JSON
+const totals = new Map<string, Usage>();
+
+const scan = scanUsage(platform, { since, ...(state ? { state } : {}) });
+for await (const item of scan) {
+  if (isUsageRecord(item)) {
+    totals.set(item.agent, addUsage(totals.get(item.agent) ?? {}, item.usage));
+  }
+}
+state = scan.state;
+```
+
+A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the agent logs only turn totals (Grok,
+with `modelCalls` and `usageByModel`); it carries the agent's own cost when the log has one (`costUsd`,
+`costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier. A request that several files hold (a Claude
+Code subagent file that starts with a copy of another's records, an older Gemini CLI chat migrated into a `.jsonl`
+file) counts once. Claude Code writes a response as several records, so the last requests of a session that is still
+running wait in the state; a scan reports them once their file has been quiet for 30 minutes. A scan that continues
+from a state needs `since`: the state keeps a cursor per source (by an identity that survives Codex archiving) and a
+short hash of every request counted since then, about 1 MB for a busy month.
+
+`decodeUsage(platform, agent, source, { from, since, until, final })` decodes one source as a stream whose `cursor`,
+passed back as `from`, continues where it stopped; memory does not grow with the source. Without `final: true` the
+requests that may still get records where the file ends stay in the cursor. After `SourceChanged` (the file was
+rewritten) the cursor is `undefined`, so the next decode reads the file again. opencode keeps its messages in SQLite,
+which needs `platform.sqlite`; without it the decode yields `SqliteUnavailable`.
+
 ### Effect
 
 Effect entries return Effects and Layers that read the platform from `PlatformService`. Your application provides it
@@ -120,7 +160,7 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
   `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`; `readOriginal` fails with
   `SourceChanged`, `SessionNotFound` or `ReadFailed`.
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
-  goes on with the next one.
+  goes on with the next one; `scanUsage`, `listUsageSources` and `decodeUsage` yield `{ agent, path, error }` items the same way.
 - When the `signal` option aborts, the call rejects with `signal.reason`.
 - Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or
   without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`; test
@@ -138,7 +178,8 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 | Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
 | Cursor      | `cursor` (alias `cursor-agent`) | `~/.cursor` only (overrides not modelled)               | added after 0.1.0        |
 
-Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0).
+Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/transcript/usage` reads the usage of every agent in the table except
+Cursor (added after 0.1.0).
 
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
 (`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.

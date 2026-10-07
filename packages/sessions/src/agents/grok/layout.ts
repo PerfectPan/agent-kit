@@ -1,7 +1,13 @@
-import type { AgentHome } from "@rivus/agent-kit-catalog";
+import { type AgentHome, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import { dirnamePath, joinPath } from "../../domain/session/index.js";
-import { asRecord, asString } from "../record-fields.js";
+import {
+  type SourcePointer,
+  timeOf,
+  type UnknownFormatGeneration,
+  unknownFormatGeneration
+} from "../../domain/transcript/index.js";
+import { asNumber, asRecord, asString } from "../record-fields.js";
 
 // Grok keeps one directory per session under `<home>/sessions/<encoded-cwd>/<session-id>/`. The transcript is
 // `updates.jsonl`. `summary.json`, `system_prompt.txt` and `tool_definitions.json` sit beside it. A subagent's
@@ -56,4 +62,58 @@ export function grokSubagentMeta(value: unknown): GrokSubagentMeta {
     out.title = title;
   }
   return out;
+}
+
+/** Fields of `summary.json` plus the optional side files the adapter reads. */
+export interface GrokSessionMeta {
+  id?: string;
+  title?: string;
+  cwd?: string;
+  startedAt?: number;
+  endedAt?: number;
+  model?: string;
+  systemPrompt?: string;
+  tools?: unknown;
+}
+
+/**
+ * Fields of `summary.json`. `chat_format_version` other than 1 is an unknown generation. A missing version is the
+ * generation this adapter reads.
+ */
+export function grokSummaryFields(
+  value: unknown,
+  source: SourcePointer
+): Result<GrokSessionMeta, UnknownFormatGeneration> {
+  const summary = asRecord(value) ?? {};
+  const format = asNumber(summary.chat_format_version);
+  if (format !== undefined && format !== 1) {
+    return err(unknownFormatGeneration("grok", source));
+  }
+  const info = asRecord(summary.info);
+  const meta: GrokSessionMeta = {};
+  const id = asString(info?.id);
+  const cwd = asString(info?.cwd);
+  const title = asString(summary.generated_title) ?? asString(summary.session_summary);
+  const startedAt = timeOf(summary.created_at);
+  const endedAt = timeOf(summary.last_active_at);
+  const model = asString(summary.current_model_id);
+  if (id) {
+    meta.id = id;
+  }
+  if (cwd) {
+    meta.cwd = cwd;
+  }
+  if (title) {
+    meta.title = title;
+  }
+  if (startedAt !== undefined) {
+    meta.startedAt = startedAt;
+  }
+  if (endedAt !== undefined) {
+    meta.endedAt = endedAt;
+  }
+  if (model) {
+    meta.model = model;
+  }
+  return ok(meta);
 }

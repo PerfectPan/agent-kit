@@ -1,0 +1,2 @@
+{"type":"user","uuid":"h1","sessionId":"s-usage","isSidechain":true,"timestamp":"2026-01-01T00:00:08.000Z","message":{"role":"user","content":"Help"}}
+{"type":"assistant","uuid":"h2","sessionId":"s-usage","isSidechain":true,"requestId":"req-h","timestamp":"2026-01-01T00:00:09.000Z","message":{"id":"msg-h","model":"claude-test","role":"assistant","content":[],"usage":{"input_tokens":3,"output_tokens":2}}}

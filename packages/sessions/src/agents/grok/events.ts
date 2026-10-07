@@ -16,8 +16,6 @@ import {
   type SkippedRecord,
   skipRecord,
   type SourcedRecord,
-  type SourcePointer,
-  timeOf,
   type TranscriptEvent,
   type TranscriptEventKind,
   type TranscriptSession,
@@ -25,9 +23,9 @@ import {
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
 import { asNumber, asRecord, asString } from "../record-fields.js";
-import { chunkText, GROK_META_KEY, isInjectedChunk, updateOf } from "./chunks.js";
-import type { GrokSubagentMeta } from "./layout.js";
-import { grokUsage, grokUsageByModel } from "./usage.js";
+import { chunkText, GROK_META_KEY, isInjectedChunk } from "./chunks.js";
+import type { GrokSessionMeta, GrokSubagentMeta } from "./layout.js";
+import { followGrokTurn, type GrokTurn, grokTurnModel, grokUsage, grokUsageByModel, knownGrokUpdate } from "./usage.js";
 
 const AGENT = "grok";
 
@@ -78,66 +76,12 @@ const BOOKKEEPING = new Set([
 /** Host status updates kept as `system` events with their `type`. */
 const STATUS = new Set(["goal_updated", "memory_dream_queued", "memory_dream_started", "memory_dream_completed"]);
 
-/** Fields of `summary.json` plus the optional side files the adapter reads. */
-export interface GrokSessionMeta {
-  id?: string;
-  title?: string;
-  cwd?: string;
-  startedAt?: number;
-  endedAt?: number;
-  model?: string;
-  systemPrompt?: string;
-  tools?: unknown;
-}
-
 export interface GrokTranslateOptions {
   /** Wins over the summary id when the summary names none. */
   sessionId?: string;
   meta?: GrokSessionMeta;
   /** `meta.json` of each `<session>/subagents/<id>/` directory, keyed by the directory name. */
   subagents?: ReadonlyMap<string, GrokSubagentMeta>;
-}
-
-/**
- * Fields of `summary.json`. `chat_format_version` other than 1 is an unknown generation. A missing version is the
- * generation this adapter reads.
- */
-export function grokSummaryFields(
-  value: unknown,
-  source: SourcePointer
-): Result<GrokSessionMeta, UnknownFormatGeneration> {
-  const summary = asRecord(value) ?? {};
-  const format = asNumber(summary.chat_format_version);
-  if (format !== undefined && format !== 1) {
-    return err(unknownFormatGeneration(AGENT, source));
-  }
-  const info = asRecord(summary.info);
-  const meta: GrokSessionMeta = {};
-  const id = asString(info?.id);
-  const cwd = asString(info?.cwd);
-  const title = asString(summary.generated_title) ?? asString(summary.session_summary);
-  const startedAt = timeOf(summary.created_at);
-  const endedAt = timeOf(summary.last_active_at);
-  const model = asString(summary.current_model_id);
-  if (id) {
-    meta.id = id;
-  }
-  if (cwd) {
-    meta.cwd = cwd;
-  }
-  if (title) {
-    meta.title = title;
-  }
-  if (startedAt !== undefined) {
-    meta.startedAt = startedAt;
-  }
-  if (endedAt !== undefined) {
-    meta.endedAt = endedAt;
-  }
-  if (model) {
-    meta.model = model;
-  }
-  return ok(meta);
 }
 
 /**
@@ -155,10 +99,8 @@ export function translateGrokRecords(
   const skipped: SkippedRecord[] = [];
   const agents: Lane[] = [{ id: MAIN_LANE_ID }];
   const times = inheritTimes(records);
-  let prompt: string | undefined;
+  const turn: GrokTurn = {};
   let lastUserPrompt: string | undefined;
-  /** This turn's `_meta.modelId` only. A later turn must not inherit it. */
-  let turnModel: string | undefined;
   let startedAt = meta.startedAt;
   let endedAt = meta.endedAt;
   let segment = 0;
@@ -188,13 +130,8 @@ export function translateGrokRecords(
   for (let index = 0; index < records.length; index++) {
     const record = records[index]!;
     const ts = times[index]!;
-    const rec = asRecord(record.value);
-    const update = updateOf(record.value);
-    if (!rec || !update || "formatVersion" in rec || "formatVersion" in update) {
-      return err(unknownFormatGeneration(AGENT, record));
-    }
-    const schemaVersion = asNumber(update.schema_version);
-    if (schemaVersion !== undefined && schemaVersion !== 1) {
+    const update = knownGrokUpdate(record.value);
+    if (!update) {
       return err(unknownFormatGeneration(AGENT, record));
     }
 
@@ -202,18 +139,8 @@ export function translateGrokRecords(
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);
     const updateMeta = asRecord(update[GROK_META_KEY]);
-    const promptIndex = asNumber(updateMeta?.promptIndex);
-    if (promptIndex !== undefined) {
-      const nextPrompt = String(promptIndex);
-      if (nextPrompt !== prompt) {
-        turnModel = undefined;
-      }
-      prompt = nextPrompt;
-    }
-    const seenModel = asString(updateMeta?.modelId);
-    if (seenModel) {
-      turnModel = seenModel;
-    }
+    followGrokTurn(turn, update);
+    const prompt = turn.prompt;
 
     const emit = (eventKind: TranscriptEventKind, payload: Record<string, unknown>, id?: string): TranscriptEvent => {
       const event = baseEvent(record, eventKind, payload, { id: id ?? lineId(record), ts });
@@ -254,9 +181,13 @@ export function translateGrokRecords(
       segment = placeRequest(
         events,
         segment,
-        baseEvent(record, "request", requestPayload(update, turnModel), { id, ts, requestId: key })
+        baseEvent(record, "request", requestPayload(update, grokTurnModel(update, turn.model)), {
+          id,
+          ts,
+          requestId: key
+        })
       );
-      turnModel = undefined;
+      delete turn.model;
       const durationMs = asNumber(update.elapsed_ms);
       if (durationMs !== undefined) {
         emit("system", { type: "turn_duration", durationMs });
@@ -372,14 +303,9 @@ function applySubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubag
   }
 }
 
-/**
- * A `request` for one turn. `costUsdTicks` stays on the original record; dollar conversion belongs to the later
- * cost context.
- */
+/** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
 function requestPayload(update: Record<string, unknown>, model: string | undefined): Record<string, unknown> {
   const usageRaw = asRecord(update.usage);
-  const models = Object.keys(asRecord(usageRaw?.modelUsage) ?? {});
-  const requestModel = model ?? (models.length === 1 ? models[0] : undefined);
   const usage = grokUsage(usageRaw);
   const finishReason = asString(update.stop_reason);
   const modelCalls = asNumber(usageRaw?.modelCalls);
@@ -387,7 +313,7 @@ function requestPayload(update: Record<string, unknown>, model: string | undefin
   // `baseEvent` stores a record. `satisfies` keeps the fields on `RequestPayload`.
   return {
     granularity: "turn",
-    ...(requestModel ? { model: requestModel } : {}),
+    ...(model ? { model } : {}),
     ...(usage ? { usage } : {}),
     ...(finishReason ? { finishReason } : {}),
     ...(modelCalls === undefined ? {} : { modelCalls }),

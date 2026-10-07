@@ -8,6 +8,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  utimesSync,
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -111,7 +112,13 @@ ${namespaces.join("\n")}
 import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
 import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
-import { loadTranscript } from "${manifest.name}/transcript";
+import { loadTranscript, type RequestPayload } from "${manifest.name}/transcript";
+import {
+  addUsage,
+  isUsageRecord,
+  scanUsage,
+  type Usage
+} from "${manifest.name}/transcript/usage";
 
 const entries: Record<string, object> = {
 ${entries.join("\n")}
@@ -146,7 +153,22 @@ for (const agent of seeded) {
     assert.fail(\`\${agent}: loadTranscript failed with \${transcript.error._tag}\`);
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
-  console.log(\`\${agent}: \${transcript.value.events.length} events\`);
+  const requests = transcript.value.events.filter((event) => event.kind === "request");
+  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, (event.payload as RequestPayload).usage ?? {}), {});
+
+  // The zero-dependency usage entry agrees with the transcript on the same session. The seeded files were last
+  // written an hour ago, so the scan treats them as complete.
+  let decoded: Usage = {};
+  for await (const item of scanUsage(platform, { agents: [agent] })) {
+    if (!isUsageRecord(item)) {
+      assert.equal(item.error._tag, "RootMissing", \`\${agent}: cannot scan usage at \${item.path}\`);
+      continue;
+    }
+    decoded = addUsage(decoded, item.usage);
+  }
+  assert.ok((decoded.totalTokens ?? 0) > 0, \`\${agent}: scanUsage found no usage\`);
+  assert.deepEqual(decoded, expected, \`\${agent}: scanUsage and loadTranscript disagree\`);
+  console.log(\`\${agent}: \${transcript.value.events.length} events, \${decoded.totalTokens} tokens\`);
 }
 `;
 }
@@ -341,6 +363,12 @@ try {
   for (const seed of SEEDS) {
     mkdirSync(dirname(join(home, seed.target)), { recursive: true });
     cpSync(join(fixtures, seed.fixture), join(home, seed.target), { recursive: true });
+  }
+  const anHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  for (const entry of readdirSync(home, { recursive: true, withFileTypes: true })) {
+    if (entry.isFile()) {
+      utimesSync(join(entry.parentPath, entry.name), anHourAgo, anHourAgo);
+    }
   }
 
   writeFileSync(join(consumer, "consumer.ts"), consumerSource(manifest, home));

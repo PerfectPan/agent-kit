@@ -1,0 +1,17 @@
+{
+  "sessionId": "gm-legacy",
+  "projectHash": "projhash",
+  "startTime": "2025-12-31T00:00:00.000Z",
+  "lastUpdated": "2025-12-31T00:00:02.000Z",
+  "messages": [
+    { "id": "lu", "timestamp": "2025-12-31T00:00:01.000Z", "type": "user", "content": "hi" },
+    {
+      "id": "lg",
+      "timestamp": "2025-12-31T00:00:02.000Z",
+      "type": "gemini",
+      "content": "",
+      "model": "gemini-test",
+      "tokens": { "input": 400, "output": 60, "cached": 100, "thoughts": 0, "tool": 0, "total": 460 }
+    }
+  ]
+}

@@ -23,6 +23,46 @@ const FS_ERRNO = new Set([
   "ETIMEDOUT"
 ]);
 
+/** A view of a platform whose file system errors can be told from other errors, and turned into values. */
+export interface GuardedIo {
+  readonly platform: SessionPlatform;
+  /** `SessionNotFound` for `ENOENT`, `ReadFailed` for another errno, `undefined` for an error not from the view. */
+  failure(error: unknown, path: string): SessionNotFound | ReadFailed | undefined;
+}
+
+/**
+ * A view of `platform` that marks the file system errors of its `stat`, `list` and `read`. Only errors thrown by those
+ * calls count, so a caller's callback that throws, or a defect with some other `code`, is not a failure value.
+ */
+export function guardIo(platform: SessionPlatform): GuardedIo {
+  const fsErrors = new WeakSet<object>();
+  const mark = (error: unknown): never => {
+    if (typeof error === "object" && error !== null && FS_ERRNO.has(String((error as { code?: unknown }).code))) {
+      fsErrors.add(error);
+    }
+    throw error;
+  };
+  const { fs } = platform;
+  return {
+    platform: {
+      fs: {
+        stat: (target, options) => fs.stat(target, options).catch(mark),
+        list: (dir) => fs.list(dir).catch(mark),
+        async *read(target, range) {
+          try {
+            yield* fs.read(target, range);
+          } catch (error) {
+            mark(error);
+          }
+        }
+      }
+    },
+    failure(error, path) {
+      return typeof error === "object" && error !== null && fsErrors.has(error) ? classify(error, path) : undefined;
+    }
+  };
+}
+
 /**
  * Runs `read` against a view of `platform` and turns the file system errors of that view's `stat`, `list` and `read`
  * into values: `ENOENT` is `SessionNotFound`, another errno is `ReadFailed`. Only errors thrown by those calls count,
@@ -35,35 +75,16 @@ export async function catchIoFailure<T>(
   signal: AbortSignal | undefined,
   read: (platform: SessionPlatform) => Promise<T>
 ): Promise<Result<T, SessionNotFound | ReadFailed>> {
-  const fsErrors = new WeakSet<object>();
-  const mark = (error: unknown): never => {
-    if (typeof error === "object" && error !== null && FS_ERRNO.has(String((error as { code?: unknown }).code))) {
-      fsErrors.add(error);
-    }
-    throw error;
-  };
-  const { fs } = platform;
-  const guarded: SessionPlatform = {
-    fs: {
-      stat: (target, options) => fs.stat(target, options).catch(mark),
-      list: (dir) => fs.list(dir).catch(mark),
-      async *read(target, range) {
-        try {
-          yield* fs.read(target, range);
-        } catch (error) {
-          mark(error);
-        }
-      }
-    }
-  };
+  const io = guardIo(platform);
   try {
-    return ok(await read(guarded));
+    return ok(await read(io.platform));
   } catch (error) {
     signal?.throwIfAborted();
-    if (typeof error !== "object" || error === null || !fsErrors.has(error)) {
+    const failure = io.failure(error, path);
+    if (!failure) {
       throw error;
     }
-    return err(classify(error, path));
+    return err(failure);
   }
 }
 

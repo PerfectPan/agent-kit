@@ -5,6 +5,7 @@
   "description": "Session discovery, transcripts and usage for each coding agent. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./public": "./src/public.ts"
@@ -20,7 +21,6 @@
   "dependencies": {
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
-    "es-toolkit": "^1.52.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

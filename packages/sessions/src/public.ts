@@ -9,9 +9,36 @@ export {
 } from "./application/load-transcript.js";
 export { readOriginal, type ReadOriginalError } from "./application/read-original.js";
 export type { SessionErrorCode } from "./application/errors.js";
+export {
+  decodeUsage,
+  isUsageRecord,
+  isUsageSource,
+  listUsageSources,
+  type ListUsageSourcesOptions
+} from "./application/decode-usage.js";
+export {
+  type ScanUsageOptions,
+  scanUsage,
+  type UsageScan,
+  type UsageScanSource,
+  type UsageScanState
+} from "./application/scan-usage.js";
 
-// Session adapters
+// Session adapters and usage ports
 export { builtinSessionAdapters } from "./application/session-adapters/index.js";
+export type {
+  DecodeUsageOptions,
+  SqliteUnavailable,
+  UsageCursor,
+  UsageDecodeError,
+  UsageDecodeFailure,
+  UsagePlatform,
+  UsageSource,
+  UsageSourceFailure,
+  UsageSourceOptions,
+  UsageStream,
+  UsageTarget
+} from "./application/usage-ports.js";
 export type {
   DiscoverOptions,
   LoadOptions,
@@ -94,4 +121,16 @@ export {
   type UnknownFormatGeneration,
   type UnknownPayload
 } from "./domain/transcript/index.js";
-export type { Usage } from "./domain/usage/index.js";
+export {
+  addUsage,
+  type AiSdkUsage,
+  type CostSource,
+  type ModelUsage,
+  noCacheInputTokens,
+  type OtelAttributeOptions,
+  toAiSdkUsage,
+  toOtelAttributes,
+  type Usage,
+  type UsageGranularity,
+  type UsageRecord
+} from "./domain/usage/index.js";

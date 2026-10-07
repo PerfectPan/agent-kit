@@ -24,7 +24,7 @@ import type { Usage } from "../../domain/usage/index.js";
 import { asNumber, asRecord, asString } from "../record-fields.js";
 import { forkReplayEnd } from "./fork-replay.js";
 import { emitResponseItem, textFrom } from "./response-items.js";
-import { codexUsage, codexUsageDelta } from "./usage.js";
+import { codexRecordUsage, type CodexUsageTracker, knownCodexGeneration } from "./usage.js";
 
 const AGENT = "codex";
 
@@ -88,11 +88,9 @@ export interface CodexTranslateOptions {
  * Event ids are the item's own `id`, else `L<line>`: a session is one rollout, so the line is unique, and the file
  * name would repeat its 70 characters on every id.
  *
- * Codex logs usage after the call's output, so each usage record becomes a `request` placed before that output. Usage
- * comes from `token_usage_record` from the first such record on, and from `token_count` before it (a file written
- * partly by an older Codex), where `last_token_usage` wins over the increase of the cumulative totals. A `token_count`
- * without `info` or with the same totals as the previous one is skipped, and so is a forked rollout's replay of its
- * parent's usage and turn durations (`forkReplayEnd`).
+ * Codex logs usage after the call's output, so each usage record becomes a `request` placed before that output.
+ * `codexRecordUsage` decides which usage records count, and `forkReplayEnd` which records a forked rollout copied from
+ * its parent, whose turn durations are skipped too.
  */
 export function translateCodexRecords(
   stamped: readonly StampedRecord[],
@@ -114,15 +112,13 @@ export function translateCodexRecords(
   let startedAt: number | undefined;
   let endedAt: number | undefined;
   let model: string | undefined;
-  let usageRecords = false;
-  let totals: unknown;
-  let totalsKey: string | undefined;
+  const tracker: CodexUsageTracker = { usageRecords: false };
   let segment = 0;
   let turnStart = 0;
 
   for (const [index, { record, ts }] of stamped.entries()) {
     const rec = asRecord(record.value);
-    if (!rec || "formatVersion" in rec) {
+    if (!rec || !knownCodexGeneration(rec)) {
       return err(unknownFormatGeneration(AGENT, record));
     }
     if (index === replayEnd) {
@@ -135,11 +131,9 @@ export function translateCodexRecords(
       const recordType = asString(rec.record_type);
       if (recordType) {
         skipRecord(skipped, record, `record-${recordType}`);
-      } else if ("timestamp" in rec && "id" in rec) {
+      } else {
         sessionId ??= asString(rec.id);
         skipRecord(skipped, record, "legacy-header");
-      } else {
-        return err(unknownFormatGeneration(AGENT, record));
       }
       continue;
     }
@@ -194,40 +188,19 @@ export function translateCodexRecords(
       skipRecord(skipped, record, bookkeeping);
       continue;
     }
-    if (envelope === "token_usage_record") {
-      usageRecords = true;
-      const responseId = asString(payload.response_id);
-      if (responseId && responses.has(responseId)) {
-        skipRecord(skipped, record, "duplicate-usage");
-        continue;
+    const found = codexRecordUsage(tracker, envelope, payload, replayed, (responseId) => {
+      if (responses.has(responseId)) {
+        return true;
       }
-      if (responseId) {
-        responses.add(responseId);
+      responses.add(responseId);
+      return false;
+    });
+    if (found) {
+      if ("skip" in found) {
+        skipRecord(skipped, record, found.skip);
+      } else {
+        request(found.usage, found.responseId);
       }
-      if (replayed) {
-        skipRecord(skipped, record, "fork-replay");
-        continue;
-      }
-      request(codexUsage(payload.usage), responseId);
-      continue;
-    }
-    if (envelope === "event_msg" && payload.type === "token_count") {
-      const info = asRecord(payload.info);
-      const total = info?.total_token_usage;
-      const key = total === undefined ? undefined : JSON.stringify(total);
-      const previous = totals;
-      const unchanged = key !== undefined && key === totalsKey;
-      if (key !== undefined) {
-        totals = total;
-        totalsKey = key;
-      }
-      const reason = tokenCountSkip(replayed, usageRecords, info, unchanged);
-      if (reason || !info) {
-        skipRecord(skipped, record, reason ?? "empty-usage");
-        continue;
-      }
-      const last = asRecord(info.last_token_usage);
-      request(last ? codexUsage(last) : codexUsageDelta(total, previous));
       continue;
     }
     if (
@@ -325,24 +298,6 @@ export function translateCodexRecords(
 
 function lineKey(record: SourcedRecord): string {
   return `L${record.line}`;
-}
-
-function tokenCountSkip(
-  replayed: boolean,
-  usageRecords: boolean,
-  info: Record<string, unknown> | undefined,
-  unchanged: boolean
-): string | undefined {
-  if (replayed) {
-    return "fork-replay";
-  }
-  if (usageRecords) {
-    return "other-usage-source";
-  }
-  if (!info) {
-    return "empty-usage";
-  }
-  return unchanged ? "unchanged-usage" : undefined;
 }
 
 /** The ids Codex gave the record of an event: the item's `id` and `call_id`. */
