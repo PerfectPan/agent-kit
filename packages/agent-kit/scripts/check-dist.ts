@@ -11,7 +11,7 @@ import { rolldown } from "rolldown";
 const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
 // Entries whose code and declarations import nothing outside the package, not even its dependencies: a host that
 // cannot install dependencies bundles or loads them on their own.
-const ZERO_DEPENDENCY_ENTRIES = new Set(["./harness/events"]);
+const ZERO_DEPENDENCY_ENTRIES = new Set(["./harness/events", "./transcript/usage"]);
 // Entries that import the optional `effect` peer, which must stay an external import. Every other entry is plain:
 // neither its code nor its declarations may reach `effect`, so a consumer without Effect can load and type-check it.
 const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);

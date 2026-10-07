@@ -53,19 +53,36 @@ export async function readText(platform: SessionPlatform, path: string, options:
   return new TextDecoder().decode(await readBytes(platform, path, undefined, options));
 }
 
-/** The file's lines with their byte offsets (see `splitLines`). Breaking out of the loop stops the read. */
+/** Where reading lines starts: a byte offset at the start of a line, and that line's 1-based number. */
+export interface LineStart {
+  readonly offset: number;
+  readonly line: number;
+}
+
+/**
+ * The file's lines with their byte offsets (see `splitLines`), from its start or from `from`, up to the byte offset
+ * `end` when given. Breaking out of the loop stops the read.
+ */
 export async function* readLines(
   platform: SessionPlatform,
   path: string,
-  options: ReadOptions = {}
+  options: ReadOptions = {},
+  from: LineStart = { offset: 0, line: 1 },
+  end?: number
 ): AsyncGenerator<Line, void, undefined> {
-  let read = 0;
-  for await (const line of splitLines(abortable(platform.fs.read(path), options.signal))) {
+  let read = from.offset;
+  const range =
+    end === undefined ? (from.offset > 0 ? { start: from.offset } : undefined) : { start: from.offset, end };
+  const chunks = platform.fs.read(path, range);
+  for await (const line of splitLines(abortable(chunks, options.signal), {
+    startOffset: from.offset,
+    startLine: from.line
+  })) {
     // One chunk can hold many lines, and a consumer such as `onProgress` may abort between them.
     options.signal?.throwIfAborted();
-    const end = line.offset + line.byteLength + line.terminator.length;
-    options.progress?.add(end - read);
-    read = end;
+    const lineEnd = line.offset + line.byteLength + line.terminator.length;
+    options.progress?.add(lineEnd - read);
+    read = lineEnd;
     yield line;
   }
 }

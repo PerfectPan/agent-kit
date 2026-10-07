@@ -47,6 +47,10 @@
       "types": "./dist/transcript.d.ts",
       "default": "./dist/transcript.js"
     },
+    "./transcript/usage": {
+      "types": "./dist/transcript/usage.d.ts",
+      "default": "./dist/transcript/usage.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

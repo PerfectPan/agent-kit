@@ -1,0 +1,1 @@
+{"id":"msg_a","sessionID":"ses_legacy","role":"assistant","modelID":"model-test","providerID":"provider-test","cost":0.01,"tokens":{"input":100,"output":20,"reasoning":5,"cache":{"read":50,"write":0},"total":175},"time":{"created":1767225600000,"completed":1767225601000}}

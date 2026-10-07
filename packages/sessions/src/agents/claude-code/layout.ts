@@ -101,3 +101,25 @@ export function looksLikeClaudeCodeSession(path: string, head: string | undefine
   const assistant = start.includes('"type":"assistant"') || start.includes('"type": "assistant"');
   return (user || assistant) && start.includes('"sessionId"');
 }
+
+/** How the usage walk finds a session's files: the session files, and the subagent transcripts below them. */
+export const CLAUDE_CODE_USAGE_FILES: { match(name: string): boolean; maxDepth: number } = {
+  match: (name) => name.endsWith(".jsonl"),
+  maxDepth: 2 + CLAUDE_CODE_SUBAGENT_DEPTH
+};
+
+/**
+ * What a usage decoder needs to know about a file of the walk, or `undefined` for a file below a subagent directory
+ * that is not a transcript: a subagent transcript belongs to the session whose directory holds it, and its lane is
+ * named by its file.
+ */
+export function claudeCodeUsageFile(path: string): { sessionId: string; agentLaneId?: string } | undefined {
+  const at = path.lastIndexOf(`/${SUBAGENTS}/`);
+  if (at < 0) {
+    return { sessionId: claudeCodeSessionStem(path) };
+  }
+  if (claudeCodeSubagentFile(basenamePath(path)) !== "transcript") {
+    return undefined;
+  }
+  return { sessionId: basenamePath(path.slice(0, at)), agentLaneId: claudeCodeAgentIdFromFile(path, []) };
+}

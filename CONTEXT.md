@@ -87,6 +87,15 @@ Token counts in the community convention: `inputTokens` includes cache reads and
 **UsageRecord**:
 Usage attributed to an agent, a Session and a source, with a granularity: `request` (one model request), `turn` or `session` (an aggregate, with `modelCalls`). An aggregate is never split into invented per-request records.
 
+**UsageSource**:
+A file, directory or database that holds one agent's usage, such as a session file or opencode's database. Usage is decoded one source at a time.
+
+**UsageCursor**:
+Where a decode of one UsageSource stopped, as plain data: the bytes read and the state the agent's rules carry between records. A later decode continues from it and reads only what was written since.
+
+**Usage scan**:
+A decode of every UsageSource of the chosen agents that continues from the previous scan's state (a UsageCursor per source and the request keys seen) and counts a request that several files hold once.
+
 ## cost
 
 **PricingTable**:

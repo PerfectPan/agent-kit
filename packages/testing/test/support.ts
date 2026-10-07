@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
-import type { FileKind, PlatformFs } from "@rivus/agent-kit-platform";
+import type { FileKind, PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform";
 
 import type { ConformanceSession } from "../src/session-adapter-conformance.js";
 
@@ -63,6 +63,14 @@ export function nodeReadFs(): Pick<PlatformFs, "stat" | "realpath" | "list" | "r
       }
       yield* createReadStream(path, { start: range?.start ?? 0, ...(end === undefined ? {} : { end: end - 1 }) });
     }
+  };
+}
+
+/** SQLite on `node:sqlite`, a stand-in for the Node platform's, which the testing package does not depend on. */
+export function nodeSqlite(): PlatformSqlite {
+  const sqlite = process.getBuiltinModule("node:sqlite");
+  return {
+    open: (path, options) => new sqlite.DatabaseSync(path, { readOnly: options?.readonly ?? false })
   };
 }
 

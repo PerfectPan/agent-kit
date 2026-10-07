@@ -16,7 +16,9 @@ export {
   claudeCodeSubagentDir,
   claudeCodeSubagentFile,
   type ClaudeCodeSubagentFile,
+  CLAUDE_CODE_USAGE_FILES,
+  claudeCodeUsageFile,
   looksLikeClaudeCodeSession
 } from "./layout.js";
 export { previewClaudeCodeRecords } from "./preview.js";
-export { claudeCodeUsage } from "./usage.js";
+export { claudeCodeUsage, claudeCodeUsageKey, claudeCodeUsageLines } from "./usage.js";

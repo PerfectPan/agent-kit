@@ -21,10 +21,11 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
+import type { Usage } from "../../domain/usage/index.js";
 import { asNumber, asRecord, asString } from "../record-fields.js";
 import type { ClaudeCodeAgentMeta } from "./layout.js";
 import { applySnapshots, promptSnapshotPayload, snapshotCapabilities } from "./prompt-snapshot.js";
-import { claudeCodeUsage } from "./usage.js";
+import { claudeCodeRequestKey, claudeCodeRequestUsage, claudeCodeUsage, knownClaudeCodeGeneration } from "./usage.js";
 import { isPromptFlags, recordText, userFlags } from "./user-flags.js";
 
 const AGENT = "claude-code";
@@ -111,7 +112,7 @@ export function translateClaudeCodeRecords(
 
   for (const { record, ts } of stamped) {
     const rec = asRecord(record.value);
-    if (!rec || !knownGeneration(rec)) {
+    if (!rec || !knownClaudeCodeGeneration(rec)) {
       return err(unknownFormatGeneration(AGENT, record));
     }
     const type = asString(rec.type) ?? "unknown";
@@ -144,7 +145,7 @@ export function translateClaudeCodeRecords(
 
     if (type === "user" || type === "assistant") {
       const message = asRecord(rec.message) ?? {};
-      const requestId = asString(rec.requestId);
+      const requestId = claudeCodeRequestKey(rec, message);
       if (requestId) {
         mergeRequest(requests, events, record, ts, agentId, requestId, message);
       }
@@ -219,15 +220,6 @@ export function translateClaudeCodeRecords(
   return ok({ events, skipped, session, agents, ...(agentVersion ? { agentVersion } : {}) });
 }
 
-/** A record envelope this adapter knows: a string `type`, no `formatVersion`, a semver `version` when present. */
-function knownGeneration(rec: Record<string, unknown>): boolean {
-  if ("formatVersion" in rec || typeof rec.type !== "string") {
-    return false;
-  }
-  const version = rec.version;
-  return !(typeof version === "number" || (typeof version === "string" && !/^\d+\.\d+\.\d+/.test(version)));
-}
-
 function eventId(uuid: string | undefined, record: SourcedRecord, part: number): string {
   if (!uuid) {
     return lineId(record, part);
@@ -236,8 +228,9 @@ function eventId(uuid: string | undefined, record: SourcedRecord, part: number):
 }
 
 /**
- * One `request` event per `requestId`, at its first record: Claude Code writes one record per content block, and
- * a request's records may interleave with another's. Later records update its usage, model and finish reason.
+ * One `request` event per request key (`claudeCodeRequestKey`), at its first record: Claude Code writes one record per
+ * content block, and a request's records may interleave with another's. Later records update its model and finish
+ * reason, and its usage by `claudeCodeRequestUsage`.
  */
 function mergeRequest(
   requests: Map<string, TranscriptEvent>,
@@ -254,7 +247,7 @@ function mergeRequest(
     requests.set(requestId, event);
     events.push(event);
   }
-  const usage = claudeCodeUsage(message.usage);
+  const usage = claudeCodeRequestUsage(event.payload.usage as Usage | undefined, claudeCodeUsage(message.usage));
   if (usage) {
     event.payload.usage = usage;
   }

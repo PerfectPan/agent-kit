@@ -1,16 +1,9 @@
-import {
-  type AgentHome,
-  type CodingAgentId,
-  homeFromRule,
-  isBuiltinCodingAgentId,
-  parseCodingAgentId,
-  resolveHome
-} from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { SessionHead, SessionListFailure } from "../domain/session/index.js";
-import { capabilityUnsupported } from "./errors.js";
-import type { SessionAdapter, SessionAdapters, SessionPlatform } from "./ports.js";
+import { adapterHome, selectAdapters } from "./adapter-table.js";
+import type { SessionAdapters, SessionPlatform } from "./ports.js";
 import { builtinSessionAdapters } from "./session-adapters/index.js";
 
 export interface ListSessionsOptions {
@@ -33,40 +26,16 @@ export async function* listSessions(
   options: ListSessionsOptions = {}
 ): AsyncGenerator<SessionHead | SessionListFailure, void, undefined> {
   const table: SessionAdapters = options.adapters ?? builtinSessionAdapters;
-  const adapters = selectAdapters(table, options.agents ?? Object.keys(table));
+  const adapters = selectAdapters(table, options.agents ?? Object.keys(table), "session adapter");
   let total = 0;
   const onTotal = (files: number): void => {
     total += files;
     options.onTotal?.(total);
   };
   for (const adapter of adapters) {
-    for (const root of adapter.roots(homeOf(adapter, platform))) {
+    for (const root of adapter.roots(adapterHome(adapter, platform, "session adapter"))) {
       options.signal?.throwIfAborted();
       yield* adapter.discover(platform, root, { ...(options.signal ? { signal: options.signal } : {}), onTotal });
     }
   }
-}
-
-function selectAdapters(table: SessionAdapters, agents: readonly CodingAgentId[]): SessionAdapter[] {
-  const selected = new Map<CodingAgentId, SessionAdapter>();
-  for (const requested of agents) {
-    const parsed = parseCodingAgentId(requested);
-    const agent = parsed.ok ? parsed.value : requested;
-    const adapter = table[agent];
-    if (!adapter) {
-      throw capabilityUnsupported(agent);
-    }
-    selected.set(agent, adapter);
-  }
-  return [...selected.values()];
-}
-
-function homeOf(adapter: SessionAdapter, platform: Pick<Platform, "env" | "home">): AgentHome {
-  if (adapter.home) {
-    return homeFromRule(adapter.agent, adapter.home, platform);
-  }
-  if (isBuiltinCodingAgentId(adapter.agent)) {
-    return resolveHome(adapter.agent, platform);
-  }
-  throw capabilityUnsupported(adapter.agent, "has a session adapter without a home rule, and catalog does not know it");
 }
