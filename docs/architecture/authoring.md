@@ -24,7 +24,7 @@ Packages are created in the phase that gives them content; see the plan's sectio
 - A package is not a new bounded context, and a pure re-export is not a second owner. The shell packages own nothing; Platform is a technical port, not a context.
 - A revision counter, a JSON file, a state machine or a validator does not by itself establish an owner. Find the context whose invariants the code protects.
 - An abstraction needs at least two real consumers. Code with a single consumer stays in that application until a second consumer appears.
-- Adding an agent: add its identity in `catalog/src/agents/`, add an agent adapter in the `agents/` of each context that supports it, and register it in that context's `agents/index.ts`. Each context's conformance tests check the new adapter. There is no composite per-agent object, because catalog would then depend on every context.
+- Adding an agent: add its identity in `catalog/src/agents/`, add the agent's pure translation in the `agents/` of each context that supports it, and register the adapter in that context's builtin table (in sessions: `application/session-adapters/index.ts`, because an adapter that reads files needs Platform, which `agents/` may not import). Each context's conformance tests check the new adapter. There is no composite per-agent object, because catalog would then depend on every context.
 
 ## Lay Out A Context Package
 
@@ -36,7 +36,7 @@ Every context package uses the same layout, creating only the directories it nee
     aggregate/  value-objects/  policies/  factories/  errors/  events/  services/
     index.ts            the concept's facade inside the package
   agents/<agent>/       agent adapters (anti-corruption layer)
-  agents/index.ts       builtinXxx: Record<CodingAgentId, XxxAdapter>
+  agents/index.ts       exports the pure per-agent rules; a builtinXxx table of pure adapters may live here
   application/          use cases + ports.ts
   adapters/             implementations of this context's ports
   public.ts             the public surface, re-exported by the shell package

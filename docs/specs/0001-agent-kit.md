@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Accepted (the 0.1.0 entries are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 

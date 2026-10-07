@@ -7,8 +7,8 @@ export interface AgentKitErrorOptions {
 }
 
 /**
- * The only public class of the kit. Promise-returning entries reject with it for expected failures; `code` names
- * the failure, and each context documents the codes it uses.
+ * The only public class of the kit. Expected failures are returned as tagged `Result` values; this error is thrown
+ * for caller mistakes such as naming an agent that has no adapter, and `code` names which one.
  */
 export class AgentKitError<Code extends string = string> extends Error {
   readonly code: Code;

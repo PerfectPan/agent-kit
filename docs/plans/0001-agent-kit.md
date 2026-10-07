@@ -2,7 +2,7 @@
 
 agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each implement their own code for working with third-party coding agents. This plan moves that code into two npm packages: `@rivus/agent-kit` (connect to external coding agents) and `@rivus/agent-kit-collab` (agent collaboration primitives). The Effect-based host application that runs agents stays independent.
 
-- Status: accepted (all decisions confirmed, see section 7)
+- Status: accepted (all decisions confirmed, see section 7); P0 and P1 implemented, 0.1.0 ready to release (6.3)
 - Owner: PerfectPan
 - Reviewer: codex (review rounds in [A.5](#a5-review-record))
 - Last updated: 2026-10-07
@@ -109,6 +109,10 @@ The two packages are split by role (confirmed 2026-10-05). agent-kit connects to
 | First release scope | 0.1.0 = P0 + P1 (6.3). Only packages and entries with real content exist: `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript`, `/testing`. The internal packages for discovery, cost, harness, acp and redact, and the collab package, are created in the phase that fills them | Create every planned package as an empty shell in P0: it would publish entries without behavior |
 | Effect in the first release | No 0.1.0 entry imports `effect` (every P1 context is plain TS under 3.7). The Effect allowlist in the boundary test exists from P0. The checks for the optional `effect` peer and the resolved Effect version (3.7) are prepared in P0 but only become meaningful with the first Effect entry, so they move to P3 | Run the peer and version checks in P0: with no Effect entry there is nothing for them to check |
 | Location of the authoring conventions | `docs/architecture/authoring.md`; the template keeps durable documentation under `docs/` | `architecture/authoring.md` at the repository root |
+| Shell build and declaration bundling | tsdown with the Oxc declaration generator (decided in P0): one entry per subpath export, internal packages bundled, `node:*` and runtime dependencies external. The internal packages enable `isolatedDeclarations`, so Oxc can emit their declarations exactly; exports whose type is only inferred (such as zod schemas) stay module-private | rslib `dts.bundle` plus `bundledPackages`: under TypeScript 7 it copied TypeScript source into the `.d.ts`. tsdown's tsgo generator: it only emits declarations for files inside the shell package, not for the internal packages it bundles |
+| Dependency ranges | Runtime dependencies of the published package use caret ranges from the versions in 3.12 (`zod ^4.6.5`, `es-toolkit ^1.52.0`); devDependencies stay exact, as in the template; the `effect` peer that arrives in P3 stays exact (3.7) (decided in P0) | Exact runtime versions: a consumer whose own `zod` or `es-toolkit` differs by a patch would install a second copy and miss fixes. A caret `effect` peer: two Effect versions can fail inside the runtime (3.7) |
+| Session adapter layout | Within option A, each agent's pure translation (layout, preview, events, usage) lives in `sessions/src/agents/<agent>/` without IO or Platform; the `SessionAdapter` that assembles it with file IO, and the `builtinSessionAdapters` table, live in `sessions/src/application/session-adapters/` (decided in P1) | The table in `agents/index.ts` (3.2, 3.3 as first written): a `SessionAdapter` reads files through the platform, and `agents/` must stay pure |
+| `streamEvents` in 0.1.0 | Not shipped, and neither is a resume position (decided in P1). `loadTranscript` returns the whole transcript | Stream events while reading: compaction marks earlier events with `shadowedBy` after they were read, so no event is final before the whole session is read, and consumers would have to patch events they already received. Revisit when sessions gains live following (3.7) |
 
 ## 3. Detailed design
 
@@ -141,6 +145,7 @@ through the public interfaces (conformist)
 | --- | --- |
 | Ubiquitous language | CodingAgent (a third-party coding agent product), CodingAgentId (with aliases such as `claude-code` / `claude`), AgentHome (the configuration and data root, including overrides such as `CLAUDE_CONFIG_DIR` and `CODEX_HOME`) |
 | Model | Value objects only |
+| Home rules (verified in P1) | Claude Code: `CLAUDE_CONFIG_DIR` names the configuration directory, default `~/.claude`. Codex: `CODEX_HOME`, default `~/.codex`. Gemini CLI: `GEMINI_CLI_HOME` replaces the user's home directory and the CLI appends `.gemini`. Grok: `GROK_HOME`, default `~/.grok`. opencode: `$XDG_DATA_HOME/opencode`, default `~/.local/share/opencode`. Pi: `PI_CODING_AGENT_DIR` replaces `~/.pi/agent` and expands a leading `~` |
 | Use cases | None |
 | Ports and anti-corruption layer | None |
 | Exposure and relationships | Shared by four contexts. Holds only identity and home directories, plus the `Result` type that every context uses (a few lines of pure types, part of the API conventions in 3.5). Any change to the shared kernel requires every context to coordinate |
@@ -161,7 +166,7 @@ through the public interfaces (conformist)
 | --- | --- |
 | Ubiquitous language | Session (one conversation of one agent, not the host application's session), SessionRef, SessionHead, Transcript, TranscriptEvent, Turn, Request, Lane (a subagent's execution line), Compaction, UsageRecord |
 | Model | Value objects plus model consistency rules (ordered `seq`, tool results paired or marked orphan, compaction shadowing marks; guaranteed by the conformance tests) plus the domain service `foldTranscript`; no aggregate (read-only projection) |
-| Use cases | `listSessions`, `streamEvents`, `loadTranscript`, `decodeUsage` (all queries) |
+| Use cases | `listSessions`, `loadTranscript`, `summarizeSession`, `readOriginal` (0.1.0), `decodeUsage` (P2), all queries; `streamEvents` is deferred (2.3) |
 | Ports and anti-corruption layer | Platform `fs`; an optional index cache port; one anti-corruption layer per agent covering directory layout, head/tail preview, event translation and usage decoding (the four change together for the same reason) |
 | Exposure and relationships | Exposes SessionHead, TranscriptEvent, UsageRecord; `cost` and `acp` are downstream of it |
 
@@ -242,7 +247,7 @@ The full glossary is in [CONTEXT.md](../../CONTEXT.md).
 | Layer | Contents | Constraints |
 | --- | --- | --- |
 | `domain/<concept>/` | Created as needed: `aggregate/`, `value-objects/`, `policies/`, `factories/`, `errors/`, `events/`, plus `services/` (stateless domain services). `index.ts` is the concept's facade inside the package | Plain TS, no IO, never sees Platform. Imports only its own domain, `catalog`, and types from upstream packages (`import type`). Aggregates are frozen classes with a private constructor and `create` / `restore` factories; state transitions return `{ state, events }` |
-| `agents/<agent>/` (anti-corruption layer) | Translates each agent's raw format into this context's model: a log line → TranscriptEvent, a hook payload → LifecycleEvent. Each one registers in `agents/index.ts` as `builtinXxx: Record<CodingAgentId, XxxAdapter>` | Pure functions that depend only on this context's domain; no IO |
+| `agents/<agent>/` (anti-corruption layer) | Translates each agent's raw format into this context's model: a log line → TranscriptEvent, a hook payload → LifecycleEvent. Each one is registered in the context's `builtinXxx: Record<CodingAgentId, XxxAdapter>` table: in `agents/index.ts` when the adapter is pure, in `application/` when the adapter does IO (sessions: `application/session-adapters/`, 2.3) | Pure functions that depend only on this context's domain; no IO |
 | `application/` | Use cases that carry agent knowledge and orchestrate ports. `ports.ts` declares the part of Platform it uses and this context's own ports | Depends only on domain, agents and ports. Holds no policy (trigger timing, fail-open, retries, which agents to count, where to store) |
 | `adapters/` | Implementations of this context's ports: format-preserving configuration editors, ledger storage, SQLite index, lease store, and so on | Reaches the outside only through Platform; never imports `node:*` directly |
 | `platform-node` | The Node implementation of Platform: fs, child processes, sqlite | The only package that may import `node:*` |
@@ -315,8 +320,8 @@ The common template of each context package:
   domain/<concept>/
     aggregate/  value-objects/  policies/  factories/  errors/  events/  services/   created as needed
     index.ts
-  application/          use case orchestration + ports.ts
-  agents/<agent>/       anti-corruption layer; agents/index.ts exports the builtinXxx table
+  application/          use case orchestration + ports.ts; holds the builtinXxx table when adapters do IO
+  agents/<agent>/       anti-corruption layer; agents/index.ts exports the builtinXxx table when adapters are pure
   adapters/             port implementations
   public.ts             the public part (re-exported by the shell package)
   index.ts              for sibling packages
@@ -403,9 +408,9 @@ Rules (checked by the architecture tests):
 - `agents/` versus `adapters/`: the first translates an external agent's format into our model (anti-corruption layer); the second implements ports we declare ourselves (infrastructure).
 - Two export layers: `index.ts` is for sibling packages; `public.ts` is the public part, and the shell package re-exports its names one by one, so every change to the public surface is visible in review. Internal aggregate classes do not go into `public.ts`; the public surface only offers handle interfaces and snapshot types.
 - Effect allowlist: only the `application/` and `adapters/` of the contexts in the left column of 3.7 may import `effect`. `domain/`, `agents/` and every plain TS entry must not reference it; the boundary test checks both the module dependency graph and the `.d.ts` graph.
-- Build: the shell package lists the internal packages as devDependencies, and rslib bundles them into the output by default. Runtime dependencies (jsonc-parser, the TOML editor, the ACP SDK) and `node:*` stay external. Bundle mode, one entry per subpath, shared modules split into shared chunks (verified, appendix A.3). Bundling type declarations with rslib `dts.bundle` plus `bundledPackages` is still to be verified; if it does not work, switch to tsdown.
+- Build: the shell package lists the internal packages as devDependencies, and tsdown bundles them into the output. Runtime dependencies (zod, es-toolkit, later jsonc-parser, the TOML editor and the ACP SDK) and `node:*` stay external. One entry per subpath, shared modules split into shared chunks (verified, appendix A.3). Declarations come from tsdown's Oxc generator, which needs `isolatedDeclarations` in every internal package (2.3); `check:package` verifies that `dist` imports no internal package and that browser entries bundle without Node built-ins.
 - collab does not inline agent-kit's internal packages. It declares `@rivus/agent-kit` as a peer and uses only its public subpaths for the Platform types, the `Result` type from `/catalog`, and `/node`, so that a process never holds two copies of platform. It has its own version policy in Rush.
-- Adding an agent: add its identity in `catalog/agents`, add one adapter in the `agents/` of each context that applies, and register it in that context's `agents/index.ts`. Each context's conformance tests check that it satisfies the interface definition.
+- Adding an agent: add its identity in `catalog/agents`, add one adapter in the `agents/` of each context that applies, and register it in that context's `builtinXxx` table (`agents/index.ts`, or `application/` when the adapter does IO, as sessions' does). Each context's conformance tests check that it satisfies the interface definition.
 
 ### 3.4 Public entries
 
@@ -414,7 +419,7 @@ Rules (checked by the architecture tests):
 | `@rivus/agent-kit/catalog` | `CodingAgentId`, `AgentHome`, the built-in agent identities, `resolveHome(id, { env, home })`; `Result`, `ok`, `err` | No | None |
 | `/discovery` | `detectAgents` (including version and login state) | Yes | `fs.stat`, `process.run`, `env` |
 | `/sessions` | `listSessions` | Yes | `fs.list` / `stat` / `read` |
-| `/transcript` | Per-agent translation, `streamEvents`, `loadTranscript` (multi-file merge, skipped records, progress, resume position) | Yes | `fs.read` |
+| `/transcript` | Per-agent translation, `loadTranscript` (multi-file merge, skipped records, progress), `summarizeSession`, `readOriginal`, the event-interpretation rules; `streamEvents` and a resume position are deferred (2.3) | Yes | `fs.read` |
 | `/transcript/usage` | `decodeUsage` (lightweight, streaming, can resume from the previous position) | Yes | `fs.read` |
 | `/cost` | `createPricing(table)`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM` | No | None |
 | `/harness` | Effect: `planInstall` → InstallPlan, `applyInstall`, `verify`, `uninstall`, `inventory`, plus Layers such as `HarnessLive` | Yes | `fs` writes, `process.run`, ledger storage, LedgerLock |
@@ -441,7 +446,7 @@ Entries of `@rivus/agent-kit-collab`:
 
 - Functions plus plain data. Stateful parts are created by factory functions. The only public class is `AgentKitError` (`code` + `cause`, identified through a `Symbol.for` brand so that several installed copies do not cause false negatives). Plain data can pass through the trace viewer's RPC unchanged.
 - Async shapes. Plain TS entries: a single result is a `Promise`; sessions, events and usage are `AsyncIterable` (`break` cancels); every IO function accepts `{ signal?: AbortSignal }`; functions on the hook path are synchronous and do no IO. Effect entries return `Effect` / `Stream`; cancellation is fiber interruption, and long-lived resources (ACP connection, lease manager, lanes) belong to a Scope provided by the caller.
-- Errors. Plain TS entries return expected outcomes as values, `{ ok: true, value } | { ok: false, error }`, where `error` is a union tagged by `_tag` (agent not installed, lease held, a file failed to read); only defects throw. When parsing meets a line it cannot read, it records the line as skipped; only an unrecognized format generation is an error. `catchTag` matches plain `_tag` objects (verified), but `{ ok: false }` is a successfully resolved Promise and does not enter Effect's error channel by itself: an Effect caller first unwraps it with a few-line `fromResult` (`r.ok ? Effect.succeed(r.value) : Effect.fail(r.error)`), after which `catchTag` works (see 3.7). Effect entries put the same set of `_tag` errors into the typed error channel `Effect<A, E>`; inside the kit, a `Result` obtained from a plain TS function is unwrapped the same way.
+- Errors. Plain TS entries return expected outcomes as values, `{ ok: true, value } | { ok: false, error }`, where `error` is a union tagged by `_tag` (agent not installed, lease held, a file failed to read); only defects throw. When parsing meets a line it cannot read, it records the line as skipped; only an unrecognized format generation is an error. `catchTag` matches plain `_tag` objects (verified), but `{ ok: false }` is a successfully resolved Promise and does not enter Effect's error channel by itself: an Effect caller first unwraps it with a few-line `fromResult` (`r.ok ? Effect.succeed(r.value) : Effect.fail(r.error)`), after which `catchTag` works (see 3.7). Effect entries put the same set of `_tag` errors into the typed error channel `Effect<A, E>`; inside the kit, a `Result` obtained from a plain TS function is unwrapped the same way. In 0.1.0 (decided in P1): `loadTranscript` and `summarizeSession` resolve to `Result`s that fail with `SessionNotFound`, `ReadFailed`, `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`, and `readOriginal` fails with `SourceChanged`, `SessionNotFound` or `ReadFailed`; `listSessions` yields `{ ref, error }` items (`RootMissing`, `ReadFailed`) and goes on. An abort rejects with `signal.reason` instead of resolving to a value, so a caller's own cancellation never looks like a data problem. Naming an agent without an adapter in the call's own options (`listSessions({ agents })`) throws `AgentKitError` with code `capability-unsupported`, because it is a caller error, not a property of the data.
 - Dependency injection. Plain TS entries take the platform, or a part of it, as the first parameter; there is no "kit object bound to a platform", which would be a pure forwarding layer. The ports of Effect entries are `Context.Service`, with keys of the form `@rivus/agent-kit/<context>/<port>/v1` (for example LedgerStore, LedgerLock, AcpTransport, SessionBindingStore, LeaseStore); the version number changes only when the interface becomes incompatible. Platform stays a plain TS interface: a Layer such as `PlatformLive` builds the service from `createNodePlatform()`. Each fs method does not become its own service, and nothing is injected into aggregates.
 - Adding agents (option A). Each context defines its own adapter interface with a version literal (for example `specificationVersion: 'sessions-v1'` on SessionAdapter, `'harness-v1'` on HookDialect), so v1 and v2 can coexist later (borrowed from AI SDK's LanguageModelV2/V3/V4). Each context exports `builtinXxx: Record<CodingAgentId, XxxAdapter>`; use cases use it by default and also accept an `adapters` parameter that overrides or extends it. There is no global registry. Which capabilities an agent supports is decided by which context tables contain an adapter for it; reading data for an agent without an adapter returns a `CapabilityUnsupported` value, and naming such an agent in a call's options throws `AgentKitError` with code `capability-unsupported` (decided in P1; see the spec's error convention). Third-party adapters use the conformance tests of the matching context from `/testing`.
 - Versioning. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping support for a Node LTS is a major. Unstable APIs go under `/experimental/*`.
@@ -453,9 +458,9 @@ const platform = createNodePlatform()
 const ev = readHookEvent('codex', payload, process.env)      // { phase: 'finish', sessionId, cwd }
 
 // Sessions, translation, usage, cost
-for await (const s of listSessions(platform, { agents: ['claude-code', 'codex'], since, signal })) { /* SessionHead | { ref, error } */ }
+for await (const s of listSessions(platform, { agents: ['claude-code', 'codex'], signal })) { /* SessionHead | { ref, error } */ }
 // Add a third-party agent: listSessions(platform, { adapters: { ...builtinSessionAdapters, 'my-agent': mySessionAdapter } })
-for await (const e of streamEvents(platform, ref, { signal })) { /* ref carries the CodingAgentId; e.kind is 'unknown' when not recognized */ }
+const t = await loadTranscript(platform, ref, { signal })   // Result<Transcript>; ref carries the CodingAgentId; in t.value.events, kind is 'unknown' when not recognized
 const pricing = createPricing(presencePricingSnapshot, { overrides })
 for await (const r of decodeUsage(platform, 'claude-code', file, { since, from: cursor })) total = add(total, r, pricing)
 
@@ -489,9 +494,11 @@ The kit is an Open Host Service for the applications; its public types are the P
 
 | Kind | Examples |
 | --- | --- |
-| Use cases | `listSessions`, `streamEvents`, `planInstall`, `createLeaseManager` |
+| Use cases | `listSessions`, `loadTranscript`, `planInstall`, `createLeaseManager` |
 | Published Language (plain data, read-only snapshots) | CodingAgentId, AgentHome, SessionHead, TranscriptEvent, UsageRecord, LifecycleEvent, LedgerEntry, LeaseSnapshot |
-| Reusable pure rules | Per-agent translation functions, `readHookEvent`, `costOf`, `isFresh`, `nextFencingToken` (the host application can embed them in its own BackgroundSession aggregate) |
+| Reusable pure rules | Per-agent translation functions, the rules for interpreting events (`isPrompt`, `laneOf`, `shadowedIn`, ...), `readHookEvent`, `costOf`, `isFresh`, `nextFencingToken` (the host application can embed them in its own BackgroundSession aggregate) |
+
+The public surface holds only these three kinds (decided in P1). 0.1.0 exports use cases, the published types, each built-in agent's translator with its usage function and capability list, and the event-interpretation rules a viewer needs; the helpers for writing an adapter (file walking, JSONL reading, event factories) stay internal until a consumer outside the kit needs them, so they can change without a breaking release.
 
 Aggregate roots are exported as handles: LeaseHandle (`token`, `runFenced`; release is the owning Scope's job) and InstallPlan (`changes`, executed by `applyInstall` / `discard`). They can only be obtained through use cases, are interfaces rather than classes that can be constructed with `new`, and their methods go through the store or the ledger internally. The Ledger is stored locally by the kit and exposed through `verify` and `uninstall(owner)`. This matches AI SDK's HarnessAgentSession and Chat (the state machine lives in the object and its state can be exported as a snapshot); the difference is that outside code cannot construct lease tokens or plan diffs freely.
 
@@ -683,13 +690,15 @@ presence keeps its three existing pricing rules and only switches the tokens to 
 
 Event model: the trace viewer's existing ten kinds already cover the union of OTel, AI SDK, ACP, the Claude Agent SDK and the OpenAI Agents SDK. Two names change to align with the community (confirmed 2026-10-06): `thinking` → `reasoning` (only Anthropic says thinking), and `stopReason` in `request` → `finishReason` (matching `gen_ai.response.finish_reasons` and AI SDK). `tool_result` keeps its name and is mapped on export. The trace viewer's per-agent info (`id`, `parentId`, `spawnEventId`) already matches OTel's `invoke_agent` parent-child relation and ACP's subagent proposal.
 
+Decided in P1: until `/transcript/usage` ships, usage reaches consumers on `request` events. A `request` payload carries `usage` plus the optional UsageRecord fields `granularity`, `modelCalls` and `usageByModel`, so Grok's turn aggregate is one `request` event with `granularity: 'turn'` rather than invented per-request events. A lane's `spawnEventId` names the event on the parent lane that started the subagent: a `tool_call`, or a `system` event when that is what the agent's log records. The conformance suite checks that every `spawnEventId` resolves to such an event.
+
 The boundary between the kit and the trace viewer: the kit outputs a flat list of events, which reference each other through `agentId`, `parentId`, `requestId`, `callId`, `shadowedBy` and the session-level `agents[]` (a subagent's `parentId`, `spawnEventId`). Deciding these references requires understanding each agent's log format, so they are set correctly at translation time and guaranteed by the conformance tests. Assembling the references into a turn tree, timeline or context reconstruction, and UI fields such as truncated long text, prompt deduplication and source file numbering, only need the event model and are used only by the trace viewer. They stay in the trace viewer as its view types on top of TranscriptEvent and do not enter the kit's types. When a second consumer needs a turn view, the turn projection moves into `/transcript`.
 
 The live event stream of `/acp`: ACP pushes chunks (`agent_message_chunk`, `agent_thought_chunk`, status changes in `tool_call_update`), while on-disk logs hold complete records. The event stream of `prompt()` yields both deltas and completed events. Deltas are named after AI SDK's stream events (`text-delta`, `reasoning-delta`, `tool-input-*`, `finish`); completed events are the TranscriptEvents above. A utility function folds deltas into completed events.
 
 ### 3.12 Dependencies
 
-Confirmed 2026-10-06. Versions are the latest on the official npm registry that day; anything Node 22 provides built in is not installed as a package.
+Confirmed 2026-10-06. Versions are the latest on the official npm registry that day; anything Node 22 provides built in is not installed as a package. Runtime dependencies are declared with caret ranges from these versions; the `effect` peer and all devDependencies are exact (2.3).
 
 | Runtime dependency | Version | Used in | Notes |
 | --- | --- | --- | --- |
@@ -703,13 +712,13 @@ Confirmed 2026-10-06. Versions are the latest on the official npm registry that 
 
 Packages replaced by built-in capabilities: `node:sqlite` (not better-sqlite3), `crypto.randomUUID()` (not uuid), `AbortSignal.timeout` / `any` (not p-timeout), `Platform.spawn` wrapping `node:child_process` (not execa), Effect's Semaphore / Queue (not p-limit). semver is added when agent versions need comparing.
 
-Development and build: the template already brings Rush, `@rslib/core`, TypeScript, `@perfectpan/lint-config`, oxlint, oxfmt, oxlint-tsgolint and vitest. Added on top: `@effect/vitest` 4.0.1 (testing Effect code), `@effect/language-service` 0.87.3 (detects duplicate Effect copies and common mistakes), `publint` 0.3.25 and `@arethetypeswrong/cli` 0.18.5 (package format and type declaration checks), `size-limit` 14.1.0 (per-entry size budgets). For bundling type declarations, try rslib `dts.bundle` first, otherwise `@microsoft/api-extractor` (already used by agent-task-loop) or tsdown; this is a P0 technical check.
+Development and build: the template brings Rush, TypeScript, `@perfectpan/lint-config`, oxlint, oxfmt, oxlint-tsgolint and vitest. The shell builds with tsdown and its Oxc declaration generator instead of the template's `@rslib/core` (2.3), and checks its output with `publint` 0.3.25 and `@arethetypeswrong/cli` 0.18.5 (package format and type declarations), `size-limit` 14.1.0 (per-entry size budgets), and rolldown plus oxc-parser for the dist check (no internal-package imports, browser entries without Node built-ins). `@effect/vitest` 4.0.1 (testing Effect code) and `@effect/language-service` 0.87.3 (detects duplicate Effect copies and common mistakes) are added with the first Effect entry in P3.
 
 ## 4. Release and rollback
 
 - Keep the Rush flow: change files → a manual Version Packages pull request → a GitHub Release triggers OIDC publishing. `@rivus/agent-kit` and `@rivus/agent-kit-collab` are published, each with its own version policy. 0.1.0 publishes `@rivus/agent-kit` only; `@rivus/agent-kit-collab` first ships in P5.
 - Package format: ESM only, `sideEffects: false`, published `engines.node >=22.13` (`node:sqlite` without a flag, `require(esm)` available); development and CI use Node 24; MIT. `effect` is an optional peer of both packages (exactly 4.0.1 in the first release) and a devDependency, external at build time (3.7).
-- Rush pitfall: when only a private internal package changes, `rush change` does not ask for a change file for the shell package, so a version bump can be missed. CI adds a check: any change to an internal package must come with a change file for the shell package. If Rush handles this awkwardly, switch to changesets (which can name the published package to bump directly).
+- Rush pitfall: when only a private internal package changes, `rush change` does not ask for a change file for the shell package, so a version bump can be missed. Since P0, CI runs `scripts/release-intent.ts check`: a change to shipped files of a bundled internal package must come with a change file for `@rivus/agent-kit`, and `release-intent.ts add` writes one. Switch to changesets only if this check proves awkward in practice.
 - Cross-repository integration uses snapshot preview releases (or pkg.pr.new), not `link:`.
 - Rollback: the application reverts its adoption pull request first; the kit's additive changes can stay, or the affected version can be deprecated.
 
@@ -725,7 +734,7 @@ Development and build: the template already brings Rush, `@rslib/core`, TypeScri
 ### 6.1 Preconditions
 
 - All decisions in section 7 are confirmed. The license and the agent-finder rewrite are settled.
-- Two technical checks pass: bundling type declarations (rslib `dts.bundle` + `bundledPackages`) and the release reminder check under Rush.
+- Two technical checks pass: bundling type declarations and the release reminder check under Rush. Both passed in P0: declarations through tsdown's Oxc generator after rslib `dts.bundle` failed under TypeScript 7 (2.3), and the reminder through `scripts/release-intent.ts` (4).
 
 ### 6.2 Completion contract
 
@@ -743,6 +752,7 @@ The order follows "the application whose code is moved adopts first", which has 
 | --- | --- |
 | Content | Confirm the decisions; generate the repository from project-template-rush; write the Spec, this Markdown plan, the `CONTEXT.md` glossary and `docs/architecture/authoring.md` (DDD conventions, in a plain TS part and an Effect part); write `infra/architecture/boundaries.ts` and the boundary tests (including the Effect allowlist from 3.3); verify pure-entry isolation through the boundary test, and prepare the optional peer and Effect version resolution checks (3.7), which start running in P3 (2.3); set up the skeleton of the internal packages that 0.1.0 needs, the shell package build and the four CI checks (5); run the two technical checks |
 | Exit condition | With an empty skeleton, the shell package builds every entry, shared chunks are correct, bundled type declarations are correct and CI is green; deliberately adding a violating import makes the boundary test fail |
+| Status | Implemented. All exit conditions met: tsdown builds one entry per subpath with shared chunks; attw and publint accept the bundled declarations; `check:package` adds size budgets and the dist check; the boundary test runs positive and negative fixtures (package dependencies, layer rules, exact npm specifiers, `node:*` only in platform-node, the Effect allowlist); CI is green on `main`. Not done in P0, on purpose: the optional `effect` peer and resolved-version checks moved to P3, because no 0.1.0 entry imports `effect` (2.3) |
 
 #### P1: catalog, platform, sessions / transcript (Claude, Codex, Grok)
 
@@ -751,6 +761,7 @@ The order follows "the application whose code is moved adopts first", which has 
 | Sources | The reading part of the trace viewer's kernel (session discovery, head/tail preview, directory walking, JSONL reading, usage, session assembly), its per-agent host parsers and its conformance suite; presence's path rules (adding `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and archived sessions) |
 | Adoption | The trace viewer adopts first and deletes its own host packages and reading code (reconstruction and view projection stay in the trace viewer) |
 | Exit condition | The trace viewer's tests and the conformance tests pass; the session list matches main |
+| Status | Kit side implemented: `/catalog` (six agent identities and home rules), `/platform`, `/node` (`createNodePlatform`), `/sessions` and `/transcript` with built-in adapters for Claude Code, Codex and Grok, and `/testing` (`createMemoryPlatform`, `sessionAdapterConformance`). Met: every built-in adapter passes the conformance suite on the memory platform and in a real temporary directory, and `npm run check` passes. Open until adoption, which follows the release: the trace viewer's tests on the kit and the comparison of its session list with main |
 
 0.1.0 is released at the end of P1 (2.3).
 
@@ -827,7 +838,7 @@ The smallest reversible unit is one adoption pull request of one application: re
 | Effect version alignment | Risk | When the host and the kit resolve different Effect versions, the runtime may fail internally (mixing rc.108 and 4.0.1 failed in tests), and v4 has no version check | Exact peer plus a CI check of the resolved version; the host application aligns its lockfile to 4.0.1 before adoption |
 | The boundary between plain TS and Effect calling styles | Risk | Locks released early, long-lived handles closed by a short Scope, cancellation causes overwritten | The execution rules in 3.9; no Promise facade; tested examples for the three kinds of integration |
 | Collaboration runtime: build our own or use the AI SDK harness | Decided | Build our own: ACP goes into agent-kit's `/acp`, lanes into collab; the MCP tool server stays out for now; AI SDK is only a design reference | Confirmed 2026-10-05 |
-| Bundling type declarations, Rush release reminder | To verify | Whether P0 can finish | P0 technical checks |
+| Bundling type declarations, Rush release reminder | Decided | Whether P0 can finish | Verified in P0: tsdown with the Oxc declaration generator and `isolatedDeclarations` in internal packages (2.3); `scripts/release-intent.ts check` in CI (4) |
 | ABA, reclaim race and pid reuse in agent-orchestration's current lease (in use by agent-task-loop and room-web) | Risk | In extreme cases two processes hold the same task's lease at once, or a successor is stuck forever | P5 rewrites it under 3.9 and adds race tests; if symptoms appear before P5, add a generation in agent-orchestration first |
 | Whether the in-session MCP tool server enters the kit | Follow-up | Only room-web uses agent-orchestration's ToolServer today; the host application has its own MCP bridge for background sessions | When the host application decides to switch, or a second consumer appears, move it from agent-orchestration into agent-kit's `/mcp` |
 | Frequent changes in upstream agent formats | Risk | The kit must release first and applications upgrade after it, one step behind | Fact corrections are patches, which applications' caret ranges pick up automatically |
@@ -869,5 +880,6 @@ The line-count inventory of the source code was used to size the phases. It desc
 - 2026-10-06, codex round 3: 2 of the previous round's 4 findings confirmed resolved; the ledger lock's reclaim race and "crash after creating the lock and before writing the identity" were still open, checked and held. The default lock became an SQLite exclusive lock (released by the kernel when the process exits, no reclaim step), and when sqlite is unavailable and no lock is injected, ledger modification is refused (3.1, 3.9).
 - 2026-10-06, codex round 4: both findings of the previous round confirmed resolved; 1 new minor (the holder identity inside the db cannot be read while it is held exclusively), fixed by writing it to an adjacent reference file. The review converged.
 - 2026-10-06, discussion with codex about the scope of Effect (two rounds): in the first round both sides chose "split by side-effect weight"; codex added measurements of Scope and supervision and the harness execution rules, and corrected the assumption that presence was bundled. In the second round the owner questioned the Promise facade plus native dual API; after reading presence setup, agent-task-loop's TaskOccupancyService and room-web's RoomLabHost, codex changed to recommending native entries only. The conclusion is in 3.7.
+- 2026-10-07, P0 and P1 implementation: decisions made while building were recorded here. 2.3 gained rows for the shell build (tsdown with the Oxc declaration generator, `isolatedDeclarations` in internal packages), dependency ranges (caret runtime dependencies, exact devDependencies and `effect` peer), the session adapter layout (pure translation in `agents/`, IO assembly and `builtinSessionAdapters` in `application/session-adapters/`) and leaving `streamEvents` out of 0.1.0. The 0.1.0 error tags, abort and throw rules are in 3.5; the public surface limit is in 3.6; usage fields on `request` events and the targets of `spawnEventId` are in 3.11; the verified home rules are in 3.1; 6.3 marks P0 and P1 implemented. codex reviewed each slice before it merged (scaffold: 6 findings; Node platform: 2; sessions core: 8; Codex adapter: 5 plus 1 follow-up; all fixed), and the Grok adapter went through the same review.
 
 This plan was compiled from four inventories and four research threads. After the decisions in section 7 were confirmed, it was converted into this Markdown version.
