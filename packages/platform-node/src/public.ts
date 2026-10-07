@@ -1,2 +1,2 @@
-// TODO(P1): replace with createNodePlatform({ env?, home? }).
-export const platformNodePlaceholder = "platform-node";
+export { createNodePlatform } from "./create-node-platform.js";
+export type { NodePlatformOptions } from "./create-node-platform.js";

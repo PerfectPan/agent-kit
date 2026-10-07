@@ -2,7 +2,8 @@ export type Env = Readonly<Record<string, string | undefined>>;
 
 export type OperatingSystem = "darwin" | "linux" | "win32";
 
-export type FileKind = "file" | "dir" | "symlink";
+/** `other` covers sockets, FIFOs and devices. */
+export type FileKind = "file" | "dir" | "symlink" | "other";
 
 export interface FileStat {
   readonly kind: FileKind;
@@ -26,13 +27,25 @@ export interface PlatformFs {
   stat(path: string, options?: { readonly followSymlinks?: boolean }): Promise<FileStat | undefined>;
   /** Resolves to `undefined` when the target does not exist; path checks then resolve the nearest existing parent. */
   realpath(path: string): Promise<string | undefined>;
+  /**
+   * Lists entries without following symlinks. Rejects when `dir` does not exist or is not a directory; callers that
+   * may see a missing directory call `stat` first.
+   */
   list(dir: string): Promise<DirEntry[]>;
   /** Raw chunks; split them with `splitLines`, which tracks byte offsets. */
   read(path: string, range?: ByteRange): AsyncIterable<Uint8Array>;
+  /**
+   * Writes a temp file next to `path` and renames it over `path`. Without `mode`, an existing file keeps its mode.
+   * A symlink at `path` is replaced by a regular file, not written through, so callers `realpath` first.
+   */
   writeAtomic(path: string, data: Uint8Array | string, options?: { readonly mode?: number }): Promise<void>;
   /** Creates an empty file only if `path` does not exist; resolves to `false` when it already exists. */
   createExclusive(path: string): Promise<boolean>;
   rename(from: string, to: string): Promise<void>;
+  /**
+   * Removes a file, a symlink (not its target) or an empty directory. Resolves when nothing is at `path`; rejects for a
+   * non-empty directory.
+   */
   remove(path: string): Promise<void>;
 }
 
@@ -43,8 +56,11 @@ export interface ExitStatus {
 
 export interface RunOptions {
   readonly cwd?: string;
+  /** The complete child environment; defaults to `Platform.env`, never the live process environment. */
   readonly env?: Env;
+  /** When it elapses, the child gets SIGTERM, then SIGKILL after a grace period, and the result has `timedOut`. */
   readonly timeoutMs: number;
+  /** Aborting stops the child the same way and rejects with `signal.reason`. */
   readonly signal?: AbortSignal;
 }
 
@@ -70,6 +86,7 @@ export interface ChildHandle {
   kill(signal?: "SIGTERM" | "SIGKILL"): void;
 }
 
+/** Not supported on win32, where `self` and `identify` throw. */
 export interface ProcessIdentity {
   readonly host: string;
   readonly bootId: string;
@@ -79,6 +96,11 @@ export interface ProcessIdentity {
 }
 
 export interface PlatformProcess {
+  /**
+   * Runs a short command without a shell and with stdin closed. A non-zero exit or a terminating signal resolves;
+   * failing to start, or writing more than 4 MiB to stdout or stderr, rejects. Output stops being collected shortly
+   * after the command exits, even if a grandchild keeps stdout open.
+   */
   run(command: string, args: readonly string[], options: RunOptions): Promise<RunResult>;
   spawn(command: string, args: readonly string[], options: SpawnOptions): ChildHandle;
   readonly self: ProcessIdentity;
