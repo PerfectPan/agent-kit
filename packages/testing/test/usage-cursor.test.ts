@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 import { type CodingAgentId, isAgentKitError } from "@rivus/agent-kit-catalog";
 import {
   decodeUsage,
@@ -13,9 +11,9 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { readUsageHome } from "./support.js";
 
-const tree = await readTree(fileURLToPath(new URL("fixtures/usage/home", import.meta.url)), "/u/me");
+const tree = await readUsageHome("/u/me");
 const text = (path: string): string => new TextDecoder().decode(tree[path]);
 
 const FILES: readonly [CodingAgentId, string][] = [

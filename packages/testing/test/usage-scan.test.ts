@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
@@ -12,9 +10,9 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { createMemoryPlatform, type MemoryFile, type MemoryPlatform } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { readUsageHome } from "./support.js";
 
-const tree = await readTree(fileURLToPath(new URL("fixtures/usage/home", import.meta.url)), "/u/me");
+const tree = await readUsageHome("/u/me");
 const text = (path: string): string => new TextDecoder().decode(tree[path]);
 const T0 = Date.parse("2026-01-05T00:00:00.000Z");
 const MINUTE = 60 * 1000;

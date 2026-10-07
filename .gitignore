@@ -29,7 +29,3 @@ common/autoinstallers/*/.npmrc
 **/.rush/temp/
 rush-logs/
 *.tsbuildinfo
-
-# Test fixtures mirror agent homes, whose layouts reuse names ignored above (~/.codex, ~/.gemini/tmp).
-!packages/*/test/fixtures/**/.codex/
-!packages/*/test/fixtures/**/tmp/

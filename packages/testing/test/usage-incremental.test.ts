@@ -16,7 +16,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { createMemoryPlatform, type MemoryPlatform } from "../src/memory-platform.js";
-import { claudeCodeSessions, codexSessions, grokSessions, readTree } from "./support.js";
+import { claudeCodeSessions, codexSessions, grokSessions, readTree, readUsageHome } from "./support.js";
 
 // The invariant every usage decoder keeps: a file decoded in steps while it grows (a cursor stored between the steps,
 // as JSON) gives the records one decode of the whole file gives, and those records sum to the request usage of the
@@ -27,7 +27,7 @@ const tree = {
   ...(await readTree(fixtures("claude-code"), "/fx/claude-code")),
   ...(await readTree(fixtures("codex"), "/fx/codex")),
   ...(await readTree(fixtures("grok"), "/fx/grok")),
-  ...(await readTree(fixtures("usage/home"), "/u/me"))
+  ...(await readUsageHome("/u/me"))
 };
 
 async function decodeAll(

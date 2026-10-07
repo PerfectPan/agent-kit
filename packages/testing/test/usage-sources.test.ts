@@ -1,13 +1,11 @@
-import { fileURLToPath } from "node:url";
-
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { isUsageSource, listUsageSources, type ListUsageSourcesOptions } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vitest";
 
 import { createMemoryPlatform, type MemoryFile } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { readUsageHome } from "./support.js";
 
-const tree = await readTree(fileURLToPath(new URL("fixtures/usage/home", import.meta.url)), "/u/me");
+const tree = await readUsageHome("/u/me");
 
 async function list(
   files: Record<string, MemoryFile>,

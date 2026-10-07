@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import {
   addUsage,
@@ -13,11 +11,11 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { readUsageHome } from "./support.js";
 
 // Ported from presence's scanner tests, on synthetic sessions laid out as in each agent's home under `/u/me`.
 
-const home = await readTree(fileURLToPath(new URL("fixtures/usage/home", import.meta.url)), "/u/me");
+const home = await readUsageHome("/u/me");
 const platform = createMemoryPlatform({ files: home, home: "/u/me" });
 const since = Date.parse("2026-01-01T00:00:00.000Z");
 const until = Date.parse("2026-01-03T00:00:00.000Z");
