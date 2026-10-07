@@ -42,10 +42,14 @@ async function database(seed: readonly MessageRow[] = rows): Promise<{ dataHome:
     "CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, time_created INTEGER NOT NULL, " +
       "time_updated INTEGER NOT NULL, data TEXT NOT NULL)"
   );
-  db.close();
+  // One connection and one transaction: a commit per row made the 1,200-row seed exceed the CI test timeout.
+  const statement = db.prepare("INSERT INTO message VALUES (?, ?, ?, ?, ?)");
+  db.exec("BEGIN");
   for (const row of seed) {
-    insert(path, row);
+    statement.run(row.id, row.session_id, row.time_created, row.time_created, JSON.stringify(row.data));
   }
+  db.exec("COMMIT");
+  db.close();
   return { dataHome, path };
 }
 
