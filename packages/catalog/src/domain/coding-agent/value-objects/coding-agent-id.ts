@@ -1,5 +1,5 @@
 /** Ids of the coding agents the kit knows. Each has an identity in `catalog/src/agents/`. */
-export type BuiltinCodingAgentId = "claude-code" | "codex" | "gemini-cli" | "grok" | "opencode" | "pi";
+export type BuiltinCodingAgentId = "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode" | "pi";
 
 /**
  * A built-in id, or the id of a third-party agent whose adapters a caller passes to a use case. The `string & {}`

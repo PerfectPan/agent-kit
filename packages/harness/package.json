@@ -1,0 +1,32 @@
+{
+  "name": "@rivus/agent-kit-harness",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hook dialects and lifecycle events for each coding agent. Bundled into @rivus/agent-kit.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./public": "./src/public.ts",
+    "./public/events": "./src/events.ts"
+  },
+  "scripts": {
+    "build": "",
+    "lint": "oxlint",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+  },
+  "dependencies": {
+    "@rivus/agent-kit-catalog": "workspace:*"
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

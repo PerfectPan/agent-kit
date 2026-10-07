@@ -51,6 +51,7 @@ const PLATFORM = "@rivus/agent-kit-platform";
 const PLATFORM_NODE = "@rivus/agent-kit-platform-node";
 const CATALOG = "@rivus/agent-kit-catalog";
 const SESSIONS = "@rivus/agent-kit-sessions";
+const HARNESS = "@rivus/agent-kit-harness";
 
 export const boundaries: BoundaryRules = {
   packages: {
@@ -60,8 +61,10 @@ export const boundaries: BoundaryRules = {
     // zod/mini is the only zod entry the plan allows. es-toolkit's root export is tree-shakable; its lodash-compatible
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
+    // The hook path (`src/events.ts`) must stay free of npm packages; check-dist enforces it on the built entry.
+    [HARNESS]: { dependsOn: [CATALOG, PLATFORM], external: [] },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
-    "@rivus/agent-kit-testing": { dependsOn: [PLATFORM, CATALOG, SESSIONS], external: ["es-toolkit"] }
+    "@rivus/agent-kit-testing": { dependsOn: [PLATFORM, CATALOG, SESSIONS, HARNESS], external: ["es-toolkit"] }
   },
   shells: ["@rivus/agent-kit"],
   sharedKernel: CATALOG,

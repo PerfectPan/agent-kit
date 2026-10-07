@@ -374,7 +374,7 @@ function value<T>(result: Result<T, { readonly _tag: string }>, what: string): T
   return result.value;
 }
 
-function check(condition: boolean, message: string): asserts condition {
+export function check(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }

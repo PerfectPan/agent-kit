@@ -8,6 +8,7 @@ describe("resolveHome", () => {
   it.each([
     ["claude-code", "/u/me/.claude"],
     ["codex", "/u/me/.codex"],
+    ["cursor", "/u/me/.cursor"],
     ["gemini-cli", "/u/me/.gemini"],
     ["grok", "/u/me/.grok"],
     ["opencode", "/u/me/.local/share/opencode"],

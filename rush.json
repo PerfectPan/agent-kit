@@ -37,6 +37,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@rivus/agent-kit-harness",
+      "projectFolder": "packages/harness",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@rivus/agent-kit-testing",
       "projectFolder": "packages/testing",
       "shouldPublish": false

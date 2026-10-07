@@ -6,8 +6,9 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 // Packs the shell, installs the tarball into a throwaway consumer project the way a user would, and checks it from
-// there: the tarball holds only what it should, every entry type-checks under node16 and bundler resolution, and
-// every entry loads in Node and reads sessions from a temporary home. The real home directory is never read.
+// there: the tarball holds only what it should, every entry type-checks under node16 and bundler resolution, every
+// entry loads in Node and reads sessions from a temporary home, and the hook entry starts fast in a fresh process.
+// The real home directory is never read.
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = resolve(packageRoot, "../..");
@@ -132,6 +133,33 @@ for (const agent of seeded) {
 `;
 }
 
+/**
+ * A hook process loads `/harness/events` and reads one payload. A generous bound catches an accidental heavy import
+ * (Effect alone adds tens of milliseconds) without failing on a slow CI machine.
+ */
+const HOOK_COLD_START_BOUND_MS = 100;
+const HOOK_COLD_START_RUNS = 5;
+
+function coldStartSource(manifest: Manifest): string {
+  return `const started = performance.now();
+const { readHookEvent } = await import("${manifest.name}/harness/events");
+const event = readHookEvent("claude-code", { hook_event_name: "UserPromptSubmit", session_id: "s1" }, {});
+const elapsed = performance.now() - started;
+if (event.phase !== "start" || event.sessionId !== "s1") {
+  throw new Error(\`unexpected event \${JSON.stringify(event)}\`);
+}
+console.log(elapsed.toFixed(2));
+`;
+}
+
+/** The median time, over fresh Node processes, from before the import to after one readHookEvent call. */
+function hookColdStartMs(consumer: string): number {
+  const runs = Array.from({ length: HOOK_COLD_START_RUNS }, () =>
+    Number(run(process.execPath, ["cold-start.mjs"], consumer).trim())
+  ).toSorted((a, b) => a - b);
+  return runs[Math.floor(runs.length / 2)] ?? Number.NaN;
+}
+
 function tsconfig(module: string, moduleResolution: string): string {
   const compilerOptions = {
     module,
@@ -201,8 +229,17 @@ try {
   }
   const output = run(process.execPath, ["consumer.ts"], consumer).trim();
 
+  writeFileSync(join(consumer, "cold-start.mjs"), coldStartSource(manifest));
+  const coldStart = hookColdStartMs(consumer);
+  if (!(coldStart < HOOK_COLD_START_BOUND_MS)) {
+    throw new Error(`/harness/events took ${coldStart} ms to import and read one payload`);
+  }
+
   const seconds = ((performance.now() - started) / 1000).toFixed(1);
-  console.log(`smoke-consumer: ok in ${seconds}s (${packed.files.length} files; ${output.split("\n").join(", ")})`);
+  console.log(
+    `smoke-consumer: ok in ${seconds}s (${packed.files.length} files; ${output.split("\n").join(", ")}; ` +
+      `/harness/events cold start ${coldStart.toFixed(1)} ms)`
+  );
 } catch (error) {
   console.error(`smoke-consumer: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
