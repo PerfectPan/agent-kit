@@ -1,23 +1,42 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
+import type { HookDialects } from "../value-objects/hook-dialect.js";
 import type { TerminalIdentity } from "../value-objects/lifecycle-event.js";
 import { type Env, isRecord, ownValue } from "./payload-fields.js";
 
 const present = (value: unknown): boolean => typeof value === "string" && value !== "";
 
+/** Agents that run other agents' hooks, with the payload key and the variable that give them away. */
+const HOSTS: readonly { readonly agent: CodingAgentId; readonly payloadKey: string; readonly variable: string }[] = [
+  { agent: "grok", payloadKey: "hookEventName", variable: "GROK_SESSION_ID" },
+  { agent: "cursor", payloadKey: "cursor_version", variable: "CURSOR_VERSION" }
+];
+
 /**
  * The agent that really ran the hook. Grok and Cursor also run the hooks in Claude Code's settings, so a hook
- * registered for Claude Code can be called by either: Grok sets `GROK_SESSION_ID` and its payloads carry
- * `hookEventName`; Cursor sets `CURSOR_VERSION` and its payloads carry `cursor_version`.
+ * registered for Claude Code can be called by either. Payload evidence wins: Grok's payloads carry `hookEventName`,
+ * Cursor's `cursor_version`. The environment is inherited (Grok sets `GROK_SESSION_ID` for every MCP server it
+ * starts, so an agent launched from there has it too), so `GROK_SESSION_ID` or `CURSOR_VERSION` only counts when the
+ * declared agent is one whose hooks that host runs (its dialect's `runsHooksOf`).
  */
-export function sniffSource(declared: CodingAgentId, payload: unknown, env: Env): CodingAgentId {
-  const field = (key: string) => (isRecord(payload) ? ownValue(payload, key) : undefined);
-  const variable = (name: string) => (Object.hasOwn(env, name) ? env[name] : undefined);
-  if (present(variable("GROK_SESSION_ID")) || present(field("hookEventName"))) {
-    return "grok";
+export function sniffSource(
+  declared: CodingAgentId,
+  payload: unknown,
+  env: Env,
+  dialects: HookDialects
+): CodingAgentId {
+  for (const host of HOSTS) {
+    if (isRecord(payload) && present(ownValue(payload, host.payloadKey))) {
+      return host.agent;
+    }
   }
-  if (present(field("cursor_version")) || present(variable("CURSOR_VERSION"))) {
-    return "cursor";
+  for (const host of HOSTS) {
+    const runsDeclared =
+      Object.hasOwn(dialects, host.agent) &&
+      dialects[host.agent]?.runsHooksOf?.some((foreign) => foreign.agent === declared) === true;
+    if (runsDeclared && present(Object.hasOwn(env, host.variable) ? env[host.variable] : undefined)) {
+      return host.agent;
+    }
   }
   return declared;
 }

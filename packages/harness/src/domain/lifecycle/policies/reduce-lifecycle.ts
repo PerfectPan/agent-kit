@@ -16,7 +16,13 @@ export function lifecycleStatus(state: LifecycleState, clock: LifecycleClock): L
  *
  * Turn ids are opaque, so order comes from arrival: an event of a turn that already ended or was superseded is
  * late and dropped, and an id not seen before is a new turn. Without turn ids, only a turn start leaves `idle`, so a
- * late tool event cannot reopen a finished turn. Subagent events keep a busy session alive without changing it.
+ * late tool event cannot reopen a finished turn. A session start only settles an `unknown` or `idle` session: some
+ * agents send it without waiting (Cursor), so it can arrive after the first prompt, and Cursor's carries a turn id.
+ *
+ * Subagent events keep a busy session alive without changing it, with one exception: a subagent's permission
+ * request is a prompt the user must answer (Claude Code and Codex fire it when the dialog is about to show), so the
+ * session is `blocked` until the subagent, or the session, moves again. A parallel subagent's activity also ends a
+ * block the main agent raised itself; the next main event corrects it.
  */
 export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, clock: LifecycleClock): LifecycleState {
   const current: LifecycleState = { ...state, status: lifecycleStatus(state, clock) };
@@ -26,7 +32,13 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
     return current;
   }
   if (event.subagent !== undefined) {
-    return busy && event.phase !== "unknown" ? { ...current, updatedAt: clock.now } : current;
+    if (event.phase === "blocked" && event.blocker === "permission" && current.status !== "idle") {
+      return { ...current, status: "blocked", updatedAt: clock.now };
+    }
+    if (!busy || event.phase === "unknown") {
+      return current;
+    }
+    return { ...current, status: event.phase === "blocked" ? current.status : "working", updatedAt: clock.now };
   }
 
   const newTurn = turnId !== undefined && turnId !== current.turnId;
@@ -41,9 +53,10 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
     case "unknown":
       return current;
     case "start":
-      return event.scope === "session"
-        ? next("idle", undefined, [current.turnId, turnId])
-        : next("working", turnId, [current.turnId]);
+      if (event.scope === "session") {
+        return busy ? current : next("idle", undefined, [current.turnId]);
+      }
+      return next("working", turnId, [current.turnId]);
     case "activity":
     case "blocked":
       if (current.status === "idle" && !newTurn) {

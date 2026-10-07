@@ -15,6 +15,18 @@ describe("readHookEvent", () => {
     expect(readHookEvent("claude-code", payload, { GROK_SESSION_ID: "" }).agent).toBe("claude-code");
   });
 
+  it("lets payload evidence win over an inherited environment, which counts only for agents the host runs", () => {
+    const codex = { hook_event_name: "PreToolUse", session_id: "c1", turn_id: "t1", tool_name: "Bash" };
+    expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }).agent).toBe("codex");
+    expect(readHookEvent("codex", codex, { CURSOR_VERSION: "3.13.25" }).agent).toBe("codex");
+    expect(readHookEvent("gemini-cli", { hook_event_name: "BeforeTool" }, { CURSOR_VERSION: "3.13.25" }).agent).toBe(
+      "gemini-cli"
+    );
+    const fromCursor = { hook_event_name: "preToolUse", cursor_version: "3.13.25", conversation_id: "x" };
+    expect(readHookEvent("claude-code", fromCursor, { GROK_SESSION_ID: "g1" }).agent).toBe("cursor");
+    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { GROK_SESSION_ID: "g1" }).agent).toBe("grok");
+  });
+
   it("reads Cursor's rename of a Claude Code event as Cursor's event", () => {
     const event = readHookEvent(
       "claude-code",
@@ -167,6 +179,19 @@ describe("hook dialect facts", () => {
       expect(spec?.output?.passThrough).toBe("{}");
     }
     expect(builtinHookDialects.cursor.runsHooksOf?.[0]?.events.SubagentStart).toBeUndefined();
+  });
+
+  it("records which Codex events accept which output fields, and where plain text becomes context", () => {
+    const codex = builtinHookDialects.codex.events;
+    expect(codex.SessionStart?.output?.fields).toContain("hookSpecificOutput");
+    for (const name of ["UserPromptSubmit", "Stop", "SubagentStop"]) {
+      expect(codex[name]?.output?.fields).toEqual(expect.arrayContaining(["decision", "reason"]));
+    }
+    expect(codex.UserPromptSubmit?.output?.fields).toContain("hookSpecificOutput");
+    for (const name of ["SessionStart", "UserPromptSubmit", "SubagentStart"]) {
+      expect(codex[name]?.output).toMatchObject({ plainStdout: "context", passThrough: "" });
+    }
+    expect(codex.PreToolUse?.output?.fields).not.toContain("continue");
   });
 
   it("records that Grok and Cursor run Claude Code's hooks by default", () => {

@@ -36,7 +36,9 @@ export interface ReadHookEventOptions {
  * Translates one hook payload, synchronously and without IO, so a hook process can load nothing else. The payload
  * is whatever the agent sent (parsed JSON on stdin, or the event object a plugin forwards), and `env` is the hook
  * process's environment. The agent is sniffed first, because Grok and Cursor also run hooks registered for Claude
- * Code. An unknown payload shape or event reads as phase `unknown` with the event name it carried; it never throws.
+ * Code: payload evidence (Grok's `hookEventName`, Cursor's `cursor_version`) wins, and the inherited
+ * `GROK_SESSION_ID` or `CURSOR_VERSION` only counts for an agent whose hooks that host runs. An unknown payload shape
+ * or event reads as phase `unknown` with the event name it carried; it never throws.
  *
  * Naming an agent without a dialect is a programming error: it throws an `AgentKitError` with code
  * `capability-unsupported`, whatever the payload.
@@ -53,7 +55,7 @@ export function readHookEvent(
   if (declared === undefined) {
     throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no hook dialect`);
   }
-  const source = sniffSource(agent, payload, env);
+  const source = sniffSource(agent, payload, env, dialects);
   const dialect = Object.hasOwn(dialects, source) ? (dialects[source] ?? declared) : declared;
   const event = { ...readWithDialect(dialect, payload, env), agent: source };
   const terminal = terminalIdentity(env);

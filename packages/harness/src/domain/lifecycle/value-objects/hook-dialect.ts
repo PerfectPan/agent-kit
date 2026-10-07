@@ -47,6 +47,11 @@ export interface HookOutput {
   readonly emptyStdout: "proceed" | "block" | "undocumented";
   /** Exit code 0 with stdout that is not JSON, or JSON the event does not accept. */
   readonly invalidStdout: "proceed" | "block" | "hook-failed" | "undocumented";
+  /**
+   * Exit code 0 with plain text on stdout, where the text does more than `invalidStdout` says: `context` adds it to
+   * the model's context and `shown` shows it to the user. An observer must print nothing, or JSON, there.
+   */
+  readonly plainStdout?: "context" | "shown";
   readonly exitCode2: "proceed" | "block" | "undocumented";
   readonly otherExitCodes: "proceed" | "block" | "hook-failed" | "undocumented";
   /** Top-level JSON fields the event accepts on stdout. */

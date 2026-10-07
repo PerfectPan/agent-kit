@@ -48,9 +48,11 @@ export const claudeCodeHookDialect: HookDialect = {
         field: ["source"],
         cases: { compact: { phase: "activity" } },
         otherwise: { phase: "start", scope: "session" }
-      }
+      },
+      // Plain-text stdout becomes context for Claude here; `{}` is JSON and adds nothing.
+      output: { ...OUTPUT, plainStdout: "context" }
     },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" } },
+    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: { ...OUTPUT, plainStdout: "context" } },
     PreToolUse: {
       lifecycle: { phase: "activity" },
       gate: true,

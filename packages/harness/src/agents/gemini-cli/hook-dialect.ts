@@ -6,11 +6,12 @@ import type { HookDialect, HookOutput } from "../../domain/lifecycle/index.js";
 
 /**
  * stdout is read as JSON, falling back to stderr when stdout is empty; empty stdout and stderr decide nothing.
- * Plain text with exit 0 allows. Exit 2 blocks.
+ * Plain text with exit 0 allows and is shown as a system message. Exit 2 blocks.
  */
 const OUTPUT: HookOutput = {
   emptyStdout: "proceed",
   invalidStdout: "proceed",
+  plainStdout: "shown",
   exitCode2: "block",
   otherExitCodes: "block",
   fields: ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"],

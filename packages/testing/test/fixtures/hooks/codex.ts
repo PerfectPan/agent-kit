@@ -60,6 +60,12 @@ export const codexSamples: readonly HookDialectSample[] = [
     tool: { name: "Bash" }
   }),
   sample(
+    "PermissionRequest inside a subagent",
+    "PermissionRequest",
+    { ...shell, agent_id: "agent-7", agent_type: "worker" },
+    { phase: "blocked", blocker: "permission", tool: { name: "Bash" }, subagent: { id: "agent-7", type: "worker" } }
+  ),
+  sample(
     "PostToolUse",
     "PostToolUse",
     { ...shell, tool_use_id: "call_1", tool_response: "ok" },

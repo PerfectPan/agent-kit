@@ -40,6 +40,53 @@ describe("reduceLifecycle", () => {
     ).toBe("idle");
   });
 
+  it("lets a session start settle only an unknown or idle session, without taking its turn id as a turn", () => {
+    expect(
+      fold([
+        { phase: "start", scope: "session", turnId: "gen-1" },
+        { phase: "start", scope: "turn", turnId: "gen-1" }
+      ])
+    ).toMatchObject({ status: "working", turnId: "gen-1", endedTurns: [] });
+    expect(
+      fold([
+        { phase: "start", scope: "turn", turnId: "gen-1" },
+        { phase: "start", scope: "session", turnId: "gen-1" },
+        { phase: "activity", turnId: "gen-1" }
+      ])
+    ).toMatchObject({ status: "working", turnId: "gen-1", endedTurns: [] });
+    expect(
+      status([
+        { phase: "start", scope: "turn" },
+        { phase: "start", scope: "session" }
+      ])
+    ).toBe("working");
+    expect(status([{ phase: "finish" }, { phase: "start", scope: "session" }])).toBe("idle");
+  });
+
+  it("surfaces a subagent's permission prompt as blocked until the subagent moves again", () => {
+    const subagent = { id: "agent-7" };
+    expect(
+      status([
+        { phase: "start", scope: "turn", turnId: "t1" },
+        { phase: "blocked", blocker: "permission", turnId: "t1", subagent }
+      ])
+    ).toBe("blocked");
+    expect(
+      status([
+        { phase: "start", scope: "turn", turnId: "t1" },
+        { phase: "blocked", blocker: "permission", turnId: "t1", subagent },
+        { phase: "activity", turnId: "t1", subagent }
+      ])
+    ).toBe("working");
+    expect(
+      status([
+        { phase: "start", scope: "turn" },
+        { phase: "blocked", blocker: "question", subagent }
+      ])
+    ).toBe("working");
+    expect(status([{ phase: "finish" }, { phase: "blocked", blocker: "permission", subagent }])).toBe("idle");
+  });
+
   it("S31: ignores a late event of an older turn", () => {
     const state = fold([
       { phase: "start", scope: "turn", turnId: "t1" },

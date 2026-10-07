@@ -85,9 +85,10 @@ is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome
 more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
 copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
 `reduceLifecycle(state, event, { ttlMs, now })` folds one session's events into `idle`, `working`, `blocked` or
-`unknown`, drops late events of older turns and falls back to `unknown` after the TTL; `heartbeatSignal(event)` gives
-the start / heartbeat / finish reading of a heartbeat-based tracker. `builtinHookDialects` holds each agent's hook
-facts: event names, the timeout unit, which events are permission gates and what an observing hook should print.
+`unknown`, drops late events of older turns and falls back to `unknown` after the TTL;
+`heartbeatSignal(before, after, event)` gives the start / heartbeat / finish reading of a heartbeat-based tracker from
+the states around one `reduceLifecycle` step. `builtinHookDialects` holds each agent's hook facts: event names, the
+timeout unit, which events are permission gates and what an observing hook should print.
 
 ## Errors
 

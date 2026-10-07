@@ -4,22 +4,25 @@ import type { HookDialect, HookOutput } from "../../domain/lifecycle/index.js";
 // output fields, exit codes, trust. Plugin-bundled hooks: https://developers.openai.com/plugins/build/plugins.
 // Behavior the docs leave open is checked against github.com/openai/codex at 95ec468, codex-rs/hooks.
 
-/** Fields of the common JSON output; only some events accept them. */
+/** The common JSON output fields, accepted by SessionStart, PreCompact, PostCompact, UserPromptSubmit, SubagentStop and Stop. */
 const COMMON_FIELDS = ["continue", "stopReason", "systemMessage", "suppressOutput"];
 
 /**
  * Exit 0 with empty stdout succeeds. Stdout that starts with `{` or `[` but does not parse, or JSON with a field
  * the event does not support, marks the hook run failed and the operation continues. Exit 2 with a reason on
- * stderr blocks where the event can block; any other exit code, a timeout or a spawn error fails open.
+ * stderr blocks where the event can block; any other exit code, a timeout or a spawn error fails open. Which JSON
+ * fields an event accepts, and what plain text does, differ per event.
  */
 const OUTPUT: HookOutput = {
   emptyStdout: "proceed",
   invalidStdout: "hook-failed",
   exitCode2: "block",
   otherExitCodes: "hook-failed",
-  fields: COMMON_FIELDS,
   passThrough: "{}"
 };
+
+/** Plain text on stdout becomes developer context here, so an observer prints nothing. */
+const CONTEXT_OUTPUT: HookOutput = { ...OUTPUT, plainStdout: "context", passThrough: "" };
 
 export const codexHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
@@ -50,9 +53,13 @@ export const codexHookDialect: HookDialect = {
         field: ["source"],
         cases: { compact: { phase: "activity" } },
         otherwise: { phase: "start", scope: "session" }
-      }
+      },
+      output: { ...CONTEXT_OUTPUT, fields: [...COMMON_FIELDS, "hookSpecificOutput"] }
     },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" } },
+    UserPromptSubmit: {
+      lifecycle: { phase: "start", scope: "turn" },
+      output: { ...CONTEXT_OUTPUT, fields: [...COMMON_FIELDS, "decision", "reason", "hookSpecificOutput"] }
+    },
     PreToolUse: {
       lifecycle: { phase: "activity" },
       gate: true,
@@ -60,6 +67,8 @@ export const codexHookDialect: HookDialect = {
       // the tool call continues.
       output: { ...OUTPUT, fields: ["systemMessage", "hookSpecificOutput", "decision", "reason"] }
     },
+    // Runs when Codex is about to ask the user for approval, also on behalf of a subagent (with agent_id), so the
+    // main session waits on the user too.
     PermissionRequest: {
       lifecycle: { phase: "blocked", blocker: "permission" },
       gate: true,
@@ -76,12 +85,24 @@ export const codexHookDialect: HookDialect = {
         fields: ["continue", "stopReason", "systemMessage", "decision", "reason", "hookSpecificOutput"]
       }
     },
-    PreCompact: { lifecycle: { phase: "activity" } },
-    PostCompact: { lifecycle: { phase: "activity" } },
-    SubagentStart: { lifecycle: { phase: "start" }, subagent: true },
-    SubagentStop: { lifecycle: { phase: "finish" }, subagent: true },
+    PreCompact: { lifecycle: { phase: "activity" }, output: { ...OUTPUT, fields: COMMON_FIELDS } },
+    PostCompact: { lifecycle: { phase: "activity" }, output: { ...OUTPUT, fields: COMMON_FIELDS } },
+    // continue:false does not stop the subagent from starting.
+    SubagentStart: {
+      lifecycle: { phase: "start" },
+      subagent: true,
+      output: { ...CONTEXT_OUTPUT, fields: ["systemMessage", "hookSpecificOutput"] }
+    },
+    SubagentStop: {
+      lifecycle: { phase: "finish" },
+      subagent: true,
+      output: { ...OUTPUT, fields: [...COMMON_FIELDS, "decision", "reason"] }
+    },
     // Stop carries no reason; an interrupted turn fires Interrupt instead.
-    Stop: { lifecycle: { phase: "finish", scope: "turn" } },
+    Stop: {
+      lifecycle: { phase: "finish", scope: "turn" },
+      output: { ...OUTPUT, fields: [...COMMON_FIELDS, "decision", "reason"] }
+    },
     Interrupt: {
       lifecycle: { phase: "finish", scope: "turn", outcome: "cancelled" },
       output: { ...OUTPUT, exitCode2: "proceed", fields: ["systemMessage"] }
