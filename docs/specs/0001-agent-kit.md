@@ -44,7 +44,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - A `CodingAgentId` has documented aliases (for example `claude` for `claude-code`); an alias identifies the same agent as its canonical id.
 - `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
 - `catalog` holds identity, home directory rules and `Result` only. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
-- Built-in identities: `claude-code`, `codex`, `cursor`, `gemini-cli`, `grok`, `opencode` and `pi`. Cursor has no home override variable; its home is `~/.cursor`.
+- Built-in identities: `claude-code`, `codex`, `cursor`, `gemini-cli`, `grok`, `opencode` and `pi`. Cursor's home rule covers only its default `~/.cursor`, not `CURSOR_CONFIG_DIR` or `$XDG_CONFIG_HOME/cursor`.
 
 ### `/platform`
 

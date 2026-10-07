@@ -105,15 +105,15 @@ timeout unit, which events are permission gates and what an observing hook shoul
 
 ## Agents
 
-| Agent       | Id                             | Home: override, default                                 | In 0.1.0                 |
-| ----------- | ------------------------------ | ------------------------------------------------------- | ------------------------ |
-| Claude Code | `claude-code` (alias `claude`) | `CLAUDE_CONFIG_DIR`, `~/.claude`                        | sessions and transcripts |
-| Codex       | `codex`                        | `CODEX_HOME`, `~/.codex` (archived sessions included)   | sessions and transcripts |
-| Grok        | `grok`                         | `GROK_HOME`, `~/.grok`                                  | sessions and transcripts |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)  | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` | catalog identity only    |
-| opencode    | `opencode`                     | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    | catalog identity only    |
-| Pi          | `pi`                           | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
-| Cursor      | `cursor`                       | `~/.cursor`                                             | added after 0.1.0        |
+| Agent       | Id                              | Home: override, default                                 | In 0.1.0                 |
+| ----------- | ------------------------------- | ------------------------------------------------------- | ------------------------ |
+| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                        | sessions and transcripts |
+| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)   | sessions and transcripts |
+| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                  | sessions and transcripts |
+| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` | catalog identity only    |
+| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    | catalog identity only    |
+| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
+| Cursor      | `cursor` (alias `cursor-agent`) | `~/.cursor` only (overrides not modelled)               | added after 0.1.0        |
 
 Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0).
 
