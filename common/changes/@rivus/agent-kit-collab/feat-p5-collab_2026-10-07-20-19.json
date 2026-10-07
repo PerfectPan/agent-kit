@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "First release: /lease (Effect: createLeaseManager, SQLite, file and memory stores, fenced work interrupted on lease loss) and /process-lock (acquireProcessLock), released in lockstep with @rivus/agent-kit.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

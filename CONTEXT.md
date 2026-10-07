@@ -234,8 +234,14 @@ A released lease record kept with no holder, so the Generation cannot go backwar
 **FenceCheck**:
 The check that rejects a write carrying an older Generation than the protected resource has seen.
 
+**Fence**:
+The per-key guard a LeaseStore holds across processes while one fenced operation runs, so that a successor's fenced work starts only after the old holder's fenced fiber has ended. A non-cancellable write in that fiber keeps the fence only inside `Effect.uninterruptible`.
+
+**Observation**:
+When an observer first saw the current Revision of a lease record, by its own monotonic clock; a held lease expires for that observer once the Revision has not changed for the TTL.
+
 **ProcessLock**:
-A single-instance lock for a path, released by the kernel when the process exits.
+A single-instance lock for a path, released by the kernel when the process exits. Without SQLite it falls back to a lock file whose dead holder is reclaimed, one reclaimer at a time.
 
 ## lanes (collab)
 
@@ -275,7 +281,7 @@ An implementation, under `adapters/`, of a port the kit declares itself, such as
 A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
 
 **Shell package**:
-A published package (`@rivus/agent-kit`, later `@rivus/agent-kit-collab`) whose entries only re-export names from the internal packages' public surface; the internal packages are bundled into it at build time.
+The published package `@rivus/agent-kit`, whose entries only re-export names from the internal packages' public surface; the internal packages are bundled into it at build time. `@rivus/agent-kit-collab` is published too, in the same lockstep version, but keeps its own code under `src/<entry>/`.
 
 **Conformance test**:
 A test suite, exported from `/testing`, that checks an agent adapter or a store against a context's interface definition. Built-in and third-party adapters run the same suite.

@@ -2,7 +2,7 @@
 
 agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each implement their own code for working with third-party coding agents. This plan moves that code into two npm packages: `@rivus/agent-kit` (connect to external coding agents) and `@rivus/agent-kit-collab` (agent collaboration primitives). The Effect-based host application that runs agents stays independent.
 
-- Status: accepted (all decisions confirmed, see section 7); P0 and P1 implemented, 0.1.0 ready to release (6.3)
+- Status: accepted (all decisions confirmed, see section 7); P0 and P1 implemented, 0.1.0 ready to release (6.3); the kit side of P5 implemented
 - Owner: PerfectPan
 - Reviewer: codex (review rounds in [A.5](#a5-review-record))
 - Last updated: 2026-10-07
@@ -410,7 +410,7 @@ Rules (checked by the architecture tests):
 - Two export layers: `index.ts` is for sibling packages; `public.ts` is the public part, and the shell package re-exports its names one by one, so every change to the public surface is visible in review. Internal aggregate classes do not go into `public.ts`; the public surface only offers handle interfaces and snapshot types.
 - Effect allowlist: only the `application/` and `adapters/` of the contexts in the left column of 3.7 may import `effect`. `domain/`, `agents/` and every plain TS entry must not reference it; the boundary test checks both the module dependency graph and the `.d.ts` graph.
 - Build: the shell package lists the internal packages as devDependencies, and tsdown bundles them into the output. Runtime dependencies (zod, es-toolkit, later jsonc-parser, the TOML editor and the ACP SDK) and `node:*` stay external. One entry per subpath, shared modules split into shared chunks (verified, appendix A.3). Declarations come from tsdown's Oxc generator, which needs `isolatedDeclarations` in every internal package (2.3); `check:package` verifies that `dist` imports no internal package and that browser entries bundle without Node built-ins.
-- collab does not inline agent-kit's internal packages. It declares `@rivus/agent-kit` as a peer and uses only its public subpaths for the Platform types, the `Result` type from `/catalog`, and `/node`, so that a process never holds two copies of platform. It has its own version policy in Rush.
+- collab does not inline agent-kit's internal packages. It declares `@rivus/agent-kit` as a peer and uses only its public subpaths for the Platform types, the `Result` type from `/catalog`, and `/platform/effect` (its tests also use `/node`), so that a process never holds two copies of platform. It shares the `main` lockstep version policy with `@rivus/agent-kit` (decided 2026-10-08 in P5, replacing the separate policy first planned here; see 4).
 - Adding an agent: add its identity in `catalog/agents`, add one adapter in the `agents/` of each context that applies, and register it in that context's `builtinXxx` table (`agents/index.ts`, or `application/` when the adapter does IO, as sessions' does). Each context's conformance tests check that it satisfies the interface definition.
 
 ### 3.4 Public entries
@@ -486,7 +486,8 @@ Effect.scoped(Effect.gen(function* () {
 
 // lease (@rivus/agent-kit-collab/lease): the heartbeat is supervised inside the Scope; losing the lease interrupts fenced work
 Effect.scoped(Effect.gen(function* () {
-  const lease = yield* acquireLease(`task:${id}`)            // the LeaseStore port is provided by SqliteLeaseStoreLive
+  const leases = yield* createLeaseManager({ ttlMs: 60_000, heartbeatMs: 15_000 })   // LeaseStore from sqliteLeaseStore({ path })
+  const lease = yield* leases.acquire(`task:${id}`)
   yield* lease.runFenced((token) => write(token))
 }))
 ```
@@ -726,7 +727,7 @@ Development and build: the template brings Rush, TypeScript, `@perfectpan/lint-c
 
 ## 4. Release and rollback
 
-- Keep the Rush flow: change files → a Version Packages pull request that every push to `main` opens or updates → merging it tags the release, creates the GitHub Release and publishes with OIDC in the same push (decided 2026-10-07, replacing the manual Version Packages run and hand-made GitHub Release). `@rivus/agent-kit` and `@rivus/agent-kit-collab` are published, each with its own version policy. 0.1.0 publishes `@rivus/agent-kit` only; `@rivus/agent-kit-collab` first ships in P5.
+- Keep the Rush flow: change files → a Version Packages pull request that every push to `main` opens or updates → merging it tags the release, creates the GitHub Release and publishes with OIDC in the same push (decided 2026-10-07, replacing the manual Version Packages run and hand-made GitHub Release). `@rivus/agent-kit` and `@rivus/agent-kit-collab` are published in one lockstep version policy, `main`: one version, one tag `v<version>`, one release PR and one publish run for both (decided 2026-10-08 in P5, replacing "each with its own version policy"). Reasons: collab's peer range on agent-kit (`workspace:^`, published as `^<version>`) then always names the version released with it; one maintainer releases one set; the release automation (`release-state.ts`, one tag) stays single-policy. Cost: a release of either bumps both, so collab can publish a version without changes of its own. `rush publish` goes through the policy in `rush.json` order, agent-kit before collab, so the peer is on npm first; each package has its own npm trusted publisher (docs/development/release.md). 0.1.0 and 0.2.0 publish `@rivus/agent-kit` only; `@rivus/agent-kit-collab` ships with the release after 0.2.0.
 - Package format: ESM only, `sideEffects: false`, published `engines.node >=22.13` (`node:sqlite` without a flag, `require(esm)` available); development and CI use Node 24; MIT. `effect` is an optional peer of both packages (exactly 4.0.1 in the first release) and a devDependency, external at build time (3.7).
 - Rush pitfall: when only a private internal package changes, `rush change` does not ask for a change file for the shell package, so a version bump can be missed. Since P0, CI runs `scripts/release-intent.ts check`: a change to shipped files of a bundled internal package must come with a change file for `@rivus/agent-kit`, and `release-intent.ts add` writes one. Switch to changesets only if this check proves awkward in practice.
 - Cross-repository integration uses snapshot preview releases (or pkg.pr.new), not `link:`.
@@ -812,6 +813,17 @@ The order follows "the application whose code is moved adopts first", which has 
 | Effect | lease uses Effect to manage heartbeats and abort on loss; process-lock stays plain TS; the existing CAS, ABA and reclaim race tests are kept |
 | Adoption | agent-task-loop and room-web switch to collab's lease (room-web's SQLite store can be replaced directly); the hand-written heartbeat, AbortController and `finally` release in agent-task-loop's TaskOccupancyService move to the kit's supervised lease use case; the host application adds its single-instance lock with `acquireProcessLock`; presence replaces its mkdir lock; the trace viewer's and the host application's redaction are unified |
 | Exit condition | All race tests pass: two reclaimers reclaiming at once, ABA, generation still monotonic after release and re-creation, pid reuse, fenced operation aborted on lease loss; a second daemon of the host application is refused at startup |
+| Status | Kit side done (2026-10-08): `/redact` in agent-kit (`packages/redact`), `@rivus/agent-kit-collab` with `/lease` and `/process-lock`, in the `main` lockstep policy; the race tests above pass with real child processes (Spec S37, S38, S60–S66). Adoption by the applications is open |
+
+Implementation decisions (P5):
+
+- Lease expiry follows client-go: each observer times the current revision from the moment it first read it, with its own monotonic clock, so a new observer waits a full TTL before taking over a holder it cannot judge. A holder on the same host is judged directly: an earlier boot, a missing pid or a reused pid (start time differs) is dead and taken over at once. `renewedAt` is wall-clock time for diagnostics only.
+- `LeaseStore` is `read`, `compareAndSet(key, expectedRevision, next)` and `fence(key)` (a scoped per-key guard across processes). The manager owns the Lease rules; stores only compare revisions. `runFenced` takes the fence (the wait itself raced against the loss signal), re-reads the record, and races the work against the heartbeat's loss signal. `Effect.raceFirst` waits for the losing fiber to end, so the fence is held until the work's fiber has ended; a Promise an interrupted fiber started keeps running, so non-cancellable writes go in `Effect.uninterruptible` (review of the first P5 commit, which showed a 600 ms `tryPromise` write landing after the successor's).
+- The fences, and the file store's per-key CAS guard, are process locks: an exclusive SQLite database when the platform has SQLite, otherwise a lock file with npm/lockfile-style serialized reclaim (`<path>.stale`, re-checked under that guard, recursive up to three levels). Both lease adapters and the process lock share this one implementation; the lease folder's domain owns the holder rule (`holderLiveness`) that the lock-file fallback uses.
+- SQLite exclusive locks keep their journal in memory and use a 10 ms busy timeout plus a few jittered retries: a killed holder otherwise leaves a hot journal that makes every next contender report busy, and contenders that start together otherwise all back off (found by the four-process reclaim test). The rule is recorded in `docs/architecture/authoring.md` for harness's LedgerLock too.
+- The manager is created with `createLeaseManager(config)` and acquires with `manager.acquire(key)`; there is no separate `acquireLease` function, which would only forward to it. Store Layers that take options are factories (`sqliteLeaseStore({ path })`), not `<Variant><Port>Live` constants.
+- The store conformance cases (CAS, generation monotonic across release and reopening, per-key fences) run inside collab's tests for every store; exporting them for third-party stores (a collab `/testing` entry) waits for a consumer that writes its own store.
+- `/redact` follows the trace viewer's implementation and adds Windows and MSYS spellings, URL-encoded file URLs, `~<user>`, and more token families; a secret prefix inside a longer word is no longer redacted. It caches the patterns of the last home it saw.
 
 #### P6: agent-kit's `/acp`; collab's `/lanes` (built in-house)
 

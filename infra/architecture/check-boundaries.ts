@@ -38,6 +38,7 @@ export type RuleId =
   | "effect"
   | "external-dependency"
   | "shell-entry"
+  | "public-entry"
   | "dynamic-import"
   | "parse";
 
@@ -66,8 +67,11 @@ function splitSpecifier(specifier: string): { name: string; subpath: string } {
   return { name: parts.slice(0, size).join("/"), subpath: rest === "" ? "" : `/${rest}` };
 }
 
-function layerOf(pkg: WorkspacePackage, path: string): Layer | undefined {
-  const [src, layer, ...rest] = path.slice(pkg.folder.length + 1).split("/");
+/** The layer of a file: `src/<layer>/`, or `src/<entry>/<layer>/` in a package that lists `entries`. */
+function layerOf(pkg: WorkspacePackage, path: string, entries: readonly string[] = []): Layer | undefined {
+  const parts = path.slice(pkg.folder.length + 1).split("/");
+  const [src, ...inner] = parts;
+  const [layer, ...rest] = entries.includes(inner[0] ?? "") ? inner.slice(1) : inner;
   return src === "src" && rest.length > 0 ? LAYERS.find((candidate) => candidate === layer) : undefined;
 }
 
@@ -112,7 +116,12 @@ function readImports(file: SourceFile): { imports: ImportRef[]; problems: Violat
 /** Returns every boundary violation in the workspace; an empty list means the import graph matches the manifest. */
 export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Violation[] {
   const violations: Violation[] = [];
-  const internal = new Set(Object.keys(rules.packages));
+  // Packages that keep their own published entries are not internal: no shell bundles or re-exports them.
+  const internal = new Set(
+    Object.entries(rules.packages)
+      .filter(([, rule]) => rule.entries === undefined)
+      .map(([name]) => name)
+  );
   const workspaceNames = new Set([...internal, ...rules.shells, ...workspace.packages.map((pkg) => pkg.name)]);
   const paths = new Set(workspace.files.map((file) => file.path));
 
@@ -125,7 +134,8 @@ export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Vio
       continue;
     }
     if (rule !== undefined) {
-      for (const entry of ["src/index.ts", "src/public.ts"]) {
+      const entryFiles = rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"];
+      for (const entry of entryFiles) {
         if (!paths.has(`${pkg.folder}/${entry}`)) {
           violations.push({ file, rule: "entry-file", message: `${pkg.name} needs ${entry}` });
         }
@@ -166,7 +176,7 @@ export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Vio
     if (rule === undefined) {
       continue;
     }
-    const layer = layerOf(pkg, file.path);
+    const layer = layerOf(pkg, file.path, rule.entries);
     for (const ref of imports) {
       const message = checkImport({ rules, rule, pkg, layer, file, ref, workspaceNames });
       if (message !== undefined) {
@@ -185,6 +195,8 @@ interface ImportContext {
   readonly file: SourceFile;
   readonly ref: ImportRef;
   readonly workspaceNames: ReadonlySet<string>;
+  /** The import is a public entry of a published package, checked as the internal specifier it publishes. */
+  readonly viaPublicEntry?: true;
 }
 
 const EFFECT_VIOLATION = {
@@ -211,7 +223,7 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     if (target.replace(/\.[cm]?[jt]s$/, "") === effectEntry && !effectAllowed(rules, pkg, file)) {
       return EFFECT_VIOLATION;
     }
-    const targetLayer = layerOf(pkg, target);
+    const targetLayer = layerOf(pkg, target, rule.entries);
     if (layerRule !== undefined && (targetLayer === undefined || !layerRule.layers.includes(targetLayer))) {
       return { rule: "layer", text: `${layer}/ may not import ${targetLayer ?? "files outside the layers"}/` };
     }
@@ -219,6 +231,19 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
   }
 
   const { name, subpath } = splitSpecifier(ref.specifier);
+  const published = rule.publicImports?.[ref.specifier];
+  if (published !== undefined && context.viaPublicEntry !== true) {
+    if (!rule.dependsOn.includes(name)) {
+      return { rule: "package-dependency", text: `${pkg.name} may not depend on ${name} (see ${MANIFEST})` };
+    }
+    return checkImport({ ...context, ref: { ...ref, specifier: published }, viaPublicEntry: true });
+  }
+  if (rules.shells.includes(name) && context.viaPublicEntry !== true) {
+    return {
+      rule: "public-entry",
+      text: `import one of the public entries of ${name} listed under publicImports in ${MANIFEST}`
+    };
+  }
   const workspaceEffect = workspaceNames.has(name) && subpath === rules.effect.workspaceEntry;
   if (workspaceEffect || rules.effect.specifier.test(ref.specifier)) {
     if (!effectAllowed(rules, pkg, file)) {
@@ -239,7 +264,7 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     if (subpath !== "" && !workspaceEffect) {
       return { rule: "deep-import", text: `import ${name} itself, which resolves to its index.ts` };
     }
-    if (!rule.dependsOn.includes(name)) {
+    if (!rule.dependsOn.includes(name) && context.viaPublicEntry !== true) {
       return { rule: "package-dependency", text: `${pkg.name} may not depend on ${name} (see ${MANIFEST})` };
     }
     if (layerRule?.hidden?.includes(name) === true) {

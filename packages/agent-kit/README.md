@@ -26,6 +26,7 @@ that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 | `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform             |
 | `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                  |
 | `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                              |
+| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                  |
 | `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                  |
 | `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`               |
 | `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                   |

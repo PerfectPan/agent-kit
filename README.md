@@ -25,6 +25,7 @@ browsers.
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
 | `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
+| `@rivus/agent-kit/redact`         | `redact`, `redactText`: hide home path spellings and secret-shaped strings                        | anywhere, no imports      |
 | `@rivus/agent-kit/node`           | `createNodePlatform`                                                                              | Node                      |
 | `@rivus/agent-kit/sessions`       | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
 | `@rivus/agent-kit/transcript`     | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
@@ -206,8 +207,9 @@ Commands run without a shell and with a time limit; a check that fails is report
 `/catalog` has an identity for each of them, and a home rule where upstream documents one: Cline, CodeBuddy, Codex
 Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI, Neovate, OpenHands and Qoder.
 
-Cost, harness injection, ACP and redaction come in later releases, as does
-`@rivus/agent-kit-collab` (leases, process locks, lanes); see
+[`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), released with the same version, adds fenced
+leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform.
+Harness injection, ACP and lanes come in later releases; see
 [plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the phases.
 
 ## Repository

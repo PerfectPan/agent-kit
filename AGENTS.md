@@ -58,10 +58,14 @@ gh repo-checks protect --repo OWNER/REPO
 
 Rush projects are listed in `rush.json`:
 
-- `packages/agent-kit` is `@rivus/agent-kit`, the only published package and the only member of the `main` version
-  policy. Its `src/<entry>.ts` files only re-export names, one by one, from internal packages' `public.ts` (or a
-  lighter public sub-entry such as `@rivus/agent-kit-harness/public/events`); every subpath in its `exports` map is
-  one tsdown entry, and tsdown bundles the internal packages and their declarations into `dist`.
+- `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files only re-export names,
+  one by one, from internal packages' `public.ts` (or a lighter public sub-entry such as
+  `@rivus/agent-kit-harness/public/events`); every subpath in its `exports` map is one tsdown entry, and tsdown
+  bundles the internal packages and their declarations into `dist`.
+- `packages/agent-kit-collab` is `@rivus/agent-kit-collab`, the second published package, with its own code: each
+  entry lives in `src/<entry>/` (layers at `src/<entry>/<layer>/`, entry file `src/<entry>/public.ts`). It reaches
+  `@rivus/agent-kit` only through the public entries listed in `boundaries.ts`, as a peer (`workspace:^`). Both
+  packages are the `main` lockstep version policy: one version, one tag, one release.
 - The other folders under `packages/`, such as `packages/platform`, are private internal packages named
   `@rivus/agent-kit-<folder>`, one per bounded context, with `"shouldPublish": false`. Each exports `src/index.ts`
   for sibling packages and `src/public.ts` for the shell, straight from TypeScript source, and is a `workspace:*`
