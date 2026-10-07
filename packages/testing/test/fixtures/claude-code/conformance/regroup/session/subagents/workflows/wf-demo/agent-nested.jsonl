@@ -1,0 +1,1 @@
+{"type":"user","uuid":"n-u","timestamp":"2026-01-01T00:00:01.500Z","sessionId":"s-group","version":"2.0.0","agentId":"nested","isSidechain":true,"message":{"role":"user","content":"Nested"}}

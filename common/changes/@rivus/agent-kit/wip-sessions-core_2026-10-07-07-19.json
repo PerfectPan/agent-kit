@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Add catalog (agent identity, home rules, Result, AgentKitError), sessions and transcripts with the Claude Code adapter, and the /testing entry (memory platform, session adapter conformance).",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

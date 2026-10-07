@@ -1,0 +1,6 @@
+{"type":"user","uuid":"k-cmd","timestamp":"2025-12-31T23:59:59.000Z","sessionId":"s-unknown","cwd":"/work/app","version":"2.0.0","message":{"role":"user","content":"<command-name>/model</command-name>"}}
+{"type":"user","uuid":"k-u1","timestamp":"2026-01-01T00:00:00.000Z","sessionId":"s-unknown","cwd":"/work/app","version":"2.0.0","message":{"role":"user","content":"Hello"}}
+{"type":"user","uuid":"k-cut","message":
+{"type":"widget","uuid":"w1","timestamp":"2026-01-01T00:00:01.000Z","sessionId":"s-unknown","version":"2.0.0","widgetKind":"gauge"}
+{"type":"system","subtype":"model_refusal_fallback","uuid":"k-f1","timestamp":"2026-01-01T00:00:02.000Z","sessionId":"s-unknown","version":"2.0.0","isMeta":false,"level":"warning","content":"Retried on another model.","originalModel":"claude-a","fallbackModel":"claude-b","apiRefusalCategory":"policy","requestId":"req-k"}
+{"type":"assistant","uuid":"k-a1","timestamp":"2026-01-01T00:00:03.000Z","sessionId":"s-unknown","version":"2.0.0","requestId":"req-k2","message":{"role":"assistant","model":"claude-b","id":"msg-k2","stop_reason":"end_turn","usage":{"input_tokens":3,"output_tokens":1},"content":[{"type":"fallback","from":{"model":"claude-a"},"to":{"model":"claude-b"}},{"type":"text","text":"Answer"}]}}

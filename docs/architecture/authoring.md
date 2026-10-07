@@ -100,7 +100,7 @@ export class AcpSession {
 - A use case loads an aggregate or reads data through ports, applies domain rules, saves the result, and coordinates external work through ports. It never constructs a concrete adapter.
 - Each use case declares only the ports it uses. In a plain TS context the platform part is the first parameter, typed as a `Pick`, for example `listSessions(deps: Pick<Platform, 'fs' | 'env' | 'home'>, opts)`. In an Effect context the use case takes its ports from `Context.Service` (see [Effect Rules](#effect-rules)).
 - The application layer holds no policy: trigger timing, fail-open behavior, retries, which agents to count and where to store results belong to the consuming application.
-- Use cases default to the context's `builtinXxx` adapter table and accept an `adapters` option that overrides or extends it for one call. There is no global registry. Asking for a capability that has no adapter throws `AgentKitCapabilityUnsupportedError`.
+- Use cases default to the context's `builtinXxx` adapter table and accept an `adapters` option that overrides or extends it for one call. There is no global registry. Reading data for an agent that has no adapter in the table is an expected outcome and returns a `CapabilityUnsupported` value; naming such an agent in a call's own options (for example `listSessions({ agents })`) is a programming error and throws `AgentKitError` with code `capability-unsupported`.
 - Do not add an export, a deep import or a facade to make a caller compile. Derive option and result types from the retained signatures (`Parameters`, `ReturnType`) instead.
 
 ## Make Persistence And Partial Failure Explicit

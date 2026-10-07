@@ -30,17 +30,17 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 - Plain TS entries must expose functions and plain data. Stateful parts are created by factory functions. The only public class is `AgentKitError` (`code` + `cause`); it is recognized through a `Symbol.for` brand, so a check succeeds even when several copies of the kit are installed.
 - A plain TS entry must return a `Promise` for a single result and an `AsyncIterable` for sessions, events and usage. Leaving a `for await` loop (`break`) cancels the iteration. Every function that does IO accepts `{ signal?: AbortSignal }`.
-- Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`. Only defects throw.
+- Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
-- Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it; asking for an unsupported capability throws `AgentKitCapabilityUnsupportedError`.
+- Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
 - No 0.1.0 entry may depend on `effect`, in either its module graph or its published `.d.ts` graph. A consumer that never installs `effect` can import and type-check every 0.1.0 entry.
 - `/catalog`, `/platform`, `/sessions` and `/transcript` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node` and `/testing` are exempt.
 
 ### `/catalog`
 
-- Exports `CodingAgentId`, `AgentHome`, the identities of the built-in agents, `resolveHome(id, { env, home })`, and `Result`, `ok`, `err`.
+- Exports `CodingAgentId`, `BuiltinCodingAgentId`, `parseCodingAgentId`, `isBuiltinCodingAgentId`, the identities of the built-in agents (`builtinCodingAgents`, `CodingAgent`), `AgentHome`, `HomeRule`, `resolveHome(id, { env, home })`, `homeFromRule`, `Result`, `ok`, `err`, and `AgentKitError` with `isAgentKitError`.
 - A `CodingAgentId` has documented aliases (for example `claude` for `claude-code`); an alias identifies the same agent as its canonical id.
-- `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides, `CLAUDE_CONFIG_DIR` for Claude Code and `CODEX_HOME` for Codex, and otherwise returns the agent's default directory under `home`.
+- `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
 - `catalog` holds identity, home directory rules and `Result` only. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
 
 ### `/platform`
@@ -59,8 +59,8 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 ### `/sessions`
 
-- Exports `listSessions(platform, opts)` and the sessions adapter table `builtinSessionAdapters`. A `SessionAdapter` carries `specificationVersion: 'sessions-v1'`.
-- `listSessions` uses only `fs.list`, `fs.stat`, `fs.read`, `env` and `home`. It accepts `agents`, `since`, `signal` and `adapters`, and yields one item per session: a `SessionHead`, or `{ ref, error }` when that session cannot be read. One unreadable session does not end the listing.
+- Exports `listSessions(platform, opts)`, the sessions adapter table `builtinSessionAdapters` and `isSessionHead`, with the types `SessionAdapter`, `SessionAdapters`, `SessionPlatform`, `DiscoverOptions`, `LoadOptions`, `ListSessionsOptions`, `SessionRef`, `SessionHead`, `SessionListFailure`, `SessionListError` and `SessionErrorCode`. A `SessionAdapter` carries `specificationVersion: 'sessions-v1'`. Helpers for writing an adapter stay internal until a consumer outside the kit needs them.
+- `listSessions` uses only `fs.list`, `fs.stat`, `fs.read`, `env` and `home`. It accepts `agents`, `adapters`, `signal` and `onTotal`, and yields one item per session: a `SessionHead`, or `{ ref, error }` when a root is missing (`RootMissing`) or a directory or a session cannot be read (`ReadFailed`, the same tag as for reading a session). One unreadable session does not end the listing.
 - A `SessionRef` carries its `CodingAgentId`, so later calls route to the right adapter without the caller naming the agent again.
 - Claude Code sessions are found under the Claude home (honoring `CLAUDE_CONFIG_DIR`). Codex sessions are found under the Codex home (honoring `CODEX_HOME`), including archived sessions.
 - Listing reads at most 128 KB of each file (a head and tail preview), whatever the file's size.
@@ -68,11 +68,11 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 ### `/transcript`
 
-- Exports the per-agent translation functions, `streamEvents(platform, ref, { signal })` and `loadTranscript`. Translation functions are pure and need no platform.
-- `streamEvents` yields the session's `TranscriptEvent`s in order. `loadTranscript` merges all files of a session, returns the skipped records, reports progress, and returns a resume position from which a later read continues.
+- Exports `loadTranscript`, `summarizeSession`, `foldTranscript`, `readOriginal`, the per-agent translation functions (`translateClaudeCodeRecords`, `claudeCodeUsage`, `CLAUDE_CODE_CAPABILITIES`, and the same for each built-in agent), the rules a viewer needs to interpret events (`mainAgentId`, `laneOf`, `isPrompt`, `recordKey`, `promptStarts`, `requestUsage`, `shadowedIn`, `MAIN_LANE_ID`, `promptSnapshot`, `latestSnapshot`, `snapshotHasSystemPrompt`, `snapshotHasTools`), `CAPABILITIES`, `TRANSCRIPT_EVENT_KINDS`, `SESSION_SUMMARY_VERSION`, and the types of the transcript model. Translation functions are pure and need no platform.
+- `loadTranscript`, `summarizeSession` and `readOriginal` resolve to a `Result`. `loadTranscript` merges all files of a session, returns the skipped records and reports progress. Without an agent in the ref, each adapter's `detect` decides. Its failures are `SessionNotFound`, `CapabilityUnsupported` (the ref names an agent without an adapter), `NoAdapterAccepted` (no adapter recognized the file), `UnknownFormatGeneration` and `ReadFailed` (an IO error such as a permission error); `readOriginal` fails with `SourceChanged`, `SessionNotFound` or `ReadFailed`. A `SessionAdapter`'s `load` and `summarize` return the same `Result` shape. `streamEvents` and a resume position are not in 0.1.0: compaction marks earlier events after they were read, so events cannot be final before the whole session is read.
 - `TranscriptEvent.kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`. A record whose type the adapter does not recognize becomes an event of kind `unknown`. Model reasoning is `reasoning` (never `thinking`), and the stop reason of a request is `finishReason` (never `stopReason`).
 - Events form a flat list and reference each other through `agentId`, `parentId`, `requestId`, `callId` and `shadowedBy`. The session also has an `agents[]` list in which each subagent records its `parentId` and `spawnEventId`. Translation sets these references; consumers do not need to understand agent log formats to follow them.
-- Every source record is accounted for: it becomes one or more events or is recorded as skipped. A line that cannot be parsed is skipped, not an error. Only an unrecognized format generation is reported as an error, with a `_tag` that names it.
+- Every source record is accounted for: it becomes one or more events or is recorded as skipped. A line that cannot be parsed is skipped, not a failure. An unrecognized format generation is a failure with the `UnknownFormatGeneration` `_tag`.
 - Event ids are unique within a session, and reading the same files again yields the same ids in the same order. `seq` orders the events. Every `tool_result` is paired with its `tool_call` through `callId`, or marked orphan. Events replaced by a compaction carry `shadowedBy`.
 - Every event has a source pointer (file, byte offset, byte length, line number); reading those bytes returns the original record.
 - Usage numbers exposed by `/transcript` follow the `Usage` interface definition in plan 3.11: input includes cached tokens, output includes reasoning, and a missing value stays missing instead of becoming 0.
@@ -80,9 +80,9 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 ### `/testing`
 
-- Exports `createMemoryPlatform({ files })`, an in-memory `Platform` whose file system holds the given files, and the conformance suite of each context that has one. In 0.1.0 that is the sessions conformance suite.
+- Exports `createMemoryPlatform({ files })`, an in-memory `Platform` (without `process` and `sqlite`) whose file system holds the given files, and the conformance suite of each context that has one. In 0.1.0 that is `sessionAdapterConformance`, with `oversizedSession` to build its large sample; each check is a named function that rejects on failure, so any test runner can run it.
 - Readers produce the same results on the memory platform as on the Node platform over the same files.
-- The sessions conformance suite checks a `SessionAdapter` against sample logs: listing reads at most 128 KB per file, event ids are stable and unique, every record is accounted for, tool results are paired, compaction shadowing holds, source pointers read back, declared capabilities match the output, and the adapter does not import `node:*`. Built-in adapters and third-party adapters run the same suite.
+- The sessions conformance suite checks a `SessionAdapter` against sample logs: listing reads at most 128 KB per file, event ids are stable and unique, every record is accounted for, tool results are paired, compaction shadowing holds, references between events and lanes resolve, source pointers read back, declared capabilities match the output, and summaries equal the folded transcript. Built-in adapters and third-party adapters run the same suite; keeping `node:*` out of adapters is the boundary test's job.
 
 ### Planned entries
 
@@ -205,7 +205,8 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 - Given an agent id with no sessions adapter
 - When `listSessions` is asked for that agent
-- Then it throws `AgentKitCapabilityUnsupportedError`, and the `AgentKitError` brand check recognizes it even when it was created by another copy of the kit
+- Then it throws an `AgentKitError` with code `capability-unsupported`, and the brand check recognizes it even when it was created by another copy of the kit
+- And `loadTranscript` for a ref that names that agent resolves to `{ ok: false, error: { _tag: 'CapabilityUnsupported', agent } }`
 
 ### S10: An unreadable line is skipped
 
@@ -216,8 +217,8 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 ### S11: An unknown format generation is an error
 
 - Given a session file written in a format generation the adapter does not recognize
-- When `streamEvents` or `loadTranscript` reads it
-- Then an error with the unknown-format-generation `_tag` is reported instead of every line being skipped
+- When `loadTranscript` reads it
+- Then it resolves to `{ ok: false, error }` with the `UnknownFormatGeneration` `_tag`, the file and the line, instead of skipping every line
 
 ### S12: An unrecognized record type becomes `unknown`
 
@@ -255,16 +256,16 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When the bytes at its source pointer's offset and length are read from its file
 - Then they are exactly the original record
 
-### S18: Multi-file sessions merge and resume
+### S18: Multi-file sessions merge
 
 - Given a session whose records span several files
-- When `loadTranscript` runs, and runs again from the returned resume position after more records are appended
-- Then the first result contains the events of all files in `seq` order, and the second contains only the appended events
+- When `loadTranscript` runs
+- Then the result contains the events of all files in `seq` order (resuming from a position is not in 0.1.0)
 
 ### S19: The memory platform matches the Node platform
 
 - Given the same sample logs in `createMemoryPlatform({ files })` and in a temporary directory read through `createNodePlatform({ home })`
-- When `listSessions` and `streamEvents` run on both
+- When `listSessions` and `loadTranscript` run on both
 - Then the results are equal
 
 ### S20: Browser-safe entries pull in no Node module

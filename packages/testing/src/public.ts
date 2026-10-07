@@ -1,2 +1,13 @@
-// TODO(P1): replace with createMemoryPlatform({ files }) and the conformance tests.
-export const testingPlaceholder = "testing";
+export {
+  createMemoryPlatform,
+  type MemoryFile,
+  type MemoryPlatform,
+  type MemoryPlatformOptions
+} from "./memory-platform.js";
+export {
+  type ConformanceCheck,
+  type ConformanceSession,
+  oversizedSession,
+  sessionAdapterConformance,
+  type SessionAdapterFixtures
+} from "./session-adapter-conformance.js";

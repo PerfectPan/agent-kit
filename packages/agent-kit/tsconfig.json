@@ -4,6 +4,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
+    "lib": ["ES2024"],
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts", "tsdown.config.ts", ".size-limit.ts"]

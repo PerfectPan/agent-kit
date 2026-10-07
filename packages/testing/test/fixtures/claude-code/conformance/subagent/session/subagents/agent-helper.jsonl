@@ -1,0 +1,2 @@
+{"type":"user","uuid":"s-u1","timestamp":"2026-01-01T00:00:02.000Z","sessionId":"s-sub","version":"2.0.0","agentId":"helper","isSidechain":true,"message":{"role":"user","content":"Look around"}}
+{"type":"assistant","uuid":"s-a1","timestamp":"2026-01-01T00:00:03.000Z","sessionId":"s-sub","version":"2.0.0","agentId":"helper","isSidechain":true,"requestId":"req-s","message":{"role":"assistant","model":"claude-test","id":"msg-s","stop_reason":"end_turn","usage":{"input_tokens":3,"output_tokens":2},"content":[{"type":"text","text":"Found it."}]}}

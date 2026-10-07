@@ -216,10 +216,16 @@ importers:
       '@rivus/agent-kit-sessions':
         specifier: workspace:*
         version: link:../sessions
+      es-toolkit:
+        specifier: ^1.52.0
+        version: 1.52.0
     devDependencies:
       '@perfectpan/lint-config':
         specifier: github:PerfectPan/lint-config#v0.3.2
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
+      '@types/node':
+        specifier: 24.19.0
+        version: 24.19.0
       oxfmt:
         specifier: 0.71.0
         version: 0.71.0
