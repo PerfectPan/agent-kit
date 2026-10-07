@@ -1,13 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 
 import {
-  CHANGES_DIRECTORY,
   type PackageManifest,
   readJson,
+  readPendingChangeFiles,
   readPolicies,
   readProjects,
   releaseErrors
@@ -52,18 +51,13 @@ const packages = readProjects(root)
     manifest: readJson<PackageManifest>(root, join(project.projectFolder, "package.json"))
   }));
 
-let pendingChangeFiles: string[] = [];
-try {
-  pendingChangeFiles = readdirSync(join(root, CHANGES_DIRECTORY), { recursive: true, encoding: "utf8" })
-    .filter((path) => path.endsWith(".json"))
-    .sort();
-} catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-    throw error;
-  }
-}
-
-const errors = releaseErrors({ tag, repository, policy, packages, pendingChangeFiles });
+const errors = releaseErrors({
+  tag,
+  repository,
+  policy,
+  packages,
+  pendingChangeFiles: readPendingChangeFiles(root)
+});
 
 if (values["verify-git"] === true) {
   const head = git("rev-parse", "HEAD");

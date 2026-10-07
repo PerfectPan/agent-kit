@@ -716,7 +716,7 @@ Development and build: the template brings Rush, TypeScript, `@perfectpan/lint-c
 
 ## 4. Release and rollback
 
-- Keep the Rush flow: change files → a manual Version Packages pull request → a GitHub Release triggers OIDC publishing. `@rivus/agent-kit` and `@rivus/agent-kit-collab` are published, each with its own version policy. 0.1.0 publishes `@rivus/agent-kit` only; `@rivus/agent-kit-collab` first ships in P5.
+- Keep the Rush flow: change files → a Version Packages pull request that every push to `main` opens or updates → merging it tags the release, creates the GitHub Release and publishes with OIDC in the same push (decided 2026-10-07, replacing the manual Version Packages run and hand-made GitHub Release). `@rivus/agent-kit` and `@rivus/agent-kit-collab` are published, each with its own version policy. 0.1.0 publishes `@rivus/agent-kit` only; `@rivus/agent-kit-collab` first ships in P5.
 - Package format: ESM only, `sideEffects: false`, published `engines.node >=22.13` (`node:sqlite` without a flag, `require(esm)` available); development and CI use Node 24; MIT. `effect` is an optional peer of both packages (exactly 4.0.1 in the first release) and a devDependency, external at build time (3.7).
 - Rush pitfall: when only a private internal package changes, `rush change` does not ask for a change file for the shell package, so a version bump can be missed. Since P0, CI runs `scripts/release-intent.ts check`: a change to shipped files of a bundled internal package must come with a change file for `@rivus/agent-kit`, and `release-intent.ts add` writes one. Switch to changesets only if this check proves awkward in practice.
 - Cross-repository integration uses snapshot preview releases (or pkg.pr.new), not `link:`.

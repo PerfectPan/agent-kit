@@ -9,6 +9,9 @@ import {
   releaseErrors,
   releaseIntent,
   releasesOf,
+  releaseState,
+  type ReleaseStateInput,
+  remoteTagCommit,
   type RushProject
 } from "./workspace.ts";
 
@@ -160,7 +163,51 @@ describe("releaseErrors", () => {
       releaseErrors(input({ packages: [{ ...entry!, manifest }], pendingChangeFiles: ["@scope/lib/x.json"] }))
     ).toEqual([
       "@scope/lib repository.url must identify github.com/owner/repo",
-      "unreleased change files remain; run Version Packages first: @scope/lib/x.json"
+      "unreleased change files remain; merge the release PR first: @scope/lib/x.json"
     ]);
+  });
+});
+
+describe("releaseState", () => {
+  const head = "a".repeat(40);
+  const state = (overrides: Partial<ReleaseStateInput>) =>
+    releaseState({ pendingChangeFiles: [], version: "0.1.0", head, taggedCommit: undefined, ...overrides });
+
+  it("prepares the release PR while change files are pending, whatever the tags say", () => {
+    expect(state({ pendingChangeFiles: ["@scope/lib/x.json"] })).toBe("version");
+    expect(state({ pendingChangeFiles: ["@scope/lib/x.json"], version: "0.0.0" })).toBe("version");
+    expect(state({ pendingChangeFiles: ["@scope/lib/x.json"], taggedCommit: "b".repeat(40) })).toBe("version");
+  });
+
+  it("publishes a consumed version whose tag is not on the remote", () => {
+    expect(state({})).toBe("publish");
+  });
+
+  it("resumes a release whose tag an earlier run pushed to this commit", () => {
+    expect(state({ taggedCommit: head })).toBe("publish");
+  });
+
+  it("does nothing once the version is tagged on another commit", () => {
+    expect(state({ taggedCommit: "b".repeat(40) })).toBe("none");
+  });
+
+  it("never releases the initial 0.0.0", () => {
+    expect(state({ version: "0.0.0" })).toBe("none");
+  });
+});
+
+describe("remoteTagCommit", () => {
+  it("peels an annotated tag to its commit", () => {
+    const output = "1111\trefs/tags/v0.1.0\n2222\trefs/tags/v0.1.0^{}\n";
+    expect(remoteTagCommit(output, "v0.1.0")).toBe("2222");
+  });
+
+  it("reads a lightweight tag directly", () => {
+    expect(remoteTagCommit("3333\trefs/tags/v0.1.0\n", "v0.1.0")).toBe("3333");
+  });
+
+  it("reports a missing tag and ignores tags with a longer name", () => {
+    expect(remoteTagCommit("", "v0.1.0")).toBeUndefined();
+    expect(remoteTagCommit("4444\trefs/tags/v0.1.0-rc.1\n", "v0.1.0")).toBeUndefined();
   });
 });

@@ -1,44 +1,102 @@
 name: Publish npm
 
 on:
+  push:
+    branches: [main]
+  # Manual re-publish of an existing tag; see "Failure Recovery" in docs/development/release.md.
   release:
     types: [published]
 
-permissions:
-  contents: read
-
-concurrency:
-  group: publish-npm-${{ github.event.release.tag_name }}
-  cancel-in-progress: false
+permissions: {}
 
 jobs:
+  decide:
+    name: decide release state
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      state: ${{ steps.state.outputs.state }}
+      tag: ${{ steps.state.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - id: state
+        run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
+
   publish:
     name: publish release set
-    if: github.event.release.prerelease == false
+    needs: decide
+    # A release event skips decide and publishes the tag of a non-prerelease GitHub Release.
+    if: >-
+      !cancelled() && (
+        needs.decide.outputs.state == 'publish' ||
+        (github.event_name == 'release' && github.event.release.prerelease == false)
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: read
+      # Pushes the release tag and creates the GitHub Release.
+      contents: write
       # npm Trusted Publishing exchanges the workflow's OIDC token for a publish credential.
       id-token: write
+    concurrency:
+      group: publish-npm-${{ github.event.release.tag_name || needs.decide.outputs.tag }}
+      cancel-in-progress: false
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ github.event.release.tag_name || needs.decide.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
+          # Keeps the write token out of .git/config while repository dependencies run; the tag push passes it.
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: node common/scripts/install-run-rush.js install
+      - name: Confirm no concurrent run released this version
+        # This job may have waited in the concurrency group for a run of the same version. Every later step
+        # skips when this reports none; a release event skips this step and runs them.
+        id: pending
+        if: github.event_name == 'push'
+        run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
+      - name: Tag the release commit
+        if: steps.pending.outputs.state == 'publish'
+        run: |
+          if ! git rev-parse --quiet --verify "refs/tags/$RELEASE_TAG" > /dev/null; then
+            git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              tag --annotate "$RELEASE_TAG" --message "$RELEASE_TAG"
+          fi
       - name: Verify tag, versions and main ancestry
+        if: steps.pending.outputs.state != 'none'
         run: npm run release:check -- "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
+      - if: steps.pending.outputs.state != 'none'
+        run: node common/scripts/install-run-rush.js install
       - name: Run release gates
+        if: steps.pending.outputs.state != 'none'
         run: npm run check
+      - name: Push the tag and create the GitHub Release
+        if: steps.pending.outputs.state == 'publish'
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        # The remote refuses to move an existing tag, so a run that lost a race for this version stops here. Pushing
+        # the tag an earlier run of this commit already pushed is a no-op, as is creating its existing Release.
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$RELEASE_TAG"
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --generate-notes --title "$RELEASE_TAG"
+          fi
       - name: Publish packages with Rush
+        if: steps.pending.outputs.state != 'none'
         # Rush runs `pnpm publish`, which ignores NPM_CONFIG_* variables. pnpm attaches provenance on its own after
         # the OIDC exchange when both the repository and the package are public, and skips it otherwise.
         run: >-

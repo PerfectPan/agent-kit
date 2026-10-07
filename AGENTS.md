@@ -99,8 +99,9 @@ For non-trivial changes:
   needs a change file for `@rivus/agent-kit`. Create it with `npm run change`; when Rush reports nothing to do (an
   internal-package or lockfile-only change), use `node scripts/release-intent.ts add --type <major|minor|patch|none> --message "<text>"`.
 - Never bump versions, edit `CHANGELOG.json`/`CHANGELOG.md`, create release tags, or run `rush publish --publish`
-  by hand. The `Version Packages` workflow prepares versions, and publishing a GitHub Release runs `publish-npm.yml`.
-  Follow `docs/development/release.md`.
+  by hand. Every push to `main` runs both release workflows: `version-packages.yml` opens or updates the release PR
+  while change files are pending, and once the merged release PR has consumed them, `publish-npm.yml` tags the
+  release, creates the GitHub Release and publishes. Follow `docs/development/release.md`.
 - Workspace dependencies between packages use `workspace:*`; pnpm replaces them with exact versions when packing.
 
 ## Repository Architecture

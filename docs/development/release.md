@@ -8,21 +8,34 @@ and ship inside its `dist`. No long-lived npm token is stored in the repository 
 | Step | Where | Result |
 | --- | --- | --- |
 | Change file | feature PR | `common/changes/<package>/*.json`, verified by CI |
-| Version Packages | `version-packages.yml` (manual) | draft PR `chore(release): version packages` on `rush-release/main` |
-| Release PR merge | GitHub | bumped `package.json` versions, `CHANGELOG.md`/`CHANGELOG.json`, updated lockfile on `main` |
-| GitHub Release | GitHub UI or `gh release create` | tag `vX.Y.Z` on the release commit |
-| Publish | `publish-npm.yml` (on Release `published`) | packages on npm with provenance |
+| Version Packages | `version-packages.yml`, on each push to `main` with pending change files | draft PR `chore(release): version packages` on `rush-release/main`, verified with `npm run check` |
+| Release PR merge | GitHub, the only manual step | bumped `package.json` versions, `CHANGELOG.md`/`CHANGELOG.json`, updated lockfile on `main` |
+| Tag and GitHub Release | `publish-npm.yml`, on the merge push | annotated tag `vX.Y.Z` and a GitHub Release with generated notes on the release commit |
+| Publish | `publish-npm.yml`, same run | packages on npm with provenance |
 
 Each row is a separate completion state. A merged release PR is not a published release, and a started publish
 workflow is not a published package.
 
+Both workflows run on every push to `main` (a PR merge is a push) and first run `scripts/release-state.ts` in a
+small job without installing dependencies. It reads the pending change files, the policy version and the remote
+tag, and prints one state; only the matching workflow does further work:
+
+| State | When | Version Packages | Publish npm |
+| --- | --- | --- | --- |
+| `version` | `common/changes/` contains change files | opens or updates the release PR | skips |
+| `publish` | no change files, the policy version is not `0.0.0`, and `v<version>` is not on the remote or is on this commit | skips | tags, creates the Release, publishes |
+| `none` | otherwise, for example a docs push after a release | skips | skips |
+
+A tag on the pushed commit itself means an earlier run of that commit pushed it and then failed, so a re-run
+resumes the release. Pushes to `rush-release/main` and tags start neither workflow.
+
 ## Version Policy
 
 `common/config/rush/version-policies.json` defines one `lockStepVersion` policy named `main`, starting at `0.0.0`
-with `nextBump: "minor"`, so the first Version Packages run with the default `policy` input releases `0.1.0`. Every
-package in the policy shares one version and is released together. A lockstep bump comes from `nextBump`, not from
-the bump types in change files; pick `patch` in the Version Packages workflow input for a release that only corrects
-agent facts or fixes bugs, and `minor` (the default) for new agents, event types or capabilities.
+with `nextBump: "minor"`, so the first release PR releases `0.1.0`. Every package in the policy shares one version
+and is released together. A lockstep bump comes from `nextBump`, not from the bump types in change files. Pushes
+use it (`minor`, right for new agents, event types or capabilities); for a release that only corrects agent facts or
+fixes bugs, run Version Packages manually with `patch` (see [Cutting a Release](#cutting-a-release)).
 
 Rush asks for change files only for published projects, so a change inside an internal package would not prompt one.
 `scripts/release-intent.ts check`, which CI runs on every PR, requires a change file for `@rivus/agent-kit` whenever
@@ -34,8 +47,10 @@ To version packages independently, switch the policy to `individualVersion`:
 [{ "policyName": "main", "definitionName": "individualVersion" }]
 ```
 
-Rush then bumps each package from the bump types in its own change files. Update the workflows to match: `scripts/check-release.ts` skips the tag-equals-version rule for `individualVersion`, so choose
-a tag scheme (for example `release-2026-10-01`) and document it here. To rename the policy, update
+Rush then bumps each package from the bump types in its own change files. Update the workflows to match:
+`scripts/check-release.ts` skips the tag-equals-version rule for `individualVersion`, and `scripts/release-state.ts`
+accepts only a single `lockStepVersion` policy, so choose a tag scheme (for example `release-2026-10-01`), teach
+`release-state.ts` when it is due, and document it here. To rename the policy, update
 `version-policies.json`, every `versionPolicyName` in `rush.json`, and the `--version-policy main` arguments in
 `package.json` and `.github/workflows/`.
 
@@ -49,7 +64,8 @@ a tag scheme (for example `release-2026-10-01`) and document it here. To rename 
    and `publishConfig.access: "public"`. npm rejects provenance when the repository does not match, and
    `npm run release:check` enforces both.
 3. Let GitHub Actions create pull requests: **Settings → Actions → General → Workflow permissions → Allow GitHub
-   Actions to create and approve pull requests**. Version Packages fails without it.
+   Actions to create and approve pull requests**. Version Packages fails without it, on the first push to `main`
+   that leaves change files pending.
 
 ### npm Trusted Publisher, per package
 
@@ -80,8 +96,8 @@ exists. For each package:
    npm trust list @rivus/agent-kit
    ```
 
-   A new configuration expires unless a publish uses it within 2 days, so create it right before the first
-   release, not days ahead.
+   A new configuration expires unless a publish uses it within 2 days, so create it right before merging the first
+   release PR, not days ahead.
 3. Under **Publishing access**, select "Require two-factor authentication and disallow tokens" so that only the
    trusted workflow can publish.
 
@@ -92,33 +108,25 @@ authentication error for that package only.
 
 1. Merge feature PRs with change files (`npm run change`). CI runs `rush change --verify` and
    `scripts/release-intent.ts check` on every PR except the release PR and Dependabot PRs.
-2. Run **Actions → Version Packages → Run workflow** on `main`. Choose `policy` for the policy's `nextBump`, or
-   `patch`/`minor`/`major`. The workflow runs `rush version --bump`, which consumes the change files, bumps the
-   policy and package versions and writes changelogs, then `rush update`, and opens or updates the signed draft PR
-   `chore(release): version packages` from `rush-release/main`.
-3. Start CI on the release PR. Pull requests created with the workflow's `GITHUB_TOKEN` do not trigger workflows.
-   Select **Ready for review** (the `ready_for_review` event starts CI), or close and reopen the PR. Pushing an
-   empty commit to the branch also works. To avoid the manual step, give `create-pull-request` a GitHub App token
-   or a fine-grained PAT instead of `GITHUB_TOKEN`.
-4. Review the version and changelog diff, wait for green checks, and squash-merge.
-5. Check the release identity locally on the merged release commit:
-
-   ```bash
-   git switch main && git pull
-   npm run release:check -- vX.Y.Z --repository OWNER/REPO
-   ```
-
-6. Create a non-prerelease GitHub Release with tag `vX.Y.Z` targeting the release commit (not a later `main`):
-
-   ```bash
-   gh release create vX.Y.Z --target <release-commit-sha> --generate-notes
-   ```
-
-   `publish-npm.yml` checks out the tag, verifies the tag equals `v<policy version>`, every package version matches,
-   no change files remain and the commit is on `main`, runs `npm run check`, then runs
-   `rush publish --include-all --version-policy main --publish --set-access-level public`. Rush skips versions that
-   already exist on npm. Prereleases do not publish.
-7. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z` and a clean
+2. Each such merge runs Version Packages: `rush version --bump` with the policy's `nextBump`, which consumes the
+   change files, bumps the policy and package versions and writes changelogs, then `rush update` and
+   `npm run check`, then opens or updates the signed draft PR `chore(release): version packages` from
+   `rush-release/main`. Every later push with change files regenerates the PR from the new `main`.
+3. For a bump other than `nextBump`, run **Actions → Version Packages → Run workflow** on `main` with
+   `patch`/`minor`/`major` after the last feature merge of the release. The next push with change files regenerates
+   the PR with `nextBump` again.
+4. Review the version and changelog diff, then select **Ready for review**. Pull requests created with the
+   workflow's `GITHUB_TOKEN` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
+   reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, give
+   `create-pull-request` a GitHub App token or a fine-grained PAT instead of `GITHUB_TOKEN`.
+5. The merge push runs Publish npm on the merge commit. After waiting for any other run of the same version, it
+   checks the state again, creates the annotated tag `vX.Y.Z` locally, and runs `release:check --verify-git`: the
+   tag equals `v<policy version>`, every package version matches, no change files remain and the commit is on
+   `origin/main`. It then runs `rush install` and `npm run check`, pushes the tag, creates a GitHub Release with
+   generated notes, and runs `rush publish --include-all --version-policy main --publish --set-access-level public`.
+   Rush skips versions that already exist on npm. The remote refuses to move an existing tag, so two runs cannot
+   release one version from different commits.
+6. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z` and a clean
    `npm install` in a scratch project. Registry reads can lag the publish by a minute; retry the read, not the
    publish. The npm package page shows a provenance badge linking to the workflow run.
 
@@ -127,7 +135,7 @@ and changes nothing.
 
 ## Bot Pull Requests
 
-- **Release PR**: see step 3 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
+- **Release PR**: see step 4 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
 - **Dependabot npm PRs** edit `package.json` files but not the Rush lockfile, so `rush install` fails in CI. Check
   out the branch, run `node common/scripts/install-run-rush.js update`, commit the lockfile, add a change file
   (`node scripts/release-intent.ts add --type patch --message "Update dependencies."`) when the update affects a
@@ -142,13 +150,23 @@ and changes nothing.
 
 ## Failure Recovery
 
-- **Validation fails before publishing** (`release:check`, `npm run check`): nothing was published. Fix the cause
-  in a new PR, then delete the GitHub Release and its tag and create them again on the fixed commit, or cut the
-  next version. This is the only case where a tag may be recreated.
-- **Authentication fails for a package**: configure its trusted publisher, then re-run the failed workflow run.
-  Rush skips packages already published at that version, so a re-run only publishes what is missing.
-- **Partial publish**: multi-package publishing is not atomic. Re-run the workflow; never hand-publish a different
+- **Validation fails before publishing** (`release:check`, `npm run check` in Publish npm): nothing was tagged or
+  published. Re-run the run for a transient failure. Otherwise fix the cause in a new PR: a fix without change files
+  releases the same version from its merge commit, and a fix with change files goes into the next release PR,
+  leaving the unpublished version out.
+- **Tag pushed, nothing published, and a re-run cannot fix it**: delete the GitHub Release and the tag
+  (`gh release delete vX.Y.Z --cleanup-tag`) and merge the fix; the next push without change files releases the
+  version from its commit. This and the previous case are the only ones where a version's tag may move.
+- **Authentication fails for a package**: configure its trusted publisher, then re-run the run (all jobs or only the
+  failed ones). The tag is on the run's commit, so the re-run keeps the tag and Release, and Rush publishes only what
+  is missing at that version.
+- **Partial publish**: multi-package publishing is not atomic. Re-run the run; never hand-publish a different
   artifact under the same version.
+- **Manual re-publish**: GitHub re-runs a run only within 30 days. After that, publishing a non-prerelease GitHub
+  Release for the existing tag starts Publish npm on the `release` event, which checks out the tag and runs the
+  same checks and `rush publish`. When the Release already exists, delete only the Release (`gh release delete
+  vX.Y.Z`) and create it again with `gh release create vX.Y.Z --verify-tag --generate-notes`. Do not create
+  Releases for new versions by hand; the merge push tags them.
 - **Bad published contents**: npm versions are immutable. Deprecate the version and release a fix:
 
   ```bash

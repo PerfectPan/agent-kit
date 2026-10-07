@@ -1,6 +1,8 @@
 name: Version Packages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       bump:
@@ -17,11 +19,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  version:
-    name: prepare version pull request
+  decide:
+    name: decide release state
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      state: ${{ steps.state.outputs.state }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - id: state
+        run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
+
+  version:
+    name: prepare version pull request
+    needs: decide
+    if: needs.decide.outputs.state == 'version'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -35,7 +55,7 @@ jobs:
       - run: node common/scripts/install-run-rush.js install
       - name: Bump versions and write changelogs with Rush
         env:
-          BUMP: ${{ inputs.bump }}
+          BUMP: ${{ inputs.bump || 'policy' }}
         run: |
           if [[ "$BUMP" == "policy" ]]; then
             npm run version-packages
@@ -43,7 +63,26 @@ jobs:
             node common/scripts/install-run-rush.js version --bump --version-policy main --override-bump "$BUMP"
             node common/scripts/install-run-rush.js update
           fi
+      - name: Run release gates on the bumped versions
+        # A pull request opened with GITHUB_TOKEN starts no CI, so this job verifies its content before opening it.
+        run: npm run check
+      - name: Confirm main has not moved on
+        # A re-run keeps its original commit. Once main has moved on, the newer push's run owns the release PR, and
+        # updating it from this commit would drop the newer change files.
+        id: fresh
+        # pipefail: a failed remote query must fail the run instead of reading as "main moved on".
+        shell: bash
+        run: |
+          main="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          [[ -n "$main" ]]
+          if [[ "$main" == "$GITHUB_SHA" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::main is at $main, not $GITHUB_SHA; leaving the release PR to the newer run"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Create or update the version pull request
+        if: steps.fresh.outputs.current == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           branch: rush-release/main
@@ -53,7 +92,9 @@ jobs:
           title: "chore(release): version packages"
           draft: always-true
           body: |
-            Coordinated Rush release prepared by the Version Packages workflow.
+            Coordinated Rush release prepared by the Version Packages workflow, which ran `npm run check` on this
+            content. Every push to `main` with pending change files regenerates this PR.
 
-            Pull requests created with the workflow token do not start CI. Review the version and changelog
-            diff, then select **Ready for review** (or close and reopen the PR) to run CI before merging.
+            Pull requests created with the workflow token do not start CI. Review the version and changelog diff,
+            select **Ready for review** to run CI, then squash-merge. The merge tags the release, creates the
+            GitHub Release and publishes to npm from `publish-npm.yml`.

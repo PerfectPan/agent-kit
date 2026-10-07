@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Rush accepts comments in its JSON files; these scripts use JSON.parse, so keep rush.json and
@@ -40,6 +40,20 @@ export function readProjects(root: string): RushProject[] {
 
 export function readPolicies(root: string): VersionPolicy[] {
   return readJson<VersionPolicy[]>(root, "common/config/rush/version-policies.json");
+}
+
+/** Change files that `rush version --bump` has not consumed yet, relative to `common/changes`. */
+export function readPendingChangeFiles(root: string): string[] {
+  try {
+    return readdirSync(join(root, CHANGES_DIRECTORY), { recursive: true, encoding: "utf8" })
+      .filter((path) => path.endsWith(".json"))
+      .sort();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
 }
 
 /** Rush publishes a project that has a version policy or sets `shouldPublish`. */
@@ -220,7 +234,50 @@ export function releaseErrors({ tag, repository, policy, packages, pendingChange
   }
 
   if (pendingChangeFiles.length > 0) {
-    errors.push(`unreleased change files remain; run Version Packages first: ${pendingChangeFiles.join(", ")}`);
+    errors.push(`unreleased change files remain; merge the release PR first: ${pendingChangeFiles.join(", ")}`);
   }
   return errors;
+}
+
+/** What a push to `main` does: prepare the release PR, publish the policy version, or nothing. */
+export type ReleaseState = "version" | "publish" | "none";
+
+export interface ReleaseStateInput {
+  pendingChangeFiles: readonly string[];
+  /** The lockstep policy version. */
+  version: string;
+  head: string;
+  /** The commit that tag `v<version>` points at on the remote, or undefined when the remote has no such tag. */
+  taggedCommit: string | undefined;
+}
+
+/**
+ * Pending change files mean the release PR needs preparing. Once a merged release PR has consumed them, the version
+ * is published unless its tag already exists on another commit. A tag on this commit means an earlier run for it
+ * stopped after pushing the tag, so publishing again resumes that release; Rush skips versions already on npm. The
+ * policy's initial `0.0.0` is never released.
+ */
+export function releaseState({ pendingChangeFiles, version, head, taggedCommit }: ReleaseStateInput): ReleaseState {
+  if (pendingChangeFiles.length > 0) {
+    return "version";
+  }
+  if (version === "0.0.0" || (taggedCommit !== undefined && taggedCommit !== head)) {
+    return "none";
+  }
+  return "publish";
+}
+
+/** Reads the commit `tag` points at from `git ls-remote <remote> refs/tags/<tag> 'refs/tags/<tag>^{}'` output. */
+export function remoteTagCommit(lsRemote: string, tag: string): string | undefined {
+  const commits = new Map(
+    lsRemote
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [sha, ref] = line.split("\t");
+        return [ref, sha];
+      })
+  );
+  // An annotated tag lists the tag object under its name and the commit under the peeled `^{}` name.
+  return commits.get(`refs/tags/${tag}^{}`) ?? commits.get(`refs/tags/${tag}`);
 }
