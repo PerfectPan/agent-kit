@@ -21,6 +21,13 @@
     },
     {
       "commandKind": "bulk",
+      "name": "check:package",
+      "summary": "Check built published packages: publint, attw, size budgets and the dist import graph. Run after build.",
+      "enableParallelism": true,
+      "ignoreMissingScript": true
+    },
+    {
+      "commandKind": "bulk",
       "name": "format",
       "summary": "Format every project with oxfmt.",
       "enableParallelism": true

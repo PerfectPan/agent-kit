@@ -22,13 +22,20 @@ node common/scripts/install-run-rush.js update
 npm run check
 
 # work on one package; rushx runs that package's scripts (needs a global `npm i -g @microsoft/rush`)
-cd packages/example && rushx test
+cd packages/platform && rushx test
 ```
 
-To add a package, copy `packages/example`, rename it, register it in `rush.json` with `"versionPolicyName": "main"`
-(or `"shouldPublish": false` for a private package), and run `node common/scripts/install-run-rush.js update`.
+Only `packages/agent-kit` (`@rivus/agent-kit`) is published. To add an internal package for a bounded context, copy
+`packages/platform` (its `package.json`, `tsconfig.json` and `.oxlintrc.json`), name it `@rivus/agent-kit-<folder>`,
+register it in `rush.json` with `"shouldPublish": false`, declare its dependencies in
+`infra/architecture/boundaries.ts`, add it to the shell's devDependencies as `workspace:*` when the shell re-exports
+it, and run `node common/scripts/install-run-rush.js update`. A new public entry is a subpath in the shell's
+`exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts`.
 Each package owns its toolchain devDependencies; `ensureConsistentVersions` in `rush.json` keeps their versions
-identical across packages.
+identical across packages. devDependencies are pinned to exact versions. Runtime dependencies of `@rivus/agent-kit`,
+declared both in the shell and in the internal package that imports them, use caret ranges such as `^4.6.5` so
+that consumers can deduplicate them against their own copies; give every package the same range. An optional peer
+such as `effect` stays exact, because two different Effect versions in one process can fail at runtime.
 
 ## Contribution Flow
 
@@ -53,7 +60,7 @@ Small typo corrections, narrow documentation fixes, and repository metadata upda
 # Local Git hooks:
 ./scripts/install-git-hooks.sh
 
-# Aggregate gate: format:check, build, lint, typecheck, test, repository checks:
+# Aggregate gate: format:check, build, lint, typecheck, test, package checks:
 npm run check
 
 # Change files for package changes (compares with origin/main; CI runs it on every PR):
@@ -75,15 +82,17 @@ npm run publish:dry-run
 ## Change Files
 
 Rush builds changelogs and version bumps from change files in `common/changes/`. A PR that changes what a
-published package ships (source, manifest, build config) or the Rush lockfile needs at least one:
+published package ships (source, manifest, build config, or an internal package that it bundles) or the Rush
+lockfile needs at least one:
 
 ```bash
 npm run change
 ```
 
 Rush asks for a bump type and a user-facing message per changed package. Use `none` for changes that need a record
-but no release. `rush change --verify` only sees files inside project folders, so `scripts/release-intent.ts`
-additionally requires a change file when `common/config/rush/pnpm-lock.yaml` changes. When `rush change` reports
+but no release. `rush change --verify` only sees files inside published project folders, so
+`scripts/release-intent.ts` additionally requires a change file for `@rivus/agent-kit` when an internal package it
+bundles changes, and a change file when `common/config/rush/pnpm-lock.yaml` changes. When `rush change` reports
 nothing to do, write one directly:
 
 ```bash

@@ -26,6 +26,8 @@ export interface PackageManifest {
   files?: string[];
   publishConfig?: { access?: string };
   repository?: string | { url?: string };
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
 
 export function readJson<T>(root: string, path: string): T {
@@ -46,23 +48,109 @@ export function isPublished(project: RushProject): boolean {
 }
 
 /**
- * A changed file needs a release note when it can change what a published package ships: its source,
- * manifest and build config, or the lockfile that pins its dependencies. Tests, fixtures and Markdown do not.
- * `rush change --verify` only looks inside project folders, so the lockfile rule is what this adds.
+ * Maps each private workspace package to the published packages that list it with the `workspace:` protocol and
+ * therefore bundle it. `manifests` is keyed by package name.
  */
-export function isShippedChange(path: string, projects: RushProject[]): boolean {
-  if (path === LOCKFILE) {
-    return true;
+export function bundlersOf(
+  projects: RushProject[],
+  manifests: ReadonlyMap<string, PackageManifest>
+): Map<string, string[]> {
+  const bundlers = new Map<string, string[]>();
+  for (const project of projects.filter(isPublished)) {
+    const manifest = manifests.get(project.packageName);
+    const dependencies = { ...manifest?.dependencies, ...manifest?.devDependencies };
+    for (const [name, spec] of Object.entries(dependencies)) {
+      const dependency = projects.find((candidate) => candidate.packageName === name);
+      if (spec.startsWith("workspace:") && dependency !== undefined && !isPublished(dependency)) {
+        bundlers.set(name, [...(bundlers.get(name) ?? []), project.packageName]);
+      }
+    }
   }
+  return bundlers;
+}
+
+/**
+ * Published packages whose next release a changed file belongs to: the package that contains it or, for a private
+ * package, the published packages that bundle it. Tests, fixtures and Markdown ship nothing. The lockfile is not
+ * attributed to a package; `releaseIntent` handles it.
+ */
+export function releasesOf(path: string, projects: RushProject[], bundlers: ReadonlyMap<string, string[]>): string[] {
   const project = projects.find((candidate) => path.startsWith(`${candidate.projectFolder}/`));
-  if (project === undefined || !isPublished(project)) {
-    return false;
+  const shipsNothing =
+    /\.test\.[cm]?[jt]sx?$/.test(path) || /(^|\/)(fixtures|__tests__)\//.test(path) || path.endsWith(".md");
+  if (project === undefined || shipsNothing) {
+    return [];
   }
-  return !/\.test\.[cm]?[jt]sx?$/.test(path) && !/(^|\/)(fixtures|__tests__)\//.test(path) && !path.endsWith(".md");
+  return isPublished(project) ? [project.packageName] : (bundlers.get(project.packageName) ?? []);
 }
 
 export function isChangeFile(path: string): boolean {
   return path.startsWith(`${CHANGES_DIRECTORY}/`) && path.endsWith(".json");
+}
+
+/** `common/changes/@scope/name/x.json` belongs to `@scope/name`. */
+export function changeFilePackage(path: string): string {
+  return path.slice(CHANGES_DIRECTORY.length + 1, path.lastIndexOf("/"));
+}
+
+/** One entry of `git diff --name-status --no-renames`; `status` is the letter, such as `A`, `M` or `D`. */
+export interface FileChange {
+  status: string;
+  path: string;
+}
+
+/** Parses `git diff --name-status --no-renames -z` output, which alternates status and path, NUL-separated. */
+export function parseNameStatus(output: string): FileChange[] {
+  const fields = output.split("\0").filter(Boolean);
+  const changes: FileChange[] = [];
+  for (let at = 0; at + 1 < fields.length; at += 2) {
+    changes.push({ status: fields[at]!.charAt(0), path: fields[at + 1]! });
+  }
+  return changes;
+}
+
+export interface ReleaseIntent {
+  /** Changed files that can change what a published package ships, including the lockfile. */
+  shipped: string[];
+  /** Change files that count as release records: added or modified by the change, so they exist at its head. */
+  changeFiles: string[];
+  /** Published packages with shipped changes but no change file. */
+  missing: string[];
+  /** The lockfile changed and no package has a change file. */
+  unrecordedLockfile: boolean;
+}
+
+/**
+ * Checks that every published package with shipped changes has a change file. Rush asks only for published projects
+ * that changed, so a change inside a private package bundled into a published one, or to the lockfile, would
+ * otherwise go out without a release. A deleted change file records nothing.
+ */
+export function releaseIntent(
+  changes: readonly FileChange[],
+  projects: RushProject[],
+  bundlers: ReadonlyMap<string, string[]>
+): ReleaseIntent {
+  const changeFiles = changes
+    .filter(({ status, path }) => (status === "A" || status === "M") && isChangeFile(path))
+    .map(({ path }) => path);
+  const recorded = new Set(changeFiles.map(changeFilePackage));
+  const releases = new Set<string>();
+  const shipped: string[] = [];
+  for (const { path } of changes) {
+    const affected = path === LOCKFILE ? [] : releasesOf(path, projects, bundlers);
+    if (path === LOCKFILE || affected.length > 0) {
+      shipped.push(path);
+    }
+    for (const name of affected) {
+      releases.add(name);
+    }
+  }
+  return {
+    shipped,
+    changeFiles,
+    missing: [...releases].filter((name) => !recorded.has(name)).sort(),
+    unrecordedLockfile: shipped.includes(LOCKFILE) && recorded.size === 0
+  };
 }
 
 export function repositoryUrl(manifest: PackageManifest): string | undefined {

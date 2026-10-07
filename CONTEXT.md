@@ -1,0 +1,272 @@
+# agent-kit Language
+
+This glossary defines the terms that code, documentation and reviews in this repository use. Terms are grouped by bounded context: a term means what its context says, and the same word in another context, or in a consuming project, can mean something else (see [Same name, different meaning](#same-name-different-meaning)). The context analysis behind it is in [plan 0001, section 3.1](docs/plans/0001-agent-kit.md#31-bounded-context-analysis); authoring rules are in [docs/architecture/authoring.md](docs/architecture/authoring.md).
+
+`@rivus/agent-kit` connects to external coding agents: catalog, discovery, sessions (with transcript), cost, harness, acp, and the redact utility. `@rivus/agent-kit-collab` provides collaboration primitives between agents: lease (with the process lock) and lanes. Platform is a technical port, not a bounded context.
+
+## catalog (shared kernel)
+
+**CodingAgent**:
+A third-party coding agent product, such as Claude Code, Codex or Grok.
+_Avoid_: agent on its own where a host application's Agent could be meant
+
+**CodingAgentId**:
+The id of a CodingAgent, such as `claude-code` or `codex`. Documented aliases, such as `claude`, identify the same CodingAgent.
+
+**AgentHome**:
+The configuration and data root of a CodingAgent, including its overrides such as `CLAUDE_CONFIG_DIR` and `CODEX_HOME`.
+_Avoid_: home on its own, which means the user's home directory
+
+**Result**:
+The value `{ ok: true, value } | { ok: false, error }` that plain TS functions return for expected outcomes; `error` carries a `_tag`. It is the only type shared by every context.
+
+## discovery
+
+**Installation**:
+What is known about one CodingAgent on this machine: its evidence, DetectionStatus, version and AuthState.
+
+**Evidence**:
+One observation that an agent is present: a command on `PATH`, an application path, a configuration directory, or version output.
+
+**DetectionStatus**:
+The classification of an Installation from its evidence: `runnable`, `found`, `missing` or `unknown`.
+
+**AuthState**:
+Whether the agent is logged in, as far as detection can tell.
+
+**ProbeRecipe**:
+How discovery detects one agent: executables, application paths, version arguments and the login check.
+
+## sessions
+
+**Session**:
+One conversation of one CodingAgent, as recorded in that agent's own files.
+_Avoid_: AcpSession, a host application's session
+
+**SessionRef**:
+The reference to a Session. It carries the CodingAgentId, so later calls reach the right adapter.
+
+**SessionHead**:
+The summary of a Session that listing produces from the head and tail of its files, without reading it fully.
+
+**Transcript**:
+The ordered TranscriptEvents of a Session, merged from all its files, with the records that were skipped.
+
+**TranscriptEvent**:
+One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`. Events form a flat list and reference each other by id.
+_Avoid_: thinking (use reasoning), message as the general word for an event
+
+**Turn**:
+One exchange in a recorded Session: a user input and the agent's work in response.
+
+**Request**:
+One model request inside a Turn; the events it produced share a `requestId`, and its stop reason is `finishReason`.
+_Avoid_: stopReason
+
+**Lane**:
+One subagent's execution line inside a Session, identified by its `agentId`, with a `parentId` and the event that spawned it.
+
+**Compaction**:
+An event where the agent replaced earlier context with a summary. Events it replaced carry `shadowedBy` pointing to it.
+
+**Orphan**:
+A `tool_result` whose `tool_call` is not in the Session.
+
+**SourcePointer**:
+The location of the original record of an event: file, byte offset, byte length and line number. Reading those bytes returns the record.
+
+**Skipped record**:
+A line that could not be parsed. It is recorded with its SourcePointer instead of failing the read.
+
+**Format generation**:
+A version of an agent's log format. A generation the adapter does not recognize is reported as an error; single unreadable lines are skipped records.
+
+**Usage**:
+Token counts in the community convention: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and the cache and reasoning counts are subsets. A missing count is absent, never 0.
+
+**UsageRecord**:
+Usage attributed to an agent, a Session and a source, with a granularity: `request` (one model request), `turn` or `session` (an aggregate, with `modelCalls`). An aggregate is never split into invented per-request records.
+
+## cost
+
+**PricingTable**:
+Prices per model, injected by the caller; the kit ships no price data.
+
+**Price**:
+The per-token prices of one model for input, cache read, cache write (5-minute and 1-hour) and output.
+
+**Cost**:
+An amount in USD computed for a UsageRecord or a summary.
+
+**CostSource**:
+Where a cost comes from: `agent` (reported by the agent itself) or `pricing-table` (computed by the kit).
+
+**CalendarWindow**:
+A calendar period, such as a day or a week, over which usage is summarized.
+
+**UsageSummary**:
+Usage and cost totals over a CalendarWindow, grouped by model.
+
+## harness
+
+**Harness**:
+The part of a CodingAgent's runtime that can be extended: skills, hooks, MCP servers, instructions and plugins. The harness context injects into it and reads lifecycle signals back.
+_Avoid_: integrations
+
+**Bundle**:
+What one Owner wants installed into Harnesses: hooks, skills and other Artifacts, with a version and a digest.
+
+**Owner**:
+The application on whose behalf Artifacts are installed, such as `agent-presence`. Every LedgerEntry has one.
+
+**ForeignOwner**:
+Another tool that manages the same files, such as chezmoi. harness reads what it manages and does not touch its paths.
+
+**Artifact**:
+One installed thing: a file, directory, symlink, JSON or TOML entry, managed block, or registration through an agent's command line.
+
+**Strategy**:
+How an Artifact reaches the agent, in order of preference: launch-time injection, native plugin, scanned directory, shared configuration edit.
+
+**InstallPlan**:
+The immutable result of comparing a Bundle with the Ledger and the files on disk: the steps, diffs, agent commands and expected TrustPrompts. It is refused when the Ledger changed after it was built, and rejected as a whole on an unresolved conflict.
+
+**PlanStep**:
+One action of an InstallPlan on one Artifact (`create`, `update`, `adopt`, `remove`, `noop`, `conflict`), with the precondition it re-checks before writing.
+
+**Ledger**:
+The local record of what harness installed, per scope, with a lineage and a strictly increasing revision. Every modification happens while the LedgerLock is held. An unknown ledger version is refused or kept whole, never cleared.
+
+**LedgerEntry**:
+The Ledger's record of one Artifact: owners, content hash, pre-image and the versions that installed it.
+
+**Pre-image**:
+What existed at an Artifact's location before harness wrote it, kept so that uninstall can restore it.
+
+**LedgerLock**:
+The lock held for the whole of each Ledger modification. By default it is an SQLite exclusive lock that the kernel releases when the holding process exits.
+
+**Drift**:
+A difference between the disk, the Ledger and the desired state, found by three-way verify: outdated, user-modified, deleted externally, or adoptable.
+
+**TrustPrompt**:
+A confirmation the agent will ask the user for after installation, such as reviewing a new hook. A plan announces it and never approves it.
+
+**HookDialect**:
+One agent's hook facts: event names, timeout unit, permission semantics and response format per event, and how it records trust. It is the only source of these facts.
+
+**LifecycleEvent**:
+A hook payload translated into orthogonal fields: `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`), optional `scope`, `outcome`, `blocker`, `turnId`, `subagent`, `tool`, and identity fields. `agent` is the real source after sniffing.
+
+## acp
+
+**Connection**:
+A running ACP agent process that the kit started, after the handshake.
+
+**AcpProfile**:
+How one agent is launched over ACP and how it expects `_meta` fields.
+
+**AcpSession**:
+A live ACP session on a Connection. It is a state machine (starting, ready, turn in progress or awaiting permission, cancelling, closed) that runs at most one Turn at a time.
+_Avoid_: Session (the recorded conversation)
+
+**Turn (acp)**:
+One prompt and the agent's live response inside an AcpSession.
+
+**PermissionRequest**:
+The agent asking the caller to allow an action during a Turn.
+
+**PermissionDecision**:
+The caller's answer to a PermissionRequest. Without an answer the request is denied.
+
+**SessionBinding**:
+The mapping from the caller's `sessionKey` to an ACP `sessionId`. It is invalidated when a cancel does not settle in time.
+
+## lease (collab)
+
+**Lease**:
+Exclusive, expiring ownership of a key by one Holder.
+
+**Holder**:
+The process that holds a Lease, identified by host, boot id, pid and start time, so that a reused pid is not mistaken for the holder.
+
+**Generation**:
+The fencing token of a Lease. It increases on creation and takeover, never decreases, not even after release, and heartbeats do not change it.
+
+**Revision**:
+A counter that increases on every write of a lease record; stores compare it for CAS.
+
+**TTL**:
+How long a Lease stays valid without a Heartbeat, judged by the observer's monotonic clock.
+
+**Heartbeat**:
+A renewal that keeps a Lease alive. Heartbeat × 2 must not exceed the TTL.
+
+**Tombstone**:
+A released lease record kept with no holder, so the Generation cannot go backwards.
+
+**FenceCheck**:
+The check that rejects a write carrying an older Generation than the protected resource has seen.
+
+**ProcessLock**:
+A single-instance lock for a path, released by the kernel when the process exits.
+
+## lanes (collab)
+
+**Lane (lanes)**:
+A scheduling unit identified by a key; work for one key runs serially.
+
+**Activation**:
+One run of the work for a Lane.
+
+**Wake**:
+A request to run a Lane. Wakes that arrive while the Lane is active coalesce into one pending activation.
+
+**Capacity**:
+The maximum number of activations running at once across all Lanes.
+
+**QueueBound**:
+The maximum number of activations waiting for Capacity.
+
+**TurnTimeout**:
+The longest one Activation may run.
+
+## Technical terms
+
+**Platform**:
+The port through which the kit reaches files, processes, environment variables, clocks and SQLite. It has no domain language. `/node` implements it for Node and `/testing` provides an in-memory version.
+
+**redact**:
+A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.
+
+**Agent adapter**:
+The per-agent implementation of a context's adapter interface, under `agents/<agent>/`. It translates the agent's external format into the context's model and is registered in that context's `builtinXxx` table.
+
+**Port adapter**:
+An implementation, under `adapters/`, of a port the kit declares itself, such as a format-preserving configuration editor or a ledger store.
+
+**Entry**:
+A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
+
+**Shell package**:
+A published package (`@rivus/agent-kit`, later `@rivus/agent-kit-collab`) whose entries only re-export names from the internal packages' public surface; the internal packages are bundled into it at build time.
+
+**Conformance test**:
+A test suite, exported from `/testing`, that checks an agent adapter or a store against a context's interface definition. Built-in and third-party adapters run the same suite.
+
+## Same name, different meaning
+
+| Word | In agent-kit | Elsewhere |
+| --- | --- | --- |
+| Agent | CodingAgent: a third-party coding agent product | An Effect-based host application's Agent: the product that host runs |
+| Harness | The extensible part of an agent's runtime, and the context that injects into it | A host application's AgentHarness (the execution model of one run); AI SDK's HarnessV1 (an adapter that drives an agent's runtime); agent-orchestration's Harness (the configuration passed to the agent on every turn, the closest to this meaning). A consumer that uses two of them aliases the import |
+| Session | In sessions, a recorded conversation read from the agent's files; in acp, AcpSession, a live session the kit drives | A host application's Session Key |
+| Turn | In sessions, a recorded turn in a Transcript; in acp, a live Turn in an AcpSession | A host application's Agent Run |
+| Lane | In sessions, a subagent's execution line; in lanes, a scheduling unit serialized by key | Each context keeps its own meaning; the two are never mixed |
+| Generation | In lease, the fencing token | In sessions, a format generation of an agent's logs |
+| Revision | The Ledger's revision (per apply or uninstall) and a lease record's revision (per write) | Each counter belongs to its own record |
+| Adapter | An agent adapter (`agents/`) or a port adapter (`adapters/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
+| Scope | An install scope (`user` / `project`); `LifecycleEvent.scope` (`session` / `turn`) | An Effect `Scope`, which owns long-lived resources |
+| Event | TranscriptEvent (recorded activity) and LifecycleEvent (hook signal) | Domain events returned by aggregate transitions; ACP `session/update` notifications |
+| Lock | LedgerLock (harness), ProcessLock and Lease (collab) | harness cannot depend on collab, so the LedgerLock and the ProcessLock are separate implementations of the same technique |
+| Input tokens | Include cache reads and writes (OTel GenAI, AI SDK) | Anthropic, the Claude Agent SDK, ccusage and Langfuse count input without cache |

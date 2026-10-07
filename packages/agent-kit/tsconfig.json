@@ -1,0 +1,10 @@
+{
+  "extends": "@perfectpan/lint-config/tsconfig/node.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "tsdown.config.ts", ".size-limit.ts"]
+}

@@ -1,0 +1,26 @@
+export { splitLines } from "@rivus/agent-kit-platform/public";
+export type {
+  ByteRange,
+  ChildHandle,
+  DirEntry,
+  Env,
+  ExitStatus,
+  FileKind,
+  FileStat,
+  Line,
+  OperatingSystem,
+  Platform,
+  PlatformClock,
+  PlatformFs,
+  PlatformProcess,
+  PlatformSqlite,
+  ProcessIdentity,
+  RunOptions,
+  RunResult,
+  SpawnOptions,
+  SplitLinesOptions,
+  SqliteDatabase,
+  SqliteRunResult,
+  SqliteStatement,
+  SqliteValue
+} from "@rivus/agent-kit-platform/public";

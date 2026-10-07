@@ -1,0 +1,28 @@
+{
+  "name": "@rivus/agent-kit-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform port types and the byte-stream line splitter. Bundled into @rivus/agent-kit.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./public": "./src/public.ts"
+  },
+  "scripts": {
+    "build": "",
+    "lint": "oxlint",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

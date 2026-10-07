@@ -27,15 +27,17 @@ node common/scripts/install-run-rush.js install
 # After adding or changing a dependency in any package.json:
 node common/scripts/install-run-rush.js update
 
-# Aggregate gate: format:check, build, lint, typecheck, test:
+# Aggregate gate: format:check, build, lint, typecheck, test, check:package:
 npm run check
 
 # Individual gates (Rush bulk commands run in every project):
 npm run format        # or format:check
-npm run build
+npm run build         # rush rebuild: internal packages have no build step, so an incremental build would skip
+                      # the shell after an internal-package change
 npm run lint          # oxlint with type-aware rules and TypeScript diagnostics
 npm run typecheck
-npm run test
+npm run test          # includes the architecture boundary test in infra/architecture
+npm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
 
 # Record a release note for changed packages, then verify one exists (CI runs the verify step on PRs):
 npm run change
@@ -54,10 +56,26 @@ gh repo-checks pr-body pr-body.md
 gh repo-checks protect --repo OWNER/REPO
 ```
 
-Rush projects are listed in `rush.json`. Publishable packages live under `packages/` and join the `main` version
-policy; `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run
-directly by Node. Every project defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check`
-scripts that the Rush bulk commands call. `docs/development/release.md` is the release runbook.
+Rush projects are listed in `rush.json`:
+
+- `packages/agent-kit` is `@rivus/agent-kit`, the only published package and the only member of the `main` version
+  policy. Its `src/<entry>.ts` files only re-export names, one by one, from internal packages' `public.ts`; every
+  subpath in its `exports` map is one tsdown entry, and tsdown bundles the internal packages and their declarations
+  into `dist`.
+- The other folders under `packages/`, such as `packages/platform`, are private internal packages named
+  `@rivus/agent-kit-<folder>`, one per bounded context, with `"shouldPublish": false`. Each exports `src/index.ts`
+  for sibling packages and `src/public.ts` for the shell, straight from TypeScript source, and is a `workspace:*`
+  devDependency of the shell. Their tsconfig enables `isolatedDeclarations` because the shell's declaration bundler
+  (Oxc) needs explicit types on exported declarations; keep exports whose type is only inferred, such as zod
+  schemas, module-private.
+- `infra/architecture` is the private `architecture-boundaries` project: `boundaries.ts` declares allowed package
+  dependencies, layer rules, npm and Node built-in allowlists and the Effect allowlist; its test checks every
+  package source file against them.
+- `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run directly
+  by Node.
+
+Every project defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the Rush
+bulk commands call. `docs/development/release.md` is the release runbook.
 
 Do not claim implementation work is complete until the relevant commands pass, or until skipped commands are explained with concrete blockers.
 
@@ -76,9 +94,10 @@ For non-trivial changes:
 
 ## Releases
 
-- A PR that changes a published package's source, manifest or build config, or the Rush lockfile, includes a Rush
-  change file under `common/changes/`. Create it with `npm run change`; when Rush reports nothing to do (for
-  example a lockfile-only change), use `node scripts/release-intent.ts add --type <major|minor|patch|none> --message "<text>"`.
+- A PR that changes a published package's source, manifest or build config, an internal package that the shell
+  bundles, or the Rush lockfile, includes a Rush change file under `common/changes/`. A change in an internal package
+  needs a change file for `@rivus/agent-kit`. Create it with `npm run change`; when Rush reports nothing to do (an
+  internal-package or lockfile-only change), use `node scripts/release-intent.ts add --type <major|minor|patch|none> --message "<text>"`.
 - Never bump versions, edit `CHANGELOG.json`/`CHANGELOG.md`, create release tags, or run `rush publish --publish`
   by hand. The `Version Packages` workflow prepares versions, and publishing a GitHub Release runs `publish-npm.yml`.
   Follow `docs/development/release.md`.
@@ -86,6 +105,10 @@ For non-trivial changes:
 
 ## Repository Architecture
 
+- `docs/architecture/authoring.md` is the authority for how a context package is laid out (`domain/`, `agents/`,
+  `application/`, `adapters/`, `public.ts`, `index.ts`) and for the plain TypeScript and Effect rules;
+  `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
+  package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
 - Organize code by domain boundaries, layer boundaries, and test boundaries before mechanical one-file-per-export preferences.
 - Keep domain rules, application services, infrastructure adapters, UI/CLI entrypoints, persistence, and test fixtures separated when those responsibilities exist.
 - JavaScript or TypeScript projects take shared lint, format, and `tsconfig` rules from the `PerfectPan/lint-config` repository; see its README. Extend those shared configs instead of copying them.
@@ -134,12 +157,14 @@ When an AI agent completes implementation work:
 Before pushing public-facing or package-facing changes, scan for accidental private references. Adjust globs for the project stack:
 
 ```bash
-rg --hidden --no-ignore -n "private-token|secret|internal-domain.example|HOME_PATH_PLACEHOLDER" . \
+rg --hidden --no-ignore -n "/Users/[A-Za-z]|BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[A-Za-z0-9]{20,}|npm_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9_-]{20,}" . \
   --glob '!.git/**' \
   --glob '!.omx/**' \
   --glob '!**/node_modules/**' \
   --glob '!common/temp/**' \
   --glob '!**/dist/**' \
+  --glob '!**/rush-logs/**' \
+  --glob '!**/.rush/**' \
   --glob '!AGENTS.md' \
   --glob '!CONTRIBUTING.md' \
   --glob '!SECURITY.md'

@@ -6,6 +6,7 @@ updates:
   - package-ecosystem: "npm"
     directories:
       - "/packages/*"
+      - "/infra/architecture"
       - "/scripts"
     schedule:
       interval: "weekly"

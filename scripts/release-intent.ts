@@ -4,7 +4,16 @@ import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 
-import { CHANGES_DIRECTORY, isChangeFile, isPublished, isShippedChange, readProjects } from "./lib/workspace.ts";
+import {
+  bundlersOf,
+  CHANGES_DIRECTORY,
+  isPublished,
+  type PackageManifest,
+  parseNameStatus,
+  readJson,
+  readProjects,
+  releaseIntent
+} from "./lib/workspace.ts";
 
 const TYPES = ["major", "minor", "patch", "none"];
 const USAGE = `usage:
@@ -25,18 +34,28 @@ function fail(message: string): never {
 
 function check(base: string | undefined): void {
   const from = base ?? git("merge-base", "origin/main", "HEAD");
-  const changed = git("diff", "--name-only", `${from}...HEAD`).split("\n").filter(Boolean);
-  const shipped = changed.filter((path) => isShippedChange(path, projects));
-  const changeFiles = changed.filter(isChangeFile);
+  const changes = parseNameStatus(git("diff", "--name-status", "--no-renames", "-z", `${from}...HEAD`));
+  const manifests = new Map(
+    projects.map((project) => [
+      project.packageName,
+      readJson<PackageManifest>(root, join(project.projectFolder, "package.json"))
+    ])
+  );
+  const { shipped, changeFiles, missing, unrecordedLockfile } = releaseIntent(
+    changes,
+    projects,
+    bundlersOf(projects, manifests)
+  );
   if (shipped.length === 0) {
     console.log("release-intent: ok (no shipped files changed)");
     return;
   }
-  if (changeFiles.length > 0) {
+  if (missing.length === 0 && !unrecordedLockfile) {
     console.log(`release-intent: ok (${changeFiles.length} change file(s) for ${shipped.length} shipped file(s))`);
     return;
   }
-  console.error(`release-intent: ${shipped.length} shipped file(s) changed without a change file:`);
+  const lacking = missing.length > 0 ? missing.join(", ") : "any published package";
+  console.error(`release-intent: ${shipped.length} shipped file(s) changed without a change file for ${lacking}:`);
   for (const path of shipped.slice(0, 20)) {
     console.error(`  - ${path}`);
   }
@@ -44,7 +63,10 @@ function check(base: string | undefined): void {
     console.error(`  ... and ${shipped.length - 20} more`);
   }
   console.error("Add one with: node common/scripts/install-run-rush.js change");
-  console.error(`If Rush reports nothing to do (for example a lockfile-only change), run:\n${USAGE.split("\n")[2]}`);
+  console.error(
+    "Rush reports nothing to do for a lockfile-only change or a change in a private package that a published " +
+      `package bundles; then run:\n${USAGE.split("\n")[2]}`
+  );
   process.exit(1);
 }
 

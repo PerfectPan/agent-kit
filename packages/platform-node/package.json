@@ -1,0 +1,32 @@
+{
+  "name": "@rivus/agent-kit-platform-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Node implementation of the Platform port. Bundled into @rivus/agent-kit.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./public": "./src/public.ts"
+  },
+  "scripts": {
+    "build": "",
+    "lint": "oxlint",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests 2>&1",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+  },
+  "dependencies": {
+    "@rivus/agent-kit-platform": "workspace:*"
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@types/node": "24.19.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

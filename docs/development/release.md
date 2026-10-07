@@ -1,8 +1,9 @@
 # npm Release Runbook
 
-Rush owns change records, version bumps, changelogs and publishing. Packages under `packages/` that join the `main`
-version policy are published to npm by GitHub Actions with npm Trusted Publishing (OIDC) and provenance. No
-long-lived npm token is stored in the repository or its secrets.
+Rush owns change records, version bumps, changelogs and publishing. `@rivus/agent-kit` (`packages/agent-kit`) is the
+only package in the `main` version policy and the only one published to npm, by GitHub Actions with npm Trusted
+Publishing (OIDC) and provenance. The internal packages under `packages/` are private (`"shouldPublish": false`)
+and ship inside its `dist`. No long-lived npm token is stored in the repository or its secrets.
 
 | Step | Where | Result |
 | --- | --- | --- |
@@ -18,9 +19,14 @@ workflow is not a published package.
 ## Version Policy
 
 `common/config/rush/version-policies.json` defines one `lockStepVersion` policy named `main`, starting at `0.0.0`
-with `nextBump: "patch"`. Every package in the policy shares one version and is released together. A lockstep bump
-comes from `nextBump`, not from the bump types in change files; pick `minor` or `major` in the Version Packages
-workflow input when a release needs it. The first release of a new repository usually uses `minor` (`0.1.0`).
+with `nextBump: "minor"`, so the first Version Packages run with the default `policy` input releases `0.1.0`. Every
+package in the policy shares one version and is released together. A lockstep bump comes from `nextBump`, not from
+the bump types in change files; pick `patch` in the Version Packages workflow input for a release that only corrects
+agent facts or fixes bugs, and `minor` (the default) for new agents, event types or capabilities.
+
+Rush asks for change files only for published projects, so a change inside an internal package would not prompt one.
+`scripts/release-intent.ts check`, which CI runs on every PR, requires a change file for `@rivus/agent-kit` whenever
+a package it bundles (a private `workspace:` dependency) changes shipped files; `release-intent.ts add` writes it.
 
 To version packages independently, switch the policy to `individualVersion`:
 
@@ -56,9 +62,9 @@ exists. For each package:
 
    ```bash
    dir="$(mktemp -d)" && cd "$dir"
-   printf '{"name":"@scope/example","version":"0.0.0","description":"Placeholder; releases are published by CI."}\n' > package.json
+   printf '{"name":"@rivus/agent-kit","version":"0.0.0","description":"Placeholder; releases are published by CI."}\n' > package.json
    npm publish --access public
-   npm deprecate @scope/example@0.0.0 "Placeholder; install a later version."
+   npm deprecate @rivus/agent-kit@0.0.0 "Placeholder; install a later version."
    ```
 
    Scoped packages need an npm organization or user scope that the maintainer owns. Skip this step if the name
@@ -101,7 +107,7 @@ authentication error for that package only.
    no change files remain and the commit is on `main`, runs `npm run check`, then runs
    `rush publish --include-all --version-policy main --publish --set-access-level public`. Rush skips versions that
    already exist on npm. Prereleases do not publish.
-7. Verify every package at the new version, for example `npm view @scope/example@X.Y.Z` and a clean
+7. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z` and a clean
    `npm install` in a scratch project. Registry reads can lag the publish by a minute; retry the read, not the
    publish. The npm package page shows a provenance badge linking to the workflow run.
 
@@ -135,11 +141,11 @@ and changes nothing.
 - **Bad published contents**: npm versions are immutable. Deprecate the version and release a fix:
 
   ```bash
-  npm deprecate @scope/example@X.Y.Z "Broken build; use X.Y.Z+1"
+  npm deprecate @rivus/agent-kit@X.Y.Z "Broken build; use X.Y.Z+1"
   ```
 
   Move a dist-tag back when `latest` must point at the previous version:
-  `npm dist-tag add @scope/example@<previous> latest`. `npm unpublish` is limited to 72 hours after publishing
+  `npm dist-tag add @rivus/agent-kit@<previous> latest`. `npm unpublish` is limited to 72 hours after publishing
   and blocks the version number permanently; prefer deprecation.
 - Once any package of a version is on npm, do not move or reuse its tag. Fix forward with a new version.
 

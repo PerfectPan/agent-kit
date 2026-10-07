@@ -7,14 +7,44 @@
   "projectFolderMinDepth": 1,
   "projectFolderMaxDepth": 2,
   "repository": {
-    "url": "https://github.com/PerfectPan/project-template-rush.git",
+    "url": "https://github.com/PerfectPan/agent-kit.git",
     "defaultBranch": "main"
   },
   "projects": [
     {
-      "packageName": "@scope/example",
-      "projectFolder": "packages/example",
+      "packageName": "@rivus/agent-kit",
+      "projectFolder": "packages/agent-kit",
       "versionPolicyName": "main"
+    },
+    {
+      "packageName": "@rivus/agent-kit-platform",
+      "projectFolder": "packages/platform",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@rivus/agent-kit-catalog",
+      "projectFolder": "packages/catalog",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@rivus/agent-kit-platform-node",
+      "projectFolder": "packages/platform-node",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@rivus/agent-kit-sessions",
+      "projectFolder": "packages/sessions",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@rivus/agent-kit-testing",
+      "projectFolder": "packages/testing",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "architecture-boundaries",
+      "projectFolder": "infra/architecture",
+      "shouldPublish": false
     },
     {
       "packageName": "repo-scripts",

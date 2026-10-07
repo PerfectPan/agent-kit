@@ -7,3 +7,7 @@ Start from [`0000-template.md`](0000-template.md). Keep only the sections the ch
 The design sections match the `technical-design-docs` skill. Install that skill for writing and review rules. This repository does not copy those rules.
 
 Shared decisions follow [CONTRIBUTING](../../CONTRIBUTING.md#change-design-gate). At completion, move lasting constraints into current-state docs and tests, then delete the finished Spec and plan in the final delivery PR. Keep unfinished scope. Follow the [SDD lifecycle](../../CONTRIBUTING.md#sdd-workflow-and-document-lifecycle).
+
+## Active Plans
+
+- [0001: agent-kit](0001-agent-kit.md): the shared foundation for agent projects, from the package layout to the phased execution plan (P0–P6). Paired with [Spec 0001](../specs/0001-agent-kit.md).

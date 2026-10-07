@@ -3,6 +3,6 @@
     "policyName": "main",
     "definitionName": "lockStepVersion",
     "version": "0.0.0",
-    "nextBump": "patch"
+    "nextBump": "minor"
   }
 ]

@@ -1,0 +1,82 @@
+{
+  "name": "@rivus/agent-kit",
+  "version": "0.0.0",
+  "description": "Connect to third-party coding agents: identity, session logs, transcripts and the host platform port.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PerfectPan/agent-kit.git",
+    "directory": "packages/agent-kit"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "default": "./dist/catalog.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./platform": {
+      "types": "./dist/platform.d.ts",
+      "default": "./dist/platform.js"
+    },
+    "./sessions": {
+      "types": "./dist/sessions.d.ts",
+      "default": "./dist/sessions.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./transcript": {
+      "types": "./dist/transcript.d.ts",
+      "default": "./dist/transcript.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts",
+    "lint": "oxlint",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "",
+    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json . '!CHANGELOG.*'",
+    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check . '!CHANGELOG.*'"
+  },
+  "dependencies": {
+    "es-toolkit": "^1.52.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-platform": "workspace:*",
+    "@rivus/agent-kit-platform-node": "workspace:*",
+    "@rivus/agent-kit-sessions": "workspace:*",
+    "@rivus/agent-kit-testing": "workspace:*",
+    "@size-limit/preset-small-lib": "14.1.0",
+    "@types/node": "24.19.0",
+    "oxc-parser": "0.153.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "publint": "0.3.25",
+    "rolldown": "1.2.12",
+    "size-limit": "14.1.0",
+    "tsdown": "0.23.0",
+    "typescript": "7.0.2"
+  }
+}
