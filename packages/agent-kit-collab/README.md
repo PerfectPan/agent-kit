@@ -6,7 +6,7 @@ that run work per key, one activation at a time, under a global concurrency cap.
 agent; it reaches files, processes, clocks and SQLite through the `Platform` of
 [`@rivus/agent-kit`](https://www.npmjs.com/package/@rivus/agent-kit).
 
-Status: 0.x, released in lockstep with `@rivus/agent-kit` (same version). A minor release may contain breaking
+Status: 0.x, with one lockstep release policy for this package and `@rivus/agent-kit` (same version). A minor release may contain breaking
 changes.
 
 ## Install
@@ -16,6 +16,9 @@ npm install @rivus/agent-kit @rivus/agent-kit-collab
 # for /lease and /lanes, which are Effect entries:
 npm install effect@4.0.1
 ```
+
+Select a verified non-placeholder release that exports the entries you need, with both packages at the same
+version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
 
 `@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. `effect` 4.0.1 is an
 optional peer that only `/lease` and `/lanes` need. ESM only, no side effects, Node.js 22.13 or later on darwin or

@@ -16,6 +16,8 @@ npm install @rivus/agent-kit
 ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
 bundles for browsers. The Effect entries `/acp`, `/harness`, `/platform/effect` and `/node/effect` need `effect` 4.0.1, an
 optional peer that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
+The entry table describes the source API. Verify the exports of the npm version you select before adoption; see
+[Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
 
 ## Entries
 
@@ -102,8 +104,8 @@ timeout unit, which events are permission gates and what an observing hook shoul
 ### Harness injection
 
 `/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It
-plans first and writes nothing until the plan is applied; every change is recorded in a ledger under
-`$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
+plans first and changes agent targets only when the plan is applied; every target change is recorded in a ledger
+under `$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
 
 ```ts
 import { applyInstall, HarnessLive, planInstall, uninstall } from "@rivus/agent-kit/harness";
@@ -274,10 +276,11 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Errors
 
-- A function that returns a `Promise` resolves to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
+- `loadTranscript`, `summarizeSession` and `readOriginal` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
   `error._tag` names the failure. `loadTranscript` and `summarizeSession` fail with `SessionNotFound`, `ReadFailed`,
   `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`; `readOriginal` fails with
   `SourceChanged`, `SessionNotFound` or `ReadFailed`.
+- `detectAgents` resolves to `Installation[]`; a failed probe is recorded in that agent's `problems`.
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
   goes on with the next one; `scanUsage`, `listUsageSources` and `decodeUsage` yield `{ agent, path, error }` items the same way.
 - When the `signal` option aborts, the call rejects with `signal.reason`.

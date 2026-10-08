@@ -18,6 +18,7 @@ Do not create empty directories just to match this list. Add a section when the 
 
 - [`architecture/authoring.md`](architecture/authoring.md): DDD authoring conventions for context packages, aggregates, ports, and the plain TS and Effect rules.
 - [`development/release.md`](development/release.md): release runbook.
+- [`development/adoption.md`](development/adoption.md): public entries, application migration, verification and rollback.
 - [`../CONTEXT.md`](../CONTEXT.md): glossary of the domain terms, including same-name concepts with different meanings.
 - [`specs/0001-agent-kit.md`](specs/0001-agent-kit.md): behavior of the public entries.
 - [`plans/0001-agent-kit.md`](plans/0001-agent-kit.md): design decisions and phased execution plan.

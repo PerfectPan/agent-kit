@@ -185,7 +185,7 @@ Execution rules for locks, writes and retries. Wrapping an async function in `tr
 The assembly root lives in each consuming application, not in the kit.
 
 - Plain TS entries: create one platform with `createNodePlatform()` and pass it to the functions.
-- Effect entries: the application provides a Layer, such as `Layer.mergeAll(HarnessLive, AcpLive).pipe(Layer.provideMerge(NodePlatformLive))`; `provideMerge` keeps `PlatformService` in the output, because use cases such as harness's read it as well as their Layers. A one-shot program (a setup command) runs it with `Effect.runPromiseExit`; a server process holds a `ManagedRuntime`; an Effect host composes the Layers directly.
+- Effect entries: the application provides the required services. Harness uses `HarnessLive.pipe(Layer.provideMerge(NodePlatformLive))`, retaining `PlatformService` for both its port adapters and its use cases. ACP's `connectAgent` reads `PlatformService` directly and returns a connection in the caller's Scope; provide a `SessionBindingStore` Layer only when using session keys. A one-shot program (a setup command) runs with `Effect.runPromiseExit`; a server process holds a `ManagedRuntime`; an Effect host composes the Layers directly. See [Adopting agent-kit](../development/adoption.md) for the application boundaries and checks.
 - The kit is responsible for its guarantees about locks, heartbeats, cancellation and cleanup. The application is responsible for starting programs and interpreting their results (exit codes, HTTP responses).
 
 ## Verify At The Owner

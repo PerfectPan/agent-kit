@@ -25,7 +25,11 @@ npm run check
 cd packages/platform && rushx test
 ```
 
-Only `packages/agent-kit` (`@rivus/agent-kit`) is published. To add an internal package for a bounded context, copy
+The publishable packages are `packages/agent-kit` (`@rivus/agent-kit`) and `packages/agent-kit-collab`
+(`@rivus/agent-kit-collab`), in the `main` lockstep version policy. The shell bundles private context packages;
+collab owns its entry code and uses agent-kit's public subpaths through a peer dependency. See
+[Authoring Conventions](docs/architecture/authoring.md) for their layouts and dependency boundaries.
+To add an internal package for a bounded context, copy
 `packages/platform` (its `package.json`, `tsconfig.json` and `.oxlintrc.json`), name it `@rivus/agent-kit-<folder>`,
 register it in `rush.json` with `"shouldPublish": false`, declare its dependencies in
 `infra/architecture/boundaries.ts`, add it to the shell's devDependencies as `workspace:*` when the shell re-exports
@@ -96,7 +100,7 @@ bundles changes, and a change file when `common/config/rush/pnpm-lock.yaml` chan
 nothing to do, write one directly:
 
 ```bash
-node scripts/release-intent.ts add --type patch --message "Update runtime dependencies."
+node scripts/release-intent.ts add --package @rivus/agent-kit --type patch --message "Update runtime dependencies."
 ```
 
 Tests, fixtures and Markdown inside a package do not count as shipped files for `release-intent`, but

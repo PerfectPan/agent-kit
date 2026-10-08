@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "Document lockstep package installation and application adoption.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
