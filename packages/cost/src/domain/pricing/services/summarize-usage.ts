@@ -68,12 +68,14 @@ interface Tally {
   costUsd?: number;
 }
 
-const tally = (agent?: CodingAgentId, model?: string): Tally => ({
-  ...(agent === undefined ? {} : { agent }),
-  ...(model === undefined ? {} : { model }),
-  entries: 0,
-  usage: {}
-});
+function tally(agent?: CodingAgentId, model?: string): Tally {
+  return {
+    ...(agent === undefined ? {} : { agent }),
+    ...(model === undefined ? {} : { model }),
+    entries: 0,
+    usage: {}
+  };
+}
 
 function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
   into.usage = addUsage(into.usage, usage);
@@ -82,10 +84,12 @@ function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
   }
 }
 
-const totals = ({ costUsd, ...rest }: Tally): UsageGroup => ({
-  ...rest,
-  ...(costUsd === undefined ? {} : { costUsd })
-});
+function totals({ costUsd, ...rest }: Tally): UsageGroup {
+  return {
+    ...rest,
+    ...(costUsd === undefined ? {} : { costUsd })
+  };
+}
 
 /** Every count of `Usage`; `satisfies` fails to compile until a count added to `Usage` is listed here. */
 const COUNTS = Object.keys({

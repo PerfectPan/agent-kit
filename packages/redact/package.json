@@ -19,7 +19,7 @@
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
   },
   "devDependencies": {
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",

@@ -131,11 +131,12 @@ function once(release: () => Promise<void>): () => Promise<void> {
 
 function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
   return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
       reject(signal?.reason);
     };
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);

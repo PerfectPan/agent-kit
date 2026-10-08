@@ -7,6 +7,8 @@ import { asRecord, asString } from "../../protocols/record-fields.js";
 // transcripts live in `<project>/<session>/subagents/` (workflows nest one level deeper) as `agent-<id>.jsonl`,
 // each with an optional `agent-<id>.meta.json`.
 
+const SUBAGENTS = "subagents";
+
 export function claudeCodeRoots(home: AgentHome): string[] {
   return [joinPath(home.path, "projects")];
 }
@@ -24,8 +26,6 @@ export const CLAUDE_CODE_SESSION_FILES: {
 
 /** Depth of the walk under a session's subagent directory. */
 export const CLAUDE_CODE_SUBAGENT_DEPTH = 8;
-
-const SUBAGENTS = "subagents";
 
 /** The session file name without `.jsonl`; it names the session's companion directory and is its fallback id. */
 export function claudeCodeSessionStem(sessionPath: string): string {

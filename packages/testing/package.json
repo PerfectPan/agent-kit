@@ -27,7 +27,7 @@
     "es-toolkit": "^1.52.0"
   },
   "devDependencies": {
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",
     "@rivus/agent-kit-cost": "workspace:*",
     "@types/node": "24.19.1",
     "oxfmt": "0.71.0",

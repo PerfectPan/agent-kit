@@ -271,10 +271,11 @@ export function createLanes<E = never, R = never>(
         });
       }).pipe(Effect.provideContext(context));
 
-    const fork = (started: readonly Activation[]): Effect.Effect<void> =>
-      Effect.forEach(started, (activation) => Effect.forkDetach(run(activation), { uninterruptible: true }), {
+    function fork(started: readonly Activation[]): Effect.Effect<void> {
+      return Effect.forEach(started, (activation) => Effect.forkDetach(run(activation), { uninterruptible: true }), {
         discard: true
       });
+    }
 
     const wakeResult = (events: readonly LaneEvent[]): WakeResult =>
       events.some(({ _tag }) => _tag === "ActivationStarted")

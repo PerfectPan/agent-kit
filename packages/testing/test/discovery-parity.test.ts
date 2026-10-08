@@ -171,79 +171,6 @@ function toFinderRecord(installation: Installation): FinderRecord {
   };
 }
 
-describe("parity with agent-finder", () => {
-  it("has agent-finder's 26 agents in its order, then Grok", () => {
-    expect(Object.keys(finderRecipes)).toEqual(cases[0]?.report.agents.map((agent) => agent.id));
-    expect(Object.keys(builtinProbeRecipes)).toEqual([...Object.keys(finderRecipes), "grok"]);
-    expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
-      "doctor-config-only",
-      "host-probe",
-      "mixed",
-      "scan-runnable",
-      "scan-windows"
-    ]);
-  });
-
-  for (const parityCase of cases) {
-    it(`reports what agent-finder reported for ${parityCase.name} (${parityCase.source})`, async () => {
-      const installations = await detectAgents(machineOf(parityCase.probe), { recipes: finderRecipes });
-      expect(installations.map(toFinderRecord)).toEqual(parityCase.report.agents);
-    });
-  }
-
-  it("counts statuses like agent-finder's doctor", async () => {
-    const parityCase = cases.find((candidateCase) => candidateCase.name === "doctor-config-only");
-    expect(parityCase).toBeDefined();
-    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), { recipes: finderRecipes });
-    const count = (status: string) => installations.filter((installation) => installation.status === status).length;
-    expect([installations.length, count("found"), count("runnable"), count("missing"), count("unknown")]).toEqual([
-      26, 1, 0, 25, 0
-    ]);
-    expect(installations.flatMap((installation) => installation.warnings).length).toBeGreaterThan(0);
-  });
-
-  it("resolves Windows commands through PATHEXT like agent-finder's resolveCommand", async () => {
-    const platform = createMemoryPlatform({
-      os: "win32",
-      home: "C:\\Users\\tester",
-      env: {
-        PATH: "C:\\Program Files\\Microsoft VS Code\\bin;C:\\Windows\\System32",
-        PATHEXT: ".COM;.EXE;.BAT;.CMD"
-      },
-      files: { "C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD": "" }
-    });
-    const [vscode] = await detectAgents(platform, { agents: ["vscode-copilot"] });
-    expect(vscode?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD");
-  });
-
-  it("differs from agent-finder's facts exactly where upstream sources corrected them", () => {
-    const facts = (recipe: ProbeRecipe): Record<Fact, unknown> => ({
-      name: recipe.displayName,
-      kind: recipe.kind,
-      commands: recipe.commands,
-      appPaths: recipe.appPaths.map((path) => candidate(path, recipe)),
-      configPaths: recipe.configPaths.map((path) => candidate(path, recipe)),
-      mcpConfigPaths: recipe.mcpConfigPaths.map((path) => candidate(path, recipe)),
-      version: recipe.version?.args,
-      warnings: recipe.warnings
-    });
-    const builtin: Readonly<Record<string, ProbeRecipe>> = builtinProbeRecipes;
-    const differences = providers.flatMap((provider) => {
-      const [ours, theirs] = [builtin[provider.id], finderRecipes[provider.id]];
-      if (ours === undefined || theirs === undefined) {
-        return [`${provider.id} is missing`];
-      }
-      const [mine, original] = [facts(ours), facts(theirs)];
-      return FACTS.filter((fact) => JSON.stringify(mine[fact]) !== JSON.stringify(original[fact])).map(
-        (fact) => `${provider.id} ${fact}`
-      );
-    });
-    expect(differences.toSorted()).toEqual(
-      EXPECTED_DIFFERENCES.map(({ agent, fact }) => `${agent} ${fact}`).toSorted()
-    );
-  });
-});
-
 type Fact = "name" | "kind" | "commands" | "appPaths" | "configPaths" | "mcpConfigPaths" | "version" | "warnings";
 const FACTS: readonly Fact[] = [
   "name",
@@ -346,3 +273,76 @@ const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string
   { agent: "trae", fact: "version", source: TRAE_RULES },
   { agent: "trae", fact: "warnings", source: TRAE_RULES }
 ];
+
+describe("parity with agent-finder", () => {
+  it("has agent-finder's 26 agents in its order, then Grok", () => {
+    expect(Object.keys(finderRecipes)).toEqual(cases[0]?.report.agents.map((agent) => agent.id));
+    expect(Object.keys(builtinProbeRecipes)).toEqual([...Object.keys(finderRecipes), "grok"]);
+    expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
+      "doctor-config-only",
+      "host-probe",
+      "mixed",
+      "scan-runnable",
+      "scan-windows"
+    ]);
+  });
+
+  for (const parityCase of cases) {
+    it(`reports what agent-finder reported for ${parityCase.name} (${parityCase.source})`, async () => {
+      const installations = await detectAgents(machineOf(parityCase.probe), { recipes: finderRecipes });
+      expect(installations.map(toFinderRecord)).toEqual(parityCase.report.agents);
+    });
+  }
+
+  it("counts statuses like agent-finder's doctor", async () => {
+    const parityCase = cases.find((candidateCase) => candidateCase.name === "doctor-config-only");
+    expect(parityCase).toBeDefined();
+    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), { recipes: finderRecipes });
+    const count = (status: string) => installations.filter((installation) => installation.status === status).length;
+    expect([installations.length, count("found"), count("runnable"), count("missing"), count("unknown")]).toEqual([
+      26, 1, 0, 25, 0
+    ]);
+    expect(installations.flatMap((installation) => installation.warnings).length).toBeGreaterThan(0);
+  });
+
+  it("resolves Windows commands through PATHEXT like agent-finder's resolveCommand", async () => {
+    const platform = createMemoryPlatform({
+      os: "win32",
+      home: "C:\\Users\\tester",
+      env: {
+        PATH: "C:\\Program Files\\Microsoft VS Code\\bin;C:\\Windows\\System32",
+        PATHEXT: ".COM;.EXE;.BAT;.CMD"
+      },
+      files: { "C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD": "" }
+    });
+    const [vscode] = await detectAgents(platform, { agents: ["vscode-copilot"] });
+    expect(vscode?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD");
+  });
+
+  it("differs from agent-finder's facts exactly where upstream sources corrected them", () => {
+    const facts = (recipe: ProbeRecipe): Record<Fact, unknown> => ({
+      name: recipe.displayName,
+      kind: recipe.kind,
+      commands: recipe.commands,
+      appPaths: recipe.appPaths.map((path) => candidate(path, recipe)),
+      configPaths: recipe.configPaths.map((path) => candidate(path, recipe)),
+      mcpConfigPaths: recipe.mcpConfigPaths.map((path) => candidate(path, recipe)),
+      version: recipe.version?.args,
+      warnings: recipe.warnings
+    });
+    const builtin: Readonly<Record<string, ProbeRecipe>> = builtinProbeRecipes;
+    const differences = providers.flatMap((provider) => {
+      const [ours, theirs] = [builtin[provider.id], finderRecipes[provider.id]];
+      if (ours === undefined || theirs === undefined) {
+        return [`${provider.id} is missing`];
+      }
+      const [mine, original] = [facts(ours), facts(theirs)];
+      return FACTS.filter((fact) => JSON.stringify(mine[fact]) !== JSON.stringify(original[fact])).map(
+        (fact) => `${provider.id} ${fact}`
+      );
+    });
+    expect(differences.toSorted()).toEqual(
+      EXPECTED_DIFFERENCES.map(({ agent, fact }) => `${agent} ${fact}`).toSorted()
+    );
+  });
+});
