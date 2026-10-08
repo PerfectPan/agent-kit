@@ -13,10 +13,10 @@ export interface AuthReading {
   readonly method?: string;
 }
 
-/** One login check and its answer. */
+/** One login check and its answer. An observation without a reading is a source that was only checked for existence, which `resolveAuthState` reads as logged in. */
 export interface AuthObservation {
   readonly source: AuthSource;
-  readonly reading: AuthReading;
+  readonly reading?: AuthReading;
 }
 
 /**

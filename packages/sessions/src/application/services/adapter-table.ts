@@ -1,11 +1,10 @@
 import {
   type AgentHome,
-  builtinCodingAgents,
   type CodingAgentId,
   type HomeContext,
   homeFromRule,
   type HomeRule,
-  isBuiltinCodingAgentId,
+  homeRuleOf,
   parseCodingAgentId
 } from "@rivus/agent-kit-catalog";
 
@@ -30,14 +29,13 @@ export function selectAdapters<Adapter>(
   return [...selected.values()];
 }
 
-/** The home an adapter reads: its own home rule, else catalog's rule for a built-in agent that has one. */
+/** The home an adapter reads: its own home rule, else the one `homeRuleOf` finds for a built-in agent. */
 export function adapterHome(
   adapter: { readonly agent: CodingAgentId; readonly home?: HomeRule },
   context: HomeContext,
   kind: string
 ): AgentHome {
-  const rule =
-    adapter.home ?? (isBuiltinCodingAgentId(adapter.agent) ? builtinCodingAgents[adapter.agent].home : undefined);
+  const rule = homeRuleOf(adapter.agent, adapter.home);
   if (rule) {
     return homeFromRule(adapter.agent, rule, context);
   }

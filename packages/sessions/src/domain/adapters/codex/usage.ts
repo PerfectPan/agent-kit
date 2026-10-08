@@ -1,9 +1,9 @@
 import { err, ok } from "@rivus/agent-kit-catalog";
 
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
-import { compactUsage, type Usage, type UsageRecord } from "../../usage/index.js";
+import { compactUsage, shortHash, type Usage, type UsageRecord } from "../../usage/index.js";
 import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
-import { rememberKey, shortHash, type UsageFile, type UsageLineDecoder } from "../usage-lines.js";
+import { rememberKey, type UsageFile, type UsageLineDecoder } from "../usage-lines.js";
 import { endForkReplay, FORK_REPLAY_START, type ForkReplayState, stepForkReplay } from "./fork-replay.js";
 
 const AGENT = "codex";

@@ -18,6 +18,8 @@ export {
   type ClaudeCodeSubagentFile,
   CLAUDE_CODE_USAGE_FILES,
   claudeCodeUsageFile,
+  claudeCodeUsageSourceId,
+  claudeCodeUsageTarget,
   looksLikeClaudeCodeSession
 } from "./layout.js";
 export { previewClaudeCodeRecords } from "./preview.js";

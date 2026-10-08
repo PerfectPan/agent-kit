@@ -27,3 +27,8 @@ export function dirnamePath(path: string): string {
   }
   return path.slice(0, slash);
 }
+
+/** The path below `root`, the identity of a source whose agent does not move it. */
+export function belowRoot(path: string, root: string): string {
+  return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+}

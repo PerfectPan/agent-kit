@@ -22,6 +22,7 @@ import {
 } from "../../transcript/index.js";
 import type { Usage } from "../../usage/index.js";
 import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
+import { codexSessionStem } from "./layout.js";
 import { forkReplayEnd } from "./fork-replay.js";
 import { emitResponseItem, textFrom } from "./response-items.js";
 import { codexRecordUsage, type CodexUsageTracker, knownCodexGeneration } from "./usage.js";
@@ -81,6 +82,8 @@ const EVENT_MARKERS = new Map([
 export interface CodexTranslateOptions {
   /** Wins over the id the rollout records. */
   sessionId?: string;
+  /** The rollout file's path, whose name is the session's fallback id when neither this option nor the rollout names one. */
+  path?: string;
 }
 
 /**
@@ -286,7 +289,8 @@ export function translateCodexRecords(
   markOrphanToolResults(events);
   assignSeq(events);
   const session: TranscriptSession = {
-    id: sessionId ?? "unknown",
+    id:
+      sessionId ?? (options.path === undefined ? undefined : codexSessionStem(options.path) || "unknown") ?? "unknown",
     ...(title ? { title } : {}),
     ...(cwd ? { cwd } : {}),
     ...(startedAt === undefined ? {} : { startedAt }),

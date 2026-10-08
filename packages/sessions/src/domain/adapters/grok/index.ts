@@ -8,7 +8,9 @@ export {
   grokSubagentMeta,
   grokSummaryFields,
   grokSummaryPath,
-  grokUpdatesPath
+  grokUpdatesPath,
+  grokUsageSessionId,
+  grokUsageSourceId
 } from "./layout.js";
-export { previewGrokRecords } from "./preview.js";
+export { applyGrokSummary, previewGrokRecords } from "./preview.js";
 export { grokUsage, grokUsageKey, grokUsageLines } from "./usage.js";

@@ -1,5 +1,7 @@
+export { appBundleMatches } from "./policies/app-bundle.js";
 export { classifyInstallation } from "./policies/classify-installation.js";
-export { resolveAuthState } from "./policies/resolve-auth-state.js";
+export { installationWarnings } from "./policies/installation-warnings.js";
+export { envReading, probesAuth, resolveAuthState } from "./policies/resolve-auth-state.js";
 export type { AuthObservation, AuthReading, AuthSource, AuthState } from "./value-objects/auth-state.js";
 export { DETECTION_STATUSES, type DetectionStatus } from "./value-objects/detection-status.js";
 export type { Evidence, EvidenceKind } from "./value-objects/evidence.js";

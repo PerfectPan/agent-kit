@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Move the sessions, discovery and catalog business rules the application layer had copied into their owning domain: the usage scan state (window, keyless mark, sources, quiet rule), opencode's message settlement, the per-agent usage source identities, the session head projection and Grok's summary override, the detection login and warning rules, the app-bundle evidence rule, and the shared home-rule preference. The Claude Code and Codex translate options gain an optional `path` for the session-id fallback.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { builtinCodingAgents, isBuiltinCodingAgentId, parseCodingAgentId, resolveHome } from "./index.js";
+import { builtinCodingAgents, homeRuleOf, isBuiltinCodingAgentId, parseCodingAgentId, resolveHome } from "./index.js";
 
 const home = "/u/me";
 
@@ -99,6 +99,16 @@ describe("resolveHome", () => {
     const withHome = Object.values(builtinCodingAgents).filter((agent) => agent.home !== undefined);
     expect(withHome.map((agent) => agent.id).toSorted()).toEqual(HOMED);
     expect(Object.keys(builtinCodingAgents)).toHaveLength(27);
+  });
+});
+
+describe("homeRuleOf", () => {
+  it("gives the caller's own rule for the agent precedence, else a built-in agent's, else nothing", () => {
+    const own = { envVar: "MY_HOME", defaultPath: [".mine"] };
+    expect(homeRuleOf("claude-code", own)).toBe(own);
+    expect(homeRuleOf("claude-code")).toEqual(builtinCodingAgents["claude-code"].home);
+    expect(homeRuleOf("my-agent")).toBeUndefined();
+    expect(homeRuleOf("my-agent", own)).toBe(own);
   });
 });
 

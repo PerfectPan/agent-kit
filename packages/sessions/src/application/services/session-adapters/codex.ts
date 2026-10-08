@@ -5,7 +5,6 @@ import {
   CODEX_SESSION_FILES,
   codexCapabilities,
   codexRoots,
-  codexSessionStem,
   looksLikeCodexSession,
   previewCodexRecords,
   translateCodexRecords
@@ -57,18 +56,15 @@ async function loadCodex(
     return read;
   }
   const { records, skipped } = read.value;
-  const translated = translateCodexRecords(
-    mergeByTime([records]),
-    ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }
-  );
+  const translated = translateCodexRecords(mergeByTime([records]), {
+    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+    path: ref.path
+  });
   if (!translated.ok) {
     return translated;
   }
   const parsed = translated.value;
   parsed.skipped.push(...skipped);
-  if (parsed.session.id === "unknown") {
-    parsed.session.id = codexSessionStem(ref.path) || "unknown";
-  }
   options.signal?.throwIfAborted();
   return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
 }

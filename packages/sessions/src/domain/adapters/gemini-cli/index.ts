@@ -3,6 +3,7 @@ export {
   geminiCliSessionStem,
   geminiCliUsageRoots,
   isGeminiCliChat,
-  isGeminiCliLegacyChat
+  isGeminiCliLegacyChat,
+  isGeminiCliUsageSource
 } from "./layout.js";
 export { geminiCliLegacyUsage, geminiCliUsage, geminiCliUsageKey, geminiCliUsageLines } from "./usage.js";

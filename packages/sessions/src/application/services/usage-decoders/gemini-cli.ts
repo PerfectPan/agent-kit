@@ -5,22 +5,15 @@ import {
   geminiCliUsageKey,
   geminiCliUsageLines,
   geminiCliUsageRoots,
-  isGeminiCliChat,
-  isGeminiCliLegacyChat
+  isGeminiCliLegacyChat,
+  isGeminiCliUsageSource
 } from "../../../domain/adapters/gemini-cli/index.js";
 import type { UsageRecord } from "../../../domain/usage/index.js";
+import { belowRoot } from "../../../domain/session/index.js";
 import { guardIo } from "../files/io-failure.js";
 import { readText } from "../files/read-file.js";
 import type { DecodeUsageOptions, UsageDecoder, UsagePlatform, UsageStream, UsageTarget } from "../../usage-ports.js";
-import {
-  belowRoot,
-  decodeJsonlUsage,
-  drain,
-  fileSources,
-  type JsonlUsageLayout,
-  sameFile,
-  usageStreamOf
-} from "./files.js";
+import { decodeJsonlUsage, drain, fileSources, type JsonlUsageLayout, sameFile, usageStreamOf } from "./files.js";
 
 const AGENT = "gemini-cli";
 
@@ -41,7 +34,7 @@ export const geminiCliUsageDecoder: UsageDecoder = {
   sources(platform, home, options = {}) {
     return fileSources(platform, AGENT, geminiCliUsageRoots(home), GEMINI_CLI_CHAT_FILES, {
       ...options,
-      keep: (path, all) => isGeminiCliChat(path) && !(isGeminiCliLegacyChat(path) && all.has(`${path}l`)),
+      keep: isGeminiCliUsageSource,
       identify: belowRoot
     });
   },
