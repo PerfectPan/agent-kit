@@ -5,11 +5,6 @@
  */
 export const QUIET_MS: number = 30 * 60 * 1000;
 
-/** Whether a source last written at `mtimeMs` is quiet at `now`: nothing was written into it for a while. */
-export function isQuiet(mtimeMs: number, now: number): boolean {
-  return mtimeMs < now - QUIET_MS;
-}
-
 /**
  * Whether a decode treats its source as complete: the caller said so, or the source was quiet when the decode looked
  * at it — its modification time is before `quietBefore`. A complete source reports the requests that could still get

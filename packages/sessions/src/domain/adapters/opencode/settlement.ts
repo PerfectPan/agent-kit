@@ -9,8 +9,7 @@ export const LONGEST_MESSAGE_MS: number = 24 * 60 * 60 * 1000;
 /** How many running messages a cursor remembers; one that never finishes is dropped once newer ones push it out. */
 export const RUNNING_IDS: number = 64;
 
-/** How many reported message ids the cursor remembers; a message that changes again after more than this counts again. */
-export const REPORTED_IDS: number = 256;
+const REPORTED_IDS = 256;
 
 /** The `time_updated` a query may start at: a day before `since`, since a message created before it can still end inside the window. */
 export function opencodeQueryFloor(since: number | undefined): number {
@@ -45,7 +44,7 @@ export interface OpencodeSettlementState {
 }
 
 /** Restores the settlement state a cursor carries, reading only the fields it understands. */
-export function restoreOpencodeSettlement(saved: unknown): OpencodeSettlementState {
+function restoreOpencodeSettlement(saved: unknown): OpencodeSettlementState {
   const state = asRecord(saved);
   const ids = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
@@ -74,7 +73,8 @@ export interface OpencodeSettlement {
   runningIds(): readonly string[];
   /**
    * The final look: a running message whose row is gone was deleted; the rest report at their creation time, like
-   * presence counts them.
+   * presence counts them. The rows it re-fetches by id do not move the position: the pages that follow still go by
+   * the newest change the page reads saw.
    */
   end(rows: readonly OpencodeTableRow[]): UsageRecord[];
   /** The state as the cursor keeps it. */
@@ -108,6 +108,20 @@ export function createOpencodeSettlement(
       ...(options.final ? { settledAt: row.created } : {})
     });
   };
+  const settle = (row: OpencodeTableRow, out: UsageRecord[]): void => {
+    const message = messageOf(row);
+    if (message === "running") {
+      if (!state.running.includes(row.id)) {
+        rememberKey(state.running, row.id, RUNNING_IDS);
+      }
+      return;
+    }
+    state.running = state.running.filter((running) => running !== row.id);
+    if (message && !state.reported.includes(row.id)) {
+      rememberKey(state.reported, row.id, REPORTED_IDS);
+      out.push(message);
+    }
+  };
   const push = (rows: readonly OpencodeTableRow[]): UsageRecord[] => {
     const out: UsageRecord[] = [];
     for (const row of rows) {
@@ -121,18 +135,7 @@ export function createOpencodeSettlement(
         state.updated = row.updated;
         state.id = row.id;
       }
-      const message = messageOf(row);
-      if (message === "running") {
-        if (!state.running.includes(row.id)) {
-          rememberKey(state.running, row.id, RUNNING_IDS);
-        }
-        continue;
-      }
-      state.running = state.running.filter((running) => running !== row.id);
-      if (message && !state.reported.includes(row.id)) {
-        rememberKey(state.reported, row.id, REPORTED_IDS);
-        out.push(message);
-      }
+      settle(row, out);
     }
     return out;
   };
@@ -147,7 +150,11 @@ export function createOpencodeSettlement(
       // Only once the query has answered: a running message whose row is gone was deleted.
       const present = new Set(rows.map((row) => row.id));
       state.running = state.running.filter((id) => present.has(id));
-      return push(rows);
+      const out: UsageRecord[] = [];
+      for (const row of rows) {
+        settle(row, out);
+      }
+      return out;
     },
     save: () => structuredClone(state)
   };

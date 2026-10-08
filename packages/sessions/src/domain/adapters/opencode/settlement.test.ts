@@ -69,6 +69,19 @@ describe("opencode settlement", () => {
     expect(settlement.runningIds()).toEqual([]);
   });
 
+  it("leaves the position alone when it settles the final look at the running messages", () => {
+    const previous = createOpencodeSettlement("opencode.db", { final: false });
+    previous.push([row("1", 10)]);
+    previous.endByRow();
+    const settlement = createOpencodeSettlement("opencode.db", { state: previous.save(), final: true });
+    settlement.push([row("9", 30, 1)]);
+    const before = settlement.position();
+    expect(before).toEqual({ updated: 30, id: "9" });
+    // The row is re-fetched by id: its `time_updated` is older than the watermark and must not move it back.
+    expect(settlement.end([row("1", 10, undefined, 1234)])).toHaveLength(1);
+    expect(settlement.position()).toEqual(before);
+  });
+
   it("forgets a running message whose row was deleted, and caps what the cursor remembers", () => {
     const settlement = createOpencodeSettlement("opencode.db", { final: false });
     for (let at = 0; at < RUNNING_IDS + 1; at++) {

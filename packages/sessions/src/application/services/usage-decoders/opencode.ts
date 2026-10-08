@@ -169,11 +169,13 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
       }));
     try {
       // The first read goes by row id, a single pass over the table; the following pages go by the newest change.
+      // The settled records go through `queue`, so the ones a loop left early keeps are saved with the cursor.
       while (settlement.position().row !== undefined) {
         signal?.throwIfAborted();
         const at = settlement.position().row!;
         const rows = query(OPENCODE_MESSAGES_BY_ROW, at, earliest, PAGE_ROWS);
-        yield* drain(settlement.push(toRows(rows)));
+        queue.push(...settlement.push(toRows(rows)));
+        yield* drain(queue);
         if (rows.length < PAGE_ROWS) {
           settlement.endByRow();
         }
@@ -182,7 +184,8 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
         signal?.throwIfAborted();
         const at = settlement.position();
         const rows = query(OPENCODE_MESSAGE_PAGE, at.updated, at.updated, at.id, earliest, PAGE_ROWS);
-        yield* drain(settlement.push(toRows(rows)));
+        queue.push(...settlement.push(toRows(rows)));
+        yield* drain(queue);
         if (rows.length < PAGE_ROWS) {
           break;
         }
@@ -190,7 +193,8 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
       const running = settlement.runningIds();
       if (final && running.length > 0) {
         const rows = query(opencodeMessagesById(running.length), ...running);
-        yield* drain(settlement.end(toRows(rows)));
+        queue.push(...settlement.end(toRows(rows)));
+        yield* drain(queue);
       }
     } catch (error) {
       signal?.throwIfAborted();

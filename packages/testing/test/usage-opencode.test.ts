@@ -194,6 +194,16 @@ describe("opencode usage (SQLite)", () => {
     expect(last.cursor?.state).toMatchObject({ running: ["msg_5"] });
   });
 
+  it("yields the same records when a decode stops at any record and its cursor resumes", async () => {
+    const { path } = await database();
+    const full = (await decode(path)).records.map((record) => record.requestId);
+    for (const until of (await decode(path)).records.map((record) => record.timestamp)) {
+      const head = await decode(path, { until });
+      const next = await decode(path, head.cursor ? { from: head.cursor } : {});
+      expect([...head.records, ...next.records].map((record) => record.requestId)).toEqual(full);
+    }
+  });
+
   it("gives the records of one final decode when decoded as rows are added and finish", async () => {
     const { path } = await database([]);
     const records: UsageRecord[] = [];

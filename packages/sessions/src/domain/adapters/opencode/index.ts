@@ -7,11 +7,8 @@ export {
 } from "./layout.js";
 export { opencodeMessageUsage, type OpencodeMessageRow, opencodeUsage, opencodeUsageKey } from "./usage.js";
 export {
-  LONGEST_MESSAGE_MS,
   type OpencodeSettlement,
-  type OpencodeSettlementState,
   type OpencodeTableRow,
   createOpencodeSettlement,
-  opencodeQueryFloor,
-  restoreOpencodeSettlement
+  opencodeQueryFloor
 } from "./settlement.js";

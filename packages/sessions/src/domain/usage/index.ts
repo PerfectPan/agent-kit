@@ -3,7 +3,7 @@ export { noCacheInputTokens } from "./services/no-cache-input.js";
 export { shortHash } from "./services/short-hash.js";
 export { type AiSdkUsage, toAiSdkUsage } from "./services/to-ai-sdk-usage.js";
 export { type OtelAttributeOptions, toOtelAttributes } from "./services/to-otel-attributes.js";
-export { QUIET_MS, decodeIsFinal, isQuiet } from "./policies/quiet.js";
+export { QUIET_MS, decodeIsFinal } from "./policies/quiet.js";
 export { restoreUsageWindow, type UsageWindow } from "./services/usage-window.js";
 export { scanSources, type ScanSourceEntry, type ScanSources } from "./services/scan-sources.js";
 export { compactUsage, type Usage } from "./value-objects/usage.js";
