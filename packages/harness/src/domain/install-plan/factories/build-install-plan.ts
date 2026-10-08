@@ -177,7 +177,13 @@ export function buildInstallPlan(
   if (!created.ok && created.error._tag !== "PlanConflict") {
     return created;
   }
-  const createConflicts = !created.ok && created.error._tag === "PlanConflict" ? created.error.conflicts : [];
+  // A hook kept for the user or a ForeignOwner is judged once, as preserved: create also saw it (its content differs
+  // from what the bundle wants) and would list the same locator again, as a conflict an adopt or backup could
+  // resolve — so its entries at preserved locators are dropped.
+  const preservedKeys = new Set(preserved.map(({ step }) => locatorKey(step.locator)));
+  const createConflicts = (!created.ok && created.error._tag === "PlanConflict" ? created.error.conflicts : []).filter(
+    ({ step }) => !preservedKeys.has(locatorKey(step.locator))
+  );
   // A selected runner can execute a tracked foreign hook that this plan must retain for another consumer. Every
   // conflict is judged in one round — the hooks kept for the user or a ForeignOwner, the plan invariants', and the
   // retained foreign ones — so the caller never resolves a first batch to be shown the next.
