@@ -195,9 +195,6 @@ importers:
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../agent-kit
-      '@rivus/agent-kit-testing':
-        specifier: workspace:*
-        version: link:../testing
       '@size-limit/preset-small-lib':
         specifier: 14.1.0
         version: 14.1.0(size-limit@14.1.0)

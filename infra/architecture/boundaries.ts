@@ -126,8 +126,6 @@ export const boundaries: BoundaryRules = {
     // runtime, so a process holds one copy of the Platform types and the Result helpers.
     [COLLAB]: {
       dependsOn: [SHELL],
-      // The tests run the aggregate-repository conformance suite from the testing package.
-      testsOnly: [TESTING],
       external: ["zod/mini"],
       entries: ["lanes", "lease", "process-lock"],
       publicImports: {

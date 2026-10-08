@@ -31,12 +31,7 @@ import {
   observe
 } from "../../domain/lease/index.js";
 import { fromResult } from "../services/from-result.js";
-import {
-  LeaseRepository,
-  type LeaseRepositoryFailure,
-  type LeaseRepositoryShape,
-  type RevisionConflict
-} from "../ports.js";
+import { LeaseRepository, type LeaseRepositoryFailure, type LeaseRepositoryShape } from "../ports.js";
 import { repositoryFailure } from "../services/repository-failure.js";
 
 export interface LeaseConfig {
@@ -67,7 +62,7 @@ export interface LeaseHandle {
    */
   readonly lost: Effect.Effect<never, LeaseLost>;
   /**
-   * Runs `work` under the store's per-key fence, after re-reading that this acquisition still holds the lease, and
+   * Runs `work` under the repository's per-key fence, after re-reading that this acquisition still holds the lease, and
    * passes it the fencing token for the writes it makes. Waiting for the fence stops when the lease is lost. When the
    * lease is lost while `work` runs, `work` is interrupted and the result fails with `LeaseLost`.
    *
@@ -97,7 +92,7 @@ export interface LeaseManager {
 
 type ManagerPlatform = Pick<Platform, "process" | "clock">;
 
-/** CAS attempts within one acquisition before the store counts as busy; each lost race re-reads the record. */
+/** CAS attempts within one acquisition before the repository counts as busy; each lost race re-reads the record. */
 const MAX_CAS_TURNS = 8;
 
 /** Validates `config` and builds a manager over the `LeaseRepository` and the platform in context. */
@@ -148,15 +143,15 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
           transition = yield* fromResult(lease.acquire(claim, { fresh, liveness }));
         }
         const next = transition.state.toSnapshot();
-        const written = yield* Effect.exit(store.save(key, next, record?.revision));
-        if (Exit.isSuccess(written)) {
+        // A conflict is a lost race that the next turn re-reads; a defect or another failure keeps its own channel
+        // instead of being squashed into a typed repository failure.
+        const written = yield* store.save(key, next, record?.revision).pipe(
+          Effect.as(true),
+          Effect.catchTag("RevisionConflict", () => Effect.succeed(false))
+        );
+        if (written) {
           observations.delete(key);
           return next;
-        }
-        // A conflict is a lost race that the next turn re-reads; any other failure is the repository's.
-        const error = Cause.squash(written.cause) as LeaseRepositoryFailure | RevisionConflict;
-        if (error._tag !== "RevisionConflict") {
-          return yield* Effect.fail(error);
         }
       }
       return yield* Effect.fail(repositoryFailure(key, "busy", "the lease record kept changing during acquisition"));
@@ -189,23 +184,24 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
         }
         const next = transition.value.state.toSnapshot();
         const written = yield* Effect.exit(
-          store.save(key, next, current.revision).pipe(Effect.tap(() => Ref.set(ref, next)))
+          store.save(key, next, current.revision).pipe(
+            Effect.tap(() => Ref.set(ref, next)),
+            Effect.as(true),
+            Effect.catchTag("RevisionConflict", () => Effect.succeed(false))
+          )
         );
         if (Exit.isSuccess(written)) {
-          confirmedAt = now();
-        } else {
-          const error = Cause.squash(written.cause) as LeaseRepositoryFailure | RevisionConflict;
-          if (error._tag === "RevisionConflict") {
+          if (!written.value) {
             return yield* Effect.fail(yield* lostBy(key, holding));
           }
-          if (holderExpired(confirmedAt, now(), timing.ttlMs)) {
-            return yield* Effect.fail<LeaseLost>({
-              _tag: "LeaseLost",
-              key,
-              generation: holding.generation,
-              reason: "expired"
-            });
-          }
+          confirmedAt = now();
+        } else if (holderExpired(confirmedAt, now(), timing.ttlMs)) {
+          return yield* Effect.fail<LeaseLost>({
+            _tag: "LeaseLost",
+            key,
+            generation: holding.generation,
+            reason: "expired"
+          });
         }
       }
     });

@@ -44,7 +44,8 @@ Every context package uses the same layout, creating only the directories it nee
     services/           coordination code shared by use cases; may call ports, holds no business rules
     ports.ts            port shapes and injection tags (some contexts keep errors.ts or usage-ports.ts beside it)
   infra/
-    repository/         aggregate repository implementations (ledger, leases)
+    repository/         persistence implementations: aggregate repositories (ledger, leases)
+                        and key-value stores such as acp's session bindings
     models/             stored formats and their codecs
     adapters/           other port implementations (editors, CLI runners, fences)
     factories/          Layer compositions
@@ -65,7 +66,7 @@ The layer principles:
 | `domain/adapters/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | This context's domain (its own concept folders, not other packages' internals), `domain/protocols/`, catalog, and the external packages the package allows, such as `zod/mini` |
 | `domain/protocols/` | A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update` streams | This context's domain and catalog, and the external packages the package allows; not `domain/adapters/` |
 | `application/` | `use-cases/` carry agent knowledge and coordinate ports; `services/` is code shared by use cases; `ports.ts` declares the part of Platform and the context's own ports that they use | Domain, `domain/adapters/`, `domain/protocols/` and ports |
-| `infra/` | Implementations of ports the kit declares: aggregate repositories (`repository/`), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
+| `infra/` | Implementations of ports the kit declares: persistence implementations under `repository/` (aggregate repositories and key-value stores such as acp's session bindings), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
 
 `@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary test treats as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
 
@@ -133,7 +134,7 @@ An entity is a child of one aggregate: it has a local identity inside that aggre
 
 ## Repository Shape
 
-An aggregate's repository port — `LedgerRepository`, `LeaseRepository` — offers:
+An aggregate's repository port — `LedgerStore`, `LeaseRepository` — offers:
 
 - `load(id)` -> the stored snapshot, or `undefined` when there is none;
 - `save(id, snapshot, expectedRevision: number | undefined)` -> `void`; a revision mismatch is a typed error
@@ -245,8 +246,8 @@ The assembly root lives in each consuming application, not in the kit.
 
 | Repository | Cases from `/testing/effect` | Store-specific tests beyond the suite |
 | --- | --- | --- |
-| Ledger repository | Revisions strictly increase; a save with a mismatched revision is refused; an unknown `schemaVersion` is refused and nothing is cleared; the reopen case | With the LedgerLock: two processes modifying at once, only one enters the critical section; after the holder is killed, the next holder probes pending operations before continuing |
-| Lease repository | The generic cases and the reopen case (memory, file, SQLite) | The generation never decreases, including after release and re-creation; ABA is detected; two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
+| LedgerStore | Revisions strictly increase; a save over a stale revision is refused; an unknown `schemaVersion` is refused and nothing is cleared; the reopen case | With the LedgerLock: two processes modifying at once, only one enters the critical section; after the holder is killed, the next holder probes pending operations before continuing |
+| Lease repository | The generic cases, the reopen case and the unknown-schema case (memory, file, SQLite; the map has no schema version) | The generation never decreases, including after release and re-creation; ABA is detected; two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
 | SessionBindingStore (a key-value store, not an aggregate) | — | Read, write, delete; the conflict semantics of two writes for one `sessionKey`; bindings survive reopening |
 
 - A rule that a repository cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.

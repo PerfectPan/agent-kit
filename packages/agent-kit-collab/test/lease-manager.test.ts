@@ -24,6 +24,7 @@ import {
   memoryLeaseRepository,
   sqliteLeaseRepository
 } from "../src/lease/public.js";
+import { revisionConflict } from "../src/lease/application/services/repository-failure.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases } from "./support/stores.js";
 
@@ -406,6 +407,57 @@ describe("createLeaseManager", () => {
       const exit = yield* Effect.exit(Effect.scoped(leases.acquire("")));
       expect(Exit.isFailure(exit) && isAgentKitError(Cause.squash(exit.cause))).toBe(true);
     }).pipe(Effect.provide(layer))
+  );
+});
+
+describe("take loop", () => {
+  /**
+   * Wraps the memory repository so the first `count` saves report a conflict without writing, then delegates.
+   * Deterministic, so the loop's conflict, re-read and retry can be tested without racing writers.
+   */
+  const layerWithConflicts = (count: number) =>
+    Layer.provideMerge(
+      Layer.effect(
+        LeaseRepository,
+        Effect.gen(function* () {
+          const inner = yield* LeaseRepository;
+          let remaining = count;
+          return {
+            load: (key: string) => inner.load(key),
+            save: (key: string, next: LeaseSnapshot, expectedRevision: number | undefined) => {
+              if (remaining > 0) {
+                remaining -= 1;
+                return Effect.fail(revisionConflict(key, expectedRevision, 1));
+              }
+              return inner.save(key, next, expectedRevision);
+            },
+            fence: (key: string) => inner.fence(key)
+          };
+        })
+      ).pipe(Layer.provide(memoryLeaseRepository())),
+      Layer.succeed(PlatformService, testPlatform())
+    );
+
+  it.effect("retries from a re-read when a save reports a conflict, and writes once", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const leases = yield* createLeaseManager(config);
+        expect((yield* leases.acquire(KEY)).token.generation).toBe(1);
+        // Exactly one write landed: the conflicting first turn wrote nothing.
+        expect(yield* leases.read(KEY)).toMatchObject({ generation: 1, revision: 1 });
+      })
+    ).pipe(Effect.provide(layerWithConflicts(1)))
+  );
+
+  it.effect("reports busy after every save of one acquisition has conflicted", () =>
+    Effect.gen(function* () {
+      const leases = yield* createLeaseManager(config);
+      expect(failureOf(yield* Effect.exit(Effect.scoped(leases.acquire(KEY))))).toMatchObject({
+        _tag: "LeaseRepositoryFailure",
+        reason: "busy"
+      });
+      expect(yield* leases.read(KEY)).toBeUndefined();
+    }).pipe(Effect.provide(layerWithConflicts(Number.MAX_SAFE_INTEGER)))
   );
 });
 

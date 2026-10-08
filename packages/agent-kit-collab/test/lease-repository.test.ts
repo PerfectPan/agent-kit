@@ -3,10 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, describe, it } from "@effect/vitest";
-import {
-  aggregateRepositoryConformance,
-  type AggregateRepositoryFixtures
-} from "@rivus/agent-kit-testing/public/effect";
+import { aggregateRepositoryConformance, type AggregateRepositoryFixtures } from "@rivus/agent-kit/testing/effect";
 import * as Effect from "effect/Effect";
 
 import { LeaseRepository, type LeaseSnapshot } from "../src/lease/public.js";

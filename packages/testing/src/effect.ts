@@ -2,6 +2,7 @@ import { isEqual } from "es-toolkit";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Predicate from "effect/Predicate";
 
 /**
  * The part of an aggregate repository's calling convention that every aggregate shares: `load` reads the stored
@@ -84,8 +85,9 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
   const errorOf = <A>(effect: Effect.Effect<A, unknown>): Effect.Effect<unknown, never> =>
     Effect.map(Effect.exit(effect), (exit) => (Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined));
 
-  const isConflict = (error: unknown): boolean =>
-    typeof error === "object" && error !== null && (error as { readonly _tag?: unknown })._tag === "RevisionConflict";
+  const isConflict = Predicate.isTagged("RevisionConflict");
+  const isTaggedError = (error: unknown): boolean =>
+    typeof error === "object" && error !== null && Predicate.hasProperty(error, "_tag");
 
   const cases: AggregateRepositoryCase[] = [];
 
@@ -124,7 +126,7 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
   });
 
   cases.push({
-    name: "a save over a revision that is not the stored one fails with RevisionConflict and changes nothing",
+    name: "a save over a stale revision fails with RevisionConflict and changes nothing",
     run: Effect.suspend(() =>
       asCase(
         Effect.flatMap(
@@ -132,11 +134,21 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
             (session) =>
               Effect.gen(function* () {
                 yield* session.repository.save(id, sample(1), undefined);
-                const stale = yield* errorOf(session.repository.save(id, sample(2), 9));
+                yield* session.repository.save(id, sample(2), 1);
+                // The stale save: the revision it was shown stopped being the stored one two writes ago, so a
+                // repository that compares too loosely (or not at all) writes over a record it never saw.
+                const stale = yield* errorOf(session.repository.save(id, sample(3), 1));
                 if (!isConflict(stale)) {
+                  return yield* Effect.fail(
+                    new Error("a save over the stale revision 1 did not fail with RevisionConflict")
+                  );
+                }
+                // A revision that was never stored, and `undefined` while a record is stored, are refusals too.
+                const newer = yield* errorOf(session.repository.save(id, sample(4), 9));
+                if (!isConflict(newer)) {
                   return yield* Effect.fail(new Error("a save over revision 9 did not fail with RevisionConflict"));
                 }
-                const missing = yield* errorOf(session.repository.save(id, sample(2), undefined));
+                const missing = yield* errorOf(session.repository.save(id, sample(4), undefined));
                 if (!isConflict(missing)) {
                   return yield* Effect.fail(
                     new Error("a save that requires no record did not fail with RevisionConflict")
@@ -146,7 +158,7 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
               })
           ]),
           ([stored]) =>
-            isEqual(stored, sample(1))
+            isEqual(stored, sample(2))
               ? Effect.void
               : Effect.fail(new Error(`the stored snapshot changed to ${describeSnapshot(stored)}`))
         )
@@ -260,14 +272,22 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
         if (problems.length > 0) {
           return yield* Effect.fail(new Error(problems.join("; ")));
         }
-        if (Exit.isSuccess(outcome) && served.length > 0) {
-          return yield* Effect.fail(
-            new Error(
-              `the repository served or overwrote the record of an unknown schemaVersion (${served.join(", ")})`
-            )
-          );
+        if (Exit.isSuccess(outcome)) {
+          if (served.length > 0) {
+            return yield* Effect.fail(
+              new Error(
+                `the repository served or overwrote the record of an unknown schemaVersion (${served.join(", ")})`
+              )
+            );
+          }
+          return;
         }
-        return Effect.void;
+        // The refusal came at open time. It must be a tagged error, as every expected outcome is; a plain Error
+        // here is a broken fixture, not the repository refusing the schema.
+        const refusal = Cause.squash(outcome.cause);
+        if (!isTaggedError(refusal)) {
+          return yield* Effect.fail(new Error(`the open refusal was not a tagged error: ${describeError(refusal)}`));
+        }
       })
     });
   }

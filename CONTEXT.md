@@ -284,7 +284,7 @@ The per-agent implementation of a context's adapter interface, under `domain/ada
 The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).
 
 **Port adapter**:
-An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor or an aggregate repository. Repositories live in `infra/repository/`, stored formats and codecs in `infra/models/`.
+An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor, an aggregate repository, or the session-binding key-value store. Persistence implementations live in `infra/repository/`, stored formats and codecs in `infra/models/`.
 
 **Entry**:
 A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
