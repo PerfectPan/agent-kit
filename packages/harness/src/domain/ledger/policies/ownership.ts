@@ -20,6 +20,11 @@ export function unionAgents(a: readonly CodingAgentId[], b: readonly CodingAgent
   return sorted([...a, ...b]);
 }
 
+/** Every agent these entries name, without repeats, sorted so that equal sets compare equal. */
+export function agentsOfEntries(entries: readonly LedgerEntry[]): readonly CodingAgentId[] {
+  return sorted(entries.flatMap((entry) => entry.agents));
+}
+
 /**
  * What happens to an entry when its owner stops wanting it for some agents. Other owners keep it whole (their
  * agents are not tracked apart, so none are dropped); otherwise the agents outside the plan keep it; only when nobody

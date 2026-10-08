@@ -1,4 +1,4 @@
-import { AgentKitError, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
@@ -14,7 +14,7 @@ import type { LedgerVersionUnsupported } from "../errors/ledger-version-unsuppor
 import type { PendingOperations } from "../errors/pending-operations.js";
 import type { ArtifactInstalled } from "../events/artifact-installed.js";
 import type { ArtifactRemoved } from "../events/artifact-removed.js";
-import { recordOperation } from "../policies/ownership.js";
+import { agentsOfEntries, holds, recordOperation } from "../policies/ownership.js";
 import { reconcilePending } from "../policies/reconcile.js";
 import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
 import type { LedgerEntry } from "../entities/ledger-entry.js";
@@ -201,6 +201,16 @@ export class Ledger {
 
   entries(): readonly LedgerEntry[] {
     return Object.values(this.snapshot.entries);
+  }
+
+  /** The entries whose owners include `owner`, in ledger order. */
+  entriesOf(owner: Owner): readonly LedgerEntry[] {
+    return this.entries().filter((entry) => holds(entry, owner));
+  }
+
+  /** Every agent the owner's entries name, without repeats and sorted; the default agents a change covers. */
+  agentsOf(owner: Owner): readonly CodingAgentId[] {
+    return agentsOfEntries(this.entriesOf(owner));
   }
 
   /** The record of an Artifact an owner let go of because the user changed it, if this locator has one. */

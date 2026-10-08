@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 
 import { checkBundle, type InstallAdapters, type InvalidBundle, type Owner } from "../../domain/bundle/index.js";
 import type { ArtifactLocator, InvalidPlan, PlanConflict, PlanStale } from "../../domain/install-plan/index.js";
-import type { PendingOperations } from "../../domain/ledger/index.js";
+import { type PendingOperations, unionAgents } from "../../domain/ledger/index.js";
 import { type ApplyInstallError, applyLocked, type ApplyReport } from "./apply-install.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";
@@ -75,18 +75,11 @@ export function uninstall(
         registrations: registrationLookup(setup.adapters, setup.context)
       });
       // Legacy Artifacts are in no ledger entry, so with markers every agent with an adapter is searched.
-      const recorded = loaded.ledger
-        .entries()
-        .filter((entry) => entry.owners.includes(owner))
-        .flatMap((entry) => entry.agents);
       const searched = (options.legacyMarkers ?? []).length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
-      const agents = options.agents ?? [...new Set([...recorded, ...searched])].toSorted();
+      const agents = options.agents ?? unionAgents(loaded.ledger.agentsOf(owner), searched);
       const plan = yield* buildPlan(scope, loaded, { bundle, agents, setup, desired: [], droppedHooks: [] });
       const report = yield* applyLocked(recordOf(plan), loaded);
-      const kept = plan.steps.flatMap((step) =>
-        step.action === "remove" && step.removal === "keep" && step.drift === "user-modified" ? [step.locator] : []
-      );
-      return { ...report, plan, kept };
+      return { ...report, plan, kept: recordOf(plan).aggregate.kept };
     })
   );
 }

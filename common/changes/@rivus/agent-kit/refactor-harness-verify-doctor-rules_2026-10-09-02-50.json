@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Move the verify, uninstall and doctor rules into the harness domain: `verifyOwner` classifies an owner's entries and default agents, `Ledger.entriesOf`/`agentsOf` and `InstallPlan.kept` become aggregate queries, and `hookHealth`/`duplicateHooks` carry the doctor findings. doctor now matches `markers` the way `isLegacyArtifact` does, so a marker that is only whitespace no longer makes every hook command with a space fire twice. No API change.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

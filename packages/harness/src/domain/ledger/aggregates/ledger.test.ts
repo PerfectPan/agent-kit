@@ -334,6 +334,23 @@ describe("Ledger", () => {
     ]);
   });
 
+  it("answers the owner's entries and the agents they name, its defaults for a change", () => {
+    const mine = file("mine");
+    const shared = file("shared");
+    const theirs = file("theirs");
+    const ledger = restore(
+      snapshot([
+        entry(mine, { agents: ["grok"] }),
+        entry(shared, { agents: ["claude-code", "grok"] }),
+        entry(theirs, { owners: ["other-app"], activeOwner: "other-app", agents: ["codex"] })
+      ])
+    );
+    expect(ledger.entriesOf(OWNER).map((item) => item.locator)).toEqual([mine, shared]);
+    expect(ledger.agentsOf(OWNER)).toEqual(["claude-code", "grok"]);
+    expect(ledger.agentsOf("other-app")).toEqual(["codex"]);
+    expect(ledger.agentsOf("nobody")).toEqual([]);
+  });
+
   it("acknowledges content the disk already holds, without events, and only for recorded entries", () => {
     const a = file("a");
     const ledger = restore(snapshot([entry(a)]));
