@@ -19,8 +19,8 @@ import {
   type ContentHash,
   type LedgerEntry,
   markAcknowledged,
-  type OwnerArtifact,
   type PendingOperations,
+  type VerifiedArtifact,
   verifyOwner
 } from "../../domain/ledger/index.js";
 import type { HookDialects } from "../../domain/lifecycle/index.js";
@@ -65,7 +65,7 @@ export interface VerifyOptions extends ScopeOptions {
 }
 
 /** One Artifact as three-way verify sees it: the ledger's record, what is on disk and what the bundle wants. */
-export type VerifiedArtifact = OwnerArtifact;
+export type { VerifiedArtifact };
 
 export interface VerifyReport {
   readonly artifacts: readonly VerifiedArtifact[];

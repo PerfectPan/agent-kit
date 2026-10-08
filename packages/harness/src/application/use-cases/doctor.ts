@@ -5,7 +5,14 @@ import * as Effect from "effect/Effect";
 import type { HookSource, InstallAdapters, Owner } from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
-import { duplicateHooks, hookHealth, hookProgram, type HookDialects } from "../../domain/lifecycle/index.js";
+import {
+  duplicateHooks,
+  type HookDialects,
+  type HookFinding,
+  hookHealth,
+  hookProgram,
+  type HookProblem
+} from "../../domain/lifecycle/index.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";
 import { observe, registrationLookup } from "../services/observe.js";
@@ -15,20 +22,34 @@ import { ArtifactFiles, LedgerLock } from "../ports.js";
 
 /** One finding, in the shape of dotagents' checks: `fix` is left to a later `doctor --fix`. */
 export interface Check {
-  readonly name:
-    | "ledger"
-    | "pending"
-    | "lock"
-    | "drift"
-    | "broken-symlink"
-    | "unknown-event"
-    | "timeout-unit"
-    | "stale-path"
-    | "duplicate-hook";
+  readonly name: "ledger" | "pending" | "lock" | "drift" | "broken-symlink" | HookProblem;
   readonly status: "ok" | "warn" | "error";
   readonly message: string;
   readonly locator?: ArtifactLocator;
 }
+
+/** What a hook problem says, from the values the domain classified; the wording matches what doctor has reported. */
+function hookMessage(finding: HookFinding): string {
+  switch (finding.problem) {
+    case "unknown-event":
+      return `${finding.agent} has no hook event "${finding.event}"; this hook never runs`;
+    case "timeout-unit":
+      return `timeout ${finding.timeout} is in milliseconds for ${finding.agent}; it looks like seconds`;
+    case "stale-path":
+      return `${finding.program} does not exist`;
+    case "duplicate-hook":
+      return finding.markedCount === undefined
+        ? `${finding.agent} runs this hook twice for ${finding.event}`
+        : `${finding.agent} runs ${finding.markedCount} hooks of one application for ${finding.event}`;
+  }
+}
+
+const hookCheck = (finding: HookFinding): Check => ({
+  name: finding.problem,
+  status: "warn",
+  message: hookMessage(finding),
+  locator: finding.locator
+});
 
 export interface DoctorOptions extends ScopeOptions {
   /** Only this owner's ledger entries are compared with the disk; every owner's by default. */
@@ -247,6 +268,7 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
     for (const agent of options.agents ?? (Object.keys(setup.adapters) as CodingAgentId[])) {
       const dialect = Object.hasOwn(setup.dialects, agent) ? setup.dialects[agent] : undefined;
       const hooks = yield* agentHooks(agent, setup);
+      const findings: HookFinding[] = [];
       for (const hook of hooks.filter((found) => found.own)) {
         const program = hookProgram(hook.command);
         if (program.startsWith("/") && !exists.has(program)) {
@@ -255,9 +277,10 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
           );
           exists.set(program, stat !== undefined);
         }
-        checks.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true));
+        findings.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true));
       }
-      checks.push(...duplicateHooks(agent, hooks, options.markers ?? []));
+      findings.push(...duplicateHooks(agent, hooks, options.markers ?? []));
+      checks.push(...findings.map(hookCheck));
     }
     return checks;
   });

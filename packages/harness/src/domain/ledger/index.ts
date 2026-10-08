@@ -14,13 +14,12 @@ export type { LedgerVersionUnsupported } from "./errors/ledger-version-unsupport
 export type { PendingOperations } from "./errors/pending-operations.js";
 export type { ArtifactInstalled } from "./events/artifact-installed.js";
 export type { ArtifactRemoved } from "./events/artifact-removed.js";
-export { agentsOfEntries, holds, release, unionAgents } from "./policies/ownership.js";
+export { holds, release, unionAgents } from "./policies/ownership.js";
 export { reconcilePending } from "./policies/reconcile.js";
 export {
   markAcknowledged,
-  type OwnerArtifact,
-  type OwnerVerification,
   threeWayVerify,
+  type VerifiedArtifact,
   type VerifyInput,
   verifyOwner
 } from "./policies/three-way-verify.js";

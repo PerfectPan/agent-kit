@@ -334,7 +334,7 @@ describe("Ledger", () => {
     ]);
   });
 
-  it("answers the owner's entries and the agents they name, its defaults for a change", () => {
+  it("answers the owner's entries and its agents sorted, its defaults for a change", () => {
     const mine = file("mine");
     const shared = file("shared");
     const theirs = file("theirs");
@@ -349,6 +349,7 @@ describe("Ledger", () => {
     expect(ledger.agentsOf(OWNER)).toEqual(["claude-code", "grok"]);
     expect(ledger.agentsOf("other-app")).toEqual(["codex"]);
     expect(ledger.agentsOf("nobody")).toEqual([]);
+    // The entries name grok first, but the defaults come out sorted, so verify and uninstall see the same order.
   });
 
   it("acknowledges content the disk already holds, without events, and only for recorded entries", () => {

@@ -45,28 +45,31 @@ describe("hookHealth", () => {
   const gemini = dialect({ SessionStart: [], Stop: ["Stoped"] });
 
   it("flags an event the dialect does not know, by its own names and aliases only", () => {
-    expect(hookHealth(gemini, at("/hooks/PreToolUse"), {}, () => true).map(({ name }) => name)).toEqual([
-      "unknown-event"
+    expect(hookHealth(gemini, at("/hooks/PreToolUse"), {}, () => true)).toEqual([
+      { problem: "unknown-event", locator: at("/hooks/PreToolUse"), agent: "gemini-cli", event: "PreToolUse" }
     ]);
     expect(hookHealth(gemini, at("/hooks/SessionStart"), {}, () => true)).toEqual([]);
     expect(hookHealth(gemini, at("/hooks/Stoped"), {}, () => true)).toEqual([]);
   });
 
   it("reads a timeout below one second in a milliseconds dialect as the wrong unit", () => {
-    const finding = (timeout: unknown): HookProblem | undefined =>
-      hookHealth(gemini, at("/hooks/Stop"), { timeout }, () => true).find(({ name }) => name === "timeout-unit")?.name;
-    expect(finding(500)).toBe("timeout-unit");
-    expect(finding(1000)).toBeUndefined();
-    expect(finding("5")).toBeUndefined();
+    const problems = (timeout: unknown): readonly HookProblem[] =>
+      hookHealth(gemini, at("/hooks/Stop"), { timeout }, () => true).map(({ problem }) => problem);
+    expect(problems(500)).toEqual(["timeout-unit"]);
+    expect(hookHealth(gemini, at("/hooks/Stop"), { timeout: 500 }, () => true)).toEqual([
+      { problem: "timeout-unit", locator: at("/hooks/Stop"), agent: "gemini-cli", timeout: 500 }
+    ]);
+    expect(problems(1000)).toEqual([]);
+    expect(problems("5")).toEqual([]);
     expect(
       hookHealth(dialect({ Stop: [] }, "claude-code", "seconds"), at("/hooks/Stop"), { timeout: 5 }, () => true)
     ).toEqual([]);
   });
 
   it("flags a program by absolute path that does not exist, and nothing relative or present", () => {
-    expect(
-      hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => false).map(({ name }) => name)
-    ).toEqual(["stale-path"]);
+    expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => false)).toEqual([
+      { problem: "stale-path", locator: at("/hooks/Stop", "/gone/bin/old-hook"), program: "/gone/bin/old-hook" }
+    ]);
     expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => true)).toEqual([]);
     expect(hookHealth(gemini, at("/hooks/Stop", "npx demo-hook"), {}, () => false)).toEqual([]);
   });
@@ -85,19 +88,19 @@ describe("duplicateHooks", () => {
   ];
 
   it("flags the later of two equal commands for one event", () => {
-    expect(duplicateHooks("grok", hooks, []).map(({ message, locator }) => [message, locator.pointer])).toEqual([
-      ["grok runs this hook twice for Stop", "/hooks/Stop~1Deep"]
+    expect(duplicateHooks("grok", hooks, [])).toEqual([
+      { problem: "duplicate-hook", locator: second, agent: "grok", event: "Stop" }
     ]);
   });
 
   it("flags more than one hook of one application, matching markers the way isLegacyArtifact does", () => {
-    expect(duplicateHooks("grok", hooks, ["demo-hook run"]).map(({ message }) => message)).toEqual([
-      "grok runs this hook twice for Stop",
-      "grok runs 3 hooks of one application for Stop"
+    expect(duplicateHooks("grok", hooks, ["demo-hook run"])).toEqual([
+      { problem: "duplicate-hook", locator: second, agent: "grok", event: "Stop" },
+      { problem: "duplicate-hook", locator: other, agent: "grok", event: "Stop", markedCount: 3 }
     ]);
     // A marker that is only whitespace never matches, so no text holding a space becomes the application's.
-    expect(duplicateHooks("grok", hooks, [" ", "\t"]).map(({ message }) => message)).toEqual([
-      "grok runs this hook twice for Stop"
+    expect(duplicateHooks("grok", hooks, [" ", "\t"])).toEqual([
+      { problem: "duplicate-hook", locator: second, agent: "grok", event: "Stop" }
     ]);
   });
 });

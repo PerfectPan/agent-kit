@@ -7,13 +7,32 @@ import type { HookDialect } from "../value-objects/hook-dialect.js";
 /** Why `doctor` flags a command hook: it never runs, its timeout unit looks wrong, its program is gone, or it fires twice. */
 export type HookProblem = "unknown-event" | "timeout-unit" | "stale-path" | "duplicate-hook";
 
-/** One finding about a command hook, as `doctor` reports it. */
-export interface HookFinding {
-  readonly name: HookProblem;
-  readonly status: "warn";
-  readonly message: string;
-  readonly locator: ArtifactLocator;
-}
+/**
+ * One problem a command hook has, with the values that describe it; `doctor` renders the status and the message. A
+ * `duplicate-hook` carries `markedCount` when more than one hook of one application fires for the event, and none
+ * when the same command fires twice.
+ */
+export type HookFinding =
+  | {
+      readonly problem: "unknown-event";
+      readonly locator: ArtifactLocator;
+      readonly agent: CodingAgentId;
+      readonly event: string;
+    }
+  | {
+      readonly problem: "timeout-unit";
+      readonly locator: ArtifactLocator;
+      readonly agent: CodingAgentId;
+      readonly timeout: number;
+    }
+  | { readonly problem: "stale-path"; readonly locator: ArtifactLocator; readonly program: string }
+  | {
+      readonly problem: "duplicate-hook";
+      readonly locator: ArtifactLocator;
+      readonly agent: CodingAgentId;
+      readonly event: string;
+      readonly markedCount?: number;
+    };
 
 /** One command hook an agent runs, by the event that fires it, as read from a hook configuration file. */
 export interface CommandHook {
@@ -34,7 +53,7 @@ const eventOf = (locator: ArtifactLocator): string =>
   (locator.pointer ?? "").split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~") ?? "";
 
 /**
- * Findings about one hook registration: an event its dialect does not know, under none of its alias spellings either,
+ * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,
  * means the hook never runs; a timeout below one second where the dialect reads milliseconds looks like seconds
  * written in the wrong unit; a program given by absolute path that `exists` says is missing is a stale path.
  */
@@ -50,32 +69,22 @@ export function hookHealth(
     dialect === undefined ||
     Object.hasOwn(dialect.events, event) ||
     Object.values(dialect.events).some((spec) => spec.aliases?.includes(event) === true);
-  if (!known) {
-    findings.push({
-      name: "unknown-event",
-      status: "warn",
-      message: `${dialect?.agent} has no hook event "${event}"; this hook never runs`,
-      locator
-    });
+  if (dialect !== undefined && !known) {
+    findings.push({ problem: "unknown-event", locator, agent: dialect.agent, event });
   }
   const timeout = typeof hook === "object" && hook !== null ? (hook as { timeout?: unknown }).timeout : undefined;
   if (dialect?.timeout?.unit === "milliseconds" && typeof timeout === "number" && timeout < 1000) {
-    findings.push({
-      name: "timeout-unit",
-      status: "warn",
-      message: `timeout ${timeout} is in milliseconds for ${dialect.agent}; it looks like seconds`,
-      locator
-    });
+    findings.push({ problem: "timeout-unit", locator, agent: dialect.agent, timeout });
   }
   const program = hookProgram(locator.member ?? "");
   if (program.startsWith("/") && !exists(program)) {
-    findings.push({ name: "stale-path", status: "warn", message: `${program} does not exist`, locator });
+    findings.push({ problem: "stale-path", locator, program });
   }
   return findings;
 }
 
 /**
- * Findings about hooks that fire twice for one event in one agent: the same command twice, or, given an application's
+ * Problems with hooks that fire twice for one event in one agent: the same command twice, or, given an application's
  * markers, more than one hook carrying one of them — an old hook left in a settings file next to the plugin that
  * replaced it. Markers match the way `isLegacyArtifact` matches: blank ones never match.
  */
@@ -90,24 +99,14 @@ export function duplicateHooks(
     const seen = new Set<string>();
     for (const hook of here) {
       if (seen.has(hook.command)) {
-        findings.push({
-          name: "duplicate-hook",
-          status: "warn",
-          message: `${agent} runs this hook twice for ${event}`,
-          locator: hook.locator
-        });
+        findings.push({ problem: "duplicate-hook", locator: hook.locator, agent, event });
       }
       seen.add(hook.command);
     }
     const marked = here.filter((hook) => hasLegacyMarker(markers, hook.command));
     const last = marked.at(-1);
     if (last !== undefined && new Set(marked.map((hook) => hook.command)).size > 1) {
-      findings.push({
-        name: "duplicate-hook",
-        status: "warn",
-        message: `${agent} runs ${marked.length} hooks of one application for ${event}`,
-        locator: last.locator
-      });
+      findings.push({ problem: "duplicate-hook", locator: last.locator, agent, event, markedCount: marked.length });
     }
   }
   return findings;

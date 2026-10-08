@@ -51,8 +51,8 @@ export function threeWayVerify({ ledger, actual, desired }: VerifyInput): Verify
   return actual === desired ? "ledger-behind" : "user-modified";
 }
 
-/** One Artifact as the verify of an Owner's entries reports it. */
-export interface OwnerArtifact {
+/** One Artifact as the verify of an Owner's entries reports it: the ledger's record, the disk, the desired content. */
+export interface VerifiedArtifact {
   readonly locator: ArtifactLocator;
   readonly agents: readonly CodingAgentId[];
   readonly status: VerifyStatus;
@@ -60,7 +60,7 @@ export interface OwnerArtifact {
 
 /** The verify of one Owner's Artifacts: every Artifact's status, and the records the disk runs ahead of. */
 export interface OwnerVerification {
-  readonly artifacts: readonly OwnerArtifact[];
+  readonly artifacts: readonly VerifiedArtifact[];
   /** The `ledger-behind` Artifacts, whose hash `Ledger.acknowledge` records. */
   readonly behind: readonly { readonly locator: ArtifactLocator; readonly contentHash: ContentHash }[];
 }
@@ -91,7 +91,7 @@ export function verifyOwner(
     wanted.set(key, { locator: want.locator, hash: want.hash, agents: unionAgents(known?.agents ?? [], [want.agent]) });
   }
   const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
-  const artifacts: OwnerArtifact[] = [];
+  const artifacts: VerifiedArtifact[] = [];
   const behind: { readonly locator: ArtifactLocator; readonly contentHash: ContentHash }[] = [];
   for (const entry of entries) {
     const key = locatorKey(entry.locator);
@@ -121,16 +121,16 @@ export function verifyOwner(
   return { artifacts, behind };
 }
 
-/** The verification once the silent update recorded the disk's hashes: what was acknowledged reads as in-sync. */
+/** The verification once the silent update recorded the disk's hashes: what was acknowledged reads as in-sync and no longer runs behind. */
 export function markAcknowledged(
   verification: OwnerVerification,
   acknowledged: readonly ArtifactLocator[]
 ): OwnerVerification {
   const updated = new Set(acknowledged.map(locatorKey));
   return {
-    ...verification,
     artifacts: verification.artifacts.map((artifact) =>
       updated.has(locatorKey(artifact.locator)) ? { ...artifact, status: "in-sync" as const } : artifact
-    )
+    ),
+    behind: verification.behind.filter(({ locator }) => !updated.has(locatorKey(locator)))
   };
 }

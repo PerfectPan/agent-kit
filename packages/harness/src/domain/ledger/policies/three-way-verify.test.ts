@@ -103,5 +103,6 @@ describe("markAcknowledged", () => {
       { locator: held, agents: ["claude-code"], status: "deleted-externally" },
       { locator: drifted, agents: ["claude-code"], status: "in-sync" }
     ]);
+    expect(report.behind).toEqual([]);
   });
 });

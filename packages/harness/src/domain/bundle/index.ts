@@ -1,4 +1,4 @@
-export { hasLegacyMarker, isLegacyArtifact } from "./policies/legacy-markers.js";
+export { isLegacyArtifact } from "./policies/legacy-markers.js";
 export {
   type HookOverlap,
   type HookPlacement,

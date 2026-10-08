@@ -1,12 +1,5 @@
 export { heartbeatSignal, type HeartbeatSignal } from "./policies/heartbeat-signal.js";
-export {
-  type CommandHook,
-  duplicateHooks,
-  hookHealth,
-  hookProgram,
-  type HookFinding,
-  type HookProblem
-} from "./policies/hook-health.js";
+export { duplicateHooks, type HookFinding, hookHealth, hookProgram, type HookProblem } from "./policies/hook-health.js";
 export { sniffSource, terminalIdentity } from "./policies/host-sniffing.js";
 export type { Env } from "./policies/payload-fields.js";
 export { lifecycleStatus, reduceLifecycle } from "./policies/reduce-lifecycle.js";
