@@ -1,6 +1,7 @@
 export { Lease } from "./aggregates/lease.js";
 export type { LeaseClaim, LeaseTransition } from "./aggregates/lease.js";
 export type { FenceRejected } from "./errors/fence-rejected.js";
+export type { LeaseConfigInvalid } from "./errors/lease-config-invalid.js";
 export type { LeaseHeld } from "./errors/lease-held.js";
 export type { LeaseLost } from "./errors/lease-lost.js";
 export type { LeaseRecordInvalid } from "./errors/lease-record-invalid.js";
@@ -8,9 +9,12 @@ export type { LeaseAcquired, LeaseEvent, LeaseReleased, LeaseRenewed } from "./e
 export { canAcquire } from "./policies/acquisition.js";
 export type { AcquisitionView } from "./policies/acquisition.js";
 export { checkFence, nextFencingToken } from "./policies/fence-check.js";
-export { isFresh, observe } from "./policies/freshness.js";
+export { holderExpired, isFresh, observe } from "./policies/freshness.js";
 export type { LeaseObservation } from "./policies/freshness.js";
 export { holderLiveness } from "./policies/holder-liveness.js";
+export { lossReason } from "./policies/loss.js";
+export { leaseTiming } from "./value-objects/lease-timing.js";
+export type { LeaseTiming, LeaseTimingInput } from "./value-objects/lease-timing.js";
 export type { FencingToken } from "./value-objects/fencing-token.js";
 export type { Holder, HolderLiveness } from "./value-objects/holder.js";
 export type { LeaseHolding, LeaseSnapshot } from "./value-objects/lease-snapshot.js";

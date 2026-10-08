@@ -11,8 +11,8 @@ export type {
   PendingDropped,
   WakeCoalesced
 } from "./events/lane-events.js";
-export { admit } from "./policies/admission.js";
-export type { LaneLoad } from "./policies/admission.js";
+export { admit, nextToStart, wakeResult } from "./policies/admission.js";
+export type { LaneLoad, WakeResult } from "./policies/admission.js";
 export { laneLimits } from "./value-objects/lane-limits.js";
 export type { LaneLimits, LaneLimitsInput } from "./value-objects/lane-limits.js";
 export type { LaneSnapshot, LaneState } from "./value-objects/lane-snapshot.js";

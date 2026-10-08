@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { canAcquire } from "../policies/acquisition.js";
 import { checkFence, nextFencingToken } from "../policies/fence-check.js";
-import { isFresh, observe } from "../policies/freshness.js";
+import { holderExpired, isFresh, observe } from "../policies/freshness.js";
 import { holderLiveness } from "../policies/holder-liveness.js";
+import { lossReason } from "../policies/loss.js";
+import { type LeaseTimingInput, leaseTiming } from "../value-objects/lease-timing.js";
 import type { Holder } from "../value-objects/holder.js";
 import type { LeaseSnapshot } from "../value-objects/lease-snapshot.js";
 import { Lease, type LeaseClaim } from "./lease.js";
@@ -58,7 +60,10 @@ describe("Lease", () => {
 
   it("renews and releases only for the holding acquisition, and says why it was lost", () => {
     const lease = Lease.create(claim(holderA, "a1")).state;
-    const renewed = lease.renew({ holderId: "a1", generation: 1 }, 7);
+    const holding = { holderId: "a1", generation: 1 };
+    expect(lease.holds(holding)).toBe(true);
+    expect(lease.lossOf(holding)).toBeUndefined();
+    const renewed = lease.renew(holding, 7);
     expect(renewed.ok && renewed.value.state.toSnapshot()).toMatchObject({ generation: 1, revision: 2, renewedAt: 7 });
 
     // ABA: the same process, holding again under a new acquisition, is not the old holding.
@@ -67,6 +72,13 @@ describe("Lease", () => {
     expect(successor.renew({ holderId: "a1", generation: 1 }, 8)).toEqual({
       ok: false,
       error: { _tag: "LeaseLost", key: KEY, generation: 1, reason: "taken-over" }
+    });
+    expect(successor.holds({ holderId: "a1", generation: 1 })).toBe(false);
+    expect(successor.lossOf({ holderId: "a1", generation: 1 })).toEqual({
+      _tag: "LeaseLost",
+      key: KEY,
+      generation: 1,
+      reason: "taken-over"
     });
     const tombstone = successor.release({ holderId: "a2", generation: 2 }, 9);
     expect(tombstone.ok && tombstone.value.state.release({ holderId: "a2", generation: 2 }, 10)).toEqual({
@@ -149,5 +161,40 @@ describe("lease rules", () => {
       ok: false,
       error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
     });
+  });
+
+  it("accepts a timing where every duration is positive and two heartbeats fit in the TTL", () => {
+    expect(leaseTiming({ ttlMs: 100, heartbeatMs: 50 })).toEqual({
+      ok: true,
+      value: { ttlMs: 100, heartbeatMs: 50, retryMs: 50 }
+    });
+    expect(leaseTiming({ ttlMs: 100, heartbeatMs: 50, retryMs: 25 })).toEqual({
+      ok: true,
+      value: { ttlMs: 100, heartbeatMs: 50, retryMs: 25 }
+    });
+    // A JS caller may pass null where the type says optional; it falls back like an absent retryMs.
+    const nullRetry = { ttlMs: 100, heartbeatMs: 50, retryMs: null } as unknown as LeaseTimingInput;
+    expect(leaseTiming(nullRetry)).toEqual({ ok: true, value: { ttlMs: 100, heartbeatMs: 50, retryMs: 50 } });
+    for (const input of [
+      { ttlMs: 100, heartbeatMs: 60 },
+      { ttlMs: 0, heartbeatMs: 0 },
+      { ttlMs: 100, heartbeatMs: 50, retryMs: -1 },
+      { ttlMs: Number.NaN, heartbeatMs: 10 }
+    ]) {
+      expect(leaseTiming(input)).toMatchObject({ ok: false, error: { _tag: "LeaseConfigInvalid" } });
+    }
+  });
+
+  it("names why a lease was lost from the record the loser sees", () => {
+    expect(lossReason(undefined)).toBe("missing");
+    expect(lossReason(record(2, null))).toBe("released");
+    expect(lossReason(record(2))).toBe("taken-over");
+    // A tombstone is a record with no holder, so the holder field decides whatever holderId says.
+    expect(lossReason({ ...record(2), holder: null })).toBe("released");
+  });
+
+  it("expires a holder that has confirmed no renewal for a whole TTL, measured on its own clock", () => {
+    expect(holderExpired(100, 1099, 1000)).toBe(false);
+    expect(holderExpired(100, 1100, 1000)).toBe(true);
   });
 });

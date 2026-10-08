@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { PermissionRequest } from "../value-objects/permission-request.js";
 import { agentEnv } from "./agent-env.js";
-import { formatAbsolutePath, isWithin, parseAbsolutePath } from "./client-paths.js";
+import {
+  type AbsolutePath,
+  clientPathVerdict,
+  formatAbsolutePath,
+  isWithin,
+  parseAbsolutePath
+} from "./client-paths.js";
 import { optionOfKind, permissionOutcome } from "./permission-default.js";
 import { firstPromptBlocks, sessionMeta } from "./session-setup.js";
 
@@ -91,5 +97,65 @@ describe("client paths", () => {
     const inside = parseAbsolutePath("C:/work/project/a.txt");
     expect(root && inside && isWithin(root, inside)).toBe(true);
     expect(inside && formatAbsolutePath(inside)).toBe("C:\\work\\project\\a.txt");
+  });
+});
+
+describe("clientPathVerdict", () => {
+  const root = parseAbsolutePath("/work/project") as AbsolutePath;
+  const target = (path: string) => parseAbsolutePath(path) as AbsolutePath;
+  /** The platform's answers for a target inside the tree: the file and every parent prefix resolve to themselves. */
+  const insideTree = (file: string) =>
+    new Map([file, "/work/project/data", "/work/project", "/work", "/"].map((prefix) => [prefix, prefix] as const));
+
+  it("allows a target the platform resolves inside the session directory", () => {
+    expect(
+      clientPathVerdict(root, target("/work/project/data/a.txt"), {
+        realpaths: insideTree("/work/project/data/a.txt"),
+        targetIsSymlink: false
+      })
+    ).toEqual({ _tag: "resolved", path: "/work/project/data/a.txt" });
+    // A link is judged where it points, whatever it is named.
+    expect(
+      clientPathVerdict(root, target("/work/project/escape.txt"), {
+        realpaths: new Map([["/work/project/escape.txt", "/work/secret.txt"]]),
+        targetIsSymlink: false
+      })
+    ).toEqual({ _tag: "refused", reason: "outside-root" });
+  });
+
+  it("refuses a link whose target does not exist: where it points cannot be checked", () => {
+    expect(
+      clientPathVerdict(root, target("/work/project/dangling.txt"), {
+        realpaths: insideTree("/work/project/data"),
+        targetIsSymlink: true
+      })
+    ).toEqual({ _tag: "refused", reason: "dangling-link" });
+  });
+
+  it("judges a target that does not exist yet by its nearest existing parent", () => {
+    expect(
+      clientPathVerdict(root, target("/work/project/data/new.txt"), {
+        realpaths: insideTree("/work/project/data"),
+        targetIsSymlink: false
+      })
+    ).toEqual({ _tag: "resolved", path: "/work/project/data/new.txt" });
+    // A `..` that crosses a directory the platform cannot resolve goes where no check can follow.
+    expect(
+      clientPathVerdict(root, target("/work/project/data/missing/../../secret.txt"), {
+        realpaths: insideTree("/work/project/data"),
+        targetIsSymlink: false
+      })
+    ).toEqual({ _tag: "refused", reason: "unresolved-directory" });
+  });
+
+  it("refuses what no existing parent places inside the session directory", () => {
+    expect(
+      clientPathVerdict(root, target("/work/other/new.txt"), {
+        realpaths: new Map(
+          ["/work/other/new.txt", "/work/other", "/work", "/"].map((prefix) => [prefix, prefix] as const)
+        ),
+        targetIsSymlink: false
+      })
+    ).toEqual({ _tag: "refused", reason: "outside-root" });
   });
 });

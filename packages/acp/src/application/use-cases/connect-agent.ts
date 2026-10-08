@@ -13,6 +13,7 @@ import { type AcpProfiles, builtinAcpProfiles } from "../../domain/adapters/inde
 import {
   type AcpProfile,
   AcpSession,
+  bindingFor,
   firstPromptBlocks,
   type McpServerConfig,
   permissionOutcome,
@@ -426,8 +427,9 @@ function loadSession(
     if ("sessionId" in target) {
       sessionId = target.sessionId;
     } else {
-      const binding = yield* store?.get(target.sessionKey) ?? Effect.succeed(undefined);
-      if (binding === undefined || binding.agent !== conn.agent) {
+      const stored = yield* store?.get(target.sessionKey) ?? Effect.succeed(undefined);
+      const binding = bindingFor(conn.agent, stored);
+      if (binding === undefined) {
         return yield* Effect.fail<BindingNotFound>({
           _tag: "BindingNotFound",
           agent: conn.agent,
