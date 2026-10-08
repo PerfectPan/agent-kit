@@ -22,14 +22,15 @@ export function memoryLeaseRepository(): Layer.Layer<LeaseRepository> {
     return {
       load: (key) => Effect.sync(() => records.get(key)),
       save: (key, next, expectedRevision) =>
+        // One synchronous step: the runLoop can yield between primitives, so a compare in the suspend callback and
+        // the write in a following Effect.sync would let another fiber's same-revision save slip in between.
         Effect.suspend(() => {
           const stored = records.get(key);
           if (stored?.revision !== expectedRevision) {
             return Effect.fail(revisionConflict(key, expectedRevision, stored?.revision));
           }
-          return Effect.sync(() => {
-            records.set(key, next);
-          });
+          records.set(key, next);
+          return Effect.void;
         }),
       fence: (key) =>
         Effect.acquireRelease(fenceOf(key).take(1), () => fenceOf(key).release(1), { interruptible: true }).pipe(

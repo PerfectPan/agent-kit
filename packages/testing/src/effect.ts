@@ -86,8 +86,7 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
     Effect.map(Effect.exit(effect), (exit) => (Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined));
 
   const isConflict = Predicate.isTagged("RevisionConflict");
-  const isTaggedError = (error: unknown): boolean =>
-    typeof error === "object" && error !== null && Predicate.hasProperty(error, "_tag");
+  const isTaggedError = Predicate.hasProperty("_tag");
 
   const cases: AggregateRepositoryCase[] = [];
 

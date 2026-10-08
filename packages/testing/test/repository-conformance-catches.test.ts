@@ -65,18 +65,26 @@ function makeStore(defect: Defect | undefined) {
           write();
           return Effect.void;
         }
-        if (
-          defect === "compares-too-loosely" &&
-          (expectedRevision === undefined || expectedRevision <= (storedRevision ?? -1))
-        ) {
-          write();
-          return Effect.void;
+        if (defect === "compares-too-loosely") {
+          // A pure `<=`: `undefined` still requires no record, so only the stale-revision step can catch it.
+          const matches =
+            expectedRevision === undefined
+              ? storedRevision === undefined
+              : storedRevision !== undefined && expectedRevision <= storedRevision;
+          if (matches) {
+            write();
+            return Effect.void;
+          }
         }
         if (storedRevision !== expectedRevision) {
+          // The write-then-conflict repository performs the lost update and still reports the refusal.
+          if (defect === "write-then-conflict") {
+            write();
+          }
           return Effect.fail(conflict(expectedRevision, storedRevision));
         }
         write();
-        return defect === "write-then-conflict" ? Effect.fail(conflict(expectedRevision, storedRevision)) : Effect.void;
+        return Effect.void;
       })
   };
   const writeUnknownSchemaVersion = () =>
@@ -126,19 +134,22 @@ describe("aggregateRepositoryConformance", () => {
       "no comparison at all",
       "no-comparison",
       "a save over a stale revision fails with RevisionConflict and changes nothing",
-      "did not fail with RevisionConflict"
+      // The substring is unique to the stale-revision-1 step, so the case fails there and not at the
+      // revision-9 or `undefined` steps, whose messages only share "did not fail with RevisionConflict".
+      "stale revision 1"
     ],
     [
       "a comparison that is too loose",
       "compares-too-loosely",
       "a save over a stale revision fails with RevisionConflict and changes nothing",
-      "did not fail with RevisionConflict"
+      "stale revision 1"
     ],
     [
-      "a write that reports a conflict",
+      "a save that writes over a record it did not match",
       "write-then-conflict",
-      "the first save writes over no revision and reads back",
-      "conflict"
+      "a save over a stale revision fails with RevisionConflict and changes nothing",
+      // The lost update surfaces in the final equality check, which the conflict reports alone cannot satisfy.
+      "the stored snapshot changed to"
     ],
     [
       "a repository that serves an unknown schemaVersion",

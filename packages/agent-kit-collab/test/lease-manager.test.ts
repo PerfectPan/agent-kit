@@ -449,7 +449,17 @@ describe("take loop", () => {
     ).pipe(Effect.provide(layerWithConflicts(1)))
   );
 
-  it.effect("reports busy after every save of one acquisition has conflicted", () =>
+  it.effect("still succeeds on the eighth turn after seven conflicting saves", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const leases = yield* createLeaseManager(config);
+        expect((yield* leases.acquire(KEY)).token.generation).toBe(1);
+        expect(yield* leases.read(KEY)).toMatchObject({ generation: 1, revision: 1 });
+      })
+    ).pipe(Effect.provide(layerWithConflicts(7)))
+  );
+
+  it.effect("reports busy when all eight turns of one acquisition conflict", () =>
     Effect.gen(function* () {
       const leases = yield* createLeaseManager(config);
       expect(failureOf(yield* Effect.exit(Effect.scoped(leases.acquire(KEY))))).toMatchObject({
@@ -457,7 +467,7 @@ describe("take loop", () => {
         reason: "busy"
       });
       expect(yield* leases.read(KEY)).toBeUndefined();
-    }).pipe(Effect.provide(layerWithConflicts(Number.MAX_SAFE_INTEGER)))
+    }).pipe(Effect.provide(layerWithConflicts(8)))
   );
 });
 

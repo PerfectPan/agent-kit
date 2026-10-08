@@ -247,7 +247,7 @@ The assembly root lives in each consuming application, not in the kit.
 | Repository | Cases from `/testing/effect` | Store-specific tests beyond the suite |
 | --- | --- | --- |
 | LedgerStore | Revisions strictly increase; a save over a stale revision is refused; an unknown `schemaVersion` is refused and nothing is cleared; the reopen case | With the LedgerLock: two processes modifying at once, only one enters the critical section; after the holder is killed, the next holder probes pending operations before continuing |
-| Lease repository | The generic cases, the reopen case and the unknown-schema case (memory, file, SQLite; the map has no schema version) | The generation never decreases, including after release and re-creation; ABA is detected; two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
+| Lease repository | The generic cases (memory, file, SQLite), the reopen and unknown-schema cases (file and SQLite only) | The generation never decreases, including after release and re-creation; ABA is detected; two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
 | SessionBindingStore (a key-value store, not an aggregate) | — | Read, write, delete; the conflict semantics of two writes for one `sessionKey`; bindings survive reopening |
 
 - A rule that a repository cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.
