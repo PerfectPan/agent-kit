@@ -1,7 +1,8 @@
 /**
  * Why a step cannot proceed on its own. `unmanaged-exists`: something not in the ledger is at the target.
- * `user-modified`: the target changed since harness wrote it. `other-owner`: another owner holds the target with
- * different content. `dotfiles-managed`: a ForeignOwner such as chezmoi manages the path and would undo the write.
+ * `user-modified`: the target changed since harness wrote it. `other-owner`: another owner holds different content,
+ * or a retained foreign hook still serves another agent and cannot safely be replaced or reused.
+ * `dotfiles-managed`: a ForeignOwner such as chezmoi manages the path and would undo the write.
  * `symlinked-target`: the path is a symlink, which an atomic write would replace with a regular file.
  */
 export type Conflict = "unmanaged-exists" | "user-modified" | "other-owner" | "dotfiles-managed" | "symlinked-target";

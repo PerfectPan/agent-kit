@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-harness",
   "version": "0.0.0",
   "private": true,
-  "description": "Hook dialects and lifecycle events for each coding agent. Bundled into @rivus/agent-kit.",
+  "description": "Hook dialects, lifecycle events and harness injection for each coding agent. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -13,21 +13,38 @@
   },
   "scripts": {
     "build": "",
-    "lint": "oxlint",
-    "typecheck": "tsc -p tsconfig.json",
+    "lint": "oxlint && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vitest run",
     "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
   },
   "dependencies": {
-    "@rivus/agent-kit-catalog": "workspace:*"
+    "@decimalturn/toml-patch": "^3.3.0",
+    "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-platform": "workspace:*",
+    "jsonc-parser": "^3.3.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@effect/tsgo": "0.49.0",
+    "@effect/vitest": "4.0.1",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@rivus/agent-kit-platform-node": "workspace:*",
+    "@types/node": "24.19.1",
+    "effect": "4.0.1",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
     "typescript": "7.0.2",
     "vitest": "5.0.3"
+  },
+  "peerDependencies": {
+    "effect": "4.0.1"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    }
   }
 }

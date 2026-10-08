@@ -32,6 +32,18 @@ export interface LocatorState {
   /** The observed content is what an older version of the owner installed without a ledger. */
   readonly legacy: boolean;
   readonly choice?: ConflictChoice;
+  /**
+   * The ForeignOwner that manages the locator's path, whether or not anything is there yet (an entry's path is its
+   * file); `observed.managedBy` counts too.
+   */
+  readonly managedBy?: string;
+  /**
+   * The symlink target of the locator's path, whether or not the Artifact is there yet (an entry's path is its file);
+   * `observed.symlinkTarget` counts too.
+   */
+  readonly symlinkTarget?: string;
+  /** The plan installs Artifacts of the owner, which what an older version left would run next to. */
+  readonly replacing?: boolean;
 }
 
 const preconditionOf = (observed: ObservedArtifact | undefined): Precondition =>
@@ -65,20 +77,21 @@ export function conflictChoices(step: PlanStep, entry: LedgerEntry | undefined):
 /**
  * Keeps harness from writing or deleting at a path a ForeignOwner manages, or through a symlink at the Artifact. A
  * write there, and any other conflict there (every way to resolve it writes), is a conflict no choice resolves. A
- * removal there never blocks, so uninstall always converges: an owned Artifact is kept and its record dropped, a
- * legacy one is left, both with a note. Taking unrecorded content behind a symlink as the owner's needs an explicit
- * `adopt`. Steps that leave the disk alone otherwise pass.
+ * removal of an owned Artifact there never blocks, so uninstall always converges: it is kept and its record dropped,
+ * with a note. Any blocked removal conflicts when the plan installs a replacement, since the retained Artifact may
+ * run next to it. A legacy Artifact there is left with a note when uninstalling. Taking unrecorded content
+ * behind a symlink as the owner's needs an explicit `adopt`. Steps that leave the disk alone otherwise pass.
  */
 function guardDisk(
   step: PlanStep,
-  observed: ObservedArtifact | undefined,
-  entry: LedgerEntry | undefined,
-  choice: ConflictChoice | undefined
+  state: Pick<LocatorState, "observed" | "entry" | "choice" | "managedBy" | "symlinkTarget" | "replacing">
 ): PlanStep {
+  const { observed, entry, choice } = state;
+  const foreign = state;
   const note: StepNote | undefined =
-    observed?.managedBy !== undefined
+    (foreign.managedBy ?? observed?.managedBy) !== undefined
       ? "dotfiles-managed"
-      : observed?.symlinkTarget !== undefined && step.locator.kind !== "symlink"
+      : (foreign.symlinkTarget ?? observed?.symlinkTarget) !== undefined && step.locator.kind !== "symlink"
         ? "symlinked-target"
         : undefined;
   if (note === undefined) {
@@ -89,7 +102,13 @@ function guardDisk(
     if (!touchesDisk(step)) {
       return step;
     }
-    return step.legacy === true ? { ...plain, action: "noop", note } : { ...plain, removal: "keep", note };
+    if (state.replacing === true) {
+      return { ...plain, action: "conflict", conflict: note };
+    }
+    if (step.legacy === true) {
+      return { ...plain, action: "noop", note };
+    }
+    return { ...plain, removal: "keep", note };
   }
   if (step.action === "conflict" || touchesDisk(step)) {
     return { ...plain, action: "conflict", conflict: note };
@@ -188,6 +207,9 @@ function removalStep(state: LocatorState): PlanStep | undefined {
   const status = threeWayVerify({ ledger: entry.contentHash, actual: observed?.hash });
   const precondition = preconditionOf(observed);
   if (status === "user-modified") {
+    if (state.replacing === true && entry.locator.memberIn === "hook-group" && choice !== "force") {
+      return { ...base, precondition, action: "conflict", drift: status, conflict: status };
+    }
     // The user's change stays on disk as theirs and the owner lets go of it; only an explicit force removes it.
     return choice === "force"
       ? { ...base, precondition, drift: status, conflict: status, choice }
@@ -205,5 +227,5 @@ function removalStep(state: LocatorState): PlanStep | undefined {
  */
 export function planStep(state: LocatorState): PlanStep | undefined {
   const step = state.desired === undefined ? removalStep(state) : installStep(state, state.desired);
-  return step === undefined ? undefined : guardDisk(step, state.observed, state.entry, state.choice);
+  return step === undefined ? undefined : guardDisk(step, state);
 }

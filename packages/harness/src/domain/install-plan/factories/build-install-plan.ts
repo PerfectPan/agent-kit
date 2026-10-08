@@ -11,6 +11,7 @@ import type { PlanConflict } from "../errors/plan-conflict.js";
 import type { PlanStale } from "../errors/plan-stale.js";
 import { type DesiredState, planStep } from "../policies/conflict-detection.js";
 import { orderSteps } from "../policies/step-ordering.js";
+import { protectedLegacy, protectedReplacement } from "../policies/legacy-ownership.js";
 import { type LocatorKey, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ConflictChoice } from "../value-objects/conflict.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
@@ -32,6 +33,16 @@ export interface PlanRequest {
   readonly desired: readonly DesiredArtifact[];
   /** Explicit choices for conflicting locators. */
   readonly choices?: Readonly<Record<LocatorKey, ConflictChoice>>;
+  /**
+   * Paths a ForeignOwner such as chezmoi manages, with its name, whether or not anything is at them yet: an entry
+   * that is not in its file yet still must not be written into a managed file.
+   */
+  readonly managedPaths?: Readonly<Record<string, string>>;
+  /**
+   * Paths that are symlinks, with their targets, whether or not the Artifact is in them yet: an entry must not be
+   * written into a linked file, which an atomic write would replace with a regular one.
+   */
+  readonly linkedPaths?: Readonly<Record<string, string>>;
 }
 
 /** Whether the step puts new content at its target, which is what makes an agent ask for trust again. */
@@ -74,8 +85,53 @@ export function buildInstallPlan(
   const markers = bundle.legacyMarkers ?? [];
   const found = new Map(observed.map((artifact) => [locatorKey(artifact.locator), artifact]));
   const entries = new Map(ledger.entries().map((entry) => [locatorKey(entry.locator), entry]));
-  const isLegacy = (key: LocatorKey): boolean =>
-    !entries.has(key) && isLegacyArtifact(markers, found.get(key)?.content);
+  // What the user kept on an earlier removal is theirs, even when it still carries a legacy marker.
+  const isLegacy = (key: LocatorKey): boolean => {
+    const seen = found.get(key);
+    return (
+      !entries.has(key) &&
+      seen !== undefined &&
+      !protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
+      isLegacyArtifact(markers, seen.content)
+    );
+  };
+  const preservedHooks = observed.filter(
+    (seen) =>
+      request.desired.length > 0 &&
+      seen.locator.memberIn === "hook-group" &&
+      !entries.has(locatorKey(seen.locator)) &&
+      protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
+      protectedReplacement(seen, bundle, target.agents, ledger, observed)
+  );
+  if (preservedHooks.length > 0) {
+    return err({
+      _tag: "PlanConflict",
+      planId: request.planId,
+      conflicts: preservedHooks.map((seen) => ({
+        step: {
+          locator: seen.locator,
+          action: "conflict",
+          conflict: "user-modified",
+          agents: [],
+          precondition: { hash: seen.hash },
+          capturePreImage: false
+        },
+        choices: []
+      }))
+    });
+  }
+  const managed = request.managedPaths ?? {};
+  const linked = request.linkedPaths ?? {};
+  const at = (paths: Readonly<Record<string, string>>, path: string | undefined): string | undefined =>
+    path !== undefined && Object.hasOwn(paths, path) ? paths[path] : undefined;
+  const foreignOf = (path: string | undefined) => {
+    const managedBy = at(managed, path);
+    const symlinkTarget = at(linked, path);
+    return {
+      ...(managedBy === undefined ? {} : { managedBy }),
+      ...(symlinkTarget === undefined ? {} : { symlinkTarget })
+    };
+  };
   const keys = new Set([...desired.keys(), ...entries.keys(), ...[...found.keys()].filter(isLegacy)]);
   const steps = [...keys].flatMap((key) => {
     const step = planStep({
@@ -85,7 +141,11 @@ export function buildInstallPlan(
       entry: entries.get(key),
       observed: found.get(key),
       legacy: isLegacy(key),
-      choice: request.choices?.[key]
+      choice: request.choices?.[key],
+      replacing: request.desired.length > 0,
+      ...foreignOf(
+        desired.get(key)?.state.locator.path ?? entries.get(key)?.locator.path ?? found.get(key)?.locator.path
+      )
     });
     return step === undefined ? [] : [step];
   });
@@ -101,6 +161,6 @@ export function buildInstallPlan(
         writesContent(step) ? (desired.get(locatorKey(step.locator))?.trust ?? []) : []
       )
     },
-    { ledger, observed, legacyMarkers: markers }
+    { ledger, observed, legacyMarkers: markers, managedPaths: managed, linkedPaths: linked }
   );
 }

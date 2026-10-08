@@ -94,8 +94,13 @@ export const boundaries: BoundaryRules = {
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
-    // The hook path (`src/events.ts`) must stay free of npm packages; check-dist enforces it on the built entry.
-    [HARNESS]: { dependsOn: [CATALOG, PLATFORM], external: [] },
+    // The hook path (`src/events.ts`) must stay free of npm packages; check-dist enforces it on the built entry. The
+    // configuration editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
+    [HARNESS]: {
+      dependsOn: [CATALOG, PLATFORM],
+      external: ["zod/mini", "jsonc-parser", "@decimalturn/toml-patch"],
+      testsOnly: [PLATFORM_NODE]
+    },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports.
     [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: [] },

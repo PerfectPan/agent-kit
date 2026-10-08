@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact`, `/acp` and `@rivus/agent-kit-collab`'s `/lease`, `/process-lock` and `/lanes` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/harness`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact`, `/acp` and `@rivus/agent-kit-collab`'s `/lease`, `/process-lock` and `/lanes` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -24,13 +24,13 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
-Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in; `/acp` (P6), which drives Claude Code, Codex, Gemini CLI, Grok and opencode over the Agent Client Protocol.
+Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/harness` (P3b), which installs hooks and skills into the same seven agents and removes them again; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in; `/acp` (P6), which drives Claude Code, Codex, Gemini CLI, Grok and opencode over the Agent Client Protocol.
 
 Included in P5: `/redact` in `@rivus/agent-kit`, and the second published package `@rivus/agent-kit-collab` with `/lease` and `/process-lock`, released in lockstep with `@rivus/agent-kit` (one version).
 
 Included in P6: `/acp` and collab's `/lanes`.
 
-Included as planned behavior: `/transcript/usage` (P2) and `/harness` (P3). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included as planned behavior: `/transcript/usage` (P2). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -43,8 +43,8 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
-- Only Effect entries (`/platform/effect`, `/node/effect`, `/acp`, collab's `/lease` and `/lanes`, and the planned `/harness`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
-- `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost`, `/harness/events` and `/acp` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
+- Only Effect entries (`/platform/effect`, `/node/effect`, `/acp`, collab's `/lease` and `/lanes`, and `/harness`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
+- `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost`, `/harness`, `/harness/events` and `/acp` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -58,7 +58,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 ### `/platform`
 
 - Exports the `Platform` port type, `ProcessIdentity` and the other port types, and the byte-stream line splitter. `@rivus/agent-kit-collab` takes these types from here.
-- `Platform` provides `env`, `home`, `os`, `fs` (`stat`, `realpath`, `list`, `read`, `writeAtomic`, `createExclusive`, `rename`, `remove`), `process` (`run`, `spawn`, `self`, `identify`), `clock` (`now`, `monotonic`) and an optional `sqlite`, with the shapes in plan 3.2.
+- `Platform` provides `env`, `home`, `os`, `fs` (`stat`, `realpath`, `list`, `read`, `writeAtomic`, `createExclusive`, `mkdir`, `rename`, `remove`), `process` (`run`, `spawn`, `self`, `identify`), `clock` (`now`, `monotonic`) and an optional `sqlite`, with the shapes in plan 3.2.
 - `fs.stat` does not follow symlinks unless `followSymlinks: true` is passed, and returns `undefined` for a missing path. `fs.realpath` returns `undefined` when the target does not exist. `fs.read` returns `AsyncIterable<Uint8Array>`, optionally limited to a byte range.
 - The line splitter turns `AsyncIterable<Uint8Array>` into lines, each with its byte offset, byte length and 1-based line number. It handles CRLF line endings, a final line without a newline, and multi-byte UTF-8 characters split across chunks.
 
@@ -120,6 +120,34 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - `reduceLifecycle(state, event, { ttlMs, now })` returns the next `LifecycleState`, whose `status` is `idle`, `working`, `blocked` or `unknown`. A turn start moves to `working`, activity to `working`, a blocker to `blocked`, any end to `idle`. A session start only moves `unknown` or `idle` to `idle`: it can arrive after the first prompt, never ends a running turn, and its own turn id (Cursor sends one) is not a turn. An event naming a turn that already ended or was superseded is dropped; an unseen turn id is a new turn. Without turn ids, only a turn start leaves `idle`. Subagent events keep a busy session alive without changing its status, except that a subagent's permission request makes a session that is not `idle` `blocked` (the dialog is shown to the user). The state records who raised each open block (`blockedBy`, each source once: the main agent, or a subagent by id). Main-agent activity closes only the main agent's own block; a subagent's block closes on a later event of the same subagent (its stop included) or when the main turn starts or finishes; a sibling subagent's activity closes none. A block from a subagent without an id cannot be matched and is left to the TTL: while it is open, subagent events do not count as signs of life. `lifecycleStatus(state, { ttlMs, now })` reads `working` and `blocked` as `unknown` once no event arrived within the TTL.
 - `heartbeatSignal(before, after, event)` takes the session's state before and after `reduceLifecycle` folded the event. It returns `start` for a turn start and for any main-agent event that makes a session busy that was not (a turn whose start hook was lost), `heartbeat` for activity and blockers while the session stays busy, `finish` for any end, and nothing for a session start, an unknown event or a late event of an ended or superseded turn. A subagent event, whose payload can carry the parent's session id, never starts or finishes the session; it only beats while the session is busy.
 - Each `HookDialect` carries `specificationVersion: 'harness-v1'` and records the agent's hook facts: how hooks are delivered (`command` or an in-process `plugin` that forwards each event), the timeout unit (`seconds` for Claude Code, Codex, Cursor and Grok, `milliseconds` for Gemini CLI, none for plugins), the payload field paths, each native event's LifecycleEvent mapping and aliases, which events are permission gates, how exit codes and stdout are read (including where plain text becomes model context, as on Codex's `SessionStart`, `UserPromptSubmit` and `SubagentStart`) and what an observing hook prints (`passThrough`), the trust model, and the other agents' hooks it runs (Grok runs Claude Code's and Cursor's; Cursor runs Claude Code's). A fact the agent's documentation does not confirm carries an `unverified` note.
+
+### `/harness`
+
+An Effect entry (it needs `effect` 4.0.1, like `/platform/effect`). It installs what an application wants into the agents' harnesses and removes it again, keeping a ledger of what it wrote.
+
+- Exports the use cases `planInstall(bundle, { agents, choices?, strategies?, compat?, adapters?, dialects? })`, `applyInstall(plan)`, `discardPlan(plan)`, `verify(owner, { bundle?, agents?, strategies? })`, `uninstall(owner, { agents?, legacyMarkers? })`, `inventory()` and `doctor({ owner?, agents? })`; the ports `ArtifactFiles`, `LedgerStore`, `LedgerLock`, `AgentCli` and `ExternalOwner` (class-style `Context.Service`s keyed `@rivus/agent-kit/harness/<Port>/v1`); the Layers `HarnessLive`, `PlatformArtifactFilesLive`, `FileLedgerStoreLive`, `SqliteLedgerLockLive`, `ProcessAgentCliLive` and `ChezmoiExternalOwnerLive`, each requiring `PlatformService`; `builtinInstallAdapters`, `locatorKey`, `ownerSlug` and `CONFLICT_CHOICES`; and the data and error types they exchange. The use cases read `PlatformService` too, so a host provides the platform with `Layer.provideMerge`, for example `HarnessLive.pipe(Layer.provideMerge(NodePlatformLive))`.
+- A `Bundle` names its owner (an npm-style name), a version, a digest, its Artifacts (`hooks`, `skill`; `mcp-server` and `instructions` have no built-in strategy yet and fail with `StrategyUnavailable`) and optional legacy markers. A hook command is one stable string for every agent, with `{agent}` standing for the id of the agent each registration is for; it carries no version, because agents that review hooks by content hash ask again whenever it changes.
+- `planInstall` writes nothing. It renders the bundle with each agent's most preferred available strategy, places hooks so that no event fires twice in an agent that also runs another agent's hooks (Grok and Cursor run Claude Code's settings file), reads what is on disk and in the ledger, and builds the plan. It returns an `InstallPlan`: a read-only view with `steps`, `changes` (each file's text before and after), `commands` (the agent command lines it will run), `expectedTrustPrompts`, `notes` and `droppedHooks`; it is not constructible, and `applyInstall` accepts only plans `planInstall` returned. A conflict without an allowed `force` / `adopt` / `backup` choice fails the plan as a whole with `PlanConflict`, listing the choices that would resolve each step. When an earlier change left operations pending, `planInstall` takes the LedgerLock to probe and settle them first.
+- Built-in strategies (user scope; a project scope throws `capability-unsupported`):
+
+  | Agent | Hooks (fallback) | Skills |
+  | --- | --- | --- |
+  | Claude Code | skills-dir plugin `~/.claude/skills/<owner>/` (`~/.claude/settings.json` hook groups) | `~/.claude/skills/<name>/` |
+  | Codex | a plugin in a marketplace of the owner's own under `~/.codex/plugins/<owner>/`, added with `codex plugin marketplace add` and `codex plugin add` (`~/.codex/config.toml` hook groups when `codex` is not on `PATH`; on Windows only `codex.exe` counts, since no shell runs a `.cmd` shim) | `~/.agents/skills/<name>/` |
+  | Gemini CLI | extension `~/.gemini/extensions/<owner>/` (`~/.gemini/settings.json` hook groups), timeouts in milliseconds | `~/.agents/skills/<name>/` |
+  | Grok | `~/.grok/hooks/<owner>.json` | `~/.agents/skills/<name>/` |
+  | Cursor | local plugin `~/.cursor/plugins/local/<owner>/` | `~/.agents/skills/<name>/` |
+  | opencode | bridge plugin `~/.config/opencode/plugins/<owner>.js` | `~/.agents/skills/<name>/` |
+  | Pi | bridge extension `~/.pi/agent/extensions/<owner>.ts` | `~/.agents/skills/<name>/` |
+
+  Codex runs the copy of a plugin that `codex plugin add` puts in its cache, so the plugin's registration reads as that copy: hooks that changed are added again, and verify compares what Codex runs. Without `codex` on `PATH`, removing the plugin deletes Codex's records in `config.toml` and its cached copy directly. The opencode and Pi bridges run the hook command through the shell with the payload their HookDialect reads on stdin. Agent homes follow `/catalog` (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `GROK_HOME`, `PI_CODING_AGENT_DIR`, `XDG_CONFIG_HOME` for opencode).
+- `applyInstall` takes the scope's LedgerLock, probes what an earlier holder left pending, and refuses the plan with `PlanStale` when the ledger moved since it was built or the plan was already applied or discarded, and with `TargetChanged` when any target no longer holds what the plan saw; nothing is written then. Otherwise it keeps the pre-images the plan asks for, records every step as pending, and runs the steps in order, each re-checking its precondition, writing and recording its outcome in one uninterruptible region. Interruption lands between steps; the steps that did not run stay pending for the next holder to probe. A step that fails (`ApplyFailed`) or finds its target changed ends the apply; it is never retried.
+- Writes keep the rest of a shared file: JSON and JSONC entries are edited with jsonc-parser (comments, key order and untouched lines stay; an inserted value takes the document's indentation); TOML entries are added with `@decimalturn/toml-patch` and removed by deleting their exact text, so the user's other array tables (`[[hooks.Stop]]` groups and their `[[hooks.Stop.hooks]]`) stay byte for byte. An edited TOML text is parsed again and must hold exactly the expected data, or the edit is refused with `UnexpectedShape`. A removal leaves no empty container behind. Whole files are written atomically.
+- Paths are resolved by the ArtifactLocator convention (realpath of the parent, last segment not followed); the paths `chezmoi managed` lists are resolved the same way before they are compared. Nothing is written through a symlink at an Artifact or its file, or at a path chezmoi manages; such a step is a conflict no choice resolves, and an uninstall keeps the file and notes it. An older version's Artifact in such a file blocks a plan that installs anything (it would fire next to its replacement), and an uninstall leaves it with a note.
+- `uninstall(owner)` plans and applies the removal of what the ledger records for the owner under one holding of the LedgerLock: files harness created are deleted, pre-images restored, entries other owners or agents use released, and Artifacts the user changed kept and reported in `kept`. With `legacyMarkers` it also removes what older versions of the owner left without a ledger, searching every agent with an install adapter unless `agents` is given. An Artifact kept as the user's is recorded in the ledger, so that no later plan takes it for an older version's, even when it carries a marker. Hook protection covers the file and event when a command changes or disappears; repeated cleanup by any owner preserves edited commands. A replacement by the same owner, or matching the old command or a legacy marker, conflicts while untracked hooks remain in a protected event; another owner's unrelated hooks can coexist.
+- `verify(owner)` compares each owned Artifact on disk with the ledger and, given the bundle, with what it wants (three-way, see the ledger's `threeWayVerify`); it takes the LedgerLock only to record a ledger that is behind the disk. `inventory()` reads the ledger without the lock. `doctor({ markers? })` reports the ledger's state, pending operations, whether the LedgerLock is free (and what its holder recorded), drift, broken symlinks, and, across every file an agent loads command hooks from (settings files, each plugin's or extension's hooks file, and the other agents' files it runs), hooks that never run (unknown events), use the wrong timeout unit, point at a missing program, or fire twice for one event: the same command twice, or two hooks matching one application's `markers`; it changes nothing the agents read.
+- Every ledger modification happens while the LedgerLock is held. `SqliteLedgerLockLive` holds `<state>/<scope>.lock.db` exclusively; the kernel releases it when the holder exits, and the next process takes it at once. Without `platform.sqlite` and without an injected LedgerLock, ledger modification fails with `LedgerLockUnavailable`. A ledger with an unknown `schemaVersion` is refused and never written over.
+- Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
 
 ### `/discovery`
 
@@ -197,14 +225,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - `noCacheInputTokens`, `toAiSdkUsage` and `toOtelAttributes` convert usage for pricing, AI SDK and OTel (`cacheWriteKey` defaults to `cache_creation`).
 - Per-agent mapping follows plan 3.11: Claude Code input is input + cache read + cache creation; Codex prefers `last_token_usage` and otherwise takes differences of cumulative values, skipping the replay at the start of a forked session; Grok's turn aggregate is a `turn` record.
 
-#### `/harness` (P3, Effect)
-
-- `planInstall` returns an InstallPlan handle whose `changes` list each file's diff, the agent commands to run and the expected trust prompts. `applyInstall` re-checks every target before writing and refuses when a target changed after the plan. `verify`, `uninstall` and `inventory` work from the ledger. Layers such as `HarnessLive` provide the ports.
-- Injection prefers, in order: launch arguments or ACP session parameters, the agent's native plugin mechanism, a scanned skills directory, and only then an append-only, ledger-recorded, format-preserving edit of shared configuration.
-- A plan is rejected as a whole when it has a conflict without an explicit force / adopt / backup choice, and when the ledger changed since the plan was built.
-- `uninstall` removes only what the ledger records for that owner, and only when the file still matches what was installed; a user-modified file is kept and reported.
-- Every ledger modification happens while one LedgerLock is held. Without `platform.sqlite` and without an injected LedgerLock, ledger modification is refused with `ledger-lock-unavailable`. A ledger with an unknown `schemaVersion` is refused or kept whole, never cleared.
-- Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
 
 ## Domain Invariants
 
@@ -410,29 +430,29 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `reduceLifecycle` folds them
 - Then the status stays `idle`
 
-### S32 (planned, P3): A stale or conflicting plan is refused
+### S32: A stale or conflicting plan is refused
 
 - Given a plan built at ledger revision 4, or a plan with an unresolved conflict
 - When `applyInstall` runs after the ledger moved to revision 5, or without a force / adopt / backup choice
 - Then nothing is written and the plan is refused
 
-### S33 (planned, P3): Uninstall keeps user-modified files
+### S33: Uninstall keeps user-modified files
 
 - Given an installed artifact that the user edited afterwards
 - When `uninstall(owner)` runs
-- Then the artifact is kept and reported as user-modified
+- Then the artifact is kept and reported as user-modified; when a hook command changed its locator member, repeated uninstall with legacy markers preserves the edited command, and a replacement conflicts instead of running beside it
 
-### S34 (planned, P3): Only one writer modifies the ledger
+### S34: Only one writer modifies the ledger
 
 - Given two processes applying at the same time
 - When one holds the LedgerLock and is then killed
 - Then only one enters the critical section at a time, and the other acquires the lock immediately after the kill and probes pending operations before continuing
 
-### S35 (planned, P3): Ledger changes need a lock implementation
+### S35: Ledger changes need a lock implementation
 
 - Given a platform without `sqlite` and no injected LedgerLock
 - When `applyInstall` runs
-- Then it fails with `ledger-lock-unavailable` and changes nothing
+- Then it fails with `LedgerLockUnavailable` and changes nothing
 
 ### S36: Detection reports a status per agent
 
@@ -734,15 +754,87 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When `translateGrokRecords` reads the log and `foldStreamParts` folds the live parts
 - Then both give the same `tool_call` and `tool_result` payloads
 
+### S90: Claude Code gets hooks through a skills-dir plugin, its settings untouched
+
+- Given a bundle with hooks for Claude Code and a `~/.claude/settings.json` with comments and the user's own hook
+- When `planInstall` and `applyInstall` run, then `uninstall`
+- Then the hooks are in `~/.claude/skills/<owner>/hooks/hooks.json` with timeouts in seconds, the settings file is unchanged, and after the uninstall every file is as it was and the ledger has no entries
+
+### S91: Hooks an older version installed are replaced, not installed again
+
+- Given hooks of an older version of the owner in `~/.claude/settings.json` (found by its legacy markers) next to the user's own hook
+- When the new version is planned and applied, with the plugin or with the settings file as the strategy
+- Then each event runs exactly one hook of the owner and the user's hook stays; selecting Grok or Cursor alone also scans the foreign hook files its dialect says it executes, unless explicitly disabled in `compat`, and a blocked legacy cleanup rejects the replacement
+
+### S92: Downgrading after the new version runs each event once (plan 6.5)
+
+- Given the new version installed over an older version's hooks
+- When the new version is uninstalled with the legacy markers and the older version's setup runs again
+- Then the plugin is gone and each event runs exactly one hook of the owner
+
+### S93: Comments and formatting survive in JSONC and TOML
+
+- Given a JSONC settings file and a Codex `config.toml`, both with comments
+- When hooks are added to them and removed again
+- Then every comment and every untouched line stays, and the removal restores the multi-line documents byte for byte
+
+### S94: An event fires once in agents that run other agents' hooks
+
+- Given hooks for Claude Code (in its settings file), Grok and Cursor
+- When the plan is built
+- Then Grok and Cursor get no registration of their own for the events they run from Claude Code's file, the plan lists them in `droppedHooks`, the ledger records the shared registrations for all three agents, and uninstalling Grok alone releases its use of them. Installing Grok alone conflicts when a tracked foreign registration must remain for another agent and cannot be safely reused
+
+### S95: Dotfiles and symlinks are not written through
+
+- Given a settings file that `chezmoi managed` lists, a symlink at an Artifact or its parent, or a symlink inside a directory Artifact
+- When a plan would add an entry to it
+- Then the plan fails with `PlanConflict` (`dotfiles-managed` or `symlinked-target`) whose choices are empty, also when chezmoi names the file through a symlinked home and when the file holds an older version's hook that the plan would replace; an agent home that is a symlinked directory is resolved and written in place. Apply refuses links introduced after planning, including after pending was persisted, before the step writes. CLI registrations check declared configuration entries, copied directories, installed copies and their parents even before the registration exists, and again before each register or unregister command. The CLI's declared configuration path must resolve to the exact planned locator; changing its specific agent home's destination after planning prevents the call even when another allowed root still contains the old locator. Uninstall keeps linked directory content and unsafe registrations instead of deleting them or restoring a pre-image. A tracked shared-config hook whose removal is blocked also conflicts with a plugin replacement, so the old and new hooks cannot execute together
+
+### S96: Cancellation lands between steps
+
+- Given an apply interrupted while a step writes
+- When the interruption takes effect
+- Then the step finishes and is recorded, the steps after it stay pending, the LedgerLock is released, and the next plan probes them
+
+### S97: A failed step is not retried
+
+- Given a step whose write fails
+- When `applyInstall` runs
+- Then it fails with `ApplyFailed`, the step stays pending, the later steps are recorded as not started, nothing is written twice, and applying the plan again fails with `PlanStale`
+
+### S98: Verify records a ledger that is behind, under the lock
+
+- Given an installed Artifact whose file already holds what a newer bundle wants
+- When `verify(owner, { bundle })` runs
+- Then the Artifact reads as in sync, the ledger records the new hash in one revision, and Artifacts the user changed read as `user-modified`
+
+### S99: Codex hooks come as a plugin when `codex` is there
+
+- Given `codex` on `PATH`
+- When hooks are installed for Codex and uninstalled again
+- Then the plan runs `codex plugin marketplace add <dir>` and `codex plugin add <owner>@<owner>`, announces a `hook-review` trust prompt, and the uninstall runs `codex plugin remove` before `codex plugin marketplace remove`; a plan whose hooks changed removes and adds the plugin again, so Codex's cached copy holds the new hooks; without `codex`, the hooks go into `config.toml` hook groups, and an uninstall or a new plan removes Codex's records and cached copy itself, so no event fires twice; an explicitly disabled plugin verifies as `user-modified` even when its cached hooks match, and the ledger is not silently updated
+
+### S109: Bridges forward opencode and Pi events in the shape their dialects read
+
+- Given the bridge plugin and extension installed for a capture command
+- When opencode events, a tool hook and Pi events reach them
+- Then the command receives payloads that `readHookEvent` reads as the expected LifecycleEvents, with the session id and working directory
+
+### S110: Doctor finds an event that fires twice across hook files
+
+- Given an older version's hook in `~/.claude/settings.json` and the new version's skills-dir plugin, both for `Stop`
+- When `doctor({ markers })` runs with markers for both
+- Then it reports `duplicate-hook` for Claude Code and for Grok, which runs Claude Code's settings file too
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
-- Persisted data: 0.1.0 writes nothing and opens agent logs read-only. Planned harness state (the ledger and its lock files) lives under `$XDG_STATE_HOME`, outside dotfiles source directories. collab writes only where the caller points it: a process lock's database or lock file and its `.holder` file; a SQLite lease store's database (schema version in `user_version`) and its `<path>.<key>.fence` locks; a file lease store's `<key>.lease.json` (with `schemaVersion`) and lock files.
+- Persisted data: 0.1.0 writes nothing and opens agent logs read-only. `/harness` keeps its ledger (`ledger.json`, schema version 1), the pre-images it restores, and its lock files under `$XDG_STATE_HOME/agent-kit/harness` (`~/.local/state/agent-kit/harness` when unset), outside the agents' homes and dotfiles source directories. collab writes only where the caller points it: a process lock's database or lock file and its `.holder` file; a SQLite lease store's database (schema version in `user_version`) and its `<path>.<key>.fence` locks; a file lease store's `<key>.lease.json` (with `schemaVersion`) and lock files.
 - Configuration: agent home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) are read from the `env` passed to the kit, never from the global process environment directly.
 - Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Lock-based features support local directories only, not NFS; collab's locks and leases need darwin or linux.
-- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, `/cost` and `/redact`, which use no dependencies. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries. `@rivus/agent-kit-collab` names `@rivus/agent-kit` as a peer at the same version (`^<version>`).
+- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, `/cost` and `/redact`, which use no dependencies. `/harness` edits configuration with `jsonc-parser` and `@decimalturn/toml-patch`. `effect` is an optional peer pinned to exactly 4.0.1, needed only by consumers of Effect entries. `@rivus/agent-kit-collab` names `@rivus/agent-kit` as a peer at the same version (`^<version>`).
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. S40 and S100–S108 by the Lane domain tests (`packages/agent-kit-collab/src/lanes/domain/lane/aggregate/lane.test.ts`) and the lanes tests on Effect's test clock (`test/lanes.test.ts`), which also run three fibers of random wakes, cancels, completions, cleanups and clock moves, with turn timeouts and a `close` in the middle, and check after each step that the cap, the queue bound and one activation per key hold and that nothing calls `activate` after `close`; the consumer smoke test runs one lanes program through the installed tarballs. S39 and S80–S88 by the acp tests (`packages/acp/test`, against a fake ACP agent spawned through the Node platform, with the Effect test clock for deadlines) and S81 again by the consumer smoke test, which runs one turn through the installed tarball; S89 by the sessions protocol tests (`packages/sessions/src/protocols`). Planned scenarios S26–S28 and S32–S35 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S32–S35 and S90–S99, S109 and S110 by the harness tests (`packages/harness/test`, on the Node platform under a temporary home with an explicit environment: S34 with competing Node processes, S96 and S97 with wrapped ports) and the harness domain tests, and S90 again by the consumer smoke test, which installs and uninstalls a Claude Code plugin through the packed `/harness`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. S40 and S100–S108 by the Lane domain tests (`packages/agent-kit-collab/src/lanes/domain/lane/aggregate/lane.test.ts`) and the lanes tests on Effect's test clock (`test/lanes.test.ts`), which also run three fibers of random wakes, cancels, completions, cleanups and clock moves, with turn timeouts and a `close` in the middle, and check after each step that the cap, the queue bound and one activation per key hold and that nothing calls `activate` after `close`; the consumer smoke test runs one lanes program through the installed tarballs. S39 and S80–S88 by the acp tests (`packages/acp/test`, against a fake ACP agent spawned through the Node platform, with the Effect test clock for deadlines) and S81 again by the consumer smoke test, which runs one turn through the installed tarball; S89 by the sessions protocol tests (`packages/sessions/src/protocols`). Planned scenarios S26–S28 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell and on collab; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

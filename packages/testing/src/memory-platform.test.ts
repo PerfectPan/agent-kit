@@ -74,6 +74,15 @@ describe("createMemoryPlatform", () => {
     await expect(platform.fs.remove("/d/g")).resolves.toBeUndefined();
   });
 
+  it("creates directories with their parents and refuses a path that is a file", async () => {
+    const platform = createMemoryPlatform({ files: { "/d/f": "" } });
+    await platform.fs.mkdir("/a/b/c");
+    await platform.fs.mkdir("/a/b/c");
+    expect(await platform.fs.list("/a/b")).toEqual([{ name: "c", kind: "dir" }]);
+    await expect(platform.fs.mkdir("/d/f")).rejects.toMatchObject({ code: "EEXIST" });
+    await expect(platform.fs.mkdir("/d/f/g")).rejects.toMatchObject({ code: "ENOTDIR" });
+  });
+
   it("renames like POSIX: replaces a file or an empty directory, and refuses the rest", async () => {
     const platform = createMemoryPlatform({
       files: { "/a/x.txt": "x", "/a/y.txt": "y", "/src/in.txt": "in", "/full/kept.txt": "kept", "/empty/.keep": "" }

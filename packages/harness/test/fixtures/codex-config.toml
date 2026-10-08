@@ -1,0 +1,21 @@
+# Codex configuration kept by the user.
+model = "gpt-5.5" # the default model
+approval_policy = "on-request"
+
+[features]
+# Hooks are on by default; this flag is only here to be preserved.
+hooks = true
+
+[mcp_servers.docs]
+command = "docs-mcp" # keep me
+args = ["--stdio"]
+
+# A trailing comment that must survive.
+
+# The user's own hook, which must survive every install and uninstall.
+[[hooks.Stop]]
+matcher = ""
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/usr/local/bin/notify"

@@ -1,0 +1,28 @@
+{
+  // Hooks that an older version of the application registered without a ledger, next to one of the user's.
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --yes legacy-demo hook --source claude --event SessionStart >/dev/null 2>/dev/null || true",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "/u/me/bin/notify-done.sh" }] },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --yes legacy-demo hook --source claude --event Stop >/dev/null 2>/dev/null || true",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

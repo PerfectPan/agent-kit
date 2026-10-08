@@ -7,8 +7,9 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 export interface HookSpec {
   readonly type: "hooks";
   /**
-   * The command each hook runs. Agents that review hooks by content hash ask again whenever it changes, so it points
-   * at a stable shim and carries no version.
+   * The command each hook runs; `{agent}` in it stands for the id of the agent a registration is for, so that the
+   * hook process can name the declared agent to `readHookEvent`. Agents that review hooks by content hash ask again
+   * whenever it changes, so it points at a stable shim and carries no version.
    */
   readonly command: string;
   /** Native event names by agent, keys of that agent's `HookDialect.events`; an agent missing here gets no hooks. */

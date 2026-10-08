@@ -143,6 +143,14 @@ describe("hookRegistrations", () => {
     });
   });
 
+  it("puts the agent's id where the command says {agent}, so the hook process knows the declared agent", () => {
+    const command = { ...spec({ codex: ["Stop"] }, 5), command: "/u/me/bin/hook --agent {agent}" };
+    expect(hookRegistrations(command, builtinHookDialects.codex)).toEqual({
+      ok: true,
+      value: [{ event: "Stop", command: "/u/me/bin/hook --agent codex", timeout: 5 }]
+    });
+  });
+
   it("gives plugin-delivered agents no timeout and agents without events no registrations", () => {
     expect(hookRegistrations(spec({ opencode: ["session.idle"] }, 5), builtinHookDialects.opencode)).toEqual({
       ok: true,

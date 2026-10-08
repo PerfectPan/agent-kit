@@ -8,6 +8,7 @@ import { isWithin, locatorKey, locatorProblem, locatorsOverlap } from "../value-
 import type { InstallTarget } from "../value-objects/install-target.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
 import { type PlanStep, touchesDisk } from "../value-objects/plan-step.js";
+import { protectedLegacy } from "./legacy-ownership.js";
 
 /** What a plan's steps are checked against: the ledger it was built on and what the application observed. */
 export interface PlanEvidence {
@@ -15,6 +16,10 @@ export interface PlanEvidence {
   readonly observed: readonly ObservedArtifact[];
   /** The bundle's legacy markers, which a step marked `legacy` must match again. */
   readonly legacyMarkers: readonly string[];
+  /** Paths a ForeignOwner manages, by path, whether or not anything is at them yet. */
+  readonly managedPaths?: Readonly<Record<string, string>>;
+  /** Paths that are symlinks, with their targets, whether or not the Artifact is in them yet. */
+  readonly linkedPaths?: Readonly<Record<string, string>>;
 }
 
 const isRevision = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
@@ -50,7 +55,8 @@ function shapeProblem(step: PlanStep): string | undefined {
 
 /**
  * Why the owner may not take this step, judged from the ledger and from what was observed rather than from the
- * step's own flags: a step marked legacy needs observed content that matches the legacy markers; a removal needs an
+ * step's own flags: a step marked legacy needs observed content that matches the legacy markers at a locator the user
+ * did not keep (see `KeptArtifact`); a removal needs an
  * entry the owner holds, and a delete, restore or keep needs the owner to be its only owner and the plan to cover all
  * its agents (a release, the opposite); a step on another owner's entry is only a join of matching content or a
  * forced takeover; overwriting a file nobody recorded needs an explicit adopt or backup, recording one without a
@@ -69,6 +75,7 @@ function ownershipProblem(
     const matches =
       entry === undefined &&
       observed !== undefined &&
+      !protectedLegacy(step.locator, owner, evidence.ledger, evidence.observed) &&
       isLegacyArtifact(evidence.legacyMarkers, observed.content) &&
       "hash" in step.precondition &&
       step.precondition.hash === observed.hash;
@@ -123,7 +130,11 @@ function ownershipProblem(
  * Why a step does not fit what was observed: a precondition other than what is on disk, or a write or delete at a
  * path a ForeignOwner manages or through a symlink at the Artifact.
  */
-function observationProblem(step: PlanStep, observed: ObservedArtifact | undefined): InvalidPlan | undefined {
+function observationProblem(
+  step: PlanStep,
+  observed: ObservedArtifact | undefined,
+  outside: { readonly managedBy: string | undefined; readonly symlinkTarget: string | undefined }
+): InvalidPlan | undefined {
   const { locator, precondition } = step;
   const mismatch =
     "absent" in precondition ? observed !== undefined : "hash" in precondition && observed?.hash !== precondition.hash;
@@ -136,7 +147,8 @@ function observationProblem(step: PlanStep, observed: ObservedArtifact | undefin
     };
   }
   const foreign =
-    observed?.managedBy !== undefined || (observed?.symlinkTarget !== undefined && locator.kind !== "symlink");
+    (outside.managedBy ?? observed?.managedBy) !== undefined ||
+    ((outside.symlinkTarget ?? observed?.symlinkTarget) !== undefined && locator.kind !== "symlink");
   return foreign && step.action !== "conflict" && touchesDisk(step)
     ? {
         _tag: "InvalidPlan",
@@ -177,7 +189,12 @@ export function planProblem(
       return { _tag: "InvalidPlan", reason: "invalid-step", locator, detail: invalidStep };
     }
     const seen = observed.get(locatorKey(locator));
-    const unobserved = observationProblem(step, seen);
+    const at = (paths: Readonly<Record<string, string>> | undefined) =>
+      paths !== undefined && Object.hasOwn(paths, locator.path) ? paths[locator.path] : undefined;
+    const unobserved = observationProblem(step, seen, {
+      managedBy: at(evidence.managedPaths),
+      symlinkTarget: at(evidence.linkedPaths)
+    });
     if (unobserved !== undefined) {
       return unobserved;
     }

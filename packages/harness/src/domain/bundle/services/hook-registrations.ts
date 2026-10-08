@@ -92,6 +92,7 @@ export function hookRegistrations(
       : dialect.timeout?.unit === "milliseconds"
         ? spec.timeoutSeconds * 1000
         : spec.timeoutSeconds;
+  const command = spec.command.replaceAll("{agent}", dialect.agent);
   const registrations: HookRegistration[] = [];
   for (const event of events) {
     const eventSpec = Object.hasOwn(dialect.events, event) ? dialect.events[event] : undefined;
@@ -116,9 +117,7 @@ export function hookRegistrations(
         }
       }
     }
-    registrations.push(
-      timeout === undefined ? { event, command: spec.command } : { event, command: spec.command, timeout }
-    );
+    registrations.push(timeout === undefined ? { event, command } : { event, command, timeout });
   }
   return ok(registrations);
 }

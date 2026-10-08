@@ -185,13 +185,14 @@ Execution rules for locks, writes and retries. Wrapping an async function in `tr
 The assembly root lives in each consuming application, not in the kit.
 
 - Plain TS entries: create one platform with `createNodePlatform()` and pass it to the functions.
-- Effect entries: the application provides a Layer, such as `Layer.mergeAll(HarnessLive, AcpLive).pipe(Layer.provide(NodePlatformLive))`. A one-shot program (a setup command) runs it with `Effect.runPromiseExit`; a server process holds a `ManagedRuntime`; an Effect host composes the Layers directly.
+- Effect entries: the application provides a Layer, such as `Layer.mergeAll(HarnessLive, AcpLive).pipe(Layer.provideMerge(NodePlatformLive))`; `provideMerge` keeps `PlatformService` in the output, because use cases such as harness's read it as well as their Layers. A one-shot program (a setup command) runs it with `Effect.runPromiseExit`; a server process holds a `ManagedRuntime`; an Effect host composes the Layers directly.
 - The kit is responsible for its guarantees about locks, heartbeats, cancellation and cleanup. The application is responsible for starting programs and interpreting their results (exit codes, HTTP responses).
 
 ## Verify At The Owner
 
 - Test real obligations where they are owned: an aggregate's legal transitions and rejections; a use case's port call order and conflict mapping; a store's behavior through the storage conformance tests; each agent adapter through its context's conformance tests. Do not add identity tests for re-exports.
 - Conformance tests live in the testing package and are exported through `/testing`, so third-party adapters and stores run the same suite.
+- Tests that need the real platform (files, child processes, SQLite) run on platform-node: a package lists it under `testsOnly` in `boundaries.ts` and as a devDependency, and its source files still may not import it. They run under a temporary home with an explicit environment.
 - Storage conformance tests have two groups. Generic cases run against every implementation (memory, file, SQLite). Persistence and cross-process cases run only against persistent implementations, with their locks, as integration tests.
 
 | Store | Generic cases | Persistence and cross-process cases |

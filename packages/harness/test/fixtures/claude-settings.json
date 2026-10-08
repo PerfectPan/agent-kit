@@ -1,0 +1,12 @@
+{
+  // The user's own settings; harness must keep these comments.
+  "model": "opus",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "/u/me/bin/notify-done.sh" }]
+      }
+    ]
+  },
+  "permissions": { "allow": ["Bash(git status)"] } // trailing comma below is allowed in settings
+}

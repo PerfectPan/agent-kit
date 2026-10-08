@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { defineConfig } from "tsdown";
 
 const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
+  version: string;
   exports: Record<string, unknown>;
 };
 
@@ -19,6 +20,8 @@ export default defineConfig({
   platform: "neutral",
   // The internal packages are devDependencies, so they are bundled; dependencies, peers and node:* stay external.
   deps: { neverBundle: [/^node:/] },
+  // The harness ledger records the kit version that wrote each entry.
+  define: { __AGENT_KIT_VERSION__: JSON.stringify(manifest.version) },
   // TypeScript 7 has no stable compiler API, and the tsgo generator only emits files inside this package. Oxc emits
   // declarations for the internal packages' sources, which enable isolatedDeclarations so that Oxc output is exact.
   dts: { generator: "oxc" }
