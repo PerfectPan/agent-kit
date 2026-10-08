@@ -2,10 +2,10 @@ import { err, type Result } from "@rivus/agent-kit-catalog";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
-import type { Ledger } from "../../ledger/aggregate/ledger.js";
+import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
 import { unionAgents } from "../../ledger/policies/ownership.js";
-import { InstallPlan } from "../aggregate/install-plan.js";
+import { InstallPlan } from "../aggregates/install-plan.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
 import type { PlanStale } from "../errors/plan-stale.js";

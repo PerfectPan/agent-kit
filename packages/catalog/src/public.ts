@@ -1,4 +1,9 @@
-export { builtinCodingAgents, isBuiltinCodingAgentId, parseCodingAgentId, resolveHome } from "./agents/index.js";
+export {
+  builtinCodingAgents,
+  isBuiltinCodingAgentId,
+  parseCodingAgentId,
+  resolveHome
+} from "./domain/adapters/index.js";
 export { homeFromRule } from "./domain/coding-agent/index.js";
 export type {
   AgentHome,

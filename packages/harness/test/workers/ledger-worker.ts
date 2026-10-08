@@ -3,9 +3,9 @@ import { createNodePlatform } from "@rivus/agent-kit-platform-node";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { HarnessLive } from "../../src/adapters/harness-live.js";
-import { applyInstall } from "../../src/application/apply-install.js";
-import { planInstall } from "../../src/application/plan-install.js";
+import { HarnessLive } from "../../src/infra/factories/harness-live.js";
+import { applyInstall } from "../../src/application/use-cases/apply-install.js";
+import { planInstall } from "../../src/application/use-cases/plan-install.js";
 import { ArtifactFiles, LedgerLock } from "../../src/application/ports.js";
 import { demoBundle } from "../support/bundles.js";
 import { print, stdinLine } from "../support/workers.js";

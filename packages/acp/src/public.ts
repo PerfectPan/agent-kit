@@ -1,6 +1,6 @@
-export { MemorySessionBindingStoreLive } from "./adapters/memory-session-binding-store.js";
-export { FileSessionBindingStoreLive } from "./adapters/file-session-binding-store.js";
-export { builtinAcpProfiles, type AcpProfiles } from "./agents/index.js";
+export { MemorySessionBindingStoreLive } from "./infra/repository/memory-session-binding-store.js";
+export { FileSessionBindingStoreLive } from "./infra/repository/file-session-binding-store.js";
+export { builtinAcpProfiles, type AcpProfiles } from "./domain/adapters/index.js";
 export {
   type AcpConnection,
   type ConnectAgentOptions,
@@ -11,8 +11,8 @@ export {
   type NewSessionError,
   type NewSessionOptions,
   type SessionOptions
-} from "./application/connect-agent.js";
-export type { PermissionCallback, PromptError } from "./application/connection.js";
+} from "./application/use-cases/connect-agent.js";
+export type { PermissionCallback, PromptError } from "./application/services/connection.js";
 export type {
   AcpErrorCode,
   AcpRequestFailed,
@@ -25,14 +25,14 @@ export type {
   HandshakeFailed,
   LoadUnsupported
 } from "./application/errors.js";
-export type { AcpSessionHandle } from "./application/live-session.js";
+export type { AcpSessionHandle } from "./application/services/live-session.js";
 export {
   SessionBindingStore,
   type SessionBindingStoreFailure,
   type SessionBindingStoreShape
 } from "./application/ports.js";
-export { type AgentProbe, probeAgent } from "./application/probe-agent.js";
-export type { AgentFeatures, AgentInfo } from "./application/wire.js";
+export { type AgentProbe, probeAgent } from "./application/services/probe-agent.js";
+export type { AgentFeatures, AgentInfo } from "./application/services/wire.js";
 export {
   type AcpProfile,
   type AcpSessionSnapshot,

@@ -1,13 +1,13 @@
 // Use cases
-export { listSessions, type ListSessionsOptions } from "./application/list-sessions.js";
+export { listSessions, type ListSessionsOptions } from "./application/use-cases/list-sessions.js";
 export {
   loadTranscript,
   type LoadTranscriptError,
   type LoadTranscriptOptions,
   type SessionTarget,
   summarizeSession
-} from "./application/load-transcript.js";
-export { readOriginal, type ReadOriginalError } from "./application/read-original.js";
+} from "./application/use-cases/load-transcript.js";
+export { readOriginal, type ReadOriginalError } from "./application/services/read-original.js";
 export type { SessionErrorCode } from "./application/errors.js";
 export {
   decodeUsage,
@@ -15,17 +15,17 @@ export {
   isUsageSource,
   listUsageSources,
   type ListUsageSourcesOptions
-} from "./application/decode-usage.js";
+} from "./application/use-cases/decode-usage.js";
 export {
   type ScanUsageOptions,
   scanUsage,
   type UsageScan,
   type UsageScanSource,
   type UsageScanState
-} from "./application/scan-usage.js";
+} from "./application/use-cases/scan-usage.js";
 
 // Session adapters and usage ports
-export { builtinSessionAdapters } from "./application/session-adapters/index.js";
+export { builtinSessionAdapters } from "./application/services/session-adapters/index.js";
 export type {
   DecodeUsageOptions,
   SqliteUnavailable,
@@ -54,7 +54,7 @@ export {
   claudeCodeUsage,
   type ClaudeCodeTranslateOptions,
   translateClaudeCodeRecords
-} from "./agents/claude-code/index.js";
+} from "./domain/adapters/claude-code/index.js";
 
 // Codex rules
 export {
@@ -62,10 +62,15 @@ export {
   codexUsage,
   type CodexTranslateOptions,
   translateCodexRecords
-} from "./agents/codex/index.js";
+} from "./domain/adapters/codex/index.js";
 
 // Grok rules
-export { GROK_CAPABILITIES, grokUsage, type GrokTranslateOptions, translateGrokRecords } from "./agents/grok/index.js";
+export {
+  GROK_CAPABILITIES,
+  grokUsage,
+  type GrokTranslateOptions,
+  translateGrokRecords
+} from "./domain/adapters/grok/index.js";
 
 // Published language and the rules a viewer needs to interpret events
 export {

@@ -4,9 +4,9 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 
-import { applyInstall } from "../src/application/apply-install.js";
-import { inventory } from "../src/application/inventory.js";
-import { planInstall } from "../src/application/plan-install.js";
+import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { inventory } from "../src/application/use-cases/inventory.js";
+import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { ArtifactFiles, type ArtifactFilesShape, LedgerLock, LedgerStore } from "../src/application/ports.js";
 import { locatorKey } from "../src/domain/install-plan/index.js";
 import { demoBundle } from "./support/bundles.js";

@@ -1,4 +1,4 @@
-export { createLanes } from "./application/create-lanes.js";
+export { createLanes } from "./application/use-cases/create-lanes.js";
 export type {
   ActivationExit,
   ActivationInterruptReason,
@@ -7,5 +7,5 @@ export type {
   LanesConfig,
   LanesStatus,
   WakeResult
-} from "./application/create-lanes.js";
+} from "./application/use-cases/create-lanes.js";
 export type { LaneQueueFull, LanesConfigInvalid, LaneSnapshot, LaneState } from "./domain/lane/index.js";

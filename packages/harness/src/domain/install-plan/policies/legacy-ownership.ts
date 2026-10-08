@@ -3,7 +3,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import type { Owner } from "../../bundle/value-objects/owner.js";
-import type { Ledger } from "../../ledger/aggregate/ledger.js";
+import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import { locatorKey } from "../value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";

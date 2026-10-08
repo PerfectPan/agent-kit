@@ -7,7 +7,7 @@ export {
   LEDGER_SCHEMA_VERSION,
   type LedgerSnapshot,
   type LedgerTransition
-} from "./aggregate/ledger.js";
+} from "./aggregates/ledger.js";
 export type { InvalidLedger } from "./errors/invalid-ledger.js";
 export type { LedgerBusy } from "./errors/ledger-busy.js";
 export type { LedgerVersionUnsupported } from "./errors/ledger-version-unsupported.js";
@@ -25,12 +25,7 @@ export {
   type JsonValue
 } from "./value-objects/content-hash.js";
 export type { Drift, VerifyStatus } from "./value-objects/drift.js";
-export type { KeptArtifact } from "./value-objects/kept-artifact.js";
-export type { LedgerEntry } from "./value-objects/ledger-entry.js";
-export type {
-  PendingOperation,
-  PendingProbe,
-  PendingResolution,
-  StepOutcome
-} from "./value-objects/pending-operation.js";
+export type { KeptArtifact } from "./entities/kept-artifact.js";
+export type { LedgerEntry } from "./entities/ledger-entry.js";
+export type { PendingOperation, PendingProbe, PendingResolution, StepOutcome } from "./entities/pending-operation.js";
 export type { PreImage } from "./value-objects/pre-image.js";

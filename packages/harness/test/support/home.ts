@@ -7,8 +7,8 @@ import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node";
 import * as Layer from "effect/Layer";
 
-import { HarnessLive } from "../../src/adapters/harness-live.js";
-import type { HarnessServices } from "../../src/application/plan-install.js";
+import { HarnessLive } from "../../src/infra/factories/harness-live.js";
+import type { HarnessServices } from "../../src/application/use-cases/plan-install.js";
 
 const homes: string[] = [];
 

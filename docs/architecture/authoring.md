@@ -24,7 +24,7 @@ Packages are created in the phase that gives them content; see the plan's sectio
 - A package is not a new bounded context, and a pure re-export is not a second owner. The shell packages own nothing; Platform is a technical port, not a context.
 - A revision counter, a JSON file, a state machine or a validator does not by itself establish an owner. Find the context whose invariants the code protects.
 - An abstraction needs at least two real consumers. Code with a single consumer stays in that application until a second consumer appears.
-- Adding an agent: add its identity in `catalog/src/agents/`, add the agent's pure translation in the `agents/` of each context that supports it, and register the adapter in that context's builtin table (in sessions: `application/session-adapters/index.ts`, because an adapter that reads files needs Platform, which `agents/` may not import). Each context's conformance tests check the new adapter. There is no composite per-agent object, because catalog would then depend on every context.
+- Adding an agent: add its identity in `catalog/src/domain/adapters/`, add the agent's pure translation in the `domain/adapters/` of each context that supports it, and register the adapter in that context's builtin table (in sessions: `application/services/session-adapters/index.ts`, because an adapter that reads files needs Platform, which `domain/adapters/` may not import). Each context's conformance tests check the new adapter. There is no composite per-agent object, because catalog would then depend on every context.
 
 ## Lay Out A Context Package
 
@@ -33,30 +33,47 @@ Every context package uses the same layout, creating only the directories it nee
 ```text
 <context>/src/
   domain/<concept>/
-    aggregate/  value-objects/  policies/  factories/  errors/  events/  services/
+    aggregates/  entities/  value-objects/  policies/  factories/  errors/  events/  services/
     index.ts            the concept's facade inside the package
-  agents/<agent>/       agent adapters (anti-corruption layer)
-  agents/index.ts       exports the pure per-agent rules; a builtinXxx table of pure adapters may live here
-  application/          use cases + ports.ts
-  adapters/             implementations of this context's ports
+  domain/adapters/<agent>/  agent adapters (anti-corruption layer)
+  domain/adapters/index.ts  exports the pure per-agent rules; a builtinXxx table of pure adapters may live here
+  domain/protocols/         wire formats shared across agents, read and written at the protocol boundary
+  application/
+    use-cases/          the public use cases, one file per exported operation
+    services/           coordination code shared by use cases; may call ports, holds no business rules
+    ports.ts            port shapes and injection tags (some contexts keep errors.ts or usage-ports.ts beside it)
+  infra/
+    repository/         store implementations (ledger, session bindings, leases)
+    models/             stored formats and their codecs
+    adapters/           other port implementations (editors, CLI runners, fences)
+    factories/          Layer compositions
+    services/           helpers shared by infra files
   public.ts             the public surface, re-exported by the shell package
   index.ts              the surface for sibling packages
 ```
 
+The layer principles:
+
+- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. `domain/adapters/` is the one domain folder that may use external packages, such as `zod` for payload validation.
+- `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
+- `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
+
 | Layer | Contents | May import |
 | --- | --- | --- |
-| `domain/` | Value objects, aggregates, policies (rules), factories, errors, domain events, stateless domain services | Its own domain, catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages |
-| `agents/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent | This context's domain only. Pure functions, no IO |
-| `application/` | Use cases that carry agent knowledge and coordinate ports; `ports.ts` declares the part of Platform and the context's own ports that they use | Domain, agents and ports |
-| `adapters/` | Implementations of ports the kit declares: format-preserving configuration editors, ledger store, SQLite index, lease store | Reaches the outside only through Platform; never `node:*` |
+| `domain/` | Value objects, aggregates, their child entities, policies (rules), factories, errors, domain events, stateless domain services | Its own domain, catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
+| `domain/adapters/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | This context's domain (its own concept folders, not other packages' internals), catalog, and the external packages the package allows, such as `zod/mini` |
+| `domain/protocols/` | A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update` streams | The same imports as `domain/adapters/` |
+| `application/` | `use-cases/` carry agent knowledge and coordinate ports; `services/` is code shared by use cases; `ports.ts` declares the part of Platform and the context's own ports that they use | Domain, `domain/adapters/`, `domain/protocols/` and ports |
+| `infra/` | Implementations of ports the kit declares: stores (`repository/`), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
 
-`@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/adapters/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's adapters use the process lock for their fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary test treats as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
+`@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary test treats as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
 
 - Only `@rivus/agent-kit-platform-node` may import `node:*`.
-- Cross-package imports go through the target package's `index.ts`, never into its `domain/`, `agents/` or `adapters/`. Dependencies are declared in `package.json`; Rush rejects phantom dependencies. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
+- Cross-package imports go through the target package's `index.ts`, never into its `domain/` (including `domain/adapters/`) or `infra/`. Dependencies are declared in `package.json`; Rush rejects phantom dependencies. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
 - Package dependencies run one way: discovery, sessions and harness depend on catalog and platform; acp also depends on sessions; cost depends on sessions for types only; platform-node depends on platform; collab uses agent-kit only through its public subpaths.
 - Contexts that are pure computation (catalog, cost, agent translation, hook event parsing) have no `application/` and export domain functions directly.
-- `agents/` and `adapters/` are different things. An agent adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under `agents/`, and a format translation never goes under `adapters/`.
+- `domain/adapters/` and `infra/` are different things. An agent adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under `domain/adapters/`, and a format translation never goes under `infra/`.
+- A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. Its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
 
 ## Aggregate Or Value Object
 
@@ -102,6 +119,17 @@ export class AcpSession {
 }
 ```
 
+## Entities
+
+An entity is a child of one aggregate: it has a local identity inside that aggregate, but no identity outside it. It is a read-only record in the root's snapshot, it is read only through the root's methods, and it is created and changed only by the root's transitions. It has no store and no lock of its own. An entity with its own lifecycle and its own store is an aggregate; promote it rather than giving it a repository. Harness's Ledger keeps its entries, pending operations and kept artifacts as entities under `domain/ledger/entities/`: the Ledger owns their invariants, and a save writes them as part of the Ledger.
+
+## Aggregates, Entities And Repositories
+
+- `application/ports.ts` declares a port, `infra/` implements it, and the assembly injects the implementation. Neither the aggregate nor its entities ever hold a repository, a port or a Platform.
+- A use case loads the aggregate (or reads data) through ports, calls the aggregate root's method, and saves the result. A save writes the whole aggregate atomically, guarded by the version on the root, so a concurrent writer is refused instead of interleaved.
+- Domain services never call ports. The use case loads the data a domain service needs first and passes it in as plain values.
+- Port interfaces live in `application/` because only use cases call them. types-ddd puts them in the domain because its domain services call repositories; this kit has no such domain services.
+
 ## Coordinate Through Application Ports
 
 - A use case loads an aggregate or reads data through ports, applies domain rules, saves the result, and coordinates external work through ports. It never constructs a concrete adapter.
@@ -145,7 +173,7 @@ These rules apply to every domain layer and to the contexts that do not use Effe
 
 These rules apply to the use cases and port adapters of harness execution (apply, verify, uninstall, the LedgerLock), acp, collab's lease and lanes, and to the Platform service.
 
-- Only `application/` and `adapters/` of these contexts, and the `src/effect.ts` files of the next rule, may import `effect`. Their `domain/` and `agents/` stay plain TS, like every other domain layer.
+- Only `application/` and `infra/` of these contexts, and the `src/effect.ts` files of the next rule, may import `effect`. Their `domain/`, `domain/adapters/` included, stays plain TS, like every other domain layer.
 - A package whose entries must stay plain keeps its Effect counterpart in `src/effect.ts`, exported to the shell as `<package>/public/effect` and, when siblings need it, to them as `<package>/effect`. platform exports `PlatformService` both ways (published as `/platform/effect`); platform-node exports `NodePlatformLive` only to the shell (`/node/effect`), because only applications provide the platform. The boundary test counts an import of `<package>/effect`, or a relative import of `src/effect.ts` from a file outside the Effect allowlist, as an Effect import. Every published Effect entry is listed in `EFFECT_ENTRIES` of the shell's `scripts/check-dist.ts` and `scripts/smoke-consumer.ts`; every other entry is checked as plain.
 - A port is a class-style `Context.Service` named after the port and keyed `@rivus/agent-kit/<context>/<Port>/v1`, for example `LedgerLock` keyed `@rivus/agent-kit/harness/LedgerLock/v1`; collab's ports carry its own package name, such as `LeaseStore` keyed `@rivus/agent-kit-collab/lease/LeaseStore/v1`. When a plain interface already has the port's name, the service adds `Service`: `PlatformService`, keyed `@rivus/agent-kit/platform/Platform/v1`, holds a `Platform`. The key is the service's runtime identity; it moves to `v2` only for an incompatible interface. `isolatedDeclarations` rejects a call in `extends`, so the generated base gets an explicit type:
 
@@ -158,7 +186,7 @@ These rules apply to the use cases and port adapters of harness execution (apply
   export class LedgerLock extends LedgerLockBase {}
   ```
 
-- A port's implementation is a Layer in the context's `adapters/`, named `<Variant><Port>Live` (`SqliteLedgerLockLive`), or a function named `<variant><Port>` when the Layer takes options (`sqliteLeaseStore({ path })`); a context's default set, such as `HarnessLive`, is composed there too, because `application/` may not import `adapters/`. Layers in a context's `adapters/` require `PlatformService` and never provide it; the application provides it with platform-node's `NodePlatformLive` or its own `Layer.succeed(PlatformService, platform)`. A Layer that captures the environment builds it lazily (`Layer.sync`, `Layer.effect`), never at import. Platform stays one service; do not turn each Platform method into its own service.
+- A port's implementation is a Layer in the context's `infra/`, named `<Variant><Port>Live` (`SqliteLedgerLockLive`), or a function named `<variant><Port>` when the Layer takes options (`sqliteLeaseStore({ path })`); a context's default set, such as `HarnessLive` (`infra/factories/`), is composed there too, because `application/` may not import `infra/`. Layers in a context's `infra/` require `PlatformService` and never provide it; the application provides it with platform-node's `NodePlatformLive` or its own `Layer.succeed(PlatformService, platform)`. A Layer that captures the environment builds it lazily (`Layer.sync`, `Layer.effect`), never at import. Platform stays one service; do not turn each Platform method into its own service.
 - Compose Layers with `Layer.provide` or `Layer.provideMerge`. `Layer.mergeAll` only merges outputs; it does not feed one Layer's output into another Layer of the same group.
 - Entries return `Effect`, `Stream` or `Layer`. Cancellation is fiber interruption, and long-lived resources (ACP connections, lease managers, lanes) belong to a Scope the caller provides.
 - Errors use the same `_tag` unions as the plain TS side, in the typed error channel. A `Result` from a plain function enters it through `fromResult`, one expression that each Effect context declares in its `application/`; `catchTag` does not see an `{ ok: false }` value that was never failed:

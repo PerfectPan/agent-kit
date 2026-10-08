@@ -5,7 +5,7 @@ import type { Strategy } from "../../bundle/value-objects/strategy.js";
 import { holds, release, unionAgents } from "../../ledger/policies/ownership.js";
 import { threeWayVerify } from "../../ledger/policies/three-way-verify.js";
 import type { ArtifactContent, ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/value-objects/ledger-entry.js";
+import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import { CONFLICT_CHOICES, type Conflict, type ConflictChoice } from "../value-objects/conflict.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";

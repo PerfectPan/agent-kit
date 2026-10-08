@@ -4,9 +4,9 @@ import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import * as Effect from "effect/Effect";
 
-import { readHookEvent } from "../src/agents/hook-dialects.js";
-import { applyInstall } from "../src/application/apply-install.js";
-import { planInstall } from "../src/application/plan-install.js";
+import { readHookEvent } from "../src/domain/adapters/hook-dialects.js";
+import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { planInstall } from "../src/application/use-cases/plan-install.js";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 

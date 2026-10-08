@@ -1,5 +1,5 @@
-export { Lease } from "./aggregate/lease.js";
-export type { LeaseClaim, LeaseTransition } from "./aggregate/lease.js";
+export { Lease } from "./aggregates/lease.js";
+export type { LeaseClaim, LeaseTransition } from "./aggregates/lease.js";
 export type { FenceRejected } from "./errors/fence-rejected.js";
 export type { LeaseHeld } from "./errors/lease-held.js";
 export type { LeaseLost } from "./errors/lease-lost.js";

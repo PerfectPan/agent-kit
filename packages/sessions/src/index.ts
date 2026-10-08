@@ -1,10 +1,10 @@
 export * from "./public.js";
 
 // Adapter building blocks, shared with sibling packages but not public until a consumer outside the kit needs them.
-export { previewClaudeCodeRecords } from "./agents/claude-code/index.js";
-export { discoverSessions, type DiscoverSessionsOptions } from "./application/discover-sessions.js";
-export { EDGE_BYTES, edgeRecords, type FileEdges, readEdges } from "./application/files/edges.js";
-export { type JsonlRecords, readJsonlRecords } from "./application/files/jsonl.js";
+export { previewClaudeCodeRecords } from "./domain/adapters/claude-code/index.js";
+export { discoverSessions, type DiscoverSessionsOptions } from "./application/use-cases/discover-sessions.js";
+export { EDGE_BYTES, edgeRecords, type FileEdges, readEdges } from "./application/services/files/edges.js";
+export { type JsonlRecords, readJsonlRecords } from "./application/services/files/jsonl.js";
 export {
   readBytes,
   readLines,
@@ -12,9 +12,9 @@ export {
   type ReadProgress,
   readProgress,
   readText
-} from "./application/files/read-file.js";
-export { type WalkOptions, walkFiles, type WalkSpec } from "./application/files/walk.js";
-export { type AcpPartTranslator, createAcpPartTranslator } from "./protocols/acp-updates.js";
+} from "./application/services/files/read-file.js";
+export { type WalkOptions, walkFiles, type WalkSpec } from "./application/services/files/walk.js";
+export { type AcpPartTranslator, createAcpPartTranslator } from "./domain/protocols/acp-updates.js";
 export {
   assignSeq,
   baseEvent,
@@ -34,6 +34,6 @@ export {
   unknownFormatGeneration
 } from "./domain/transcript/index.js";
 export type { SessionPreview } from "./domain/session/index.js";
-export { builtinUsageDecoders } from "./application/usage-decoders/index.js";
+export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";
 export type { UsageDecoder, UsageDecoders } from "./application/usage-ports.js";
 export { compactUsage } from "./domain/usage/index.js";

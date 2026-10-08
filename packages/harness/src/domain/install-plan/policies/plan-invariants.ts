@@ -1,6 +1,6 @@
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
-import type { Ledger } from "../../ledger/aggregate/ledger.js";
+import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
 import { isContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";

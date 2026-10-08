@@ -1,5 +1,5 @@
 import type { ContentHash } from "../value-objects/content-hash.js";
-import type { PendingOperation, PendingResolution } from "../value-objects/pending-operation.js";
+import type { PendingOperation, PendingResolution } from "../entities/pending-operation.js";
 
 /** What the target holds once the operation is done: a hash, nothing, or anything because the disk is not involved. */
 function expectedAfter(op: PendingOperation): ContentHash | "absent" | "any" {

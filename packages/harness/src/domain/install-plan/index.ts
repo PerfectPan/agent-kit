@@ -4,7 +4,7 @@ export {
   type InstallPlanSnapshot,
   type InstallPlanTransition,
   type PlanStatus
-} from "./aggregate/install-plan.js";
+} from "./aggregates/install-plan.js";
 export type { InvalidPlan } from "./errors/invalid-plan.js";
 export type { PlanConflict } from "./errors/plan-conflict.js";
 export type { PlanStale } from "./errors/plan-stale.js";

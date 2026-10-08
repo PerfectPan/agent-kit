@@ -56,7 +56,7 @@ interface ImportRef {
   readonly typeOnly: boolean;
 }
 
-const LAYERS: readonly Layer[] = ["domain", "agents", "protocols", "application", "adapters"];
+const LAYERS: readonly Layer[] = ["domain", "domain/adapters", "domain/protocols", "application", "infra"];
 const MANIFEST = "infra/architecture/boundaries.ts";
 const PLAIN_TS = /(?<!\.d)\.ts$/;
 
@@ -67,12 +67,22 @@ function splitSpecifier(specifier: string): { name: string; subpath: string } {
   return { name: parts.slice(0, size).join("/"), subpath: rest === "" ? "" : `/${rest}` };
 }
 
-/** The layer of a file: `src/<layer>/`, or `src/<entry>/<layer>/` in a package that lists `entries`. */
+/**
+ * The layer of a file: `src/<layer>/`, or `src/<entry>/<layer>/` in a package that lists `entries`. The agent
+ * adapters and protocols nest one level under `domain/`: `src/domain/adapters/…` and `src/domain/protocols/…` are
+ * their own layers, while `src/domain/<concept>/…` is the plain domain.
+ */
 function layerOf(pkg: WorkspacePackage, path: string, entries: readonly string[] = []): Layer | undefined {
   const parts = path.slice(pkg.folder.length + 1).split("/");
   const [src, ...inner] = parts;
   const [layer, ...rest] = entries.includes(inner[0] ?? "") ? inner.slice(1) : inner;
-  return src === "src" && rest.length > 0 ? LAYERS.find((candidate) => candidate === layer) : undefined;
+  if (src !== "src" || rest.length === 0) {
+    return undefined;
+  }
+  if (layer === "domain" && (rest[0] === "adapters" || rest[0] === "protocols") && rest.length > 1) {
+    return `domain/${rest[0]}`;
+  }
+  return LAYERS.find((candidate) => candidate === layer);
 }
 
 function readImports(file: SourceFile): { imports: ImportRef[]; problems: Violation[]; body: readonly Statement[] } {

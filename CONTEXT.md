@@ -278,10 +278,10 @@ The port through which the kit reaches files, processes, environment variables, 
 A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.
 
 **Agent adapter**:
-The per-agent implementation of a context's adapter interface, under `agents/<agent>/`. It translates the agent's external format into the context's model and is registered in that context's `builtinXxx` table.
+The per-agent implementation of a context's adapter interface, under `domain/adapters/<agent>/`. It translates the agent's external format into the context's model and is registered in that context's `builtinXxx` table.
 
 **Port adapter**:
-An implementation, under `adapters/`, of a port the kit declares itself, such as a format-preserving configuration editor or a ledger store.
+An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor or a ledger store. Stores live in `infra/repository/`, stored formats and codecs in `infra/models/`.
 
 **Entry**:
 A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
@@ -303,7 +303,7 @@ A test suite, exported from `/testing`, that checks an agent adapter or a store 
 | Lane | In sessions, a subagent's execution line; in lanes, a scheduling unit serialized by key | Each context keeps its own meaning; the two are never mixed |
 | Generation | In lease, the fencing token | In sessions, a format generation of an agent's logs |
 | Revision | The Ledger's revision (per apply or uninstall) and a lease record's revision (per write) | Each counter belongs to its own record |
-| Adapter | An agent adapter (`agents/`) or a port adapter (`adapters/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
+| Adapter | An agent adapter (`domain/adapters/`) or a port adapter (`infra/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
 | Scope | An install scope (`user` / `project`); `LifecycleEvent.scope` (`session` / `turn`) | An Effect `Scope`, which owns long-lived resources |
 | Event | TranscriptEvent (recorded activity) and LifecycleEvent (hook signal) | Domain events returned by aggregate transitions; ACP `session/update` notifications |
 | Lock | LedgerLock (harness), ProcessLock and Lease (collab) | harness cannot depend on collab, so the LedgerLock and the ProcessLock are separate implementations of the same technique |

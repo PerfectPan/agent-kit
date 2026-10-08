@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "Align the package layout with the types-ddd folder names (domain aggregates, application use-cases/services, infra). No API or behavior change.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

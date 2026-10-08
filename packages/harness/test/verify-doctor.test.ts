@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
-import { applyInstall } from "../src/application/apply-install.js";
-import { doctor } from "../src/application/doctor.js";
-import { inventory } from "../src/application/inventory.js";
-import { planInstall } from "../src/application/plan-install.js";
-import { verify } from "../src/application/verify.js";
+import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { doctor } from "../src/application/use-cases/doctor.js";
+import { inventory } from "../src/application/use-cases/inventory.js";
+import { planInstall } from "../src/application/use-cases/plan-install.js";
+import { verify } from "../src/application/use-cases/verify.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, testHome } from "./support/home.js";
 
