@@ -5,37 +5,42 @@ import * as Layer from "effect/Layer";
 
 import { sha256Hex } from "../../application/services/content-hash.js";
 import {
+  type LedgerRepositoryFailure,
+  LedgerRepository,
+  type LedgerRepositoryShape,
   type LedgerScope,
-  LedgerStore,
-  type LedgerStoreFailure,
-  type LedgerStoreShape
+  type RevisionConflict
 } from "../../application/ports.js";
 import { checkLedgerVersion } from "../../domain/ledger/index.js";
 import { readText } from "../services/read-text.js";
 import { decodeLedger, decodePreImage, encodeLedger, encodePreImage } from "../models/ledger-file.js";
 import { harnessStateDir } from "../services/state-dir.js";
 
-type StorePlatform = Pick<Platform, "env" | "home" | "fs">;
+type RepositoryPlatform = Pick<Platform, "env" | "home" | "fs">;
 
 function failure(
   scope: LedgerScope,
-  reason: LedgerStoreFailure["reason"],
+  reason: LedgerRepositoryFailure["reason"],
   message: string,
   cause?: unknown
-): LedgerStoreFailure {
+): LedgerRepositoryFailure {
   return cause === undefined
-    ? { _tag: "LedgerStoreFailure", scope: scope.key, reason, message }
-    : { _tag: "LedgerStoreFailure", scope: scope.key, reason, message, cause };
+    ? { _tag: "LedgerRepositoryFailure", scope: scope.key, reason, message }
+    : { _tag: "LedgerRepositoryFailure", scope: scope.key, reason, message, cause };
 }
 
-function makeStore(platform: StorePlatform): LedgerStoreShape {
+function conflict(scope: LedgerScope, expected: number | undefined, stored: number | undefined): RevisionConflict {
+  return { _tag: "RevisionConflict", scope: scope.key, expected, stored };
+}
+
+function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
   const root = harnessStateDir(platform);
   const dirOf = (scope: LedgerScope) => `${root}/${scope.key}`;
   const ledgerPath = (scope: LedgerScope) => `${dirOf(scope)}/ledger.json`;
   const io = <A>(scope: LedgerScope, message: string, run: () => Promise<A>) =>
     Effect.tryPromise({ try: run, catch: (cause) => failure(scope, "io", message, cause) });
 
-  const load: LedgerStoreShape["load"] = (scope) =>
+  const load: LedgerRepositoryShape["load"] = (scope) =>
     Effect.gen(function* () {
       const path = ledgerPath(scope);
       const text = yield* io(scope, `cannot read ${path}`, () => readText(platform, path));
@@ -46,7 +51,7 @@ function makeStore(platform: StorePlatform): LedgerStoreShape {
       return decoded.ok ? decoded.value : yield* Effect.fail(decoded.error);
     });
 
-  const save: LedgerStoreShape["save"] = (scope, snapshot, expected) =>
+  const save: LedgerRepositoryShape["save"] = (scope, snapshot, expected) =>
     Effect.gen(function* () {
       const path = ledgerPath(scope);
       const text = yield* io(scope, `cannot read ${path}`, () => readText(platform, path));
@@ -61,14 +66,10 @@ function makeStore(platform: StorePlatform): LedgerStoreShape {
         }
         const revision = (stored as { revision?: unknown }).revision;
         if (revision !== expected) {
-          return yield* Effect.fail(
-            failure(scope, "revision-mismatch", `${path} is at revision ${String(revision)}, not ${String(expected)}`)
-          );
+          return yield* Effect.fail(conflict(scope, expected, typeof revision === "number" ? revision : undefined));
         }
       } else if (expected !== undefined) {
-        return yield* Effect.fail(
-          failure(scope, "revision-mismatch", `${path} is gone; expected revision ${expected}`)
-        );
+        return yield* Effect.fail(conflict(scope, expected, undefined));
       }
       yield* io(scope, `cannot write ${path}`, async () => {
         await platform.fs.mkdir(dirOf(scope));
@@ -76,7 +77,7 @@ function makeStore(platform: StorePlatform): LedgerStoreShape {
       });
     });
 
-  const putPreImage: LedgerStoreShape["putPreImage"] = (scope, content) =>
+  const putPreImage: LedgerRepositoryShape["putPreImage"] = (scope, content) =>
     Effect.gen(function* () {
       const text = encodePreImage(content);
       const blobRef = `${yield* sha256Hex(text)}.json`;
@@ -90,7 +91,7 @@ function makeStore(platform: StorePlatform): LedgerStoreShape {
       return blobRef;
     });
 
-  const getPreImage: LedgerStoreShape["getPreImage"] = (scope, blobRef) =>
+  const getPreImage: LedgerRepositoryShape["getPreImage"] = (scope, blobRef) =>
     Effect.gen(function* () {
       const path = `${dirOf(scope)}/pre-images/${blobRef}`;
       if (!/^[0-9a-f]{64}\.json$/.test(blobRef)) {
@@ -108,12 +109,12 @@ function makeStore(platform: StorePlatform): LedgerStoreShape {
 
 /**
  * Ledgers as JSON files under `$XDG_STATE_HOME/agent-kit/harness/<scope>/ledger.json` (`~/.local/state` when the
- * variable is unset), written atomically, with pre-images beside them in `pre-images/`. See `LedgerStoreShape` for
- * the calling convention; a file of an unknown `schemaVersion` is never written over.
+ * variable is unset), written atomically, with pre-images beside them in `pre-images/`. See `LedgerRepositoryShape`
+ * for the calling convention; a file of an unknown `schemaVersion` is never written over.
  */
-export const FileLedgerStoreLive: Layer.Layer<LedgerStore, never, PlatformService> = Layer.effect(
-  LedgerStore,
+export const FileLedgerRepositoryLive: Layer.Layer<LedgerRepository, never, PlatformService> = Layer.effect(
+  LedgerRepository,
   Effect.gen(function* () {
-    return makeStore(yield* PlatformService);
+    return makeRepository(yield* PlatformService);
   })
 );

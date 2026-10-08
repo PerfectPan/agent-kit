@@ -43,8 +43,9 @@ import {
   type AgentCliFailure,
   ArtifactFiles,
   type ArtifactFailure,
-  LedgerStore,
-  type LedgerStoreFailure
+  LedgerRepository,
+  type LedgerRepositoryFailure,
+  type RevisionConflict
 } from "../ports.js";
 import { TOOL_VERSION } from "../services/tool-version.js";
 
@@ -74,7 +75,8 @@ export type ApplyInstallError =
   | ApplyFailed
   | ArtifactFailure
   | LedgerReadError
-  | LedgerLockError;
+  | LedgerLockError
+  | RevisionConflict;
 
 /** The hash at the step's target now, compared with what the plan expected there. */
 function checkPrecondition(
@@ -104,8 +106,8 @@ function executeStep(
   entry: LedgerEntry | undefined
 ): Effect.Effect<
   void,
-  ArtifactFailure | AgentCliFailure | LedgerStoreFailure,
-  ArtifactFiles | AgentCli | LedgerStore | PlatformService
+  ArtifactFailure | AgentCliFailure | LedgerRepositoryFailure,
+  ArtifactFiles | AgentCli | LedgerRepository | PlatformService
 > {
   return Effect.gen(function* () {
     if (!touchesDisk(step)) {
@@ -177,7 +179,10 @@ function executeStep(
       if (op?.preImage?.existed !== true) {
         throw new AgentKitError("invalid-plan", `Step ${locatorKey(locator)} restores without a pre-image`);
       }
-      return yield* files.write(locator, yield* (yield* LedgerStore).getPreImage(record.scope, op.preImage.blobRef));
+      return yield* files.write(
+        locator,
+        yield* (yield* LedgerRepository).getPreImage(record.scope, op.preImage.blobRef)
+      );
     }
     return yield* files.remove(locator);
   });
@@ -198,7 +203,7 @@ type StepResult =
 export function applyLocked(
   record: PlanRecord,
   start: LoadedLedger
-): Effect.Effect<ApplyReport, ApplyInstallError, ArtifactFiles | AgentCli | LedgerStore | PlatformService> {
+): Effect.Effect<ApplyReport, ApplyInstallError, ArtifactFiles | AgentCli | LedgerRepository | PlatformService> {
   return Effect.gen(function* () {
     const plan = record.aggregate;
     const { planId, steps } = plan;
@@ -207,7 +212,7 @@ export function applyLocked(
     if (stale !== undefined) {
       return yield* Effect.fail(stale satisfies PlanStale);
     }
-    const store = yield* LedgerStore;
+    const store = yield* LedgerRepository;
     const registrations = registrationLookup(record.adapters, record.context);
     const preImages: Record<string, PreImage> = {};
     for (const step of steps) {

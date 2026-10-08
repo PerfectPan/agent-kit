@@ -11,7 +11,7 @@ export type StepContentAfter = { readonly desired: ArtifactContent } | { readonl
 /**
  * The content a step leaves behind, expressed the same way the ledger's pending reconciliation is: a non-removal
  * leaves its desired content; a `restore-pre-image` of something that existed leaves that pre-image; anything else
- * leaves nothing. The use case fetches the pre-image's bytes from the store.
+ * leaves nothing. The use case fetches the pre-image's bytes from the ledger repository.
  */
 export function contentAfterStep(step: PlanStep, preImage: PreImage | undefined): StepContentAfter {
   if (step.action !== "remove") {

@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
-import { ArtifactFiles, type ArtifactFilesShape, LedgerLock, LedgerStore } from "../src/application/ports.js";
+import { ArtifactFiles, type ArtifactFilesShape, LedgerLock, LedgerRepository } from "../src/application/ports.js";
 import { locatorKey } from "../src/domain/install-plan/index.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
@@ -153,9 +153,9 @@ describe("apply execution rules (plan 3.9)", () => {
       const release = yield* Deferred.make<void>();
       const base = home.layer();
       const slowStore = Layer.effect(
-        LedgerStore,
+        LedgerRepository,
         Effect.gen(function* () {
-          const store = yield* LedgerStore;
+          const store = yield* LedgerRepository;
           return {
             ...store,
             save: (scope, snapshot, expected) =>

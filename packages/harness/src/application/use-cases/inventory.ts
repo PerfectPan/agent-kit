@@ -6,7 +6,7 @@ import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { type LedgerReadError, loadLedger } from "../services/ledger-session.js";
-import type { LedgerStore } from "../ports.js";
+import type { LedgerRepository } from "../ports.js";
 
 export interface Inventory {
   /** Absent for a scope without a stored ledger. */
@@ -18,7 +18,7 @@ export interface Inventory {
 }
 
 /** What the scope's ledger records, read without the lock; it may change right after. */
-export function inventory(options: ScopeOptions = {}): Effect.Effect<Inventory, LedgerReadError, LedgerStore> {
+export function inventory(options: ScopeOptions = {}): Effect.Effect<Inventory, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
     const { ledger, stored } = yield* loadLedger(yield* ledgerScope(options));
     const recorded = { revision: ledger.revision, entries: ledger.entries(), pending: ledger.pending };

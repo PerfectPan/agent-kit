@@ -97,13 +97,26 @@ export interface LedgerScope {
   readonly projectRoot?: string;
 }
 
-/** The ledger store could not read or write; `revision-mismatch` means another writer moved the ledger. */
-export interface LedgerStoreFailure {
-  readonly _tag: "LedgerStoreFailure";
+/** The ledger repository could not read or write; the ledger is as it was, or as the interrupted write left it. */
+export interface LedgerRepositoryFailure {
+  readonly _tag: "LedgerRepositoryFailure";
   readonly scope: string;
-  readonly reason: "io" | "invalid-file" | "revision-mismatch" | "missing-pre-image";
+  readonly reason: "io" | "invalid-file" | "missing-pre-image";
   readonly message: string;
   readonly cause?: unknown;
+}
+
+/**
+ * Another writer wrote over the revision a `save` was conditioned on, so it wrote nothing. Declared here, next to the
+ * port; other contexts declare their own.
+ */
+export interface RevisionConflict {
+  readonly _tag: "RevisionConflict";
+  readonly scope: string;
+  /** The revision the save was conditioned on; `undefined` when it required no stored ledger. */
+  readonly expected: number | undefined;
+  /** The revision the stored ledger had when the save compared it; `undefined` when there was none. */
+  readonly stored: number | undefined;
 }
 
 /**
@@ -111,32 +124,31 @@ export interface LedgerStoreFailure {
  *
  * - `load` checks `schemaVersion` before anything else and fails with `LedgerVersionUnsupported` for a ledger it does
  *   not know, which stays on disk untouched; it never returns a ledger it could not validate.
- * - `save` writes only over the revision `expected` (`undefined`: nothing stored) and refuses otherwise. That
- *   comparison is enough because every writer holds the scope's LedgerLock; the store does not lock by itself.
+ * - `save` writes only over the revision `expected` (`undefined`: nothing stored) and fails with `RevisionConflict`
+ *   instead of writing otherwise. That comparison is enough because every writer holds the scope's LedgerLock; the
+ *   repository does not lock by itself.
  * - Pre-images are content-addressed and never deleted by `save`, so a ledger always finds the blobs it names.
  * - Only local directories are supported.
  */
-export interface LedgerStoreShape {
+export interface LedgerRepositoryShape {
   load(
     scope: LedgerScope
-  ): Effect.Effect<LedgerSnapshot | undefined, LedgerStoreFailure | LedgerVersionUnsupported | InvalidLedger>;
+  ): Effect.Effect<LedgerSnapshot | undefined, LedgerRepositoryFailure | LedgerVersionUnsupported | InvalidLedger>;
   save(
     scope: LedgerScope,
     snapshot: LedgerSnapshot,
     expected: number | undefined
-  ): Effect.Effect<void, LedgerStoreFailure | LedgerVersionUnsupported>;
-  putPreImage(scope: LedgerScope, content: ArtifactContent): Effect.Effect<string, LedgerStoreFailure>;
-  getPreImage(scope: LedgerScope, blobRef: string): Effect.Effect<ArtifactContent, LedgerStoreFailure>;
+  ): Effect.Effect<void, LedgerRepositoryFailure | LedgerVersionUnsupported | RevisionConflict>;
+  putPreImage(scope: LedgerScope, content: ArtifactContent): Effect.Effect<string, LedgerRepositoryFailure>;
+  getPreImage(scope: LedgerScope, blobRef: string): Effect.Effect<ArtifactContent, LedgerRepositoryFailure>;
 }
 
-const LEDGER_STORE = "@rivus/agent-kit/harness/LedgerStore/v1";
-const LedgerStoreBase: Context.ServiceClass<LedgerStore, typeof LEDGER_STORE, LedgerStoreShape> = Context.Service<
-  LedgerStore,
-  LedgerStoreShape
->()(LEDGER_STORE);
+const LEDGER_REPOSITORY = "@rivus/agent-kit/harness/LedgerRepository/v1";
+const LedgerRepositoryBase: Context.ServiceClass<LedgerRepository, typeof LEDGER_REPOSITORY, LedgerRepositoryShape> =
+  Context.Service<LedgerRepository, LedgerRepositoryShape>()(LEDGER_REPOSITORY);
 
-/** The ledger store port; `FileLedgerStoreLive` keeps ledgers under `$XDG_STATE_HOME`. */
-export class LedgerStore extends LedgerStoreBase {}
+/** The ledger repository port; `FileLedgerRepositoryLive` keeps ledgers under `$XDG_STATE_HOME`. */
+export class LedgerRepository extends LedgerRepositoryBase {}
 
 /**
  * Neither `platform.sqlite` nor an injected LedgerLock is available, so harness refuses to modify the ledger rather

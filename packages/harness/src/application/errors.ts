@@ -1,6 +1,6 @@
 import type { ArtifactLocator, Precondition } from "../domain/install-plan/index.js";
 import type { ContentHash } from "../domain/ledger/index.js";
-import type { AgentCliFailure, ArtifactFailure, LedgerStoreFailure } from "./ports.js";
+import type { AgentCliFailure, ArtifactFailure, LedgerRepositoryFailure } from "./ports.js";
 
 export type { StrategyUnavailable } from "../domain/install-plan/index.js";
 
@@ -26,6 +26,6 @@ export interface ApplyFailed {
   readonly _tag: "ApplyFailed";
   readonly planId: string;
   readonly locator: ArtifactLocator;
-  readonly cause: ArtifactFailure | AgentCliFailure | LedgerStoreFailure;
+  readonly cause: ArtifactFailure | AgentCliFailure | LedgerRepositoryFailure;
   readonly completed: number;
 }

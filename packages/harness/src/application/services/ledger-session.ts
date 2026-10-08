@@ -19,15 +19,16 @@ import {
   LedgerLock,
   type LedgerLockFailure,
   type LedgerLockUnavailable,
+  LedgerRepository,
+  type LedgerRepositoryFailure,
   type LedgerScope,
-  LedgerStore,
-  type LedgerStoreFailure
+  type RevisionConflict
 } from "../ports.js";
 
 /** How long a use case that changes the ledger waits for another holder of its LedgerLock, by default. */
 export const DEFAULT_LOCK_WAIT_MS = 10_000;
 
-export type LedgerReadError = LedgerStoreFailure | LedgerVersionUnsupported | InvalidLedger;
+export type LedgerReadError = LedgerRepositoryFailure | LedgerVersionUnsupported | InvalidLedger;
 export type LedgerLockError = LedgerBusy | LedgerLockUnavailable | LedgerLockFailure;
 
 /** A ledger as loaded: `stored` is false for a scope without one, which a first save creates. */
@@ -48,9 +49,9 @@ export const nowIso: Effect.Effect<string, never, PlatformService> = Effect.gen(
 export function loadLedger(
   scope: LedgerScope,
   lineage?: string
-): Effect.Effect<LoadedLedger, LedgerReadError, LedgerStore> {
+): Effect.Effect<LoadedLedger, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
-    const snapshot = yield* (yield* LedgerStore).load(scope);
+    const snapshot = yield* (yield* LedgerRepository).load(scope);
     if (snapshot === undefined) {
       return { ledger: yield* fromResult(Ledger.create(lineage ?? crypto.randomUUID())), stored: false };
     }
@@ -59,23 +60,27 @@ export function loadLedger(
 }
 
 /**
- * Writes one transition's state over the ledger it came from, uninterruptibly. The store refuses when another writer
- * moved the ledger, which cannot happen while the caller holds the LedgerLock.
+ * Writes one transition's state over the ledger it came from, uninterruptibly. The repository refuses when another
+ * writer moved the ledger, which cannot happen while the caller holds the LedgerLock.
  */
 export function saveLedger(
   scope: LedgerScope,
   from: LoadedLedger,
   transition: Pick<LedgerTransition, "state">
-): Effect.Effect<LoadedLedger, LedgerStoreFailure | LedgerVersionUnsupported, LedgerStore> {
+): Effect.Effect<
+  LoadedLedger,
+  LedgerRepositoryFailure | LedgerVersionUnsupported | RevisionConflict,
+  LedgerRepository
+> {
   return Effect.gen(function* () {
     if (transition.state === from.ledger && from.stored) {
       return from;
     }
-    const store = yield* LedgerStore;
+    const repository = yield* LedgerRepository;
     // Uninterruptible, so that an interrupted caller releases the LedgerLock only after the write has landed: a late
     // rename after another process took the lock would roll the ledger back.
     yield* Effect.uninterruptible(
-      store.save(scope, transition.state.toSnapshot(), from.stored ? from.ledger.revision : undefined)
+      repository.save(scope, transition.state.toSnapshot(), from.stored ? from.ledger.revision : undefined)
     );
     return { ledger: transition.state, stored: true };
   });
@@ -91,8 +96,8 @@ export function recoverPending(
   registrations?: RegistrationLookup
 ): Effect.Effect<
   { readonly loaded: LoadedLedger; readonly recovery?: LedgerRecovery },
-  ArtifactFailure | LedgerStoreFailure | LedgerVersionUnsupported,
-  ArtifactFiles | LedgerStore | PlatformService
+  ArtifactFailure | LedgerRepositoryFailure | LedgerVersionUnsupported | RevisionConflict,
+  ArtifactFiles | LedgerRepository | PlatformService
 > {
   return Effect.gen(function* () {
     if (loaded.ledger.pending.length === 0) {
@@ -125,8 +130,8 @@ export function lockLedger(
   options: LockLedgerOptions
 ): Effect.Effect<
   { readonly loaded: LoadedLedger; readonly recovery?: LedgerRecovery },
-  LedgerLockError | LedgerReadError | ArtifactFailure,
-  LedgerLock | LedgerStore | ArtifactFiles | PlatformService | Scope.Scope
+  LedgerLockError | LedgerReadError | ArtifactFailure | RevisionConflict,
+  LedgerLock | LedgerRepository | ArtifactFiles | PlatformService | Scope.Scope
 > {
   return Effect.gen(function* () {
     yield* (yield* LedgerLock).acquire(scope, { waitMs: options.waitMs });
