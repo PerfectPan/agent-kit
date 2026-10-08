@@ -7,7 +7,6 @@ import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
 import {
   duplicateHooks,
-  type HookDialect,
   type HookDialects,
   type HookFinding,
   hookHealth,
