@@ -13,25 +13,40 @@ Status: 0.x. A minor release may contain breaking changes.
 npm install @rivus/agent-kit
 ```
 
-ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node` and `/testing` also bundles for
-browsers.
+ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
+bundles for browsers. Effect entries need the exact optional peer `effect@4.0.1` installed by the host.
+The table describes the source API; verify that your chosen npm release exports the entries you need before
+adoption. See [Adopting agent-kit](docs/development/adoption.md).
 
 ## Entries
 
+The source API has 15 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (18 in total).
+
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
+| `@rivus/agent-kit/acp`            | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, binding store Layers               | with `effect` and a platform that spawns |
 | `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
 | `@rivus/agent-kit/cost`           | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                           | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
 | `@rivus/agent-kit/harness`        | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` | anywhere, with `effect`   |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
 | `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
+| `@rivus/agent-kit/platform/effect` | `PlatformService`                                                                               | anywhere, with `effect`    |
 | `@rivus/agent-kit/redact`         | `redact`, `redactText`: hide home path spellings and secret-shaped strings                        | anywhere, no imports      |
 | `@rivus/agent-kit/node`           | `createNodePlatform`                                                                              | Node                      |
+| `@rivus/agent-kit/node/effect`    | `NodePlatformLive`                                                                                | Node, with `effect`       |
 | `@rivus/agent-kit/sessions`       | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                       | anywhere, with a platform |
 | `@rivus/agent-kit/transcript`     | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
 | `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports |
 | `@rivus/agent-kit/testing` | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance` | Node |
+
+Collab's entries use agent-kit's public platform and are installed from the same lockstep release:
+
+| Entry                                  | Main exports                                | Calling style           |
+| -------------------------------------- | ------------------------------------------- | ----------------------- |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`                        | Plain, with a platform  |
+| `@rivus/agent-kit-collab/lease`        | `createLeaseManager` and lease store Layers | Effect, with a platform |
+| `@rivus/agent-kit-collab/lanes`        | `createLanes`                               | Effect, process-local   |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -168,10 +183,11 @@ holds entries such as family aliases. A model without a price has no cost (`unde
 
 ## Errors
 
-- A function that returns a `Promise` resolves to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
+- `loadTranscript`, `summarizeSession` and `readOriginal` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
   `error._tag` names the failure. `loadTranscript` and `summarizeSession` fail with `SessionNotFound`, `ReadFailed`,
   `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`; `readOriginal` fails with
   `SourceChanged`, `SessionNotFound` or `ReadFailed`.
+- `detectAgents` resolves to `Installation[]`; a failed probe is recorded in that agent's `problems`.
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
   goes on with the next one; `scanUsage`, `listUsageSources` and `decodeUsage` yield `{ agent, path, error }` items the same way.
 - When the `signal` option aborts, the call rejects with `signal.reason`.
@@ -208,13 +224,15 @@ Commands run without a shell and with a time limit; a check that fails is report
 `/catalog` has an identity for each of them, and a home rule where upstream documents one: Cline, CodeBuddy, Codex
 Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI, Neovate, OpenHands and Qoder.
 
-[`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), released with the same version, adds fenced
+[`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), in the same lockstep release policy, adds fenced
 leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform,
-and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency cap and a bounded queue.
+and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency cap and a bounded queue. ACP is
+implemented in `/acp`.
 
 `/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of
-what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection). See
-[plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the phases.
+what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection). The kit side of
+P0–P6 is implemented. Application adoption and real-agent acceptance remain open; see
+[plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks).
 
 ## Repository
 
@@ -232,6 +250,7 @@ npm run check   # format, build, lint, typecheck, test, package checks
 - [`docs/plans/0001-agent-kit.md`](docs/plans/0001-agent-kit.md): design, decisions and phases.
 - [`docs/specs/0001-agent-kit.md`](docs/specs/0001-agent-kit.md): behavior of the public entries.
 - [`docs/architecture/authoring.md`](docs/architecture/authoring.md): how to write a context package.
+- [`docs/development/adoption.md`](docs/development/adoption.md): application migration, verification and rollback.
 - [`CONTEXT.md`](CONTEXT.md): glossary.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/development/release.md`](docs/development/release.md): workflow and
   releases.
