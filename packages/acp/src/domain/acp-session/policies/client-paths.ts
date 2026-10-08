@@ -63,8 +63,9 @@ export type ClientPathVerdict =
 /** What the file system says about a target and its parent directories, before the verdict is judged. */
 export interface ClientPathFacts {
   /**
-   * The link-resolved spelling of the target and of every proper parent prefix, keyed by that prefix's own spelling;
-   * a prefix the platform could not resolve is absent.
+   * The link-resolved spellings the platform answered for, keyed by each prefix's own spelling. The verdict judges a
+   * missing target by its nearest existing parent, so a caller may stop probing there; a prefix that is unresolved
+   * or was not probed is absent.
    */
   readonly realpaths: ReadonlyMap<string, string>;
   /** Whether the target names a symlink, recorded only when its own realpath did not resolve. */

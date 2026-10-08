@@ -5,7 +5,7 @@ import { checkFence, nextFencingToken } from "../policies/fence-check.js";
 import { holderExpired, isFresh, observe } from "../policies/freshness.js";
 import { holderLiveness } from "../policies/holder-liveness.js";
 import { lossReason } from "../policies/loss.js";
-import { leaseTiming } from "../value-objects/lease-timing.js";
+import { type LeaseTimingInput, leaseTiming } from "../value-objects/lease-timing.js";
 import type { Holder } from "../value-objects/holder.js";
 import type { LeaseSnapshot } from "../value-objects/lease-snapshot.js";
 import { Lease, type LeaseClaim } from "./lease.js";
@@ -172,8 +172,9 @@ describe("lease rules", () => {
       ok: true,
       value: { ttlMs: 100, heartbeatMs: 50, retryMs: 25 }
     });
-    // The boundary: two heartbeats may be exactly the TTL, so one late heartbeat cannot lose it.
-    expect(leaseTiming({ ttlMs: 100, heartbeatMs: 50 }).ok).toBe(true);
+    // A JS caller may pass null where the type says optional; it falls back like an absent retryMs.
+    const nullRetry = { ttlMs: 100, heartbeatMs: 50, retryMs: null } as unknown as LeaseTimingInput;
+    expect(leaseTiming(nullRetry)).toEqual({ ok: true, value: { ttlMs: 100, heartbeatMs: 50, retryMs: 50 } });
     for (const input of [
       { ttlMs: 100, heartbeatMs: 60 },
       { ttlMs: 0, heartbeatMs: 0 },
@@ -188,6 +189,8 @@ describe("lease rules", () => {
     expect(lossReason(undefined)).toBe("missing");
     expect(lossReason(record(2, null))).toBe("released");
     expect(lossReason(record(2))).toBe("taken-over");
+    // A tombstone is a record with no holder, so the holder field decides whatever holderId says.
+    expect(lossReason({ ...record(2), holder: null })).toBe("released");
   });
 
   it("expires a holder that has confirmed no renewal for a whole TTL, measured on its own clock", () => {

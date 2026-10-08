@@ -27,7 +27,8 @@ const REFUSED: Record<ClientPathRefusal, string> = {
 
 /**
  * Where a client file call may act: the target with its links resolved, inside the session directory. The platform
- * answers for the target and every parent prefix, and the domain's `clientPathVerdict` judges the answers.
+ * answers for the target — and, when the target does not exist, for its parent prefixes up to the nearest existing
+ * one — and the domain's `clientPathVerdict` judges the answers.
  */
 async function resolveInside(
   fs: Pick<PlatformFs, "realpath" | "stat">,
@@ -38,18 +39,24 @@ async function resolveInside(
   if (path === undefined) {
     throw new ClientFileError("refused", `${target} is not an absolute path`);
   }
+  const spelling = formatAbsolutePath(path);
   const realpaths = new Map<string, string>();
-  for (let size = path.parts.length; size >= 0; size -= 1) {
-    const prefix = formatAbsolutePath({ root: path.root, parts: path.parts.slice(0, size) });
-    const real = await fs.realpath(prefix);
-    if (real !== undefined) {
-      realpaths.set(prefix, real);
+  let targetIsSymlink = false;
+  const self = await fs.realpath(spelling);
+  if (self === undefined) {
+    // Only a target the platform cannot resolve can be a link to a file that does not exist.
+    targetIsSymlink = (await fs.stat(spelling))?.kind === "symlink";
+    // The verdict judges a missing target by its nearest existing parent, so stop at the first that resolves.
+    for (let size = path.parts.length - 1; size >= 0 && realpaths.size === 0; size -= 1) {
+      const prefix = formatAbsolutePath({ root: path.root, parts: path.parts.slice(0, size) });
+      const real = await fs.realpath(prefix);
+      if (real !== undefined) {
+        realpaths.set(prefix, real);
+      }
     }
+  } else {
+    realpaths.set(spelling, self);
   }
-  // A target the platform resolved exists; only a missing one can be a link to a file that does not exist.
-  const targetIsSymlink = realpaths.has(formatAbsolutePath(path))
-    ? false
-    : (await fs.stat(formatAbsolutePath(path)))?.kind === "symlink";
   const verdict = clientPathVerdict(root, path, { realpaths, targetIsSymlink });
   if (verdict._tag === "refused") {
     throw new ClientFileError("refused", `${target} ${REFUSED[verdict.reason]}`);

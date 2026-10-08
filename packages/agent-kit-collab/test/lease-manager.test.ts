@@ -241,28 +241,33 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
 
   it.live("refuses fenced work over a record that breaks the lease invariants, instead of trusting its fields", () => {
     const { layer } = make();
+    // The first heartbeat of this config is 30 s away, so no renewal can move the record while the test runs.
+    const slow = { ttlMs: 60_000, heartbeatMs: 30_000 };
     return Effect.gen(function* () {
       const store = yield* LeaseStore;
+      let ran = false;
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const leases = yield* createLeaseManager(config);
+          const leases = yield* createLeaseManager(slow);
           const lease = yield* leases.acquire(KEY);
           const current = yield* store.read(KEY);
+          if (current === undefined) {
+            return yield* Effect.die(new Error("the record the lease wrote vanished"));
+          }
           expect(
-            yield* store.compareAndSet(KEY, current?.revision, {
-              key: KEY,
-              generation: 0,
-              revision: (current?.revision ?? 0) + 1,
+            yield* store.compareAndSet(KEY, current.revision, {
+              ...current,
               holder: null,
-              holderId: null,
-              renewedAt: 0
+              revision: current.revision + 1
             })
           ).toBe(true);
-          // The store accepts the record; the Lease invariants refuse it, so no work runs over it.
-          expect(failureOf(yield* Effect.exit(lease.runFenced(() => Effect.succeed(true))))).toMatchObject({
+          // The holder id and generation still match, so the old raw-field check ran such work; the restored
+          // record breaks the "a holder and a holder id come together" invariant, and none may run over it.
+          expect(failureOf(yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true)))))).toMatchObject({
             _tag: "LeaseStoreFailure",
             reason: "invalid-record"
           });
+          expect(ran).toBe(false);
         })
       );
     }).pipe(Effect.provide(layer));
