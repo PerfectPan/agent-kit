@@ -77,7 +77,8 @@ import {
   ExternalOwner,
   type LedgerLock,
   type LedgerScope,
-  LedgerStore
+  LedgerRepository,
+  type RevisionConflict
 } from "../ports.js";
 
 export interface PlanInstallOptions extends ScopeOptions {
@@ -111,9 +112,16 @@ export type PlanInstallError =
   | PlanConflict
   | ArtifactFailure
   | LedgerReadError
-  | LedgerLockError;
+  | LedgerLockError
+  | RevisionConflict;
 
-export type HarnessServices = ArtifactFiles | LedgerStore | LedgerLock | AgentCli | ExternalOwner | PlatformService;
+export type HarnessServices =
+  | ArtifactFiles
+  | LedgerRepository
+  | LedgerLock
+  | AgentCli
+  | ExternalOwner
+  | PlatformService;
 
 /** The adapters and context of one call, after merging the caller's adapters over the built-in ones. */
 export interface PlanSetup {
@@ -366,7 +374,7 @@ export function buildPlan(
 ): Effect.Effect<
   InstallPlan,
   PendingOperations | PlanStale | InvalidPlan | PlanConflict | ArtifactFailure | LedgerReadError,
-  ArtifactFiles | ExternalOwner | LedgerStore | PlatformService
+  ArtifactFiles | ExternalOwner | LedgerRepository | PlatformService
 > {
   return Effect.gen(function* () {
     const { bundle, agents, setup } = input;
@@ -440,13 +448,13 @@ export function contentAfter(
   scope: LedgerScope,
   step: PlanStep,
   ledger: Ledger
-): Effect.Effect<ArtifactContent | undefined, LedgerReadError, LedgerStore> {
+): Effect.Effect<ArtifactContent | undefined, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
     const after = contentAfterStep(step, ledger.entry(step.locator)?.preImage);
     if (after === undefined || "desired" in after) {
       return after?.desired;
     }
-    return yield* (yield* LedgerStore).getPreImage(scope, after.preImage);
+    return yield* (yield* LedgerRepository).getPreImage(scope, after.preImage);
   });
 }
 
@@ -468,7 +476,7 @@ function describePlan(
   ledger: Ledger,
   observed: ReadonlyMap<LocatorKey, ObservedArtifact>,
   input: PlanInput
-): Effect.Effect<Omit<InstallPlan, "status">, ArtifactFailure | LedgerReadError, ArtifactFiles | LedgerStore> {
+): Effect.Effect<Omit<InstallPlan, "status">, ArtifactFailure | LedgerReadError, ArtifactFiles | LedgerRepository> {
   return Effect.gen(function* () {
     const files = yield* ArtifactFiles;
     const changes: PlannedFileChange[] = [];

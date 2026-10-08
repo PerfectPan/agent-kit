@@ -44,10 +44,11 @@ export {
   type LedgerLockOptions,
   type LedgerLockShape,
   type LedgerLockUnavailable,
+  LedgerRepository,
+  type LedgerRepositoryFailure,
+  type LedgerRepositoryShape,
   type LedgerScope,
-  LedgerStore,
-  type LedgerStoreFailure,
-  type LedgerStoreShape,
+  type RevisionConflict,
   type UnexpectedShape
 } from "./application/ports.js";
 export {
@@ -64,7 +65,7 @@ export {
   type VerifyReport
 } from "./application/use-cases/verify.js";
 export { ChezmoiExternalOwnerLive } from "./infra/adapters/chezmoi-external-owner.js";
-export { FileLedgerStoreLive } from "./infra/repository/file-ledger-store.js";
+export { FileLedgerRepositoryLive } from "./infra/repository/file-ledger-repository.js";
 export { HarnessLive } from "./infra/factories/harness-live.js";
 export { PlatformArtifactFilesLive } from "./infra/adapters/platform-artifact-files.js";
 export { ProcessAgentCliLive } from "./infra/adapters/process-agent-cli.js";

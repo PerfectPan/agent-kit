@@ -121,7 +121,7 @@ describe("allowed imports", () => {
     const harness = (path: string) =>
       withFiles({ [`packages/harness/src/${path}`]: `import { Effect } from "effect";` });
     expect(rulesOf(harness("application/use-cases/apply-install.ts"))).toEqual([]);
-    expect(rulesOf(harness("infra/adapters/ledger-store.ts"))).toEqual([]);
+    expect(rulesOf(harness("infra/repository/file-ledger-repository.ts"))).toEqual([]);
     expect(rulesOf(harness("domain/ledger/ledger.ts"))).toEqual(["effect"]);
     expect(rulesOf(harness("events.ts"))).toEqual(["effect"]);
   });

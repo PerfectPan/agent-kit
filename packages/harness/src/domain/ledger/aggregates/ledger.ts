@@ -29,7 +29,7 @@ export interface LedgerSnapshot {
   readonly schemaVersion: number;
   /** Generated when the ledger is created and never changed, so a ledger recreated elsewhere is told apart. */
   readonly lineage: string;
-  /** Increases by one with every change, so a store can refuse a write based on an older revision. */
+  /** Increases by one with every change, so a repository can refuse a write based on an older revision. */
   readonly revision: number;
   readonly entries: Readonly<Record<LocatorKey, LedgerEntry>>;
   /** Written before any target is touched and cleared once each step's outcome is known. */
@@ -51,7 +51,7 @@ export interface BeginContext {
   readonly at: string;
   /** The kit version doing the writes. */
   readonly toolVersion: string;
-  /** For each step with `capturePreImage`, the copy the store kept of what is at its target. */
+  /** For each step with `capturePreImage`, the copy the repository kept of what is at its target. */
   readonly preImages?: Readonly<Record<LocatorKey, PreImage>>;
 }
 

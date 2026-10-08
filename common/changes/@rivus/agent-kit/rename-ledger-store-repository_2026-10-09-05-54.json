@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Rename the harness ledger store to a repository: `LedgerStore`/`LedgerStoreShape`/`LedgerStoreFailure` are now `LedgerRepository`/`LedgerRepositoryShape`/`LedgerRepositoryFailure`, `FileLedgerStoreLive` is `FileLedgerRepositoryLive`, and the service key is `@rivus/agent-kit/harness/LedgerRepository/v1`; a save over a stale revision now fails with the tagged error `{ _tag: \"RevisionConflict\", scope, expectedRevision, storedRevision }` — named like the lease repository's, instead of a failure of reason `revision-mismatch`. The file ledger repository passes the aggregate-repository conformance suite from `/testing/effect`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

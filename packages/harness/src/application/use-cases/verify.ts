@@ -47,7 +47,7 @@ import {
   renderBundle,
   requireUserScope
 } from "./plan-install.js";
-import type { ArtifactFailure } from "../ports.js";
+import type { ArtifactFailure, RevisionConflict } from "../ports.js";
 
 export interface VerifyOptions extends ScopeOptions {
   /**
@@ -81,6 +81,7 @@ export type VerifyError =
   | ArtifactFailure
   | LedgerReadError
   | LedgerLockError
+  | RevisionConflict
   | Extract<PlanInstallError, { readonly _tag: "HookSpecRejected" | "HookOverlap" | "InvalidHookPlacement" }>;
 
 /**
