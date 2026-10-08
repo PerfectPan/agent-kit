@@ -23,11 +23,13 @@ import { fileURLToPath } from "node:url";
 // and their usage from a temporary home, `/cost` prices that usage, `/discovery` finds a fake agent, the companions
 // run their own checks, and the hook entry starts fast in a fresh process. That consumer does not install effect, so
 // it loads only the plain entries. A second consumer installs effect itself and runs a program on the Effect entries
-// with exactly one copy of effect and of the shell in its tree. The real home directory is never read.
+// with exactly one copy of effect and of the shell in its tree, including one ACP turn with the test suite's fake
+// agent, which speaks ACP through the SDK the tarball installs. The real home directory is never read.
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = resolve(packageRoot, "../..");
 const fixtures = join(repoRoot, "packages/testing/test/fixtures");
+const fakeAgent = join(repoRoot, "packages/acp/test/fixtures/fake-agent.ts");
 const tsc = join(packageRoot, "node_modules/.bin/tsc");
 // Rush's own pnpm: it rewrites `workspace:` ranges in the packed manifests the way publishing does.
 const pnpm = join(repoRoot, "common/temp/pnpm-local/node_modules/.bin/pnpm");
@@ -58,7 +60,7 @@ exit 2
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 
 /** The entries that import the optional `effect` peer, as in check-dist.ts; a stale list fails one of the consumers. */
-const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);
+const EFFECT_ENTRIES = new Set(["./acp", "./node/effect", "./platform/effect"]);
 
 /** What a companion package adds to a consumer: imports at the top, statements after the shell's checks. */
 interface ConsumerCode {
@@ -342,8 +344,9 @@ function hookColdStartMs(consumer: string): number {
 
 /**
  * A host that installs effect itself: it imports every Effect entry, checks that each resolves the host's effect at
- * the peer version and that every companion entry resolves the host's copy of the shell, and runs a program that
- * reads PlatformService through NodePlatformLive under the temporary home.
+ * the peer version and that every companion entry resolves the host's copy of the shell, runs a program that reads
+ * PlatformService through NodePlatformLive under the temporary home, and runs one prompt against the fake ACP agent
+ * next to it.
  */
 function effectConsumerSource(packages: readonly ReleasePackage[], home: string, work: string): string {
   const [{ manifest } = shellOnly()] = packages;
@@ -363,7 +366,9 @@ import { fileURLToPath } from "node:url";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Stream from "effect/Stream";
 ${namespaces.join("\n")}
+import { type AcpProfile, connectAgent, MemorySessionBindingStoreLive } from "${manifest.name}/acp";
 import { NodePlatformLive } from "${manifest.name}/node/effect";
 import { PlatformService } from "${manifest.name}/platform/effect";
 ${companions.map((code) => code.imports).join("\n")}
@@ -398,7 +403,42 @@ if (!Exit.isSuccess(exit)) {
 }
 assert.equal(exit.value, ${JSON.stringify(home)});
 ${companions.map((code) => code.body).join("\n")}
+
+// One ACP turn: the fake agent runs under Node with no environment but the one given.
+const fakeAgent: AcpProfile = {
+  specificationVersion: "acp-v1",
+  agent: "fake-agent",
+  command: process.execPath,
+  args: [fileURLToPath(new URL("fake-agent.ts", import.meta.url))],
+  env: [],
+  systemPrompt: { in: "meta", key: "systemPrompt" },
+  warnings: []
+};
+const turn = Effect.scoped(
+  Effect.gen(function* () {
+    const connection = yield* connectAgent("fake-agent", {
+      cwd: process.cwd(),
+      env: {},
+      profiles: { "fake-agent": fakeAgent }
+    });
+    const session = yield* connection.newSession({ sessionKey: "smoke", systemPrompt: "be brief" });
+    return yield* Stream.runCollect(session.prompt([{ type: "text", text: "echo hello" }]));
+  })
+);
+const acp = await Effect.runPromiseExit(
+  turn.pipe(Effect.provide(MemorySessionBindingStoreLive), Effect.provide(NodePlatformLive))
+);
+if (!Exit.isSuccess(acp)) {
+  assert.fail(\`the ACP turn failed: \${Cause.pretty(acp.cause)}\`);
+}
+const events = acp.value.flatMap((part) => (part.type === "event" ? [part.event] : []));
+assert.deepEqual(
+  events.filter((event) => event.kind === "assistant").map((event) => event.payload.text),
+  ["hello", "done"]
+);
+assert.equal(events.at(-1)?.payload.finishReason, "end_turn");
 console.log(\`effect \${version}\`);
+console.log(\`acp: \${acp.value.length} parts, \${events.length} events\`);
 `;
 }
 
@@ -578,6 +618,7 @@ try {
     throw new Error(`expected one copy of effect, found ${copies.length}: ${copies.join(", ")}`);
   }
   writeFileSync(join(effectConsumer, "consumer.ts"), effectConsumerSource(packages, home, work));
+  cpSync(fakeAgent, join(effectConsumer, "fake-agent.ts"));
   // effect's own declarations name DOM types such as TextDecoderOptions.
   typecheck(effectConsumer, ["ES2024", "DOM"]);
   // os.homedir() reads HOME, so NodePlatformLive builds its platform with the temporary home.

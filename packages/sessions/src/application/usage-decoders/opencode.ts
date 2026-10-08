@@ -1,7 +1,7 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 import type { SqliteDatabase, SqliteValue } from "@rivus/agent-kit-platform";
 
-import { asNumber, asRecord, asString } from "../../agents/record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import { rememberKey } from "../../agents/usage-lines.js";
 import {
   OPENCODE_MESSAGE_PAGE,

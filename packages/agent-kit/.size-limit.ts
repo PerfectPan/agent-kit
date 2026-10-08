@@ -8,6 +8,8 @@ const nodeOnly = {
 // size-limit leaves peers out of the measurement, so the Effect entries count only the kit's own code and an inlined
 // copy of effect would exceed their budgets.
 export default [
+  // About 33 kB of it is the ACP SDK, a dependency the measurement includes.
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44 kB" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "2 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
@@ -19,6 +21,6 @@ export default [
   { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1.5 kB" },
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "14.5 kB" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "35.5 kB", ...nodeOnly },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "15 kB" },
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "15.5 kB" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "12 kB" }
 ] satisfies SizeLimitConfig;

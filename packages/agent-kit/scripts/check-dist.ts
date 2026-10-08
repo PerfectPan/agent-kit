@@ -14,7 +14,10 @@ const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
 const ZERO_DEPENDENCY_ENTRIES = new Set(["./cost", "./harness/events", "./transcript/usage"]);
 // Entries that import the optional `effect` peer, which must stay an external import. Every other entry is plain:
 // neither its code nor its declarations may reach `effect`, so a consumer without Effect can load and type-check it.
-const EFFECT_ENTRIES = new Set(["./node/effect", "./platform/effect"]);
+const EFFECT_ENTRIES = new Set(["./acp", "./node/effect", "./platform/effect"]);
+// Dependencies that the code may import but no declaration file may: the ACP SDK is internal to `/acp`, and its types
+// are not part of the published API.
+const INTERNAL_DEPENDENCIES = new Set(["@agentclientprotocol/sdk"]);
 const EFFECT = /^(?:effect|@effect\/[^/]+)(?:\/|$)/;
 
 interface Manifest {
@@ -159,6 +162,10 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
         }
       } else if (!declared.has(packageName(specifier))) {
         errors.push(`${subpath}: ${show(importer)} imports ${specifier}, which is not a dependency or peer`);
+      } else if (file === target.types && INTERNAL_DEPENDENCIES.has(packageName(specifier))) {
+        errors.push(
+          `${subpath}: ${show(importer)} imports ${specifier}, whose types must stay out of the declarations`
+        );
       }
     }
   }

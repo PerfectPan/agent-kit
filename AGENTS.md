@@ -77,6 +77,8 @@ Rush projects are listed in `rush.json`:
   package source file against them.
 - `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run directly
   by Node.
+- `tests/smoke` is the private `agent-kit-smoke` project: smoke tests against the coding agents installed on this
+  machine, run by hand with `npm run smoke` there (see its README). Its `test` script is empty, so CI never runs them.
 
 Every project defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the Rush
 bulk commands call. `docs/development/release.md` is the release runbook.

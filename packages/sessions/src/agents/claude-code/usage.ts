@@ -2,7 +2,7 @@ import { err, ok } from "@rivus/agent-kit-catalog";
 
 import { timeOf, unknownFormatGeneration } from "../../domain/transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import { rememberKey, shortHash, type UsageFile, type UsageLineDecoder } from "../usage-lines.js";
 
 const AGENT = "claude-code";

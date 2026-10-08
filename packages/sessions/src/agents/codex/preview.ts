@@ -1,6 +1,6 @@
 import type { SessionPreview } from "../../domain/session/index.js";
 import { timeOf } from "../../domain/transcript/index.js";
-import { asRecord, asString } from "../record-fields.js";
+import { asRecord, asString } from "../../protocols/record-fields.js";
 import { INJECTED_USER, textFrom } from "./response-items.js";
 
 /** The first prompt follows the turn rule: the first user message that is not text Codex injected. */

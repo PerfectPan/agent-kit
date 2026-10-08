@@ -85,12 +85,14 @@ export {
   CAPABILITIES,
   type Capability,
   type CompactionPayload,
+  foldStreamParts,
   foldTranscript,
   type HookPayload,
   isPrompt,
   type Lane,
   laneOf,
   latestSnapshot,
+  type LiveTranscriptEvent,
   MAIN_LANE_ID,
   mainAgentId,
   type MessagePayload,
@@ -118,6 +120,7 @@ export {
   type TranscriptEvent,
   type TranscriptEventKind,
   type TranscriptSession,
+  type TranscriptStreamPart,
   type UnknownFormatGeneration,
   type UnknownPayload
 } from "./domain/transcript/index.js";

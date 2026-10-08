@@ -7,7 +7,7 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 
 // Grok keeps one directory per session under `<home>/sessions/<encoded-cwd>/<session-id>/`. The transcript is
 // `updates.jsonl`. `summary.json`, `system_prompt.txt` and `tool_definitions.json` sit beside it. A subagent's

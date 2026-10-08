@@ -1,5 +1,5 @@
 import type { TranscriptEvent, TranscriptEventKind } from "../../domain/transcript/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 
 /** User-role text that Codex injects (environment, instructions, notifications). Not prompts. */
 export const INJECTED_USER: RegExp =

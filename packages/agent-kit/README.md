@@ -14,26 +14,27 @@ npm install @rivus/agent-kit
 ```
 
 ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
-bundles for browsers. The Effect entries `/platform/effect` and `/node/effect` need `effect` 4.0.1, an optional peer
-that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
+bundles for browsers. The Effect entries `/acp`, `/platform/effect` and `/node/effect` need `effect` 4.0.1, an
+optional peer that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 
 ## Entries
 
-| Entry                               | Main exports                                                                                                         | Runs in                               |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                              |
-| `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                  |
-| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform             |
-| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                  |
-| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                              |
-| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                  |
-| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                  |
-| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`               |
-| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                   |
-| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform             |
-| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules                     | anywhere, with a platform             |
-| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports |
-| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                  |
+| Entry                               | Main exports                                                                                                         | Runs in                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                 | with `effect` and a platform that spawns |
+| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                                 |
+| `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
+| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
+| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                     |
+| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                                 |
+| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                     |
+| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                     |
+| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`                  |
+| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                      |
+| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, `foldStreamParts`, translators, event rules  | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports    |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                     |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -188,6 +189,46 @@ const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatfor
 
 For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodePlatform({ env, home }))` instead.
 
+### Driving an agent over ACP
+
+`connectAgent` starts an agent's ACP program with exactly the environment you pass, completes the handshake and
+returns a connection that belongs to your Scope; closing the Scope closes its sessions and stops the process. A
+session runs one turn at a time, and `prompt` streams the turn: deltas named after AI SDK's stream parts
+(`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-available`, `tool-output-error`, `finish`) and `event` parts carrying the
+completed `TranscriptEvent`s. `foldStreamParts` rebuilds those events from the deltas alone.
+
+```ts
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
+
+import { agentEnv, builtinAcpProfiles, connectAgent, MemorySessionBindingStoreLive } from "@rivus/agent-kit/acp";
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+
+const turn = Effect.scoped(
+  Effect.gen(function* () {
+    const connection = yield* connectAgent("claude-code", {
+      cwd: "/work/project",
+      // Only the variables the agent reads; nothing is inherited.
+      env: agentEnv(builtinAcpProfiles["claude-code"]!, process.env),
+      onPermission: (request) => Effect.succeed(askTheUser(request))
+    });
+    const session = yield* connection.newSession({ sessionKey: "chat:42", systemPrompt: "Be brief." });
+    yield* session.prompt([{ type: "text", text: "Summarize README.md" }]).pipe(Stream.runForEach(render));
+  })
+);
+await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
+```
+
+Permission requests go to `onPermission`; without it, or without an answer, they are denied. Interrupting a turn's
+stream, or `session.cancel()`, sends `session/cancel` and waits for the turn to end within `cancelTimeoutMs` (5 s by
+default); when it does not end in time, the session's binding is removed and the connection is closed, which fails its
+other sessions with `ConnectionClosed`. `sessionKey` binds a key to the session in the `SessionBindingStore`
+(`MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`), so a later connection can
+`loadSession({ sessionKey })`. Client file reads and writes are off unless `fileSystem` turns them on, and then stay
+inside the session's directory after links are resolved. `probeAgent` opens one trial session and reports `ready`,
+`needs-login` or `unavailable`.
+
 ## Errors
 
 - A function that returns a `Promise` resolves to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
@@ -197,6 +238,10 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
   goes on with the next one; `scanUsage`, `listUsageSources` and `decodeUsage` yield `{ agent, path, error }` items the same way.
 - When the `signal` option aborts, the call rejects with `signal.reason`.
+- `/acp` fails Effects with the same kind of `_tag` errors: `AgentUnavailable` and `HandshakeFailed` from
+  `connectAgent`; `AuthRequired`, `AcpTimeout`, `AcpRequestFailed`, `ConnectionClosed`, `BindingNotFound`,
+  `LoadUnsupported` and `SessionBindingStoreFailure` from opening sessions; `TurnInProgress`, `SessionClosed` and
+  `CancelUnsettled` from turns.
 - Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or
   without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`; test
   for it with `isAgentKitError`. `readHookEvent` never throws because of a payload.
@@ -213,7 +258,9 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 | Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                | catalog identity only    |
 | Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` | added after 0.1.0        |
 
-Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/transcript/usage` reads the usage of every agent in the table except
+Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/acp` has a launch profile for
+Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the
+facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the table except
 Cursor (added after 0.1.0).
 
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
