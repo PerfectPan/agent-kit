@@ -9,6 +9,7 @@ export const LONGEST_MESSAGE_MS: number = 24 * 60 * 60 * 1000;
 /** How many running messages a cursor remembers; one that never finishes is dropped once newer ones push it out. */
 export const RUNNING_IDS: number = 64;
 
+/** How many reported message ids the cursor remembers; a message that changes again after more than this counts again. */
 const REPORTED_IDS = 256;
 
 /** The `time_updated` a query may start at: a day before `since`, since a message created before it can still end inside the window. */
