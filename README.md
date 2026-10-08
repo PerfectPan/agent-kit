@@ -20,7 +20,7 @@ adoption. See [Adopting agent-kit](docs/development/adoption.md).
 
 ## Entries
 
-The source API has 15 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (18 in total).
+The source API has 16 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (19 in total).
 
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -39,13 +39,14 @@ The source API has 15 entries in `@rivus/agent-kit` and three in `@rivus/agent-k
 | `@rivus/agent-kit/transcript`     | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, translators, event rules  | anywhere, with a platform |
 | `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports |
 | `@rivus/agent-kit/testing` | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance` | Node |
+| `@rivus/agent-kit/testing/effect` | `aggregateRepositoryConformance` | Node, with `effect` |
 
 Collab's entries use agent-kit's public platform and are installed from the same lockstep release:
 
 | Entry                                  | Main exports                                | Calling style           |
 | -------------------------------------- | ------------------------------------------- | ----------------------- |
 | `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`                        | Plain, with a platform  |
-| `@rivus/agent-kit-collab/lease`        | `createLeaseManager` and lease store Layers | Effect, with a platform |
+| `@rivus/agent-kit-collab/lease`        | `createLeaseManager` and lease repository Layers | Effect, with a platform |
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                               | Effect, process-local   |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:

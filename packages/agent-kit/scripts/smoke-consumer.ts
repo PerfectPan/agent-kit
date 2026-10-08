@@ -60,7 +60,7 @@ exit 2
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 
 /** The entries that import the optional `effect` peer, as in check-dist.ts; a stale list fails one of the consumers. */
-const EFFECT_ENTRIES = new Set(["./acp", "./harness", "./node/effect", "./platform/effect"]);
+const EFFECT_ENTRIES = new Set(["./acp", "./harness", "./node/effect", "./platform/effect", "./testing/effect"]);
 
 /** What a companion package adds to a consumer: imports at the top, statements after the shell's checks. */
 interface ConsumerCode {
@@ -96,7 +96,7 @@ console.log(\`process lock: \${lock.value.mechanism}\`);`
     }),
     effect: () => ({
       imports: `import { createLanes } from "@rivus/agent-kit-collab/lanes";
-import { createLeaseManager, sqliteLeaseStore } from "@rivus/agent-kit-collab/lease";`,
+import { createLeaseManager, sqliteLeaseRepository } from "@rivus/agent-kit-collab/lease";`,
       body: `const leaseProgram = Effect.gen(function* () {
   const leases = yield* createLeaseManager({ ttlMs: 2000, heartbeatMs: 500 });
   const fenced = yield* Effect.scoped(
@@ -105,7 +105,7 @@ import { createLeaseManager, sqliteLeaseStore } from "@rivus/agent-kit-collab/le
   const again = yield* Effect.scoped(Effect.map(leases.acquire("smoke"), (lease) => lease.token.generation));
   return [fenced, again];
 });
-const leaseLive = sqliteLeaseStore({ path: join(work, "leases.db") }).pipe(Layer.provideMerge(NodePlatformLive));
+const leaseLive = sqliteLeaseRepository({ path: join(work, "leases.db") }).pipe(Layer.provideMerge(NodePlatformLive));
 const leaseExit = await Effect.runPromiseExit(leaseProgram.pipe(Effect.provide(leaseLive)));
 if (!Exit.isSuccess(leaseExit)) {
   assert.fail(\`the lease program failed: \${Cause.pretty(leaseExit.cause)}\`);

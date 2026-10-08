@@ -86,6 +86,7 @@ const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 const ACP = "@rivus/agent-kit-acp";
+const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
   packages: {
@@ -125,6 +126,8 @@ export const boundaries: BoundaryRules = {
     // runtime, so a process holds one copy of the Platform types and the Result helpers.
     [COLLAB]: {
       dependsOn: [SHELL],
+      // The tests run the aggregate-repository conformance suite from the testing package.
+      testsOnly: [TESTING],
       external: ["zod/mini"],
       entries: ["lanes", "lease", "process-lock"],
       publicImports: {
@@ -162,6 +165,8 @@ export const boundaries: BoundaryRules = {
       // The Platform port as an Effect service and its Node Layer; `/platform` and `/node` stay plain.
       [PLATFORM]: ["src/effect.ts"],
       [PLATFORM_NODE]: ["src/effect.ts"],
+      // The testing package's aggregate-repository conformance suite, exported as `<package>/public/effect`.
+      [TESTING]: ["src/effect.ts"],
       "@rivus/agent-kit-harness": ["src/application/", "src/infra/"],
       [ACP]: ["src/application/", "src/infra/"],
       [COLLAB]: ["src/lease/application/", "src/lease/infra/", "src/lanes/application/", "src/lanes/infra/"]

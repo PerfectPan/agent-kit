@@ -38,6 +38,7 @@ The entry table describes the source API. Verify the exports of the npm version 
 | `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, `foldStreamParts`, translators, event rules  | anywhere, with a platform                |
 | `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports    |
 | `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                     |
+| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                            | Node, with `effect`                      |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex

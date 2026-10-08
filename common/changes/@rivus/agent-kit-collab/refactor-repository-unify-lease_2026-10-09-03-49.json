@@ -1,0 +1,16 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "Unify the lease store into an aggregate repository: `LeaseStore`, `LeaseStoreShape` and `LeaseStoreFailure` are now `LeaseRepository`, `LeaseRepositoryShape` and `LeaseRepositoryFailure` (service key `@rivus/agent-kit-collab/lease/LeaseRepository/v1`), and `fileLeaseStore`, `memoryLeaseStore`, `sqliteLeaseStore` (with `FileLeaseStoreOptions`, `SqliteLeaseStoreOptions`) are now `fileLeaseRepository`, `memoryLeaseRepository`, `sqliteLeaseRepository` (with the matching options types).",
+      "type": "minor"
+    },
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "The lease repository port now follows the kit's repository shape: the port's `read` is `load`, and `compareAndSet(key, expected, next)` (returning a boolean) is `save(key, next, expectedRevision)`, which fails with a typed `RevisionConflict` (`_tag`, `key`, `expectedRevision`, `storedRevision`) instead of returning `false`; the lease manager treats the conflict as it treated the boolean.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

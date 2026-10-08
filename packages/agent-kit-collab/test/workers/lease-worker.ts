@@ -5,7 +5,7 @@ import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { createLeaseManager, fileLeaseStore, sqliteLeaseStore } from "../../src/lease/public.js";
+import { createLeaseManager, fileLeaseRepository, sqliteLeaseRepository } from "../../src/lease/public.js";
 import { testPlatform } from "../support/platform.js";
 import { print, stdinLine } from "../support/workers.js";
 
@@ -17,7 +17,8 @@ const TTL_MS = 600;
 const HEARTBEAT_MS = 150;
 
 const platform = Layer.succeed(PlatformService, testPlatform({ sqlite: store !== "file-nosqlite" }));
-const storeLayer = store === "sqlite" ? sqliteLeaseStore({ path: location }) : fileLeaseStore({ dir: location });
+const storeLayer =
+  store === "sqlite" ? sqliteLeaseRepository({ path: location }) : fileLeaseRepository({ dir: location });
 
 const program = Effect.gen(function* () {
   const leases = yield* createLeaseManager({ ttlMs: TTL_MS, heartbeatMs: HEARTBEAT_MS });

@@ -16,13 +16,13 @@ import { afterEach } from "vitest";
 import {
   checkFence,
   createLeaseManager,
-  fileLeaseStore,
+  fileLeaseRepository,
   type FencingToken,
   type Holder,
-  LeaseStore,
+  LeaseRepository,
   type LeaseSnapshot,
-  memoryLeaseStore,
-  sqliteLeaseStore
+  memoryLeaseRepository,
+  sqliteLeaseRepository
 } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases } from "./support/stores.js";
@@ -47,14 +47,14 @@ function reusedPid(platform: Platform): Holder {
 }
 
 /**
- * Another process takes the lease over by writing straight into the store, as its own manager would. The holder's
- * heartbeat may write between the read and the write, so it tries again, like a manager's acquisition.
+ * Another process takes the lease over by writing straight into the repository, as its own manager would. The
+ * holder's heartbeat may write between the read and the write, so it tries again, like a manager's acquisition.
  */
 const takeOver = (holder: Holder, holderId = "other") =>
   Effect.gen(function* () {
-    const store = yield* LeaseStore;
+    const store = yield* LeaseRepository;
     for (let turn = 0; turn < 10; turn += 1) {
-      const current = yield* store.read(KEY);
+      const current = yield* store.load(KEY);
       const next: LeaseSnapshot = {
         key: KEY,
         generation: (current?.generation ?? 0) + 1,
@@ -63,7 +63,8 @@ const takeOver = (holder: Holder, holderId = "other") =>
         holderId,
         renewedAt: 0
       };
-      if (yield* store.compareAndSet(KEY, current?.revision, next)) {
+      const written = yield* Effect.exit(store.save(KEY, next, current?.revision));
+      if (Exit.isSuccess(written)) {
         return next;
       }
     }
@@ -73,11 +74,11 @@ const takeOver = (holder: Holder, holderId = "other") =>
 const failureOf = <A, E>(exit: Exit.Exit<A, E>): unknown =>
   Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
 
-describe.each(storeCases)("lease with the $name store", ({ make, persistent, platform }) => {
-  it.live("compares and sets records over the revision that was read", () => {
+describe.each(storeCases)("lease with the $name repository", ({ make, persistent, platform }) => {
+  it.live("writes records only over the revision it is shown, and conflicts otherwise", () => {
     const { layer } = make();
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       const record: LeaseSnapshot = {
         key: KEY,
         generation: 1,
@@ -86,19 +87,28 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
         holderId: "a",
         renewedAt: 5
       };
-      expect(yield* store.compareAndSet(KEY, undefined, record)).toBe(true);
-      expect(yield* store.compareAndSet(KEY, undefined, { ...record, holderId: "b" })).toBe(false);
-      expect(yield* store.compareAndSet(KEY, 7, { ...record, revision: 8 })).toBe(false);
-      expect(yield* store.compareAndSet(KEY, 1, { ...record, revision: 2, holderId: "b" })).toBe(true);
-      expect(yield* store.read(KEY)).toEqual({ ...record, revision: 2, holderId: "b" });
-      expect(yield* store.read("task:2")).toBeUndefined();
+      yield* store.save(KEY, record, undefined);
+      expect(yield* Effect.flip(store.save(KEY, { ...record, holderId: "b" }, undefined))).toEqual({
+        _tag: "RevisionConflict",
+        key: KEY,
+        expectedRevision: undefined,
+        storedRevision: 1
+      });
+      expect(yield* Effect.flip(store.save(KEY, { ...record, revision: 8 }, 7))).toMatchObject({
+        _tag: "RevisionConflict",
+        expectedRevision: 7,
+        storedRevision: 1
+      });
+      yield* store.save(KEY, { ...record, revision: 2, holderId: "b" }, 1);
+      expect(yield* store.load(KEY)).toEqual({ ...record, revision: 2, holderId: "b" });
+      expect(yield* store.load("task:2")).toBeUndefined();
     }).pipe(Effect.provide(layer));
   });
 
   it.live("runs one fence per key at a time and leaves other keys alone", () => {
     const { layer } = make();
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       const order: string[] = [];
       const hold = (name: string, key: string, ms: number) =>
         Effect.scoped(
@@ -234,8 +244,8 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
         })
       );
       expect({ interrupted, finished }).toEqual({ interrupted: true, finished: false });
-      const store = yield* LeaseStore;
-      expect(yield* store.read(KEY)).toEqual(successor);
+      const store = yield* LeaseRepository;
+      expect(yield* store.load(KEY)).toEqual(successor);
     }).pipe(Effect.provide(layer));
   });
 
@@ -244,27 +254,21 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
     // The first heartbeat of this config is 30 s away, so no renewal can move the record while the test runs.
     const slow = { ttlMs: 60_000, heartbeatMs: 30_000 };
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       let ran = false;
       yield* Effect.scoped(
         Effect.gen(function* () {
           const leases = yield* createLeaseManager(slow);
           const lease = yield* leases.acquire(KEY);
-          const current = yield* store.read(KEY);
+          const current = yield* store.load(KEY);
           if (current === undefined) {
             return yield* Effect.die(new Error("the record the lease wrote vanished"));
           }
-          expect(
-            yield* store.compareAndSet(KEY, current.revision, {
-              ...current,
-              holder: null,
-              revision: current.revision + 1
-            })
-          ).toBe(true);
+          yield* store.save(KEY, { ...current, holder: null, revision: current.revision + 1 }, current.revision);
           // The holder id and generation still match, so the old raw-field check ran such work; the restored
           // record breaks the "a holder and a holder id come together" invariant, and none may run over it.
           expect(failureOf(yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true)))))).toMatchObject({
-            _tag: "LeaseStoreFailure",
+            _tag: "LeaseRepositoryFailure",
             reason: "invalid-record"
           });
           expect(ran).toBe(false);
@@ -303,7 +307,7 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
   it.live("S67: stops waiting for the fence when the lease is lost", () => {
     const { layer } = make();
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       const lease = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
       // Another holder's fenced work keeps the fence for a long time.
       yield* Effect.forkChild(Effect.scoped(Effect.andThen(store.fence(KEY), Effect.sleep(5000))));
@@ -368,7 +372,7 @@ describe("createLeaseManager", () => {
         }
       }) as Platform["process"]
     };
-    const layer = Layer.provideMerge(memoryLeaseStore(), Layer.succeed(PlatformService, failing));
+    const layer = Layer.provideMerge(memoryLeaseRepository(), Layer.succeed(PlatformService, failing));
     return Effect.gen(function* () {
       yield* takeOver(reusedPid(platform));
       const leases = yield* createLeaseManager(config);
@@ -378,7 +382,7 @@ describe("createLeaseManager", () => {
     }).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  const layer = Layer.provideMerge(memoryLeaseStore(), Layer.succeed(PlatformService, testPlatform()));
+  const layer = Layer.provideMerge(memoryLeaseRepository(), Layer.succeed(PlatformService, testPlatform()));
 
   it.effect("S65: rejects a heartbeat that does not fit twice into the TTL, and other invalid durations", () =>
     Effect.gen(function* () {
@@ -405,10 +409,10 @@ describe("createLeaseManager", () => {
   );
 });
 
-describe("fileLeaseStore", () => {
+describe("fileLeaseRepository", () => {
   const platform = testPlatform({ sqlite: false });
   const layerFor = (dir: string) =>
-    Layer.provideMerge(fileLeaseStore({ dir }), Layer.succeed(PlatformService, platform));
+    Layer.provideMerge(fileLeaseRepository({ dir }), Layer.succeed(PlatformService, platform));
   const acquireOnce = Effect.scoped(
     createLeaseManager(config).pipe(
       Effect.flatMap((leases) => leases.acquire(KEY)),
@@ -422,12 +426,12 @@ describe("fileLeaseStore", () => {
     return Effect.gen(function* () {
       writeFileSync(path, "{");
       expect(failureOf(yield* Effect.exit(acquireOnce))).toMatchObject({
-        _tag: "LeaseStoreFailure",
+        _tag: "LeaseRepositoryFailure",
         reason: "invalid-record"
       });
       writeFileSync(path, JSON.stringify({ schemaVersion: 2, record: {} }));
       expect(failureOf(yield* Effect.exit(acquireOnce))).toMatchObject({
-        _tag: "LeaseStoreFailure",
+        _tag: "LeaseRepositoryFailure",
         reason: "unsupported-schema"
       });
       expect(readFileSync(path, "utf8")).toBe(JSON.stringify({ schemaVersion: 2, record: {} }));
@@ -439,19 +443,23 @@ describe("fileLeaseStore", () => {
     const stamp = { ...identity(platform), acquiredAt: 0, nonce: "stalled" };
     writeFileSync(join(dir, "task%3A1.lease.guard"), JSON.stringify(stamp));
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       const started = performance.now();
       const exit = yield* Effect.exit(
-        store.compareAndSet(KEY, undefined, {
-          key: KEY,
-          generation: 1,
-          revision: 1,
-          holder: identity(platform),
-          holderId: "a",
-          renewedAt: 0
-        })
+        store.save(
+          KEY,
+          {
+            key: KEY,
+            generation: 1,
+            revision: 1,
+            holder: identity(platform),
+            holderId: "a",
+            renewedAt: 0
+          },
+          undefined
+        )
       );
-      expect(failureOf(exit)).toMatchObject({ _tag: "LeaseStoreFailure", reason: "busy" });
+      expect(failureOf(exit)).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "busy" });
       expect(performance.now() - started).toBeLessThan(3000);
     }).pipe(Effect.provide(layerFor(dir)));
   });
@@ -482,7 +490,7 @@ describe("fileLeaseStore", () => {
   });
 });
 
-describe("sqliteLeaseStore", () => {
+describe("sqliteLeaseRepository", () => {
   const platform = testPlatform();
 
   it.live("rolls back a failed COMMIT, so the retried write can start its transaction", () => {
@@ -508,13 +516,13 @@ describe("sqliteLeaseStore", () => {
       }
     };
     const path = join(tempDir(), "leases.db");
-    const layer = Layer.provideMerge(sqliteLeaseStore({ path }), Layer.succeed(PlatformService, flaky));
+    const layer = Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, flaky));
     return Effect.gen(function* () {
-      const store = yield* LeaseStore;
+      const store = yield* LeaseRepository;
       const record = { key: KEY, generation: 1, revision: 1, holder: null, holderId: null, renewedAt: 0 };
-      expect(yield* store.compareAndSet(KEY, undefined, record)).toBe(true);
+      yield* store.save(KEY, record, undefined);
       expect(failCommit).toBe(false);
-      expect(yield* store.read(KEY)).toEqual(record);
+      expect(yield* store.load(KEY)).toEqual(record);
     }).pipe(Effect.provide(layer));
   });
 
@@ -525,18 +533,18 @@ describe("sqliteLeaseStore", () => {
     db.close();
     const broken = join(tempDir(), "broken.db");
     const open = (path: string) =>
-      Layer.provideMerge(sqliteLeaseStore({ path }), Layer.succeed(PlatformService, platform));
+      Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, platform));
     return Effect.gen(function* () {
       const exit = yield* Effect.exit(Effect.provide(Effect.void, open(newer)));
-      expect(failureOf(exit)).toMatchObject({ _tag: "LeaseStoreFailure", reason: "unsupported-schema" });
+      expect(failureOf(exit)).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "unsupported-schema" });
 
       yield* Effect.gen(function* () {
-        const store = yield* LeaseStore;
+        const store = yield* LeaseRepository;
         const record = { key: KEY, generation: 0, revision: 1, holder: null, holderId: null, renewedAt: 0 };
-        yield* store.compareAndSet(KEY, undefined, record);
+        yield* store.save(KEY, record, undefined);
         const leases = yield* createLeaseManager(config);
         expect(failureOf(yield* Effect.exit(Effect.scoped(leases.acquire(KEY))))).toMatchObject({
-          _tag: "LeaseStoreFailure",
+          _tag: "LeaseRepositoryFailure",
           reason: "invalid-record"
         });
       }).pipe(Effect.provide(open(broken)));

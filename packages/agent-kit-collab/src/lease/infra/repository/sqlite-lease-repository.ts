@@ -6,16 +6,17 @@ import * as Schedule from "effect/Schedule";
 
 import { isSqliteBusy } from "../../../process-lock/application/services/sqlite-lock.js";
 import type { LeaseSnapshot } from "../../domain/lease/index.js";
-import { LeaseStore, type LeaseStoreFailure } from "../../application/ports.js";
-import { storeFailure } from "../../application/services/store-failure.js";
+import { LeaseRepository, type LeaseRepositoryFailure, type RevisionConflict } from "../../application/ports.js";
+import { repositoryFailure, revisionConflict } from "../../application/services/repository-failure.js";
 import { keyFileName } from "../models/key-file-name.js";
 import { decodeHolder, decodeSnapshot, encodeHolder } from "../models/lease-record-codec.js";
 import { holdProcessLock } from "../adapters/process-fence.js";
 
-export interface SqliteLeaseStoreOptions {
+export interface SqliteLeaseRepositoryOptions {
   /**
    * The database file, in an existing local directory. The per-key fence locks of `runFenced` live next to it as
-   * `<path>.<key>.fence` (plus a `.holder` file each), so give the store a directory of its own or a distinct name.
+   * `<path>.<key>.fence` (plus a `.holder` file each), so give the repository a directory of its own or a distinct
+   * name.
    */
   readonly path: string;
 }
@@ -33,23 +34,23 @@ interface Statements {
 }
 
 /**
- * The lease store for one machine: one row per key in a SQLite database. `compareAndSet` runs in a
- * `BEGIN IMMEDIATE` transaction, which takes SQLite's write lock (an fcntl lock) before reading the revision, so
- * processes sharing the file compare and write atomically. The lock is released when its process exits, so neither a
- * crashed writer nor a reused pid can leave the store stuck. Fails to build with `unavailable` when the platform has
- * no SQLite, and with `unsupported-schema` for a database written by a newer version.
+ * The lease repository for one machine: one row per key in a SQLite database. `save` runs in a `BEGIN IMMEDIATE`
+ * transaction, which takes SQLite's write lock (an fcntl lock) before reading the revision, so processes sharing the
+ * file compare and write atomically. The lock is released when its process exits, so neither a crashed writer nor a
+ * reused pid can leave the repository stuck. Fails to build with `unavailable` when the platform has no SQLite, and
+ * with `unsupported-schema` for a database written by a newer version.
  */
-export function sqliteLeaseStore(
-  options: SqliteLeaseStoreOptions
-): Layer.Layer<LeaseStore, LeaseStoreFailure, PlatformService> {
+export function sqliteLeaseRepository(
+  options: SqliteLeaseRepositoryOptions
+): Layer.Layer<LeaseRepository, LeaseRepositoryFailure, PlatformService> {
   const { path } = options;
   return Layer.effect(
-    LeaseStore,
+    LeaseRepository,
     Effect.gen(function* () {
       const platform = yield* PlatformService;
       const { sqlite } = platform;
       if (sqlite === undefined) {
-        return yield* Effect.fail(storeFailure("", "unavailable", "the platform has no SQLite"));
+        return yield* Effect.fail(repositoryFailure("", "unavailable", "the platform has no SQLite"));
       }
       const db = yield* Effect.acquireRelease(
         sqliteTry("", `cannot open ${path}`, () => sqlite.open(path)),
@@ -68,12 +69,14 @@ export function sqliteLeaseStore(
         )
       };
       return {
-        read: (key) =>
+        load: (key) =>
           retryBusy(sqliteTry(key, `cannot read ${path}`, () => statements.select.get(key))).pipe(
             Effect.flatMap((row) => decodeRow(key, row))
           ),
-        compareAndSet: (key, expected, next) =>
-          retryBusy(sqliteTry(key, `cannot write ${path}`, () => compareAndSet(db, statements, expected, next))),
+        save: (key, next, expectedRevision) =>
+          retryBusy(
+            sqliteTry(key, `cannot write ${path}`, () => saveInTransaction(db, statements, key, next, expectedRevision))
+          ).pipe(Effect.flatMap((outcome) => (outcome === undefined ? Effect.void : Effect.fail(outcome)))),
         fence: (key) =>
           keyFileName(key).pipe(Effect.flatMap((name) => holdProcessLock(platform, key, `${path}.${name}.fence`)))
       };
@@ -82,6 +85,9 @@ export function sqliteLeaseStore(
 }
 
 class UnsupportedSchema extends Error {}
+
+/** The `RevisionConflict` a write refused with; `undefined` when it wrote. */
+type SaveOutcome = RevisionConflict | undefined;
 
 function migrate(db: SqliteDatabase): void {
   db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
@@ -108,11 +114,18 @@ function migrate(db: SqliteDatabase): void {
   });
 }
 
-function compareAndSet(db: SqliteDatabase, statements: Statements, expected: number | undefined, next: LeaseSnapshot) {
+function saveInTransaction(
+  db: SqliteDatabase,
+  statements: Statements,
+  key: string,
+  next: LeaseSnapshot,
+  expectedRevision: number | undefined
+): SaveOutcome {
   return transaction(db, () => {
-    const stored = statements.selectRevision.get(next.key)?.revision;
-    if ((stored === undefined ? undefined : Number(stored)) !== expected) {
-      return false;
+    const storedRow = statements.selectRevision.get(next.key);
+    const stored = storedRow === undefined ? undefined : Number(storedRow.revision);
+    if (stored !== expectedRevision) {
+      return revisionConflict(key, expectedRevision, stored);
     }
     statements.upsert.run(
       next.key,
@@ -122,7 +135,7 @@ function compareAndSet(db: SqliteDatabase, statements: Statements, expected: num
       next.holderId,
       next.renewedAt
     );
-    return true;
+    return undefined;
   });
 }
 
@@ -146,19 +159,19 @@ function transaction<T>(db: SqliteDatabase, body: () => T): T {
   }
 }
 
-function sqliteTry<T>(key: string, message: string, body: () => T): Effect.Effect<T, LeaseStoreFailure> {
+function sqliteTry<T>(key: string, message: string, body: () => T): Effect.Effect<T, LeaseRepositoryFailure> {
   return Effect.try({
     try: body,
     catch: (cause) => {
       if (cause instanceof UnsupportedSchema) {
-        return storeFailure(key, "unsupported-schema", cause.message);
+        return repositoryFailure(key, "unsupported-schema", cause.message);
       }
-      return storeFailure(key, isSqliteBusy(cause) ? "busy" : "io", message, cause);
+      return repositoryFailure(key, isSqliteBusy(cause) ? "busy" : "io", message, cause);
     }
   });
 }
 
-function retryBusy<T>(effect: Effect.Effect<T, LeaseStoreFailure>): Effect.Effect<T, LeaseStoreFailure> {
+function retryBusy<T>(effect: Effect.Effect<T, LeaseRepositoryFailure>): Effect.Effect<T, LeaseRepositoryFailure> {
   return effect.pipe(
     Effect.retry({
       while: (failure) => failure.reason === "busy",
@@ -171,7 +184,7 @@ function retryBusy<T>(effect: Effect.Effect<T, LeaseStoreFailure>): Effect.Effec
 function decodeRow(
   key: string,
   row: Record<string, unknown> | undefined
-): Effect.Effect<LeaseSnapshot | undefined, LeaseStoreFailure> {
+): Effect.Effect<LeaseSnapshot | undefined, LeaseRepositoryFailure> {
   if (row === undefined) {
     return Effect.succeed(undefined);
   }
@@ -188,6 +201,6 @@ function decodeRow(
           renewedAt: row.renewed_at
         });
   return snapshot === undefined
-    ? Effect.fail(storeFailure(key, "invalid-record", `the stored record for ${key} has an unexpected shape`))
+    ? Effect.fail(repositoryFailure(key, "invalid-record", `the stored record for ${key} has an unexpected shape`))
     : Effect.succeed(snapshot);
 }

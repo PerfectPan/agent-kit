@@ -5,11 +5,11 @@ import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Layer from "effect/Layer";
 
 import {
-  fileLeaseStore,
-  LeaseStore,
-  type LeaseStoreFailure,
-  memoryLeaseStore,
-  sqliteLeaseStore
+  fileLeaseRepository,
+  LeaseRepository,
+  type LeaseRepositoryFailure,
+  memoryLeaseRepository,
+  sqliteLeaseRepository
 } from "../../src/lease/public.js";
 import { tempDir, testPlatform } from "./platform.js";
 
@@ -19,16 +19,18 @@ export interface StoreCase {
   readonly platform: Platform;
   /** A new store over a new location, and a way to build another store over the same location. */
   readonly make: () => {
-    readonly layer: Layer.Layer<LeaseStore | PlatformService, LeaseStoreFailure>;
-    readonly reopen: () => Layer.Layer<LeaseStore | PlatformService, LeaseStoreFailure>;
+    readonly layer: Layer.Layer<LeaseRepository | PlatformService, LeaseRepositoryFailure>;
+    readonly reopen: () => Layer.Layer<LeaseRepository | PlatformService, LeaseRepositoryFailure>;
+    /** The directory or database file the two layers read and write, for tests that reach into the storage. */
+    readonly location: string;
   };
 }
 
 function withPlatform(
   platform: Platform,
-  store: Layer.Layer<LeaseStore, LeaseStoreFailure, PlatformService>
-): Layer.Layer<LeaseStore | PlatformService, LeaseStoreFailure> {
-  return Layer.provideMerge(store, Layer.succeed(PlatformService, platform));
+  repository: Layer.Layer<LeaseRepository, LeaseRepositoryFailure, PlatformService>
+): Layer.Layer<LeaseRepository | PlatformService, LeaseRepositoryFailure> {
+  return Layer.provideMerge(repository, Layer.succeed(PlatformService, platform));
 }
 
 const nodePlatform = testPlatform();
@@ -40,8 +42,8 @@ export const storeCases: readonly StoreCase[] = [
     persistent: false,
     platform: nodePlatform,
     make: () => {
-      const layer = withPlatform(nodePlatform, memoryLeaseStore());
-      return { layer, reopen: () => layer };
+      const layer = withPlatform(nodePlatform, memoryLeaseRepository());
+      return { layer, reopen: () => layer, location: "" };
     }
   },
   {
@@ -50,8 +52,8 @@ export const storeCases: readonly StoreCase[] = [
     platform: nodePlatform,
     make: () => {
       const path = join(tempDir(), "leases.db");
-      const open = () => withPlatform(nodePlatform, sqliteLeaseStore({ path }));
-      return { layer: open(), reopen: open };
+      const open = () => withPlatform(nodePlatform, sqliteLeaseRepository({ path }));
+      return { layer: open(), reopen: open, location: path };
     }
   },
   {
@@ -60,8 +62,8 @@ export const storeCases: readonly StoreCase[] = [
     platform: noSqlite,
     make: () => {
       const dir = tempDir();
-      const open = () => withPlatform(noSqlite, fileLeaseStore({ dir }));
-      return { layer: open(), reopen: open };
+      const open = () => withPlatform(noSqlite, fileLeaseRepository({ dir }));
+      return { layer: open(), reopen: open, location: dir };
     }
   }
 ];

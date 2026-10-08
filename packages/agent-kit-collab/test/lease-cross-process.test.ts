@@ -8,7 +8,7 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import { afterEach } from "vitest";
 
-import { createLeaseManager, sqliteLeaseStore } from "../src/lease/public.js";
+import { createLeaseManager, sqliteLeaseRepository } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { startWorker, stopWorkers, type Worker } from "./support/workers.js";
 
@@ -75,7 +75,7 @@ describe("lease lost across processes", () => {
       const path = join(tempDir(), "leases.db");
       const log = join(tempDir(), "writes.log");
       writeFileSync(log, "");
-      const layer = Layer.provideMerge(sqliteLeaseStore({ path }), Layer.succeed(PlatformService, testPlatform()));
+      const layer = Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, testPlatform()));
       return Effect.gen(function* () {
         const stalled = startWorker("lease-worker", ["sqlite", path, KEY, "fenced", log]);
         yield* Effect.promise(() => stalled.next("fenced-start"));

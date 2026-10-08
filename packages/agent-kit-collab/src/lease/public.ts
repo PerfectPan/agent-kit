@@ -1,12 +1,12 @@
-export { fileLeaseStore } from "./infra/repository/file-lease-store.js";
-export type { FileLeaseStoreOptions } from "./infra/repository/file-lease-store.js";
-export { memoryLeaseStore } from "./infra/repository/memory-lease-store.js";
-export { sqliteLeaseStore } from "./infra/repository/sqlite-lease-store.js";
-export type { SqliteLeaseStoreOptions } from "./infra/repository/sqlite-lease-store.js";
+export { fileLeaseRepository } from "./infra/repository/file-lease-repository.js";
+export type { FileLeaseRepositoryOptions } from "./infra/repository/file-lease-repository.js";
+export { memoryLeaseRepository } from "./infra/repository/memory-lease-repository.js";
+export { sqliteLeaseRepository } from "./infra/repository/sqlite-lease-repository.js";
+export type { SqliteLeaseRepositoryOptions } from "./infra/repository/sqlite-lease-repository.js";
 export { createLeaseManager } from "./application/use-cases/lease-manager.js";
 export type { AcquireOptions, LeaseConfig, LeaseHandle, LeaseManager } from "./application/use-cases/lease-manager.js";
-export { LeaseStore } from "./application/ports.js";
-export type { LeaseStoreFailure, LeaseStoreShape } from "./application/ports.js";
+export { LeaseRepository } from "./application/ports.js";
+export type { LeaseRepositoryFailure, LeaseRepositoryShape, RevisionConflict } from "./application/ports.js";
 export { canAcquire, checkFence, holderLiveness, isFresh, nextFencingToken } from "./domain/lease/index.js";
 export type {
   AcquisitionView,
