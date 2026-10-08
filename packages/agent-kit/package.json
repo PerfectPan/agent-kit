@@ -63,6 +63,10 @@
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
     },
+    "./testing/effect": {
+      "types": "./dist/testing/effect.d.ts",
+      "default": "./dist/testing/effect.js"
+    },
     "./transcript": {
       "types": "./dist/transcript.d.ts",
       "default": "./dist/transcript.js"

@@ -31,8 +31,8 @@ import {
   observe
 } from "../../domain/lease/index.js";
 import { fromResult } from "../services/from-result.js";
-import { LeaseStore, type LeaseStoreFailure, type LeaseStoreShape } from "../ports.js";
-import { storeFailure } from "../services/store-failure.js";
+import { LeaseRepository, type LeaseRepositoryFailure, type LeaseRepositoryShape } from "../ports.js";
+import { repositoryFailure } from "../services/repository-failure.js";
 
 export interface LeaseConfig {
   /** How long a lease stays valid without a renewal, as each observer's monotonic clock measures it. */
@@ -45,9 +45,9 @@ export interface LeaseConfig {
 
 export interface AcquireOptions {
   /**
-   * Keep trying every `retryMs` while the lease is held or the store is busy (a guard that stays locked), instead of
-   * failing with `LeaseHeld` or a `busy` `LeaseStoreFailure`. The wait ends when the lease is taken, on another store
-   * failure, or when the fiber is interrupted.
+   * Keep trying every `retryMs` while the lease is held or the repository is busy (a guard that stays locked),
+   * instead of failing with `LeaseHeld` or a `busy` `LeaseRepositoryFailure`. The wait ends when the lease is taken,
+   * on another repository failure, or when the fiber is interrupted.
    */
   readonly wait?: boolean;
 }
@@ -62,7 +62,7 @@ export interface LeaseHandle {
    */
   readonly lost: Effect.Effect<never, LeaseLost>;
   /**
-   * Runs `work` under the store's per-key fence, after re-reading that this acquisition still holds the lease, and
+   * Runs `work` under the repository's per-key fence, after re-reading that this acquisition still holds the lease, and
    * passes it the fencing token for the writes it makes. Waiting for the fence stops when the lease is lost. When the
    * lease is lost while `work` runs, `work` is interrupted and the result fails with `LeaseLost`.
    *
@@ -74,7 +74,7 @@ export interface LeaseHandle {
    */
   runFenced<A, E, R>(
     work: (token: FencingToken) => Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E | LeaseLost | FenceRejected | LeaseStoreFailure, Exclude<R, Scope.Scope>>;
+  ): Effect.Effect<A, E | LeaseLost | FenceRejected | LeaseRepositoryFailure, Exclude<R, Scope.Scope>>;
 }
 
 export interface LeaseManager {
@@ -86,26 +86,26 @@ export interface LeaseManager {
   acquire(
     key: string,
     options?: AcquireOptions
-  ): Effect.Effect<LeaseHandle, LeaseHeld | LeaseStoreFailure, Scope.Scope>;
-  read(key: string): Effect.Effect<LeaseSnapshot | undefined, LeaseStoreFailure>;
+  ): Effect.Effect<LeaseHandle, LeaseHeld | LeaseRepositoryFailure, Scope.Scope>;
+  read(key: string): Effect.Effect<LeaseSnapshot | undefined, LeaseRepositoryFailure>;
 }
 
 type ManagerPlatform = Pick<Platform, "process" | "clock">;
 
-/** CAS attempts within one acquisition before the store counts as busy; each lost race re-reads the record. */
+/** CAS attempts within one acquisition before the repository counts as busy; each lost race re-reads the record. */
 const MAX_CAS_TURNS = 8;
 
-/** Validates `config` and builds a manager over the `LeaseStore` and the platform in context. */
+/** Validates `config` and builds a manager over the `LeaseRepository` and the platform in context. */
 export function createLeaseManager(
   config: LeaseConfig
-): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseStore | PlatformService> {
+): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseRepository | PlatformService> {
   return Effect.gen(function* () {
     const timing = yield* fromResult(leaseTiming(config));
-    return makeManager(timing, yield* LeaseStore, yield* PlatformService);
+    return makeManager(timing, yield* LeaseRepository, yield* PlatformService);
   });
 }
 
-function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: ManagerPlatform): LeaseManager {
+function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform: ManagerPlatform): LeaseManager {
   const observations = new Map<string, LeaseObservation>();
   const now = () => platform.clock.monotonic();
   const self = (): Holder => {
@@ -124,14 +124,14 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
   const take = (key: string, holderId: string) =>
     Effect.gen(function* () {
       for (let turn = 0; turn < MAX_CAS_TURNS; turn += 1) {
-        const record = yield* store.read(key);
+        const record = yield* store.load(key);
         const claim = { key, holder: self(), holderId, now: platform.clock.now() };
         let transition: LeaseTransition;
         if (record === undefined) {
           transition = Lease.create(claim);
         } else {
           const lease = yield* fromResult(Lease.restore(record)).pipe(
-            Effect.mapError((invalid) => storeFailure(key, "invalid-record", invalid.message))
+            Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
           );
           const at = now();
           const observation = observe(observations.get(key), record, at);
@@ -143,27 +143,33 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
           transition = yield* fromResult(lease.acquire(claim, { fresh, liveness }));
         }
         const next = transition.state.toSnapshot();
-        if (yield* store.compareAndSet(key, record?.revision, next)) {
+        // A conflict is a lost race that the next turn re-reads; a defect or another failure keeps its own channel
+        // instead of being squashed into a typed repository failure.
+        const written = yield* store.save(key, next, record?.revision).pipe(
+          Effect.as(true),
+          Effect.catchTag("RevisionConflict", () => Effect.succeed(false))
+        );
+        if (written) {
           observations.delete(key);
           return next;
         }
       }
-      return yield* Effect.fail(storeFailure(key, "busy", "the lease record kept changing during acquisition"));
+      return yield* Effect.fail(repositoryFailure(key, "busy", "the lease record kept changing during acquisition"));
     });
 
   const lostBy = (key: string, holding: LeaseHolding) =>
     Effect.gen(function* () {
-      const read = yield* Effect.exit(store.read(key));
+      const read = yield* Effect.exit(store.load(key));
       // A read that failed is classified like a lost race, not like a vanished record; that mapping stays here.
       const reason: LeaseLost["reason"] = Exit.isSuccess(read) ? lossReason(read.value) : "taken-over";
       return { _tag: "LeaseLost", key, generation: holding.generation, reason } satisfies LeaseLost;
     });
 
   /**
-   * Renews every `heartbeatMs`. A refused write means another writer moved the record, so the lease is lost; a store
-   * failure is retried until no renewal has been confirmed for a TTL, after which an observer may take it over. The
-   * write stays interruptible while it waits for the store; `release` re-reads the record, so a renewal interrupted
-   * between its write and `Ref.set` cannot keep the tombstone from being written.
+   * Renews every `heartbeatMs`. A refused write means another writer moved the record, so the lease is lost; a
+   * repository failure is retried until no renewal has been confirmed for a TTL, after which an observer may take it
+   * over. The write stays interruptible while it waits for the repository; `release` re-reads the record, so a
+   * renewal interrupted between its write and `Ref.set` cannot keep the tombstone from being written.
    */
   const heartbeat = (key: string, holding: LeaseHolding, ref: Ref.Ref<LeaseSnapshot>) =>
     Effect.gen(function* () {
@@ -178,9 +184,11 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
         }
         const next = transition.value.state.toSnapshot();
         const written = yield* Effect.exit(
-          store
-            .compareAndSet(key, current.revision, next)
-            .pipe(Effect.tap((done) => (done ? Ref.set(ref, next) : Effect.void)))
+          store.save(key, next, current.revision).pipe(
+            Effect.tap(() => Ref.set(ref, next)),
+            Effect.as(true),
+            Effect.catchTag("RevisionConflict", () => Effect.succeed(false))
+          )
         );
         if (Exit.isSuccess(written)) {
           if (!written.value) {
@@ -204,11 +212,11 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
    */
   const release = (key: string, holding: LeaseHolding) =>
     Effect.gen(function* () {
-      const current = yield* store.read(key);
+      const current = yield* store.load(key);
       const restored = current === undefined ? undefined : Lease.restore(current);
       const transition = restored?.ok === true ? restored.value.release(holding, platform.clock.now()) : undefined;
       if (current !== undefined && transition?.ok === true) {
-        yield* store.compareAndSet(key, current.revision, transition.value.state.toSnapshot());
+        yield* store.save(key, transition.value.state.toSnapshot(), current.revision);
       }
     }).pipe(Effect.ignore);
 
@@ -225,12 +233,12 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
               return yield* Deferred.await(lost);
             }
             yield* store.fence(key).pipe(Effect.raceFirst(Deferred.await(lost)));
-            const record = yield* store.read(key);
+            const record = yield* store.load(key);
             const lease =
               record === undefined
                 ? undefined
                 : yield* fromResult(Lease.restore(record)).pipe(
-                    Effect.mapError((invalid) => storeFailure(key, "invalid-record", invalid.message))
+                    Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
                   );
             if (lease?.holds(holding) !== true) {
               const current = record?.generation;
@@ -263,7 +271,8 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
         options.wait === true
           ? attempt.pipe(
               Effect.retry({
-                while: (error: LeaseHeld | LeaseStoreFailure) => error._tag === "LeaseHeld" || error.reason === "busy",
+                while: (error: LeaseHeld | LeaseRepositoryFailure) =>
+                  error._tag === "LeaseHeld" || error.reason === "busy",
                 schedule: Schedule.spaced(timing.retryMs)
               })
             )
@@ -284,6 +293,6 @@ function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: Mana
         return handle(key, holding, lost);
       });
     },
-    read: (key) => store.read(key)
+    read: (key) => store.load(key)
   };
 }

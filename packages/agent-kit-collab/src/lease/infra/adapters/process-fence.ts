@@ -3,8 +3,8 @@ import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
 import { backoffMs, tryProcessLock } from "../../../process-lock/application/use-cases/acquire-process-lock.js";
-import type { LeaseStoreFailure } from "../../application/ports.js";
-import { storeFailure } from "../../application/services/store-failure.js";
+import type { LeaseRepositoryFailure } from "../../application/ports.js";
+import { repositoryFailure } from "../../application/services/repository-failure.js";
 
 /** The first retry of a waiting fence or guard; later ones back off from it. */
 const RETRY_MS = 10;
@@ -24,15 +24,15 @@ export function holdProcessLock(
   key: string,
   path: string,
   options: HoldOptions = {}
-): Effect.Effect<void, LeaseStoreFailure, Scope.Scope> {
+): Effect.Effect<void, LeaseRepositoryFailure, Scope.Scope> {
   const attempt = (first: boolean) =>
     Effect.acquireRelease(
       Effect.tryPromise({
         try: () => tryProcessLock(platform, path, { first }),
-        catch: (cause) => storeFailure(key, "io", `cannot lock ${path}`, cause)
+        catch: (cause) => repositoryFailure(key, "io", `cannot lock ${path}`, cause)
       }).pipe(
         Effect.flatMap((result) =>
-          result.ok ? Effect.succeed(result.value) : Effect.fail(storeFailure(key, "busy", `${path} is locked`))
+          result.ok ? Effect.succeed(result.value) : Effect.fail(repositoryFailure(key, "busy", `${path} is locked`))
         )
       ),
       (lock) => Effect.promise(() => lock.release())
@@ -51,7 +51,9 @@ export function holdProcessLock(
         return;
       }
       if (options.timeoutMs !== undefined && platform.clock.monotonic() - started >= options.timeoutMs) {
-        return yield* Effect.fail(storeFailure(key, "busy", `${path} is still locked after ${options.timeoutMs} ms`));
+        return yield* Effect.fail(
+          repositoryFailure(key, "busy", `${path} is still locked after ${options.timeoutMs} ms`)
+        );
       }
       yield* Effect.sleep(backoffMs(RETRY_MS, turn));
     }

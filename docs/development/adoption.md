@@ -6,7 +6,7 @@ Before adoption, select a verified npm release whose manifest exports the entrie
 
 ## Public entry inventory
 
-The source exports 15 agent-kit entries and three collab entries (18 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
+The source exports 16 agent-kit entries and three collab entries (19 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
 
 | Entry                                  | Main API                                                                                                                              | Calling style                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -25,8 +25,9 @@ The source exports 15 agent-kit entries and three collab entries (18 in total). 
 | `@rivus/agent-kit/acp`                 | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `optionOfKind`, binding store Layers, `foldStreamParts`               | Effect; connections and turns use caller Scopes |
 | `@rivus/agent-kit/redact`              | `redact`, `redactText`                                                                                                                | Plain, pure                                     |
 | `@rivus/agent-kit/testing`             | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`                               | Test helpers, Node                              |
+| `@rivus/agent-kit/testing/effect`      | `aggregateRepositoryConformance`                                                                                                      | Test helpers, Effect                            |
 | `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`                                                                                                                  | Plain, platform argument                        |
-| `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseStore`, `sqliteLeaseStore`, `fileLeaseStore`, `memoryLeaseStore`, fencing rules                           | Effect                                          |
+| `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository`, fencing rules       | Effect                                          |
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                         | Effect, process-local                           |
 
 The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node 24. Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
@@ -39,7 +40,7 @@ Only consumers of Effect entries install the exact optional peer, currently `eff
 
 The application runs Effects at its assembly root. A one-shot setup command uses `Effect.runPromiseExit` and translates failure into its CLI exit code. A long-lived server owns a `ManagedRuntime`, runs callback Effects explicitly and observes their failures. An existing Effect application composes Layers and Scopes directly. The kit does not provide a Promise facade or run its own Effects.
 
-For harness, provide `HarnessLive.pipe(Layer.provideMerge(NodePlatformLive))`, or substitute `Layer.succeed(PlatformService, createNodePlatform({ env, home }))` for an explicit test environment. The retained `PlatformService` is needed by the use cases as well as the harness port adapters. For a lease store, use the same pattern, such as `sqliteLeaseStore({ path }).pipe(Layer.provideMerge(NodePlatformLive))`. Do not supply a platform with `Layer.mergeAll` alone and expect it to feed another Layer in that group.
+For harness, provide `HarnessLive.pipe(Layer.provideMerge(NodePlatformLive))`, or substitute `Layer.succeed(PlatformService, createNodePlatform({ env, home }))` for an explicit test environment. The retained `PlatformService` is needed by the use cases as well as the harness port adapters. For a lease repository, use the same pattern, such as `sqliteLeaseRepository({ path }).pipe(Layer.provideMerge(NodePlatformLive))`. Do not supply a platform with `Layer.mergeAll` alone and expect it to feed another Layer in that group.
 
 ACP programs use `connectAgent` with the platform service. Provide the platform to its program and keep the connection in a Scope that lasts as long as its sessions. With `sessionKey`, also provide `MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`. `FileSessionBindingStoreLive` requires the platform; compose it with `provideMerge`. Without session keys, no binding store is needed. The caller chooses the explicit environment, permission callback and file access policy.
 
@@ -76,7 +77,7 @@ Bundle `/transcript/usage` and `/cost` directly, supply the needed platform port
 
 ### Room web
 
-1. Adopt collab leases using the SQLite store adapter where appropriate. Treat this as a code replacement; the kit does not promise compatibility with an existing database file or schema. Choose and verify the state transition before pointing it at existing data.
+1. Adopt collab leases using the SQLite lease repository where appropriate. Treat this as a code replacement; the kit does not promise compatibility with an existing database file or schema. Choose and verify the state transition before pointing it at existing data.
 2. Replace ACP driving with `/acp` and scheduling with `/lanes`. Retain ToolServer and room policy. Keep a `ManagedRuntime` at the host assembly root, and run wake/cancel Effects in callbacks with failure handling.
 3. Set `maxConcurrent`, choose `maxQueued` and `turnTimeoutMs`, and keep the connection/lease/prompt lifecycle inside the caller's `activate`. Test that concurrent ACP processes obey the global limit, wakes coalesce, a queued key is not duplicated, and cancel/close wait for cleanup. Observe `onExit` without making it wait on `cancel` or `close`.
 4. Verify ACP permission denial, cancel deadlines, binding invalidation, explicit environment, client file confinement and shutdown with the application's old tests. Complete the real-agent smoke before claiming supported upstream behavior.

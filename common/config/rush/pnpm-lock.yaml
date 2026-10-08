@@ -510,6 +510,9 @@ importers:
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1
+      effect:
+        specifier: 4.0.1
+        version: 4.0.1
       oxfmt:
         specifier: 0.71.0
         version: 0.71.0

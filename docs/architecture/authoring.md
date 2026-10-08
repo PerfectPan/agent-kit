@@ -44,7 +44,8 @@ Every context package uses the same layout, creating only the directories it nee
     services/           coordination code shared by use cases; may call ports, holds no business rules
     ports.ts            port shapes and injection tags (some contexts keep errors.ts or usage-ports.ts beside it)
   infra/
-    repository/         store implementations (ledger, session bindings, leases)
+    repository/         persistence implementations: aggregate repositories (ledger, leases)
+                        and key-value stores such as acp's session bindings
     models/             stored formats and their codecs
     adapters/           other port implementations (editors, CLI runners, fences)
     factories/          Layer compositions
@@ -65,7 +66,7 @@ The layer principles:
 | `domain/adapters/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | This context's domain (its own concept folders, not other packages' internals), `domain/protocols/`, catalog, and the external packages the package allows, such as `zod/mini` |
 | `domain/protocols/` | A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update` streams | This context's domain and catalog, and the external packages the package allows; not `domain/adapters/` |
 | `application/` | `use-cases/` carry agent knowledge and coordinate ports; `services/` is code shared by use cases; `ports.ts` declares the part of Platform and the context's own ports that they use | Domain, `domain/adapters/`, `domain/protocols/` and ports |
-| `infra/` | Implementations of ports the kit declares: stores (`repository/`), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
+| `infra/` | Implementations of ports the kit declares: persistence implementations under `repository/` (aggregate repositories and key-value stores such as acp's session bindings), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
 
 `@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary test treats as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
 
@@ -131,6 +132,25 @@ An entity is a child of one aggregate: it has a local identity inside that aggre
 - Domain services never call ports. The use case loads the data a domain service needs first and passes it in as plain values.
 - Port interfaces live in `application/` because only application code calls them (use cases and application services). types-ddd puts them in the domain because its domain services call repositories; this kit has no domain services that call ports.
 
+## Repository Shape
+
+An aggregate's repository port — `LedgerStore`, `LeaseRepository` — offers:
+
+- `load(id)` -> the stored snapshot, or `undefined` when there is none;
+- `save(id, snapshot, expectedRevision: number | undefined)` -> `void`; a revision mismatch is a typed error
+  `{ _tag: "RevisionConflict", ... }` in the error channel. Expected outcomes are `_tag` errors, never booleans.
+- aggregate-specific operations only where the aggregate needs them: Ledger's pre-image blobs, Lease's `fence`.
+
+Each context declares its own `RevisionConflict` next to its port; the type is not shared across contexts.
+`SessionBindingStore` (acp) stores value objects, not an aggregate: it stays a key-value store with its current
+names, and its documentation says so. `LedgerLock` is unchanged by these rules: mutual exclusion is its own port
+beside the repository.
+
+The generic conformance cases for this shape (`load` of a missing id, the first `save`, a stale revision refused
+with `RevisionConflict` and nothing changed, strictly increasing revisions, an unknown `schemaVersion` refused and
+kept, and reopening for persistent implementations) live in the testing package's Effect entry
+(`/testing/effect`), so an implementation — built-in or third-party — runs them from its fixtures.
+
 ## Coordinate Through Application Ports
 
 - A use case loads an aggregate or reads data through ports, applies domain rules, saves the result, and coordinates external work through ports. It never constructs a concrete adapter.
@@ -141,7 +161,7 @@ An entity is a child of one aggregate: it has a local identity inside that aggre
 
 ## Make Persistence And Partial Failure Explicit
 
-- Write a store's preconditions into its calling convention. Promise CAS only when the store can check atomically (the SQLite lease store compares inside a transaction) or when every writer goes through the same lock (the file lease store's guard, the LedgerLock).
+- Write a repository's preconditions into its calling convention. Promise CAS only when the repository can check atomically (the SQLite lease repository compares inside a transaction) or when every writer goes through the same lock (the file lease repository's guard, the LedgerLock).
 - Shared configuration files that agents and other tools also write are not under a common lock. Do not promise CAS for them: re-checking a precondition before `rename` narrows the window but does not close it, and an overwritten external change cannot be detected afterwards. Prefer the agent's command line or native plugin for files the agent is using.
 - Every ledger modification happens within one lock holding period: read the ledger, write pending, change the target files, write the ledger, clear pending. The lock is held until the last step.
 - Multi-step writes are not transactions. Failures stay visible to the caller; pending operations are written before acting and probed (not replayed blindly) at the next lock acquisition; pre-images allow restoring what was there.
@@ -176,7 +196,7 @@ These rules apply to the use cases and port adapters of harness execution (apply
 
 - Only `application/` and `infra/` of these contexts, and the `src/effect.ts` files of the next rule, may import `effect`. Their `domain/`, `domain/adapters/` included, stays plain TS, like every other domain layer.
 - A package whose entries must stay plain keeps its Effect counterpart in `src/effect.ts`, exported to the shell as `<package>/public/effect` and, when siblings need it, to them as `<package>/effect`. platform exports `PlatformService` both ways (published as `/platform/effect`); platform-node exports `NodePlatformLive` only to the shell (`/node/effect`), because only applications provide the platform. The boundary test counts an import of `<package>/effect`, or a relative import of `src/effect.ts` from a file outside the Effect allowlist, as an Effect import. Every published Effect entry is listed in `EFFECT_ENTRIES` of the shell's `scripts/check-dist.ts` and `scripts/smoke-consumer.ts`; every other entry is checked as plain.
-- A port is a class-style `Context.Service` named after the port and keyed `@rivus/agent-kit/<context>/<Port>/v1`, for example `LedgerLock` keyed `@rivus/agent-kit/harness/LedgerLock/v1`; collab's ports carry its own package name, such as `LeaseStore` keyed `@rivus/agent-kit-collab/lease/LeaseStore/v1`. When a plain interface already has the port's name, the service adds `Service`: `PlatformService`, keyed `@rivus/agent-kit/platform/Platform/v1`, holds a `Platform`. The key is the service's runtime identity; it moves to `v2` only for an incompatible interface. `isolatedDeclarations` rejects a call in `extends`, so the generated base gets an explicit type:
+- A port is a class-style `Context.Service` named after the port and keyed `@rivus/agent-kit/<context>/<Port>/v1`, for example `LedgerLock` keyed `@rivus/agent-kit/harness/LedgerLock/v1`; collab's ports carry its own package name, such as `LeaseRepository` keyed `@rivus/agent-kit-collab/lease/LeaseRepository/v1`. When a plain interface already has the port's name, the service adds `Service`: `PlatformService`, keyed `@rivus/agent-kit/platform/Platform/v1`, holds a `Platform`. The key is the service's runtime identity; it moves to `v2` only for an incompatible interface. `isolatedDeclarations` rejects a call in `extends`, so the generated base gets an explicit type:
 
   ```ts
   const KEY = "@rivus/agent-kit/harness/LedgerLock/v1";
@@ -187,7 +207,7 @@ These rules apply to the use cases and port adapters of harness execution (apply
   export class LedgerLock extends LedgerLockBase {}
   ```
 
-- A port's implementation is a Layer in the context's `infra/`, named `<Variant><Port>Live` (`SqliteLedgerLockLive`), or a function named `<variant><Port>` when the Layer takes options (`sqliteLeaseStore({ path })`); a context's default set, such as `HarnessLive` (`infra/factories/`), is composed there too, because `application/` may not import `infra/`. Layers in a context's `infra/` require `PlatformService` and never provide it; the application provides it with platform-node's `NodePlatformLive` or its own `Layer.succeed(PlatformService, platform)`. A Layer that captures the environment builds it lazily (`Layer.sync`, `Layer.effect`), never at import. Platform stays one service; do not turn each Platform method into its own service.
+- A port's implementation is a Layer in the context's `infra/`, named `<Variant><Port>Live` (`SqliteLedgerLockLive`), or a function named `<variant><Port>` when the Layer takes options (`sqliteLeaseRepository({ path })`); a context's default set, such as `HarnessLive` (`infra/factories/`), is composed there too, because `application/` may not import `infra/`. Layers in a context's `infra/` require `PlatformService` and never provide it; the application provides it with platform-node's `NodePlatformLive` or its own `Layer.succeed(PlatformService, platform)`. A Layer that captures the environment builds it lazily (`Layer.sync`, `Layer.effect`), never at import. Platform stays one service; do not turn each Platform method into its own service.
 - Compose Layers with `Layer.provide` or `Layer.provideMerge`. `Layer.mergeAll` only merges outputs; it does not feed one Layer's output into another Layer of the same group.
 - Entries return `Effect`, `Stream` or `Layer`. Cancellation is fiber interruption, and long-lived resources (ACP connections, lease managers, lanes) belong to a Scope the caller provides.
 - Errors use the same `_tag` unions as the plain TS side, in the typed error channel. A `Result` from a plain function enters it through `fromResult`, one expression that each Effect context declares in its `application/`; `catchTag` does not see an `{ ok: false }` value that was never failed:
@@ -219,18 +239,18 @@ The assembly root lives in each consuming application, not in the kit.
 
 ## Verify At The Owner
 
-- Test real obligations where they are owned: an aggregate's legal transitions and rejections; a use case's port call order and conflict mapping; a store's behavior through the storage conformance tests; each agent adapter through its context's conformance tests. Do not add identity tests for re-exports.
-- Conformance tests live in the testing package and are exported through `/testing`, so third-party adapters and stores run the same suite.
+- Test real obligations where they are owned: an aggregate's legal transitions and rejections; a use case's port call order and conflict mapping; a repository's behavior through the conformance suite and its store-specific tests; each agent adapter through its context's conformance tests. Do not add identity tests for re-exports.
+- Conformance tests live in the testing package and are exported through `/testing` and, for the Effect-based ones, `/testing/effect`, so third-party adapters and repositories run the same suite.
 - Tests that need the real platform (files, child processes, SQLite) run on platform-node: a package lists it under `testsOnly` in `boundaries.ts` and as a devDependency, and its source files still may not import it. They run under a temporary home with an explicit environment.
-- Storage conformance tests have two groups. Generic cases run against every implementation (memory, file, SQLite). Persistence and cross-process cases run only against persistent implementations, with their locks, as integration tests.
+- The aggregate-repository conformance suite (`/testing/effect`, see [Repository Shape](#repository-shape)) runs generic cases against every implementation of a repository, the reopen case against persistent implementations, and the unknown-schema case where the storage carries a schema version. Cross-process cases and anything the suite cannot express stay in the owner's tests, as integration tests.
 
-| Store | Generic cases | Persistence and cross-process cases |
+| Repository | Cases from `/testing/effect` | Store-specific tests beyond the suite |
 | --- | --- | --- |
-| Ledger store | Revisions strictly increase; a write with a mismatched revision is refused; an unknown `schemaVersion` is refused and nothing is cleared | With the LedgerLock: two processes modifying at once, only one enters the critical section; after the holder is killed, the next holder probes pending operations before continuing; data read after reopening equals data written |
-| LeaseStore | A revision conflict is refused; the generation never decreases, including after release and re-creation; ABA is detected | Two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
-| SessionBindingStore | Read, write, delete; the conflict semantics of two writes for one `sessionKey` | Bindings survive reopening |
+| LedgerStore | Revisions strictly increase; a save over a stale revision is refused; an unknown `schemaVersion` is refused and nothing is cleared; the reopen case | With the LedgerLock: two processes modifying at once, only one enters the critical section; after the holder is killed, the next holder probes pending operations before continuing |
+| Lease repository | The generic cases (memory, file, SQLite), the reopen and unknown-schema cases (file and SQLite only) | The generation never decreases, including after release and re-creation; ABA is detected; two processes acquiring at once, only one succeeds; a reused pid is not taken as alive; two reclaimers at once, only one succeeds |
+| SessionBindingStore (a key-value store, not an aggregate) | — | Read, write, delete; the conflict semantics of two writes for one `sessionKey`; bindings survive reopening |
 
-- A rule that a store cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.
+- A rule that a repository cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.
 - When ownership or dependencies change, update `infra/architecture/boundaries.ts` and run the boundary test. The test has positive and negative cases: a legal import (such as cost's domain importing a type from sessions) must pass, and a violating one (`node:*` in a domain file, `effect` in a plain context, a deep import into another package's `domain/`) must fail.
 
 ## What Not To Build

@@ -8,7 +8,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./public": "./src/public.ts"
+    "./public": "./src/public.ts",
+    "./public/effect": "./src/effect.ts"
   },
   "scripts": {
     "build": "",
@@ -30,6 +31,7 @@
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",
     "@rivus/agent-kit-cost": "workspace:*",
     "@types/node": "24.19.1",
+    "effect": "4.0.1",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",

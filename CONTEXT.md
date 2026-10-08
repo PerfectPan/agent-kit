@@ -226,7 +226,7 @@ The process that holds a Lease, identified by host, boot id, pid and start time,
 The fencing token of a Lease. It increases on creation and takeover, never decreases, not even after release, and heartbeats do not change it.
 
 **Revision**:
-A counter that increases on every write of a lease record; stores compare it for CAS.
+A counter that increases on every write of a lease record; repositories compare it for CAS.
 
 **TTL**:
 How long a Lease stays valid without a Heartbeat, judged by the observer's monotonic clock.
@@ -241,7 +241,7 @@ A released lease record kept with no holder, so the Generation cannot go backwar
 The check that rejects a write carrying an older Generation than the protected resource has seen.
 
 **Fence**:
-The per-key guard a LeaseStore holds across processes while one fenced operation runs, so that a successor's fenced work starts only after the old holder's fenced fiber has ended. A non-cancellable write in that fiber keeps the fence only inside `Effect.uninterruptible`.
+The per-key guard a LeaseRepository holds across processes while one fenced operation runs, so that a successor's fenced work starts only after the old holder's fenced fiber has ended. A non-cancellable write in that fiber keeps the fence only inside `Effect.uninterruptible`.
 
 **Observation**:
 When an observer first saw the current Revision of a lease record, by its own monotonic clock; a held lease expires for that observer once the Revision has not changed for the TTL.
@@ -280,8 +280,11 @@ A utility module of pure functions that remove home path spellings and secret ke
 **Agent adapter**:
 The per-agent implementation of a context's adapter interface, under `domain/adapters/<agent>/`. It translates the agent's external format into the context's model and is registered in that context's `builtinXxx` table.
 
+**Repository**:
+The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).
+
 **Port adapter**:
-An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor or a ledger store. Stores live in `infra/repository/`, stored formats and codecs in `infra/models/`.
+An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor, an aggregate repository, or the session-binding key-value store. Persistence implementations live in `infra/repository/`, stored formats and codecs in `infra/models/`.
 
 **Entry**:
 A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
@@ -290,7 +293,7 @@ A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
 The published package `@rivus/agent-kit`, whose entries only re-export names from the internal packages' public surface; the internal packages are bundled into it at build time. `@rivus/agent-kit-collab` is published too, in the same lockstep version, but keeps its own code under `src/<entry>/`.
 
 **Conformance test**:
-A test suite, exported from `/testing`, that checks an agent adapter or a store against a context's interface definition. Built-in and third-party adapters run the same suite.
+A test suite, exported from `/testing` (the aggregate-repository suite from `/testing/effect`), that checks an agent adapter or a repository against a context's interface definition. Built-in and third-party adapters run the same suite.
 
 ## Same name, different meaning
 
