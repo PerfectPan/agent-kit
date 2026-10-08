@@ -9,12 +9,19 @@ import {
   type InvalidBundle,
   type Owner
 } from "../../domain/bundle/index.js";
-import { type ArtifactLocator, type LocatorKey, locatorKey } from "../../domain/install-plan/index.js";
+import {
+  type ArtifactLocator,
+  type DesiredArtifact,
+  type LocatorKey,
+  locatorKey
+} from "../../domain/install-plan/index.js";
 import {
   type ContentHash,
+  type LedgerEntry,
+  markAcknowledged,
   type PendingOperations,
-  threeWayVerify,
-  type VerifyStatus
+  type VerifiedArtifact,
+  verifyOwner
 } from "../../domain/ledger/index.js";
 import type { HookDialects } from "../../domain/lifecycle/index.js";
 import type { StrategyUnavailable } from "../errors.js";
@@ -58,11 +65,7 @@ export interface VerifyOptions extends ScopeOptions {
 }
 
 /** One Artifact as three-way verify sees it: the ledger's record, what is on disk and what the bundle wants. */
-export interface VerifiedArtifact {
-  readonly locator: ArtifactLocator;
-  readonly agents: readonly CodingAgentId[];
-  readonly status: VerifyStatus;
-}
+export type { VerifiedArtifact };
 
 export interface VerifyReport {
   readonly artifacts: readonly VerifiedArtifact[];
@@ -81,7 +84,7 @@ export type VerifyError =
 
 /**
  * Compares the owner's Artifacts on disk with the ledger and, given the bundle, with what it wants, the way chezmoi
- * does (see `threeWayVerify`). Reading needs no lock; only when the ledger is behind the disk does verify take the
+ * does (see `verifyOwner`). Reading needs no lock; only when the ledger is behind the disk does verify take the
  * LedgerLock, compare again under it and record the disk's hash (`acknowledge`).
  */
 export function verify(
@@ -93,66 +96,38 @@ export function verify(
     const scope = yield* ledgerScope(options);
     const setup = yield* planSetup(options);
     const registrations = registrationLookup(setup.adapters, setup.context);
-    const desired = new Map<LocatorKey, { locator: ArtifactLocator; hash: ContentHash; agents: CodingAgentId[] }>();
     const { ledger } = yield* loadLedger(scope);
+    let desired: readonly DesiredArtifact[] = [];
     if (options.bundle !== undefined) {
       const bundle = yield* fromResult(checkBundle(options.bundle));
-      const agents = options.agents ?? [
-        ...new Set(
-          ledger
-            .entries()
-            .filter((entry) => entry.owners.includes(owner))
-            .flatMap((entry) => entry.agents)
-        )
-      ];
+      const agents = options.agents ?? ledger.agentsOf(owner);
       const { rendered } = yield* renderBundle(bundle, agents, setup, options);
-      for (const artifact of yield* desiredArtifacts(rendered)) {
-        const key = locatorKey(artifact.locator);
-        const known = desired.get(key);
-        desired.set(key, {
-          locator: artifact.locator,
-          hash: artifact.hash,
-          agents: [...new Set([...(known?.agents ?? []), artifact.agent])].toSorted()
-        });
-      }
+      desired = yield* desiredArtifacts(rendered);
     }
 
-    const compare = Effect.fnUntraced(function* (owned: ReturnType<typeof ledger.entries>) {
-      const artifacts: VerifiedArtifact[] = [];
-      const behind: { locator: ArtifactLocator; contentHash: ContentHash }[] = [];
-      for (const entry of owned) {
-        const key = locatorKey(entry.locator);
-        const actual = (yield* observe(entry.locator, registrations))?.hash;
-        const want = desired.get(key)?.hash;
-        const status = threeWayVerify({
-          ledger: entry.contentHash,
-          ...(actual === undefined ? {} : { actual }),
-          ...(want === undefined ? {} : { desired: want })
-        });
-        artifacts.push({ locator: entry.locator, agents: entry.agents, status });
-        if (status === "ledger-behind" && actual !== undefined) {
-          behind.push({ locator: entry.locator, contentHash: actual });
+    /** The disk's hashes at every held locator and at every desired one the owner does not hold. */
+    const watch = Effect.fnUntraced(function* (entries: readonly LedgerEntry[]) {
+      const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
+      const unheld = new Map<LocatorKey, ArtifactLocator>();
+      for (const want of desired) {
+        if (!held.has(locatorKey(want.locator))) {
+          unheld.set(locatorKey(want.locator), want.locator);
         }
       }
-      return { artifacts, behind };
+      const observed = new Map<LocatorKey, ContentHash>();
+      for (const locator of [...entries.map((entry) => entry.locator), ...unheld.values()]) {
+        const seen = yield* observe(locator, registrations);
+        if (seen !== undefined) {
+          observed.set(locatorKey(locator), seen.hash);
+        }
+      }
+      return observed;
     });
 
-    const owned = ledger.entries().filter((entry) => entry.owners.includes(owner));
-    const first = yield* compare(owned);
-    const artifacts = [...first.artifacts];
-    for (const [key, want] of desired) {
-      if (ledger.entries().some((entry) => locatorKey(entry.locator) === key && entry.owners.includes(owner))) {
-        continue;
-      }
-      const actual = (yield* observe(want.locator, registrations))?.hash;
-      artifacts.push({
-        locator: want.locator,
-        agents: want.agents,
-        status: threeWayVerify({ ...(actual === undefined ? {} : { actual }), desired: want.hash })
-      });
-    }
+    const owned = ledger.entriesOf(owner);
+    const first = verifyOwner(owned, yield* watch(owned), desired);
     if (first.behind.length === 0) {
-      return { artifacts, acknowledged: [] };
+      return { artifacts: first.artifacts, acknowledged: [] };
     }
 
     // The silent update changes the ledger, so it runs under the lock against a fresh comparison.
@@ -162,21 +137,17 @@ export function verify(
           waitMs: options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS,
           registrations
         });
-        const again = yield* compare(loaded.ledger.entries().filter((entry) => entry.owners.includes(owner)));
-        if (again.behind.length === 0) {
+        const again = loaded.ledger.entriesOf(owner);
+        const verification = verifyOwner(again, yield* watch(again), desired);
+        if (verification.behind.length === 0) {
           return [];
         }
-        const transition = yield* fromResult(loaded.ledger.acknowledge(again.behind, { at: yield* nowIso }));
+        const transition = yield* fromResult(loaded.ledger.acknowledge(verification.behind, { at: yield* nowIso }));
         yield* Effect.uninterruptible(saveLedger(scope, loaded, transition));
-        return again.behind.map(({ locator }) => locator);
+        return verification.behind.map(({ locator }) => locator);
       })
     );
-    const updated = new Set(acknowledged.map(locatorKey));
-    return {
-      artifacts: artifacts.map((artifact) =>
-        updated.has(locatorKey(artifact.locator)) ? { ...artifact, status: "in-sync" as const } : artifact
-      ),
-      acknowledged
-    };
+    const report = markAcknowledged(first, acknowledged);
+    return { artifacts: report.artifacts, acknowledged };
   });
 }

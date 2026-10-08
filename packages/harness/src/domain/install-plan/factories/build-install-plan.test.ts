@@ -111,6 +111,14 @@ function steps(result: Result<InstallPlan, { readonly _tag: string }>): readonly
   return result.value.steps;
 }
 
+function planned(input: Parameters<typeof plan>[0]): InstallPlan {
+  const built = plan(input);
+  if (!built.ok) {
+    throw new Error(`expected a plan, got ${JSON.stringify(built.error)}`);
+  }
+  return built.value;
+}
+
 const stepAt = (all: readonly PlanStep[], locator: ArtifactLocator): PlanStep | undefined =>
   all.find((step) => locatorKey(step.locator) === locatorKey(locator));
 
@@ -371,8 +379,10 @@ describe("buildInstallPlan", () => {
     ]);
     expect(stepAt(all, edited)).toMatchObject({ agents: [], precondition: { hash: h(6) } });
     expect(stepAt(all, gone)?.precondition).toEqual({ absent: true });
+    expect(planned({ ledger: held, observed }).kept).toEqual([edited]);
     const forced = steps(plan({ ledger: held, observed, choices: { [locatorKey(edited)]: "force" } }));
     expect(stepAt(forced, edited)).toMatchObject({ action: "remove", removal: "delete", precondition: { hash: h(6) } });
+    expect(planned({ ledger: held, observed, choices: { [locatorKey(edited)]: "force" } }).kept).toEqual([]);
   });
 
   it("releases an artifact that other agents or owners still use, changing only the ledger", () => {

@@ -20,3 +20,8 @@ export interface ObservedArtifact {
   /** The content itself, needed only where an older version of the owner may have installed it. */
   readonly content?: ArtifactContent;
 }
+
+/** Whether the symlink at the locator points nowhere: the link is there, what it names is not. */
+export function isBrokenSymlink(observed: ObservedArtifact): boolean {
+  return observed.symlinkTarget !== undefined && observed.locator.kind === "symlink" && observed.content === "";
+}

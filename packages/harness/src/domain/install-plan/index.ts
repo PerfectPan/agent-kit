@@ -24,7 +24,7 @@ export {
 export { type Conflict, CONFLICT_CHOICES, type ConflictChoice } from "./value-objects/conflict.js";
 export type { DesiredArtifact } from "./value-objects/desired-artifact.js";
 export type { InstallScope, InstallTarget } from "./value-objects/install-target.js";
-export type { ObservedArtifact } from "./value-objects/observed-artifact.js";
+export { isBrokenSymlink, type ObservedArtifact } from "./value-objects/observed-artifact.js";
 export type { PlanBasis } from "./value-objects/plan-basis.js";
 export { type PlanAction, type PlanStep, type Removal, type StepNote, touchesDisk } from "./value-objects/plan-step.js";
 export type { Precondition } from "./value-objects/precondition.js";

@@ -14,9 +14,15 @@ export type { LedgerVersionUnsupported } from "./errors/ledger-version-unsupport
 export type { PendingOperations } from "./errors/pending-operations.js";
 export type { ArtifactInstalled } from "./events/artifact-installed.js";
 export type { ArtifactRemoved } from "./events/artifact-removed.js";
-export { holds, release } from "./policies/ownership.js";
+export { holds, release, unionAgents } from "./policies/ownership.js";
 export { reconcilePending } from "./policies/reconcile.js";
-export { threeWayVerify, type VerifyInput } from "./policies/three-way-verify.js";
+export {
+  markAcknowledged,
+  threeWayVerify,
+  type VerifiedArtifact,
+  type VerifyInput,
+  verifyOwner
+} from "./policies/three-way-verify.js";
 export {
   type ArtifactContent,
   canonicalContent,

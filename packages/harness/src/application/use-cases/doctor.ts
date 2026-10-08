@@ -3,9 +3,16 @@ import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
 import type { HookSource, InstallAdapters, Owner } from "../../domain/bundle/index.js";
-import type { ArtifactLocator } from "../../domain/install-plan/index.js";
-import { threeWayVerify } from "../../domain/ledger/index.js";
-import type { HookDialect, HookDialects } from "../../domain/lifecycle/index.js";
+import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
+import { holds, threeWayVerify } from "../../domain/ledger/index.js";
+import {
+  duplicateHooks,
+  type HookDialects,
+  type HookFinding,
+  hookHealth,
+  hookProgram,
+  type HookProblem
+} from "../../domain/lifecycle/index.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";
 import { observe, registrationLookup } from "../services/observe.js";
@@ -15,20 +22,34 @@ import { ArtifactFiles, LedgerLock } from "../ports.js";
 
 /** One finding, in the shape of dotagents' checks: `fix` is left to a later `doctor --fix`. */
 export interface Check {
-  readonly name:
-    | "ledger"
-    | "pending"
-    | "lock"
-    | "drift"
-    | "broken-symlink"
-    | "unknown-event"
-    | "timeout-unit"
-    | "stale-path"
-    | "duplicate-hook";
+  readonly name: "ledger" | "pending" | "lock" | "drift" | "broken-symlink" | HookProblem;
   readonly status: "ok" | "warn" | "error";
   readonly message: string;
   readonly locator?: ArtifactLocator;
 }
+
+/** What a hook problem says, from the values the domain classified; the wording matches what doctor has reported. */
+function hookMessage(finding: HookFinding): string {
+  switch (finding.problem) {
+    case "unknown-event":
+      return `${finding.agent} has no hook event "${finding.event}"; this hook never runs`;
+    case "timeout-unit":
+      return `timeout ${finding.timeout} is in milliseconds for ${finding.agent}; it looks like seconds`;
+    case "stale-path":
+      return `${finding.program} does not exist`;
+    case "duplicate-hook":
+      return finding.markedCount === undefined
+        ? `${finding.agent} runs this hook twice for ${finding.event}`
+        : `${finding.agent} runs ${finding.markedCount} hooks of one application for ${finding.event}`;
+  }
+}
+
+const hookCheck = (finding: HookFinding): Check => ({
+  name: finding.problem,
+  status: "warn",
+  message: hookMessage(finding),
+  locator: finding.locator
+});
 
 export interface DoctorOptions extends ScopeOptions {
   /** Only this owner's ledger entries are compared with the disk; every owner's by default. */
@@ -42,45 +63,6 @@ export interface DoctorOptions extends ScopeOptions {
   readonly markers?: readonly string[];
   readonly adapters?: InstallAdapters;
   readonly dialects?: HookDialects;
-}
-
-const unquote = (token: string) => token.replace(/^["']|["']$/g, "");
-
-/** Findings about one hook registration found in an agent's configuration. */
-function hookChecks(
-  dialect: HookDialect | undefined,
-  locator: ArtifactLocator,
-  hook: unknown,
-  exists: (path: string) => boolean
-): Check[] {
-  const checks: Check[] = [];
-  const event = (locator.pointer ?? "").split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~") ?? "";
-  const known =
-    dialect === undefined ||
-    Object.hasOwn(dialect.events, event) ||
-    Object.values(dialect.events).some((spec) => spec.aliases?.includes(event) === true);
-  if (!known) {
-    checks.push({
-      name: "unknown-event",
-      status: "warn",
-      message: `${dialect?.agent} has no hook event "${event}"; this hook never runs`,
-      locator
-    });
-  }
-  const timeout = typeof hook === "object" && hook !== null ? (hook as { timeout?: unknown }).timeout : undefined;
-  if (dialect?.timeout?.unit === "milliseconds" && typeof timeout === "number" && timeout < 1000) {
-    checks.push({
-      name: "timeout-unit",
-      status: "warn",
-      message: `timeout ${timeout} is in milliseconds for ${dialect.agent}; it looks like seconds`,
-      locator
-    });
-  }
-  const [program] = (locator.member ?? "").trim().split(/\s+/).map(unquote);
-  if (program !== undefined && program.startsWith("/") && !exists(program)) {
-    checks.push({ name: "stale-path", status: "warn", message: `${program} does not exist`, locator });
-  }
-  return checks;
 }
 
 /** One command hook an agent runs, as `event` in the agent's own names. */
@@ -206,40 +188,6 @@ function agentHooks(
 }
 
 /**
- * Events that run a command twice in one agent, or, given an application's markers, more than one of that
- * application's hooks: an old hook left in a settings file next to the plugin that replaced it fires twice.
- */
-function duplicates(agent: CodingAgentId, hooks: readonly FoundHook[], markers: readonly string[]): Check[] {
-  const checks: Check[] = [];
-  for (const event of new Set(hooks.map((hook) => hook.event))) {
-    const here = hooks.filter((hook) => hook.event === event);
-    const seen = new Set<string>();
-    for (const hook of here) {
-      if (seen.has(hook.command)) {
-        checks.push({
-          name: "duplicate-hook",
-          status: "warn",
-          message: `${agent} runs this hook twice for ${event}`,
-          locator: hook.locator
-        });
-      }
-      seen.add(hook.command);
-    }
-    const marked = here.filter((hook) => markers.some((marker) => marker !== "" && hook.command.includes(marker)));
-    const last = marked.at(-1);
-    if (last !== undefined && new Set(marked.map((hook) => hook.command)).size > 1) {
-      checks.push({
-        name: "duplicate-hook",
-        status: "warn",
-        message: `${agent} runs ${marked.length} hooks of one application for ${event}`,
-        locator: last.locator
-      });
-    }
-  }
-  return checks;
-}
-
-/**
  * Reports, without changing anything an agent reads: whether the ledger is readable and has unfinished operations,
  * whether the LedgerLock is free (and what its holder recorded), owned Artifacts that drifted from the ledger or are
  * broken symlinks, and the command hooks each agent loads (its settings files and every plugin's or extension's hooks
@@ -274,7 +222,7 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
         });
       }
       for (const entry of ledger.entries()) {
-        if (options.owner !== undefined && !entry.owners.includes(options.owner)) {
+        if (options.owner !== undefined && !holds(entry, options.owner)) {
           continue;
         }
         const found = yield* Effect.result(observe(entry.locator, registrationLookup(setup.adapters, setup.context)));
@@ -288,7 +236,7 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
           continue;
         }
         const seen = found.success;
-        if (seen?.symlinkTarget !== undefined && seen.locator.kind === "symlink" && seen.content === "") {
+        if (seen !== undefined && isBrokenSymlink(seen)) {
           checks.push({
             name: "broken-symlink",
             status: "warn",
@@ -320,17 +268,19 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
     for (const agent of options.agents ?? (Object.keys(setup.adapters) as CodingAgentId[])) {
       const dialect = Object.hasOwn(setup.dialects, agent) ? setup.dialects[agent] : undefined;
       const hooks = yield* agentHooks(agent, setup);
+      const findings: HookFinding[] = [];
       for (const hook of hooks.filter((found) => found.own)) {
-        const program = hook.command.trim().split(/\s+/).map(unquote)[0] ?? "";
+        const program = hookProgram(hook.command);
         if (program.startsWith("/") && !exists.has(program)) {
           const stat = yield* Effect.promise(() =>
             platform.fs.stat(program, { followSymlinks: true }).catch(() => undefined)
           );
           exists.set(program, stat !== undefined);
         }
-        checks.push(...hookChecks(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true));
+        findings.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true));
       }
-      checks.push(...duplicates(agent, hooks, options.markers ?? []));
+      findings.push(...duplicateHooks(agent, hooks, options.markers ?? []));
+      checks.push(...findings.map(hookCheck));
     }
     return checks;
   });

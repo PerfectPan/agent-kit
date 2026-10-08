@@ -120,6 +120,13 @@ export class InstallPlan {
     return this.snapshot.notes;
   }
 
+  /** The Artifacts the plan leaves on disk as the user's: removals kept because the user changed them. */
+  get kept(): readonly ArtifactLocator[] {
+    return this.snapshot.steps.flatMap((step) =>
+      step.action === "remove" && step.removal === "keep" && step.drift === "user-modified" ? [step.locator] : []
+    );
+  }
+
   get status(): PlanStatus {
     return this.snapshot.status;
   }

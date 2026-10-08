@@ -13,5 +13,13 @@ export function isLegacyArtifact(markers: readonly string[], content: ArtifactCo
       : typeof content === "object" && content !== null && !Array.isArray(content)
         ? (content as { readonly command?: unknown }).command
         : undefined;
-  return typeof text === "string" && markers.some((marker) => marker.trim() !== "" && text.includes(marker));
+  return typeof text === "string" && hasLegacyMarker(markers, text);
+}
+
+/**
+ * Whether text carries one of the markers, wherever markers are matched: blank markers never match, so one that is
+ * only whitespace does not make every text holding a space the application's.
+ */
+export function hasLegacyMarker(markers: readonly string[], text: string): boolean {
+  return markers.some((marker) => marker.trim() !== "" && text.includes(marker));
 }
