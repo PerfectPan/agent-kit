@@ -185,6 +185,17 @@ describe("createExclusive", () => {
   });
 });
 
+describe("mkdir", () => {
+  it("creates a directory with its parents, accepts one that exists and refuses a file in the way", async () => {
+    await nodeFs.mkdir(join(dir, "a", "b"));
+    await nodeFs.mkdir(join(dir, "a", "b"));
+    expect((await nodeFs.stat(join(dir, "a", "b")))?.kind).toBe("dir");
+    await writeFile(join(dir, "file"), "");
+    await expect(nodeFs.mkdir(join(dir, "file"))).rejects.toMatchObject({ code: "EEXIST" });
+    await expect(nodeFs.mkdir(join(dir, "file", "sub"))).rejects.toMatchObject({ code: "ENOTDIR" });
+  });
+});
+
 describe("rename and remove", () => {
   it("renames over an existing file", async () => {
     await writeFile(join(dir, "a"), "a");

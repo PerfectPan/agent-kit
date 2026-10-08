@@ -41,6 +41,11 @@ export interface PlatformFs {
   writeAtomic(path: string, data: Uint8Array | string, options?: { readonly mode?: number }): Promise<void>;
   /** Creates an empty file only if `path` does not exist; resolves to `false` when it already exists. */
   createExclusive(path: string): Promise<boolean>;
+  /**
+   * Creates a directory and its missing parents, like `mkdir -p`; resolves when it already exists. Rejects when
+   * `path` or one of its parents is a file.
+   */
+  mkdir(path: string): Promise<void>;
   rename(from: string, to: string): Promise<void>;
   /**
    * Removes a file, a symlink (not its target) or an empty directory. Resolves when nothing is at `path`; rejects for a

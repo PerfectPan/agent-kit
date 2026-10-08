@@ -14,7 +14,7 @@ npm install @rivus/agent-kit
 ```
 
 ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
-bundles for browsers. The Effect entries `/acp`, `/platform/effect` and `/node/effect` need `effect` 4.0.1, an
+bundles for browsers. The Effect entries `/acp`, `/harness`, `/platform/effect` and `/node/effect` need `effect` 4.0.1, an
 optional peer that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
 
 ## Entries
@@ -25,6 +25,7 @@ optional peer that you install yourself (`npm install effect@4.0.1`); no other e
 | `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                                 |
 | `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
 | `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
+| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports     | anywhere, with `effect` and a platform   |
 | `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                     |
 | `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                                 |
 | `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                     |
@@ -97,6 +98,48 @@ copied, only the tool's name and call id. `terminal` names the herdr, cmux, Supe
 `heartbeatSignal(before, after, event)` gives the start / heartbeat / finish reading of a heartbeat-based tracker from
 the states around one `reduceLifecycle` step. `builtinHookDialects` holds each agent's hook facts: event names, the
 timeout unit, which events are permission gates and what an observing hook should print.
+
+### Harness injection
+
+`/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It
+plans first and writes nothing until the plan is applied; every change is recorded in a ledger under
+`$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
+
+```ts
+import { applyInstall, HarnessLive, planInstall, uninstall } from "@rivus/agent-kit/harness";
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+
+const bundle = {
+  owner: "my-app",
+  version: "1.2.0",
+  digest: "…",
+  // `{agent}` becomes each agent's id; keep the command stable, agents that review hooks ask again when it changes.
+  artifacts: [
+    {
+      type: "hooks",
+      command: "/usr/local/bin/my-app-hook {agent}",
+      events: { "claude-code": ["Stop"], codex: ["Stop"] }
+    }
+  ],
+  legacyMarkers: ["my-app hook"] // what older versions registered without a ledger is replaced, not duplicated
+} as const;
+
+const program = Effect.gen(function* () {
+  const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
+  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts
+  return yield* applyInstall(plan);
+});
+await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
+// Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
+```
+
+Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
+`codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
+and Pi a bridge that forwards their events to the command. An event fires once even in agents that also run Claude
+Code's settings hooks. Shared files keep their comments and formatting; nothing is written through a symlink or into
+a file chezmoi manages. Concurrent edits by tools that do not take the ledger lock can be lost without a trace.
 
 ### Usage records
 

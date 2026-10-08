@@ -91,9 +91,15 @@ importers:
       '@agentclientprotocol/sdk':
         specifier: 1.7.0
         version: 1.7.0(zod@4.6.5)
+      '@decimalturn/toml-patch':
+        specifier: ^3.3.0
+        version: 3.3.0
       es-toolkit:
         specifier: ^1.52.0
         version: 1.52.0
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -308,13 +314,40 @@ importers:
 
   ../../packages/harness:
     dependencies:
+      '@decimalturn/toml-patch':
+        specifier: ^3.3.0
+        version: 3.3.0
       '@rivus/agent-kit-catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@rivus/agent-kit-platform':
+        specifier: workspace:*
+        version: link:../platform
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
+      '@effect/tsgo':
+        specifier: 0.49.0
+        version: 0.49.0
+      '@effect/vitest':
+        specifier: 4.0.1
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1)))
       '@perfectpan/lint-config':
         specifier: github:PerfectPan/lint-config#v0.3.2
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
+      '@rivus/agent-kit-platform-node':
+        specifier: workspace:*
+        version: link:../platform-node
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      effect:
+        specifier: 4.0.1
+        version: 4.0.1
       oxfmt:
         specifier: 0.71.0
         version: 0.71.0
@@ -333,6 +366,9 @@ importers:
 
   ../../packages/platform:
     devDependencies:
+      '@effect/tsgo':
+        specifier: 0.49.0
+        version: 0.49.0
       '@perfectpan/lint-config':
         specifier: github:PerfectPan/lint-config#v0.3.2
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
@@ -361,6 +397,9 @@ importers:
         specifier: workspace:*
         version: link:../platform
     devDependencies:
+      '@effect/tsgo':
+        specifier: 0.49.0
+        version: 0.49.0
       '@effect/vitest':
         specifier: 4.0.1
         version: 4.0.1(effect@4.0.1)(vitest@5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1)))
@@ -575,6 +614,49 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@decimalturn/toml-patch@3.3.0':
+    resolution: {integrity: sha512-xyamcHl5Jlm+KfI9Vn7k6Je+kqQ8bAmJtoWleQ7yNqUL9fwwc66+Q3bRO326U/ZLYjrVzB3irvJz8nuG+JwFdA==}
+    engines: {node: '>=16'}
+
+  '@effect/tsgo-darwin-arm64@0.49.0':
+    resolution: {integrity: sha512-UZeNVyLWGdC1XCPJg5y2De+ONZnrtLgcz0nPLvVbVEWBqT437I7XwENvLIhbTU3ncpioQ8QLKn/2yyou6PBnMg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@effect/tsgo-darwin-x64@0.49.0':
+    resolution: {integrity: sha512-zbdskzTYk5kg7MlYJxRb2Z5YViHebf6ntAZlr7noGk8zf+W3m9O8y8L9JocYd2YYiEKjzRvkUOL0zO7bVc516g==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@effect/tsgo-linux-arm64@0.49.0':
+    resolution: {integrity: sha512-IG9+vo8UDrUDH3UE86eYGnsMJx1C7VrOwF3xDJK15kuJ4wOMOM4fUX6Si45UxH3XF4n9YlEXbFXo1OOyjUmZqw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@effect/tsgo-linux-arm@0.49.0':
+    resolution: {integrity: sha512-b4DMRv5RmHMi/5KSDHA8LDgydqdLfY7AqWghc5iBRUF1QK9YQHH/9nBNbYdFNuUK9MuiD0qi/ND+LK83393TnA==}
+    cpu: [arm]
+    os: [linux]
+
+  '@effect/tsgo-linux-x64@0.49.0':
+    resolution: {integrity: sha512-jYedIzaBrWOalT7jDWwss5/H0j0nHTr+oUbnWf5j/kneN1QiXYNsAt9DgnuOMqn8yVFmIGN0ABGdgDSzGV4Keg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@effect/tsgo-win32-arm64@0.49.0':
+    resolution: {integrity: sha512-k9ie5Nnkcjte7LY9v0TMn0K8IQzxaNNAzRIYe8q+m1/DwFtG17tZb1Br9TYRg1bc42Gk27FBpiNar4/+eA1nqQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@effect/tsgo-win32-x64@0.49.0':
+    resolution: {integrity: sha512-oB9j8Z0aCE26EidQ8XrLrFO9XaO3cQTkULhK//5y8MDFReV2ICtcpRMndPjgJVIxeeZJECerZ8XrmT860FdYwg==}
+    cpu: [x64]
+    os: [win32]
+
+  '@effect/tsgo@0.49.0':
+    resolution: {integrity: sha512-K5FpaJ9KZiy6IwV7dYBvEaOIvo6mX2DHfqaTZTGxr60E6lwIoER9gKnQe1FMstlQYxwUhIiITPd8Y1yvxN1G0Q==}
+    hasBin: true
 
   '@effect/vitest@4.0.1':
     resolution: {integrity: sha512-DbY9kf/018zBxRIX7rJwBnPVPzSarnUpcshm0vfYPFiDkSa7AFrXTh2BlDNUbrdrmqcIOBhVZ7GkEtxf8WiQrg==}
@@ -1615,6 +1697,9 @@ packages:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
 
+  jsonc-parser@3.3.1:
+    resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
+
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
     engines: {node: '>= 12.0.0'}
@@ -2121,6 +2206,39 @@ snapshots:
 
   '@colors/colors@1.5.0':
     optional: true
+
+  '@decimalturn/toml-patch@3.3.0': {}
+
+  '@effect/tsgo-darwin-arm64@0.49.0':
+    optional: true
+
+  '@effect/tsgo-darwin-x64@0.49.0':
+    optional: true
+
+  '@effect/tsgo-linux-arm64@0.49.0':
+    optional: true
+
+  '@effect/tsgo-linux-arm@0.49.0':
+    optional: true
+
+  '@effect/tsgo-linux-x64@0.49.0':
+    optional: true
+
+  '@effect/tsgo-win32-arm64@0.49.0':
+    optional: true
+
+  '@effect/tsgo-win32-x64@0.49.0':
+    optional: true
+
+  '@effect/tsgo@0.49.0':
+    optionalDependencies:
+      '@effect/tsgo-darwin-arm64': 0.49.0
+      '@effect/tsgo-darwin-x64': 0.49.0
+      '@effect/tsgo-linux-arm': 0.49.0
+      '@effect/tsgo-linux-arm64': 0.49.0
+      '@effect/tsgo-linux-x64': 0.49.0
+      '@effect/tsgo-win32-arm64': 0.49.0
+      '@effect/tsgo-win32-x64': 0.49.0
 
   '@effect/vitest@4.0.1(effect@4.0.1)(vitest@5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1)))':
     dependencies:
@@ -2696,6 +2814,8 @@ snapshots:
   import-without-cache@0.4.1: {}
 
   is-fullwidth-code-point@3.0.0: {}
+
+  jsonc-parser@3.3.1: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true

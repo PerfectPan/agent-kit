@@ -1,5 +1,6 @@
 import { AgentKitError, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
+import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregate/install-plan.js";
 import type { PlanStale } from "../../install-plan/errors/plan-stale.js";
 import {
@@ -23,6 +24,7 @@ import type {
   PendingResolution,
   StepOutcome
 } from "../value-objects/pending-operation.js";
+import type { KeptArtifact } from "../value-objects/kept-artifact.js";
 import type { PreImage } from "../value-objects/pre-image.js";
 
 export const LEDGER_SCHEMA_VERSION = 1;
@@ -36,6 +38,8 @@ export interface LedgerSnapshot {
   readonly entries: Readonly<Record<LocatorKey, LedgerEntry>>;
   /** Written before any target is touched and cleared once each step's outcome is known. */
   readonly pending: readonly PendingOperation[];
+  /** Artifacts kept on removal as the user's, by locator key; absent in a ledger that has none. */
+  readonly kept?: Readonly<Record<LocatorKey, KeptArtifact>>;
 }
 
 export type LedgerEvent = ArtifactInstalled | ArtifactRemoved;
@@ -133,6 +137,11 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
       return invalid(problem, locatorKey(op.locator));
     }
   }
+  for (const [key, kept] of Object.entries(snapshot.kept ?? {})) {
+    if (locatorProblem(kept.locator) !== undefined || key !== locatorKey(kept.locator) || kept.owner === "") {
+      return invalid("a kept Artifact has an invalid locator or no owner", key);
+    }
+  }
   const pendingKeys = snapshot.pending.map((op) => locatorKey(op.locator));
   return new Set(pendingKeys).size === pendingKeys.length
     ? undefined
@@ -197,6 +206,25 @@ export class Ledger {
 
   entries(): readonly LedgerEntry[] {
     return Object.values(this.snapshot.entries);
+  }
+
+  /** The record of an Artifact an owner let go of because the user changed it, if this locator has one. */
+  kept(locator: ArtifactLocator, owner?: Owner): KeptArtifact | undefined {
+    const key = locatorKey(locator);
+    const kept = this.snapshot.kept ?? {};
+    if (Object.hasOwn(kept, key) && (owner === undefined || kept[key]?.owner === owner)) {
+      return kept[key];
+    }
+    // A command is its hook's locator member, so editing it changes the key. Preserve the whole event's protection.
+    return locator.memberIn === "hook-group"
+      ? Object.values(kept).find(
+          (record) =>
+            (owner === undefined || record.owner === owner) &&
+            record.locator.memberIn === "hook-group" &&
+            record.locator.path === locator.path &&
+            record.locator.pointer === locator.pointer
+        )
+      : undefined;
   }
 
   /**
@@ -334,6 +362,7 @@ export class Ledger {
     }
     const revision = this.revision + 1;
     const entries: Record<LocatorKey, LedgerEntry> = { ...this.snapshot.entries };
+    const kept: Record<LocatorKey, KeptArtifact> = { ...this.snapshot.kept };
     const events: LedgerEvent[] = [];
     for (const { op, resolution } of resolved) {
       if (resolution !== "completed") {
@@ -345,21 +374,39 @@ export class Ledger {
         delete entries[key];
       } else {
         entries[key] = recorded.entry;
+        delete kept[key];
+      }
+      if (
+        op.action === "remove" &&
+        (op.removal === "keep" || (op.locator.memberIn === "hook-group" && "absent" in op.precondition))
+      ) {
+        kept[key] = { locator: op.locator, owner: op.owner, keptAt: at };
       }
       if (recorded.event !== undefined) {
         events.push(recorded.event);
       }
     }
     const pending = resolved.flatMap(({ op, resolution }) => (resolution === undefined ? [op] : []));
-    return { state: this.next(entries, pending), events };
+    return { state: this.next(entries, pending, kept), events };
   }
 
   /**
    * The next revision. It is checked like a restored snapshot, so that no transition records something a later
    * `restore` would refuse, which would leave the scope unusable; bad input from the caller is a defect.
    */
-  private next(entries: Readonly<Record<LocatorKey, LedgerEntry>>, pending: readonly PendingOperation[]): Ledger {
-    const snapshot: LedgerSnapshot = { ...this.snapshot, revision: this.revision + 1, entries, pending };
+  private next(
+    entries: Readonly<Record<LocatorKey, LedgerEntry>>,
+    pending: readonly PendingOperation[],
+    kept: Readonly<Record<LocatorKey, KeptArtifact>> = this.snapshot.kept ?? {}
+  ): Ledger {
+    const { kept: _previous, ...rest } = this.snapshot;
+    const snapshot: LedgerSnapshot = {
+      ...rest,
+      revision: this.revision + 1,
+      entries,
+      pending,
+      ...(Object.keys(kept).length === 0 ? {} : { kept })
+    };
     const problem = snapshotProblem(snapshot);
     if (problem !== undefined) {
       throw new AgentKitError("invalid-ledger-state", `A ledger transition would record: ${problem.reason}`, {

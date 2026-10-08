@@ -22,19 +22,20 @@ const PHASE: Readonly<Record<PlanAction, number>> = {
 };
 
 /**
- * The order in which an executor runs the steps: every write first, in KIND_ORDER; then removals in reverse, so a
- * registration goes before the files it names; then noops. A replacement is written before what it replaces is
- * removed, so an interrupted apply leaves at worst both (which the next plan cleans up), never neither.
+ * The order in which an executor runs the steps: every write first, in KIND_ORDER and then by locator; then removals
+ * in exactly the reverse order, so a registration goes before the files it names and a plugin before the marketplace
+ * that lists it; then noops. A replacement is written before what it replaces is removed, so an interrupted apply
+ * leaves at worst both (which the next plan cleans up), never neither.
  */
 export function orderSteps(steps: readonly PlanStep[]): PlanStep[] {
   const rank = (step: PlanStep): number => {
     const kind = KIND_ORDER.indexOf(step.locator.kind);
     return step.action === "remove" ? KIND_ORDER.length - kind : kind;
   };
-  return steps.toSorted(
-    (a, b) =>
-      PHASE[a.action] - PHASE[b.action] ||
-      rank(a) - rank(b) ||
-      (locatorKey(a.locator) < locatorKey(b.locator) ? -1 : locatorKey(a.locator) > locatorKey(b.locator) ? 1 : 0)
-  );
+  const byKey = (a: PlanStep, b: PlanStep): number => {
+    const order =
+      locatorKey(a.locator) < locatorKey(b.locator) ? -1 : locatorKey(a.locator) > locatorKey(b.locator) ? 1 : 0;
+    return a.action === "remove" ? -order : order;
+  };
+  return steps.toSorted((a, b) => PHASE[a.action] - PHASE[b.action] || rank(a) - rank(b) || byKey(a, b));
 }

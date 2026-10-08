@@ -60,7 +60,7 @@ exit 2
 const ROOT_FILES = new Set(["package.json", "README.md", "LICENSE"]);
 
 /** The entries that import the optional `effect` peer, as in check-dist.ts; a stale list fails one of the consumers. */
-const EFFECT_ENTRIES = new Set(["./acp", "./node/effect", "./platform/effect"]);
+const EFFECT_ENTRIES = new Set(["./acp", "./harness", "./node/effect", "./platform/effect"]);
 
 /** What a companion package adds to a consumer: imports at the top, statements after the shell's checks. */
 interface ConsumerCode {
@@ -95,8 +95,7 @@ await lock.value.release();
 console.log(\`process lock: \${lock.value.mechanism}\`);`
     }),
     effect: () => ({
-      imports: `import * as Layer from "effect/Layer";
-import { createLanes } from "@rivus/agent-kit-collab/lanes";
+      imports: `import { createLanes } from "@rivus/agent-kit-collab/lanes";
 import { createLeaseManager, sqliteLeaseStore } from "@rivus/agent-kit-collab/lease";`,
       body: `const leaseProgram = Effect.gen(function* () {
   const leases = yield* createLeaseManager({ ttlMs: 2000, heartbeatMs: 500 });
@@ -346,7 +345,8 @@ function hookColdStartMs(consumer: string): number {
  * A host that installs effect itself: it imports every Effect entry, checks that each resolves the host's effect at
  * the peer version and that every companion entry resolves the host's copy of the shell, runs a program that reads
  * PlatformService through NodePlatformLive under the temporary home, and runs one prompt against the fake ACP agent
- * next to it.
+ * next to it, and installs and uninstalls a Claude Code bundle through `/harness`
+ * under that home with an explicit environment.
  */
 function effectConsumerSource(packages: readonly ReleasePackage[], home: string, work: string): string {
   const [{ manifest } = shellOnly()] = packages;
@@ -369,6 +369,9 @@ import * as Exit from "effect/Exit";
 import * as Stream from "effect/Stream";
 ${namespaces.join("\n")}
 import { type AcpProfile, connectAgent, MemorySessionBindingStoreLive } from "${manifest.name}/acp";
+import * as Layer from "effect/Layer";
+import { applyInstall, HarnessLive, inventory, planInstall, uninstall } from "${manifest.name}/harness";
+import { createNodePlatform } from "${manifest.name}/node";
 import { NodePlatformLive } from "${manifest.name}/node/effect";
 import { PlatformService } from "${manifest.name}/platform/effect";
 ${companions.map((code) => code.imports).join("\n")}
@@ -439,6 +442,38 @@ assert.deepEqual(
 assert.equal(events.at(-1)?.payload.finishReason, "end_turn");
 console.log(\`effect \${version}\`);
 console.log(\`acp: \${acp.value.length} parts, \${events.length} events\`);
+
+// Only HOME: no XDG_STATE_HOME or agent home override from the caller can point the ledger or the plugin elsewhere.
+const harnessLayer = HarnessLive.pipe(
+  Layer.provideMerge(Layer.succeed(PlatformService, createNodePlatform({ home: ${JSON.stringify(home)}, env: { HOME: ${JSON.stringify(home)} } })))
+);
+const hooksFile = ${JSON.stringify(`${home}/.claude/skills/smoke-app/hooks/hooks.json`)};
+const install = Effect.gen(function* () {
+  const bundle = {
+    owner: "smoke-app",
+    version: "1.0.0",
+    digest: "smoke",
+    artifacts: [{ type: "hooks" as const, command: "/opt/smoke/hook --agent {agent}", events: { "claude-code": ["Stop"] } }]
+  };
+  const plan = yield* planInstall(bundle, { agents: ["claude-code"] });
+  // Planned paths are real paths, and the temporary directory can sit behind a symlink.
+  assert.deepEqual(plan.changes.map((change) => change.path.slice(change.path.indexOf("/.claude/"))).toSorted(), [
+    "/.claude/skills/smoke-app/.claude-plugin/plugin.json",
+    "/.claude/skills/smoke-app/hooks/hooks.json"
+  ]);
+  const applied = yield* applyInstall(plan);
+  const installed = JSON.parse(readFileSync(hooksFile, "utf8")) as { hooks: Record<string, unknown> };
+  assert.deepEqual(Object.keys(installed.hooks), ["Stop"]);
+  const removed = yield* uninstall("smoke-app");
+  assert.equal((yield* inventory()).entries.length, 0);
+  return \`\${applied.steps.length} step installed, \${removed.steps.length} removed\`;
+});
+const harness = await Effect.runPromiseExit(install.pipe(Effect.provide(harnessLayer)));
+if (!Exit.isSuccess(harness)) {
+  assert.fail(\`the harness program failed: \${Cause.pretty(harness.cause)}\`);
+}
+assert.throws(() => readFileSync(hooksFile, "utf8"));
+console.log(\`/harness \${harness.value}\`);
 `;
 }
 

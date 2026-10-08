@@ -1,0 +1,10 @@
+{
+  // Gemini CLI settings with the user's own hook.
+  "hooks": {
+    "AfterAgent": [
+      {
+        "hooks": [{ "type": "command", "command": "/u/me/bin/after.sh", "timeout": 30000 }]
+      }
+    ]
+  }
+}

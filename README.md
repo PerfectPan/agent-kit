@@ -23,6 +23,7 @@ browsers.
 | `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
 | `@rivus/agent-kit/cost`           | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                           | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
+| `@rivus/agent-kit/harness`        | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` | anywhere, with `effect`   |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`   | anywhere, no imports      |
 | `@rivus/agent-kit/platform`       | `Platform` and its port types, `splitLines`                                                       | anywhere                  |
 | `@rivus/agent-kit/redact`         | `redact`, `redactText`: hide home path spellings and secret-shaped strings                        | anywhere, no imports      |
@@ -209,9 +210,11 @@ Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI, Neovate, OpenHands and Qoder.
 
 [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), released with the same version, adds fenced
 leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform,
-and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency cap and a bounded queue. Harness
-injection and ACP come in later releases; see [plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the
-phases.
+and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency cap and a bounded queue.
+
+`/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of
+what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection). See
+[plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks) for the phases.
 
 ## Repository
 

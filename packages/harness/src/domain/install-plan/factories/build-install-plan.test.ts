@@ -86,6 +86,8 @@ function plan(input: {
   readonly observed?: readonly ObservedArtifact[];
   readonly choices?: Readonly<Record<string, ConflictChoice>>;
   readonly target?: InstallTarget;
+  readonly managedPaths?: Readonly<Record<string, string>>;
+  readonly linkedPaths?: Readonly<Record<string, string>>;
 }): Result<InstallPlan, { readonly _tag: string }> {
   return buildInstallPlan(
     {
@@ -93,7 +95,9 @@ function plan(input: {
       bundle: BUNDLE,
       target: input.target ?? TARGET,
       desired: input.desired ?? [],
-      ...(input.choices === undefined ? {} : { choices: input.choices })
+      ...(input.choices === undefined ? {} : { choices: input.choices }),
+      ...(input.managedPaths === undefined ? {} : { managedPaths: input.managedPaths }),
+      ...(input.linkedPaths === undefined ? {} : { linkedPaths: input.linkedPaths })
     },
     input.ledger ?? ledger(),
     input.observed ?? []
@@ -255,6 +259,39 @@ describe("buildInstallPlan", () => {
     ).toMatchObject({ ok: false, error: { conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }] } });
   });
 
+  it("refuses to add an entry to a file a dotfiles manager owns or that is a symlink, though the entry is not there yet", () => {
+    const hook = settingsHook("Stop", "/u/me/bin/shim Stop");
+    const managed = plan({ desired: [want(hook, 2)], managedPaths: { [hook.path]: "chezmoi" } });
+    expect(managed).toMatchObject({
+      ok: false,
+      error: { _tag: "PlanConflict", conflicts: [{ step: { conflict: "dotfiles-managed" }, choices: [] }] }
+    });
+    const linked = plan({ desired: [want(hook, 2)], linkedPaths: { [hook.path]: "/dotfiles/settings.json" } });
+    expect(linked).toMatchObject({
+      ok: false,
+      error: { _tag: "PlanConflict", conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }] }
+    });
+    expect(
+      steps(plan({ desired: [want(hook, 2)], managedPaths: { [`${HOME}/other.json`]: "chezmoi" } }))
+    ).toMatchObject([{ action: "create" }]);
+  });
+
+  it("refuses to install while an older version's hook it cannot remove would keep firing next to the new one", () => {
+    const oldHook = settingsHook("Stop", "npx --yes @rivus/agent-presence@0.9.0 hook --event Stop");
+    const legacy = { content: { command: oldHook.member ?? "" } };
+    for (const [foreign, conflict] of [
+      [{ managedBy: "chezmoi" }, "dotfiles-managed"],
+      [{ symlinkTarget: "/dotfiles/settings.json" }, "symlinked-target"]
+    ] as const) {
+      expect(
+        plan({ desired: [want(skill, 2)], observed: [seen(oldHook, 12, { ...legacy, ...foreign })] })
+      ).toMatchObject({
+        ok: false,
+        error: { _tag: "PlanConflict", conflicts: [{ step: { locator: oldHook, conflict }, choices: [] }] }
+      });
+    }
+  });
+
   it("never blocks an uninstall at a dotfiles-managed or symlinked path: it keeps the file and notes why", () => {
     const managed = file(".claude/skills/a/SKILL.md");
     const linked = file(".claude/skills/b/SKILL.md");
@@ -270,13 +307,13 @@ describe("buildInstallPlan", () => {
     });
     const all = steps(result);
     expect(all.map((step) => [step.locator, step.action, step.removal, step.note])).toEqual([
-      [managed, "remove", "keep", "dotfiles-managed"],
       [linked, "remove", "keep", "symlinked-target"],
+      [managed, "remove", "keep", "dotfiles-managed"],
       [oldHook, "noop", undefined, "symlinked-target"]
     ]);
     expect(result.ok && result.value.notes).toEqual([
-      { locator: managed, note: "dotfiles-managed" },
       { locator: linked, note: "symlinked-target" },
+      { locator: managed, note: "dotfiles-managed" },
       { locator: oldHook, note: "symlinked-target" }
     ]);
   });
@@ -325,11 +362,12 @@ describe("buildInstallPlan", () => {
     ]);
     const observed = [seen(plain, 1), seen(backedUp, 1), seen(edited, 6), seen(theirs, 1)];
     const all = steps(plan({ ledger: held, observed }));
+    // Removals run in the reverse order of installation.
     expect(all.map((step) => [step.locator.path, step.action, step.removal, step.drift])).toEqual([
-      [plain.path, "remove", "delete", undefined],
-      [backedUp.path, "remove", "restore-pre-image", undefined],
+      [gone.path, "remove", "delete", "deleted-externally"],
       [edited.path, "remove", "keep", "user-modified"],
-      [gone.path, "remove", "delete", "deleted-externally"]
+      [backedUp.path, "remove", "restore-pre-image", undefined],
+      [plain.path, "remove", "delete", undefined]
     ]);
     expect(stepAt(all, edited)).toMatchObject({ agents: [], precondition: { hash: h(6) } });
     expect(stepAt(all, gone)?.precondition).toEqual({ absent: true });

@@ -408,6 +408,15 @@ describe("Ledger", () => {
       { _tag: "ArtifactRemoved", owner: OWNER, locator: edited, removal: "keep", revision: 5 }
     ]);
     expect(planOn(done.state, observed).steps).toEqual([]);
+    // The ledger remembers that the user kept it, so a legacy marker in it never makes it the owner's to delete.
+    expect(done.state.kept(edited)).toEqual({ locator: edited, owner: OWNER, keptAt: AT });
+    const withMarker = [{ locator: edited, hash: h(6), content: "agent-presence hook --event Stop" }];
+    const markers = { bundle: { ...BUNDLE, legacyMarkers: ["agent-presence hook"] } };
+    expect(planOn(done.state, withMarker, markers).steps).toEqual([]);
+    // Without that record the same file would be taken for an older version's and deleted.
+    expect(planOn(restore(snapshot([])), withMarker, markers).steps).toMatchObject([
+      { action: "remove", removal: "delete", legacy: true }
+    ]);
   });
 
   it("resolves pending removals from probes: deleted or restored counts as done, our content still there as not started", () => {
@@ -437,16 +446,16 @@ describe("Ledger", () => {
       { at: AT }
     );
     expect(recovered.resolutions).toEqual([
-      { locator: deleted, resolution: "completed" },
-      { locator: restored, resolution: "completed" },
+      { locator: untouched, resolution: "not-started" },
       { locator: unrestored, resolution: "not-started" },
-      { locator: untouched, resolution: "not-started" }
+      { locator: restored, resolution: "completed" },
+      { locator: deleted, resolution: "completed" }
     ]);
     expect(recovered.state.entries()).toEqual([entry(untouched), entry(unrestored, { preImage })]);
     expect(recovered.events.map((event) => event._tag === "ArtifactRemoved" && [event.locator, event.removal])).toEqual(
       [
-        [deleted, "delete"],
-        [restored, "restore-pre-image"]
+        [restored, "restore-pre-image"],
+        [deleted, "delete"]
       ]
     );
     expect(recovered.state.pending).toEqual([]);

@@ -25,6 +25,7 @@ export {
   type JsonValue
 } from "./value-objects/content-hash.js";
 export type { Drift, VerifyStatus } from "./value-objects/drift.js";
+export type { KeptArtifact } from "./value-objects/kept-artifact.js";
 export type { LedgerEntry } from "./value-objects/ledger-entry.js";
 export type {
   PendingOperation,

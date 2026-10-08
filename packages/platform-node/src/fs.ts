@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { lstat, open, readdir, realpath, rename, rmdir, stat, unlink } from "node:fs/promises";
+import { lstat, mkdir, open, readdir, realpath, rename, rmdir, stat, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { ByteRange, FileKind, PlatformFs } from "@rivus/agent-kit-platform";
@@ -44,6 +44,9 @@ export const nodeFs: PlatformFs = {
       }
       throw error;
     }
+  },
+  async mkdir(path) {
+    await mkdir(path, { recursive: true });
   },
   rename,
   async remove(path) {

@@ -5,7 +5,12 @@
     "declaration": true,
     "isolatedDeclarations": true,
     "lib": ["ES2024"],
-    "types": ["node"]
+    "types": ["node"],
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
   },
   "include": ["src/**/*.ts"]
 }

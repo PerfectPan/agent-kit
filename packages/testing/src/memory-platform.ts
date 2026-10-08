@@ -68,7 +68,7 @@ interface StoredFile {
  * empty directory, and needs the target's parent). Stored bytes are copied on the way in and out. `process.run`
  * runs a seeded program only while its file exists, refuses a `.cmd` or `.bat` file on Windows as Node does, honors
  * `timeoutMs` and `signal`, and passes the platform's `env` unless the run gives one. Errors carry Node's `code`
- * (`ENOENT`, `EACCES`, `EISDIR`, `ENOTDIR`, `ENOTEMPTY`, `EINVAL`), as the Node platform's do.
+ * (`ENOENT`, `EACCES`, `EEXIST`, `EISDIR`, `ENOTDIR`, `ENOTEMPTY`, `EINVAL`), as the Node platform's do.
  */
 export function createMemoryPlatform(options: MemoryPlatformOptions = {}): MemoryPlatform {
   const now = options.now ?? Date.now;
@@ -157,6 +157,16 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
     },
     async writeAtomic(path, data) {
       putFile(normalize(path), toBytes(data), now());
+    },
+    async mkdir(path) {
+      const key = normalize(path);
+      if (files.has(key)) {
+        throw fsError("EEXIST", key);
+      }
+      addParents(key);
+      if (!dirs.has(key)) {
+        dirs.set(key, now());
+      }
     },
     async createExclusive(path) {
       const key = normalize(path);

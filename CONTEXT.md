@@ -141,6 +141,9 @@ One installed thing: a file, directory, symlink, JSON or TOML entry, managed blo
 **Strategy**:
 How an Artifact reaches the agent, in order of preference: launch-time injection, native plugin, scanned directory, shared configuration edit.
 
+**InstallAdapter**:
+One agent's install knowledge (`harness-v1`): which Strategies it supports for hooks and skills, in order of preference, and how each renders a Bundle into Artifacts at that agent's paths. Pure; `builtinInstallAdapters` holds one per agent with a HookDialect.
+
 **InstallPlan**:
 The immutable result of comparing a Bundle with the Ledger and the files on disk: the steps, diffs, agent commands and expected TrustPrompts. It is refused when the Ledger changed after it was built, and rejected as a whole on an unresolved conflict.
 

@@ -406,6 +406,15 @@ describe("violations", () => {
     expect(rulesOf(acp(`import { splitLines } from "${PLATFORM}";`))).toEqual([]);
   });
 
+  it("keeps a test-only workspace dependency out of source files", () => {
+    const nodePlatform = "@rivus/agent-kit-platform-node";
+    expect(real.packages.find((pkg) => pkg.name === "@rivus/agent-kit-harness")?.workspaceDependencies).toContain(
+      nodePlatform
+    );
+    const harness = (source: string) => withFiles({ "packages/harness/src/application/x.ts": source });
+    expect(rulesOf(harness(`import { createNodePlatform } from "${nodePlatform}";`))).toEqual(["package-dependency"]);
+  });
+
   it("requires index.ts and public.ts in every internal package", () => {
     const files = real.files.filter((file) => file.path !== "packages/sessions/src/public.ts");
     expect(rulesOf({ ...real, files })).toEqual(["entry-file"]);

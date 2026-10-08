@@ -19,7 +19,9 @@ export type Removal = "delete" | "restore-pre-image" | "release" | "keep";
 /**
  * Why harness leaves a file it would otherwise delete or restore: a ForeignOwner such as chezmoi manages the path, or
  * the path is a symlink. An owned Artifact's removal becomes `keep` (its record is dropped, the file stays); a legacy
- * removal becomes a `noop`. Uninstall never stops there, and the plan lists every such step in its `notes`.
+ * removal becomes a `noop` in a plan that installs nothing. A blocked owned or legacy removal is a conflict when
+ * installing a replacement, since the kept hook would still execute. Uninstall never stops
+ * there, and the plan lists every such step in its `notes`.
  */
 export type StepNote = "dotfiles-managed" | "symlinked-target";
 
