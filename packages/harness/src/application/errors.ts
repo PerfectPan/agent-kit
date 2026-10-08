@@ -1,22 +1,8 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-
-import type { ArtifactSpec, Strategy } from "../domain/bundle/index.js";
 import type { ArtifactLocator, Precondition } from "../domain/install-plan/index.js";
 import type { ContentHash } from "../domain/ledger/index.js";
 import type { AgentCliFailure, ArtifactFailure, LedgerStoreFailure } from "./ports.js";
 
-/**
- * No strategy of the agent can install an Artifact of the bundle: the agent supports none for that type (MCP servers
- * and instructions have no built-in strategy yet), or each one it supports needs an executable that is not on
- * `PATH`, such as `codex` for Codex's plugin.
- */
-export interface StrategyUnavailable {
-  readonly _tag: "StrategyUnavailable";
-  readonly agent: CodingAgentId;
-  readonly artifact: ArtifactSpec["type"];
-  /** The strategies that were considered, with the executable each one lacked. */
-  readonly missing: readonly { readonly strategy: Strategy; readonly command: string }[];
-}
+export type { StrategyUnavailable } from "../domain/install-plan/index.js";
 
 /**
  * A target no longer holds what the plan expected, found right before writing. When it is found before anything was

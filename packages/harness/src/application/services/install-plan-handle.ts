@@ -1,6 +1,11 @@
 import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
 
-import type { BundleRef, InstallAdapters, InstallContext } from "../../domain/bundle/index.js";
+import {
+  type DroppedHook,
+  type BundleRef,
+  type InstallAdapters,
+  type InstallContext
+} from "../../domain/bundle/index.js";
 import type {
   ArtifactLocator,
   InstallPlan as PlanAggregate,
@@ -29,10 +34,7 @@ export interface PlannedCommand extends AgentCommand {
  * A hook an agent does not get a registration of its own for, because it runs another agent's registration of the
  * same event (Grok and Cursor run the hooks of Claude Code's settings file): it fires once, through `firedBy`.
  */
-export interface DroppedHook {
-  readonly agent: CodingAgentId;
-  readonly firedBy: { readonly agent: CodingAgentId; readonly event: string; readonly file: string };
-}
+export type { DroppedHook };
 
 /**
  * An install plan, obtained from `planInstall` (or `uninstall`, which applies one at once) and applied once with

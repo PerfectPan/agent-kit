@@ -1,6 +1,7 @@
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
+import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { holds } from "../../ledger/policies/ownership.js";
 import { isContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";
@@ -8,6 +9,7 @@ import { isWithin, locatorKey, locatorProblem, locatorsOverlap } from "../value-
 import type { InstallTarget } from "../value-objects/install-target.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
 import { type PlanStep, touchesDisk } from "../value-objects/plan-step.js";
+import { preconditionSatisfied } from "../value-objects/precondition.js";
 import { protectedLegacy } from "./legacy-ownership.js";
 
 /** What a plan's steps are checked against: the ledger it was built on and what the application observed. */
@@ -133,12 +135,11 @@ function ownershipProblem(
 function observationProblem(
   step: PlanStep,
   observed: ObservedArtifact | undefined,
+  entry: LedgerEntry | undefined,
   outside: { readonly managedBy: string | undefined; readonly symlinkTarget: string | undefined }
 ): InvalidPlan | undefined {
-  const { locator, precondition } = step;
-  const mismatch =
-    "absent" in precondition ? observed !== undefined : "hash" in precondition && observed?.hash !== precondition.hash;
-  if (mismatch) {
+  const { locator } = step;
+  if (!preconditionSatisfied(step, { entry, observed })) {
     return {
       _tag: "InvalidPlan",
       reason: "invalid-step",
@@ -191,7 +192,7 @@ export function planProblem(
     const seen = observed.get(locatorKey(locator));
     const at = (paths: Readonly<Record<string, string>> | undefined) =>
       paths !== undefined && Object.hasOwn(paths, locator.path) ? paths[locator.path] : undefined;
-    const unobserved = observationProblem(step, seen, {
+    const unobserved = observationProblem(step, seen, evidence.ledger.entry(step.locator), {
       managedBy: at(evidence.managedPaths),
       symlinkTarget: at(evidence.linkedPaths)
     });

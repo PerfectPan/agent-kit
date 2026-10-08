@@ -9,7 +9,8 @@ import {
   type Bundle,
   type BundleRef,
   checkBundle,
-  foreignHooksIn,
+  type DroppedHook,
+  droppedHooksOf,
   type HookCompat,
   type HookOverlap,
   type HookSpecRejected,
@@ -25,16 +26,25 @@ import {
 import {
   type ArtifactLocator,
   buildInstallPlan,
+  chooseStrategy,
   type ConflictChoice,
+  contentAfterStep,
   type DesiredArtifact,
+  type ForeignHookObservation,
   type InstallPlan as PlanAggregate,
   type InvalidPlan,
+  type LegacyHookSource,
   type LocatorKey,
   locatorKey,
   type ObservedArtifact,
+  planEvidenceScope,
   type PlanConflict,
   type PlanStale,
   type PlanStep,
+  registrationCommands,
+  requiredCommands,
+  strategyRequirement,
+  strategyUnsupported,
   touchesDisk
 } from "../../domain/install-plan/index.js";
 import type { ArtifactContent, Ledger, PendingOperations } from "../../domain/ledger/index.js";
@@ -45,7 +55,6 @@ import { resolveIo, resolvePath } from "../services/resolve-path.js";
 import type { StrategyUnavailable } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
 import {
-  type DroppedHook,
   type InstallPlan,
   type PlannedCommand,
   type PlannedFileChange,
@@ -142,24 +151,25 @@ export function requireUserScope(options: ScopeOptions): void {
   }
 }
 
-/** The strategy for one artifact type: the caller's, or the adapter's first whose executable is on `PATH`. */
-function chooseStrategy(
-  adapter: InstallAdapter,
-  artifact: "hooks" | "skill",
-  supported: readonly Strategy[],
-  override: Strategy | undefined
-): Effect.Effect<Strategy, StrategyUnavailable, AgentCli> {
+/** Probes every command the selected agents' strategies may need, so rendering decides on `PATH` once per agent. */
+export function probeCommands(
+  agents: readonly CodingAgentId[],
+  setup: PlanSetup
+): Effect.Effect<ReadonlyMap<CodingAgentId, ReadonlySet<string>>, never, AgentCli> {
   return Effect.gen(function* () {
     const cli = yield* AgentCli;
-    const missing: { strategy: Strategy; command: string }[] = [];
-    for (const strategy of override === undefined ? supported : supported.filter((s) => s === override)) {
-      const command = adapter.requires?.[strategy];
-      if (command === undefined || (yield* cli.available(command))) {
-        return strategy;
+    const available = new Map<CodingAgentId, Set<string>>();
+    for (const agent of agents) {
+      const commands = requiredCommands(adapterOf(setup, agent));
+      const found = new Set<string>();
+      for (const command of commands) {
+        if (yield* cli.available(command)) {
+          found.add(command);
+        }
       }
-      missing.push({ strategy, command });
+      available.set(agent, found);
     }
-    return yield* Effect.fail({ _tag: "StrategyUnavailable", agent: adapter.agent, artifact, missing } as const);
+    return available;
   });
 }
 
@@ -168,34 +178,46 @@ interface Rendered {
   readonly artifact: RenderedArtifact;
 }
 
+export interface RenderOptions extends Pick<PlanInstallOptions, "strategies" | "compat"> {
+  /** Executables `probeCommands` found on `PATH`, per agent. */
+  readonly available: ReadonlyMap<CodingAgentId, ReadonlySet<string>>;
+}
+
 /** The bundle's Artifacts for the agents, as their adapters render them, with the hooks placed across agents. */
 export function renderBundle(
   bundle: Bundle,
   agents: readonly CodingAgentId[],
   setup: PlanSetup,
-  options: Pick<PlanInstallOptions, "strategies" | "compat">
+  options: RenderOptions
 ): Effect.Effect<
   { readonly rendered: readonly Rendered[]; readonly droppedHooks: readonly DroppedHook[] },
   HookSpecRejected | HookOverlap | InvalidHookPlacement | StrategyUnavailable,
-  AgentCli
+  never
 > {
   return Effect.gen(function* () {
     const rendered: Rendered[] = [];
     const droppedHooks: DroppedHook[] = [];
     for (const spec of bundle.artifacts) {
+      if (spec.type !== "hooks" && spec.type !== "skill") {
+        if (agents.length > 0) {
+          return yield* Effect.fail(strategyUnsupported(agents[0]!, spec));
+        }
+        continue;
+      }
       if (spec.type === "hooks") {
         const placements: { agent: CodingAgentId; file: string; strategy: Strategy }[] = [];
         for (const agent of agents) {
-          const adapter = adapterOf(setup, agent);
-          const events = Object.hasOwn(spec.events, agent) ? spec.events[agent] : undefined;
-          if (events === undefined || events.length === 0) {
+          if (strategyRequirement(spec, agent) === "skip") {
             continue;
           }
-          const strategy = yield* chooseStrategy(
-            adapter,
-            "hooks",
-            adapter.hookStrategies ?? [],
-            options.strategies?.[agent]?.hooks
+          const adapter = adapterOf(setup, agent);
+          const strategy = yield* fromResult(
+            chooseStrategy(adapter, "hooks", {
+              ...(options.strategies?.[agent]?.hooks === undefined
+                ? {}
+                : { override: options.strategies[agent]!.hooks }),
+              available: options.available.get(agent) ?? new Set<string>()
+            })
           );
           placements.push({ agent, file: adapter.hookFile(strategy, bundle), strategy });
         }
@@ -213,34 +235,22 @@ export function renderBundle(
           for (const artifact of adapter.renderHooks(strategy, hooks.registrations, bundle, setup.context)) {
             rendered.push({ agent: hooks.agent, artifact });
           }
-          for (const registration of hooks.registrations) {
-            for (const agent of registration.agents) {
-              if (agent !== hooks.agent) {
-                droppedHooks.push({
-                  agent,
-                  firedBy: { agent: hooks.agent, event: registration.event, file: hooks.file }
-                });
-              }
-            }
-          }
         }
-      } else if (spec.type === "skill") {
-        for (const agent of agents) {
-          const adapter = adapterOf(setup, agent);
-          const strategy = yield* chooseStrategy(
-            adapter,
-            "skill",
-            adapter.skillStrategies ?? [],
-            options.strategies?.[agent]?.skills
-          );
-          for (const artifact of adapter.renderSkill(strategy, spec, setup.context)) {
-            rendered.push({ agent, artifact });
-          }
-        }
-      } else {
-        const [agent] = agents;
-        if (agent !== undefined) {
-          return yield* Effect.fail({ _tag: "StrategyUnavailable", agent, artifact: spec.type, missing: [] } as const);
+        droppedHooks.push(...droppedHooksOf(placed));
+        continue;
+      }
+      for (const agent of agents) {
+        const adapter = adapterOf(setup, agent);
+        const strategy = yield* fromResult(
+          chooseStrategy(adapter, "skill", {
+            ...(options.strategies?.[agent]?.skills === undefined
+              ? {}
+              : { override: options.strategies[agent]!.skills }),
+            available: options.available.get(agent) ?? new Set<string>()
+          })
+        );
+        for (const artifact of adapter.renderSkill(strategy, spec, setup.context)) {
+          rendered.push({ agent, artifact });
         }
       }
     }
@@ -272,77 +282,14 @@ export function desiredArtifacts(
   });
 }
 
-interface LegacySource {
-  readonly source: ArtifactSource;
-  readonly events?: ReadonlySet<string>;
-  readonly runner?: CodingAgentId;
-  readonly runAs?: Readonly<Record<string, string>>;
-}
-
 interface LegacyObservation {
   readonly observed: ObservedArtifact;
   readonly runner?: CodingAgentId;
   readonly event?: string;
 }
 
-/** Legacy hooks also live in foreign files the selected agents execute, even if their owner agent is not selected. */
-function legacySources(
-  agents: readonly CodingAgentId[],
-  setup: PlanSetup,
-  compat: readonly HookCompat[] = []
-): LegacySource[] {
-  const sources: LegacySource[] = agents.flatMap((agent) =>
-    (adapterOf(setup, agent).legacySources?.(setup.context) ?? []).map((source) => ({ source }))
-  );
-  for (const agent of agents) {
-    const dialect = setup.dialects[agent];
-    for (const foreign of dialect?.runsHooksOf ?? []) {
-      for (const file of foreign.files) {
-        if (
-          !file.startsWith("~/") ||
-          dialect === undefined ||
-          foreignHooksIn(dialect, foreign.agent, file, compat) === undefined
-        ) {
-          continue;
-        }
-        const path = `${setup.context.home}/${file.slice(2)}`;
-        const known = setup.adapters[foreign.agent]?.hookSources?.(setup.context) ?? [];
-        const source = known.find((candidate) => candidate.path === path) ?? known[0];
-        if (source === undefined) {
-          continue;
-        }
-        const { format, layout } = source;
-        const events = new Set(Object.keys(foreign.events));
-        if (layout === "grouped") {
-          sources.push({
-            source: { kind: "entries", path, format, pointer: "/hooks", memberIn: "hook-group" },
-            events,
-            runner: agent,
-            runAs: foreign.events
-          });
-        } else {
-          for (const event of events) {
-            sources.push({
-              source: {
-                kind: "entries",
-                path,
-                format,
-                pointer: `/hooks/${event.replaceAll("~", "~0").replaceAll("/", "~1")}`,
-                memberIn: "element"
-              },
-              runner: agent,
-              runAs: foreign.events
-            });
-          }
-        }
-      }
-    }
-  }
-  return sources;
-}
-
 function scanLegacy(
-  sources: readonly LegacySource[]
+  sources: readonly LegacyHookSource[]
 ): Effect.Effect<readonly LegacyObservation[], ArtifactFailure, ArtifactFiles | PlatformService> {
   return Effect.gen(function* () {
     const files = yield* ArtifactFiles;
@@ -414,14 +361,19 @@ export function buildPlan(
   return Effect.gen(function* () {
     const { bundle, agents, setup } = input;
     const { ledger } = loaded;
+    const evidenceScope = planEvidenceScope({
+      bundle,
+      agents,
+      desired: input.desired,
+      ledger,
+      adapters: setup.adapters,
+      dialects: setup.dialects,
+      context: setup.context,
+      ...(input.compat === undefined ? {} : { compat: input.compat })
+    });
     const locators = new Map<LocatorKey, ArtifactLocator>();
-    for (const artifact of input.desired) {
-      locators.set(locatorKey(artifact.locator), artifact.locator);
-    }
-    for (const entry of ledger.entries()) {
-      if (entry.owners.includes(bundle.owner)) {
-        locators.set(locatorKey(entry.locator), entry.locator);
-      }
+    for (const locator of evidenceScope.locators) {
+      locators.set(locatorKey(locator), locator);
     }
     const observed = new Map<LocatorKey, ObservedArtifact>();
     for (const [key, locator] of locators) {
@@ -430,19 +382,12 @@ export function buildPlan(
         observed.set(key, found);
       }
     }
-    const protectsHooks =
-      ledger
-        .entries()
-        .some((entry) => entry.owners.includes(bundle.owner) && entry.locator.memberIn === "hook-group") ||
-      Object.values(ledger.toSnapshot().kept ?? {}).some((kept) => kept.locator.memberIn === "hook-group");
-    const sources =
-      (bundle.legacyMarkers ?? []).length > 0 || protectsHooks ? legacySources(agents, setup, input.compat) : [];
-    const foreignHooks: LegacyObservation[] = [];
-    if (sources.length > 0) {
-      for (const observation of yield* scanLegacy(sources)) {
+    const foreignHooks: ForeignHookObservation[] = [];
+    if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
+      for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
         const found = observation.observed;
-        if (observation.runner !== undefined) {
-          foreignHooks.push(observation);
+        if (observation.runner !== undefined && observation.event !== undefined) {
+          foreignHooks.push({ observed: found, runner: observation.runner, event: observation.event });
         }
         if (!observed.has(locatorKey(found.locator))) {
           observed.set(locatorKey(found.locator), found);
@@ -454,25 +399,9 @@ export function buildPlan(
     ];
     const managed = yield* (yield* ExternalOwner).managedPaths(paths);
     const linked = yield* linkedPaths(paths);
-    // A removal may touch entries other agents of the owner also use, such as a shared settings file.
-    const rooted = new Set([
-      ...agents,
-      ...ledger.entries().flatMap((entry) => (entry.owners.includes(bundle.owner) ? entry.agents : []))
-    ]);
     const roots: string[] = [];
-    for (const agent of rooted) {
-      const adapter = Object.hasOwn(setup.adapters, agent) ? setup.adapters[agent] : undefined;
-      for (const root of adapter?.roots(setup.context) ?? []) {
-        roots.push(yield* resolvePath(root, true));
-      }
-    }
-    for (const { source, runner } of sources) {
-      if (runner === undefined) {
-        continue;
-      }
-      const path = source.kind === "files" ? source.dir : source.path;
-      const parent = path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
-      roots.push(yield* resolvePath(parent, true));
+    for (const candidate of evidenceScope.rootCandidates) {
+      roots.push(yield* resolvePath(candidate, true));
     }
     const aggregate = yield* fromResult(
       buildInstallPlan(
@@ -483,50 +412,14 @@ export function buildPlan(
           desired: input.desired,
           ...(input.choices === undefined ? {} : { choices: input.choices }),
           managedPaths: Object.fromEntries(managed),
-          linkedPaths: linked
+          linkedPaths: linked,
+          foreignHooks,
+          dialects: setup.dialects
         },
         ledger,
         [...observed.values()]
       )
     );
-    // A selected runner can execute a tracked foreign hook that this plan must retain for another consumer.
-    const retained = foreignHooks.flatMap(({ observed: seen, runner, event }) => {
-      const entry = ledger.entry(seen.locator);
-      const wanted =
-        runner !== undefined &&
-        event !== undefined &&
-        bundle.artifacts.some(
-          (spec) =>
-            spec.type === "hooks" &&
-            spec.events[runner]?.some(
-              (name) => name === event || setup.dialects[runner]?.events[event]?.aliases?.includes(name)
-            ) === true
-        );
-      const step = aggregate.steps.find((candidate) => locatorKey(candidate.locator) === locatorKey(seen.locator));
-      const remains = step === undefined || (step.action === "remove" && step.removal !== "delete");
-      return entry?.owners.includes(bundle.owner) === true && wanted && remains
-        ? [
-            {
-              step: {
-                locator: seen.locator,
-                action: "conflict" as const,
-                conflict: "other-owner" as const,
-                agents: entry.agents,
-                precondition: { hash: seen.hash },
-                capturePreImage: false
-              },
-              choices: []
-            }
-          ]
-        : [];
-    });
-    if (retained.length > 0) {
-      return yield* Effect.fail({
-        _tag: "PlanConflict",
-        planId: aggregate.planId,
-        conflicts: retained
-      } satisfies PlanConflict);
-    }
     const view = yield* describePlan(scope, aggregate, ledger, observed, input);
     return registerPlan(view, { scope, adapters: setup.adapters, context: setup.context, aggregate });
   });
@@ -539,13 +432,11 @@ export function contentAfter(
   ledger: Ledger
 ): Effect.Effect<ArtifactContent | undefined, LedgerReadError, LedgerStore> {
   return Effect.gen(function* () {
-    if (step.action !== "remove") {
-      return step.desired?.content;
+    const after = contentAfterStep(step, ledger.entry(step.locator)?.preImage);
+    if (after === undefined || "desired" in after) {
+      return after?.desired;
     }
-    const preImage = ledger.entry(step.locator)?.preImage;
-    return step.removal === "restore-pre-image" && preImage?.existed === true
-      ? yield* (yield* LedgerStore).getPreImage(scope, preImage.blobRef)
-      : undefined;
+    return yield* (yield* LedgerStore).getPreImage(scope, after.preImage);
   });
 }
 
@@ -609,18 +500,14 @@ function describePlan(
           break;
         }
         case "cli-registration": {
-          const agent = step.agents[0] ?? ledger.entry(locator)?.agents[0];
-          const registration = registrationLookup(input.setup.adapters, input.setup.context)(locator);
-          if (registration !== undefined && agent !== undefined) {
-            // An existing registration with other content is removed and made again, so that the agent copies anew.
-            const purposes: readonly ("register" | "unregister")[] =
-              step.action === "remove"
-                ? ["unregister"]
-                : "hash" in step.precondition
-                  ? ["unregister", "register"]
-                  : ["register"];
-            for (const purpose of purposes) {
-              commands.push({ agent, ...registration[purpose], purpose, locator });
+          const commandsForStep = registrationCommands(step, ledger.entry(locator));
+          const registration =
+            commandsForStep === undefined
+              ? undefined
+              : registrationLookup(input.setup.adapters, input.setup.context)(locator);
+          if (commandsForStep !== undefined && registration !== undefined) {
+            for (const purpose of commandsForStep.purposes) {
+              commands.push({ agent: commandsForStep.agent, ...registration[purpose], purpose, locator });
             }
           }
           break;
@@ -680,7 +567,11 @@ export function planInstall(
       const waitMs = options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS;
       loaded = (yield* Effect.scoped(lockLedger(scope, { waitMs, registrations }))).loaded;
     }
-    const { rendered, droppedHooks } = yield* renderBundle(checked, options.agents, setup, options);
+    const available = yield* probeCommands(options.agents, setup);
+    const { rendered, droppedHooks } = yield* renderBundle(checked, options.agents, setup, {
+      ...options,
+      available
+    });
     const desired = yield* desiredArtifacts(rendered);
     return yield* buildPlan(scope, loaded, {
       bundle: checked,

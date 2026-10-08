@@ -2,7 +2,8 @@ import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/
 
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
-import type { PlanStale } from "../../install-plan/errors/plan-stale.js";
+import { ledgerMovedError, planClosedError, type PlanStale } from "../../install-plan/errors/plan-stale.js";
+import { basisMoved } from "../../install-plan/value-objects/plan-basis.js";
 import {
   type ArtifactLocator,
   type LocatorKey,
@@ -238,17 +239,12 @@ export class Ledger {
    */
   begin(plan: InstallPlan, context: BeginContext): Result<LedgerTransition, PlanStale | PendingOperations> {
     const { basedOn, planId, status } = plan;
-    if (status !== "ready") {
-      return err({ _tag: "PlanStale", planId, reason: status, basedOn });
+    const closed = planClosedError({ planId, status, basedOn });
+    if (closed !== undefined) {
+      return err(closed);
     }
-    if (basedOn.ledgerLineage !== this.lineage || basedOn.ledgerRevision !== this.revision) {
-      return err({
-        _tag: "PlanStale",
-        planId,
-        reason: "ledger-moved",
-        basedOn,
-        current: { ledgerLineage: this.lineage, ledgerRevision: this.revision }
-      });
+    if (basisMoved(basedOn, this)) {
+      return err(ledgerMovedError(planId, basedOn, this));
     }
     if (this.pending.length > 0) {
       return err({ _tag: "PendingOperations", operations: this.pending });

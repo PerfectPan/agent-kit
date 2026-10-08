@@ -2,11 +2,12 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import type { HookSource, InstallAdapters, Owner } from "../../domain/bundle/index.js";
+import { foreignHookFiles, type HookSource, type InstallAdapters, type Owner } from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
 import {
   duplicateHooks,
+  type HookDialect,
   type HookDialects,
   type HookFinding,
   hookHealth,
@@ -170,18 +171,9 @@ function agentHooks(
     for (const source of setup.adapters[agent]?.hookSources?.(setup.context) ?? []) {
       yield* read(source, true);
     }
-    const dialect = Object.hasOwn(setup.dialects, agent) ? setup.dialects[agent] : undefined;
-    for (const foreign of dialect?.runsHooksOf ?? []) {
-      if (!foreign.byDefault) {
-        continue;
-      }
-      for (const file of foreign.files.filter((name) => name.startsWith("~/"))) {
-        const path = `${setup.context.home}/${file.slice(2)}`;
-        const source = setup.adapters[foreign.agent]?.hookSources?.(setup.context).find((own) => own.path === path);
-        if (source !== undefined) {
-          yield* read(source, false, foreign.events);
-        }
-      }
+    for (const file of foreignHookFiles(agent, setup.dialects, setup.adapters, setup.context)) {
+      // The runner loads `file.path`; the owner's matched (or fallback) source only supplies the file's shape.
+      yield* read({ ...file.source, path: file.path }, false, file.rename);
     }
     return found;
   });

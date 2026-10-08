@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Move harness business rules (strategy choice, plan evidence scope, registration commands, stale and precondition checks, foreign hook and registration state rules) from application use cases into their owning domain contexts; a restored cli-registration no longer lists an unregister command apply never runs.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

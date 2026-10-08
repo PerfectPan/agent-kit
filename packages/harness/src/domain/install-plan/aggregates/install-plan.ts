@@ -4,12 +4,12 @@ import type { BundleRef } from "../../bundle/value-objects/bundle.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
-import type { PlanStale } from "../errors/plan-stale.js";
+import { ledgerMovedError, planClosedError, type PlanStale } from "../errors/plan-stale.js";
 import { type PlanEvidence, planProblem } from "../policies/plan-invariants.js";
 import { conflictChoices } from "../policies/conflict-detection.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import type { InstallTarget } from "../value-objects/install-target.js";
-import type { PlanBasis } from "../value-objects/plan-basis.js";
+import { basisMoved, type PlanBasis } from "../value-objects/plan-basis.js";
 import type { PlanStep, StepNote } from "../value-objects/plan-step.js";
 import type { TrustPrompt } from "../value-objects/trust-prompt.js";
 
@@ -62,14 +62,8 @@ export class InstallPlan {
     if (ledger.pending.length > 0) {
       return err({ _tag: "PendingOperations", operations: ledger.pending });
     }
-    if (draft.basedOn.ledgerLineage !== ledger.lineage || draft.basedOn.ledgerRevision !== ledger.revision) {
-      return err({
-        _tag: "PlanStale",
-        planId: draft.planId,
-        reason: "ledger-moved",
-        basedOn: draft.basedOn,
-        current: { ledgerLineage: ledger.lineage, ledgerRevision: ledger.revision }
-      });
+    if (basisMoved(draft.basedOn, ledger)) {
+      return err(ledgerMovedError(draft.planId, draft.basedOn, ledger));
     }
     const problem = planProblem(draft.steps, draft.bundle.owner, draft.target, evidence);
     if (problem !== undefined) {
@@ -131,6 +125,19 @@ export class InstallPlan {
     return this.snapshot.status;
   }
 
+  /**
+   * Why this plan can no longer be applied against `ledger`: it was applied or discarded, or the ledger moved on
+   * since the plan was built. `undefined` when it is still ready and the ledger is exactly what it was built on.
+   */
+  staleAgainst(ledger: { readonly lineage: string; readonly revision: number }): PlanStale | undefined {
+    const closed = planClosedError(this.snapshot);
+    return closed !== undefined
+      ? closed
+      : basisMoved(this.basedOn, ledger)
+        ? ledgerMovedError(this.planId, this.basedOn, ledger)
+        : undefined;
+  }
+
   /** Called once the ledger recorded the plan's steps as pending. */
   markApplied(): Result<InstallPlanTransition, PlanStale> {
     return this.close("applied");
@@ -145,8 +152,9 @@ export class InstallPlan {
   }
 
   private close(status: Exclude<PlanStatus, "ready">): Result<InstallPlanTransition, PlanStale> {
-    if (this.status !== "ready") {
-      return err({ _tag: "PlanStale", planId: this.planId, reason: this.status, basedOn: this.basedOn });
+    const error = planClosedError({ ...this.snapshot, status: this.status });
+    if (error !== undefined) {
+      return err(error);
     }
     return ok({ state: new InstallPlan({ ...this.snapshot, status }), events: [] });
   }

@@ -1,7 +1,14 @@
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import type { CliRegistration, InstallAdapters, InstallContext } from "../../domain/bundle/index.js";
+import {
+  type CliRegistration,
+  type InstallAdapters,
+  type InstallContext,
+  ownRecordOf as ownRecordOfRule,
+  registrationContent as registrationContentRule,
+  registrationLinkMismatch as registrationLinkMismatchRule
+} from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isWithin, type ObservedArtifact } from "../../domain/install-plan/index.js";
 import { hashContent } from "./content-hash.js";
 import { ArtifactFiles, type ArtifactFailure, type ArtifactRead } from "../ports.js";
@@ -59,10 +66,11 @@ export function registrationState(
           })
     };
     // Bind the command's own record path to the planned locator, not to any other allowed root containing it.
-    const ownRecord = normalized.recorded?.entries.find(
-      (entry) => entry.pointer === locator.pointer && entry.member === locator.member
-    );
-    let symlinkTarget = ownRecord !== undefined && ownRecord.path !== locator.path ? ownRecord.path : undefined;
+    const ownRecord = ownRecordOfRule(normalized, { pointer: locator.pointer, member: locator.member });
+    let symlinkTarget =
+      ownRecord !== undefined && registrationLinkMismatchRule(locator.path, ownRecord.path)
+        ? ownRecord.path
+        : undefined;
     const files = yield* ArtifactFiles;
     for (const target of [
       { kind: "file" as const, path: locator.path },
@@ -113,12 +121,11 @@ export function observe(
         ? undefined
         : yield* observation(locator, { kind: locator.kind, content: "", symlinkTarget: state.symlinkTarget });
     }
-    const content =
-      state.registration?.installedCopy === undefined || read.content === false
-        ? read.content
-        : state.copy?.kind === "file"
-          ? state.copy.content
-          : true;
+    const planned = registrationContentRule(read.content, {
+      installedCopy: state.registration?.installedCopy,
+      copy: state.copy === undefined ? undefined : { isFile: state.copy.kind === "file", content: state.copy.content }
+    });
+    const content = planned ?? read.content;
     const symlinkTarget = read.symlinkTarget ?? state.symlinkTarget;
     return yield* observation(locator, { ...read, content, ...(symlinkTarget === undefined ? {} : { symlinkTarget }) });
   });
