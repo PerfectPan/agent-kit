@@ -22,7 +22,7 @@ import {
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
 import type { Usage } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import type { ClaudeCodeAgentMeta } from "./layout.js";
 import { applySnapshots, promptSnapshotPayload, snapshotCapabilities } from "./prompt-snapshot.js";
 import { claudeCodeRequestKey, claudeCodeRequestUsage, claudeCodeUsage, knownClaudeCodeGeneration } from "./usage.js";

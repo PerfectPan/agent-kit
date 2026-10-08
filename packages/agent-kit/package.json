@@ -1,7 +1,7 @@
 {
   "name": "@rivus/agent-kit",
   "version": "0.2.0",
-  "description": "Connect to third-party coding agents: identity, installed-agent detection, session logs, transcripts and the host platform port.",
+  "description": "Connect to third-party coding agents: identity, installed-agent detection, session logs, transcripts, driving agents over ACP and the host platform port.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -11,6 +11,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./acp": {
+      "types": "./dist/acp.d.ts",
+      "default": "./dist/acp.js"
+    },
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
@@ -84,12 +88,14 @@
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check . '!CHANGELOG.*'"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "1.7.0",
     "es-toolkit": "^1.52.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-cost": "workspace:*",
     "@rivus/agent-kit-discovery": "workspace:*",

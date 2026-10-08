@@ -1,5 +1,5 @@
 import { type StampedRecord, timeOf } from "../../domain/transcript/index.js";
-import { asRecord, asString } from "../record-fields.js";
+import { asRecord, asString } from "../../protocols/record-fields.js";
 
 // A forked or subagent rollout (its first record is a `session_meta` with `forked_from_id` or a `thread_spawn` source)
 // starts by copying the parent's records with new timestamps, so record times cannot tell the copy from the rollout's

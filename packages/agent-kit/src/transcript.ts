@@ -6,6 +6,7 @@ export {
   codexUsage,
   GROK_CAPABILITIES,
   grokUsage,
+  foldStreamParts,
   foldTranscript,
   isPrompt,
   laneOf,
@@ -37,6 +38,7 @@ export type {
   CompactionPayload,
   HookPayload,
   Lane,
+  LiveTranscriptEvent,
   LoadTranscriptError,
   LoadTranscriptOptions,
   MessagePayload,
@@ -63,6 +65,7 @@ export type {
   TranscriptEvent,
   TranscriptEventKind,
   TranscriptSession,
+  TranscriptStreamPart,
   UnknownFormatGeneration,
   UnknownPayload,
   Usage

@@ -1,4 +1,4 @@
-import { asRecord, asString } from "../record-fields.js";
+import { asRecord, asString } from "../../protocols/record-fields.js";
 
 /** Wrappers the CLI writes for slash commands and `!` shell input. Not prompts. */
 const COMMAND_WRAPPER =

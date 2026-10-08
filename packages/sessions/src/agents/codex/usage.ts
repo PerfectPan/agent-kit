@@ -2,7 +2,7 @@ import { err, ok } from "@rivus/agent-kit-catalog";
 
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../domain/transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import { rememberKey, shortHash, type UsageFile, type UsageLineDecoder } from "../usage-lines.js";
 import { endForkReplay, FORK_REPLAY_START, type ForkReplayState, stepForkReplay } from "./fork-replay.js";
 

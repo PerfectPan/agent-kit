@@ -52,6 +52,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@rivus/agent-kit-acp",
+      "projectFolder": "packages/acp",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@rivus/agent-kit-testing",
       "projectFolder": "packages/testing",
       "shouldPublish": false
@@ -69,6 +74,11 @@
     {
       "packageName": "architecture-boundaries",
       "projectFolder": "infra/architecture",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "agent-kit-smoke",
+      "projectFolder": "tests/smoke",
       "shouldPublish": false
     },
     {

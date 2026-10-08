@@ -1,0 +1,7 @@
+{
+  "extends": ["./node_modules/@perfectpan/lint-config/oxlint.json"],
+  "rules": {
+    // @effect/vitest's it.effect and it.live are test blocks that the rule does not know by default.
+    "vitest/no-standalone-expect": ["error", { "additionalTestBlockFunctions": ["it.effect", "it.live"] }]
+  }
+}

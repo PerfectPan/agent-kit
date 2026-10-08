@@ -16,10 +16,17 @@ export interface PackageRule {
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
   readonly typesOnly?: readonly string[];
   /**
+   * Workspace packages that only the package's tests, outside `src/`, use: allowed as devDependencies and refused in
+   * every `src/` file.
+   */
+  readonly testsOnly?: readonly string[];
+  /**
    * Exact npm import specifiers this package may use outside `domain/`, so that a subpath such as `zod` versus
    * `zod/mini` is a reviewed choice. Effect is governed by `effect` instead.
    */
   readonly external: readonly string[];
+  /** Specifiers of `external` that only these package-relative files may import, to keep a library behind one module. */
+  readonly externalOnlyIn?: Readonly<Record<string, readonly string[]>>;
   readonly nodeBuiltins?: true;
   /**
    * A published package that keeps its own code instead of re-exporting internal packages: each public entry's code
@@ -76,6 +83,7 @@ const HARNESS = "@rivus/agent-kit-harness";
 const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
+const ACP = "@rivus/agent-kit-acp";
 
 export const boundaries: BoundaryRules = {
   packages: {
@@ -91,6 +99,14 @@ export const boundaries: BoundaryRules = {
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports.
     [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: [] },
+    // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a
+    // fake agent through the Node platform, which only applications may provide.
+    [ACP]: {
+      dependsOn: [CATALOG, PLATFORM, SESSIONS],
+      testsOnly: [PLATFORM_NODE],
+      external: ["zod/mini", "@agentclientprotocol/sdk"],
+      externalOnlyIn: { "@agentclientprotocol/sdk": ["src/application/wire.ts"] }
+    },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
@@ -131,7 +147,7 @@ export const boundaries: BoundaryRules = {
       [PLATFORM]: ["src/effect.ts"],
       [PLATFORM_NODE]: ["src/effect.ts"],
       "@rivus/agent-kit-harness": ["src/application/", "src/adapters/"],
-      "@rivus/agent-kit-acp": ["src/application/", "src/adapters/"],
+      [ACP]: ["src/application/", "src/adapters/"],
       [COLLAB]: ["src/lease/application/", "src/lease/adapters/", "src/lanes/application/", "src/lanes/adapters/"]
     }
   }

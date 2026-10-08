@@ -1,7 +1,7 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 
 import { basenamePath, dirnamePath, joinPath } from "../../domain/session/index.js";
-import { asRecord, asString } from "../record-fields.js";
+import { asRecord, asString } from "../../protocols/record-fields.js";
 
 // Claude Code keeps one JSONL file per session under `<home>/projects/<project>/<session>.jsonl`. Subagent
 // transcripts live in `<project>/<session>/subagents/` (workflows nest one level deeper) as `agent-<id>.jsonl`,

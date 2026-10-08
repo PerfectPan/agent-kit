@@ -14,9 +14,11 @@ export {
   readText
 } from "./application/files/read-file.js";
 export { type WalkOptions, walkFiles, type WalkSpec } from "./application/files/walk.js";
+export { type AcpPartTranslator, createAcpPartTranslator } from "./protocols/acp-updates.js";
 export {
   assignSeq,
   baseEvent,
+  createStreamFolder,
   createTranscript,
   type EventFields,
   inheritTimes,
@@ -27,6 +29,7 @@ export {
   shadowBefore,
   skipRecord,
   sourceOf,
+  type StreamFolder,
   timeOf,
   unknownFormatGeneration
 } from "./domain/transcript/index.js";

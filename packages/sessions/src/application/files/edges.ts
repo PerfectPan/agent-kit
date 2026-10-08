@@ -1,4 +1,4 @@
-import { asRecord } from "../../agents/record-fields.js";
+import { asRecord } from "../../protocols/record-fields.js";
 import { readBytes } from "./read-file.js";
 import type { SessionPlatform } from "../ports.js";
 

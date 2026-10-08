@@ -1,6 +1,6 @@
 import type { SessionPreview } from "../../domain/session/index.js";
 import { timeOf } from "../../domain/transcript/index.js";
-import { asRecord, asString } from "../record-fields.js";
+import { asRecord, asString } from "../../protocols/record-fields.js";
 import { isPromptFlags, recordText, userFlags } from "./user-flags.js";
 
 /** The first prompt follows the turn rule: the first real user prompt on the main lane. */

@@ -2,9 +2,10 @@ import { err, ok } from "@rivus/agent-kit-catalog";
 
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../domain/transcript/index.js";
 import { compactUsage, type ModelUsage, type Usage, type UsageRecord } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import type { UsageFile, UsageLineDecoder } from "../usage-lines.js";
-import { GROK_META_KEY, updateOf } from "./chunks.js";
+import { acpUpdateOf } from "../../protocols/acp-updates.js";
+import { GROK_META_KEY } from "./chunks.js";
 
 const AGENT = "grok";
 
@@ -70,7 +71,7 @@ export function grokCostUsd(ticks: unknown): number | undefined {
  */
 export function knownGrokUpdate(value: unknown): Record<string, unknown> | undefined {
   const rec = asRecord(value);
-  const update = updateOf(value);
+  const update = acpUpdateOf(value);
   if (!rec || !update || "formatVersion" in rec || "formatVersion" in update) {
     return undefined;
   }

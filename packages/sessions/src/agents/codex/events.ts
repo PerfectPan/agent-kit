@@ -21,7 +21,7 @@ import {
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
 import type { Usage } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 import { forkReplayEnd } from "./fork-replay.js";
 import { emitResponseItem, textFrom } from "./response-items.js";
 import { codexRecordUsage, type CodexUsageTracker, knownCodexGeneration } from "./usage.js";

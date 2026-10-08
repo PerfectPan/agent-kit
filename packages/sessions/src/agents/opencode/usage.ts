@@ -1,6 +1,6 @@
 import type { SourcePointer } from "../../domain/transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../../domain/usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
 
 const AGENT = "opencode";
 

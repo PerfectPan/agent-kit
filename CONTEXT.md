@@ -208,6 +208,9 @@ The caller's answer to a PermissionRequest. Without an answer the request is den
 **SessionBinding**:
 The mapping from the caller's `sessionKey` to an ACP `sessionId`. It is invalidated when a cancel does not settle in time.
 
+**Stream part**:
+One part of a live Turn's stream: a delta named after AI SDK's stream parts (`text-delta`, `tool-input-*`, `finish`), or a completed event. Folding the deltas gives the completed events, which are TranscriptEvents without a SourcePointer.
+
 ## lease (collab)
 
 **Lease**:

@@ -27,6 +27,7 @@ export {
   recordKey,
   requestUsage
 } from "./policies/turns.js";
+export { createStreamFolder, foldStreamParts, type StreamFolder } from "./services/fold-stream-parts.js";
 export { foldTranscript, summaryOf } from "./services/fold-transcript.js";
 export {
   type SkippedRecord,
@@ -34,6 +35,7 @@ export {
   type SourcePointer,
   sourceOf
 } from "./value-objects/source-pointer.js";
+export type { LiveTranscriptEvent, TranscriptStreamPart } from "./value-objects/stream-part.js";
 export {
   type CompactionPayload,
   type HookPayload,

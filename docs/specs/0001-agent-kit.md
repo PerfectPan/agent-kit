@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact` and `@rivus/agent-kit-collab`'s `/lease`, `/process-lock` and `/lanes` are implemented; entries marked as planned are not yet)
+Accepted (the 0.1.0 entries, `/harness/events`, `/platform/effect`, `/node/effect`, `/discovery`, `/cost`, `/redact`, `/acp` and `@rivus/agent-kit-collab`'s `/lease`, `/process-lock` and `/lanes` are implemented; entries marked as planned are not yet)
 
 Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md)
 
@@ -24,13 +24,13 @@ Applications that work with third-party coding agents (agent-presence, agent-tas
 
 Included in 0.1.0: the observable behavior of `/catalog`, `/platform`, `/node`, `/sessions`, `/transcript` and `/testing`, with built-in session support for Claude Code, Codex and Grok.
 
-Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in.
+Included after 0.1.0: `/harness/events` (P3a), with hook dialects for Claude Code, Codex, Cursor, Gemini CLI, Grok, opencode and Pi; `/discovery` (P4), which detects 27 agents, with an identity for each in `/catalog`; `/cost` (P2b), pricing and summaries of usage records over a price table the caller passes in; `/acp` (P6), which drives Claude Code, Codex, Gemini CLI, Grok and opencode over the Agent Client Protocol.
 
 Included in P5: `/redact` in `@rivus/agent-kit`, and the second published package `@rivus/agent-kit-collab` with `/lease` and `/process-lock`, released in lockstep with `@rivus/agent-kit` (one version).
 
-Included in P6: collab's `/lanes`.
+Included in P6: `/acp` and collab's `/lanes`.
 
-Included as planned behavior: `/transcript/usage` (P2), `/harness` (P3), `/acp` (P6). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
+Included as planned behavior: `/transcript/usage` (P2) and `/harness` (P3). These entries do not exist in 0.1.0. Their sections record the behavior the plan has already decided; each phase revises this Spec before it starts if the behavior changes.
 
 Excluded: application state and policy (presence's online state, agent-task-loop's Task/Run, a viewer's turn tree, timeline, context reconstruction and UI fields); price data; an in-session MCP tool server; daemons and durable queues; Promise facades over Effect entries; a global adapter registry.
 
@@ -43,8 +43,8 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Expected outcomes must be returned as values, `{ ok: true, value } | { ok: false, error }`, where `error` carries a `_tag`; a Promise-returning entry resolves to such a value. An abort rejects with `signal.reason`, and only defects throw.
 - A plain TS entry takes the platform, or the part of it that it uses, as its first parameter. There is no kit object bound to a platform.
 - Each context that has per-agent behavior defines its own adapter interface with a version literal (`specificationVersion`), exports a `builtinXxx: Record<CodingAgentId, XxxAdapter>` table, and accepts an `adapters` option that overrides or extends it for one call. An agent supports a capability exactly when the context's table has an adapter for it. A caller that asks for an unsupported capability by name (such as `listSessions({ agents })`) gets an `AgentKitError` with code `capability-unsupported` thrown; a stored ref that names such an agent yields a `CapabilityUnsupported` value.
-- Only Effect entries (`/platform/effect`, `/node/effect`, collab's `/lease` and `/lanes`, and the planned `/harness` and `/acp`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
-- `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost` and `/harness/events` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
+- Only Effect entries (`/platform/effect`, `/node/effect`, `/acp`, collab's `/lease` and `/lanes`, and the planned `/harness`) may depend on `effect`. No other entry may reach it, in either its module graph or its published `.d.ts` graph, so a consumer that never installs `effect` can import and type-check every other entry.
+- `/catalog`, `/platform`, `/platform/effect`, `/redact`, `/sessions`, `/transcript`, `/discovery`, `/cost`, `/harness/events` and `/acp` must be browser-safe: bundling them for a browser target pulls in no `node:*` module or Node builtin. `/node`, `/node/effect` and `/testing` are exempt.
 
 ### `/catalog`
 
@@ -96,6 +96,7 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Every event has a source pointer (file, byte offset, byte length, line number); reading those bytes returns the original record.
 - Usage numbers exposed by `/transcript` follow the `Usage` interface definition in plan 3.11: input includes cached tokens, output includes reasoning, and a missing value stays missing instead of becoming 0.
 - Turn trees, timelines, context reconstruction, truncation of long text, prompt deduplication and source file numbering are not part of `/transcript`.
+- Live turns are a stream of `TranscriptStreamPart`s (plan 3.11): deltas named after AI SDK's UI message stream parts (`text-start`, `text-delta`, `text-end`, the same for `reasoning`, `tool-input-start`, `tool-input-available`, `tool-output-available` for a completed call, `tool-output-error` with `errorText` for a failed one, `finish`), `update` for an update that becomes one event as it is, and `event` carrying a completed `LiveTranscriptEvent`: a `TranscriptEvent` without a `source`, because a live update is stored in no file. `foldStreamParts(parts, now?)` turns the deltas into those events: text and reasoning at their end, a tool call with its result once its output is available (so the call carries its final input), and at `finish` the calls that never ended and the turn's `request`; it skips `event` parts, so folding a turn's whole stream gives the events it carried, with other times. Grok's `updates.jsonl` and live ACP turns read ACP `session/update` records with one set of rules: message chunk kinds, chunk text, and the merging of a tool call's updates.
 
 ### `/cost`
 
@@ -129,6 +130,20 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 - Commands are looked up in the absolute directories of `PATH`, in order, as regular files (on Windows with each `PATHEXT` extension, under any spelling of the variable names, with quotes around an entry dropped); empty and relative entries are skipped. A candidate that cannot be checked is a `StatFailed` problem. Platform reports no permission bits, so a non-executable file earlier on `PATH` shadows later ones, and running it is a `start-failed` problem. Probe commands run without a shell, with fixed arguments, the platform's environment, the user's home directory as working directory and a time limit. The version probe runs the agent's own command, so it has whatever effects that command has on start; each recipe lists the known ones in `version.sideEffects` (Codex creates `$CODEX_HOME/tmp/arg0`). With `versionProbe: false` and the default `authProbe`, detection runs nothing and has no side effects, and no agent is `runnable`.
 - With `authProbe: 'files'` the login state comes only from credential files and environment variables: a file's existence, or for a file the recipe parses, non-secret facts such as whether any credential is stored (at most 8 MiB is read). Secret values never leave the parser and file content is never reported. With `authProbe: 'commands'` detection also runs each agent's login status command, whose answer wins; the command runs only when its executable is on `PATH` and, if it is the agent's version-probed command, only after the version probe succeeded. Each recipe lists the command's side effects in `auth.command.sideEffects`. Only a status command can report `logged-out`; without an answer the state is `unknown`. Nothing starts a login.
 - `builtinProbeRecipes` covers 27 agents: agent-finder's 26 and Grok. It starts from agent-finder's facts and corrects those that upstream sources contradict (for example Kiro CLI's command `kiro-cli`, Command Code's `~/.commandcode`, Copilot CLI's `copilot` and `~/.copilot`, Windsurf's rename to Devin Desktop, the Codex app installed as `ChatGPT.app`, Trae as an application); the parity test lists every corrected fact with its source; paths under a catalog home follow its override variable. Login checks: Claude Code (`oauthAccount` in `~/.claude.json`, `.credentials.json`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`; `claude auth status --json`), Codex (`auth.json`; `codex login status`), Gemini CLI (`oauth_creds.json`, `GEMINI_API_KEY`), opencode (`auth.json`, `OPENCODE_AUTH_CONTENT`), Grok (`auth.json`, `XAI_API_KEY`), Amp (`secrets.json`) and Cursor (the CLI's `auth.json`; `cursor-agent status --format json`).
+
+### `/acp`
+
+- Exports `connectAgent(agent, options)`, `probeAgent(agent, options)`, the profile table `builtinAcpProfiles`, `agentEnv`, `optionOfKind`, the `SessionBindingStore` port with `MemorySessionBindingStoreLive` and `FileSessionBindingStoreLive(path)`, `foldStreamParts`, and the types of connections, sessions, profiles, permissions, bindings, stream parts and errors. An `AcpProfile` carries `specificationVersion: 'acp-v1'`. The ACP SDK is an internal dependency: no published declaration imports it.
+- `connectAgent` reads the platform from `PlatformService`, starts the profile's command with `Platform.spawn` in `options.cwd` with exactly `options.env` (nothing is inherited), completes `initialize` within `handshakeTimeoutMs` (30 s by default) and returns an `AcpConnection` that belongs to the caller's Scope. A program that cannot start fails with `AgentUnavailable`; a timeout, an exit before the handshake, another protocol version or an `initialize` error fail with `HandshakeFailed`; in each case the process is stopped. An agent without a profile, in `builtinAcpProfiles` or `options.profiles`, or a timeout that is not a positive number, throws `AgentKitError` (`capability-unsupported`, `invalid-option`) as a defect.
+- Built-in profiles: `claude-code` (`claude-agent-acp`, system prompt in `_meta.systemPrompt`), `codex` (`codex-acp`), `opencode` (`opencode acp`), `gemini-cli` (`gemini --experimental-acp`) and `grok` (`grok agent stdio`, system prompt in `_meta.rules`). An agent without a system prompt channel gets the system prompt as a text block before the first prompt of a new session. A profile lists the environment variables its agent reads; `agentEnv(profile, env)` picks them from an environment the caller chooses. Facts not checked against the agent are listed in the profile's `warnings`.
+- `newSession({ cwd?, mcpServers?, systemPrompt?, meta?, sessionKey? })` sends `session/new` within `requestTimeoutMs` (30 s by default; `AcpTimeout`); an agent that needs a login refuses it with `AuthRequired`. `loadSession({ sessionKey } | { sessionId })` opens an existing session with `session/load`, or with `session/resume` when the agent supports only that, and fails with `LoadUnsupported` when it supports neither; the agent's replay of the history is not streamed. Concurrent loads of one session send one request and share the session, and loading a session already open on the connection returns it, binding the given `sessionKey` and returning a handle that carries it. With a `sessionKey`, `newSession` binds the key to the session in the `SessionBindingStore` and `loadSession` reads the binding (`BindingNotFound` when it is missing or was made for another agent). Without a store provided, a `sessionKey` fails with `SessionBindingStoreFailure` (`unavailable`).
+- A session runs one turn at a time: `prompt(blocks)` returns a `Stream` of `TranscriptStreamPart`s (see `/transcript`), and a second prompt while a turn runs fails with `TurnInProgress`. A turn's parts arrive in the order the agent sent its updates, and its `finish` comes after all of them.
+- Permission requests go to `onPermission(request)`, an Effect that answers with one of the request's options or `undefined`. Without a callback, without an answer, with an option the request did not offer, or with a callback that fails, the request is denied: the request's reject option is selected, or `cancelled` when it offers none. While the turn is cancelling, every pending request is answered `cancelled` at once, without waiting for the callback, which is interrupted; so a callback may cancel or close its own session.
+- `cancel()` sends `session/cancel` and waits for the turn to end; the deadline (`cancelTimeoutMs`, 5 s by default) covers both. Interrupting a turn's stream, or leaving it before it ends, cancels the turn the same way. When the turn does not end in time, the session closes and the connection is closed, which stops the process and fails every other session on it with `ConnectionClosed`; then the session's bindings are removed (each only while it still names that session, and each within `requestTimeoutMs`), and the cancel and the turn fail with `CancelUnsettled`.
+- A closed session refuses `prompt` and `cancel` with `SessionClosed`. `close()` cancels a running turn and sends `session/close` when the agent supports it; once started it runs to the end. When the connection ends (the caller closes it, the process exits, or a cancel did not settle), every running turn fails with `ConnectionClosed` and every session closes. Closing stops the process with SIGTERM, then SIGKILL after the platform's grace period, and waits for it to exit.
+- Client file reads and writes (`fileSystem: { read, write }`, off by default) act only inside the session's directory: a path must be absolute, the target is compared after `realpath`, which resolves `..` the way the file system does (after the links before it), a target that does not exist yet is judged by its nearest existing parent, and a link whose target does not exist is refused.
+- `probeAgent(agent, options)` connects, opens one trial session in `options.cwd` and closes both. It reports `ready`, `needs-login` (the agent refused the session until the user logs in) or `unavailable` with the error.
+- The `SessionBindingStore` calling convention: `set` replaces the binding of the same key (the last write wins), and `remove(sessionKey, sessionId)` deletes the binding only while it still names `sessionId`. `FileSessionBindingStoreLive(path)` keeps the bindings in one JSON file with a `schemaVersion`, replaced atomically on every change; a file that does not parse, or that a newer version wrote, is refused and left as it is, and writers in other processes are not locked out.
 
 ### `/testing`
 
@@ -191,13 +206,6 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Every ledger modification happens while one LedgerLock is held. Without `platform.sqlite` and without an injected LedgerLock, ledger modification is refused with `ledger-lock-unavailable`. A ledger with an unknown `schemaVersion` is refused or kept whole, never cleared.
 - Concurrent changes by writers that do not take part in the lock may be lost, and such a loss cannot be detected afterwards; the kit promises no CAS for shared configuration files.
 
-
-#### `/acp` (P6, Effect)
-
-- `connectAgent` starts the agent, completes the handshake and probes login; the connection belongs to the caller's Scope. The connection offers `newSession`, `loadSession`, `prompt` (an event stream), `cancel` and `close`.
-- A session runs at most one turn at a time. Permission requests go to the caller's callback and are denied by default. When a cancel does not settle within its deadline (send cancel plus wait for the turn to end), the session binding is invalidated and the process closed. A closed session refuses every operation.
-- The event stream yields deltas named after AI SDK stream events (`text-delta`, `reasoning-delta`, `tool-input-*`, `finish`) and completed `TranscriptEvent`s. The child process receives only the environment variables given explicitly.
-
 ## Domain Invariants
 
 - `catalog` contains only agent identity, home directory rules and `Result`.
@@ -210,7 +218,8 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - Detection never reports an agent `missing` while one of its checks could not complete, never reports `logged-out` from anything but the agent's own status command, never runs a status command unless asked to, and never returns a credential's value.
 - Aggregate classes never appear in the public surface; aggregates are exposed as handle interfaces and read-only snapshots.
 - A lease has one holder at a time; its generation never decreases, release and takeover included, and every write increases its revision. A recorded holder is the same process only when host, boot id, pid and start time all match.
-- Planned contexts add their own invariants (plan 3.1 and 3.9): an InstallPlan is immutable and refused when stale or conflicting; ledger revisions strictly increase and an unknown ledger version is never cleared; an ACP session runs one turn at a time; a lane runs one activation per key.
+- Planned contexts add their own invariants (plan 3.1 and 3.9): an InstallPlan is immutable and refused when stale or conflicting; ledger revisions strictly increase and an unknown ledger version is never cleared; a lane runs one activation per key.
+- An ACP session runs at most one turn at a time and refuses everything once closed; a cancel either ends the turn within its deadline or invalidates the session's binding and closes its connection; the agent process receives only the environment given explicitly.
 
 ## Acceptance Examples
 
@@ -443,7 +452,7 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When a second process tries the same path, a third waits for it, and the first process is killed
 - Then the second attempt resolves to `ProcessLockHeld` naming the first process, and the waiting one acquires the lock within 1.5 s of the kill
 
-### S39 (planned, P6): An ACP session runs one turn at a time and denies permission by default
+### S39: An ACP session runs one turn at a time and denies permission by default
 
 - Given a session with a turn in progress and no permission callback
 - When a second `prompt` is sent and the agent asks for permission
@@ -665,6 +674,66 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 - When a successor acquires the lease and runs fenced work, and in another case a holder waits for a fence that another holder keeps
 - Then the successor's work starts only after the old write has settled and the old `runFenced` fails with `LeaseLost`; the waiting holder stops waiting with `LeaseLost` within a few heartbeats of the loss, without running its work
 
+### S80: The agent receives only the environment it is given
+
+- Given a variable set in the parent process and an `env` option without it
+- When `connectAgent` starts the agent
+- Then the agent's environment holds exactly the variables of `env`, not even `PATH` unless it is given
+
+### S81: A turn streams deltas and completed events in the agent's order
+
+- Given an agent that sends a thought, two text chunks, a tool call with two updates, a plan and more text before answering the prompt
+- When the turn's stream is collected
+- Then the deltas come in that order and end with `finish`, each completed event follows the delta that completed it, the request carries the turn's usage in the kit's convention, and `foldStreamParts` over the deltas gives the same events
+
+### S82: A cancel that settles keeps the session
+
+- Given a turn in progress
+- When `cancel()` is called and the agent ends the turn
+- Then the stream ends with `finish` of reason `cancelled`, the session is `ready` with its binding, and the next prompt runs
+
+### S83: A cancel that does not settle invalidates the binding and closes the connection
+
+- Given two sessions with bindings on one connection, each running a turn, and an agent that ignores `session/cancel` on the first
+- When the first is cancelled and its deadline passes on the Effect clock (and not one millisecond before)
+- Then the cancel and the first turn fail with `CancelUnsettled`, the first binding is removed and the second kept, the second turn fails with `ConnectionClosed` (`cancel-unsettled`), both sessions are closed and the agent process has exited
+
+### S84: A closed session refuses every operation
+
+- Given a session that was closed
+- When it is prompted or cancelled
+- Then both fail with `SessionClosed`, and closing a session with a running turn cancels the turn first
+
+### S85: Client file calls stay in the session directory
+
+- Given a session with client file reads and writes on, a link inside its directory to a file outside, a link to a missing file, and a link to an outside directory
+- When the agent reads and writes through each of them, through `..`, by a relative path, and inside the directory
+- Then only the calls inside the directory succeed (a new file in an existing subdirectory included), and nothing outside changes
+
+### S86: A bound session is loaded by key on a later connection
+
+- Given a session created with a `sessionKey` on a connection that has since closed
+- When a new connection calls `loadSession({ sessionKey })`
+- Then the agent loads the same session id in the bound directory, and its replay of the history is not streamed
+
+### S87: Starting an agent fails with a reason and leaves no process
+
+- Given a program that does not exist, an agent that exits before the handshake, one that speaks another protocol version, and one that never answers `initialize`
+- When `connectAgent` starts each
+- Then they fail with `AgentUnavailable`, `HandshakeFailed` `exited`, `protocol-version` and, once the handshake timeout passes on the Effect clock, `timeout`
+
+### S88: A connection leaves nothing running
+
+- Given a connection that ran a turn, a permission request and a settled cancel
+- When its Scope closes
+- Then the agent process has exited and no timer, child process or pipe of it remains
+
+### S89: Grok logs and live turns read ACP updates with the same rules
+
+- Given the same ACP tool call updates recorded in a Grok log and received live
+- When `translateGrokRecords` reads the log and `foldStreamParts` folds the live parts
+- Then both give the same `tool_call` and `tool_result` payloads
+
 ## Compatibility And Constraints
 
 - Public API: `@rivus/agent-kit` exposes subpath entries only; the shell package re-exports each name explicitly from the internal packages' public surface, so every change to the public surface shows up in review. Correcting an agent fact (a path, an event name) is a patch; adding an agent, an event type or a capability is a minor; dropping a Node LTS is a major. Unstable APIs live under `/experimental/*`. Adapter interfaces carry version literals so that a later `sessions-v2` can coexist with `sessions-v1`.
@@ -675,5 +744,5 @@ These entries are not part of 0.1.0. The phase in brackets is the phase in plan 
 
 ## Acceptance Evidence
 
-- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. S40 and S100–S108 by the Lane domain tests (`packages/agent-kit-collab/src/lanes/domain/lane/aggregate/lane.test.ts`) and the lanes tests on Effect's test clock (`test/lanes.test.ts`), which also run three fibers of random wakes, cancels, completions, cleanups and clock moves, with turn timeouts and a `close` in the middle, and check after each step that the cap, the queue bound and one activation per key hold and that nothing calls `activate` after `close`; the consumer smoke test runs one lanes program through the installed tarballs. Planned scenarios S26–S28, S32–S35 and S39 are linked when their phase starts.
+- Scenario IDs and corresponding tests: each test that proves a scenario cites its ID in the test name. S1–S3 are covered by catalog unit tests; S4–S9 by sessions tests on the memory platform; S10–S18 by transcript tests and by the sessions conformance suite, which runs for every built-in adapter on scrubbed sample logs; S19 and S23–S25 by platform-node tests; S20 by the browser bundle check; S21 and S49 by the architecture boundary test, the dist check and the consumer smoke test; S22 by the line splitter unit tests. S30, S31 and S41–S47 by harness unit tests (`packages/harness`), by the hook dialect conformance suite, which runs for every built-in dialect on scrubbed sample payloads, and by folding those payloads through `reduceLifecycle` in each agent's order (`packages/testing/test/hook-lifecycle-sequences.test.ts`); S48 by the dist check and the consumer smoke test; S36 and S53–S56 by the discovery tests on the memory platform, and S36 again by the consumer smoke test with a real executable on `PATH`. S29 and S70–S74 by cost unit tests (`packages/cost`) and by pricing the usage fixtures (`packages/testing/test/usage-cost.test.ts`), which also checks every decoded record against presence's formula; the consumer smoke test prices one decoded session per seeded agent through `/cost`. S60 by redact unit tests (`packages/redact`); S37, S62, S63 by the Lease domain tests and the lease manager tests for every store (`packages/agent-kit-collab/src/lease/domain/lease/aggregate/lease.test.ts`, `test/lease-manager.test.ts`); S38 and S61 by the process lock and lease tests with real child processes (`test/process-lock.test.ts`, `test/lease-cross-process.test.ts`); S64 by the lease manager tests and the `SIGSTOP` test in `test/lease-cross-process.test.ts`; S67 by the lease manager tests; S65 by the lease manager tests; S66 by collab's dist check, the boundary test and the consumer smoke test. S40 and S100–S108 by the Lane domain tests (`packages/agent-kit-collab/src/lanes/domain/lane/aggregate/lane.test.ts`) and the lanes tests on Effect's test clock (`test/lanes.test.ts`), which also run three fibers of random wakes, cancels, completions, cleanups and clock moves, with turn timeouts and a `close` in the middle, and check after each step that the cap, the queue bound and one activation per key hold and that nothing calls `activate` after `close`; the consumer smoke test runs one lanes program through the installed tarballs. S39 and S80–S88 by the acp tests (`packages/acp/test`, against a fake ACP agent spawned through the Node platform, with the Effect test clock for deadlines) and S81 again by the consumer smoke test, which runs one turn through the installed tarball; S89 by the sessions protocol tests (`packages/sessions/src/protocols`). Planned scenarios S26–S28 and S32–S35 are linked when their phase starts.
 - Runtime or package evidence: `npm run check` and the package checks (publint, attw, size budgets, browser bundle check) on the packed shell and on collab; the trace viewer's adoption in P1, where its tests and the conformance tests pass and its session list matches its main branch; for P4, the parity test, which feeds agent-finder's test probes (and one synthetic probe) with agent-finder's own provider facts to `detectAgents` and compares the reports with the ones agent-finder's MoonBit scanner produced, then lists the built-in recipes whose facts were corrected, and the probe recipe conformance suite over every built-in recipe.

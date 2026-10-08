@@ -390,6 +390,22 @@ describe("violations", () => {
     expect(rulesOf({ ...real, packages })).toEqual(["package-dependency"]);
   });
 
+  it("keeps a library allowed only in some files out of the others", () => {
+    const acp = (path: string) =>
+      withFiles({ [`packages/acp/src/${path}`]: `import * as acp from "@agentclientprotocol/sdk";` });
+    expect(rulesOf(acp("application/wire.ts"))).toEqual([]);
+    expect(rulesOf(acp("application/connect-agent-extra.ts"))).toEqual(["external-dependency"]);
+    expect(rulesOf(acp("adapters/transport.ts"))).toEqual(["external-dependency"]);
+  });
+
+  it("keeps a tests-only dependency out of every src/ file", () => {
+    const acp = (source: string) => withFiles({ "packages/acp/src/application/x.ts": source });
+    expect(rulesOf(acp(`import { createNodePlatform } from "@rivus/agent-kit-platform-node";`))).toEqual([
+      "package-dependency"
+    ]);
+    expect(rulesOf(acp(`import { splitLines } from "${PLATFORM}";`))).toEqual([]);
+  });
+
   it("requires index.ts and public.ts in every internal package", () => {
     const files = real.files.filter((file) => file.path !== "packages/sessions/src/public.ts");
     expect(rulesOf({ ...real, files })).toEqual(["entry-file"]);

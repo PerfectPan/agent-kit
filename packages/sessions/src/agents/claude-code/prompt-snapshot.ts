@@ -9,7 +9,7 @@ import {
   type TranscriptEvent,
   type TranscriptSession
 } from "../../domain/transcript/index.js";
-import { asString } from "../record-fields.js";
+import { asString } from "../../protocols/record-fields.js";
 
 /** Blocks of a recorded `systemPrompt` array are joined with a blank line; the original keeps the blocks. */
 const BLOCK_SEPARATOR = "\n\n";

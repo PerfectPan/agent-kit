@@ -142,7 +142,8 @@ export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Vio
       }
     }
     for (const dependency of pkg.workspaceDependencies) {
-      if (isShell ? !internal.has(dependency) : !rule?.dependsOn.includes(dependency)) {
+      const allowed = rule === undefined ? false : [...rule.dependsOn, ...(rule.testsOnly ?? [])].includes(dependency);
+      if (isShell ? !internal.has(dependency) : !allowed) {
         violations.push({
           file,
           rule: "package-dependency",
@@ -265,7 +266,11 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
       return { rule: "deep-import", text: `import ${name} itself, which resolves to its index.ts` };
     }
     if (!rule.dependsOn.includes(name) && context.viaPublicEntry !== true) {
-      return { rule: "package-dependency", text: `${pkg.name} may not depend on ${name} (see ${MANIFEST})` };
+      const text =
+        rule.testsOnly?.includes(name) === true
+          ? `only the tests of ${pkg.name} may use ${name}`
+          : `${pkg.name} may not depend on ${name}`;
+      return { rule: "package-dependency", text: `${text} (see ${MANIFEST})` };
     }
     if (layerRule?.hidden?.includes(name) === true) {
       return { rule: "layer", text: `${layer}/ may not import ${name}, not even its types` };
@@ -292,12 +297,16 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
   if (layerRule !== undefined && !layerRule.external) {
     return { rule: "external-dependency", text: `${layer}/ may not import npm packages` };
   }
-  return rule.external.includes(ref.specifier)
+  if (!rule.external.includes(ref.specifier)) {
+    return {
+      rule: "external-dependency",
+      text: `not in the external allowlist of ${pkg.name}, which lists exact specifiers (${MANIFEST})`
+    };
+  }
+  const onlyIn = rule.externalOnlyIn?.[ref.specifier];
+  return onlyIn === undefined || onlyIn.includes(file.path.slice(pkg.folder.length + 1))
     ? undefined
-    : {
-        rule: "external-dependency",
-        text: `not in the external allowlist of ${pkg.name}, which lists exact specifiers (${MANIFEST})`
-      };
+    : { rule: "external-dependency", text: `only ${onlyIn.join(", ")} of ${pkg.name} may import it (${MANIFEST})` };
 }
 
 function checkShellEntry(file: SourceFile, body: readonly Statement[], internal: ReadonlySet<string>): Violation[] {

@@ -37,8 +37,60 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1))
 
+  ../../packages/acp:
+    dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: 1.7.0
+        version: 1.7.0(zod@4.6.5)
+      '@rivus/agent-kit-catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@rivus/agent-kit-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../sessions
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@effect/vitest':
+        specifier: 4.0.1
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1)))
+      '@perfectpan/lint-config':
+        specifier: github:PerfectPan/lint-config#v0.3.2
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
+      '@rivus/agent-kit-platform-node':
+        specifier: workspace:*
+        version: link:../platform-node
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      effect:
+        specifier: 4.0.1
+        version: 4.0.1
+      oxfmt:
+        specifier: 0.71.0
+        version: 0.71.0
+      oxlint:
+        specifier: 1.86.0
+        version: 1.86.0(oxlint-tsgolint@7.0.2003)
+      oxlint-tsgolint:
+        specifier: 7.0.2003
+        version: 7.0.2003
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1))
+
   ../../packages/agent-kit:
     dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: 1.7.0
+        version: 1.7.0(zod@4.6.5)
       es-toolkit:
         specifier: ^1.52.0
         version: 1.52.0
@@ -52,6 +104,9 @@ importers:
       '@perfectpan/lint-config':
         specifier: github:PerfectPan/lint-config#v0.3.2
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../acp
       '@rivus/agent-kit-catalog':
         specifier: workspace:*
         version: link:../catalog
@@ -456,7 +511,51 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1))
 
+  ../../tests/smoke:
+    devDependencies:
+      '@effect/vitest':
+        specifier: 4.0.1
+        version: 4.0.1(effect@4.0.1)(vitest@5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1)))
+      '@perfectpan/lint-config':
+        specifier: github:PerfectPan/lint-config#v0.3.2
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3edb87346c2461e45cd30ca601fbb4636777a541(oxfmt@0.71.0)(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003))(typescript@7.0.2)
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../../packages/acp
+      '@rivus/agent-kit-platform-node':
+        specifier: workspace:*
+        version: link:../../packages/platform-node
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../../packages/sessions
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      effect:
+        specifier: 4.0.1
+        version: 4.0.1
+      oxfmt:
+        specifier: 0.71.0
+        version: 0.71.0
+      oxlint:
+        specifier: 1.86.0
+        version: 1.86.0(oxlint-tsgolint@7.0.2003)
+      oxlint-tsgolint:
+        specifier: 7.0.2003
+        version: 7.0.2003
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.1(@types/node@24.19.1))
+
 packages:
+
+  '@agentclientprotocol/sdk@1.7.0':
+    resolution: {integrity: sha512-ZORuxsuEnLjRly7t6Ad7zAsWitjWsyprswyPUHz/yycPb+tTm3DGa8XheaHhRXqX8LS9snuxaYavXSRA50TlHw==}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
 
   '@andrewbranch/untar.js@1.0.4':
     resolution: {integrity: sha512-pVXSwPsLuw8IGLo2Di0EaOfsk+ntVvpkk942J/sHYIkwvtKUakEcPh7HBgZ6tuimgzKSEHgCvO4XgQ05DEbwDw==}
@@ -1990,6 +2089,10 @@ packages:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
+
+  '@agentclientprotocol/sdk@1.7.0(zod@4.6.5)':
+    dependencies:
+      zod: 4.6.5
 
   '@andrewbranch/untar.js@1.0.4': {}
 

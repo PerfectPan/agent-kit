@@ -22,8 +22,17 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../domain/transcript/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
-import { chunkText, GROK_META_KEY, isInjectedChunk } from "./chunks.js";
+import {
+  acpChunkText,
+  acpMessageKind,
+  acpToolCallPayload,
+  acpToolResultPayload,
+  type AcpToolState,
+  isAcpToolDone,
+  mergeAcpToolUpdate
+} from "../../protocols/acp-updates.js";
+import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
+import { GROK_META_KEY, isInjectedChunk } from "./chunks.js";
 import type { GrokSessionMeta, GrokSubagentMeta } from "./layout.js";
 import { followGrokTurn, type GrokTurn, grokTurnModel, grokUsage, grokUsageByModel, knownGrokUpdate } from "./usage.js";
 
@@ -104,7 +113,8 @@ export function translateGrokRecords(
   let startedAt = meta.startedAt;
   let endedAt = meta.endedAt;
   let segment = 0;
-  const tools = new Map<string, ToolState>();
+  const tools = new Map<string, AcpToolState>();
+  const toolEvents = new Map<string, ToolEvents>();
 
   const rememberAgent = (id: string, title?: string, spawnEventId?: string): void => {
     const existing = agents.find((agent) => agent.id === id);
@@ -148,10 +158,11 @@ export function translateGrokRecords(
       return event;
     };
 
-    if (kind === "user_message_chunk" || kind === "agent_message_chunk" || kind === "agent_thought_chunk") {
-      const text = chunkText(update.content);
-      if (kind !== "user_message_chunk") {
-        emit(kind === "agent_thought_chunk" ? "reasoning" : "assistant", text ? { text } : {});
+    const messageKind = acpMessageKind(kind);
+    if (messageKind !== undefined) {
+      const text = acpChunkText(update.content);
+      if (messageKind !== "user") {
+        emit(messageKind, text ? { text } : {});
         continue;
       }
       const flags: Record<string, unknown> = {};
@@ -170,7 +181,7 @@ export function translateGrokRecords(
     }
 
     if (kind === "tool_call" || kind === "tool_call_update") {
-      recordTool(kind, update, record, tools, skipped, emit);
+      recordTool(kind, update, record, { tools, events: toolEvents }, skipped, emit);
       continue;
     }
 
@@ -356,112 +367,48 @@ function hookRuns(runs: unknown): Record<string, unknown>[] {
   });
 }
 
-interface ToolState {
-  callId: string;
-  name: string;
-  args?: unknown;
-  output?: unknown;
-  status?: string;
+/** The events a tool call produced so far; its merged state is the shared ACP tool state. */
+interface ToolEvents {
   call?: TranscriptEvent;
   result?: TranscriptEvent;
 }
 
-const TOOL_DONE = new Set(["completed", "failed", "error"]);
-
 /**
- * Merges `tool_call` and `tool_call_update` rows that share a `toolCallId`. An ACP update may carry only the
- * fields that changed. Only an omitted or `null` `rawInput`, `content` or `rawOutput` leaves the previous value.
+ * Merges `tool_call` and `tool_call_update` rows that share a `toolCallId` with the ACP rules, emitting the call at
+ * its first `tool_call` and the result at its first final status, and rewriting both as later rows change them.
  */
 function recordTool(
   kind: string,
   update: Record<string, unknown>,
   record: SourcedRecord,
-  tools: Map<string, ToolState>,
+  calls: { readonly tools: Map<string, AcpToolState>; readonly events: Map<string, ToolEvents> },
   skipped: SkippedRecord[],
   emit: (eventKind: TranscriptEventKind, payload: Record<string, unknown>, id?: string) => TranscriptEvent
 ): void {
-  const callId = asString(update.toolCallId) ?? "";
-  const state = tools.get(callId) ?? { callId, name: "" };
-  tools.set(callId, state);
-  mergeTool(state, update);
+  const { state } = mergeAcpToolUpdate(calls.tools, update);
+  const seen = calls.events.get(state.callId) ?? {};
+  calls.events.set(state.callId, seen);
   if (kind === "tool_call") {
-    if (state.call) {
-      writeToolCall(state.call, state);
+    if (seen.call) {
+      Object.assign(seen.call.payload, acpToolCallPayload(state));
       skipRecord(skipped, record, "tool-progress");
       return;
     }
-    state.call = emit("tool_call", toolCallPayload(state));
+    seen.call = emit("tool_call", acpToolCallPayload(state));
     return;
   }
-  if (state.call) {
-    writeToolCall(state.call, state);
+  if (seen.call) {
+    Object.assign(seen.call.payload, acpToolCallPayload(state));
   }
-  if (!state.status || !TOOL_DONE.has(state.status)) {
+  if (!isAcpToolDone(state)) {
     skipRecord(skipped, record, "tool-progress");
     return;
   }
   // A result with no earlier call stays an orphan. Inventing the call would hide that.
-  if (!state.result) {
-    state.result = emit("tool_result", toolResultPayload(state));
+  if (!seen.result) {
+    seen.result = emit("tool_result", acpToolResultPayload(state));
     return;
   }
-  writeToolResult(state.result, state);
+  Object.assign(seen.result.payload, acpToolResultPayload(state));
   skipRecord(skipped, record, "tool-progress");
-}
-
-function mergeTool(state: ToolState, update: Record<string, unknown>): void {
-  const name = asString(update.title) ?? asString(update.toolName);
-  if (name) {
-    state.name = name;
-  }
-  if (supplied(update.rawInput)) {
-    state.args = update.rawInput;
-  }
-  if (supplied(update.content)) {
-    const text = chunkText(update.content);
-    state.output = text.length > 0 ? text : update.content;
-  } else if (supplied(update.rawOutput)) {
-    state.output = update.rawOutput;
-  }
-  const status = asString(update.status);
-  if (status) {
-    state.status = status;
-  }
-}
-
-/** `undefined` and `null` are omissions. Every other value, including `""`, `[]` and `{}`, replaces the field. */
-function supplied(value: unknown): boolean {
-  return value !== undefined && value !== null;
-}
-
-function toolCallPayload(state: ToolState): Record<string, unknown> {
-  return {
-    callId: state.callId,
-    name: state.name,
-    ...(state.args === undefined ? {} : { args: state.args })
-  };
-}
-
-function toolResultPayload(state: ToolState): Record<string, unknown> {
-  return {
-    callId: state.callId,
-    isError: state.status !== "completed",
-    ...(state.output === undefined ? {} : { output: state.output })
-  };
-}
-
-function writeToolCall(event: TranscriptEvent, state: ToolState): void {
-  event.payload.callId = state.callId;
-  event.payload.name = state.name;
-  if (state.args !== undefined) {
-    event.payload.args = state.args;
-  }
-}
-
-function writeToolResult(event: TranscriptEvent, state: ToolState): void {
-  event.payload.callId = state.callId;
-  event.payload.isError = state.status !== "completed";
-  if (state.output !== undefined) {
-    event.payload.output = state.output;
-  }
 }
