@@ -2,6 +2,35 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.3.0",
+      "tag": "@rivus/agent-kit_v0.3.0",
+      "date": "Thu, 08 Oct 2026 04:46:15 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Document public entry selection, runtime composition and application adoption."
+          },
+          {
+            "comment": "Add the harness injection domain (Bundle, InstallPlan, Ledger, three-way verify) without public API"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Add @rivus/agent-kit/cost: createPricing looks prices up in a table the caller passes in (own id, then the longest matching key, with partial overrides and a fallback), costOf prices a UsageRecord (the agent's own cost first, else per bucket with one-hour cache writes, times pricingMultiplier, per model for split records), calendarWindow gives the last N calendar days in a time zone, summarize totals tokens, entries and known cost by agent and model, and fromLiteLLM converts LiteLLM's price list; the entry imports nothing."
+          },
+          {
+            "comment": "Add the /harness entry (Effect): planInstall, applyInstall, verify, uninstall, inventory and doctor install hooks and skills into Claude Code, Codex, Gemini CLI, Grok, Cursor, opencode and Pi with a ledger, an SQLite ledger lock and format-preserving JSONC and TOML edits; add Platform.fs.mkdir"
+          },
+          {
+            "comment": "Add /redact: redact and redactText hide home directory spellings (POSIX, Windows, file URLs, agent folder names, ~user) and secret-shaped strings."
+          },
+          {
+            "comment": "Add /acp: drive coding agents over the Agent Client Protocol (connectAgent, probeAgent, ACP profiles for Claude Code, Codex, Gemini CLI, Grok and opencode, session bindings), and foldStreamParts with the live stream part types in /transcript."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.2.0",
       "tag": "@rivus/agent-kit_v0.2.0",
       "date": "Wed, 07 Oct 2026 19:57:58 GMT",
