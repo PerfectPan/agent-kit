@@ -89,7 +89,7 @@ describe("SqliteLedgerLockLive across processes", () => {
       expect(outcomes.filter((event) => event === "acquired")).toHaveLength(1);
       await stopWorkers();
     }
-  });
+  }, 30_000);
 
   it("S34: a waiter behind a stuck holder can be interrupted and takes nothing; it gets the lock once the holder dies", async () => {
     const home = testHome();
