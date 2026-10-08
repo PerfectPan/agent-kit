@@ -110,9 +110,6 @@ function selectRecipes(table: ProbeRecipes, agents: readonly CodingAgentId[]): P
   return [...selected.values()];
 }
 
-const SHELL_SHIM_WARNING =
-  "The command is a Windows .cmd or .bat shim, which runs only through a shell; detection does not run it, so the agent is at most found.";
-
 async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
   const { platform, check } = run;
   const expand = (paths: ProbeRecipe["configPaths"]): string[] =>
