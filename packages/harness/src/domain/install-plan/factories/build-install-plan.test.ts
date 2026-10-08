@@ -1,17 +1,20 @@
 import type { Result } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vitest";
 
+import { builtinHookDialects } from "../../adapters/hook-dialects.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { InstallPlan } from "../aggregates/install-plan.js";
+import type { PlanConflict } from "../errors/plan-conflict.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ConflictChoice } from "../value-objects/conflict.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
 import type { InstallTarget } from "../value-objects/install-target.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
 import type { PlanStep } from "../value-objects/plan-step.js";
+import type { ForeignHookObservation } from "../policies/legacy-ownership.js";
 import { buildInstallPlan } from "./build-install-plan.js";
 
 const HOME = "/u/me";
@@ -88,16 +91,19 @@ function plan(input: {
   readonly target?: InstallTarget;
   readonly managedPaths?: Readonly<Record<string, string>>;
   readonly linkedPaths?: Readonly<Record<string, string>>;
+  readonly bundle?: Bundle;
+  readonly foreignHooks?: readonly ForeignHookObservation[];
 }): Result<InstallPlan, { readonly _tag: string }> {
   return buildInstallPlan(
     {
       planId: "plan-1",
-      bundle: BUNDLE,
+      bundle: input.bundle ?? BUNDLE,
       target: input.target ?? TARGET,
       desired: input.desired ?? [],
       ...(input.choices === undefined ? {} : { choices: input.choices }),
       ...(input.managedPaths === undefined ? {} : { managedPaths: input.managedPaths }),
-      ...(input.linkedPaths === undefined ? {} : { linkedPaths: input.linkedPaths })
+      ...(input.linkedPaths === undefined ? {} : { linkedPaths: input.linkedPaths }),
+      ...(input.foreignHooks === undefined ? {} : { foreignHooks: input.foreignHooks, dialects: builtinHookDialects })
     },
     input.ledger ?? ledger(),
     input.observed ?? []
@@ -194,6 +200,56 @@ describe("buildInstallPlan", () => {
       expect.objectContaining({ action: "adopt", capturePreImage: true, precondition: { hash: h(9) } })
     ]);
     expect(choose("force")).toMatchObject({ ok: false, error: { _tag: "PlanConflict" } });
+  });
+
+  it("reports a retained foreign hook in the same conflict as the plan's own, resolvable in one round (H2)", () => {
+    const foreign = file(".claude/skills/presence/extra.md");
+    const oldHook = settingsHook("Stop", "npx --yes @rivus/agent-presence@0.9.0 hook --event Stop");
+    const firing: Bundle = {
+      ...BUNDLE,
+      artifacts: [{ type: "hooks", command: "agent-presence hook", events: { grok: ["Stop"] } }]
+    };
+    const result = plan({
+      bundle: firing,
+      desired: [want(foreign, 3)],
+      ledger: ledger([entry(oldHook, { preImage: { existed: true, hash: h(20), blobRef: "blob-20" } })]),
+      observed: [seen(foreign, 9), seen(oldHook, 1)],
+      foreignHooks: [{ observed: seen(oldHook, 1), runner: "grok", event: "Stop" }]
+    });
+    expect(result).toMatchObject({ ok: false, error: { _tag: "PlanConflict", planId: "plan-1" } });
+    const conflicts =
+      !result.ok && (result.error as PlanConflict)._tag === "PlanConflict"
+        ? (result.error as PlanConflict).conflicts
+        : [];
+    const byPath = new Map(
+      conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
+    );
+    expect(byPath.size).toBe(2);
+    expect(byPath.get(foreign.path)).toEqual({ conflict: "unmanaged-exists", choices: ["adopt", "backup"] });
+    expect(byPath.get(oldHook.path)).toEqual({ conflict: "other-owner", choices: [] });
+  });
+
+  it("merges a hook kept for the user or a ForeignOwner into the same single conflict", () => {
+    const foreign = file(".claude/skills/presence/extra.md");
+    const oldHook = settingsHook("Stop", "npx --yes @rivus/agent-presence@0.9.0 hook --event Stop");
+    // The owner's entry for the event's older hook is gone from the disk, so the surviving hook stays protected.
+    const ghost = settingsHook("Stop", "older command");
+    const result = plan({
+      desired: [want(foreign, 3)],
+      ledger: ledger([entry(ghost, { contentHash: h(30) })]),
+      observed: [seen(foreign, 9), seen(oldHook, 12, { content: { command: oldHook.member ?? "" } })]
+    });
+    expect(result).toMatchObject({ ok: false, error: { _tag: "PlanConflict", planId: "plan-1" } });
+    const conflicts =
+      !result.ok && (result.error as PlanConflict)._tag === "PlanConflict"
+        ? (result.error as PlanConflict).conflicts
+        : [];
+    const byPath = new Map(
+      conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
+    );
+    expect(byPath.size).toBe(2);
+    expect(byPath.get(foreign.path)).toEqual({ conflict: "unmanaged-exists", choices: ["adopt", "backup"] });
+    expect(byPath.get(oldHook.path)).toEqual({ conflict: "user-modified", choices: [] });
   });
 
   it("asks before overwriting what the user changed, and overwrites only on force", () => {

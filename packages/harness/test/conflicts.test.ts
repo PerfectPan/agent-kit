@@ -51,6 +51,34 @@ describe("conflicts and foreign owners", () => {
   });
 
   it.effect(
+    "S33: a kept hook that only changed its timeout is one conflict per locator, judged in one round (r2)",
+    () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        const settings = home.read(".claude/settings.json") ?? "";
+        home.write(".claude/settings.json", settings.replaceAll('"timeout": 5', '"timeout": 9'));
+        yield* uninstall("demo-app");
+        // The command is unchanged, so the kept hook sits at the locator the bundle still wants; the plan lists it
+        // once, as preserved and unresolvable — never again as an adoptable unmanaged file.
+        const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        expect(failure._tag).toBe("PlanConflict");
+        const conflicts = failure._tag === "PlanConflict" ? failure.conflicts : [];
+        expect(conflicts).toHaveLength(3);
+        expect(
+          conflicts
+            .map(({ step, choices }) => [step.locator.pointer, step.conflict, [...choices]])
+            .toSorted((a, b) => String(a[0]).localeCompare(String(b[0])))
+        ).toEqual([
+          ["/hooks/SessionStart", "user-modified", []],
+          ["/hooks/Stop", "user-modified", []],
+          ["/hooks/UserPromptSubmit", "user-modified", []]
+        ]);
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
+
+  it.effect(
     "S33: a file kept as the user's is never taken for an older version's later, though it carries a marker",
     () => {
       const home = testHome();

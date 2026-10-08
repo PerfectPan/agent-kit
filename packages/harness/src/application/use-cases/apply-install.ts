@@ -6,9 +6,12 @@ import {
   type ArtifactLocator,
   locatorKey,
   type PlanAction,
+  planClosedError,
   type PlanStale,
   type PlanStep,
+  preconditionHolds,
   type Removal,
+  registrationCommands,
   touchesDisk
 } from "../../domain/install-plan/index.js";
 import type {
@@ -84,17 +87,12 @@ function checkPrecondition(
   ArtifactFiles | PlatformService
 > {
   return Effect.gen(function* () {
-    const { precondition } = step;
-    if ("ownedAt" in precondition) {
-      return { matches: entry?.entryRevision === precondition.ownedAt };
+    const found = "ownedAt" in step.precondition ? undefined : yield* observe(step.locator, registrations);
+    const matches = preconditionHolds(step, { entry, observed: found });
+    if (found === undefined || found.content === undefined) {
+      return { matches, ...(found?.hash === undefined ? {} : { actual: found.hash }) };
     }
-    const found = yield* observe(step.locator, registrations);
-    const actual = found?.hash;
-    const safe = !touchesDisk(step) || step.locator.kind === "symlink" || found?.symlinkTarget === undefined;
-    const matches = safe && ("absent" in precondition ? actual === undefined : actual === precondition.hash);
-    return found === undefined || found.content === undefined
-      ? { matches, ...(actual === undefined ? {} : { actual }) }
-      : { matches, actual: found.hash, content: found.content };
+    return { matches, actual: found.hash, content: found.content };
   });
 }
 
@@ -115,11 +113,15 @@ function executeStep(
     }
     const { locator } = step;
     if (locator.kind === "cli-registration") {
-      if (step.removal === "restore-pre-image") {
-        // The registration was there before harness adopted it, so it stays.
+      const commands = registrationCommands(step, entry);
+      if (commands === undefined) {
+        throw new AgentKitError("invalid-plan", `Step ${locatorKey(locator)} has no agent to run its command line`);
+      }
+      // A restore-pre-image leaves the adopted registration in place; no command line and no symlink guard apply.
+      if (commands.purposes.length === 0) {
         return;
       }
-      const agent = step.agents[0] ?? entry?.agents[0];
+      const { agent } = commands;
       const registrations = registrationLookup(record.adapters, record.context);
       const checked = () =>
         Effect.gen(function* () {
@@ -135,34 +137,33 @@ function executeStep(
           return state.registration;
         });
       const registration = yield* checked();
-      if (agent === undefined || registration === undefined) {
+      if (registration === undefined) {
         throw new AgentKitError("capability-unsupported", `No command line registers ${locatorKey(locator)}`);
       }
       const cli = yield* AgentCli;
-      if (step.action === "remove") {
-        const { recorded, unregister } = registration;
-        if (recorded !== undefined && !(yield* cli.available(unregister.command))) {
-          // Without the agent's command line, remove what it would: its records and the copies it made.
-          const files = yield* ArtifactFiles;
-          for (const entry of recorded.entries) {
-            yield* files.remove(entry);
+      for (const purpose of commands.purposes) {
+        if (purpose === "unregister") {
+          const { recorded, unregister } = registration;
+          // A plain removal without the agent's command line removes what it would: its records and copies. A
+          // re-registration still needs the command line, so mutating by hand before a register that cannot run
+          // would leave the registration half-done.
+          if (commands.purposes.length === 1 && recorded !== undefined && !(yield* cli.available(unregister.command))) {
+            const files = yield* ArtifactFiles;
+            for (const recordedEntry of recorded.entries) {
+              yield* files.remove(recordedEntry);
+            }
+            for (const copy of recorded.copies) {
+              yield* files.remove({ kind: "dir", path: copy });
+            }
+            return;
           }
-          for (const copy of recorded.copies) {
-            yield* files.remove({ kind: "dir", path: copy });
-          }
-          return;
+          yield* checked();
+          yield* cli.run({ agent, ...unregister });
+        } else {
+          yield* checked();
+          yield* cli.run({ agent, ...registration.register });
         }
-        yield* checked();
-        yield* cli.run({ agent, ...unregister });
-        return;
       }
-      if ("hash" in step.precondition) {
-        // Registered already with other content, such as an outdated copy: register anew so the agent copies again.
-        yield* checked();
-        yield* cli.run({ agent, ...registration.unregister });
-      }
-      yield* checked();
-      yield* cli.run({ agent, ...registration.register });
       return;
     }
     const files = yield* ArtifactFiles;
@@ -200,16 +201,11 @@ export function applyLocked(
 ): Effect.Effect<ApplyReport, ApplyInstallError, ArtifactFiles | AgentCli | LedgerStore | PlatformService> {
   return Effect.gen(function* () {
     const plan = record.aggregate;
-    const { planId, basedOn, steps } = plan;
+    const { planId, steps } = plan;
     const ledger = start.ledger;
-    if (basedOn.ledgerLineage !== ledger.lineage || basedOn.ledgerRevision !== ledger.revision) {
-      return yield* Effect.fail({
-        _tag: "PlanStale",
-        planId,
-        reason: "ledger-moved",
-        basedOn,
-        current: { ledgerLineage: ledger.lineage, ledgerRevision: ledger.revision }
-      } satisfies PlanStale);
+    const stale = plan.staleAgainst(ledger);
+    if (stale !== undefined) {
+      return yield* Effect.fail(stale satisfies PlanStale);
     }
     const store = yield* LedgerStore;
     const registrations = registrationLookup(record.adapters, record.context);
@@ -327,9 +323,10 @@ export function applyInstall(
   return Effect.scoped(
     Effect.gen(function* () {
       const record = yield* Effect.sync(() => recordOf(plan));
-      const { status, planId, basedOn } = record.aggregate;
-      if (status !== "ready") {
-        return yield* Effect.fail({ _tag: "PlanStale", planId, reason: status, basedOn } satisfies PlanStale);
+      const { basedOn, planId, status } = record.aggregate;
+      const closed = planClosedError({ planId, status, basedOn });
+      if (closed !== undefined) {
+        return yield* Effect.fail(closed satisfies PlanStale);
       }
       const { loaded } = yield* lockLedger(record.scope, {
         waitMs: options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS,

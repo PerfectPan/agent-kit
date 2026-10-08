@@ -262,3 +262,29 @@ describe("InstallPlan.create", () => {
     ).toMatchObject({ ok: false, error: { reason: "invalid-step", detail: "an invalid precondition" } });
   });
 });
+
+describe("InstallPlan.staleAgainst", () => {
+  const ready = () => create([]);
+
+  it("is ready against the ledger it was built on and stale once that ledger moved", () => {
+    const created = ready();
+    if (!created.ok) {
+      throw new Error("empty plan should create");
+    }
+    const plan = created.value;
+    expect(plan.staleAgainst({ lineage: "lineage-1", revision: 3 })).toBeUndefined();
+    expect(plan.staleAgainst({ lineage: "lineage-2", revision: 3 })).toMatchObject({ reason: "ledger-moved" });
+    expect(plan.staleAgainst({ lineage: "lineage-1", revision: 4 })).toMatchObject({ reason: "ledger-moved" });
+  });
+
+  it("reports a closed plan before any ledger comparison", () => {
+    const created = ready();
+    if (!created.ok) {
+      throw new Error("empty plan should create");
+    }
+    const applied = created.value.markApplied();
+    expect(applied.ok && applied.value.state.staleAgainst({ lineage: "lineage-1", revision: 3 })).toMatchObject({
+      reason: "applied"
+    });
+  });
+});

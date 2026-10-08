@@ -34,6 +34,33 @@ export interface PlacedHooks extends HookPlacement {
   readonly registrations: readonly PlacedRegistration[];
 }
 
+/**
+ * A hook an agent does not get a registration of its own for, because it runs another agent's registration of the
+ * same event: the registration fires once, in the file and under the event listed in `firedBy`.
+ */
+export interface DroppedHook {
+  readonly agent: CodingAgentId;
+  readonly firedBy: { readonly agent: CodingAgentId; readonly event: string; readonly file: string };
+}
+
+/**
+ * Every agent that dropped its own registration because one placed file fires the same event there. It is fully
+ * determined by `placeHooks`: each registration's `agents` other than the agent whose file it sits in gets its hook
+ * through that file.
+ */
+export function droppedHooksOf(placed: readonly PlacedHooks[]): readonly DroppedHook[] {
+  return placed.flatMap((hooks) =>
+    hooks.registrations.flatMap((registration) =>
+      registration.agents
+        .filter((agent) => agent !== hooks.agent)
+        .map((agent) => ({
+          agent,
+          firedBy: { agent: hooks.agent, event: registration.event, file: hooks.file }
+        }))
+    )
+  );
+}
+
 export interface HookPlacementOptions {
   /**
    * What the application knows about runners that load other agents' hooks, for de-duplication only; `byDefault`

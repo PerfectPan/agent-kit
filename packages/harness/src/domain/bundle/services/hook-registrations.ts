@@ -1,6 +1,7 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import type { ForeignHooks, HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookSource, InstallAdapters, InstallContext } from "../value-objects/install-adapter.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 
 /** One hook as an agent's configuration registers it. */
@@ -67,6 +68,54 @@ export function runnersOf(agent: CodingAgentId, file: string, dialects: HookDial
     (dialect): dialect is HookDialect =>
       dialect?.runsHooksOf?.some((hooks) => hooks.agent === agent && hooks.files.includes(file)) === true
   );
+}
+
+/** A foreign hook file one runner executes: the owner's file, its storage shape, and the runner's event renames. */
+export interface ForeignHookFile {
+  /** The agent whose hooks live in the file. */
+  readonly owner: CodingAgentId;
+  /** Absolute path under the home (`~/` files are the only ones the kit can resolve across agents). */
+  readonly path: string;
+  /** How the owner stores hooks in that file, taken from its own hook sources. */
+  readonly source: HookSource;
+  /** Owner event name → the runner's event name. An owner event missing here never fires in the runner. */
+  readonly rename: Readonly<Record<string, string>>;
+}
+
+/**
+ * Every other agent's hook file that `runner` executes and the kit can resolve, as one rule for planning and
+ * diagnostics: each `runsHooksOf` file under `~/` that the runner actually loads (its `byDefault`, unless a read
+ * `compat` setting says otherwise), matched to the owner agent's own hook source; when the owner does not list that
+ * exact file, its first known source supplies the storage format and layout (an agent reads the same shape from a file
+ * its current adapter no longer names, such as Claude Code's `settings.local.json`).
+ */
+export function foreignHookFiles(
+  runner: CodingAgentId,
+  dialects: HookDialects,
+  adapters: InstallAdapters,
+  context: InstallContext,
+  compat: readonly HookCompat[] = []
+): readonly ForeignHookFile[] {
+  const dialect = Object.hasOwn(dialects, runner) ? dialects[runner] : undefined;
+  if (dialect === undefined) {
+    return [];
+  }
+  const files: ForeignHookFile[] = [];
+  for (const foreign of dialect.runsHooksOf ?? []) {
+    const known = adapters[foreign.agent]?.hookSources?.(context) ?? [];
+    for (const file of foreign.files) {
+      if (!file.startsWith("~/") || foreignHooksIn(dialect, foreign.agent, file, compat) === undefined) {
+        continue;
+      }
+      const path = `${context.home}/${file.slice(2)}`;
+      const source = known.find((candidate) => candidate.path === path) ?? known[0];
+      if (source === undefined) {
+        continue;
+      }
+      files.push({ owner: foreign.agent, path, source, rename: foreign.events });
+    }
+  }
+  return files;
 }
 
 /** An event of the dialect that is a permission gate where a hook exiting 0 without output does not let it proceed. */

@@ -243,4 +243,32 @@ describe("CLI registration side-effect paths", () => {
       expect(yield* inventory()).toEqual(before);
     }).pipe(Effect.provide(home.layer()));
   });
+
+  it.effect("H5: uninstalling an adopted registration restores it without running the command line", () => {
+    const home = testHome();
+    home.command("codex", FAKE_CODEX);
+    return Effect.gen(function* () {
+      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
+      // The plugin predates harness's knowledge, as if the user had installed it: the ledger no longer knows it, so
+      // the next plan adopts the identical installation and keeps what was there as the pre-image.
+      rmSync(home.path(".local/state/agent-kit/harness/user/ledger.json"), { force: true });
+      const adopted = yield* planInstall(initial, { agents: ["codex"] });
+      expect(adopted.steps.every((step) => step.action === "adopt" && step.capturePreImage)).toBe(true);
+      yield* applyInstall(adopted);
+      const calls = home.read("codex-calls.log") ?? "";
+      const config = home.read(".codex/config.toml");
+      const removed = yield* uninstall("demo-app");
+      expect(removed.plan.steps).toContainEqual(
+        expect.objectContaining({
+          locator: expect.objectContaining({ pointer: "/plugins/demo-app@demo-app" }),
+          action: "remove",
+          removal: "restore-pre-image"
+        })
+      );
+      // The registration predates the adoption, so the plan runs nothing: no unregister is listed or executed.
+      expect(removed.plan.commands).toEqual([]);
+      expect((home.read("codex-calls.log") ?? "").slice(calls.length)).toBe("");
+      expect(home.read(".codex/config.toml")).toBe(config);
+    }).pipe(Effect.provide(home.layer()));
+  });
 });

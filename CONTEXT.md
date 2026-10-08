@@ -139,7 +139,7 @@ Another tool that manages the same files, such as chezmoi. harness reads what it
 One installed thing: a file, directory, symlink, JSON or TOML entry, managed block, or registration through an agent's command line.
 
 **Strategy**:
-How an Artifact reaches the agent, in order of preference: launch-time injection, native plugin, scanned directory, shared configuration edit.
+How an Artifact reaches the agent: launch-time injection, native plugin, scanned directory, shared configuration edit. Each agent's InstallAdapter declares the Strategies it supports in its own order of preference; the flow chooses a caller override the adapter declares, otherwise the first declared strategy whose required executable is on `PATH` — launch-time injection included, whenever an adapter declares it (none of the built-in ones does).
 
 **InstallAdapter**:
 One agent's install knowledge (`harness-v1`): which Strategies it supports for hooks and skills, in order of preference, and how each renders a Bundle into Artifacts at that agent's paths. Pure; `builtinInstallAdapters` holds one per agent with a HookDialect.

@@ -1,5 +1,7 @@
 export { isLegacyArtifact } from "./policies/legacy-markers.js";
 export {
+  type DroppedHook,
+  droppedHooksOf,
   type HookOverlap,
   type HookPlacement,
   type HookPlacementOptions,
@@ -9,6 +11,8 @@ export {
   placeHooks
 } from "./services/hook-placement.js";
 export {
+  type ForeignHookFile,
+  foreignHookFiles,
   foreignHooksIn,
   type HookCompat,
   type HookRegistration,
@@ -25,6 +29,12 @@ export type {
   SkillSpec
 } from "./value-objects/artifact-spec.js";
 export { type Bundle, type BundleRef, checkBundle, type InvalidBundle } from "./value-objects/bundle.js";
+export {
+  type InstalledCopyRead,
+  ownRecordOf,
+  registrationContent,
+  registrationLinkMismatch
+} from "./value-objects/registration-state.js";
 export {
   type ArtifactSource,
   type CliRegistration,

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { builtinHookDialects } from "../adapters/hook-dialects.js";
 import { buildInstallPlan } from "../install-plan/factories/build-install-plan.js";
-import { preferredStrategy } from "../install-plan/policies/strategy-preference.js";
 import { Ledger } from "../ledger/aggregates/ledger.js";
 import { isLegacyArtifact } from "./policies/legacy-markers.js";
 import { placeHooks } from "./services/hook-placement.js";
@@ -392,16 +391,5 @@ describe("placeHooks", () => {
     expect(built && built.ok && built.value.steps).toEqual([
       expect.objectContaining({ locator, action: "create", agents: ["claude-code", "grok"] })
     ]);
-  });
-});
-
-describe("preferredStrategy", () => {
-  it("prefers launch injection, then a native plugin, a scanned directory, and shared configuration last", () => {
-    const all = ["shared-config", "scan-directory", "native-plugin", "launch-injection"] as const;
-    expect(preferredStrategy(all, { launching: true })).toBe("launch-injection");
-    expect(preferredStrategy(all, { launching: false })).toBe("native-plugin");
-    expect(preferredStrategy(["shared-config", "scan-directory"], { launching: false })).toBe("scan-directory");
-    expect(preferredStrategy(["shared-config"], { launching: false })).toBe("shared-config");
-    expect(preferredStrategy(["launch-injection"], { launching: false })).toBeUndefined();
   });
 });

@@ -43,6 +43,7 @@ import {
   planSetup,
   type PlanInstallError,
   type PlanInstallOptions,
+  probeCommands,
   renderBundle,
   requireUserScope
 } from "./plan-install.js";
@@ -101,7 +102,8 @@ export function verify(
     if (options.bundle !== undefined) {
       const bundle = yield* fromResult(checkBundle(options.bundle));
       const agents = options.agents ?? ledger.agentsOf(owner);
-      const { rendered } = yield* renderBundle(bundle, agents, setup, options);
+      const available = yield* probeCommands(agents, setup);
+      const { rendered } = yield* renderBundle(bundle, agents, setup, { ...options, available });
       desired = yield* desiredArtifacts(rendered);
     }
 

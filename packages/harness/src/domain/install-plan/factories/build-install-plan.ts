@@ -2,6 +2,7 @@ import { err, type Result } from "@rivus/agent-kit-catalog";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
 import { unionAgents } from "../../ledger/policies/ownership.js";
@@ -11,7 +12,12 @@ import type { PlanConflict } from "../errors/plan-conflict.js";
 import type { PlanStale } from "../errors/plan-stale.js";
 import { type DesiredState, planStep } from "../policies/conflict-detection.js";
 import { orderSteps } from "../policies/step-ordering.js";
-import { protectedLegacy, protectedReplacement } from "../policies/legacy-ownership.js";
+import {
+  type ForeignHookObservation,
+  protectedLegacy,
+  protectedReplacement,
+  retainedForeignConflict
+} from "../policies/legacy-ownership.js";
 import { type LocatorKey, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ConflictChoice } from "../value-objects/conflict.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
@@ -43,6 +49,13 @@ export interface PlanRequest {
    * written into a linked file, which an atomic write would replace with a regular one.
    */
   readonly linkedPaths?: Readonly<Record<string, string>>;
+  /**
+   * Hooks observed in foreign files the selected runners execute (see `foreignHookFiles`), each with its runner and
+   * the event it fires it as: one the owner tracks and must keep for another consumer is an unresolvable conflict.
+   */
+  readonly foreignHooks?: readonly ForeignHookObservation[];
+  /** The selected agents' dialects, used to tell a hook event from a runner's alias of it. */
+  readonly dialects?: HookDialects;
 }
 
 /** Whether the step puts new content at its target, which is what makes an agent ask for trust again. */
@@ -103,23 +116,17 @@ export function buildInstallPlan(
       protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
       protectedReplacement(seen, bundle, target.agents, ledger, observed)
   );
-  if (preservedHooks.length > 0) {
-    return err({
-      _tag: "PlanConflict",
-      planId: request.planId,
-      conflicts: preservedHooks.map((seen) => ({
-        step: {
-          locator: seen.locator,
-          action: "conflict",
-          conflict: "user-modified",
-          agents: [],
-          precondition: { hash: seen.hash },
-          capturePreImage: false
-        },
-        choices: []
-      }))
-    });
-  }
+  const preserved: PlanConflict["conflicts"] = preservedHooks.map((seen) => ({
+    step: {
+      locator: seen.locator,
+      action: "conflict",
+      conflict: "user-modified",
+      agents: [],
+      precondition: { hash: seen.hash },
+      capturePreImage: false
+    },
+    choices: []
+  }));
   const managed = request.managedPaths ?? {};
   const linked = request.linkedPaths ?? {};
   const at = (paths: Readonly<Record<string, string>>, path: string | undefined): string | undefined =>
@@ -150,17 +157,45 @@ export function buildInstallPlan(
     return step === undefined ? [] : [step];
   });
   const ordered = orderSteps(steps);
-  return InstallPlan.create(
-    {
-      planId: request.planId,
-      basedOn: { ledgerLineage: ledger.lineage, ledgerRevision: ledger.revision },
-      bundle: { owner: bundle.owner, version: bundle.version, digest: bundle.digest },
-      target,
-      steps: ordered,
-      expectedTrustPrompts: ordered.flatMap((step) =>
-        writesContent(step) ? (desired.get(locatorKey(step.locator))?.trust ?? []) : []
-      )
-    },
-    { ledger, observed, legacyMarkers: markers, managedPaths: managed, linkedPaths: linked }
+  const draft = {
+    planId: request.planId,
+    basedOn: { ledgerLineage: ledger.lineage, ledgerRevision: ledger.revision },
+    bundle: { owner: bundle.owner, version: bundle.version, digest: bundle.digest },
+    target,
+    steps: ordered,
+    expectedTrustPrompts: ordered.flatMap((step) =>
+      writesContent(step) ? (desired.get(locatorKey(step.locator))?.trust ?? []) : []
+    )
+  };
+  const created = InstallPlan.create(draft, {
+    ledger,
+    observed,
+    legacyMarkers: markers,
+    managedPaths: managed,
+    linkedPaths: linked
+  });
+  if (!created.ok && created.error._tag !== "PlanConflict") {
+    return created;
+  }
+  // A hook kept for the user or a ForeignOwner is judged once, as preserved: create also saw it (its content differs
+  // from what the bundle wants) and would list the same locator again, as a conflict an adopt or backup could
+  // resolve — so its entries at preserved locators are dropped.
+  const preservedKeys = new Set(preserved.map(({ step }) => locatorKey(step.locator)));
+  const createConflicts = (!created.ok && created.error._tag === "PlanConflict" ? created.error.conflicts : []).filter(
+    ({ step }) => !preservedKeys.has(locatorKey(step.locator))
   );
+  // A selected runner can execute a tracked foreign hook that this plan must retain for another consumer. Every
+  // conflict is judged in one round — the hooks kept for the user or a ForeignOwner, the plan invariants', and the
+  // retained foreign ones — so the caller never resolves a first batch to be shown the next.
+  const retained = retainedForeignConflict(request.planId, request.foreignHooks ?? [], {
+    bundle,
+    dialects: request.dialects ?? {},
+    ledger,
+    steps: ordered
+  });
+  const conflicts = [...preserved, ...createConflicts, ...(retained?.conflicts ?? [])];
+  if (conflicts.length > 0) {
+    return err({ _tag: "PlanConflict", planId: request.planId, conflicts });
+  }
+  return created;
 }
