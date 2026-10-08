@@ -3,10 +3,10 @@ import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
-import { applyInstall } from "../src/application/apply-install.js";
-import { inventory } from "../src/application/inventory.js";
-import { planInstall } from "../src/application/plan-install.js";
-import { uninstall } from "../src/application/uninstall.js";
+import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { inventory } from "../src/application/use-cases/inventory.js";
+import { planInstall } from "../src/application/use-cases/plan-install.js";
+import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { locatorKey } from "../src/domain/install-plan/index.js";
 import { demoBundle, SHIM } from "./support/bundles.js";
 import { removeTestHomes, testHome } from "./support/home.js";

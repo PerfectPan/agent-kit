@@ -3,10 +3,10 @@ import { cpSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
-import { applyInstall } from "../src/application/apply-install.js";
-import { inventory } from "../src/application/inventory.js";
-import { planInstall } from "../src/application/plan-install.js";
-import { uninstall } from "../src/application/uninstall.js";
+import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { inventory } from "../src/application/use-cases/inventory.js";
+import { planInstall } from "../src/application/use-cases/plan-install.js";
+import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { demoBundle } from "./support/bundles.js";
 import { FAKE_CODEX } from "./support/fake-codex.js";
 import { removeTestHomes, testHome, type TestHome } from "./support/home.js";

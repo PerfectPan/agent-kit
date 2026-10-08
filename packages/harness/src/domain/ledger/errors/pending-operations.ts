@@ -1,4 +1,4 @@
-import type { PendingOperation } from "../value-objects/pending-operation.js";
+import type { PendingOperation } from "../entities/pending-operation.js";
 
 /** An earlier modification did not finish. Probe its targets and `recover` before planning or modifying again. */
 export interface PendingOperations {

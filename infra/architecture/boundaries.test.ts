@@ -73,16 +73,16 @@ describe("allowed imports", () => {
     ["domain/session/head.ts", `import { ok } from "${CATALOG}";\nimport type { Result } from "${CATALOG}";`],
     ["domain/session/ref.ts", `import { head } from "./head.js";`],
     [
-      "agents/codex/events.ts",
-      `import { head } from "../../domain/session/head.js";\nimport { ok } from "${CATALOG}";`
+      "domain/adapters/codex/events.ts",
+      `import { head } from "../../session/head.js";\nimport { ok } from "${CATALOG}";`
     ],
-    ["agents/grok/events.ts", `import { fromAcp } from "../../protocols/acp-updates.js";`],
+    ["domain/adapters/grok/events.ts", `import { fromAcp } from "../../protocols/acp-updates.js";`],
     [
-      "application/list-sessions.ts",
-      `import { splitLines } from "${PLATFORM}";\nimport { x } from "../agents/index.js";`
+      "application/use-cases/list-sessions.ts",
+      `import { splitLines } from "${PLATFORM}";\nimport { x } from "../../domain/adapters/index.js";`
     ],
-    ["adapters/index-cache.ts", `import type { IndexCache } from "../application/ports.js";`],
-    ["public.ts", `export { listSessions } from "./application/list-sessions.js";`]
+    ["infra/repository/index-cache.ts", `import type { IndexCache } from "../../application/ports.js";`],
+    ["public.ts", `export { listSessions } from "./application/use-cases/list-sessions.js";`]
   ])("sessions %s", (path, source) => {
     expect(rulesOf(sessionsFile(path, source))).toEqual([]);
   });
@@ -95,7 +95,7 @@ describe("allowed imports", () => {
   });
 
   it("lets a package import an exact npm specifier from its allowlist outside domain/", () => {
-    expect(rulesOf(sessionsFile("agents/codex/line.ts", `import * as z from "zod/mini";`))).toEqual([]);
+    expect(rulesOf(sessionsFile("domain/adapters/codex/line.ts", `import * as z from "zod/mini";`))).toEqual([]);
     expect(rulesOf(sessionsFile("application/x.ts", `import { isPlainObject } from "es-toolkit";`))).toEqual([]);
     expect(rulesOf(sessionsFile("domain/usage/usage.ts", `import * as z from "zod/mini";`))).toEqual([
       "external-dependency"
@@ -117,11 +117,11 @@ describe("allowed imports", () => {
     expect(rulesOf(cost("extra.ts", `import { ok } from "${CATALOG}";`))).toEqual([]);
   });
 
-  it("allows Effect only in the listed application/ and adapters/ paths", () => {
+  it("allows Effect only in the listed application/ and infra/ paths", () => {
     const harness = (path: string) =>
       withFiles({ [`packages/harness/src/${path}`]: `import { Effect } from "effect";` });
-    expect(rulesOf(harness("application/apply-install.ts"))).toEqual([]);
-    expect(rulesOf(harness("adapters/ledger-store.ts"))).toEqual([]);
+    expect(rulesOf(harness("application/use-cases/apply-install.ts"))).toEqual([]);
+    expect(rulesOf(harness("infra/adapters/ledger-store.ts"))).toEqual([]);
     expect(rulesOf(harness("domain/ledger/ledger.ts"))).toEqual(["effect"]);
     expect(rulesOf(harness("events.ts"))).toEqual(["effect"]);
   });
@@ -130,7 +130,7 @@ describe("allowed imports", () => {
     const service = `import { PlatformService } from "${PLATFORM}/effect";`;
     const layer = `${service}\nimport * as Layer from "effect/Layer";`;
     expect(rulesOf(withFiles({ "packages/platform-node/src/effect.ts": layer }))).toEqual([]);
-    expect(rulesOf(withFiles({ "packages/harness/src/application/apply-install.ts": service }))).toEqual([]);
+    expect(rulesOf(withFiles({ "packages/harness/src/application/use-cases/apply-install.ts": service }))).toEqual([]);
   });
 
   it.each([
@@ -141,9 +141,9 @@ describe("allowed imports", () => {
       `import { PlatformService } from "${SHELL}/platform/effect";\nimport * as Effect from "effect/Effect";`
     ],
     [
-      "lease/adapters/x.ts",
+      "lease/infra/adapters/x.ts",
       `import type { Platform } from "${SHELL}/platform";\nimport * as z from "zod/mini";\n` +
-        `import { acquire } from "../../process-lock/application/x.js";`
+        `import { acquire } from "../../../process-lock/application/x.js";`
     ],
     ["process-lock/application/x.ts", `import { holderLiveness } from "../../lease/domain/lease/index.js";`],
     ["lease/public.ts", `export { x } from "./application/x.js";`]
@@ -164,7 +164,7 @@ describe("violations", () => {
     ["a bare Node built-in in application/", "application/scan.ts", `import { join } from "path";`, "node-builtin"],
     [
       "Node types in a pure package",
-      "agents/codex/x.ts",
+      "domain/adapters/codex/x.ts",
       `import type { Readable } from "node:stream";`,
       "node-builtin"
     ],
@@ -201,18 +201,29 @@ describe("violations", () => {
       "layer"
     ],
     [
-      "agents/ importing application/",
-      "agents/codex/x.ts",
-      `import { list } from "../../application/list.js";`,
+      "domain/adapters/ importing application/",
+      "domain/adapters/codex/x.ts",
+      `import { list } from "../../../application/list.js";`,
       "layer"
     ],
     [
-      "agents/ importing a non-kernel package",
-      "agents/codex/x.ts",
+      "domain/adapters/ importing a non-kernel package",
+      "domain/adapters/codex/x.ts",
       `import type { Platform } from "${PLATFORM}";`,
       "layer"
     ],
-    ["domain/ importing agents/", "domain/x.ts", `import { codex } from "../agents/codex/index.js";`, "layer"],
+    [
+      "domain/ importing domain/adapters/",
+      "domain/x.ts",
+      `import { codex } from "./adapters/codex/index.js";`,
+      "layer"
+    ],
+    [
+      "domain/ importing domain/protocols/",
+      "domain/x.ts",
+      `import { fromAcp } from "./protocols/acp-updates.js";`,
+      "layer"
+    ],
     ["domain/ importing the package root", "domain/x.ts", `import { x } from "../public.js";`, "layer"],
     ["an undeclared package dependency", "application/x.ts", `import { m } from "${TESTING}";`, "package-dependency"],
     [
@@ -226,11 +237,16 @@ describe("violations", () => {
     ["a Platform type re-export in domain/", "domain/x.ts", `export type { FileStat } from "${PLATFORM}";`, "layer"],
     [
       "zod's full entry where only zod/mini is allowed",
-      "agents/codex/x.ts",
+      "domain/adapters/codex/x.ts",
       `import { z } from "zod";`,
       "external-dependency"
     ],
-    ["another zod subpath", "agents/codex/x.ts", `import * as z from "zod/v4/classic";`, "external-dependency"],
+    [
+      "another zod subpath",
+      "domain/adapters/codex/x.ts",
+      `import * as z from "zod/v4/classic";`,
+      "external-dependency"
+    ],
     [
       "es-toolkit's lodash-compatible layer",
       "application/x.ts",
@@ -316,7 +332,7 @@ describe("violations", () => {
     ],
     [
       "an agent-kit entry outside publicImports",
-      "lease/adapters/x.ts",
+      "lease/infra/adapters/x.ts",
       `import { createNodePlatform } from "${SHELL}/node";`,
       "public-entry"
     ],
@@ -393,9 +409,9 @@ describe("violations", () => {
   it("keeps a library allowed only in some files out of the others", () => {
     const acp = (path: string) =>
       withFiles({ [`packages/acp/src/${path}`]: `import * as acp from "@agentclientprotocol/sdk";` });
-    expect(rulesOf(acp("application/wire.ts"))).toEqual([]);
+    expect(rulesOf(acp("application/services/wire.ts"))).toEqual([]);
     expect(rulesOf(acp("application/connect-agent-extra.ts"))).toEqual(["external-dependency"]);
-    expect(rulesOf(acp("adapters/transport.ts"))).toEqual(["external-dependency"]);
+    expect(rulesOf(acp("infra/repository/transport.ts"))).toEqual(["external-dependency"]);
   });
 
   it("keeps a tests-only dependency out of every src/ file", () => {

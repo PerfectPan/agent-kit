@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { builtinHookDialects } from "../../agents/hook-dialects.js";
+import { builtinHookDialects } from "../adapters/hook-dialects.js";
 import { buildInstallPlan } from "../install-plan/factories/build-install-plan.js";
 import { preferredStrategy } from "../install-plan/policies/strategy-preference.js";
-import { Ledger } from "../ledger/aggregate/ledger.js";
+import { Ledger } from "../ledger/aggregates/ledger.js";
 import { isLegacyArtifact } from "./policies/legacy-markers.js";
 import { placeHooks } from "./services/hook-placement.js";
 import { hookRegistrations, runnersOf } from "./services/hook-registrations.js";

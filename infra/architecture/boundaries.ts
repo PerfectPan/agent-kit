@@ -5,10 +5,12 @@
  */
 
 /**
- * Directories directly under `src/` of a context package. Other files (`public.ts`, `index.ts`) are unrestricted.
- * Sources under `src/` are plain `.ts` files: declaration and JavaScript files would hide imports from the check.
+ * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at `src/domain/adapters/` and
+ * the wire protocols at `src/domain/protocols/` (both inside `domain/` but judged as their own layers),
+ * `src/application/` and `src/infra/`. Other files (`public.ts`, `index.ts`) are unrestricted. Sources under `src/`
+ * are plain `.ts` files: declaration and JavaScript files would hide imports from the check.
  */
-export type Layer = "domain" | "agents" | "protocols" | "application" | "adapters";
+export type Layer = "domain" | "domain/adapters" | "domain/protocols" | "application" | "infra";
 
 export interface PackageRule {
   /** Workspace packages this package may import, always by bare name, which resolves to the target's `index.ts`. */
@@ -110,7 +112,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM, SESSIONS],
       testsOnly: [PLATFORM_NODE],
       external: ["zod/mini", "@agentclientprotocol/sdk"],
-      externalOnlyIn: { "@agentclientprotocol/sdk": ["src/application/wire.ts"] }
+      externalOnlyIn: { "@agentclientprotocol/sdk": ["src/application/services/wire.ts"] }
     },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
@@ -135,14 +137,23 @@ export const boundaries: BoundaryRules = {
   shells: [SHELL],
   sharedKernel: CATALOG,
   layers: {
-    // The domain does no IO, so it never sees the Platform port, not even its types.
+    // The domain does no IO, so it never sees the Platform port, not even its types, and never reaches the agent
+    // adapters or protocols inside it: domain/<concept>/ may not import domain/adapters/ or domain/protocols/.
     domain: { layers: ["domain"], workspace: "kernel-and-types", hidden: [PLATFORM, PLATFORM_NODE], external: false },
-    // agents/ and protocols/ translate external formats into the domain model. They need the shared kernel because
-    // adapter tables are keyed by CodingAgentId.
-    agents: { layers: ["domain", "agents", "protocols"], workspace: "kernel", external: true },
-    protocols: { layers: ["domain", "protocols"], workspace: "kernel", external: true },
-    application: { layers: ["domain", "agents", "protocols", "application"], workspace: "any", external: true },
-    adapters: { layers: ["domain", "application", "adapters"], workspace: "any", external: true }
+    // domain/adapters/ and domain/protocols/ translate external formats into the domain model. They need the shared
+    // kernel because adapter tables are keyed by CodingAgentId.
+    "domain/adapters": {
+      layers: ["domain", "domain/adapters", "domain/protocols"],
+      workspace: "kernel",
+      external: true
+    },
+    "domain/protocols": { layers: ["domain", "domain/protocols"], workspace: "kernel", external: true },
+    application: {
+      layers: ["domain", "domain/adapters", "domain/protocols", "application"],
+      workspace: "any",
+      external: true
+    },
+    infra: { layers: ["domain", "application", "infra"], workspace: "any", external: true }
   },
   effect: {
     specifier: /^(?:effect|@effect\/[^/]+)(?:\/|$)/,
@@ -151,9 +162,9 @@ export const boundaries: BoundaryRules = {
       // The Platform port as an Effect service and its Node Layer; `/platform` and `/node` stay plain.
       [PLATFORM]: ["src/effect.ts"],
       [PLATFORM_NODE]: ["src/effect.ts"],
-      "@rivus/agent-kit-harness": ["src/application/", "src/adapters/"],
-      [ACP]: ["src/application/", "src/adapters/"],
-      [COLLAB]: ["src/lease/application/", "src/lease/adapters/", "src/lanes/application/", "src/lanes/adapters/"]
+      "@rivus/agent-kit-harness": ["src/application/", "src/infra/"],
+      [ACP]: ["src/application/", "src/infra/"],
+      [COLLAB]: ["src/lease/application/", "src/lease/infra/", "src/lanes/application/", "src/lanes/infra/"]
     }
   }
 };

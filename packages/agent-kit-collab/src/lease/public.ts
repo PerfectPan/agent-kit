@@ -1,16 +1,16 @@
-export { fileLeaseStore } from "./adapters/file-lease-store.js";
-export type { FileLeaseStoreOptions } from "./adapters/file-lease-store.js";
-export { memoryLeaseStore } from "./adapters/memory-lease-store.js";
-export { sqliteLeaseStore } from "./adapters/sqlite-lease-store.js";
-export type { SqliteLeaseStoreOptions } from "./adapters/sqlite-lease-store.js";
-export { createLeaseManager } from "./application/lease-manager.js";
+export { fileLeaseStore } from "./infra/repository/file-lease-store.js";
+export type { FileLeaseStoreOptions } from "./infra/repository/file-lease-store.js";
+export { memoryLeaseStore } from "./infra/repository/memory-lease-store.js";
+export { sqliteLeaseStore } from "./infra/repository/sqlite-lease-store.js";
+export type { SqliteLeaseStoreOptions } from "./infra/repository/sqlite-lease-store.js";
+export { createLeaseManager } from "./application/use-cases/lease-manager.js";
 export type {
   AcquireOptions,
   LeaseConfig,
   LeaseConfigInvalid,
   LeaseHandle,
   LeaseManager
-} from "./application/lease-manager.js";
+} from "./application/use-cases/lease-manager.js";
 export { LeaseStore } from "./application/ports.js";
 export type { LeaseStoreFailure, LeaseStoreShape } from "./application/ports.js";
 export { canAcquire, checkFence, holderLiveness, isFresh, nextFencingToken } from "./domain/lease/index.js";

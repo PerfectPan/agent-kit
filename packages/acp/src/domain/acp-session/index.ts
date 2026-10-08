@@ -1,5 +1,5 @@
-export { AcpSession } from "./aggregate/acp-session.js";
-export type { AcpSessionTransition, CreateAcpSessionInput } from "./aggregate/acp-session.js";
+export { AcpSession } from "./aggregates/acp-session.js";
+export type { AcpSessionTransition, CreateAcpSessionInput } from "./aggregates/acp-session.js";
 export type { AcpSessionInvalid } from "./errors/acp-session-invalid.js";
 export type { CancelUnsettled } from "./errors/cancel-unsettled.js";
 export type { IllegalTransition } from "./errors/illegal-transition.js";

@@ -1,5 +1,5 @@
-export { Lane } from "./aggregate/lane.js";
-export type { LaneTransition } from "./aggregate/lane.js";
+export { Lane } from "./aggregates/lane.js";
+export type { LaneTransition } from "./aggregates/lane.js";
 export type { LaneQueueFull } from "./errors/lane-queue-full.js";
 export type { LanesConfigInvalid } from "./errors/lanes-config-invalid.js";
 export type {

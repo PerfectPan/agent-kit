@@ -5,8 +5,8 @@ import { locatorKey } from "../../install-plan/value-objects/artifact-locator.js
 import type { Removal } from "../../install-plan/value-objects/plan-step.js";
 import type { ArtifactInstalled } from "../events/artifact-installed.js";
 import type { ArtifactRemoved } from "../events/artifact-removed.js";
-import type { LedgerEntry } from "../value-objects/ledger-entry.js";
-import type { PendingOperation } from "../value-objects/pending-operation.js";
+import type { LedgerEntry } from "../entities/ledger-entry.js";
+import type { PendingOperation } from "../entities/pending-operation.js";
 import type { PreImage } from "../value-objects/pre-image.js";
 
 export function holds(entry: LedgerEntry, owner: Owner): boolean {

@@ -16,7 +16,7 @@ export type CodingAgentIdWithHome =
   | "openhands"
   | "qoder";
 
-/** Ids of the coding agents the kit knows. Each has an identity in `catalog/src/agents/`. */
+/** Ids of the coding agents the kit knows. Each has an identity in `catalog/src/domain/adapters/`. */
 export type BuiltinCodingAgentId =
   | CodingAgentIdWithHome
   | "aider"

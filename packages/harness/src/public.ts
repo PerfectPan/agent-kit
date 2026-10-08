@@ -1,25 +1,30 @@
 // The `@rivus/agent-kit/harness` entry: Effect use cases, their ports and Layers, and the plain data they exchange.
 // The hook path imports `events.ts` instead, which reaches none of this.
-export { builtinInstallAdapters } from "./agents/install-adapters.js";
+export { builtinInstallAdapters } from "./domain/adapters/install-adapters.js";
 export {
   type AppliedStep,
   applyInstall,
   type ApplyInstallError,
   type ApplyInstallOptions,
   type ApplyReport
-} from "./application/apply-install.js";
-export { type Check, doctor, type DoctorOptions } from "./application/doctor.js";
+} from "./application/use-cases/apply-install.js";
+export { type Check, doctor, type DoctorOptions } from "./application/use-cases/doctor.js";
 export type { ApplyFailed, StrategyUnavailable, TargetChanged } from "./application/errors.js";
-export type { DroppedHook, InstallPlan, PlannedCommand, PlannedFileChange } from "./application/install-plan-handle.js";
-export { discardPlan, type Inventory, inventory } from "./application/inventory.js";
-export type { ScopeOptions } from "./application/ledger-scope.js";
-export type { LedgerLockError, LedgerReadError } from "./application/ledger-session.js";
+export type {
+  DroppedHook,
+  InstallPlan,
+  PlannedCommand,
+  PlannedFileChange
+} from "./application/services/install-plan-handle.js";
+export { discardPlan, type Inventory, inventory } from "./application/use-cases/inventory.js";
+export type { ScopeOptions } from "./application/services/ledger-scope.js";
+export type { LedgerLockError, LedgerReadError } from "./application/services/ledger-session.js";
 export {
   type HarnessServices,
   planInstall,
   type PlanInstallError,
   type PlanInstallOptions
-} from "./application/plan-install.js";
+} from "./application/use-cases/plan-install.js";
 export {
   AgentCli,
   type AgentCliFailure,
@@ -50,20 +55,20 @@ export {
   type UninstallError,
   type UninstallOptions,
   type UninstallReport
-} from "./application/uninstall.js";
+} from "./application/use-cases/uninstall.js";
 export {
   verify,
   type VerifiedArtifact,
   type VerifyError,
   type VerifyOptions,
   type VerifyReport
-} from "./application/verify.js";
-export { ChezmoiExternalOwnerLive } from "./adapters/chezmoi-external-owner.js";
-export { FileLedgerStoreLive } from "./adapters/file-ledger-store.js";
-export { HarnessLive } from "./adapters/harness-live.js";
-export { PlatformArtifactFilesLive } from "./adapters/platform-artifact-files.js";
-export { ProcessAgentCliLive } from "./adapters/process-agent-cli.js";
-export { SqliteLedgerLockLive } from "./adapters/sqlite-ledger-lock.js";
+} from "./application/use-cases/verify.js";
+export { ChezmoiExternalOwnerLive } from "./infra/adapters/chezmoi-external-owner.js";
+export { FileLedgerStoreLive } from "./infra/repository/file-ledger-store.js";
+export { HarnessLive } from "./infra/factories/harness-live.js";
+export { PlatformArtifactFilesLive } from "./infra/adapters/platform-artifact-files.js";
+export { ProcessAgentCliLive } from "./infra/adapters/process-agent-cli.js";
+export { SqliteLedgerLockLive } from "./infra/adapters/sqlite-ledger-lock.js";
 export {
   type ArtifactSource,
   type ArtifactSpec,

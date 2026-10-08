@@ -2,10 +2,10 @@ import type { Result } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vitest";
 
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
-import { Ledger } from "../../ledger/aggregate/ledger.js";
+import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/value-objects/ledger-entry.js";
-import type { InstallPlan } from "../aggregate/install-plan.js";
+import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { InstallPlan } from "../aggregates/install-plan.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ConflictChoice } from "../value-objects/conflict.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";

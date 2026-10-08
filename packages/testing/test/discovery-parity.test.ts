@@ -280,7 +280,7 @@ const CODEX_APP = "https://learn.chatgpt.com/docs/config-file/config-advanced";
  */
 const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string }[] = [
   // Catalog owns display names.
-  { agent: "opencode", fact: "name", source: "packages/catalog/src/agents/opencode.ts" },
+  { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/adapters/opencode.ts" },
   // opencode also reads opencode.jsonc.
   { agent: "opencode", fact: "mcpConfigPaths", source: OPENCODE_CONFIG },
   { agent: "opencode", fact: "warnings", source: OPENCODE_CONFIG },
