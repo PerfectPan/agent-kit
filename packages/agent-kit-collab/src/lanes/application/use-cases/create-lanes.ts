@@ -6,12 +6,15 @@ import type * as Scope from "effect/Scope";
 
 import {
   Lane,
-  type LaneEvent,
+  type LaneLoad,
   laneLimits,
   type LaneQueueFull,
   type LanesConfigInvalid,
   type LaneSnapshot,
-  type LaneTransition
+  type LaneTransition,
+  nextToStart,
+  type WakeResult,
+  wakeResult
 } from "../../domain/lane/index.js";
 import { fromResult } from "../services/from-result.js";
 
@@ -50,12 +53,6 @@ export type ActivationExit<E> =
   /** The activation failed, died, or interrupted itself. */
   | { readonly _tag: "ActivationFailed"; readonly key: string; readonly cause: Cause.Cause<E> }
   | { readonly _tag: "ActivationInterrupted"; readonly key: string; readonly reason: ActivationInterruptReason };
-
-/**
- * `started`: an activation started; `queued`: the lane waits for a free slot; `coalesced`: an activation that has not
- * started yet serves this wake (the queued one, or the one that follows the running one).
- */
-export type WakeResult = "started" | "queued" | "coalesced";
 
 /** `close` ran, or the Scope that created the lanes closed. */
 export interface LanesClosed {
@@ -171,13 +168,14 @@ export function createLanes<E = never, R = never>(
       return started;
     };
 
-    /** Gives the free slots to the lanes that have waited longest. */
+    /** Hands the free slots to the lanes that `nextToStart` picks: the ones that have waited longest. */
     const pump = (): Activation[] => {
       const started: Activation[] = [];
+      const load = (): LaneLoad => ({ running: activations.size, queued: queue.length });
       for (
-        let key = queue[0];
-        !closed && key !== undefined && activations.size < limits.maxConcurrent;
-        key = queue[0]
+        let key = nextToStart(queue, load(), limits, closed);
+        key !== undefined;
+        key = nextToStart(queue, load(), limits, closed)
       ) {
         started.push(...apply(laneOf(key).start()));
       }
@@ -276,13 +274,6 @@ export function createLanes<E = never, R = never>(
         discard: true
       });
     }
-
-    const wakeResult = (events: readonly LaneEvent[]): WakeResult =>
-      events.some(({ _tag }) => _tag === "ActivationStarted")
-        ? "started"
-        : events.some(({ _tag }) => _tag === "LaneQueued")
-          ? "queued"
-          : "coalesced";
 
     const close: Effect.Effect<void> = Effect.suspend(() => {
       if (!closed) {

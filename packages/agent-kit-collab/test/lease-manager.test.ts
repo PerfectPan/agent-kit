@@ -239,6 +239,35 @@ describe.each(storeCases)("lease with the $name store", ({ make, persistent, pla
     }).pipe(Effect.provide(layer));
   });
 
+  it.live("refuses fenced work over a record that breaks the lease invariants, instead of trusting its fields", () => {
+    const { layer } = make();
+    return Effect.gen(function* () {
+      const store = yield* LeaseStore;
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const leases = yield* createLeaseManager(config);
+          const lease = yield* leases.acquire(KEY);
+          const current = yield* store.read(KEY);
+          expect(
+            yield* store.compareAndSet(KEY, current?.revision, {
+              key: KEY,
+              generation: 0,
+              revision: (current?.revision ?? 0) + 1,
+              holder: null,
+              holderId: null,
+              renewedAt: 0
+            })
+          ).toBe(true);
+          // The store accepts the record; the Lease invariants refuse it, so no work runs over it.
+          expect(failureOf(yield* Effect.exit(lease.runFenced(() => Effect.succeed(true))))).toMatchObject({
+            _tag: "LeaseStoreFailure",
+            reason: "invalid-record"
+          });
+        })
+      );
+    }).pipe(Effect.provide(layer));
+  });
+
   it.live(
     "S67: keeps the fence until an uninterruptible write of a lost holder settles, then runs the successor's work",
     () => {

@@ -1,6 +1,12 @@
 import type { PlatformFs } from "@rivus/agent-kit-platform";
 
-import { type AbsolutePath, formatAbsolutePath, isWithin, parseAbsolutePath } from "../../domain/acp-session/index.js";
+import {
+  type AbsolutePath,
+  type ClientPathRefusal,
+  clientPathVerdict,
+  formatAbsolutePath,
+  parseAbsolutePath
+} from "../../domain/acp-session/index.js";
 import { ClientFileError, type ReadTextFile, type WriteTextFile } from "./wire.js";
 
 /** Larger files are refused rather than read whole into memory. */
@@ -13,11 +19,15 @@ export async function sessionRoot(fs: Pick<PlatformFs, "realpath">, cwd: string)
   return real === undefined ? undefined : parseAbsolutePath(real);
 }
 
+const REFUSED: Record<ClientPathRefusal, string> = {
+  "dangling-link": "is a link to a file that does not exist",
+  "unresolved-directory": "goes through a directory that does not exist",
+  "outside-root": "is outside the session directory"
+};
+
 /**
- * Where a client file call may act: the target with its links resolved, inside the session directory. A target that
- * does not exist yet is judged by its nearest existing parent; a link whose target does not exist is refused, because
- * where it points cannot be checked. The platform resolves `..` the way the file system does, after the links before
- * it, so the check judges the file a call would reach.
+ * Where a client file call may act: the target with its links resolved, inside the session directory. The platform
+ * answers for the target and every parent prefix, and the domain's `clientPathVerdict` judges the answers.
  */
 async function resolveInside(
   fs: Pick<PlatformFs, "realpath" | "stat">,
@@ -28,28 +38,23 @@ async function resolveInside(
   if (path === undefined) {
     throw new ClientFileError("refused", `${target} is not an absolute path`);
   }
-  let resolved = await fs.realpath(formatAbsolutePath(path));
-  if (resolved === undefined) {
-    if ((await fs.stat(formatAbsolutePath(path)))?.kind === "symlink") {
-      throw new ClientFileError("refused", `${target} is a link to a file that does not exist`);
-    }
-    for (let size = path.parts.length - 1; size >= 0 && resolved === undefined; size -= 1) {
-      const parent = await fs.realpath(formatAbsolutePath({ root: path.root, parts: path.parts.slice(0, size) }));
-      const real = parent === undefined ? undefined : parseAbsolutePath(parent);
-      const rest = path.parts.slice(size);
-      if (real !== undefined && rest.includes("..")) {
-        throw new ClientFileError("refused", `${target} goes through a directory that does not exist`);
-      }
-      if (real !== undefined) {
-        resolved = formatAbsolutePath({ root: real.root, parts: [...real.parts, ...rest] });
-      }
+  const realpaths = new Map<string, string>();
+  for (let size = path.parts.length; size >= 0; size -= 1) {
+    const prefix = formatAbsolutePath({ root: path.root, parts: path.parts.slice(0, size) });
+    const real = await fs.realpath(prefix);
+    if (real !== undefined) {
+      realpaths.set(prefix, real);
     }
   }
-  const inside = resolved === undefined ? undefined : parseAbsolutePath(resolved);
-  if (resolved === undefined || inside === undefined || !isWithin(root, inside)) {
-    throw new ClientFileError("refused", `${target} is outside the session directory`);
+  // A target the platform resolved exists; only a missing one can be a link to a file that does not exist.
+  const targetIsSymlink = realpaths.has(formatAbsolutePath(path))
+    ? false
+    : (await fs.stat(formatAbsolutePath(path)))?.kind === "symlink";
+  const verdict = clientPathVerdict(root, path, { realpaths, targetIsSymlink });
+  if (verdict._tag === "refused") {
+    throw new ClientFileError("refused", `${target} ${REFUSED[verdict.reason]}`);
   }
-  return resolved;
+  return verdict.path;
 }
 
 /** `fs/read_text_file`: the file's text, from the 1-based `line` and at most `limit` lines when given. */

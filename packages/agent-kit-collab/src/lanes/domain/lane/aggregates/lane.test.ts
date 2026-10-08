@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { admit } from "../policies/admission.js";
+import { admit, nextToStart, wakeResult } from "../policies/admission.js";
 import { type LaneLimits, laneLimits } from "../value-objects/lane-limits.js";
 import { Lane, type LaneTransition } from "./lane.js";
 
@@ -113,5 +113,29 @@ describe("laneLimits", () => {
     ]) {
       expect(laneLimits(input)).toMatchObject({ ok: false, error: { _tag: "LanesConfigInvalid" } });
     }
+  });
+});
+
+describe("admission across lanes", () => {
+  it("gives a free slot to the head of the queue while the lanes are open, and to nobody otherwise", () => {
+    const limits: LaneLimits = { maxConcurrent: 2, maxQueued: 5, turnTimeoutMs: undefined };
+    const load = { running: 1, queued: 2 };
+    expect(nextToStart(["b", "a"], load, limits, false)).toBe("b");
+    expect(nextToStart([], load, limits, false)).toBeUndefined();
+    expect(nextToStart(["b", "a"], { running: 2, queued: 2 }, limits, false)).toBeUndefined();
+    expect(nextToStart(["b", "a"], load, limits, true)).toBeUndefined();
+  });
+
+  it("reads a wake from its events: started, queued, or served by an activation that has not begun", () => {
+    expect(wakeResult([{ _tag: "ActivationStarted", key: KEY }])).toBe("started");
+    expect(wakeResult([{ _tag: "LaneQueued", key: KEY }])).toBe("queued");
+    expect(wakeResult([{ _tag: "WakeCoalesced", key: KEY }])).toBe("coalesced");
+    // Starting wins over queueing: a queued lane that got its slot started.
+    expect(
+      wakeResult([
+        { _tag: "LaneQueued", key: KEY },
+        { _tag: "ActivationStarted", key: KEY }
+      ])
+    ).toBe("started");
   });
 });

@@ -14,15 +14,20 @@ import {
   type FencingToken,
   type Holder,
   type HolderLiveness,
+  holderExpired,
   holderLiveness,
   isFresh,
   Lease,
+  type LeaseConfigInvalid,
   type LeaseHeld,
   type LeaseHolding,
   type LeaseLost,
   type LeaseObservation,
   type LeaseSnapshot,
+  type LeaseTiming,
+  leaseTiming,
   type LeaseTransition,
+  lossReason,
   observe
 } from "../../domain/lease/index.js";
 import { fromResult } from "../services/from-result.js";
@@ -36,11 +41,6 @@ export interface LeaseConfig {
   readonly heartbeatMs: number;
   /** How often `acquire({ wait: true })` tries again; `heartbeatMs` by default. */
   readonly retryMs?: number;
-}
-
-export interface LeaseConfigInvalid {
-  readonly _tag: "LeaseConfigInvalid";
-  readonly message: string;
 }
 
 export interface AcquireOptions {
@@ -100,31 +100,12 @@ export function createLeaseManager(
   config: LeaseConfig
 ): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseStore | PlatformService> {
   return Effect.gen(function* () {
-    const problem = configProblem(config);
-    if (problem !== undefined) {
-      return yield* Effect.fail<LeaseConfigInvalid>({ _tag: "LeaseConfigInvalid", message: problem });
-    }
-    return makeManager(config, yield* LeaseStore, yield* PlatformService);
+    const timing = yield* fromResult(leaseTiming(config));
+    return makeManager(timing, yield* LeaseStore, yield* PlatformService);
   });
 }
 
-function configProblem({ ttlMs, heartbeatMs, retryMs }: LeaseConfig): string | undefined {
-  for (const [name, value] of [
-    ["ttlMs", ttlMs],
-    ["heartbeatMs", heartbeatMs],
-    ["retryMs", retryMs ?? heartbeatMs]
-  ] as const) {
-    if (!Number.isFinite(value) || value <= 0) {
-      return `${name} must be a positive number of milliseconds, got ${value}`;
-    }
-  }
-  if (heartbeatMs * 2 > ttlMs) {
-    return `heartbeatMs × 2 must not exceed ttlMs (${heartbeatMs} × 2 > ${ttlMs})`;
-  }
-  return undefined;
-}
-
-function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: ManagerPlatform): LeaseManager {
+function makeManager(timing: LeaseTiming, store: LeaseStoreShape, platform: ManagerPlatform): LeaseManager {
   const observations = new Map<string, LeaseObservation>();
   const now = () => platform.clock.monotonic();
   const self = (): Holder => {
@@ -155,7 +136,7 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
           const at = now();
           const observation = observe(observations.get(key), record, at);
           observations.set(key, observation);
-          const fresh = isFresh(record, observation, at, config.ttlMs);
+          const fresh = isFresh(record, observation, at, timing.ttlMs);
           // Liveness matters only for a fresh record: a stale one or a tombstone can be taken whoever holds it.
           const { holder } = record;
           const liveness = fresh && holder !== null ? yield* judge(holder, claim.holder) : "unknown";
@@ -173,14 +154,8 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
   const lostBy = (key: string, holding: LeaseHolding) =>
     Effect.gen(function* () {
       const read = yield* Effect.exit(store.read(key));
-      const record = Exit.isSuccess(read) ? read.value : undefined;
-      const reason: LeaseLost["reason"] = !Exit.isSuccess(read)
-        ? "taken-over"
-        : record === undefined
-          ? "missing"
-          : record.holder === null
-            ? "released"
-            : "taken-over";
+      // A read that failed is classified like a lost race, not like a vanished record; that mapping stays here.
+      const reason: LeaseLost["reason"] = Exit.isSuccess(read) ? lossReason(read.value) : "taken-over";
       return { _tag: "LeaseLost", key, generation: holding.generation, reason } satisfies LeaseLost;
     });
 
@@ -194,7 +169,7 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
     Effect.gen(function* () {
       let confirmedAt = now();
       for (;;) {
-        yield* Effect.sleep(config.heartbeatMs);
+        yield* Effect.sleep(timing.heartbeatMs);
         const current = yield* Ref.get(ref);
         const restored = Lease.restore(current);
         const transition = restored.ok ? restored.value.renew(holding, platform.clock.now()) : undefined;
@@ -212,7 +187,7 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
             return yield* Effect.fail(yield* lostBy(key, holding));
           }
           confirmedAt = now();
-        } else if (now() - confirmedAt >= config.ttlMs) {
+        } else if (holderExpired(confirmedAt, now(), timing.ttlMs)) {
           return yield* Effect.fail<LeaseLost>({
             _tag: "LeaseLost",
             key,
@@ -251,7 +226,13 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
             }
             yield* store.fence(key).pipe(Effect.raceFirst(Deferred.await(lost)));
             const record = yield* store.read(key);
-            if (record?.holderId !== holding.holderId || record.generation !== holding.generation) {
+            const lease =
+              record === undefined
+                ? undefined
+                : yield* fromResult(Lease.restore(record)).pipe(
+                    Effect.mapError((invalid) => storeFailure(key, "invalid-record", invalid.message))
+                  );
+            if (lease?.holds(holding) !== true) {
               const current = record?.generation;
               return yield* Effect.fail<FenceRejected>({
                 _tag: "FenceRejected",
@@ -283,7 +264,7 @@ function makeManager(config: LeaseConfig, store: LeaseStoreShape, platform: Mana
           ? attempt.pipe(
               Effect.retry({
                 while: (error: LeaseHeld | LeaseStoreFailure) => error._tag === "LeaseHeld" || error.reason === "busy",
-                schedule: Schedule.spaced(config.retryMs ?? config.heartbeatMs)
+                schedule: Schedule.spaced(timing.retryMs)
               })
             )
           : attempt;

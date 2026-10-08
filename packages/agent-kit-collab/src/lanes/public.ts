@@ -5,7 +5,6 @@ export type {
   Lanes,
   LanesClosed,
   LanesConfig,
-  LanesStatus,
-  WakeResult
+  LanesStatus
 } from "./application/use-cases/create-lanes.js";
-export type { LaneQueueFull, LanesConfigInvalid, LaneSnapshot, LaneState } from "./domain/lane/index.js";
+export type { LaneQueueFull, LanesConfigInvalid, LaneSnapshot, LaneState, WakeResult } from "./domain/lane/index.js";

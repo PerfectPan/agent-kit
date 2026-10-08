@@ -10,3 +10,11 @@ export interface SessionBinding {
   readonly sessionId: string;
   readonly cwd: string;
 }
+
+/**
+ * The binding when the named agent made it. A store is shared by every agent, so a key may be bound to another
+ * agent's session; to this connection that is no binding at all.
+ */
+export function bindingFor(agent: CodingAgentId, binding: SessionBinding | undefined): SessionBinding | undefined {
+  return binding?.agent === agent ? binding : undefined;
+}

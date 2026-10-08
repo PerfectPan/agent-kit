@@ -23,3 +23,12 @@ export function observe(previous: LeaseObservation | undefined, lease: LeaseSnap
 export function isFresh(lease: LeaseSnapshot, observation: LeaseObservation, now: number, ttlMs: number): boolean {
   return lease.holder !== null && (observation.revision !== lease.revision || now - observation.observedAt < ttlMs);
 }
+
+/**
+ * Whether the holder itself must give up: it has not confirmed a renewal for a full TTL, so an observer's clock may
+ * already have expired the lease and a takeover can have happened. Both times come from the holder's own monotonic
+ * clock; `confirmedAt` is when its last renewal write was accepted.
+ */
+export function holderExpired(confirmedAt: number, now: number, ttlMs: number): boolean {
+  return now - confirmedAt >= ttlMs;
+}

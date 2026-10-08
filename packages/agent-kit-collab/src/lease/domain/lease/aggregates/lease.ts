@@ -6,6 +6,7 @@ import type { LeaseRecordInvalid } from "../errors/lease-record-invalid.js";
 import type { LeaseEvent } from "../events/lease-events.js";
 import { type AcquisitionView, canAcquire } from "../policies/acquisition.js";
 import { nextFencingToken } from "../policies/fence-check.js";
+import { lossReason } from "../policies/loss.js";
 import type { Holder } from "../value-objects/holder.js";
 import type { LeaseHolding, LeaseSnapshot } from "../value-objects/lease-snapshot.js";
 
@@ -75,7 +76,7 @@ export class Lease {
 
   /** A heartbeat: only the holding acquisition renews, and the generation stays. */
   renew(holding: LeaseHolding, now: number): Result<LeaseTransition, LeaseLost> {
-    const lost = this.lostBy(holding);
+    const lost = this.lossOf(holding);
     if (lost !== undefined) {
       return err(lost);
     }
@@ -86,7 +87,7 @@ export class Lease {
 
   /** Leaves a tombstone: no holder, the same generation, so the next acquisition still moves forward. */
   release(holding: LeaseHolding, now: number): Result<LeaseTransition, LeaseLost> {
-    const lost = this.lostBy(holding);
+    const lost = this.lossOf(holding);
     if (lost !== undefined) {
       return err(lost);
     }
@@ -105,13 +106,23 @@ export class Lease {
     return this.snapshot;
   }
 
-  private lostBy(holding: LeaseHolding): LeaseLost | undefined {
-    const { key, holderId, generation } = this.snapshot;
-    if (holderId === holding.holderId && generation === holding.generation) {
+  /** Whether this record is still the given acquisition's: the same holder id and generation. */
+  holds(holding: LeaseHolding): boolean {
+    const { holderId, generation } = this.snapshot;
+    return holderId === holding.holderId && generation === holding.generation;
+  }
+
+  /** Why this acquisition no longer holds, or `undefined` when it still does. */
+  lossOf(holding: LeaseHolding): LeaseLost | undefined {
+    if (this.holds(holding)) {
       return undefined;
     }
-    const reason = holderId === null ? "released" : "taken-over";
-    return { _tag: "LeaseLost", key, generation: holding.generation, reason };
+    return {
+      _tag: "LeaseLost",
+      key: this.snapshot.key,
+      generation: holding.generation,
+      reason: lossReason(this.snapshot)
+    };
   }
 }
 

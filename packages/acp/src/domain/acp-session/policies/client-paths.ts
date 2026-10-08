@@ -51,3 +51,60 @@ export function isWithin(root: AbsolutePath, path: AbsolutePath): boolean {
     root.parts.every((part, index) => part === path.parts[index])
   );
 }
+
+/** Why a client file call may not act on its target. */
+export type ClientPathRefusal = "dangling-link" | "unresolved-directory" | "outside-root";
+
+/** Where a client file call may act: the target's resolved spelling, or why it is refused. */
+export type ClientPathVerdict =
+  | { readonly _tag: "resolved"; readonly path: string }
+  | { readonly _tag: "refused"; readonly reason: ClientPathRefusal };
+
+/** What the file system says about a target and its parent directories, before the verdict is judged. */
+export interface ClientPathFacts {
+  /**
+   * The link-resolved spelling of the target and of every proper parent prefix, keyed by that prefix's own spelling;
+   * a prefix the platform could not resolve is absent.
+   */
+  readonly realpaths: ReadonlyMap<string, string>;
+  /** Whether the target names a symlink, recorded only when its own realpath did not resolve. */
+  readonly targetIsSymlink: boolean;
+}
+
+/**
+ * Where a client file call may act: the target with its links resolved, inside the session directory. A target that
+ * does not exist yet is judged by its nearest existing parent; a link whose target does not exist is refused, because
+ * where it points cannot be checked, and so is a `..` that crosses a directory that does not exist. The platform
+ * resolves `..` the way the file system does, after the links before it, so the verdict judges the file a call would
+ * reach.
+ */
+export function clientPathVerdict(root: AbsolutePath, target: AbsolutePath, facts: ClientPathFacts): ClientPathVerdict {
+  const spelling = formatAbsolutePath(target);
+  const self = facts.realpaths.get(spelling);
+  if (self !== undefined) {
+    return resolved(root, self);
+  }
+  if (facts.targetIsSymlink) {
+    return { _tag: "refused", reason: "dangling-link" };
+  }
+  for (let size = target.parts.length - 1; size >= 0; size -= 1) {
+    const parent = facts.realpaths.get(formatAbsolutePath({ root: target.root, parts: target.parts.slice(0, size) }));
+    const real = parent === undefined ? undefined : parseAbsolutePath(parent);
+    if (real === undefined) {
+      continue;
+    }
+    const rest = target.parts.slice(size);
+    if (rest.includes("..")) {
+      return { _tag: "refused", reason: "unresolved-directory" };
+    }
+    return resolved(root, formatAbsolutePath({ root: real.root, parts: [...real.parts, ...rest] }));
+  }
+  return { _tag: "refused", reason: "outside-root" };
+}
+
+function resolved(root: AbsolutePath, path: string): ClientPathVerdict {
+  const inside = parseAbsolutePath(path);
+  return inside !== undefined && isWithin(root, inside)
+    ? { _tag: "resolved", path }
+    : { _tag: "refused", reason: "outside-root" };
+}

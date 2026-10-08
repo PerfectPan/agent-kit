@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-acp",
+      "comment": "Move the session-binding ownership check and the client-path verdict into the acp domain. No API or behavior change.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-acp",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
