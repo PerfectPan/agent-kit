@@ -81,6 +81,8 @@ export function sqliteLeaseStore(
   );
 }
 
+class UnsupportedSchema extends Error {}
+
 function migrate(db: SqliteDatabase): void {
   db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
   // WAL lets reads run while another process writes. Nothing depends on it: where the file system refuses WAL, the
@@ -143,8 +145,6 @@ function transaction<T>(db: SqliteDatabase, body: () => T): T {
     throw error;
   }
 }
-
-class UnsupportedSchema extends Error {}
 
 function sqliteTry<T>(key: string, message: string, body: () => T): Effect.Effect<T, LeaseStoreFailure> {
   return Effect.try({

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "Adopt lint-config v0.4.0 and fix the no-use-before-define hits it surfaces (declare cleanup as a function, hoist a timer handle, move UnsupportedSchema above migrate, turn the fork arrow into a function declaration). No API or behavior change.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

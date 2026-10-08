@@ -76,10 +76,10 @@ export function startWorker(name: string, args: readonly string[], env: Readonly
           cleanup();
           reject(new Error(`${name} printed no "${event}" in ${timeoutMs} ms: ${JSON.stringify(lines)}\n${stderr}`));
         }, timeoutMs);
-        const cleanup = () => {
+        function cleanup() {
           clearTimeout(timer);
           waiters.delete(check);
-        };
+        }
         waiters.add(check);
         check();
       });

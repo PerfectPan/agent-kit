@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "4.0.1",
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@types/node": "24.19.1",
     "effect": "4.0.1",

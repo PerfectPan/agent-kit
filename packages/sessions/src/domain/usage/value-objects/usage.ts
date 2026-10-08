@@ -19,6 +19,16 @@ export interface Usage {
   reasoningTokens?: number;
 }
 
+const USAGE_KEYS = [
+  "inputTokens",
+  "outputTokens",
+  "totalTokens",
+  "cacheReadTokens",
+  "cacheWriteTokens",
+  "cacheWrite1hTokens",
+  "reasoningTokens"
+] as const satisfies readonly (keyof Usage)[];
+
 /**
  * A `Usage` with only the counts that are present, or `undefined` when none is. `totalTokens` is derived from input
  * and output when the agent does not report it and both are known.
@@ -36,13 +46,3 @@ export function compactUsage(counts: Usage): Usage | undefined {
   }
   return Object.keys(usage).length > 0 ? usage : undefined;
 }
-
-const USAGE_KEYS = [
-  "inputTokens",
-  "outputTokens",
-  "totalTokens",
-  "cacheReadTokens",
-  "cacheWriteTokens",
-  "cacheWrite1hTokens",
-  "reasoningTokens"
-] as const satisfies readonly (keyof Usage)[];
