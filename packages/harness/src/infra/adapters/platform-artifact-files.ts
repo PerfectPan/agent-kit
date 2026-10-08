@@ -15,7 +15,7 @@ import {
 import type { ArtifactSource } from "../../domain/bundle/index.js";
 import type { ArtifactLocator } from "../../domain/install-plan/index.js";
 import type { ArtifactContent, JsonValue } from "../../domain/ledger/index.js";
-import { entryEdits, entryValue, listEntries } from "./config-entries.js";
+import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";
 import { readText } from "../services/read-text.js";
 import { editToml, parseToml } from "./toml-editor.js";

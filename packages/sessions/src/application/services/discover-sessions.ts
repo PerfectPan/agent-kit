@@ -1,8 +1,8 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import type { SessionHead, SessionListError, SessionListFailure, SessionPreview } from "../../domain/session/index.js";
-import { edgeRecords, readEdges } from "../services/files/edges.js";
-import { walkFiles, type WalkSpec } from "../services/files/walk.js";
+import { edgeRecords, readEdges } from "./files/edges.js";
+import { walkFiles, type WalkSpec } from "./files/walk.js";
 import type { DiscoverOptions, SessionPlatform } from "../ports.js";
 
 export interface DiscoverSessionsOptions extends DiscoverOptions {

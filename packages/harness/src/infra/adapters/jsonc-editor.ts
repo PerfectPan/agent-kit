@@ -11,7 +11,7 @@ import {
 } from "jsonc-parser";
 
 import type { DocumentInvalid } from "../../application/ports.js";
-import type { EntryEdit } from "./config-entries.js";
+import type { EntryEdit } from "../services/config-entries.js";
 
 /** Parses JSON with comments and trailing commas, as agents' settings files allow; any syntax error refuses the file. */
 export function parseJsonc(text: string): Result<unknown, DocumentInvalid> {

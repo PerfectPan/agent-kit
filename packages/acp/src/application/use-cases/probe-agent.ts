@@ -2,14 +2,9 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import {
-  type ConnectAgentOptions,
-  connectAgent,
-  type ConnectError,
-  type NewSessionError
-} from "../use-cases/connect-agent.js";
+import { type ConnectAgentOptions, connectAgent, type ConnectError, type NewSessionError } from "./connect-agent.js";
 import type { AuthMethodInfo } from "../errors.js";
-import type { AgentFeatures, AgentInfo } from "./wire.js";
+import type { AgentFeatures, AgentInfo } from "../services/wire.js";
 
 /**
  * What a trial connection found: `ready` when the agent opened a session, `needs-login` when it refused one until the

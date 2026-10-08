@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ArtifactLocator } from "../../domain/install-plan/index.js";
 import type { JsonValue } from "../../domain/ledger/index.js";
-import { entryEdits, entryValue, listEntries } from "./config-entries.js";
+import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";
 import { editToml, parseToml } from "./toml-editor.js";
 

@@ -25,7 +25,7 @@ import {
   type SourcedRecord,
   type Transcript
 } from "../../../domain/transcript/index.js";
-import { discoverSessions } from "../../use-cases/discover-sessions.js";
+import { discoverSessions } from "../discover-sessions.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readEdges } from "../files/edges.js";
 import { readJsonlRecords } from "../files/jsonl.js";

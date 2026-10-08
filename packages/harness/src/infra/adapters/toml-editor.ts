@@ -2,7 +2,7 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 import { parse, patch, TomlDocument } from "@decimalturn/toml-patch";
 
 import type { DocumentInvalid, UnexpectedShape } from "../../application/ports.js";
-import type { EntryEdit, EntryPath } from "./config-entries.js";
+import type { EntryEdit, EntryPath } from "../services/config-entries.js";
 
 export function parseToml(text: string): Result<unknown, DocumentInvalid> {
   try {

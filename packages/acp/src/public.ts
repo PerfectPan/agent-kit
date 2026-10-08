@@ -31,7 +31,7 @@ export {
   type SessionBindingStoreFailure,
   type SessionBindingStoreShape
 } from "./application/ports.js";
-export { type AgentProbe, probeAgent } from "./application/services/probe-agent.js";
+export { type AgentProbe, probeAgent } from "./application/use-cases/probe-agent.js";
 export type { AgentFeatures, AgentInfo } from "./application/services/wire.js";
 export {
   type AcpProfile,

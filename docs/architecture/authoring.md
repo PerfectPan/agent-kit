@@ -39,7 +39,8 @@ Every context package uses the same layout, creating only the directories it nee
   domain/adapters/index.ts  exports the pure per-agent rules; a builtinXxx table of pure adapters may live here
   domain/protocols/         wire formats shared across agents, read and written at the protocol boundary
   application/
-    use-cases/          the public use cases, one file per exported operation
+    use-cases/          the public use cases, a file per use case; closely related operations may share one
+                        (harness keeps `inventory` and `discardPlan` together)
     services/           coordination code shared by use cases; may call ports, holds no business rules
     ports.ts            port shapes and injection tags (some contexts keep errors.ts or usage-ports.ts beside it)
   infra/
@@ -54,15 +55,15 @@ Every context package uses the same layout, creating only the directories it nee
 
 The layer principles:
 
-- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. `domain/adapters/` is the one domain folder that may use external packages, such as `zod` for payload validation.
+- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A `domain/<concept>/` folder may not import `domain/adapters/` or `domain/protocols/`. Those two are the only domain folders that may use external packages, such as `zod` for payload validation.
 - `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
 - `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
 
 | Layer | Contents | May import |
 | --- | --- | --- |
-| `domain/` | Value objects, aggregates, their child entities, policies (rules), factories, errors, domain events, stateless domain services | Its own domain, catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
-| `domain/adapters/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | This context's domain (its own concept folders, not other packages' internals), catalog, and the external packages the package allows, such as `zod/mini` |
-| `domain/protocols/` | A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update` streams | The same imports as `domain/adapters/` |
+| `domain/` | Value objects, aggregates, their child entities, policies (rules), factories, errors, domain events, stateless domain services | Its own concept folders only — not `domain/adapters/` or `domain/protocols/` — plus catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
+| `domain/adapters/` | Translation of one agent's external format into this context's model: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | This context's domain (its own concept folders, not other packages' internals), `domain/protocols/`, catalog, and the external packages the package allows, such as `zod/mini` |
+| `domain/protocols/` | A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update` streams | This context's domain and catalog, and the external packages the package allows; not `domain/adapters/` |
 | `application/` | `use-cases/` carry agent knowledge and coordinate ports; `services/` is code shared by use cases; `ports.ts` declares the part of Platform and the context's own ports that they use | Domain, `domain/adapters/`, `domain/protocols/` and ports |
 | `infra/` | Implementations of ports the kit declares: stores (`repository/`), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
 
@@ -128,7 +129,7 @@ An entity is a child of one aggregate: it has a local identity inside that aggre
 - `application/ports.ts` declares a port, `infra/` implements it, and the assembly injects the implementation. Neither the aggregate nor its entities ever hold a repository, a port or a Platform.
 - A use case loads the aggregate (or reads data) through ports, calls the aggregate root's method, and saves the result. A save writes the whole aggregate atomically, guarded by the version on the root, so a concurrent writer is refused instead of interleaved.
 - Domain services never call ports. The use case loads the data a domain service needs first and passes it in as plain values.
-- Port interfaces live in `application/` because only use cases call them. types-ddd puts them in the domain because its domain services call repositories; this kit has no such domain services.
+- Port interfaces live in `application/` because only application code calls them (use cases and application services). types-ddd puts them in the domain because its domain services call repositories; this kit has no domain services that call ports.
 
 ## Coordinate Through Application Ports
 

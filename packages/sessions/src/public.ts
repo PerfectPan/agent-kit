@@ -7,7 +7,7 @@ export {
   type SessionTarget,
   summarizeSession
 } from "./application/use-cases/load-transcript.js";
-export { readOriginal, type ReadOriginalError } from "./application/services/read-original.js";
+export { readOriginal, type ReadOriginalError } from "./application/use-cases/read-original.js";
 export type { SessionErrorCode } from "./application/errors.js";
 export {
   decodeUsage,

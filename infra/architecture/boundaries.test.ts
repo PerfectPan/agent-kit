@@ -74,9 +74,9 @@ describe("allowed imports", () => {
     ["domain/session/ref.ts", `import { head } from "./head.js";`],
     [
       "domain/adapters/codex/events.ts",
-      `import { head } from "../../domain/session/head.js";\nimport { ok } from "${CATALOG}";`
+      `import { head } from "../../session/head.js";\nimport { ok } from "${CATALOG}";`
     ],
-    ["domain/adapters/grok/events.ts", `import { fromAcp } from "../../domain/protocols/acp-updates.js";`],
+    ["domain/adapters/grok/events.ts", `import { fromAcp } from "../../protocols/acp-updates.js";`],
     [
       "application/use-cases/list-sessions.ts",
       `import { splitLines } from "${PLATFORM}";\nimport { x } from "../../domain/adapters/index.js";`
@@ -130,7 +130,7 @@ describe("allowed imports", () => {
     const service = `import { PlatformService } from "${PLATFORM}/effect";`;
     const layer = `${service}\nimport * as Layer from "effect/Layer";`;
     expect(rulesOf(withFiles({ "packages/platform-node/src/effect.ts": layer }))).toEqual([]);
-    expect(rulesOf(withFiles({ "packages/harness/src/application/apply-install.ts": service }))).toEqual([]);
+    expect(rulesOf(withFiles({ "packages/harness/src/application/use-cases/apply-install.ts": service }))).toEqual([]);
   });
 
   it.each([

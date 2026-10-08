@@ -22,7 +22,7 @@ import {
   type Transcript,
   type UnknownFormatGeneration
 } from "../../../domain/transcript/index.js";
-import { discoverSessions } from "../../use-cases/discover-sessions.js";
+import { discoverSessions } from "../discover-sessions.js";
 import { EDGE_BYTES } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { type JsonlRecords, readJsonlRecords } from "../files/jsonl.js";

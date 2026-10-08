@@ -12,7 +12,7 @@ import {
 } from "../../../domain/adapters/codex/index.js";
 import type { SessionRef } from "../../../domain/session/index.js";
 import { createTranscript, mergeByTime, type Transcript } from "../../../domain/transcript/index.js";
-import { discoverSessions } from "../../use-cases/discover-sessions.js";
+import { discoverSessions } from "../discover-sessions.js";
 import { readEdges } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readJsonlRecords } from "../files/jsonl.js";

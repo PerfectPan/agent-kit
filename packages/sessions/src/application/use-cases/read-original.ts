@@ -2,8 +2,8 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import type { ReadFailed, SessionNotFound } from "../../domain/session/index.js";
 import type { SourceChanged, SourcePointer } from "../../domain/transcript/index.js";
-import { catchIoFailure } from "./files/io-failure.js";
-import { readBytes } from "./files/read-file.js";
+import { catchIoFailure } from "../services/files/io-failure.js";
+import { readBytes } from "../services/files/read-file.js";
 import type { SessionPlatform } from "../ports.js";
 
 export type ReadOriginalError = SourceChanged | SessionNotFound | ReadFailed;
