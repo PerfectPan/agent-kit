@@ -7,18 +7,12 @@ export {
 } from "./aggregates/install-plan.js";
 export type { InvalidPlan } from "./errors/invalid-plan.js";
 export type { PlanConflict } from "./errors/plan-conflict.js";
-export { ledgerMovedError, planClosedError, type PlanStale } from "./errors/plan-stale.js";
+export { planClosedError, type PlanStale } from "./errors/plan-stale.js";
 export type { StrategyUnavailable } from "./errors/strategy-unavailable.js";
 export { buildInstallPlan, type PlanRequest } from "./factories/build-install-plan.js";
 export { type LegacyHookSource, planEvidenceScope, type PlanEvidenceScope } from "./factories/plan-evidence-scope.js";
 export type { PlanEvidence } from "./policies/plan-invariants.js";
-export {
-  type ForeignHookObservation,
-  protectedLegacy,
-  protectedReplacement,
-  retainedForeignConflict,
-  retainsForeignHook
-} from "./policies/legacy-ownership.js";
+export { type ForeignHookObservation } from "./policies/legacy-ownership.js";
 export {
   type RegistrationCommands,
   registrationCommands,
@@ -48,12 +42,7 @@ export { contentAfterStep, type StepContentAfter } from "./value-objects/content
 export type { DesiredArtifact } from "./value-objects/desired-artifact.js";
 export type { InstallScope, InstallTarget } from "./value-objects/install-target.js";
 export { isBrokenSymlink, type ObservedArtifact } from "./value-objects/observed-artifact.js";
-export { basisMoved, type PlanBasis } from "./value-objects/plan-basis.js";
+export { type PlanBasis } from "./value-objects/plan-basis.js";
 export { type PlanAction, type PlanStep, type Removal, type StepNote, touchesDisk } from "./value-objects/plan-step.js";
-export {
-  preconditionHolds,
-  preconditionSatisfied,
-  type Precondition,
-  targetWritable
-} from "./value-objects/precondition.js";
+export { preconditionHolds, type Precondition } from "./value-objects/precondition.js";
 export type { TrustPrompt, TrustPromptKind } from "./value-objects/trust-prompt.js";

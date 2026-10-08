@@ -33,8 +33,8 @@ export function targetWritable(step: PlanStep, observed: ObservedArtifact | unde
 }
 
 /**
- * Whether a step can still run, re-checked both when the plan is built and again right before it writes: its
- * precondition still holds and a write would not replace a symlink.
+ * Whether a step can still run, re-checked right before it writes (planning checks `preconditionSatisfied` alone):
+ * its precondition still holds and a write would not replace a symlink.
  */
 export function preconditionHolds(
   step: PlanStep,

@@ -151,7 +151,11 @@ export function requireUserScope(options: ScopeOptions): void {
   }
 }
 
-/** Probes every command the selected agents' strategies may need, so rendering decides on `PATH` once per agent. */
+/**
+ * Probes every command the selected agents' strategies may need, so rendering decides on `PATH` once per agent. An
+ * agent this call has no adapter for is skipped: verify renders by the ledger's agents, and rendering reports the
+ * missing adapter itself when a strategy is actually needed there.
+ */
 export function probeCommands(
   agents: readonly CodingAgentId[],
   setup: PlanSetup
@@ -160,9 +164,12 @@ export function probeCommands(
     const cli = yield* AgentCli;
     const available = new Map<CodingAgentId, Set<string>>();
     for (const agent of agents) {
-      const commands = requiredCommands(adapterOf(setup, agent));
+      const adapter = Object.hasOwn(setup.adapters, agent) ? setup.adapters[agent] : undefined;
+      if (adapter === undefined) {
+        continue;
+      }
       const found = new Set<string>();
-      for (const command of commands) {
+      for (const command of requiredCommands(adapter)) {
         if (yield* cli.available(command)) {
           found.add(command);
         }
@@ -198,11 +205,11 @@ export function renderBundle(
     const rendered: Rendered[] = [];
     const droppedHooks: DroppedHook[] = [];
     for (const spec of bundle.artifacts) {
-      if (spec.type !== "hooks" && spec.type !== "skill") {
-        if (agents.length > 0) {
-          return yield* Effect.fail(strategyUnsupported(agents[0]!, spec));
-        }
-        continue;
+      // No adapter installs a spec other than hooks or skills (`strategyRequirement` says `unsupported` for every
+      // agent), reported against the first selected one; with none selected nothing renders.
+      const unsupported = agents.find((agent) => strategyRequirement(spec, agent) === "unsupported");
+      if (unsupported !== undefined) {
+        return yield* Effect.fail(strategyUnsupported(unsupported, spec));
       }
       if (spec.type === "hooks") {
         const placements: { agent: CodingAgentId; file: string; strategy: Strategy }[] = [];
@@ -237,6 +244,9 @@ export function renderBundle(
           }
         }
         droppedHooks.push(...droppedHooksOf(placed));
+        continue;
+      }
+      if (spec.type !== "skill") {
         continue;
       }
       for (const agent of agents) {
@@ -501,11 +511,11 @@ function describePlan(
         }
         case "cli-registration": {
           const commandsForStep = registrationCommands(step, ledger.entry(locator));
-          const registration =
-            commandsForStep === undefined
-              ? undefined
-              : registrationLookup(input.setup.adapters, input.setup.context)(locator);
-          if (commandsForStep !== undefined && registration !== undefined) {
+          if (commandsForStep === undefined || commandsForStep.purposes.length === 0) {
+            break;
+          }
+          const registration = registrationLookup(input.setup.adapters, input.setup.context)(locator);
+          if (registration !== undefined) {
             for (const purpose of commandsForStep.purposes) {
               commands.push({ agent: commandsForStep.agent, ...registration[purpose], purpose, locator });
             }

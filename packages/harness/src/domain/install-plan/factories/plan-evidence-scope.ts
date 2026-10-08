@@ -120,7 +120,10 @@ export function planEvidenceScope(input: {
   ]);
   const rootCandidates: string[] = [];
   for (const agent of rootedAgents) {
-    rootCandidates.push(...(adapters[agent]?.roots(context) ?? []));
+    // An agent's name is data, not a key to trust: a ledger agent named like a prototype key must read as
+    // adapterless, not pick a method off the prototype chain and call it.
+    const adapter = Object.hasOwn(adapters, agent) ? adapters[agent] : undefined;
+    rootCandidates.push(...(adapter?.roots(context) ?? []));
   }
   for (const source of sources) {
     if (source.runner !== undefined) {

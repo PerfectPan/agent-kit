@@ -13,17 +13,17 @@ export interface RegistrationCommands {
 }
 
 /**
- * What one cli-registration step means for the agent's command line. A `restore-pre-image` removal means the
- * registration existed before harness adopted it, so nothing runs on the command line (`undefined`). Any other
- * removal unregisters; a write whose precondition carries a hash (the registration is there with other content)
- * unregisters and registers anew, so the agent copies again; anything else registers. Also `undefined` when no agent
- * can run a command line for it.
+ * What one cli-registration step means for the agent's command line. A removal unregisters, unless it is a
+ * `restore-pre-image`, which leaves the registration harness adopted in place and runs nothing (empty `purposes`). A
+ * write whose precondition carries a hash (the registration is there with other content) unregisters and registers
+ * anew, so the agent copies again; anything else registers. `undefined` only means no agent can run a command line
+ * for the step.
+ *
+ * Callers pass only steps that change something on disk (`touchesDisk`): a `release` or `keep` removal changes the
+ * ledger alone, and this rule answers only for a command line something actually runs.
  */
 export function registrationCommands(step: PlanStep, entry: LedgerEntry | undefined): RegistrationCommands | undefined {
   if (step.locator.kind !== "cli-registration") {
-    return undefined;
-  }
-  if (step.action === "remove" && step.removal === "restore-pre-image") {
     return undefined;
   }
   const agent = step.agents[0] ?? entry?.agents[0];
@@ -31,7 +31,7 @@ export function registrationCommands(step: PlanStep, entry: LedgerEntry | undefi
     return undefined;
   }
   if (step.action === "remove") {
-    return { agent, purposes: ["unregister"] };
+    return { agent, purposes: step.removal === "restore-pre-image" ? [] : ["unregister"] };
   }
   return { agent, purposes: "hash" in step.precondition ? ["unregister", "register"] : ["register"] };
 }

@@ -48,6 +48,18 @@ describe("registrationCommands", () => {
   });
 
   it("runs no command for a restore-pre-image: the registration predates harness and stays (H5 regression)", () => {
+    // The real path: the removal step carries no agents (`release`), so the agent comes from the ledger entry.
+    expect(
+      registrationCommands(
+        step(registration, {
+          action: "remove",
+          agents: [],
+          precondition: { hash: hash(9) },
+          removal: "restore-pre-image"
+        }),
+        entryWithAgents(["codex"])
+      )
+    ).toEqual({ agent: "codex", purposes: [] });
     expect(
       registrationCommands(
         step(registration, {

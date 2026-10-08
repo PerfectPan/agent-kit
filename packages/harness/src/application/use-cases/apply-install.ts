@@ -115,11 +115,11 @@ function executeStep(
     if (locator.kind === "cli-registration") {
       const commands = registrationCommands(step, entry);
       if (commands === undefined) {
-        // A restore-pre-image leaves a pre-existing registration in place; anything else reaching here is a bad plan.
-        if (step.action === "remove" && step.removal === "restore-pre-image") {
-          return;
-        }
         throw new AgentKitError("invalid-plan", `Step ${locatorKey(locator)} has no agent to run its command line`);
+      }
+      // A restore-pre-image leaves the adopted registration in place; no command line and no symlink guard apply.
+      if (commands.purposes.length === 0) {
+        return;
       }
       const { agent } = commands;
       const registrations = registrationLookup(record.adapters, record.context);

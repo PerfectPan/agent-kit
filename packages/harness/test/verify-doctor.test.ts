@@ -6,7 +6,7 @@ import { doctor } from "../src/application/use-cases/doctor.js";
 import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { verify } from "../src/application/use-cases/verify.js";
-import { demoBundle } from "./support/bundles.js";
+import { demoBundle, SHIM } from "./support/bundles.js";
 import { removeTestHomes, testHome } from "./support/home.js";
 
 afterEach(removeTestHomes);
@@ -45,6 +45,30 @@ describe("verify", () => {
         );
         const after = yield* inventory();
         expect(after.revision).toBe(before.revision + 1);
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
+
+  it.effect(
+    "verifies the ledger's agents even when one of them has no install adapter and the bundle does not need it",
+    () => {
+      const home = testHome();
+      const bundle = demoBundle("1.0.0", {
+        artifacts: [{ type: "hooks", command: SHIM, timeoutSeconds: 5, events: { grok: ["Stop"] } }]
+      });
+      return Effect.gen(function* () {
+        yield* applyInstall(yield* planInstall(bundle, { agents: ["grok"] }));
+        // Another tool recorded its own agent under the owner's entries; verify covers the ledger's agents.
+        const stored = JSON.parse(home.read(".local/state/agent-kit/harness/user/ledger.json") ?? "{}");
+        for (const entry of Object.values<(typeof stored.entries)[string]>(stored.entries)) {
+          entry.agents = [...entry.agents, "cline"];
+        }
+        home.write(".local/state/agent-kit/harness/user/ledger.json", `${JSON.stringify(stored)}\n`);
+        const report = yield* verify("demo-app", { bundle });
+        expect(report.acknowledged).toEqual([]);
+        expect(report.artifacts.map((artifact) => [artifact.locator.path, artifact.status])).toEqual([
+          [home.path(".grok/hooks/demo-app.json"), "in-sync"]
+        ]);
       }).pipe(Effect.provide(home.layer()));
     }
   );
@@ -104,6 +128,29 @@ describe("doctor", () => {
         expect(yield* doctor({ agents: ["claude-code"] })).not.toContainEqual(
           expect.objectContaining({ name: "duplicate-hook" })
         );
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
+
+  it.effect(
+    "audits Claude Code's settings.local.json in the runner that loads it too, not in Claude Code's own audit",
+    () => {
+      const home = testHome();
+      const settings = (variant: string) =>
+        `${JSON.stringify({
+          hooks: { Stop: [{ hooks: [{ type: "command", command: `npx legacy-demo hook --event Stop (${variant})` }] }] }
+        })}\n`;
+      home.write(".claude/settings.json", settings("settings.json"));
+      home.write(".claude/settings.local.json", settings("settings.local.json"));
+      return Effect.gen(function* () {
+        // Grok runs both of Claude Code's files, so the application fires twice there.
+        const grok = yield* doctor({ agents: ["grok"], markers: ["legacy-demo hook"] });
+        expect(grok.filter((check) => check.name === "duplicate-hook").map((check) => check.message)).toEqual([
+          "grok runs 2 hooks of one application for Stop"
+        ]);
+        // Claude Code's own audit reads neither file as a runner, so it sees one hook of the application.
+        const claude = yield* doctor({ agents: ["claude-code"], markers: ["legacy-demo hook"] });
+        expect(claude.filter((check) => check.name === "duplicate-hook")).toEqual([]);
       }).pipe(Effect.provide(home.layer()));
     }
   );

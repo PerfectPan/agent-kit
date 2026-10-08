@@ -1,3 +1,4 @@
+import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vitest";
 
 import { builtinHookDialects } from "../../adapters/hook-dialects.js";
@@ -135,6 +136,19 @@ describe("planEvidenceScope", () => {
     expect(
       scope.legacySources.some((source) => source.source.kind !== "files" && source.source.path.includes("claude"))
     ).toBe(false);
+  });
+
+  it("reads an agent named like a prototype key as adapterless instead of calling down the prototype chain", () => {
+    const scope = planEvidenceScope({
+      bundle: hookBundle({ legacyMarkers: undefined }),
+      agents: ["constructor"] as unknown as readonly CodingAgentId[],
+      desired: [wanted(grokHookFile)],
+      ledger: emptyLedger(),
+      adapters: builtinInstallAdapters,
+      dialects: builtinHookDialects,
+      context
+    });
+    expect(scope.rootCandidates).toEqual([]);
   });
 });
 

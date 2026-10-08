@@ -116,23 +116,17 @@ export function buildInstallPlan(
       protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
       protectedReplacement(seen, bundle, target.agents, ledger, observed)
   );
-  if (preservedHooks.length > 0) {
-    return err({
-      _tag: "PlanConflict",
-      planId: request.planId,
-      conflicts: preservedHooks.map((seen) => ({
-        step: {
-          locator: seen.locator,
-          action: "conflict",
-          conflict: "user-modified",
-          agents: [],
-          precondition: { hash: seen.hash },
-          capturePreImage: false
-        },
-        choices: []
-      }))
-    });
-  }
+  const preserved: PlanConflict["conflicts"] = preservedHooks.map((seen) => ({
+    step: {
+      locator: seen.locator,
+      action: "conflict",
+      conflict: "user-modified",
+      agents: [],
+      precondition: { hash: seen.hash },
+      capturePreImage: false
+    },
+    choices: []
+  }));
   const managed = request.managedPaths ?? {};
   const linked = request.linkedPaths ?? {};
   const at = (paths: Readonly<Record<string, string>>, path: string | undefined): string | undefined =>
@@ -184,20 +178,18 @@ export function buildInstallPlan(
     return created;
   }
   const createConflicts = !created.ok && created.error._tag === "PlanConflict" ? created.error.conflicts : [];
-  // A selected runner can execute a tracked foreign hook that this plan must retain for another consumer; judge it
-  // together with every other conflict, instead of waiting for the caller to resolve the first batch.
+  // A selected runner can execute a tracked foreign hook that this plan must retain for another consumer. Every
+  // conflict is judged in one round — the hooks kept for the user or a ForeignOwner, the plan invariants', and the
+  // retained foreign ones — so the caller never resolves a first batch to be shown the next.
   const retained = retainedForeignConflict(request.planId, request.foreignHooks ?? [], {
     bundle,
     dialects: request.dialects ?? {},
     ledger,
     steps: ordered
   });
-  if (retained !== undefined) {
-    return err({
-      _tag: "PlanConflict",
-      planId: request.planId,
-      conflicts: [...createConflicts, ...retained.conflicts]
-    });
+  const conflicts = [...preserved, ...createConflicts, ...(retained?.conflicts ?? [])];
+  if (conflicts.length > 0) {
+    return err({ _tag: "PlanConflict", planId: request.planId, conflicts });
   }
   return created;
 }
