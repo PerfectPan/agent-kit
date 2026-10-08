@@ -152,17 +152,17 @@ describe("apply execution rules (plan 3.9)", () => {
       const entered = yield* Deferred.make<void>();
       const release = yield* Deferred.make<void>();
       const base = home.layer();
-      const slowStore = Layer.effect(
+      const slowRepository = Layer.effect(
         LedgerRepository,
         Effect.gen(function* () {
-          const store = yield* LedgerRepository;
+          const repository = yield* LedgerRepository;
           return {
-            ...store,
-            save: (scope, snapshot, expected) =>
+            ...repository,
+            save: (scope, snapshot, expectedRevision) =>
               Effect.gen(function* () {
                 yield* Deferred.succeed(entered, undefined);
                 yield* Deferred.await(release);
-                return yield* store.save(scope, snapshot, expected);
+                return yield* repository.save(scope, snapshot, expectedRevision);
               })
           };
         })
@@ -178,7 +178,7 @@ describe("apply execution rules (plan 3.9)", () => {
         yield* Deferred.succeed(release, undefined);
         yield* Fiber.join(interrupting);
         expect((yield* inventory()).pending).toEqual([]);
-      }).pipe(Effect.provide(Layer.merge(base, slowStore)));
+      }).pipe(Effect.provide(Layer.merge(base, slowRepository)));
     });
   });
 

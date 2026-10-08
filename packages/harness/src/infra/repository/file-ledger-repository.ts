@@ -29,8 +29,12 @@ function failure(
     : { _tag: "LedgerRepositoryFailure", scope: scope.key, reason, message, cause };
 }
 
-function conflict(scope: LedgerScope, expected: number | undefined, stored: number | undefined): RevisionConflict {
-  return { _tag: "RevisionConflict", scope: scope.key, expected, stored };
+function conflict(
+  scope: LedgerScope,
+  expectedRevision: number | undefined,
+  storedRevision: number | undefined
+): RevisionConflict {
+  return { _tag: "RevisionConflict", scope: scope.key, expectedRevision, storedRevision };
 }
 
 function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
@@ -51,7 +55,7 @@ function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
       return decoded.ok ? decoded.value : yield* Effect.fail(decoded.error);
     });
 
-  const save: LedgerRepositoryShape["save"] = (scope, snapshot, expected) =>
+  const save: LedgerRepositoryShape["save"] = (scope, snapshot, expectedRevision) =>
     Effect.gen(function* () {
       const path = ledgerPath(scope);
       const text = yield* io(scope, `cannot read ${path}`, () => readText(platform, path));
@@ -65,11 +69,13 @@ function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
           return yield* Effect.fail(version.error);
         }
         const revision = (stored as { revision?: unknown }).revision;
-        if (revision !== expected) {
-          return yield* Effect.fail(conflict(scope, expected, typeof revision === "number" ? revision : undefined));
+        if (revision !== expectedRevision) {
+          return yield* Effect.fail(
+            conflict(scope, expectedRevision, typeof revision === "number" ? revision : undefined)
+          );
         }
-      } else if (expected !== undefined) {
-        return yield* Effect.fail(conflict(scope, expected, undefined));
+      } else if (expectedRevision !== undefined) {
+        return yield* Effect.fail(conflict(scope, expectedRevision, undefined));
       }
       yield* io(scope, `cannot write ${path}`, async () => {
         await platform.fs.mkdir(dirOf(scope));

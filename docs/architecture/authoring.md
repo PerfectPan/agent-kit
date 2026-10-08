@@ -141,7 +141,9 @@ An aggregate's repository port — `LedgerRepository`, `LeaseRepository` — off
   `{ _tag: "RevisionConflict", ... }` in the error channel. Expected outcomes are `_tag` errors, never booleans.
 - aggregate-specific operations only where the aggregate needs them: Ledger's pre-image blobs, Lease's `fence`.
 
-Each context declares its own `RevisionConflict` next to its port; the type is not shared across contexts.
+Each context declares its own `RevisionConflict` next to its port; the type is not shared across contexts. Its
+fields are named alike in every context — the context's id field (`scope` for the ledger, `key` for the lease),
+plus `expectedRevision` and `storedRevision`.
 `SessionBindingStore` (acp) stores value objects, not an aggregate: it stays a key-value store with its current
 names, and its documentation says so. `LedgerLock` is unchanged by these rules: mutual exclusion is its own port
 beside the repository.

@@ -102,9 +102,7 @@ export const boundaries: BoundaryRules = {
     [HARNESS]: {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "jsonc-parser", "@decimalturn/toml-patch"],
-      // platform-node runs the tests on a real platform; the shell carries the testing package's aggregate-repository
-      // conformance suite, which the file ledger repository's tests run.
-      testsOnly: [PLATFORM_NODE, SHELL]
+      testsOnly: [PLATFORM_NODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports.

@@ -34,12 +34,12 @@ describe("FileLedgerRepositoryLive", () => {
         expect(yield* Effect.flip(repository.save(scope, ledger.value.toSnapshot(), 3))).toEqual({
           _tag: "RevisionConflict",
           scope: "user",
-          expected: 3,
-          stored: 0
+          expectedRevision: 3,
+          storedRevision: 0
         });
         expect(yield* Effect.flip(repository.save(scope, ledger.value.toSnapshot(), undefined))).toMatchObject({
           _tag: "RevisionConflict",
-          stored: 0
+          storedRevision: 0
         });
         const blob = yield* repository.putPreImage(scope, { "SKILL.md": "before" });
         expect(yield* repository.getPreImage(scope, blob)).toEqual({ "SKILL.md": "before" });

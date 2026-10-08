@@ -212,7 +212,7 @@ export function applyLocked(
     if (stale !== undefined) {
       return yield* Effect.fail(stale satisfies PlanStale);
     }
-    const store = yield* LedgerRepository;
+    const repository = yield* LedgerRepository;
     const registrations = registrationLookup(record.adapters, record.context);
     const preImages: Record<string, PreImage> = {};
     for (const step of steps) {
@@ -228,7 +228,7 @@ export function applyLocked(
         } satisfies TargetChanged);
       }
       if (step.capturePreImage && check.actual !== undefined && check.content !== undefined) {
-        const blobRef = yield* store.putPreImage(record.scope, check.content);
+        const blobRef = yield* repository.putPreImage(record.scope, check.content);
         preImages[locatorKey(step.locator)] = { existed: true, hash: check.actual, blobRef };
       }
     }

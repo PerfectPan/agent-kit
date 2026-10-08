@@ -114,9 +114,9 @@ export interface RevisionConflict {
   readonly _tag: "RevisionConflict";
   readonly scope: string;
   /** The revision the save was conditioned on; `undefined` when it required no stored ledger. */
-  readonly expected: number | undefined;
+  readonly expectedRevision: number | undefined;
   /** The revision the stored ledger had when the save compared it; `undefined` when there was none. */
-  readonly stored: number | undefined;
+  readonly storedRevision: number | undefined;
 }
 
 /**
@@ -124,9 +124,9 @@ export interface RevisionConflict {
  *
  * - `load` checks `schemaVersion` before anything else and fails with `LedgerVersionUnsupported` for a ledger it does
  *   not know, which stays on disk untouched; it never returns a ledger it could not validate.
- * - `save` writes only over the revision `expected` (`undefined`: nothing stored) and fails with `RevisionConflict`
- *   instead of writing otherwise. That comparison is enough because every writer holds the scope's LedgerLock; the
- *   repository does not lock by itself.
+ * - `save` writes only over the revision `expectedRevision` (`undefined`: nothing stored) and fails with
+ *   `RevisionConflict` instead of writing otherwise. That comparison is enough because every writer holds the scope's
+ *   LedgerLock; the repository does not lock by itself.
  * - Pre-images are content-addressed and never deleted by `save`, so a ledger always finds the blobs it names.
  * - Only local directories are supported.
  */
@@ -137,7 +137,7 @@ export interface LedgerRepositoryShape {
   save(
     scope: LedgerScope,
     snapshot: LedgerSnapshot,
-    expected: number | undefined
+    expectedRevision: number | undefined
   ): Effect.Effect<void, LedgerRepositoryFailure | LedgerVersionUnsupported | RevisionConflict>;
   putPreImage(scope: LedgerScope, content: ArtifactContent): Effect.Effect<string, LedgerRepositoryFailure>;
   getPreImage(scope: LedgerScope, blobRef: string): Effect.Effect<ArtifactContent, LedgerRepositoryFailure>;
