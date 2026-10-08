@@ -6,3 +6,9 @@ export {
   opencodeMessagesById
 } from "./layout.js";
 export { opencodeMessageUsage, type OpencodeMessageRow, opencodeUsage, opencodeUsageKey } from "./usage.js";
+export {
+  type OpencodeSettlement,
+  type OpencodeTableRow,
+  createOpencodeSettlement,
+  opencodeQueryFloor
+} from "./settlement.js";

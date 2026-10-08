@@ -1,8 +1,7 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 import type { SqliteDatabase, SqliteValue } from "@rivus/agent-kit-platform";
 
-import { asNumber, asRecord, asString } from "../../../domain/protocols/record-fields.js";
-import { rememberKey } from "../../../domain/adapters/usage-lines.js";
+import { asRecord, asString } from "../../../domain/protocols/record-fields.js";
 import {
   OPENCODE_MESSAGE_PAGE,
   OPENCODE_MESSAGES_BY_ROW,
@@ -10,10 +9,13 @@ import {
   opencodeLegacyMessageRoot,
   opencodeMessagesById,
   opencodeMessageUsage,
-  opencodeUsageKey
+  opencodeUsageKey,
+  createOpencodeSettlement,
+  opencodeQueryFloor,
+  type OpencodeTableRow
 } from "../../../domain/adapters/opencode/index.js";
 import { basenamePath, joinPath, type ReadFailed } from "../../../domain/session/index.js";
-import type { UsageRecord } from "../../../domain/usage/index.js";
+import { decodeIsFinal, type UsageRecord } from "../../../domain/usage/index.js";
 import { guardIo } from "../files/io-failure.js";
 import { readText } from "../files/read-file.js";
 import type {
@@ -32,12 +34,6 @@ const AGENT = "opencode";
 
 /** Rows read per query, so a large database is not loaded whole. */
 const PAGE_ROWS = 500;
-
-/** A message runs far shorter than this, so a row created this long before `since` holds no record to keep. */
-const LONGEST_MESSAGE_MS = 24 * 60 * 60 * 1000;
-
-/** How many running messages a cursor remembers; one that never finishes is dropped once newer ones push it out. */
-const RUNNING_IDS = 64;
 
 /**
  * opencode's database `<home>/opencode.db` when it exists, which needs `platform.sqlite`; otherwise each session
@@ -99,25 +95,11 @@ async function listSources(
   return out;
 }
 
-interface DatabaseState {
-  /** The latest row read: when it was last updated, and its id. Later decodes read the rows changed after it. */
-  updated: number;
-  id: string;
-  /** While the first read goes by row id: the last row id read. */
-  row?: number;
-  /** Assistant messages that were running when read; a final decode reports those that never finished. */
-  running: string[];
-  /** Messages reported last, newest last: a message that changes after it finished is read again. */
-  reported: string[];
-}
-
-/** How many reported message ids the cursor remembers; a message that changes again after more than this counts again. */
-const REPORTED_IDS = 256;
-
 /**
- * The finished assistant messages of the database, in the order they last changed. A running message is not reported
- * yet: it changes again when it finishes and is read then. With `final`, a message that never finished counts at its
- * creation time, like presence counts it.
+ * The finished assistant messages of the database, in the order they last changed, through the agent's settlement
+ * rules: this decoder only pages the queries and feeds their rows to them. A running message is not reported yet: it
+ * changes again when it finishes and is read then. A decode of a quiet database is final, so a message that never
+ * finished counts at its creation time.
  */
 function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUsageOptions): UsageStream {
   const { from, signal } = options;
@@ -148,14 +130,17 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
       yield fail({ _tag: "SessionNotFound", path });
       return;
     }
-    const final = options.final === true || (options.quietBefore !== undefined && changed < options.quietBefore);
-    const state = restoreDatabase(from?.state);
+    const final = decodeIsFinal(options, changed);
+    const settlement = createOpencodeSettlement(path, {
+      ...(from?.state !== undefined ? { state: from.state } : {}),
+      final
+    });
     const queue: UsageRecord[] = [...(from?.queue ?? [])];
     position.cursor = () => ({
       agent: AGENT,
       offset: 0,
       line: 0,
-      state: structuredClone(state),
+      state: settlement.save(),
       ...(queue.length > 0 ? { queue: [...queue] } : {})
     });
     yield* drain(queue);
@@ -172,66 +157,43 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
         throw error;
       }
     };
-    const take = (row: Record<string, SqliteValue>): void => {
-      const id = String(row.id);
-      const message = opencodeRow(row, path, final);
-      if (message === "running") {
-        if (!state.running.includes(id)) {
-          rememberKey(state.running, id, RUNNING_IDS);
-        }
-        return;
-      }
-      state.running = state.running.filter((running) => running !== id);
-      if (message && !state.reported.includes(id)) {
-        rememberKey(state.reported, id, REPORTED_IDS);
-        queue.push(message);
-      }
-    };
+    const earliest = opencodeQueryFloor(options.since);
+    const toRows = (rows: Record<string, SqliteValue>[]): OpencodeTableRow[] =>
+      rows.map((row) => ({
+        id: String(row.id),
+        row: Number(row.row),
+        updated: Number(row.time_updated),
+        created: Number(row.time_created),
+        ...(asString(row.session_id) === undefined ? {} : { sessionId: asString(row.session_id) }),
+        data: String(row.data)
+      }));
     try {
-      const earliest = options.since === undefined ? 0 : options.since - LONGEST_MESSAGE_MS;
-      if (state.updated === 0 && state.id === "") {
-        state.row ??= 0;
-      }
-      // The first read goes by row id, a single pass over the table, and remembers the latest change it saw.
-      while (state.row !== undefined) {
+      // The first read goes by row id, a single pass over the table; the following pages go by the newest change.
+      // The settled records go through `queue`, so the ones a loop left early keeps are saved with the cursor.
+      while (settlement.position().row !== undefined) {
         signal?.throwIfAborted();
-        const rows = query(OPENCODE_MESSAGES_BY_ROW, state.row, earliest, PAGE_ROWS);
-        for (const row of rows) {
-          state.row = Number(row.row);
-          const updated = Number(row.time_updated);
-          const id = String(row.id);
-          if (updated > state.updated || (updated === state.updated && id > state.id)) {
-            state.updated = updated;
-            state.id = id;
-          }
-          take(row);
-        }
-        if (rows.length < PAGE_ROWS) {
-          delete state.row;
-        }
+        const at = settlement.position().row!;
+        const rows = query(OPENCODE_MESSAGES_BY_ROW, at, earliest, PAGE_ROWS);
+        queue.push(...settlement.push(toRows(rows)));
         yield* drain(queue);
+        if (rows.length < PAGE_ROWS) {
+          settlement.endByRow();
+        }
       }
       for (;;) {
         signal?.throwIfAborted();
-        const rows = query(OPENCODE_MESSAGE_PAGE, state.updated, state.updated, state.id, earliest, PAGE_ROWS);
-        for (const row of rows) {
-          state.updated = Number(row.time_updated);
-          state.id = String(row.id);
-          take(row);
-        }
+        const at = settlement.position();
+        const rows = query(OPENCODE_MESSAGE_PAGE, at.updated, at.updated, at.id, earliest, PAGE_ROWS);
+        queue.push(...settlement.push(toRows(rows)));
         yield* drain(queue);
         if (rows.length < PAGE_ROWS) {
           break;
         }
       }
-      if (final && state.running.length > 0) {
-        const rows = query(opencodeMessagesById(state.running.length), ...state.running);
-        // Only once the query has answered: a running message whose row is gone was deleted.
-        const present = new Set(rows.map((row) => String(row.id)));
-        state.running = state.running.filter((id) => present.has(id));
-        for (const row of rows) {
-          take(row);
-        }
+      const running = settlement.runningIds();
+      if (final && running.length > 0) {
+        const rows = query(opencodeMessagesById(running.length), ...running);
+        queue.push(...settlement.end(toRows(rows)));
         yield* drain(queue);
       }
     } catch (error) {
@@ -244,41 +206,6 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
       db?.close();
     }
   }, from);
-}
-
-/** The usage of one `message` row; a row whose `data` is not JSON is skipped. */
-function opencodeRow(
-  row: Record<string, SqliteValue>,
-  path: string,
-  final: boolean
-): UsageRecord | "running" | undefined {
-  let value: unknown;
-  try {
-    value = JSON.parse(String(row.data)) as unknown;
-  } catch {
-    return undefined;
-  }
-  const sessionId = asString(row.session_id);
-  return opencodeMessageUsage(value, {
-    id: String(row.id),
-    ...(sessionId === undefined ? {} : { sessionId }),
-    source: { file: path, offset: 0, length: 0, line: Number(row.row) },
-    ...(final ? { settledAt: Number(row.time_created) } : {})
-  });
-}
-
-function restoreDatabase(saved: unknown): DatabaseState {
-  const state = asRecord(saved);
-  const ids = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
-  const row = asNumber(state?.row);
-  return {
-    updated: asNumber(state?.updated) ?? 0,
-    id: asString(state?.id) ?? "",
-    ...(row === undefined ? {} : { row }),
-    running: ids(state?.running),
-    reported: ids(state?.reported)
-  };
 }
 
 /**

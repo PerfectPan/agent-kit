@@ -1,6 +1,6 @@
 import { type AgentHome, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import { dirnamePath, joinPath } from "../../session/index.js";
+import { basenamePath, dirnamePath, joinPath } from "../../session/index.js";
 import {
   type SourcePointer,
   timeOf,
@@ -42,6 +42,16 @@ export function grokUpdatesPath(path: string): string {
 
 export function grokSummaryPath(sessionDir: string): string {
   return joinPath(sessionDir, "summary.json");
+}
+
+/** A usage source's identity: its session directory's name. */
+export function grokUsageSourceId(path: string): string {
+  return basenamePath(grokSessionDir(path));
+}
+
+/** The session id of `updates.jsonl`: the one `summary.json` names, else the session directory's. */
+export function grokUsageSessionId(summaryId: string | undefined, updatesPath: string): string {
+  return summaryId ?? basenamePath(grokSessionDir(updatesPath));
 }
 
 /** Fields of `subagents/<id>/meta.json` that name the lane. */

@@ -9,6 +9,7 @@ import {
   type CodingAgentWithHome,
   type HomeContext,
   homeFromRule,
+  type HomeRule,
   type InvalidCodingAgentId
 } from "../coding-agent/index.js";
 import { aider } from "./aider.js";
@@ -88,6 +89,14 @@ function aliasTable(): Map<string, BuiltinCodingAgentId> {
 
 export function isBuiltinCodingAgentId(value: string): value is BuiltinCodingAgentId {
   return Object.hasOwn(builtinCodingAgents, value);
+}
+
+/**
+ * The rule that decides an agent's home: the caller's own rule for the agent wins, else a built-in agent's rule;
+ * `undefined` when there is neither, so a path or adapter that needs the home reports it instead of guessing.
+ */
+export function homeRuleOf(agent: CodingAgentId, own?: HomeRule): HomeRule | undefined {
+  return own ?? (isBuiltinCodingAgentId(agent) ? builtinCodingAgents[agent].home : undefined);
 }
 
 /**

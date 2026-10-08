@@ -1,6 +1,12 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
-import type { SessionHead, SessionListError, SessionListFailure, SessionPreview } from "../../domain/session/index.js";
+import {
+  type SessionHead,
+  type SessionListError,
+  type SessionListFailure,
+  type SessionPreview,
+  sessionHead
+} from "../../domain/session/index.js";
 import { edgeRecords, readEdges } from "./files/edges.js";
 import { walkFiles, type WalkSpec } from "./files/walk.js";
 import type { DiscoverOptions, SessionPlatform } from "../ports.js";
@@ -71,24 +77,10 @@ async function readHead(
     return undefined;
   }
   const preview = options.preview(edgeRecords(edges));
-  const head: SessionHead = {
-    ref: { agent, path, ...(preview.sessionId ? { sessionId: preview.sessionId } : {}) },
-    lastActiveAt: preview.lastAt ?? edges.mtimeMs,
-    sizeBytes: edges.size
-  };
-  const title = preview.title ?? preview.firstPrompt;
-  if (title) {
-    head.title = title.slice(0, 80);
-  }
-  if (preview.cwd) {
-    head.cwd = preview.cwd;
-  }
-  if (preview.startedAt !== undefined) {
-    head.startedAt = preview.startedAt;
-  }
-  if (preview.firstPrompt) {
-    head.firstPrompt = preview.firstPrompt;
-  }
+  const head = sessionHead({ agent, path, ...(preview.sessionId ? { sessionId: preview.sessionId } : {}) }, preview, {
+    sizeBytes: edges.size,
+    mtimeMs: edges.mtimeMs
+  });
   await options.decorate?.(platform, path, head);
   return head;
 }

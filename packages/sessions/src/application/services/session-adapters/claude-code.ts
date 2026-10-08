@@ -10,7 +10,6 @@ import {
   claudeCodeCapabilities,
   claudeCodeMetaPath,
   claudeCodeRoots,
-  claudeCodeSessionStem,
   claudeCodeSubagentDir,
   claudeCodeSubagentFile,
   looksLikeClaudeCodeSession,
@@ -75,6 +74,7 @@ async function loadClaudeCode(
   const { main, nested } = files.value;
   const translated = translateClaudeCodeRecords(mergeByTime([main.records, ...nested.groups]), {
     ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+    path: ref.path,
     agentForFile: (file) => nested.agentForFile.get(file),
     agentMeta: nested.metas
   });
@@ -83,9 +83,6 @@ async function loadClaudeCode(
   }
   const parsed = translated.value;
   parsed.skipped.push(...main.skipped, ...nested.skipped);
-  if (parsed.session.id === "unknown") {
-    parsed.session.id = claudeCodeSessionStem(ref.path) || "unknown";
-  }
   options.signal?.throwIfAborted();
   return ok(createTranscript(AGENT, claudeCodeCapabilities(parsed.events), parsed));
 }

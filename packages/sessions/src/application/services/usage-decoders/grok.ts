@@ -8,9 +8,10 @@ import {
   grokSummaryPath,
   grokUpdatesPath,
   grokUsageKey,
-  grokUsageLines
+  grokUsageLines,
+  grokUsageSessionId,
+  grokUsageSourceId
 } from "../../../domain/adapters/grok/index.js";
-import { basenamePath } from "../../../domain/session/index.js";
 import { readText } from "../files/read-file.js";
 import type { UsageDecoder } from "../../usage-ports.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout } from "./files.js";
@@ -44,7 +45,7 @@ const layout: JsonlUsageLayout = {
         id = fields.value.id;
       }
     }
-    return ok({ path: grokUpdatesPath(target.path), sessionId: id ?? basenamePath(dir) });
+    return ok({ path: grokUpdatesPath(target.path), sessionId: grokUsageSessionId(id, target.path) });
   },
   decoder: grokUsageLines
 };
@@ -57,7 +58,7 @@ export const grokUsageDecoder: UsageDecoder = {
   sources(platform, home, options = {}) {
     return fileSources(platform, AGENT, grokRoots(home), GROK_SESSION_FILES, {
       ...options,
-      identify: (path) => basenamePath(grokSessionDir(path))
+      identify: grokUsageSourceId
     });
   },
   decode(platform, target, options) {

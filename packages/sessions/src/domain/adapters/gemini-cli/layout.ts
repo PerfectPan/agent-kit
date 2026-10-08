@@ -29,3 +29,11 @@ export function isGeminiCliLegacyChat(path: string): boolean {
 export function geminiCliSessionStem(path: string): string {
   return basenamePath(path).replace(/\.jsonl?$/, "");
 }
+
+/**
+ * Whether a chat file is a usage source: a chat file at all, and an older `.json` chat only while the `.jsonl` file it
+ * was migrated into does not exist among the listed files — its records keep their message ids there.
+ */
+export function isGeminiCliUsageSource(path: string, listed: ReadonlySet<string>): boolean {
+  return isGeminiCliChat(path) && !(isGeminiCliLegacyChat(path) && listed.has(`${path}l`));
+}

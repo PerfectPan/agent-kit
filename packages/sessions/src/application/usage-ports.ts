@@ -3,8 +3,10 @@ import type { PlatformSqlite } from "@rivus/agent-kit-platform";
 
 import type { CapabilityUnsupported, ReadFailed, SessionListError, SessionNotFound } from "../domain/session/index.js";
 import type { SourceChanged, UnknownFormatGeneration } from "../domain/transcript/index.js";
-import type { UsageRecord } from "../domain/usage/index.js";
+import type { UsageCursor, UsageRecord } from "../domain/usage/index.js";
 import type { SessionPlatform } from "./ports.js";
+
+export type { UsageCursor };
 
 /** The part of Platform that decoding usage uses: file reads, and SQLite for an agent that keeps a database. */
 export interface UsagePlatform extends SessionPlatform {
@@ -36,25 +38,6 @@ export interface UsageSourceFailure {
 /** What `decodeUsage` reads: a source from `listUsageSources`, or another path of the agent's layout. */
 export interface UsageTarget {
   readonly path: string;
-}
-
-/**
- * Where a decode of one source stopped, as plain JSON data. Passed back as `from`, it continues there without reading
- * the source again: the next decode yields only what was written since. It belongs to the source it came from.
- */
-export interface UsageCursor {
-  readonly agent: CodingAgentId;
-  /** Bytes read from the start of the file; 0 for a database or a directory. */
-  readonly offset: number;
-  /** Lines read; 0 for a database or a directory. */
-  readonly line: number;
-  /**
-   * What the agent's rules keep between records, such as Codex's cumulative totals, the Claude Code requests that may
-   * still get records, or a database's position.
-   */
-  readonly state?: unknown;
-  /** Records decoded but not yet yielded when the loop was left. */
-  readonly queue?: readonly UsageRecord[];
 }
 
 /** The platform has no SQLite, which the agent's database needs. */

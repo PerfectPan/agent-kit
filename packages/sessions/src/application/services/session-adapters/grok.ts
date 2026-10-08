@@ -3,6 +3,7 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 import {
   GROK_CAPABILITIES,
   GROK_SESSION_FILES,
+  applyGrokSummary,
   grokCapabilities,
   type GrokSessionMeta,
   type GrokSubagentMeta,
@@ -197,19 +198,7 @@ async function decorateGrokHead(
   if (!parsed.ok) {
     return;
   }
-  const fields = parsed.value;
-  if (fields.id) {
-    head.ref = { agent: head.ref.agent, path: head.ref.path, sessionId: fields.id };
-  }
-  if (fields.title) {
-    head.title = fields.title.slice(0, 80);
-  }
-  if (fields.cwd) {
-    head.cwd = fields.cwd;
-  }
-  if (fields.endedAt !== undefined) {
-    head.lastActiveAt = fields.endedAt;
-  }
+  applyGrokSummary(head, parsed.value);
 }
 
 async function readSubagentMetas(

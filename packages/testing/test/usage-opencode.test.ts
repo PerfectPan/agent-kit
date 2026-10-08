@@ -99,6 +99,47 @@ async function decode(
   return { records, failures, cursor };
 }
 
+/** Decodes `path` the way a caller that leaves the loop after `take` records does, with the cursor read there. */
+async function decodePart(
+  path: string,
+  take: number,
+  options: DecodeUsageOptions = {},
+  on: UsagePlatform = platform
+): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
+  const stream = decodeUsage(on, "opencode", { path }, options);
+  const records: UsageRecord[] = [];
+  for await (const item of stream) {
+    if (!isUsageRecord(item)) {
+      continue;
+    }
+    records.push(item);
+    if (records.length >= take) {
+      break;
+    }
+  }
+  const cursor = stream.cursor === undefined ? undefined : (JSON.parse(JSON.stringify(stream.cursor)) as UsageCursor);
+  return { records, cursor };
+}
+
+/** Resumes from the cursor of a decode the caller left, until the source gives nothing more. */
+async function decodeRest(
+  path: string,
+  cursor: UsageCursor | undefined,
+  options: DecodeUsageOptions = {}
+): Promise<UsageRecord[]> {
+  const records: UsageRecord[] = [];
+  let from = cursor;
+  while (from) {
+    const next = await decode(path, { ...options, from });
+    records.push(...next.records);
+    from = next.records.length > 0 ? next.cursor : undefined;
+  }
+  return records;
+}
+
+/** The request ids of `records`, what the stop-and-resume comparisons assert about. */
+const ids = (records: readonly UsageRecord[]): (string | undefined)[] => records.map((record) => record.requestId);
+
 describe("opencode usage (SQLite)", () => {
   it("reads finished assistant messages with the logged cost, input with cache and output with reasoning", async () => {
     const { path } = await database();
@@ -192,6 +233,55 @@ describe("opencode usage (SQLite)", () => {
     );
     expect(last.failures).toEqual(["ReadFailed"]);
     expect(last.cursor?.state).toMatchObject({ running: ["msg_5"] });
+  });
+
+  it("yields the same records when a decode stops at any record and its cursor resumes", async () => {
+    const { path } = await database();
+    const full = (await decode(path)).records.map((record) => record.requestId);
+    for (const until of (await decode(path)).records.map((record) => record.timestamp)) {
+      const head = await decode(path, { until });
+      const next = await decode(path, head.cursor ? { from: head.cursor } : {});
+      expect([...head.records, ...next.records].map((record) => record.requestId)).toEqual(full);
+    }
+  });
+
+  it("gives one first read's records when the caller stops after each record and resumes", async () => {
+    const { path } = await database();
+    const full = ids((await decode(path)).records);
+    for (let take = 1; take <= full.length; take++) {
+      const head = await decodePart(path, take);
+      const rest = await decodeRest(path, head.cursor);
+      expect([...ids(head.records), ...ids(rest)]).toEqual(full);
+    }
+  });
+
+  it("gives one continuing decode's records when the caller stops after each record and resumes", async () => {
+    const { path } = await database();
+    const first = await decode(path);
+    update(path, "msg_5", finished, 1767225607000);
+    insert(path, { ...rows[2]!, id: "msg_6", time_created: 1767225608000 });
+    const whole = ids((await decode(path, first.cursor ? { from: first.cursor } : {})).records);
+    expect(whole).toEqual(["msg_5", "msg_6"]);
+    for (let take = 1; take <= whole.length; take++) {
+      const head = await decodePart(path, take, first.cursor ? { from: first.cursor } : {});
+      const rest = await decodeRest(path, head.cursor);
+      expect([...ids(head.records), ...ids(rest)]).toEqual(whole);
+    }
+  });
+
+  it("gives one final decode's records when the caller stops after each record and resumes", async () => {
+    // A final decode that continues from a state with two running messages reports them all in its final look; a
+    // fresh final decode reports them through the pages instead, which the by-row stop above already covers.
+    const { path } = await database([...rows, { ...rows[4]!, id: "msg_5b", time_created: 1767225609000 }]);
+    const first = await decode(path);
+    expect(first.cursor?.state).toMatchObject({ running: ["msg_5", "msg_5b"] });
+    const whole = ids((await decode(path, { ...(first.cursor ? { from: first.cursor } : {}), final: true })).records);
+    expect(whole).toEqual(["msg_5", "msg_5b"]);
+    for (let take = 1; take <= whole.length; take++) {
+      const head = await decodePart(path, take, { ...(first.cursor ? { from: first.cursor } : {}), final: true });
+      const rest = await decodeRest(path, head.cursor, { final: true });
+      expect([...ids(head.records), ...ids(rest)]).toEqual(whole);
+    }
   });
 
   it("gives the records of one final decode when decoded as rows are added and finish", async () => {

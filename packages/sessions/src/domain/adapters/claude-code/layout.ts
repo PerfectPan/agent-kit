@@ -1,6 +1,6 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 
-import { basenamePath, dirnamePath, joinPath } from "../../session/index.js";
+import { basenamePath, belowRoot, dirnamePath, joinPath } from "../../session/index.js";
 import { asRecord, asString } from "../../protocols/record-fields.js";
 
 // Claude Code keeps one JSONL file per session under `<home>/projects/<project>/<session>.jsonl`. Subagent
@@ -122,4 +122,21 @@ export function claudeCodeUsageFile(path: string): { sessionId: string; agentLan
     return undefined;
   }
   return { sessionId: basenamePath(path.slice(0, at)), agentLaneId: claudeCodeAgentIdFromFile(path, []) };
+}
+
+/**
+ * A usage source's identity: the path below its project directory. Session ids are unique, and the project directory
+ * is named after a working directory that can move.
+ */
+export function claudeCodeUsageSourceId(path: string, root: string): string {
+  const below = belowRoot(path, root);
+  return below.slice(below.indexOf("/") + 1);
+}
+
+/**
+ * What a decode of a target file knows besides its records: the file's session and lane when it is one of the walk's
+ * files, and no session (`unknown`) for a target below a subagent directory that is not a transcript.
+ */
+export function claudeCodeUsageTarget(path: string): { sessionId: string; agentLaneId?: string } {
+  return claudeCodeUsageFile(path) ?? { sessionId: "unknown" };
 }

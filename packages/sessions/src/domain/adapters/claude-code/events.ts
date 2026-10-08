@@ -23,7 +23,7 @@ import {
 } from "../../transcript/index.js";
 import type { Usage } from "../../usage/index.js";
 import { asNumber, asRecord, asString } from "../../protocols/record-fields.js";
-import type { ClaudeCodeAgentMeta } from "./layout.js";
+import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "./layout.js";
 import { applySnapshots, promptSnapshotPayload, snapshotCapabilities } from "./prompt-snapshot.js";
 import { claudeCodeRequestKey, claudeCodeRequestUsage, claudeCodeUsage, knownClaudeCodeGeneration } from "./usage.js";
 import { isPromptFlags, recordText, userFlags } from "./user-flags.js";
@@ -73,6 +73,11 @@ const BOOKKEEPING = new Set([
 export interface ClaudeCodeTranslateOptions {
   /** Wins over the `sessionId` the records carry. */
   sessionId?: string;
+  /**
+   * The session file's path, whose name is the session's fallback id when neither this option nor the records name
+   * one.
+   */
+  path?: string;
   /** The lane of records from a subagent file whose records carry no `agentId`. */
   agentForFile?: (file: string) => string | undefined;
   agentMeta?: ReadonlyMap<string, ClaudeCodeAgentMeta>;
@@ -209,8 +214,9 @@ export function translateClaudeCodeRecords(
   assignSeq(events);
 
   const agents = agentLanes(events, options.agentMeta);
+  const fallbackId = options.path === undefined ? undefined : claudeCodeSessionStem(options.path) || "unknown";
   const session: TranscriptSession = {
-    id: sessionId ?? "unknown",
+    id: sessionId ?? fallbackId ?? "unknown",
     ...(title ? { title } : {}),
     ...(cwd ? { cwd } : {}),
     ...(startedAt === undefined ? {} : { startedAt }),

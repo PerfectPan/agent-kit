@@ -3,9 +3,9 @@ import {
   codexRoots,
   codexSessionStem,
   codexUsageKey,
-  codexUsageLines
+  codexUsageLines,
+  codexUsageSourceId
 } from "../../../domain/adapters/codex/index.js";
-import { basenamePath } from "../../../domain/session/index.js";
 import type { UsageDecoder } from "../../usage-ports.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout, sameFile } from "./files.js";
 
@@ -23,8 +23,10 @@ export const codexUsageDecoder: UsageDecoder = {
   agent: AGENT,
   usageKey: codexUsageKey,
   sources(platform, home, options = {}) {
-    // Archiving moves a rollout from `sessions/` to `archived_sessions/` under the same name.
-    return fileSources(platform, AGENT, codexRoots(home), CODEX_SESSION_FILES, { ...options, identify: basenamePath });
+    return fileSources(platform, AGENT, codexRoots(home), CODEX_SESSION_FILES, {
+      ...options,
+      identify: codexUsageSourceId
+    });
   },
   decode(platform, target, options) {
     return decodeJsonlUsage(platform, target, layout, options);

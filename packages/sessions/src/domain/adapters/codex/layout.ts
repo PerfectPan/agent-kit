@@ -21,6 +21,11 @@ export function codexSessionStem(sessionPath: string): string {
   return basenamePath(sessionPath).replace(/\.jsonl$/, "");
 }
 
+/** A rollout's identity as a usage source: its file name, which archiving from `sessions/` to `archived_sessions/` keeps. */
+export function codexUsageSourceId(path: string): string {
+  return basenamePath(path);
+}
+
 /** A rollout file name, or a head that starts with a `session_meta` record. */
 export function looksLikeCodexSession(path: string, head: string | undefined): boolean {
   if (isRolloutName(basenamePath(path))) {

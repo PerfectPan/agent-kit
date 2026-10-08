@@ -1,8 +1,17 @@
 import { AgentKitError, type CodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
-import type { UsageRecord } from "../../domain/usage/index.js";
-import { SHORT_HASH_LENGTH, shortHash } from "../../domain/adapters/usage-lines.js";
+import {
+  QUIET_MS,
+  keylessRecordRead,
+  nextMark,
+  restoreUsageWindow,
+  scanSources,
+  type UsageRecord,
+  type UsageScanMark,
+  type UsageScanSource,
+  type UsageScanState
+} from "../../domain/usage/index.js";
 import { decodeUsage, isUsageRecord, isUsageSource, listUsageSources } from "./decode-usage.js";
 import type { SessionErrorCode } from "../errors.js";
 import { builtinUsageDecoders } from "../services/usage-decoders/index.js";
@@ -16,47 +25,7 @@ import type {
   UsageStream
 } from "../usage-ports.js";
 
-/**
- * A source last written longer ago than this is complete. Claude Code writes a response's records within minutes of
- * each other (the longest gap in the logs we have read is under 12 minutes), so the requests still open where such a
- * file ends get no more records.
- */
-const QUIET_MS = 30 * 60 * 1000;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** The records of a source that have no request key: the time of the latest one read, and how many had that time. */
-export interface UsageScanMark {
-  readonly time: number;
-  readonly count: number;
-}
-
-/** What a scan knows about one source. */
-export interface UsageScanSource {
-  readonly agent: CodingAgentId;
-  /** Where the source was read last. */
-  readonly path: string;
-  /** Its modification time when it was listed last: once that is before `since`, no listing finds it any more. */
-  readonly mtimeMs: number;
-  /** Where its decode stopped; absent when it could not be read again after it was rewritten. */
-  readonly cursor?: UsageCursor;
-  /** Set when the source has records without a request key, for reading it again after a rewrite. */
-  readonly mark?: UsageScanMark;
-}
-
-/** What a scan carries to the next one, as plain JSON data. */
-export interface UsageScanState {
-  /**
-   * By agent and `UsageSource.id`, so a source that its agent moved keeps its cursor; by agent, id and path while one
-   * scan finds the id at several paths (a copy), so each copy keeps a cursor of its own.
-   */
-  readonly sources: Readonly<Record<string, UsageScanSource>>;
-  /**
-   * The requests counted from `since` on, by agent and by the day (UTC, days since the epoch) of their record: each a
-   * 54-bit hash of the request's key in 9 base64url characters, the hashes of one day joined.
-   */
-  readonly requests: Readonly<Record<string, Readonly<Record<string, string>>>>;
-}
+export type { UsageScanMark, UsageScanSource, UsageScanState };
 
 interface ScanUsageCommon {
   /** Agents to scan, by id or alias; defaults to every agent with a usage decoder. */
@@ -119,8 +88,8 @@ export function scanUsage(
   if (previous && since === undefined) {
     throw new AgentKitError<SessionErrorCode>("invalid-cursor", "A scan that continues from a state needs `since`");
   }
-  const sources: Record<string, UsageScanSource> = { ...previous?.sources };
-  const requests = restoreRequests(previous?.requests ?? {}, since);
+  const sources = scanSources<UsageScanSource>(previous?.sources ?? {});
+  const window = restoreUsageWindow(previous?.requests ?? {}, since);
   let current: { readonly key: string; readonly entry: () => UsageScanSource } | undefined;
 
   const decode = (source: UsageSource, from: UsageCursor | undefined): UsageStream =>
@@ -132,45 +101,13 @@ export function scanUsage(
       ...(signal ? { signal } : {})
     });
 
-  /** Whether the record was not counted in the window yet; remembers it. */
-  const firstCount = (record: UsageRecord, key: string): boolean => {
-    const counted = requests.get(record.agent) ?? { days: new Map<string, Set<string>>(), all: new Set<string>() };
-    requests.set(record.agent, counted);
-    const hash = shortHash(`${record.agent} ${key}`);
-    if (counted.all.has(hash)) {
-      return false;
-    }
-    counted.all.add(hash);
-    const day = String(Math.floor(record.timestamp / DAY_MS));
-    const hashes = counted.days.get(day) ?? new Set<string>();
-    counted.days.set(day, hashes);
-    hashes.add(hash);
-    return true;
-  };
-
-  /** The state entry of a listed source, under the key it keeps in this scan. */
-  const take = (source: UsageSource, listedTwice: boolean): { key: string; known?: UsageScanSource } => {
-    const byId = `${source.agent} ${source.id}`;
-    const byPath = `${byId} ${source.path}`;
-    if (!listedTwice) {
-      const known = sources[byId] ?? sources[byPath];
-      delete sources[byPath];
-      return known ? { key: byId, known } : { key: byId };
-    }
-    const known = sources[byPath] ?? (sources[byId]?.path === source.path ? sources[byId] : undefined);
-    if (sources[byId]?.path === source.path) {
-      delete sources[byId];
-    }
-    return known ? { key: byPath, known } : { key: byPath };
-  };
-
   return {
     get state() {
-      const all = { ...sources };
+      const all = { ...sources.all() };
       if (current) {
         all[current.key] = current.entry();
       }
-      return { sources: all, requests: saveRequests(requests) };
+      return { sources: all, requests: window.save() };
     },
     async *[Symbol.asyncIterator]() {
       const scanned = new Set(
@@ -199,10 +136,8 @@ export function scanUsage(
         const id = `${source.agent} ${source.id}`;
         ids.set(id, (ids.get(id) ?? 0) + 1);
       }
-      const used = new Set<string>();
       for (const source of listing) {
-        const { key, known } = take(source, (ids.get(`${source.agent} ${source.id}`) ?? 0) > 1);
-        used.add(key);
+        const { key, known } = sources.take(source, (ids.get(`${source.agent} ${source.id}`) ?? 0) > 1);
         let from = known?.cursor;
         let mark = known?.mark;
         let skip: UsageScanMark | undefined;
@@ -226,19 +161,19 @@ export function scanUsage(
             }
             const usageKey = (builtinUsageDecoders as UsageDecoders)[item.agent]?.usageKey(item);
             if (usageKey !== undefined) {
-              if (firstCount(item, usageKey)) {
+              if (window.count(item, usageKey)) {
                 yield item;
               }
               continue;
             }
-            if (skip && (item.timestamp < skip.time || (item.timestamp === skip.time && skipped < skip.count))) {
+            if (skip !== undefined && keylessRecordRead(skip, item.timestamp, skipped)) {
               skipped += item.timestamp === skip.time ? 1 : 0;
               continue;
             }
             mark = nextMark(mark, item.timestamp);
             yield item;
           }
-          sources[key] = entry();
+          sources.set(key, entry());
           current = undefined;
           if (!changed || skip !== undefined) {
             break;
@@ -248,62 +183,7 @@ export function scanUsage(
           skip = mark ?? { time: Number.NEGATIVE_INFINITY, count: 0 };
         }
       }
-      for (const [key, known] of Object.entries(sources)) {
-        if (used.has(key) || !scanned.has(known.agent)) {
-          continue;
-        }
-        const outOfWindow = since !== undefined && known.mtimeMs < since;
-        const unlisted = failed.some((path) => known.path === path || known.path.startsWith(`${path}/`));
-        if (outOfWindow || !unlisted) {
-          delete sources[key];
-        }
-      }
+      sources.prune({ scanned, failed, ...(since === undefined ? {} : { since }) });
     }
   };
-}
-
-function nextMark(mark: UsageScanMark | undefined, time: number): UsageScanMark {
-  if (mark === undefined || time > mark.time) {
-    return { time, count: 1 };
-  }
-  return time === mark.time ? { time, count: mark.count + 1 } : mark;
-}
-
-interface CountedRequests {
-  days: Map<string, Set<string>>;
-  all: Set<string>;
-}
-
-function restoreRequests(
-  saved: Readonly<Record<string, Readonly<Record<string, string>>>>,
-  since: number | undefined
-): Map<string, CountedRequests> {
-  const out = new Map<string, CountedRequests>();
-  for (const [agent, days] of Object.entries(saved)) {
-    const counted: CountedRequests = { days: new Map(), all: new Set() };
-    for (const [day, joined] of Object.entries(days)) {
-      // A day that ended before `since` holds no request of the window.
-      if (since !== undefined && (Number(day) + 1) * DAY_MS <= since) {
-        continue;
-      }
-      const hashes = new Set<string>();
-      for (let at = 0; at + SHORT_HASH_LENGTH <= joined.length; at += SHORT_HASH_LENGTH) {
-        const hash = joined.slice(at, at + SHORT_HASH_LENGTH);
-        hashes.add(hash);
-        counted.all.add(hash);
-      }
-      counted.days.set(day, hashes);
-    }
-    out.set(agent, counted);
-  }
-  return out;
-}
-
-function saveRequests(requests: ReadonlyMap<string, CountedRequests>): Record<string, Record<string, string>> {
-  return Object.fromEntries(
-    [...requests].map(([agent, { days }]) => [
-      agent,
-      Object.fromEntries([...days].map(([day, hashes]) => [day, [...hashes].toSorted().join("")]))
-    ])
-  );
 }

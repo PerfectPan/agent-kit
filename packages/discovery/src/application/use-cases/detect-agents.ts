@@ -5,11 +5,14 @@ import {
   type AuthObservation,
   type AuthState,
   classifyInstallation,
+  envReading,
   type Evidence,
+  installationWarnings,
   type Installation,
   type ProbeProblem,
   type ProbeRecipe,
   type ProbeRecipes,
+  probesAuth,
   resolveAuthState,
   type Version
 } from "../../domain/installation/index.js";
@@ -107,9 +110,6 @@ function selectRecipes(table: ProbeRecipes, agents: readonly CodingAgentId[]): P
   return [...selected.values()];
 }
 
-const SHELL_SHIM_WARNING =
-  "The command is a Windows .cmd or .bat shim, which runs only through a shell; detection does not run it, so the agent is at most found.";
-
 async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
   const { platform, check } = run;
   const expand = (paths: ProbeRecipe["configPaths"]): string[] =>
@@ -163,10 +163,9 @@ async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
   ];
   const status = classifyInstallation(evidence, problems);
   const versionFailed = probesVersion && version === undefined;
-  const auth =
-    status === "runnable" || status === "found"
-      ? await detectAuth(run, recipe, versionFailed ? undefined : command?.path, problems)
-      : ({ status: "unknown" } as const);
+  const auth = probesAuth(status)
+    ? await detectAuth(run, recipe, versionFailed ? undefined : command?.path, problems)
+    : ({ status: "unknown" } as const);
 
   return {
     agent: recipe.agent,
@@ -179,9 +178,7 @@ async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
     auth,
     evidence,
     problems,
-    warnings: problems.some((problem) => problem._tag === "CommandFailed" && problem.reason === "shell-shim-not-run")
-      ? [...recipe.warnings, SHELL_SHIM_WARNING]
-      : recipe.warnings
+    warnings: installationWarnings(recipe, problems)
   };
 }
 
@@ -247,9 +244,12 @@ async function detectAuth(
     if (found === undefined) {
       continue;
     }
-    const read = file.parse
-      ? await readCredentialFile(platform, path, file.parse, signal)
-      : { reading: { loggedIn: true } };
+    if (file.parse === undefined) {
+      // A file the recipe does not parse: its existence is the observation, which `resolveAuthState` reads as logged in.
+      observations.push({ source: { kind: "credential-file", path } });
+      continue;
+    }
+    const read = await readCredentialFile(platform, path, file.parse, signal);
     if (read !== undefined && "problem" in read) {
       problems.push(read.problem);
     } else if (read !== undefined) {
@@ -258,8 +258,7 @@ async function detectAuth(
   }
   for (const { name, method } of auth.env ?? []) {
     if (envValue(platform, name)?.trim()) {
-      const reading = method === undefined ? { loggedIn: true } : { loggedIn: true, method };
-      observations.push({ source: { kind: "env", variable: name }, reading });
+      observations.push({ source: { kind: "env", variable: name }, reading: envReading(method) });
     }
   }
   return resolveAuthState(observations);

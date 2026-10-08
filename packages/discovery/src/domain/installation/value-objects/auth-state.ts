@@ -13,11 +13,14 @@ export interface AuthReading {
   readonly method?: string;
 }
 
-/** One login check and its answer. */
-export interface AuthObservation {
-  readonly source: AuthSource;
-  readonly reading: AuthReading;
-}
+/**
+ * One login check and its answer. A credential file the recipe does not parse has no reading — its existence was the
+ * check, which `resolveAuthState` reads as logged in; a command or an authenticating variable always carries its
+ * reading.
+ */
+export type AuthObservation =
+  | { readonly source: Exclude<AuthSource, { kind: "credential-file" }>; readonly reading: AuthReading }
+  | { readonly source: Extract<AuthSource, { kind: "credential-file" }>; readonly reading?: AuthReading };
 
 /**
  * Whether the agent is logged in, as far as detection can tell. Only the agent's own status command can report

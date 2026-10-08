@@ -3,7 +3,7 @@ import { type CodingAgentId, ok, type Result } from "@rivus/agent-kit-catalog";
 import type { UsageFile, UsageLineDecoder } from "../../../domain/adapters/usage-lines.js";
 import type { SessionListError } from "../../../domain/session/index.js";
 import type { SourceChanged } from "../../../domain/transcript/index.js";
-import type { UsageRecord } from "../../../domain/usage/index.js";
+import { decodeIsFinal, type UsageRecord } from "../../../domain/usage/index.js";
 import { guardIo } from "../files/io-failure.js";
 import { readBytes, readLines } from "../files/read-file.js";
 import { walkFiles, type WalkSpec } from "../files/walk.js";
@@ -140,7 +140,7 @@ export function decodeJsonlUsage(
         yield failure(sourceChanged(path, from));
         return;
       }
-      const final = options.final === true || (options.quietBefore !== undefined && info.mtimeMs < options.quietBefore);
+      const final = decodeIsFinal(options, info.mtimeMs);
       const decoder = layout.decoder({ ...located.value, mtimeMs: info.mtimeMs }, from?.state);
       const queue: UsageRecord[] = [...(from?.queue ?? [])];
       cursor = () => ({
@@ -252,9 +252,4 @@ export function usageStreamOf(
     },
     [Symbol.asyncIterator]: () => run(position)
   };
-}
-
-/** The path below `root`, the identity of a source whose agent does not move it. */
-export function belowRoot(path: string, root: string): string {
-  return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
 }

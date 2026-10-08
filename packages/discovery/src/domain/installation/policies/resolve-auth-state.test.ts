@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { DetectionStatus } from "../value-objects/detection-status.js";
 import type { AuthObservation } from "../value-objects/auth-state.js";
-import { resolveAuthState } from "./resolve-auth-state.js";
+import { envReading, probesAuth, resolveAuthState } from "./resolve-auth-state.js";
 
 const command = (loggedIn: boolean, method?: string): AuthObservation => ({
   source: { kind: "command", command: "/bin/x", args: ["status"] },
@@ -31,5 +32,30 @@ describe("resolveAuthState", () => {
     const denied: AuthObservation = { ...file, reading: { loggedIn: false } };
     expect(resolveAuthState([denied])).toEqual({ status: "unknown" });
     expect(resolveAuthState([])).toEqual({ status: "unknown" });
+  });
+
+  it("reads a source that was only checked for existence as logged in", () => {
+    const unparsed: AuthObservation = { source: { kind: "credential-file", path: "/u/me/.x/auth" } };
+    expect(resolveAuthState([unparsed])).toEqual({ status: "logged-in", source: unparsed.source });
+    const denied: AuthObservation = { ...unparsed, reading: { loggedIn: false } };
+    expect(resolveAuthState([denied])).toEqual({ status: "unknown" });
+  });
+});
+
+describe("envReading", () => {
+  it("answers logged in, with the method the variable stands for", () => {
+    expect(envReading(undefined)).toEqual({ loggedIn: true });
+    expect(envReading("api-key")).toEqual({ loggedIn: true, method: "api-key" });
+  });
+});
+
+describe("probesAuth", () => {
+  it.each([
+    ["runnable", true],
+    ["found", true],
+    ["missing", false],
+    ["unknown", false]
+  ] as const)("judges no login for an agent that is %s", (status: DetectionStatus, expected: boolean) => {
+    expect(probesAuth(status)).toBe(expected);
   });
 });
