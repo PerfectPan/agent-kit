@@ -4,7 +4,7 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
-import { codexTokenCounts, knownCodexGeneration } from "../../transcript/adapters/codex/records.js";
+import { codexTokenCounts, knownCodexRecord } from "../../transcript/adapters/codex/records.js";
 import { rememberKey, type UsageFile, type UsageLineDecoder } from "./usage-lines.js";
 import {
   endForkReplay,
@@ -24,26 +24,28 @@ interface CodexUsagePayload {
   turn_id?: string;
   response_id?: string;
   forked_from_id?: string;
-  source?: { subagent?: { thread_spawn?: unknown; [key: string]: unknown }; [key: string]: unknown };
+  source?: { subagent?: { thread_spawn?: unknown } };
   usage?: Record<string, unknown>;
   info?: {
-    total_token_usage?: Record<string, unknown>;
-    last_token_usage?: Record<string, unknown>;
-    [key: string]: unknown;
+    total_token_usage?: unknown;
+    last_token_usage?: unknown;
   };
-  thread_settings?: { service_tier?: string; [key: string]: unknown };
-  [key: string]: unknown;
+  thread_settings?: { service_tier?: string };
 }
 
 /**
  * One rollout record for the usage rule: the envelope, and the payload fields the usage rule reads, with those the
  * fork replay rule reads in the same pass. The decoder runs over every record of every rollout, so one parse takes
- * only these fields, not the whole payload.
+ * only these fields, not the whole payload. The envelope is the same one `records.ts` parses, down to the
+ * non-empty `type` and the raw presence markers, and the totals stay the raw values they were (the usage rule
+ * compares them by their JSON text).
  */
 const CodexUsageRecord = z.looseObject({
-  type: lenient(z.string()),
-  record_type: lenient(z.string()),
+  type: lenient(z.string().check(z.minLength(1))),
+  record_type: lenient(z.string().check(z.minLength(1))),
   id: lenient(z.string()),
+  timestamp: z.optional(z.unknown()),
+  formatVersion: z.optional(z.unknown()),
   payload: lenient(
     z.looseObject({
       type: lenient(z.string()),
@@ -57,8 +59,8 @@ const CodexUsageRecord = z.looseObject({
       usage: lenient(z.record(z.string(), z.unknown())),
       info: lenient(
         z.looseObject({
-          total_token_usage: lenient(z.record(z.string(), z.unknown())),
-          last_token_usage: lenient(z.record(z.string(), z.unknown()))
+          total_token_usage: z.optional(z.unknown()),
+          last_token_usage: z.optional(z.unknown())
         })
       ),
       thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
@@ -234,7 +236,7 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
   return {
     push(record) {
       const rec = z.safeParse(CodexUsageRecord, record.value).data;
-      if (!rec || !knownCodexGeneration(record.value)) {
+      if (!knownCodexRecord(rec)) {
         return err(unknownFormatGeneration(AGENT, record));
       }
       const ts = timeOf(rec.timestamp) ?? state.lastTime ?? file.mtimeMs;
@@ -337,9 +339,10 @@ const CodexSavedState = z.looseObject({
   waiting: z.optional(z.unknown())
 });
 
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. The state
+ * is cloned first, so an emitted record and the caller's cursor never share an object. */
 function restore(saved: unknown): CodexUsageState {
-  const state = z.safeParse(CodexSavedState, saved).data;
+  const state = z.safeParse(CodexSavedState, structuredClone(saved)).data;
   return {
     ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
     ...(state?.model === undefined ? {} : { model: state.model }),

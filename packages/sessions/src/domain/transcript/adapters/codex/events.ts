@@ -23,7 +23,7 @@ import {
   unknownFormatGeneration
 } from "../../index.js";
 import type { Usage } from "../../../usage/index.js";
-import { codexPayload, type CodexHistoryItemValue, knownCodexGeneration } from "./records.js";
+import { codexPayload, type CodexHistoryItemValue, knownCodexRecord } from "./records.js";
 import { codexSessionStem } from "../../../session/adapters/codex/layout.js";
 import { scanForkReplay } from "./fork-replay.js";
 import { emitResponseItem, INJECTED_USER, textFrom } from "./response-items.js";
@@ -85,9 +85,9 @@ const EVENT_MARKERS = new Map([
 interface CodexItemInfo {
   /** The ids Codex gave the item: its own `id` and `call_id`, non-empty. */
   ids: string[];
-  /** The `callId` the event's payload carries. */
+  /** The `callId` of the event's payload, as the item emitter wrote it. */
   callId?: string;
-  /** The tool output the event's payload carries, read for the spawn link. */
+  /** The tool output of the event's payload, as the item emitter wrote it, read for the spawn link. */
   output?: unknown;
   /** The `text` the event's payload carries, when the item gave it one. */
   text?: string;
@@ -108,8 +108,8 @@ export interface CodexTranslateOptions {
  * name would repeat its 70 characters on every id.
  *
  * Codex logs usage after the call's output, so each usage record becomes a `request` placed before that output.
- * `codexRecordUsage` decides which usage records count, and `forkReplayEnd` which records a forked rollout copied from
- * its parent, whose turn durations are skipped too.
+ * `codexRecordUsage` decides which usage records count, and `scanForkReplay` which records a forked rollout copied
+ * from its parent, whose turn durations are skipped too.
  */
 export function translateCodexRecords(
   stamped: readonly StampedRecord[],
@@ -140,7 +140,7 @@ export function translateCodexRecords(
 
   for (const [index, { record, ts }] of stamped.entries()) {
     const rec = replay.records[index]!;
-    if (!rec || !knownCodexGeneration(record.value)) {
+    if (!knownCodexRecord(rec)) {
       return err(unknownFormatGeneration(AGENT, record));
     }
     if (index === replay.end) {
@@ -159,16 +159,17 @@ export function translateCodexRecords(
       continue;
     }
     const bare = (rec.payload === undefined || rec.payload === null) && BARE_ITEMS.has(envelope);
-    // A bare item's fields sit on the record itself, so only its reader parses the record as the payload.
-    const payload = (bare ? codexPayload(record.value) : replay.payloads[index]) ?? {};
+    // Reads see the payload record, or nothing when the payload is not a record. The item the ids come from is the
+    // record itself then: an envelope without a payload still carries its own `id` and `call_id`.
+    const recordItem = bare || replay.payloads[index] === undefined ? codexPayload(record.value) : undefined;
+    const payload = bare ? (recordItem ?? {}) : (replay.payloads[index] ?? {});
+    const item = recordItem ?? replay.payloads[index]!;
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);
 
     const track = (event: TranscriptEvent): void => {
       emitted.set(event, {
-        ids: [payload.id, payload.call_id].filter((id): id is string => id !== undefined && id !== ""),
-        callId: payload.call_id,
-        output: payload.output
+        ids: [item.id, item.call_id].filter((id): id is string => id !== undefined && id !== "")
       });
     };
 
@@ -310,9 +311,20 @@ export function translateCodexRecords(
       emit("unknown", { type: envelope }, lineKey(record));
       continue;
     }
-    const { event, text } = emitResponseItem(bare ? envelope : (payload.type ?? "response_item"), payload, emit);
+    const { event, text, callId, output } = emitResponseItem(
+      bare ? envelope : (payload.type ?? "response_item"),
+      payload,
+      emit
+    );
+    const info = emitted.get(event)!;
     if (text !== undefined) {
-      emitted.get(event)!.text = text;
+      info.text = text;
+    }
+    if (callId !== undefined) {
+      info.callId = callId;
+    }
+    if (output !== undefined) {
+      info.output = output;
     }
     if (event.kind === "user" && !(text !== undefined && INJECTED_USER.test(text)) && !title) {
       title = text?.slice(0, 80);

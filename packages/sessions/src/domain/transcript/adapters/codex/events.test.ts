@@ -105,7 +105,12 @@ describe("translateCodexRecords", () => {
   });
 
   it("fails a record whose envelope names an unknown format generation", () => {
-    for (const value of [{}, { timestamp: at(0), type: "session_meta", formatVersion: 9 }]) {
+    for (const value of [
+      {},
+      { timestamp: at(0), type: "session_meta", formatVersion: 9 },
+      { type: "" },
+      { record_type: "" }
+    ]) {
       expect(translateCodexRecords(stamped([value]))).toEqual({
         ok: false,
         error: { _tag: "UnknownFormatGeneration", agent: "codex", file: "r.jsonl", line: 1 }
@@ -117,5 +122,70 @@ describe("translateCodexRecords", () => {
     const result = translated(translateCodexRecords(stamped([{ id: 5, timestamp: true }])));
     expect(result.skipped.map((skip) => skip.reason)).toEqual(["legacy-header"]);
     expect(result.session.id).toBe("unknown");
+    // Presence, not value: a header whose id or timestamp is undefined-valued still names the generation.
+    const undefinedValued = translated(translateCodexRecords(stamped([{ id: "cx-undef", timestamp: undefined }])));
+    expect(undefinedValued.skipped.map((skip) => skip.reason)).toEqual(["legacy-header"]);
+    expect(undefinedValued.session.id).toBe("cx-undef");
+  });
+
+  it("reads an empty envelope marker as absent: the header rule decides, and names the session", () => {
+    const result = translated(translateCodexRecords(stamped([{ record_type: "", id: "cx-empty", timestamp: at(0) }])));
+    expect(result.skipped.map((skip) => skip.reason)).toEqual(["legacy-header"]);
+    expect(result.session.id).toBe("cx-empty");
+  });
+
+  it("keeps an envelope-less record's own id against a replacement history that names it", () => {
+    const result = translated(
+      translateCodexRecords(
+        stamped([
+          { timestamp: at(0), type: "session_meta", payload: { id: "cx-ids" } },
+          { timestamp: at(1000), type: "event_msg", id: "E1" },
+          {
+            timestamp: at(2000),
+            type: "response_item",
+            payload: { type: "message", role: "user", content: [{ type: "input_text", text: "Keep" }] }
+          },
+          { timestamp: at(3000), type: "compacted", payload: { message: "s", replacement_history: [{ id: "E1" }] } }
+        ])
+      )
+    );
+    const unknown = result.events.find((event) => event.kind === "unknown")!;
+    const kept = result.events.find((event) => event.kind === "user")!;
+    expect([unknown.id, unknown.shadowedBy]).toEqual(["L2", undefined]);
+    expect(kept.shadowedBy).toBe("L4");
+  });
+
+  it("links a spawn from the tool result's own output, not the item's other fields", () => {
+    const result = translated(
+      translateCodexRecords(
+        stamped([
+          { timestamp: at(0), type: "session_meta", payload: { id: "cx-spawn" } },
+          {
+            timestamp: at(1000),
+            type: "response_item",
+            payload: { type: "function_call", name: "spawn_agent", call_id: "c" }
+          },
+          {
+            timestamp: at(2000),
+            type: "event_msg",
+            payload: {
+              type: "item_completed",
+              item: { type: "SubAgentActivity", id: "a", agent_thread_id: "th-2", kind: "spawned" }
+            }
+          },
+          {
+            timestamp: at(3000),
+            type: "response_item",
+            payload: {
+              type: "tool_search_output",
+              call_id: "c",
+              tools: [{ type: "namespace" }],
+              output: { agent_id: "th-2" }
+            }
+          }
+        ])
+      )
+    );
+    expect(result.agents).toEqual([{ id: "main" }, { id: "th-2", parentId: "main" }]);
   });
 });

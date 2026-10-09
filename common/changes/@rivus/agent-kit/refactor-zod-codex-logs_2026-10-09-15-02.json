@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Read the Codex session, transcript and usage logs through zod schemas, which grows /sessions, /transcript and /transcript/usage to about 17.4-20.5 kB.",
+      "comment": "Read the Codex session, transcript and usage logs through zod schemas, which grows /sessions, /transcript and /transcript/usage to about 18.4-20.6 kB.",
       "type": "patch"
     }
   ],

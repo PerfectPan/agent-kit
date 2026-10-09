@@ -29,6 +29,17 @@ const usageRecord = (responseId: string, usage: unknown) => ({
   payload: { response_id: responseId, usage }
 });
 
+/** A `token_count` whose totals are the only source of usage: each count's increase over the previous one. */
+const totalsCount = (total: unknown) => ({
+  timestamp: AT,
+  type: "event_msg",
+  payload: { type: "token_count", info: { total_token_usage: total } }
+});
+
+const inputOf = (records: UsageRecord[]): (number | undefined)[] => records.map((item) => item.usage.inputTokens);
+
+const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
+
 describe("codex usage lines", () => {
   it("reads a count of an unexpected type as absent, and a usage object that is no record as none", () => {
     expect(codexUsage({ input_tokens: 10, output_tokens: "3", total_tokens: 15 })).toEqual({
@@ -88,5 +99,60 @@ describe("codex usage lines", () => {
       fresh.push(record({ type: "token_usage_record", payload: { response_id: "r1", usage: { input_tokens: 1 } } }))
     );
     expect(records.map((item) => [item.timestamp, item.model])).toEqual([[1000, undefined]]);
+  });
+
+  it("compares the totals as they were written: a mistyped or absent total never stands in for the last one", () => {
+    const nullTwice = codexUsageLines(file);
+    expect(
+      inputOf([
+        ...pushed(nullTwice.push(record(totalsCount({ input_tokens: 100 })))),
+        ...pushed(nullTwice.push(record(totalsCount(null)))),
+        ...pushed(nullTwice.push(record(totalsCount(null)))),
+        ...pushed(nullTwice.push(record(totalsCount({ input_tokens: 150 }))))
+      ])
+    ).toEqual([100, 150]);
+    const mistyped = codexUsageLines(file);
+    expect(
+      inputOf([
+        ...pushed(mistyped.push(record(totalsCount({ input_tokens: 100 })))),
+        ...pushed(mistyped.push(record(totalsCount(5)))),
+        ...pushed(mistyped.push(record(totalsCount({ input_tokens: 130 }))))
+      ])
+    ).toEqual([100, 130]);
+  });
+
+  it("emits a waiting record the caller's cursor does not share", () => {
+    const first = codexUsageLines(file);
+    expect(
+      pushed(
+        first.push(record({ timestamp: at(0), type: "session_meta", payload: { id: "cx-f", forked_from_id: "p" } }))
+      )
+    ).toEqual([]);
+    expect(
+      pushed(
+        first.push(
+          record({
+            timestamp: at(100),
+            type: "event_msg",
+            payload: { type: "token_count", info: { last_token_usage: { input_tokens: 1, output_tokens: 1 } } }
+          })
+        )
+      )
+    ).toEqual([]);
+    const saved = first.save() as { waiting?: { model?: string } };
+    const second = codexUsageLines(file, saved);
+    // A second usage record at another second settles the first as the rollout's own, so both are emitted.
+    const emitted = pushed(
+      second.push(
+        record({
+          timestamp: at(5000),
+          type: "event_msg",
+          payload: { type: "token_count", info: { last_token_usage: { input_tokens: 2, output_tokens: 1 } } }
+        })
+      )
+    );
+    expect(emitted).toHaveLength(2);
+    emitted[0]!.model = "mutated";
+    expect(saved.waiting?.model).toBeUndefined();
   });
 });

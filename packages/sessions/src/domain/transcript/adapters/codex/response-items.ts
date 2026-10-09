@@ -31,14 +31,17 @@ export function textFrom(content: unknown): string | undefined {
 
 export type EmitEvent = (kind: TranscriptEventKind, payload: Record<string, unknown>) => TranscriptEvent;
 
-/** The event of one response item, with the `text` its payload carries when the item gave it one. */
+/** The event of one response item, with what its payload carries for the translator's passes: the `text`, and for a
+ * tool event the `callId` and the `output` exactly as the event's body holds them. */
 export interface EmittedResponseItem {
   event: TranscriptEvent;
   text?: string;
+  callId?: string;
+  output?: unknown;
 }
 
-function emitted(event: TranscriptEvent, text?: string): EmittedResponseItem {
-  return { event, ...(text ? { text } : {}) };
+function emitted(event: TranscriptEvent, extra: Omit<EmittedResponseItem, "event"> = {}): EmittedResponseItem {
+  return { event, ...extra };
 }
 
 /**
@@ -59,59 +62,73 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
           ...(item.recipient ? { recipient: item.recipient } : {}),
           ...(text ? { text } : {})
         }),
-        text
+        text ? { text } : {}
       );
     }
     case "reasoning": {
       const text = textFrom(item.summary);
-      return emitted(emit("reasoning", text ? { text } : { redacted: true }), text);
+      return emitted(emit("reasoning", text ? { text } : { redacted: true }), text ? { text } : {});
     }
-    case "web_search_call":
+    case "web_search_call": {
+      const callId = item.call_id ?? item.id ?? "";
       return emitted(
         emit("tool_call", {
-          callId: item.call_id ?? item.id ?? "",
+          callId,
           name: "web_search",
           ...(item.action === undefined ? {} : { args: item.action })
-        })
+        }),
+        { callId }
       );
-    case "tool_search_call":
+    }
+    case "tool_search_call": {
+      const callId = item.call_id ?? "";
       return emitted(
         emit("tool_call", {
-          callId: item.call_id ?? "",
+          callId,
           name: "tool_search",
           ...(item.arguments === undefined ? {} : { args: item.arguments })
-        })
+        }),
+        { callId }
       );
+    }
     case "tool_search_output": {
       const status = item.status;
-      return emitted(
-        emit("tool_result", {
-          callId: item.call_id ?? "",
-          ...(item.tools === undefined ? {} : { output: item.tools }),
-          ...(status === "failed" || status === "error" ? { isError: true } : {})
-        })
-      );
+      // A tool search's result payload is the `tools` list, not an `output`.
+      const body = {
+        callId: item.call_id ?? "",
+        ...(item.tools === undefined ? {} : { output: item.tools }),
+        ...(status === "failed" || status === "error" ? { isError: true } : {})
+      };
+      return emitted(emit("tool_result", body), {
+        callId: body.callId,
+        ...(body.output === undefined ? {} : { output: body.output })
+      });
     }
     case "function_call":
     case "custom_tool_call": {
+      const callId = item.call_id ?? "";
       const args = item.arguments ?? item.input;
       return emitted(
         emit("tool_call", {
-          callId: item.call_id ?? "",
+          callId,
           name: item.name ?? "",
           ...(args === undefined ? {} : { args: argsOf(args) })
-        })
+        }),
+        { callId }
       );
     }
     case "function_call_output":
-    case "custom_tool_call_output":
-      return emitted(
-        emit("tool_result", {
-          callId: item.call_id ?? "",
-          ...resultFlags(item.output),
-          ...(item.output === undefined ? {} : { output: item.output })
-        })
-      );
+    case "custom_tool_call_output": {
+      const body = {
+        callId: item.call_id ?? "",
+        ...resultFlags(item.output),
+        ...(item.output === undefined ? {} : { output: item.output })
+      };
+      return emitted(emit("tool_result", body), {
+        callId: body.callId,
+        ...(item.output === undefined ? {} : { output: item.output })
+      });
+    }
     default:
       return emitted(emit("unknown", { type }));
   }
@@ -123,15 +140,15 @@ function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseI
   const text = textFrom(item.content);
   const body = text ? { text } : {};
   if (role === "developer") {
-    return emitted(emit("system", { ...body, injected: true }), text);
+    return emitted(emit("system", { ...body, injected: true }), text ? { text } : {});
   }
   if (role === "user") {
     return emitted(
       emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }),
-      text
+      text ? { text } : {}
     );
   }
-  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text);
+  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text ? { text } : {});
 }
 
 /** Function call arguments are a JSON string; a string that is not JSON stays as it is. */
