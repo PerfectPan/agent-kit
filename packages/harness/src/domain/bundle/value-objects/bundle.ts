@@ -20,21 +20,12 @@ export interface Bundle {
 export type BundleRef = Pick<Bundle, "owner" | "version" | "digest">;
 
 /**
- * A Bundle whose every-reader default is filled, so domain code reads flat values: `legacyMarkers` is `[]` when the
- * owner names none. The published `Bundle` keeps its optional field, and `prepareBundle` fills it once where a
- * checked bundle enters the domain.
+ * The substrings by which the owner recognizes what its older versions installed. A bundle is caller data, so the
+ * optional list is read live through this one accessor at every site: a bundle that names none — or names `null` —
+ * has none.
  */
-export interface PreparedBundle extends Bundle {
-  readonly legacyMarkers: readonly string[];
-}
-
-/** Fills a bundle's every-reader default; a bundle that already carries it is returned as it is. */
-export function prepareBundle(bundle: Bundle): PreparedBundle {
-  if (bundle.legacyMarkers !== undefined) {
-    // The list is present, so this published bundle already has the field the prepared type requires.
-    return bundle as PreparedBundle;
-  }
-  return { ...bundle, legacyMarkers: [] };
+export function legacyMarkersOf(bundle: Bundle): readonly string[] {
+  return bundle.legacyMarkers ?? [];
 }
 
 export interface InvalidBundle {
@@ -95,7 +86,7 @@ export function checkBundle(bundle: Bundle): Result<Bundle, InvalidBundle> {
   if (bundle.version === "" || bundle.digest === "") {
     return invalid("version and digest must not be empty");
   }
-  if (prepareBundle(bundle).legacyMarkers.some((marker) => marker.trim() === "")) {
+  if (legacyMarkersOf(bundle).some((marker) => marker.trim() === "")) {
     return invalid("an empty legacy marker would match everything");
   }
   const seen = new Set<string>();

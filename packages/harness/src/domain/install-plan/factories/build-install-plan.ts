@@ -1,7 +1,7 @@
 import { err, type Result } from "@rivus/agent-kit-catalog";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
-import { type Bundle, prepareBundle } from "../../bundle/value-objects/bundle.js";
+import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
@@ -95,7 +95,7 @@ export function buildInstallPlan(
       trust: [...(known?.trust ?? []), ...trust]
     });
   }
-  const markers = prepareBundle(bundle).legacyMarkers;
+  const markers = legacyMarkersOf(bundle);
   const found = new Map(observed.map((artifact) => [locatorKey(artifact.locator), artifact]));
   const entries = new Map(ledger.entries().map((entry) => [locatorKey(entry.locator), entry]));
   // What the user kept on an earlier removal is theirs, even when it still carries a legacy marker.
