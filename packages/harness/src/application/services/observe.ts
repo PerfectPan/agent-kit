@@ -17,14 +17,17 @@ import { resolvePath } from "./resolve-path.js";
 /** The command lines behind a `cli-registration` locator, from whichever adapter renders it. */
 export type RegistrationLookup = (
   locator: ArtifactLocator
-) => (CliRegistration & { readonly roots?: readonly string[] }) | undefined;
+) => (CliRegistration & { readonly roots: readonly string[] }) | undefined;
 
 export function registrationLookup(adapters: InstallAdapters, context: InstallContext): RegistrationLookup {
   return (locator) => {
     for (const adapter of Object.values(adapters)) {
-      const registration = adapter?.cliRegistration?.(locator, context);
+      if (adapter === undefined) {
+        continue;
+      }
+      const registration = adapter.cliRegistration?.(locator, context);
       if (registration !== undefined) {
-        return { ...registration, roots: adapter?.roots(context) ?? [] };
+        return { ...registration, roots: adapter.roots(context) };
       }
     }
     return undefined;
@@ -46,7 +49,7 @@ export function registrationState(
       return {};
     }
     const roots: { path: string; resolved: string }[] = [];
-    for (const path of registration.roots ?? []) {
+    for (const path of registration.roots) {
       roots.push({ path, resolved: yield* resolvePath(path, true) });
     }
     const normalize = (path: string): string => {

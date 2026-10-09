@@ -4,6 +4,7 @@ export { sniffSource, terminalIdentity } from "./policies/host-sniffing.js";
 export type { Env } from "./policies/payload-fields.js";
 export { lifecycleStatus, reduceLifecycle } from "./policies/reduce-lifecycle.js";
 export { readWithDialect } from "./services/read-with-dialect.js";
+export { aliasesOf } from "./value-objects/hook-dialect.js";
 export type {
   FieldPath,
   FieldSource,

@@ -31,6 +31,12 @@ export function strategyRequirement(spec: ArtifactSpec, agent: CodingAgentId): S
   return "unsupported";
 }
 
+/** Strategies an adapter declares for one kind. Absent means the agent does not take that kind. */
+function declaredStrategies(adapter: InstallAdapter, artifact: StrategyArtifactKind): readonly Strategy[] {
+  const declared = artifact === "hooks" ? adapter.hookStrategies : adapter.skillStrategies;
+  return declared === undefined ? [] : declared;
+}
+
 /**
  * The strategy for one Artifact kind of one agent: the caller's override when the adapter declares it, otherwise the
  * first strategy the adapter declares (its own order of preference) whose required executable is available. A
@@ -42,7 +48,7 @@ export function chooseStrategy(
   artifact: StrategyArtifactKind,
   choice: StrategyChoice
 ): Result<Strategy, StrategyUnavailable> {
-  const supported = (artifact === "hooks" ? adapter.hookStrategies : adapter.skillStrategies) ?? [];
+  const supported = declaredStrategies(adapter, artifact);
   const candidates =
     choice.override === undefined ? supported : supported.filter((strategy) => strategy === choice.override);
   const missing: { readonly strategy: Strategy; readonly command: string }[] = [];
@@ -63,7 +69,7 @@ export function strategyUnsupported(agent: CodingAgentId, spec: ArtifactSpec): S
 
 /** The commands an adapter may need for either Artifact kind, so the use case can probe `PATH` once per agent. */
 export function requiredCommands(adapter: InstallAdapter): readonly string[] {
-  const strategies = [...(adapter.hookStrategies ?? []), ...(adapter.skillStrategies ?? [])];
+  const strategies = [...declaredStrategies(adapter, "hooks"), ...declaredStrategies(adapter, "skill")];
   return [
     ...new Set(
       strategies.flatMap((strategy) => {

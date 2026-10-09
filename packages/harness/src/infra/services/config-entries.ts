@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import type { UnexpectedShape } from "../../application/ports.js";
-import type { ArtifactLocator } from "../../domain/install-plan/index.js";
+import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/index.js";
 import type { JsonValue } from "../../domain/ledger/index.js";
 import type { Document } from "./document.js";
 import { isDocumentRecord } from "./document.js";
@@ -62,7 +62,7 @@ interface Found {
 
 /** Where the locator's entry is in `data`, or `undefined` when it is not there. */
 function find(data: Document | undefined, locator: ArtifactLocator): Result<Found | undefined, UnexpectedShape> {
-  const base = pointerKeys(locator.pointer ?? "");
+  const base = pointerKeys(locatorPointer(locator));
   const list = at(data, base);
   if (locator.member === undefined) {
     return ok(list === undefined ? undefined : { path: base, value: list });
@@ -129,7 +129,7 @@ export function entryEdits(
   if (!found.ok) {
     return found;
   }
-  const base = pointerKeys(locator.pointer ?? "");
+  const base = pointerKeys(locatorPointer(locator));
   const problem = shapeProblem(data, locator.member === undefined ? base.slice(0, -1) : base);
   if (problem !== undefined) {
     return err(problem);

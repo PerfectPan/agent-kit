@@ -38,6 +38,7 @@ import {
   type LegacyHookSource,
   type LocatorKey,
   locatorKey,
+  pointerTail,
   type ObservedArtifact,
   planEvidenceScope,
   type PlanConflict,
@@ -320,7 +321,7 @@ function scanLegacy(
           ? { ...source, dir: yield* resolvePath(source.dir, true) }
           : { ...source, path: yield* resolvePath(source.path) };
       for (const { locator, read } of yield* files.scan(resolved)) {
-        const event = locator.pointer?.split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~");
+        const event = pointerTail(locator.pointer);
         if (events === undefined || (event !== undefined && events.has(event))) {
           found.push({
             observed: yield* observation(locator, read),

@@ -14,7 +14,7 @@ import {
   type EntryChange
 } from "../../application/ports.js";
 import type { ArtifactSource } from "../../domain/bundle/index.js";
-import type { ArtifactLocator } from "../../domain/install-plan/index.js";
+import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/index.js";
 import type { ArtifactContent, JsonValue } from "../../domain/ledger/index.js";
 import type { Document } from "../services/document.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
@@ -188,7 +188,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
           const { data } = yield* document(path, format);
           const value = yield* fromParse(
             path,
-            entryValue(data, { kind: "json-entry", path, pointer: locator.pointer ?? "" })
+            entryValue(data, { kind: "json-entry", path, pointer: locatorPointer(locator) })
           );
           const enabled = value === undefined || !DisabledRegistration.safeParse(value).success;
           return value === undefined ? undefined : { kind: "cli-registration", content: enabled, ...link };

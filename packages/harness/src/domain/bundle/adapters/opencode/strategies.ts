@@ -1,15 +1,13 @@
 import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../index.js";
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
-import type { HookDialect } from "../../../lifecycle/index.js";
+import { aliasesOf, type HookDialect } from "../../../lifecycle/index.js";
 
 import { opencodeHookDialect } from "../../../lifecycle/adapters/opencode.js";
 import { opencodeConfigDir, opencodePluginFile, opencodePluginsDir } from "./config-files.js";
 
 /** The registered events with every spelling the dialect accepts for them. */
 export function bridgedEvents(dialect: HookDialect, registrations: readonly HookRegistration[]): readonly string[] {
-  return [
-    ...new Set(registrations.flatMap(({ event }) => [event, ...(dialect.events[event]?.aliases ?? [])]))
-  ].toSorted();
+  return [...new Set(registrations.flatMap(({ event }) => [event, ...aliasesOf(dialect.events, event)]))].toSorted();
 }
 
 /**

@@ -1,6 +1,7 @@
 import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookDialects, PreparedDialect } from "../../lifecycle/value-objects/hook-dialect.js";
+import { prepareDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 import {
   foreignHooksIn,
@@ -118,7 +119,7 @@ type Incoming = Map<string, { readonly agent: CodingAgentId; readonly event: str
 
 /** The kept registrations of the placed files `runner` runs, grouped by the event `runner` runs each one as. */
 function incomingTo(
-  runner: HookDialect,
+  runner: PreparedDialect,
   sources: readonly HookPlacement[],
   settled: ReadonlyMap<HookPlacement, readonly Kept[]>,
   compat: readonly HookCompat[]
@@ -169,8 +170,9 @@ export function placeHooks(
   options: HookPlacementOptions = {}
 ): Result<readonly PlacedHooks[], HookSpecRejected | HookOverlap | InvalidHookPlacement> {
   const compat = options.compat ?? [];
-  const dialectOf = (agent: CodingAgentId): HookDialect => {
-    const dialect = Object.hasOwn(dialects, agent) ? dialects[agent] : undefined;
+  const prepared = prepareDialects(dialects);
+  const dialectOf = (agent: CodingAgentId): PreparedDialect => {
+    const dialect = Object.hasOwn(prepared, agent) ? prepared[agent] : undefined;
     if (dialect === undefined) {
       throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no hook dialect`);
     }
@@ -183,7 +185,7 @@ export function placeHooks(
       return err(problem);
     }
     const registrations = hookRegistrations(spec, dialectOf(placement.agent), {
-      runBy: runnersOf(placement.agent, placement.file, dialects)
+      runBy: runnersOf(placement.agent, placement.file, prepared)
     });
     if (!registrations.ok) {
       return registrations;
@@ -191,7 +193,7 @@ export function placeHooks(
     own.set(placement, registrations.value);
   }
 
-  const sourcesOf = (runner: HookDialect): HookPlacement[] =>
+  const sourcesOf = (runner: PreparedDialect): HookPlacement[] =>
     placements.filter(
       (source) =>
         source.agent !== runner.agent && foreignHooksIn(runner, source.agent, source.file, compat) !== undefined
@@ -226,7 +228,7 @@ export function placeHooks(
     }
     pending = pending.filter((placement) => !settled.has(placement));
   }
-  for (const runner of Object.values(dialects)) {
+  for (const runner of Object.values(prepared)) {
     if (runner !== undefined && !placements.some((placement) => placement.agent === runner.agent)) {
       const overlap = overlapIn(runner.agent, incomingTo(runner, sourcesOf(runner), settled, compat));
       if (overlap !== undefined) {

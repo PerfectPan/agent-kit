@@ -34,8 +34,10 @@ export {
   isWithin,
   type LocatorKey,
   locatorKey,
+  locatorPointer,
   locatorProblem,
-  locatorsOverlap
+  locatorsOverlap,
+  pointerTail
 } from "./value-objects/artifact-locator.js";
 export { type Conflict, CONFLICT_CHOICES, type ConflictChoice } from "./value-objects/conflict.js";
 export { contentAfterStep, type StepContentAfter } from "./value-objects/content-after.js";

@@ -1,6 +1,12 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { ForeignHooks, HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type {
+  ForeignHooks,
+  HookDialect,
+  HookDialects,
+  PreparedDialect
+} from "../../lifecycle/value-objects/hook-dialect.js";
+import { prepareDialect } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { HookSource, InstallAdapters, InstallContext } from "../value-objects/install-adapter.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 
@@ -54,20 +60,30 @@ export function foreignHooksIn(
   file: string,
   compat: readonly HookCompat[] = []
 ): ForeignHooks | undefined {
-  const foreign = runner.runsHooksOf?.find((hooks) => hooks.agent === agent && hooks.files.includes(file));
+  const foreign = prepareDialect(runner).runsHooksOf.find(
+    (hooks) => hooks.agent === agent && hooks.files.includes(file)
+  );
   const setting = compat.find((entry) => entry.runner === runner.agent && entry.agent === agent);
   return foreign !== undefined && (setting?.enabled ?? foreign.byDefault) ? foreign : undefined;
 }
 
 /**
  * The dialects that could run `agent`'s hooks registered in `file`, whatever their settings say: the gate check covers
- * them all, because a runner turned off now can be turned on without a new plan (and some always load them).
+ * them all, because a runner turned off now can be turned on without a new plan (and some always load them). Each
+ * dialect is prepared, so its `runsHooksOf` is a list.
  */
 export function runnersOf(agent: CodingAgentId, file: string, dialects: HookDialects): readonly HookDialect[] {
-  return Object.values(dialects).filter(
-    (dialect): dialect is HookDialect =>
-      dialect?.runsHooksOf?.some((hooks) => hooks.agent === agent && hooks.files.includes(file)) === true
-  );
+  const runners: HookDialect[] = [];
+  for (const dialect of Object.values(dialects)) {
+    if (dialect === undefined) {
+      continue;
+    }
+    const prepared = prepareDialect(dialect);
+    if (prepared.runsHooksOf.some((hooks) => hooks.agent === agent && hooks.files.includes(file))) {
+      runners.push(prepared);
+    }
+  }
+  return runners;
 }
 
 /** A foreign hook file one runner executes: the owner's file, its storage shape, and the runner's event renames. */
@@ -100,11 +116,12 @@ export function foreignHookFiles(
   if (dialect === undefined) {
     return [];
   }
+  const prepared = prepareDialect(dialect);
   const files: ForeignHookFile[] = [];
-  for (const foreign of dialect.runsHooksOf ?? []) {
+  for (const foreign of prepared.runsHooksOf) {
     const known = adapters[foreign.agent]?.hookSources?.(context) ?? [];
     for (const file of foreign.files) {
-      if (!file.startsWith("~/") || foreignHooksIn(dialect, foreign.agent, file, compat) === undefined) {
+      if (!file.startsWith("~/") || foreignHooksIn(prepared, foreign.agent, file, compat) === undefined) {
         continue;
       }
       const path = `${context.home}/${file.slice(2)}`;
@@ -119,7 +136,7 @@ export function foreignHookFiles(
 }
 
 /** An event of the dialect that is a permission gate where a hook exiting 0 without output does not let it proceed. */
-function blocksOnSilence(dialect: HookDialect, event: string): boolean {
+function blocksOnSilence(dialect: PreparedDialect, event: string): boolean {
   const spec = Object.hasOwn(dialect.events, event) ? dialect.events[event] : undefined;
   return spec?.gate === true && (spec.output ?? dialect.output)?.emptyStdout !== "proceed";
 }
@@ -134,31 +151,33 @@ export function hookRegistrations(
   dialect: HookDialect,
   options: HookRegistrationOptions = {}
 ): Result<readonly HookRegistration[], HookSpecRejected> {
-  const events = Object.hasOwn(spec.events, dialect.agent) ? (spec.events[dialect.agent] ?? []) : [];
+  const prepared = prepareDialect(dialect);
+  const runBy = (options.runBy ?? []).map((runner) => prepareDialect(runner));
+  const events = Object.hasOwn(spec.events, prepared.agent) ? (spec.events[prepared.agent] ?? []) : [];
   const timeout =
-    spec.timeoutSeconds === undefined || dialect.delivery === "plugin"
+    spec.timeoutSeconds === undefined || prepared.delivery === "plugin"
       ? undefined
-      : dialect.timeout?.unit === "milliseconds"
+      : prepared.timeout?.unit === "milliseconds"
         ? spec.timeoutSeconds * 1000
         : spec.timeoutSeconds;
-  const command = spec.command.replaceAll("{agent}", dialect.agent);
+  const command = spec.command.replaceAll("{agent}", prepared.agent);
   const registrations: HookRegistration[] = [];
   for (const event of events) {
-    const eventSpec = Object.hasOwn(dialect.events, event) ? dialect.events[event] : undefined;
+    const eventSpec = Object.hasOwn(prepared.events, event) ? prepared.events[event] : undefined;
     if (eventSpec === undefined) {
-      return err({ _tag: "HookSpecRejected", agent: dialect.agent, event, reason: "unknown-event" });
+      return err({ _tag: "HookSpecRejected", agent: prepared.agent, event, reason: "unknown-event" });
     }
-    if (blocksOnSilence(dialect, event)) {
-      return err({ _tag: "HookSpecRejected", agent: dialect.agent, event, reason: "blocking-gate" });
+    if (blocksOnSilence(prepared, event)) {
+      return err({ _tag: "HookSpecRejected", agent: prepared.agent, event, reason: "blocking-gate" });
     }
-    for (const runner of options.runBy ?? []) {
-      for (const foreign of runner.runsHooksOf ?? []) {
+    for (const runner of runBy) {
+      for (const foreign of runner.runsHooksOf) {
         const renamed =
-          foreign.agent === dialect.agent && Object.hasOwn(foreign.events, event) ? foreign.events[event] : undefined;
+          foreign.agent === prepared.agent && Object.hasOwn(foreign.events, event) ? foreign.events[event] : undefined;
         if (renamed !== undefined && blocksOnSilence(runner, renamed)) {
           return err({
             _tag: "HookSpecRejected",
-            agent: dialect.agent,
+            agent: prepared.agent,
             event,
             reason: "blocking-gate",
             runBy: { agent: runner.agent, event: renamed }

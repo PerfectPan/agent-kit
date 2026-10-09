@@ -59,6 +59,7 @@ export function uninstall(
   return Effect.scoped(
     Effect.gen(function* () {
       requireUserScope(options);
+      const legacyMarkers = options.legacyMarkers ?? [];
       const bundle = yield* fromResult(
         checkBundle({
           owner,
@@ -75,7 +76,7 @@ export function uninstall(
         registrations: registrationLookup(setup.adapters, setup.context)
       });
       // Legacy Artifacts are in no ledger entry, so with markers every agent with an adapter is searched.
-      const searched = (options.legacyMarkers ?? []).length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
+      const searched = legacyMarkers.length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
       const agents = options.agents ?? unionAgents(loaded.ledger.agentsOf(owner), searched);
       const plan = yield* buildPlan(scope, loaded, { bundle, agents, setup, desired: [], droppedHooks: [] });
       const report = yield* applyLocked(recordOf(plan), loaded);

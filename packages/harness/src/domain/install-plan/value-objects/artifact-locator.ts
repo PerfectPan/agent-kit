@@ -66,6 +66,24 @@ export function locatorKey(locator: ArtifactLocator): LocatorKey {
   );
 }
 
+/** The pointer text, or `""` when the locator kind has none. */
+export function locatorPointer(locator: Pick<ArtifactLocator, "pointer">): string {
+  return locator.pointer === undefined ? "" : locator.pointer;
+}
+
+/**
+ * The last segment of a JSON pointer, with `~1` and `~0` undone. A missing pointer has none; an empty pointer's
+ * only segment is empty.
+ */
+export function pointerTail(pointer: string | undefined): string | undefined {
+  if (pointer === undefined) {
+    return undefined;
+  }
+  const parts = pointer.split("/");
+  const segment = parts[parts.length - 1] ?? "";
+  return segment.replaceAll("~1", "/").replaceAll("~0", "~");
+}
+
 /**
  * The segments of an absolute, normalized path (POSIX `/a/b` or Windows `C:\a\b`), or `undefined` for any other
  * path. Both separators split, so a backslash in a POSIX file name makes the check stricter, never looser.
@@ -87,10 +105,11 @@ export function locatorProblem(locator: ArtifactLocator): string | undefined {
     return ENTRY_KINDS.has(locator.kind) ? `${locator.kind} needs a pointer` : `${locator.kind} takes no pointer`;
   }
   const structured = locator.kind === "json-entry" || locator.kind === "toml-entry";
-  if (structured && !locator.pointer?.startsWith("/")) {
+  const pointer = locator.pointer;
+  if (structured && (pointer === undefined || !pointer.startsWith("/"))) {
     return "pointer is not a JSON pointer to an entry";
   }
-  if (structured && locator.pointer?.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
+  if (structured && pointer !== undefined && pointer.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
     return "pointer names an array index; address the element by `member`";
   }
   if (locator.member !== undefined && (!structured || locator.member === "")) {

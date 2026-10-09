@@ -125,3 +125,58 @@ export interface HookDialect {
 
 /** Hook dialects by agent id; `readHookEvent` defaults to `builtinHookDialects`. */
 export type HookDialects = Readonly<Partial<Record<CodingAgentId, HookDialect>>>;
+
+/**
+ * A HookDialect whose every-reader defaults are filled, so domain code reads flat values: `runsHooksOf` is `[]` when
+ * the agent runs no other agent's hooks. The published `HookDialect` keeps its optional fields, and `prepareDialect`
+ * fills them once where dialects enter the domain.
+ */
+export interface PreparedDialect extends HookDialect {
+  readonly runsHooksOf: readonly ForeignHooks[];
+}
+
+/** Prepared dialects by agent id. */
+export type PreparedDialects = Readonly<Partial<Record<CodingAgentId, PreparedDialect>>>;
+
+const preparedDialects = new WeakMap<HookDialect, PreparedDialect>();
+
+/**
+ * Fills a dialect's every-reader defaults. A dialect that already lists `runsHooksOf` is returned as it is; one that
+ * omits the list is copied once, with `[]`, and both are cached so a later read of the same object does not copy again.
+ */
+export function prepareDialect(dialect: HookDialect): PreparedDialect {
+  const cached = preparedDialects.get(dialect);
+  if (cached !== undefined) {
+    return cached;
+  }
+  if (dialect.runsHooksOf !== undefined) {
+    // The list is present, so this published dialect already has the field the prepared type requires.
+    const prepared = dialect as PreparedDialect;
+    preparedDialects.set(dialect, prepared);
+    return prepared;
+  }
+  const prepared: PreparedDialect = { ...dialect, runsHooksOf: [] };
+  preparedDialects.set(dialect, prepared);
+  preparedDialects.set(prepared, prepared);
+  return prepared;
+}
+
+/** Alias spellings of one event, or none when the dialect has no such event or names no aliases. */
+export function aliasesOf(events: Readonly<Record<string, HookEventSpec>>, name: string): readonly string[] {
+  const spec = Object.hasOwn(events, name) ? events[name] : undefined;
+  if (spec === undefined || spec.aliases === undefined) {
+    return [];
+  }
+  return spec.aliases;
+}
+
+/** Prepares a dialect table, so readers of any entry see `runsHooksOf` as a list. */
+export function prepareDialects(dialects: HookDialects): PreparedDialects {
+  const prepared: Partial<Record<CodingAgentId, PreparedDialect>> = {};
+  for (const [agent, dialect] of Object.entries(dialects)) {
+    if (dialect !== undefined) {
+      prepared[agent as CodingAgentId] = prepareDialect(dialect);
+    }
+  }
+  return prepared;
+}
