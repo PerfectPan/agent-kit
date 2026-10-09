@@ -1,4 +1,4 @@
-import type { CodingAgent } from "../coding-agent/index.js";
+import type { CodingAgent } from "../index.js";
 
 export const cursor: CodingAgent = {
   id: "cursor",

@@ -184,21 +184,8 @@ const FACTS: readonly Fact[] = [
 ];
 
 const OPENCODE_CONFIG = "https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/config/paths.ts";
-const CLINE_PATHS = "https://github.com/cline/cline/blob/main/sdk/packages/shared/src/storage/paths.ts";
-const VSCODE_USER_DATA =
-  "https://github.com/microsoft/vscode/blob/main/src/vs/platform/environment/node/userDataPath.ts";
-const COMMAND_CODE = "https://registry.npmjs.org/command-code/latest";
 const CURSOR_CLI = "https://cursor.com/docs/cli/reference/authentication";
-const ANTIGRAVITY = "https://antigravity.google/docs/cli/install";
-const ROO_CONFIG = "https://github.com/RooCodeInc/Roo-Code/blob/main/src/services/roo-config/index.ts";
-const COPILOT_HOME = "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference";
-const OPENCLAW_ENVIRONMENT = "https://github.com/openclaw/openclaw/blob/main/docs/help/environment.md";
 const PI_CONFIG = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/config.ts";
-const KIMI_SHARE = "https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/share.py";
-const DEVIN_DESKTOP = "https://docs.devin.ai/desktop/devin-desktop-faq";
-const HERMES_CONSTANTS = "https://github.com/NousResearch/hermes-agent/blob/main/hermes_constants.py";
-const TRAE_RULES = "https://docs.trae.ai/ide/rules";
-const CODEX_APP = "https://learn.chatgpt.com/docs/config-file/config-advanced";
 
 /**
  * Every fact of a built-in recipe that differs from agent-finder's, with the source that settled it. A `warnings`
@@ -207,77 +194,32 @@ const CODEX_APP = "https://learn.chatgpt.com/docs/config-file/config-advanced";
  */
 const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string }[] = [
   // Catalog owns display names.
-  { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/adapters/opencode.ts" },
+  { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/coding-agent/adapters/opencode.ts" },
   // opencode also reads opencode.jsonc.
   { agent: "opencode", fact: "mcpConfigPaths", source: OPENCODE_CONFIG },
   { agent: "opencode", fact: "warnings", source: OPENCODE_CONFIG },
-  // Cline has a CLI and keeps its data in ~/.cline; the extension's VS Code storage is checked instead of the
-  // shared extensions directory, which says nothing about Cline.
-  { agent: "cline", fact: "commands", source: "https://registry.npmjs.org/cline/latest" },
-  { agent: "cline", fact: "configPaths", source: `${CLINE_PATHS} and ${VSCODE_USER_DATA}` },
-  { agent: "cline", fact: "warnings", source: CLINE_PATHS },
-  { agent: "codebuddy", fact: "warnings", source: "https://www.codebuddy.ai/docs/cli/env-vars" },
-  // The command-code package installs command-code and commandcode, and keeps its data in ~/.commandcode.
-  { agent: "command-code", fact: "commands", source: COMMAND_CODE },
-  { agent: "command-code", fact: "configPaths", source: COMMAND_CODE },
-  { agent: "command-code", fact: "warnings", source: COMMAND_CODE },
-  // The CLI's command is kiro-cli; kiro opens the IDE.
-  { agent: "kiro-cli", fact: "commands", source: "https://kiro.dev/docs/reference/settings" },
-  { agent: "kiro-cli", fact: "warnings", source: "https://kiro.dev/docs/reference/settings" },
   // The Cursor CLI is cursor-agent with its configuration in ~/.cursor; its other name, agent, is left out because
   // other agents install a command with that name.
   { agent: "cursor", fact: "commands", source: CURSOR_CLI },
   { agent: "cursor", fact: "configPaths", source: CURSOR_CLI },
   { agent: "cursor", fact: "warnings", source: CURSOR_CLI },
-  // Antigravity's CLI is agy with its directory under ~/.gemini; the application's user directories are unverified.
-  { agent: "antigravity", fact: "commands", source: ANTIGRAVITY },
-  { agent: "antigravity", fact: "configPaths", source: ANTIGRAVITY },
-  { agent: "antigravity", fact: "warnings", source: ANTIGRAVITY },
-  { agent: "roo-code", fact: "configPaths", source: `${ROO_CONFIG} and ${VSCODE_USER_DATA}` },
-  { agent: "roo-code", fact: "warnings", source: ROO_CONFIG },
-  // The Copilot CLI is copilot with its home in ~/.copilot; gh and ~/.config/gh belong to the GitHub CLI.
-  { agent: "github-copilot", fact: "commands", source: COPILOT_HOME },
-  { agent: "github-copilot", fact: "configPaths", source: COPILOT_HOME },
-  { agent: "github-copilot", fact: "warnings", source: COPILOT_HOME },
-  { agent: "amp", fact: "configPaths", source: "https://ampcode.com/docs/cli/settings" },
-  { agent: "amp", fact: "warnings", source: "https://ampcode.com/docs/cli/settings" },
-  { agent: "openclaw", fact: "warnings", source: OPENCLAW_ENVIRONMENT },
-  { agent: "neovate", fact: "warnings", source: "https://github.com/neovateai/neovate-code/blob/master/src/paths.ts" },
   // Pi keeps its configuration in ~/.pi/agent.
   { agent: "pi", fact: "configPaths", source: PI_CONFIG },
-  { agent: "pi", fact: "warnings", source: PI_CONFIG },
-  // The qodercli package installs qoder and qodercli.
-  { agent: "qoder", fact: "commands", source: "https://registry.npmjs.org/@qoder-ai/qodercli/latest" },
-  { agent: "qoder", fact: "warnings", source: "https://docs.qoder.com/cli/settings-reference" },
-  // Still unverified: the command may be zen.
-  { agent: "zencoder", fact: "warnings", source: "https://docs.zencoder.ai (search result only)" },
-  { agent: "kimi-code-cli", fact: "warnings", source: KIMI_SHARE },
-  // Windsurf is now Devin Desktop; both names are checked.
-  { agent: "windsurf", fact: "commands", source: DEVIN_DESKTOP },
-  { agent: "windsurf", fact: "appPaths", source: DEVIN_DESKTOP },
-  { agent: "windsurf", fact: "mcpConfigPaths", source: "https://docs.devin.ai/desktop/cascade/mcp" },
-  { agent: "windsurf", fact: "warnings", source: DEVIN_DESKTOP },
-  // The Codex app is installed as ChatGPT.app (bundle id com.openai.codex). Its home is the Codex CLI's, which any
-  // codex run creates, so it is no evidence of the app; the bundle id tells the app apart from the ChatGPT app.
-  { agent: "codex-desktop", fact: "appPaths", source: CODEX_APP },
-  { agent: "codex-desktop", fact: "configPaths", source: CODEX_APP },
-  { agent: "codex-desktop", fact: "mcpConfigPaths", source: CODEX_APP },
-  { agent: "codex-desktop", fact: "warnings", source: CODEX_APP },
-  // aider reads ~/.aider.conf.yml and keeps state in ~/.aider; it never reads ~/.config/aider.
-  { agent: "aider", fact: "configPaths", source: "https://github.com/Aider-AI/aider/blob/main/aider/args.py" },
-  { agent: "hermes", fact: "warnings", source: HERMES_CONSTANTS },
-  // Trae is an IDE, with a separate CN build.
-  { agent: "trae", fact: "kind", source: TRAE_RULES },
-  { agent: "trae", fact: "commands", source: TRAE_RULES },
-  { agent: "trae", fact: "configPaths", source: TRAE_RULES },
-  { agent: "trae", fact: "version", source: TRAE_RULES },
-  { agent: "trae", fact: "warnings", source: TRAE_RULES }
+  { agent: "pi", fact: "warnings", source: PI_CONFIG }
 ];
 
 describe("parity with agent-finder", () => {
-  it("has agent-finder's 26 agents in its order, then Grok", () => {
+  it("has agent-finder's 26 agents in its order, and the seven built-in agents", () => {
     expect(Object.keys(finderRecipes)).toEqual(cases[0]?.report.agents.map((agent) => agent.id));
-    expect(Object.keys(builtinProbeRecipes)).toEqual([...Object.keys(finderRecipes), "grok"]);
+    expect(Object.keys(builtinProbeRecipes).toSorted()).toEqual([
+      "claude-code",
+      "codex",
+      "cursor",
+      "gemini-cli",
+      "grok",
+      "opencode",
+      "pi"
+    ]);
     expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
       "doctor-config-only",
       "host-probe",
@@ -313,10 +255,10 @@ describe("parity with agent-finder", () => {
         PATH: "C:\\Program Files\\Microsoft VS Code\\bin;C:\\Windows\\System32",
         PATHEXT: ".COM;.EXE;.BAT;.CMD"
       },
-      files: { "C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD": "" }
+      files: { "C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD": "" }
     });
-    const [vscode] = await detectAgents(platform, { agents: ["vscode-copilot"] });
-    expect(vscode?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\code.CMD");
+    const [vscode] = await detectAgents(platform, { agents: ["cursor"] });
+    expect(vscode?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD");
   });
 
   it("differs from agent-finder's facts exactly where upstream sources corrected them", () => {
@@ -331,16 +273,17 @@ describe("parity with agent-finder", () => {
       warnings: recipe.warnings
     });
     const builtin: Readonly<Record<string, ProbeRecipe>> = builtinProbeRecipes;
-    const differences = providers.flatMap((provider) => {
-      const [ours, theirs] = [builtin[provider.id], finderRecipes[provider.id]];
-      if (ours === undefined || theirs === undefined) {
-        return [`${provider.id} is missing`];
-      }
-      const [mine, original] = [facts(ours), facts(theirs)];
-      return FACTS.filter((fact) => JSON.stringify(mine[fact]) !== JSON.stringify(original[fact])).map(
-        (fact) => `${provider.id} ${fact}`
-      );
-    });
+    const differences = providers
+      .filter((provider) => builtin[provider.id] !== undefined)
+      .flatMap((provider) => {
+        const [mine, original] = [
+          facts(builtin[provider.id] as ProbeRecipe),
+          facts(finderRecipes[provider.id] as ProbeRecipe)
+        ];
+        return FACTS.filter((fact) => JSON.stringify(mine[fact]) !== JSON.stringify(original[fact])).map(
+          (fact) => `${provider.id} ${fact}`
+        );
+      });
     expect(differences.toSorted()).toEqual(
       EXPECTED_DIFFERENCES.map(({ agent, fact }) => `${agent} ${fact}`).toSorted()
     );

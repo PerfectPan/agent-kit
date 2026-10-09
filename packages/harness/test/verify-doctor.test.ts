@@ -61,7 +61,7 @@ describe("verify", () => {
         // Another tool recorded its own agent under the owner's entries; verify covers the ledger's agents.
         const stored = JSON.parse(home.read(".local/state/agent-kit/harness/user/ledger.json") ?? "{}");
         for (const entry of Object.values<(typeof stored.entries)[string]>(stored.entries)) {
-          entry.agents = [...entry.agents, "cline"];
+          entry.agents = [...entry.agents, "my-agent"];
         }
         home.write(".local/state/agent-kit/harness/user/ledger.json", `${JSON.stringify(stored)}\n`);
         const report = yield* verify("demo-app", { bundle });

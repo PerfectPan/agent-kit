@@ -3,7 +3,7 @@ export {
   isBuiltinCodingAgentId,
   parseCodingAgentId,
   resolveHome
-} from "./domain/adapters/index.js";
+} from "./domain/coding-agent/adapters/index.js";
 export { homeFromRule } from "./domain/coding-agent/index.js";
 export type {
   AgentHome,

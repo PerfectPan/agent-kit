@@ -214,16 +214,13 @@ Cursor (added after 0.1.0).
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
 (`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of 27 agents (the seven above, aider, Amp, Antigravity,
-Cline, CodeBuddy, Codex Desktop, Command Code, GitHub Copilot, Hermes, Kimi Code CLI, Kiro CLI, Neovate,
-OpenClaw, OpenHands, Qoder, Roo Code, Trae, VS Code Copilot, Windsurf and Zencoder), whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each of the seven agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each
 recipe lists. Version probes run by default and make an agent `runnable`; `versionProbe: false` runs nothing at all.
 Commands run without a shell and with a time limit; a check that fails is reported in `problems`.
-`/catalog` has an identity for each of them, and a home rule where upstream documents one: Cline, CodeBuddy, Codex
-Desktop, GitHub Copilot, Kimi Code CLI, Kiro CLI, Neovate, OpenHands and Qoder.
+`/catalog` has an identity for each of them, and a home rule for each one except Cursor.
 
 [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), in the same lockstep release policy, adds fenced
 leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform,

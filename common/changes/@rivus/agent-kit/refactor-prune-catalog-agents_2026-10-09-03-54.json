@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Catalog and discovery keep only the agents some context supports (claude-code, codex, cursor, gemini-cli, grok, opencode, pi); removed the identities and probe recipes of aider, amp, antigravity, cline, codebuddy, codex-desktop, command-code, github-copilot, hermes, kimi-code-cli, kiro-cli, neovate, openclaw, openhands, qoder, roo-code, trae, vscode-copilot, windsurf and zencoder.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

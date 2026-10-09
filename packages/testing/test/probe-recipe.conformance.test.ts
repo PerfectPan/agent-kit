@@ -95,18 +95,6 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
       { output: ok('{"status":"unauthenticated","isAuthenticated":false}'), reading: { loggedIn: false } },
       { output: { code: 1, stdout: '{"status":"error"}', stderr: "" }, reading: undefined }
     ]
-  },
-  "kimi-code-cli": {
-    versions: [{ output: ok("kimi, version 1.22.0\n"), version: { output: "kimi, version 1.22.0", number: "1.22.0" } }]
-  },
-  // `copilot --version` of @github/copilot 1.0.93.
-  "github-copilot": {
-    versions: [
-      {
-        output: ok("GitHub Copilot CLI 1.0.93.\nRun 'copilot update' to check for updates.\n"),
-        version: { output: "GitHub Copilot CLI 1.0.93.\nRun 'copilot update' to check for updates.", number: "1.0.93" }
-      }
-    ]
   }
 };
 
