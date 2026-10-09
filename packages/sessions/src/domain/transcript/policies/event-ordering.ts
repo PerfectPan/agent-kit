@@ -2,7 +2,7 @@ import type { SourcedRecord } from "../value-objects/source-pointer.js";
 import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 
 /** Epoch milliseconds from a record's time field: seconds or milliseconds, or an ISO string. Missing is `undefined`. */
-export function timeOf(value: unknown): number | undefined {
+export function timeOf(value: number | string | undefined): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value < 1e12 ? value * 1000 : value;
   }
@@ -16,31 +16,32 @@ export function timeOf(value: unknown): number | undefined {
 }
 
 /**
- * Times of `records` in file order from their `timestamp` field: a gap takes the previous known time, a leading gap
- * the first known one, and a file with no time at all gets 1, so no event has `ts` 0.
+ * Times in file order: a gap takes the previous known time, a leading gap the first known one, and a file with no
+ * time at all gets 1, so no event has `ts` 0.
  */
-export function inheritTimes(records: readonly SourcedRecord[]): number[] {
-  const times = records.map((record) => recordTime(record));
+export function inheritTimes(times: readonly (number | undefined)[]): number[] {
+  const inherited = times.slice();
   let last: number | undefined;
-  for (let index = 0; index < times.length; index++) {
-    if (times[index] === undefined) {
-      times[index] = last;
+  for (let index = 0; index < inherited.length; index++) {
+    if (inherited[index] === undefined) {
+      inherited[index] = last;
     } else {
-      last = times[index];
+      last = inherited[index];
     }
   }
-  const known = times.find((value) => value !== undefined);
+  const known = inherited.find((value) => value !== undefined);
   if (known !== undefined) {
-    for (let index = 0; index < times.length && times[index] === undefined; index++) {
-      times[index] = known;
+    for (let index = 0; index < inherited.length && inherited[index] === undefined; index++) {
+      inherited[index] = known;
     }
   }
-  return times.map((value) => value ?? known ?? 1);
+  return inherited.map((value) => value ?? known ?? 1);
 }
 
-function recordTime(record: SourcedRecord): number | undefined {
-  const value = record.value;
-  return typeof value === "object" && value !== null ? timeOf((value as Record<string, unknown>).timestamp) : undefined;
+/** A record with the time its log wrote for it: `time` is `undefined` when it carries none and inherits one. */
+export interface TimedRecord {
+  record: SourcedRecord;
+  time: number | undefined;
 }
 
 export interface StampedRecord {
@@ -53,8 +54,8 @@ export interface StampedRecord {
  * record with the smallest time, and a tie goes to the earlier file. Times inside one file may go backwards (Claude
  * Code writes a compact summary with an earlier time than the boundary it follows); file order wins over them.
  */
-export function mergeByTime(groups: readonly (readonly SourcedRecord[])[]): StampedRecord[] {
-  const times = groups.map((group) => inheritTimes(group));
+export function mergeByTime(groups: readonly (readonly TimedRecord[])[]): StampedRecord[] {
+  const times = groups.map((group) => inheritTimes(group.map(({ time }) => time)));
   const cursor = groups.map(() => 0);
   const out: StampedRecord[] = [];
   for (;;) {
@@ -71,7 +72,7 @@ export function mergeByTime(groups: readonly (readonly SourcedRecord[])[]): Stam
       return out;
     }
     const at = cursor[pick]!;
-    out.push({ record: groups[pick]![at]!, ts: times[pick]![at]! });
+    out.push({ record: groups[pick]![at]!.record, ts: times[pick]![at]! });
     cursor[pick] = at + 1;
   }
 }

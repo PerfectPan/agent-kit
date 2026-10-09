@@ -9,6 +9,7 @@ import {
   unknownFormatGeneration
 } from "../../../transcript/index.js";
 import { lenient } from "../../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../../transcript/adapters/timestamp.js";
 
 // Grok keeps one directory per session under `<home>/sessions/<encoded-cwd>/<session-id>/`. The transcript is
 // `updates.jsonl`. `summary.json`, `system_prompt.txt` and `tool_definitions.json` sit beside it. A subagent's
@@ -99,8 +100,8 @@ const SummaryFile = z.looseObject({
   generated_title: lenient(z.string()),
   session_summary: lenient(z.string()),
   current_model_id: lenient(z.string()),
-  created_at: lenient(z.union([z.number(), z.string()])),
-  last_active_at: lenient(z.union([z.number(), z.string()])),
+  created_at: logTimestamp,
+  last_active_at: logTimestamp,
   info: lenient(z.looseObject({ id: lenient(z.string()), cwd: lenient(z.string()) }))
 });
 

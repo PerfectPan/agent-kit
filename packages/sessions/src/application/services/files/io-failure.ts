@@ -1,6 +1,8 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import type { ReadFailed, SessionNotFound } from "../../../domain/session/index.js";
+import { lenient } from "../../../domain/transcript/adapters/lenient.js";
 import type { SessionPlatform } from "../../ports.js";
 
 /** Errno codes of file system failures a read can meet. Any other error is a defect and is not turned into a value. */
@@ -23,6 +25,13 @@ const FS_ERRNO = new Set([
   "ETIMEDOUT"
 ]);
 
+/** The shape of a file system error: a string `code`, and the `path` it failed on. A `path` of any other shape counts
+ * as absent, so the caller's path wins, as before. */
+const FsError = z.object({
+  code: z.string(),
+  path: lenient(z.string())
+});
+
 /** A view of a platform whose file system errors can be told from other errors, and turned into values. */
 export interface GuardedIo {
   readonly platform: SessionPlatform;
@@ -37,8 +46,10 @@ export interface GuardedIo {
 export function guardIo(platform: SessionPlatform): GuardedIo {
   const fsErrors = new WeakSet<object>();
   const mark = (error: unknown): never => {
-    if (typeof error === "object" && error !== null && FS_ERRNO.has(String((error as { code?: unknown }).code))) {
-      fsErrors.add(error);
+    const fs = z.safeParse(FsError, error).data;
+    if (fs !== undefined && FS_ERRNO.has(fs.code)) {
+      // The parse only succeeds for objects, so the error is one the `WeakSet` can hold.
+      fsErrors.add(error as object);
     }
     throw error;
   };
@@ -58,7 +69,15 @@ export function guardIo(platform: SessionPlatform): GuardedIo {
       }
     },
     failure(error, path) {
-      return typeof error === "object" && error !== null && fsErrors.has(error) ? classify(error, path) : undefined;
+      const fs = z.safeParse(FsError, error).data;
+      if (fs === undefined || !fsErrors.has(error as object)) {
+        return undefined;
+      }
+      const at = fs.path ?? path;
+      if (fs.code === "ENOENT") {
+        return { _tag: "SessionNotFound", path: at };
+      }
+      return { _tag: "ReadFailed", path: at, message: error instanceof Error ? error.message : fs.code, cause: error };
     }
   };
 }
@@ -86,13 +105,4 @@ export async function catchIoFailure<T>(
     }
     return err(failure);
   }
-}
-
-function classify(error: object, path: string): SessionNotFound | ReadFailed {
-  const { code, path: errorPath } = error as { code: string; path?: unknown };
-  const at = typeof errorPath === "string" ? errorPath : path;
-  if (code === "ENOENT") {
-    return { _tag: "SessionNotFound", path: at };
-  }
-  return { _tag: "ReadFailed", path: at, message: error instanceof Error ? error.message : code, cause: error };
 }

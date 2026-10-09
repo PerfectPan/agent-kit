@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { baseEvent } from "../factories/transcript-event.js";
+import { timedRecord } from "../adapters/timestamp.js";
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
 import { inheritTimes, mergeByTime } from "./event-ordering.js";
 import { placeRequest } from "./request-placement.js";
@@ -16,20 +17,21 @@ function records(file: string, times: (string | undefined)[]): SourcedRecord[] {
 }
 
 const at = (seconds: number) => `2026-01-01T00:00:${String(seconds).padStart(2, "0")}.000Z`;
+const ms = (value: string | undefined) => (value === undefined ? undefined : Date.parse(value));
 
 describe("inheritTimes", () => {
   it("fills a gap from the previous time, a leading gap from the first time, and never returns 0", () => {
-    expect(inheritTimes(records("a", [undefined, at(2), undefined, at(1)]))).toEqual(
+    expect(inheritTimes([undefined, ms(at(2)), undefined, ms(at(1))])).toEqual(
       [at(2), at(2), at(2), at(1)].map((value) => Date.parse(value))
     );
-    expect(inheritTimes(records("a", [undefined, undefined]))).toEqual([1, 1]);
+    expect(inheritTimes([undefined, undefined])).toEqual([1, 1]);
   });
 });
 
 describe("mergeByTime", () => {
   it("interleaves files by time, gives a tie to the earlier file, and never reorders a file", () => {
-    const main = records("main", [at(0), at(3), at(1), at(5)]);
-    const sub = records("sub", [at(2), at(3)]);
+    const main = records("main", [at(0), at(3), at(1), at(5)]).map(timedRecord);
+    const sub = records("sub", [at(2), at(3)]).map(timedRecord);
     const merged = mergeByTime([main, sub]).map(({ record }) => `${record.file}:${record.line}`);
     expect(merged).toEqual(["main:1", "sub:1", "main:2", "main:3", "sub:2", "main:4"]);
   });

@@ -11,6 +11,7 @@ import {
   type SessionHead,
   type SessionListFailure,
   summarizeSession,
+  timeOf,
   translateCodexRecords,
   type Transcript
 } from "@rivus/agent-kit-sessions";
@@ -41,10 +42,13 @@ async function* failing(error: Error): AsyncGenerator<Uint8Array> {
 
 const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
 
-/** Records of one rollout, stamped like the adapter stamps them. */
+/** Records of one rollout, stamped like the adapter stamps them: each record carries the time its `timestamp` holds. */
 function stamped(values: unknown[]) {
   return mergeByTime([
-    values.map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+    values.map((value, index) => ({
+      record: { value, file: "r.jsonl", line: index + 1, offset: index, length: 1 },
+      time: timeOf((value as { timestamp?: number | string }).timestamp)
+    }))
   ]);
 }
 

@@ -1,6 +1,7 @@
 import * as z from "zod/mini";
 
 import { lenient } from "../lenient.js";
+import { logTimestamp } from "../timestamp.js";
 
 // Codex writes one rollout record per line. Agent logs are read leniently: a field of an unexpected type counts as
 // absent (./lenient.js), and only the record envelope decides whether the format generation is known.
@@ -92,6 +93,8 @@ interface CodexPayload {
   thread_settings?: { service_tier?: string };
   source?: { subagent?: { thread_spawn?: unknown } };
   usage?: Record<string, unknown>;
+  /** A payload's own time, as a `session_meta` or a pre-envelope item carries it. */
+  timestamp?: number | string;
   info?: {
     total_token_usage?: unknown;
     last_token_usage?: unknown;
@@ -137,6 +140,7 @@ const CodexPayloadSchema = z.looseObject({
   thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) })),
   source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
   usage: lenient(z.record(z.string(), z.unknown())),
+  timestamp: logTimestamp,
   // The totals stay the raw values they were: the usage rule compares them by their JSON text, so a parsed copy
   // would normalize `null`, a mistyped total, or a `__proto__` key into something else.
   info: lenient(
@@ -157,7 +161,7 @@ interface CodexRecord {
   type?: string;
   record_type?: string;
   id?: string;
-  timestamp?: unknown;
+  timestamp?: number | string;
   formatVersion?: unknown;
   payload?: unknown;
 }
@@ -167,15 +171,17 @@ const NonEmptyString = z.string().check(z.minLength(1));
 
 /**
  * The envelope every codex reader parses: the non-empty `type`, the `record_type` bookkeeping marker, the header `id`
- * of a pre-envelope rollout, and the `timestamp` and `formatVersion` presence markers the generation check reads.
- * Readers that parse their own payload spread `.shape` and add a `payload` field of theirs.
+ * of a pre-envelope rollout with the `timestamp` it carries, and the `formatVersion` marker the generation check
+ * reads. Key presence decides the check, and a lenient field keeps its key when the value is mistyped, so a
+ * `timestamp` of another type still names a header. Readers that parse their own payload spread `.shape` and add a
+ * `payload` field of theirs.
  */
 export const CodexEnvelopeSchema: z.ZodMiniObject<
   {
     type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
     record_type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
     id: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
-    timestamp: z.ZodMiniOptional<z.ZodMiniUnknown>;
+    timestamp: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniUnion<[z.ZodMiniNumber, z.ZodMiniString]>>>;
     formatVersion: z.ZodMiniOptional<z.ZodMiniUnknown>;
   },
   z.core.$loose
@@ -183,7 +189,7 @@ export const CodexEnvelopeSchema: z.ZodMiniObject<
   type: lenient(NonEmptyString),
   record_type: lenient(NonEmptyString),
   id: lenient(z.string()),
-  timestamp: z.optional(z.unknown()),
+  timestamp: logTimestamp,
   formatVersion: z.optional(z.unknown())
 });
 

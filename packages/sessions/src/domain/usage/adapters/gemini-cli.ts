@@ -4,6 +4,7 @@ import * as z from "zod/mini";
 import { type SourcePointer, sourceOf, timeOf } from "../../transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../transcript/adapters/timestamp.js";
 import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "gemini-cli";
@@ -24,7 +25,8 @@ const GeminiCliRecord = z.looseObject({
   type: lenient(z.string()),
   model: lenient(z.string()),
   projectHash: lenient(z.string()),
-  sessionId: lenient(z.string())
+  sessionId: lenient(z.string()),
+  timestamp: logTimestamp
 });
 
 type GeminiCliRecordValue = z.output<typeof GeminiCliRecord>;

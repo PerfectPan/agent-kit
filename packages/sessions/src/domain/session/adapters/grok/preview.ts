@@ -1,6 +1,6 @@
 import type { SessionHead, SessionPreview } from "../../index.js";
 import { SESSION_TITLE_MAX } from "../../index.js";
-import { timeOf } from "../../../transcript/index.js";
+import { timeOfValue } from "../../../transcript/adapters/timestamp.js";
 import { acpChunkText, acpUpdateOf } from "../../../transcript/adapters/acp-updates.js";
 import type { GrokSessionMeta } from "./layout.js";
 import { isInjectedChunk } from "../../../transcript/adapters/grok/chunks.js";
@@ -11,7 +11,7 @@ export function previewGrokRecords(records: readonly Record<string, unknown>[]):
   const preview: SessionPreview = {};
   for (const record of records) {
     const update = acpUpdateOf(record);
-    const ts = timeOf(record.timestamp);
+    const ts = timeOfValue(record);
     if (ts !== undefined) {
       preview.startedAt ??= ts;
       preview.lastAt = ts;

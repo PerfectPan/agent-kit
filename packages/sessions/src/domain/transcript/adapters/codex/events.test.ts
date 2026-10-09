@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeByTime, type StampedRecord } from "../../index.js";
+import { timedRecord } from "../timestamp.js";
 import { translateCodexRecords } from "./events.js";
 
 const session = (result: ReturnType<typeof translateCodexRecords>) => {
@@ -22,7 +23,9 @@ const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
 /** Records of one rollout, stamped like the adapter stamps them. */
 function stamped(values: unknown[]): StampedRecord[] {
   return mergeByTime([
-    values.map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+    values
+      .map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+      .map(timedRecord)
   ]);
 }
 

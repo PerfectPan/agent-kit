@@ -32,6 +32,7 @@ import {
   mergeAcpToolUpdate
 } from "../acp-updates.js";
 import { isInjectedChunk } from "./chunks.js";
+import { recordTime } from "../timestamp.js";
 import type { GrokSessionMeta, GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
 import {
   followGrokTurn,
@@ -116,7 +117,7 @@ export function translateGrokRecords(
   const events: TranscriptEvent[] = [];
   const skipped: SkippedRecord[] = [];
   const agents: Lane[] = [{ id: MAIN_LANE_ID }];
-  const times = inheritTimes(records);
+  const times = inheritTimes(records.map(recordTime));
   const turn: GrokTurn = {};
   let lastUserPrompt: string | undefined;
   let startedAt = meta.startedAt;

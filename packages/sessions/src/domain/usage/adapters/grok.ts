@@ -4,6 +4,7 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, type ModelUsage, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../transcript/adapters/timestamp.js";
 import type { AcpUpdateField, AcpUpdateValue } from "../../transcript/adapters/acp-updates.js";
 import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
@@ -231,7 +232,7 @@ void _schemaFieldsDeclared;
 /** A record of `updates.jsonl`: the update under `params` or on the record, with the record's timestamp. */
 const GrokRecordedUpdate = z.looseObject({
   formatVersion: z.optional(z.unknown()),
-  timestamp: lenient(z.union([z.number(), z.string()])),
+  timestamp: logTimestamp,
   params: lenient(z.looseObject({ update: lenient(GrokUpdateFields) })),
   update: lenient(GrokUpdateFields)
 });
@@ -332,7 +333,7 @@ interface GrokUsageUpdateValue {
 /** The usage decoder's record envelope, around the slim body schema. */
 const GrokUsageRecordedUpdate = z.looseObject({
   formatVersion: z.optional(z.unknown()),
-  timestamp: lenient(z.union([z.number(), z.string()])),
+  timestamp: logTimestamp,
   params: lenient(z.looseObject({ update: lenient(GrokUsageUpdateFields) })),
   update: lenient(GrokUsageUpdateFields)
 });

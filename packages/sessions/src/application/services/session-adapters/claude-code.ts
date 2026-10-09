@@ -26,6 +26,7 @@ import {
   type SourcedRecord,
   type Transcript
 } from "../../../domain/transcript/index.js";
+import { timedRecord } from "../../../domain/transcript/adapters/timestamp.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readEdges } from "../files/edges.js";
@@ -74,12 +75,15 @@ async function loadClaudeCode(
     return files;
   }
   const { main, nested } = files.value;
-  const translated = translateClaudeCodeRecords(mergeByTime([main.records, ...nested.groups]), {
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
-    path: ref.path,
-    agentForFile: (file) => nested.agentForFile.get(file),
-    agentMeta: nested.metas
-  });
+  const translated = translateClaudeCodeRecords(
+    mergeByTime([main.records, ...nested.groups].map((records) => records.map(timedRecord))),
+    {
+      ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+      path: ref.path,
+      agentForFile: (file) => nested.agentForFile.get(file),
+      agentMeta: nested.metas
+    }
+  );
   if (!translated.ok) {
     return translated;
   }

@@ -3,6 +3,7 @@ import * as z from "zod/mini";
 import type { SessionPreview } from "../../index.js";
 import { timeOf } from "../../../transcript/index.js";
 import { lenient } from "../../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../../transcript/adapters/timestamp.js";
 import { INJECTED_USER, textFrom } from "../../../transcript/adapters/codex/response-items.js";
 
 /**
@@ -13,6 +14,7 @@ const PreviewRecord = z.looseObject({
   type: lenient(z.string()),
   role: lenient(z.string()),
   content: z.optional(z.unknown()),
+  timestamp: logTimestamp,
   payload: lenient(
     z.looseObject({
       id: lenient(z.string()),
@@ -20,7 +22,8 @@ const PreviewRecord = z.looseObject({
       cwd: lenient(z.string()),
       type: lenient(z.string()),
       role: lenient(z.string()),
-      content: z.optional(z.unknown())
+      content: z.optional(z.unknown()),
+      timestamp: logTimestamp
     })
   )
 });
