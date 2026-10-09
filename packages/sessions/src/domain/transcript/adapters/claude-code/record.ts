@@ -140,9 +140,7 @@ const ClaudeCodeMessageUsage = z.looseObject({
   output_tokens_details: lenient(z.looseObject({ thinking_tokens: lenient(z.number()) }))
 });
 
-/**
- * The fields of one content block, shared between the block schema and its interface above.
- */
+/** The fields of one content block, shared between the block schema and its interface above. */
 const contentBlock = {
   type: lenient(z.string()),
   text: lenient(z.string()),
@@ -183,63 +181,63 @@ function withoutFormatVersion(record: Record<string, unknown>): boolean {
 }
 
 /**
- * The record envelope this adapter knows: a string `type`, a `version` as `knownVersion` accepts, and no
- * `formatVersion` key. Only the envelope decides whether the format generation is known — a record that fails it
- * is an `UnknownFormatGeneration` for the whole file, whatever its other fields hold.
+ * A record schema under the envelope this adapter knows — a string `type`, a `version` as `knownVersion`
+ * accepts, and no `formatVersion` key — over the `fields` a reader opens. Only the envelope decides whether the
+ * format generation is known, so the translator's and the usage decoder's schemas share this one definition and
+ * can never judge a generation differently.
  */
-const ClaudeCodeRecord = z
-  .looseObject({
-    type: z.string(),
-    version: knownVersion,
-    uuid: lenient(z.string()),
-    parentUuid: lenient(z.string()),
-    sessionId: lenient(z.string()),
-    cwd: lenient(z.string()),
-    agentId: lenient(z.string()),
-    requestId: lenient(z.string()),
-    timestamp: lenient(z.union([z.number(), z.string()])),
-    isSidechain: lenient(z.literal(true)),
-    isMeta: lenient(z.literal(true)),
-    isCompactSummary: lenient(z.literal(true)),
-    origin: lenient(z.looseObject({ kind: lenient(z.string()) })),
-    customTitle: lenient(z.string()),
-    aiTitle: lenient(z.string()),
-    summary: lenient(z.string()),
-    title: lenient(z.string()),
-    subtype: lenient(z.string()),
-    content: lenient(z.string()),
-    durationMs: lenient(z.number()),
-    originalModel: lenient(z.string()),
-    fallbackModel: lenient(z.string()),
-    apiRefusalCategory: lenient(z.string()),
-    compactMetadata: lenient(
-      z.looseObject({
-        trigger: lenient(z.string()),
-        preTokens: lenient(z.number()),
-        postTokens: lenient(z.number()),
-        preservedSegment: lenient(z.looseObject({ headUuid: lenient(z.string()), tailUuid: lenient(z.string()) }))
-      })
-    ),
-    toolUseResult: lenient(z.looseObject({ agentId: lenient(z.string()) })),
-    message: lenient(
-      z.looseObject({
-        id: lenient(z.string()),
-        model: lenient(z.string()),
-        stop_reason: lenient(z.string()),
-        usage: lenient(ClaudeCodeMessageUsage),
-        content: lenient(z.union([z.string(), z.array(lenient(z.looseObject(contentBlock)))]))
-      })
-    ),
-    attachment: lenient(
-      z.looseObject({
-        type: lenient(z.string()),
-        hookName: lenient(z.string()),
-        hookEvent: lenient(z.string()),
-        exitCode: lenient(z.number())
-      })
-    )
-  })
-  .check(z.refine(withoutFormatVersion));
+const knownGenerationRecord = <S extends Record<string, z.core.$ZodType>>(fields: S) =>
+  z.looseObject({ type: z.string(), version: knownVersion, ...fields }).check(z.refine(withoutFormatVersion));
+
+const ClaudeCodeRecord = knownGenerationRecord({
+  uuid: lenient(z.string()),
+  parentUuid: lenient(z.string()),
+  sessionId: lenient(z.string()),
+  cwd: lenient(z.string()),
+  agentId: lenient(z.string()),
+  requestId: lenient(z.string()),
+  timestamp: lenient(z.union([z.number(), z.string()])),
+  isSidechain: lenient(z.literal(true)),
+  isMeta: lenient(z.literal(true)),
+  isCompactSummary: lenient(z.literal(true)),
+  origin: lenient(z.looseObject({ kind: lenient(z.string()) })),
+  customTitle: lenient(z.string()),
+  aiTitle: lenient(z.string()),
+  summary: lenient(z.string()),
+  title: lenient(z.string()),
+  subtype: lenient(z.string()),
+  content: lenient(z.string()),
+  durationMs: lenient(z.number()),
+  originalModel: lenient(z.string()),
+  fallbackModel: lenient(z.string()),
+  apiRefusalCategory: lenient(z.string()),
+  compactMetadata: lenient(
+    z.looseObject({
+      trigger: lenient(z.string()),
+      preTokens: lenient(z.number()),
+      postTokens: lenient(z.number()),
+      preservedSegment: lenient(z.looseObject({ headUuid: lenient(z.string()), tailUuid: lenient(z.string()) }))
+    })
+  ),
+  toolUseResult: lenient(z.looseObject({ agentId: lenient(z.string()) })),
+  message: lenient(
+    z.looseObject({
+      id: lenient(z.string()),
+      model: lenient(z.string()),
+      stop_reason: lenient(z.string()),
+      usage: lenient(ClaudeCodeMessageUsage),
+      content: lenient(z.union([z.string(), z.array(lenient(z.looseObject(contentBlock)))]))
+    })
+  ),
+  attachment: lenient(
+    z.looseObject({
+      type: lenient(z.string()),
+      hookName: lenient(z.string()),
+      hookEvent: lenient(z.string()),
+      exitCode: lenient(z.number())
+    })
+  )
+});
 
 /**
  * Parses a record for the translator. `undefined` is an unknown format generation: the value is no record, or its
@@ -253,24 +251,20 @@ export function parseClaudeCodeRecord(value: unknown): ClaudeCodeRecordValue | u
  * The fields of a record the usage decoder reads, under the same envelope as `ClaudeCodeRecord` but without the
  * fields it never opens, so the parse does not copy every content block of every record.
  */
-const ClaudeCodeUsageRecord = z
-  .looseObject({
-    type: z.string(),
-    version: knownVersion,
-    requestId: lenient(z.string()),
-    sessionId: lenient(z.string()),
-    agentId: lenient(z.string()),
-    isSidechain: lenient(z.literal(true)),
-    timestamp: lenient(z.union([z.number(), z.string()])),
-    message: lenient(
-      z.looseObject({
-        id: lenient(z.string()),
-        model: lenient(z.string()),
-        usage: lenient(ClaudeCodeMessageUsage)
-      })
-    )
-  })
-  .check(z.refine(withoutFormatVersion));
+const ClaudeCodeUsageRecord = knownGenerationRecord({
+  requestId: lenient(z.string()),
+  sessionId: lenient(z.string()),
+  agentId: lenient(z.string()),
+  isSidechain: lenient(z.literal(true)),
+  timestamp: lenient(z.union([z.number(), z.string()])),
+  message: lenient(
+    z.looseObject({
+      id: lenient(z.string()),
+      model: lenient(z.string()),
+      usage: lenient(ClaudeCodeMessageUsage)
+    })
+  )
+});
 
 /** Parses a record for the usage decoder; `undefined` is an unknown format generation, as above. */
 export function parseClaudeCodeUsageRecord(value: unknown): ClaudeCodeUsageRecordValue | undefined {
