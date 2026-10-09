@@ -6,7 +6,12 @@ import { VERSION_FLAG } from "./version-flag.js";
 const AuthStatus = z.object({ loggedIn: z.boolean(), authMethod: z.optional(z.string()) });
 /** The `authMethod` values Claude Code prints. Any other value is not passed on, so the field cannot carry a secret. */
 const METHODS: ReadonlySet<string> = new Set(["claude.ai", "oauth_token", "api_key", "api_key_helper", "third_party"]);
-const GlobalConfig = z.looseObject({ oauthAccount: z.optional(z.unknown()) });
+/** An `oauthAccount` counts as set when it holds a record or a list; any other value reads as absent. */
+const OAuthAccount = z.catch(
+  z.union([z.record(z.string(), z.unknown()), z.array(z.unknown()), z.undefined()]),
+  undefined
+);
+const GlobalConfig = z.looseObject({ oauthAccount: OAuthAccount });
 
 /**
  * Reads `claude auth status --json`, which exits with 1 when logged out. `authMethod` is `claude.ai`, `oauth_token`,
@@ -39,10 +44,7 @@ export function parseClaudeCodeGlobalConfig(json: unknown): AuthReading | undefi
   if (!parsed.success) {
     return undefined;
   }
-  const { oauthAccount } = parsed.data;
-  return typeof oauthAccount === "object" && oauthAccount !== null
-    ? { loggedIn: true, method: "claude.ai" }
-    : { loggedIn: false };
+  return parsed.data.oauthAccount !== undefined ? { loggedIn: true, method: "claude.ai" } : { loggedIn: false };
 }
 
 export const claudeCodeProbe: ProbeRecipe = {

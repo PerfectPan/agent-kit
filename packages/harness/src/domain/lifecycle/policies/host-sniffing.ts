@@ -2,9 +2,10 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import type { HookDialects } from "../value-objects/hook-dialect.js";
 import type { TerminalIdentity } from "../value-objects/lifecycle-event.js";
-import { type Env, isRecord, ownValue } from "./payload-fields.js";
+import type { PayloadView } from "../value-objects/payload-view.js";
+import type { Env } from "./payload-fields.js";
 
-const present = (value: unknown): boolean => typeof value === "string" && value !== "";
+const present = (value: string | undefined): boolean => value !== undefined && value !== "";
 
 /**
  * The agent that really ran the hook. Grok and Cursor also run the hooks in Claude Code's settings, so a hook
@@ -16,15 +17,14 @@ const present = (value: unknown): boolean => typeof value === "string" && value 
  */
 export function sniffSource(
   declared: CodingAgentId,
-  payload: unknown,
+  payload: PayloadView,
   env: Env,
   dialects: HookDialects
 ): CodingAgentId {
-  const field = (key: string) => (isRecord(payload) ? ownValue(payload, key) : undefined);
-  if (present(field("hookEventName"))) {
+  if (present(payload.get(["hookEventName"]))) {
     return "grok";
   }
-  if (present(field("cursor_version"))) {
+  if (present(payload.get(["cursor_version"]))) {
     return "cursor";
   }
   const cursorRunsDeclared =

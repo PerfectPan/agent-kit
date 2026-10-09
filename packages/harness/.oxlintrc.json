@@ -6,5 +6,17 @@
       "error",
       { "additionalTestBlockFunctions": ["it.effect", "it.effect.each", "it.live"] }
     ]
-  }
+  },
+  "overrides": [
+    {
+      // These files parse external data with zod, whose `catch` helper the type-aware rule mistakes for
+      // `Promise.prototype.catch`; the rest of the package keeps the rule.
+      "files": [
+        "src/application/use-cases/doctor.ts",
+        "src/domain/lifecycle/adapters/payload-shape.ts",
+        "src/infra/models/ledger-file.ts"
+      ],
+      "rules": { "promise/valid-params": "off" }
+    }
+  ]
 }

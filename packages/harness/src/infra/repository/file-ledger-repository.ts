@@ -13,7 +13,13 @@ import {
 } from "../../application/ports.js";
 import { checkLedgerVersion } from "../../domain/ledger/index.js";
 import { readText } from "../services/read-text.js";
-import { decodeLedger, decodePreImage, encodeLedger, encodePreImage } from "../models/ledger-file.js";
+import {
+  decodeLedger,
+  decodePreImage,
+  encodeLedger,
+  encodePreImage,
+  storedLedgerEnvelope
+} from "../models/ledger-file.js";
 import { harnessStateDir } from "../services/state-dir.js";
 
 type RepositoryPlatform = Pick<Platform, "env" | "home" | "fs">;
@@ -64,15 +70,13 @@ function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
           try: () => JSON.parse(text) as unknown,
           catch: (cause) => failure(scope, "invalid-file", `${path} is not JSON; it is kept as it is`, cause)
         });
-        const version = checkLedgerVersion(stored);
+        const envelope = storedLedgerEnvelope(stored);
+        const version = checkLedgerVersion(envelope);
         if (!version.ok) {
           return yield* Effect.fail(version.error);
         }
-        const revision = (stored as { revision?: unknown }).revision;
-        if (revision !== expectedRevision) {
-          return yield* Effect.fail(
-            conflict(scope, expectedRevision, typeof revision === "number" ? revision : undefined)
-          );
+        if (envelope.revision !== expectedRevision) {
+          return yield* Effect.fail(conflict(scope, expectedRevision, envelope.revision));
         }
       } else if (expectedRevision !== undefined) {
         return yield* Effect.fail(conflict(scope, expectedRevision, undefined));

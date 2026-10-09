@@ -1,4 +1,5 @@
 import type { PlatformSqlite, SqliteDatabase } from "@rivus/agent-kit/platform";
+import * as z from "zod/mini";
 
 /**
  * Two processes that try at once each take a shared lock on the way to the exclusive one; with no busy timeout both
@@ -44,10 +45,11 @@ export function unlockSqlite(db: SqliteDatabase): void {
   }
 }
 
+const SqliteBusy = z.union([
+  z.looseObject({ errcode: z.number().check(z.custom((errcode: number) => BUSY_CODES.has(errcode & 0xff))) }),
+  z.looseObject({ message: z.literal("database is locked") })
+]);
+
 export function isSqliteBusy(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-  const { errcode, message } = error as { errcode?: unknown; message?: unknown };
-  return (typeof errcode === "number" && BUSY_CODES.has(errcode & 0xff)) || message === "database is locked";
+  return SqliteBusy.safeParse(error).success;
 }

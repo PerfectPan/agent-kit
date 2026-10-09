@@ -2,6 +2,7 @@ import type { Platform } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as z from "zod/mini";
 
 import { readText } from "../../../process-lock/application/services/holder.js";
 import type { LeaseSnapshot } from "../../domain/lease/index.js";
@@ -17,6 +18,9 @@ export interface FileLeaseRepositoryOptions {
 }
 
 const SCHEMA_VERSION = 1;
+
+/** The envelope of a stored record: the version first, then the record itself, both whatever the file holds. */
+const StoredLease = z.object({ schemaVersion: z.unknown(), record: z.unknown() });
 /**
  * A guard is held only for one read, compare and write, so waiting longer means a stalled holder: the write reports
  * `busy` instead of waiting, and callers such as a heartbeat retry it later.
@@ -92,10 +96,8 @@ function decodeFile(key: string, path: string, text: string): Effect.Effect<Leas
   } catch (cause) {
     return Effect.fail(repositoryFailure(key, "invalid-record", `${path} is not JSON`, cause));
   }
-  const { schemaVersion, record } = (typeof json === "object" && json !== null ? json : {}) as {
-    schemaVersion?: unknown;
-    record?: unknown;
-  };
+  const stored = StoredLease.safeParse(json);
+  const { schemaVersion, record } = stored.success ? stored.data : { schemaVersion: undefined, record: undefined };
   if (schemaVersion !== SCHEMA_VERSION) {
     return Effect.fail(
       repositoryFailure(key, "unsupported-schema", `${path} has schemaVersion ${String(schemaVersion)}; expected 1`)

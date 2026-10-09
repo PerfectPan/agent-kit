@@ -2,6 +2,7 @@ import type { Platform, PlatformSqlite, SqliteDatabase } from "@rivus/agent-kit-
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as z from "zod/mini";
 
 import { LedgerLock, type LedgerLockFailure, type LedgerLockShape, type LedgerScope } from "../../application/ports.js";
 import type { LedgerBusy } from "../../domain/ledger/index.js";
@@ -26,12 +27,14 @@ const RETRY_MS = 20;
 /** SQLITE_BUSY and SQLITE_LOCKED, the primary codes of their extended codes: another connection holds the lock. */
 const BUSY_CODES = new Set([5, 6]);
 
+const busyErrcode = z.number().check(z.custom((errcode: number) => BUSY_CODES.has(errcode & 0xff)));
+const SqliteBusy = z.union([
+  z.looseObject({ errcode: busyErrcode }),
+  z.looseObject({ message: z.literal("database is locked") })
+]);
+
 function isSqliteBusy(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-  const { errcode, message } = error as { errcode?: unknown; message?: unknown };
-  return (typeof errcode === "number" && BUSY_CODES.has(errcode & 0xff)) || message === "database is locked";
+  return SqliteBusy.safeParse(error).success;
 }
 
 /**

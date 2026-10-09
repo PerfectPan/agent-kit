@@ -1,13 +1,14 @@
-import { type Env, ownValue, readField, valueAt } from "../policies/payload-fields.js";
+import { type Env, ownValue, readField } from "../policies/payload-fields.js";
 import type { HookDialect, HookEventSpec, LifecycleSwitch, PayloadFields } from "../value-objects/hook-dialect.js";
 import type { LifecycleEvent, LifecycleMapping } from "../value-objects/lifecycle-event.js";
+import type { PayloadView } from "../value-objects/payload-view.js";
 
 function isSwitch(lifecycle: HookEventSpec["lifecycle"]): lifecycle is LifecycleSwitch {
   return "cases" in lifecycle;
 }
 
 function ownSpec(dialect: HookDialect, name: string): HookEventSpec | undefined {
-  return ownValue(dialect.events, name) as HookEventSpec | undefined;
+  return ownValue(dialect.events, name);
 }
 
 /**
@@ -33,19 +34,19 @@ function eventSpec(dialect: HookDialect, nativeEvent: string): HookEventSpec | u
 }
 
 /** The mapping of an event; a switch picks its case from the payload. */
-function resolveMapping(spec: HookEventSpec, payload: unknown): LifecycleMapping {
+function resolveMapping(spec: HookEventSpec, payload: PayloadView): LifecycleMapping {
   if (!isSwitch(spec.lifecycle)) {
     return spec.lifecycle;
   }
-  const value = valueAt(payload, spec.lifecycle.field);
-  const chosen = typeof value === "string" ? ownValue(spec.lifecycle.cases, value) : undefined;
-  return (chosen as LifecycleMapping | undefined) ?? spec.lifecycle.otherwise;
+  const value = payload.get(spec.lifecycle.field);
+  const chosen = value === undefined ? undefined : ownValue(spec.lifecycle.cases, value);
+  return chosen ?? spec.lifecycle.otherwise;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 /** Reads one payload with one dialect. Unknown shapes and events read as phase `unknown`; nothing throws. */
-export function readWithDialect(dialect: HookDialect, payload: unknown, env: Env): LifecycleEvent {
+export function readWithDialect(dialect: HookDialect, payload: PayloadView, env: Env): LifecycleEvent {
   const { fields } = dialect;
   const read = (key: keyof PayloadFields) => readField(payload, env, fields[key]);
   const nativeEvent = read("event") ?? "";

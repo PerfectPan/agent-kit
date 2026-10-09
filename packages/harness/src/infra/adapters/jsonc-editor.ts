@@ -11,23 +11,29 @@ import {
 } from "jsonc-parser";
 
 import type { DocumentInvalid } from "../../application/ports.js";
+import type { Document } from "../services/document.js";
+import { parseDocument } from "../services/document.js";
 import type { EntryEdit } from "../services/config-entries.js";
 
 /** Parses JSON with comments and trailing commas, as agents' settings files allow; any syntax error refuses the file. */
-export function parseJsonc(text: string): Result<unknown, DocumentInvalid> {
+export function parseJsonc(text: string): Result<Document | undefined, DocumentInvalid> {
   if (text.trim() === "") {
     return ok(undefined);
   }
   const errors: ParseError[] = [];
   const data: unknown = parse(text, errors, { allowTrailingComma: true, disallowComments: false });
   const [first] = errors;
-  return first === undefined
-    ? ok(data)
-    : err({
-        _tag: "DocumentInvalid",
-        format: "json",
-        detail: `${printParseErrorCode(first.error)} at offset ${first.offset}`
-      });
+  if (first !== undefined) {
+    return err({
+      _tag: "DocumentInvalid",
+      format: "json",
+      detail: `${printParseErrorCode(first.error)} at offset ${first.offset}`
+    });
+  }
+  const document = parseDocument(data);
+  return document === undefined && data !== undefined
+    ? err({ _tag: "DocumentInvalid", format: "json", detail: "the document holds a value JSON does not define" })
+    : ok(document);
 }
 
 /** The indentation and line ending the document already uses, so that inserted lines look like their neighbours. */

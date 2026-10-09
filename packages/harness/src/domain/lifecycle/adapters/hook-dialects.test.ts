@@ -86,6 +86,18 @@ describe("readHookEvent", () => {
     });
   });
 
+  it("reads a field of an unexpected type as absent, at the payload root and along a nested path", () => {
+    const numberSession = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: 7 }, {});
+    expect(numberSession.phase).toBe("finish");
+    expect(numberSession.sessionId).toBeUndefined();
+    const nested = readHookEvent("opencode", { type: "session.idle", properties: { info: { id: 9 } } }, {});
+    expect(nested.phase).toBe("finish");
+    expect(nested.sessionId).toBeUndefined();
+    const deep = readHookEvent("opencode", { type: "session.idle", properties: "not a record" }, {});
+    expect(deep.phase).toBe("finish");
+    expect(deep.sessionId).toBeUndefined();
+  });
+
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",

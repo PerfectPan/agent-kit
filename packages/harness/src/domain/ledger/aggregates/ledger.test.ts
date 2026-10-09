@@ -139,10 +139,13 @@ describe("Ledger", () => {
       error: { _tag: "LedgerVersionUnsupported", schemaVersion: 2, supported: [1] }
     });
     expect(JSON.stringify(stored)).toBe(before);
-    for (const raw of [undefined, null, "1", { schemaVersion: "1" }, { schemaVersion: 0 }, { entries: {} }]) {
-      expect(checkLedgerVersion(raw)).toMatchObject({ ok: false, error: { _tag: "LedgerVersionUnsupported" } });
+    for (const schemaVersion of ["1", 0, undefined]) {
+      expect(checkLedgerVersion({ schemaVersion })).toMatchObject({
+        ok: false,
+        error: { _tag: "LedgerVersionUnsupported" }
+      });
     }
-    expect(checkLedgerVersion({ schemaVersion: 1, entries: "anything" })).toEqual({ ok: true, value: 1 });
+    expect(checkLedgerVersion({ schemaVersion: 1 })).toEqual({ ok: true, value: 1 });
   });
 
   it.each([

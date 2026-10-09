@@ -71,6 +71,25 @@ const Snapshot = z.object({
 });
 
 /**
+ * The envelope of a stored ledger: the fields a store reads before the shape is known. `schemaVersion` is whatever
+ * the file holds, so that an unknown version is reported with the value it carried; `revision` reads as `undefined`
+ * when it is absent or of another type.
+ */
+const StoredLedger = z.object({
+  schemaVersion: z.unknown(),
+  revision: z.catch(z.optional(z.number()), undefined)
+});
+
+/** Reads the envelope of a stored ledger; a value that is no record reads as one without the fields. */
+export function storedLedgerEnvelope(json: unknown): {
+  readonly schemaVersion: unknown;
+  readonly revision?: number | undefined;
+} {
+  const parsed = StoredLedger.safeParse(json);
+  return parsed.success ? parsed.data : { schemaVersion: undefined, revision: undefined };
+}
+
+/**
  * Reads a stored ledger: the version first, so that a file a newer kit wrote is refused as it is, then its shape. The
  * domain checks the invariants when it restores the snapshot.
  */
@@ -81,7 +100,7 @@ export function decodeLedger(text: string): Result<LedgerSnapshot, LedgerVersion
   } catch {
     return err({ _tag: "InvalidLedger", reason: "the ledger file is not JSON" });
   }
-  const version = checkLedgerVersion(json);
+  const version = checkLedgerVersion(storedLedgerEnvelope(json));
   if (!version.ok) {
     return version;
   }
@@ -98,13 +117,18 @@ export function encodeLedger(snapshot: LedgerSnapshot): string {
   return `${JSON.stringify(snapshot, null, 2)}\n`;
 }
 
-const PreImageFile = z.object({ content: z.unknown() });
+/** What JSON holds: a stored Artifact's content is exactly this, so the reading layer hands it over typed. */
+const Json: z.ZodMiniType<ArtifactContent> = z.lazy(() =>
+  z.union([z.null(), z.boolean(), z.number(), z.string(), z.array(Json), z.record(z.string(), Json)])
+);
+
+const PreImageFile = z.object({ content: z.optional(Json) });
 
 /** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. */
 export function decodePreImage(text: string): ArtifactContent | undefined {
   try {
     const parsed = PreImageFile.safeParse(JSON.parse(text));
-    return parsed.success && parsed.data.content !== undefined ? (parsed.data.content as ArtifactContent) : undefined;
+    return parsed.success ? parsed.data.content : undefined;
   } catch {
     return undefined;
   }

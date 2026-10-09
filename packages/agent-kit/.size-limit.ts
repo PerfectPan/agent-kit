@@ -13,9 +13,11 @@ export default [
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "2 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
-  // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) above all.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "77 kB" },
-  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "4.8 kB" },
+  // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
+  // (about 5 kB) above all.
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78 kB" },
+  // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by tsdown.
+  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "10 kB" },
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "3 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "3 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
