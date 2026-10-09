@@ -51,6 +51,37 @@ const SETTINGS = `{
 }
 `;
 
+describe("document values", () => {
+  it("reads every number TOML holds: infinities, NaN and big integers", () => {
+    const parsed = parseToml("limit = inf\nv = nan\nbig = 9223372036854775807\n");
+    expect(parsed).toMatchObject({ ok: true });
+    if (!parsed.ok) {
+      throw new Error(parsed.error.detail);
+    }
+    expect(parsed.value).toEqual({ limit: Infinity, v: NaN, big: 9223372036854775807n });
+  });
+
+  it("reads a JSON number too large for double precision as infinity", () => {
+    const parsed = parseJsonc('{"wide": 1e400}');
+    expect(parsed).toMatchObject({ ok: true, value: { wide: Infinity } });
+  });
+
+  it("keeps an own __proto__ key of a TOML document through an edit", () => {
+    const text = 'model = "gpt"\n"__proto__" = "x"\n';
+    const parsed = parseToml(text);
+    expect(parsed).toMatchObject({ ok: true });
+    if (!parsed.ok) {
+      throw new Error(parsed.error.detail);
+    }
+    if (typeof parsed.value !== "object" || parsed.value === null) {
+      throw new Error("no document");
+    }
+    expect(Object.hasOwn(parsed.value, "__proto__")).toBe(true);
+    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
+    expect(toml(text, locator, "o4")).toContain('"__proto__" = "x"');
+  });
+});
+
 describe("JSONC entries", () => {
   it("S93: adds a hook as a group of its own next to the user's, and removing it restores the text", () => {
     const ours = { type: "command", command: "/opt/x hook", timeout: 5 };

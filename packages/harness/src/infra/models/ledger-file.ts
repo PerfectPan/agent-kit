@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { isPlainObject } from "es-toolkit";
 import * as z from "zod/mini";
 
 import {
@@ -71,22 +72,21 @@ const Snapshot = z.object({
 });
 
 /**
- * The envelope of a stored ledger: the fields a store reads before the shape is known. `schemaVersion` is whatever
- * the file holds, so that an unknown version is reported with the value it carried; `revision` reads as `undefined`
- * when it is absent or of another type.
+ * The envelope of a stored ledger: the fields a store reads before the shape is known. Both are whatever the file
+ * holds, so that an unknown version is reported with the value it carried and a revision of another type is still a
+ * revision the save must refuse to write over.
  */
-const StoredLedger = z.object({
-  schemaVersion: z.unknown(),
-  revision: z.catch(z.optional(z.number()), undefined)
-});
+const StoredLedger = z.object({ schemaVersion: z.unknown(), revision: z.optional(z.unknown()) });
 
 /** Reads the envelope of a stored ledger; a value that is no record reads as one without the fields. */
 export function storedLedgerEnvelope(json: unknown): {
   readonly schemaVersion: unknown;
-  readonly revision?: number | undefined;
+  readonly revision: unknown;
 } {
   const parsed = StoredLedger.safeParse(json);
-  return parsed.success ? parsed.data : { schemaVersion: undefined, revision: undefined };
+  return parsed.success
+    ? { schemaVersion: parsed.data.schemaVersion, revision: parsed.data.revision }
+    : { schemaVersion: undefined, revision: undefined };
 }
 
 /**
@@ -117,18 +117,39 @@ export function encodeLedger(snapshot: LedgerSnapshot): string {
   return `${JSON.stringify(snapshot, null, 2)}\n`;
 }
 
-/** What JSON holds: a stored Artifact's content is exactly this, so the reading layer hands it over typed. */
-const Json: z.ZodMiniType<ArtifactContent> = z.lazy(() =>
-  z.union([z.null(), z.boolean(), z.number(), z.string(), z.array(Json), z.record(z.string(), Json)])
-);
+/**
+ * What JSON holds, plus the infinities and big integers a TOML entry value can carry into a pre-image: a stored
+ * Artifact's content is exactly this, so the reading layer hands it over typed. Records keep the parser's object, so
+ * an own `"__proto__"` key survives the round trip.
+ */
+// The cast bridges zod's variance over the array members, which the schema builds mutable and the type reads readonly.
+const Json = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.custom<number, unknown>((value) => typeof value === "number" && !Number.isFinite(value)),
+    z.bigint(),
+    z.string(),
+    z.array(Json),
+    // The record branch: a plain object whose values are content values, kept as the parser returned it.
+    z.custom<{ readonly [key: string]: ArtifactContent | bigint }, unknown>((value) => {
+      if (!isPlainObject(value)) {
+        return false;
+      }
+      return Object.keys(value).every((key) => Json.safeParse((value as Record<string, unknown>)[key]).success);
+    })
+  ])
+) as z.ZodMiniType<ArtifactContent | bigint>;
 
 const PreImageFile = z.object({ content: z.optional(Json) });
 
-/** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. */
+/** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. A TOML big integer stays in the
+ * content under the `JsonValue` type, the way a date already does. */
 export function decodePreImage(text: string): ArtifactContent | undefined {
   try {
     const parsed = PreImageFile.safeParse(JSON.parse(text));
-    return parsed.success ? parsed.data.content : undefined;
+    return parsed.success ? (parsed.data.content as ArtifactContent | undefined) : undefined;
   } catch {
     return undefined;
   }

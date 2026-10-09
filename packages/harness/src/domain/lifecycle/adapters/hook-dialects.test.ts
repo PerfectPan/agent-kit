@@ -98,6 +98,52 @@ describe("readHookEvent", () => {
     expect(deep.sessionId).toBeUndefined();
   });
 
+  it("reads inherited keys as absent", () => {
+    const inherited: unknown = Object.create({ hook_event_name: "Stop", session_id: "proto" });
+    const event = readHookEvent("claude-code", inherited, {});
+    expect(event.phase).toBe("unknown");
+    expect(event.sessionId).toBeUndefined();
+  });
+
+  it("reads a key polluted onto Object.prototype as absent", () => {
+    Object.defineProperty(Object.prototype, "session_id", { value: "polluted", configurable: true });
+    try {
+      const event = readHookEvent("claude-code", { hook_event_name: "Stop" }, {});
+      expect(event.phase).toBe("finish");
+      expect(event.sessionId).toBeUndefined();
+    } finally {
+      delete (Object.prototype as { session_id?: unknown }).session_id;
+    }
+  });
+
+  it("reads a prototype getter of a class instance as absent", () => {
+    class Holder {
+      get session_id(): string {
+        return "getter";
+      }
+    }
+    const event = readHookEvent("claude-code", Object.assign(new Holder(), { hook_event_name: "Stop" }), {});
+    expect(event.phase).toBe("finish");
+    expect(event.sessionId).toBeUndefined();
+  });
+
+  it("never runs a getter on an unrelated key", () => {
+    const throwing: unknown = Object.create(
+      {},
+      {
+        hook_event_name: { value: "Stop", enumerable: true },
+        boom: {
+          get() {
+            throw new Error("boom");
+          },
+          enumerable: true
+        }
+      }
+    );
+    const event = readHookEvent("claude-code", throwing, {});
+    expect(event.phase).toBe("finish");
+  });
+
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",

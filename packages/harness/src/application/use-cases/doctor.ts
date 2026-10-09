@@ -6,6 +6,7 @@ import * as z from "zod/mini";
 import { foreignHookFiles, type HookSource, type InstallAdapters, type Owner } from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
+import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
 import {
   duplicateHooks,
   type HookDialects,
@@ -83,13 +84,10 @@ interface FoundHook {
  * holds none, and a hook's `timeout` of another type reads as absent. A hook is one registration only when its
  * `command` is a string.
  */
-const HookList = z.catch(z.array(z.unknown()), []);
-const HookEvents = z.catch(z.record(z.string(), HookList), {});
-const HookGroup = z.catch(z.looseObject({ hooks: HookList }), { hooks: [] });
-const HookRegistration = z.looseObject({
-  command: z.string(),
-  timeout: z.catch(z.optional(z.number()), undefined)
-});
+const HookList = lenient(z.array(z.unknown()), []);
+const HookEvents = lenient(z.record(z.string(), HookList), {});
+const HookGroup = lenient(z.looseObject({ hooks: HookList }), { hooks: [] });
+const HookRegistration = z.looseObject({ command: z.string(), timeout: lenient(z.optional(z.number()), undefined) });
 
 /** The paths a source names, with each `*` segment expanded to the entries of its directory. */
 function expand(pattern: string): Effect.Effect<readonly string[], never, PlatformService> {

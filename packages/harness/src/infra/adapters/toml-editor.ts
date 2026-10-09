@@ -211,12 +211,15 @@ function deleteRanges(text: string, ranges: readonly Range[]): string {
   return next;
 }
 
-/** JSON with sorted keys, to compare what a TOML text holds (dates as ISO text) with what the edits should give. */
+/** JSON with sorted keys, to compare what a TOML text holds (dates as ISO text, big integers as their digits) with
+ * what the edits should give. */
 function canonical(value: Document | undefined): string {
-  return JSON.stringify(value, (_key, inner: Document) =>
+  return JSON.stringify(value, (_key, inner: Document | bigint) =>
     isDocumentRecord(inner)
       ? Object.fromEntries(Object.entries(inner).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
-      : inner
+      : typeof inner === "bigint"
+        ? inner.toString()
+        : inner
   );
 }
 

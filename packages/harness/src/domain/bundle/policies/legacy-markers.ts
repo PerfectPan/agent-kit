@@ -10,10 +10,10 @@ export function isLegacyArtifact(markers: readonly string[], content: ArtifactCo
   const text =
     typeof content === "string"
       ? content
-      : typeof content === "object" && content !== null && !Array.isArray(content)
-        ? (content as { readonly command?: unknown }).command
+      : content !== null && typeof content === "object" && "command" in content && typeof content.command === "string"
+        ? content.command
         : undefined;
-  return typeof text === "string" && hasLegacyMarker(markers, text);
+  return text !== undefined && hasLegacyMarker(markers, text);
 }
 
 /**

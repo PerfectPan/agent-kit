@@ -1,13 +1,14 @@
 import * as z from "zod/mini";
 
 import type { AuthReading, CommandOutput, ProbeRecipe } from "../index.js";
+import { lenient } from "./lenient.js";
 import { VERSION_FLAG } from "./version-flag.js";
 
 const AuthStatus = z.object({ loggedIn: z.boolean(), authMethod: z.optional(z.string()) });
 /** The `authMethod` values Claude Code prints. Any other value is not passed on, so the field cannot carry a secret. */
 const METHODS: ReadonlySet<string> = new Set(["claude.ai", "oauth_token", "api_key", "api_key_helper", "third_party"]);
 /** An `oauthAccount` counts as set when it holds a record or a list; any other value reads as absent. */
-const OAuthAccount = z.catch(
+const OAuthAccount = lenient(
   z.union([z.record(z.string(), z.unknown()), z.array(z.unknown()), z.undefined()]),
   undefined
 );

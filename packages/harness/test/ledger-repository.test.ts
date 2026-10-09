@@ -47,6 +47,25 @@ describe("FileLedgerRepositoryLive", () => {
     }
   );
 
+  it.effect.each(["null", '"3"'])("refuses to write over a stored revision that is not a number (%s)", (revision) => {
+    const home = testHome();
+    const stored = `${JSON.stringify({ schemaVersion: LEDGER_SCHEMA_VERSION, revision: JSON.parse(revision) })}\n`;
+    home.write(".local/state/agent-kit/harness/user/ledger.json", stored);
+    return Effect.gen(function* () {
+      const ledger = Ledger.create("lineage-1");
+      if (!ledger.ok) {
+        throw new Error("create failed");
+      }
+      const failure = yield* Effect.flip((yield* LedgerRepository).save(scope, ledger.value.toSnapshot(), undefined));
+      expect(failure).toMatchObject({
+        _tag: "RevisionConflict",
+        expectedRevision: undefined,
+        storedRevision: undefined
+      });
+      expect(home.read(".local/state/agent-kit/harness/user/ledger.json")).toBe(stored);
+    }).pipe(Effect.provide(home.layer()));
+  });
+
   it.effect("refuses a ledger of an unknown schema version and never writes over it", () => {
     const home = testHome();
     const stored = `${JSON.stringify({ schemaVersion: LEDGER_SCHEMA_VERSION + 1, lineage: "newer", entries: "?" })}\n`;

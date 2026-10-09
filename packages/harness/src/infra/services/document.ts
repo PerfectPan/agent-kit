@@ -1,36 +1,57 @@
+import { isPlainObject } from "es-toolkit";
 import * as z from "zod/mini";
 
 /**
- * A parsed configuration document: what JSON (with comments) or TOML holds. TOML adds its dates to JSON's values;
- * both are read as a tree of records, arrays and scalars, so the editors navigate a typed document instead of
- * `unknown`. The schema passes every value through unchanged: untouched subtrees keep the objects and Dates the
- * parser returned, which the editors' format-preserving writes rely on.
+ * A parsed configuration document: what JSON (with comments) or TOML holds — JSON's values plus TOML's dates, big
+ * integers, infinities and NaN. The schema validates the tree and hands the parser's own objects over unchanged, so
+ * an untouched subtree keeps its identity and an own `"__proto__"` key survives an edit; readers of a document use
+ * own-key accessors, so no prototype member can be found through it.
  */
 export type Document =
   | null
   | boolean
   | number
+  | bigint
   | string
   | Date
   | readonly Document[]
   | { readonly [key: string]: Document };
 
+/** Every JS number a configuration may hold: the finite ones, and TOML's infinities and NaN. */
+const NonFinite = z.custom<number, unknown>((value) => typeof value === "number" && !Number.isFinite(value));
+
 const doc: z.ZodMiniType<Document> = z.lazy(() =>
-  z.union([z.null(), z.boolean(), z.number(), z.string(), z.instanceof(Date), z.array(doc), z.record(z.string(), doc)])
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    NonFinite,
+    z.bigint(),
+    z.string(),
+    z.instanceof(Date),
+    z.array(doc),
+    // The record branch: a plain object whose values are document values, kept as the parser returned it.
+    z.custom<{ readonly [key: string]: Document }>((value) => {
+      if (!isPlainObject(value)) {
+        return false;
+      }
+      return Object.keys(value).every((key) => doc.safeParse((value as Record<string, unknown>)[key]).success);
+    })
+  ])
 );
 
 /**
  * The parsed document of a configuration file, or `undefined` when the value is one the schema does not model — a
- * parser output outside JSON and TOML dates, which the callers refuse as an invalid document.
+ * parser output outside JSON and TOML's values, which the callers refuse as an invalid document.
  */
 export function parseDocument(value: unknown): Document | undefined {
   const parsed = doc.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 }
 
-/** The record branch of a document: arrays and dates are not records. */
+/** The record branch of a document: lists and dates are not records. */
 export function isDocumentRecord(
   value: Document | undefined
 ): value is Extract<Document, { readonly [key: string]: Document }> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date);
+  return isPlainObject(value);
 }

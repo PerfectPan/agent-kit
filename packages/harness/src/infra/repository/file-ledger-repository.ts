@@ -76,7 +76,10 @@ function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
           return yield* Effect.fail(version.error);
         }
         if (envelope.revision !== expectedRevision) {
-          return yield* Effect.fail(conflict(scope, expectedRevision, envelope.revision));
+          const storedRevision = envelope.revision;
+          return yield* Effect.fail(
+            conflict(scope, expectedRevision, typeof storedRevision === "number" ? storedRevision : undefined)
+          );
         }
       } else if (expectedRevision !== undefined) {
         return yield* Effect.fail(conflict(scope, expectedRevision, undefined));

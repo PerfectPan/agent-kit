@@ -1,11 +1,3 @@
 {
-  "extends": ["./node_modules/@perfectpan/lint-config/oxlint.json"],
-  "overrides": [
-    {
-      // This file parses external data with zod, whose `catch` helper the type-aware rule mistakes for
-      // `Promise.prototype.catch`; the rest of the package keeps the rule.
-      "files": ["src/domain/installation/adapters/claude-code.ts"],
-      "rules": { "promise/valid-params": "off" }
-    }
-  ]
+  "extends": ["./node_modules/@perfectpan/lint-config/oxlint.json"]
 }

@@ -20,7 +20,7 @@ export interface FileLeaseRepositoryOptions {
 const SCHEMA_VERSION = 1;
 
 /** The envelope of a stored record: the version first, then the record itself, both whatever the file holds. */
-const StoredLease = z.object({ schemaVersion: z.unknown(), record: z.unknown() });
+const StoredLease = z.object({ schemaVersion: z.optional(z.unknown()), record: z.optional(z.unknown()) });
 /**
  * A guard is held only for one read, compare and write, so waiting longer means a stalled holder: the write reports
  * `busy` instead of waiting, and callers such as a heartbeat retry it later.
