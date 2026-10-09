@@ -209,16 +209,14 @@ const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string
 ];
 
 describe("parity with agent-finder", () => {
-  it("has agent-finder's 26 agents in its order, and the seven built-in agents", () => {
-    expect(Object.keys(finderRecipes)).toEqual(cases[0]?.report.agents.map((agent) => agent.id));
-    expect(Object.keys(builtinProbeRecipes).toSorted()).toEqual([
-      "claude-code",
-      "codex",
-      "cursor",
-      "gemini-cli",
-      "grok",
-      "opencode",
-      "pi"
+  it("has agent-finder's 26 agents in its order, and the seven built-in agents in report order", () => {
+    const finderOrder = cases[0]?.report.agents.map((agent) => agent.id) ?? [];
+    expect(Object.keys(finderRecipes)).toEqual(finderOrder);
+    // detectAgents reports in table order, so the builtin table keeps finder's relative order, with Grok at the end.
+    const builtin: Readonly<Record<string, ProbeRecipe>> = builtinProbeRecipes;
+    expect(Object.keys(builtinProbeRecipes)).toEqual([
+      ...finderOrder.filter((id) => builtin[id] !== undefined),
+      "grok"
     ]);
     expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
       "doctor-config-only",
@@ -257,8 +255,8 @@ describe("parity with agent-finder", () => {
       },
       files: { "C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD": "" }
     });
-    const [vscode] = await detectAgents(platform, { agents: ["cursor"] });
-    expect(vscode?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD");
+    const [cursor] = await detectAgents(platform, { agents: ["cursor"] });
+    expect(cursor?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD");
   });
 
   it("differs from agent-finder's facts exactly where upstream sources corrected them", () => {

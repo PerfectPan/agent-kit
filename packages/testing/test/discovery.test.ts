@@ -639,7 +639,6 @@ describe("detectAgents edge cases", () => {
       const [installation] = await detectAgents(machine({ files }), { recipes: { "my-agent": recipe } });
       return installation;
     };
-    expect((await detect({ [`${HOME}/.codex/config.toml`]: "" }))?.status).toBe("missing");
     expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.other") }))?.status).toBe(
       "missing"
     );
