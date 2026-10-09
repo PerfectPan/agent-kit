@@ -2,8 +2,8 @@ import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import { builtinHookDialects } from "../../domain/adapters/hook-dialects.js";
-import { builtinInstallAdapters } from "../../domain/adapters/install-adapters.js";
+import { builtinHookDialects } from "../../domain/lifecycle/adapters/hook-dialects.js";
+import { builtinInstallAdapters } from "../../domain/bundle/adapters/install-adapters.js";
 import {
   type ArtifactSource,
   type Bundle,

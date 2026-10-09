@@ -1,6 +1,6 @@
 import { type CodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 
-import { builtinProbeRecipes } from "../../domain/adapters/index.js";
+import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import {
   type AuthObservation,
   type AuthState,

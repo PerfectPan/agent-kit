@@ -1,6 +1,6 @@
 export { MemorySessionBindingStoreLive } from "./infra/repository/memory-session-binding-store.js";
 export { FileSessionBindingStoreLive } from "./infra/repository/file-session-binding-store.js";
-export { builtinAcpProfiles, type AcpProfiles } from "./domain/adapters/index.js";
+export { builtinAcpProfiles, type AcpProfiles } from "./domain/acp-session/adapters/index.js";
 export {
   type AcpConnection,
   type ConnectAgentOptions,

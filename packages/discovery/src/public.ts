@@ -4,7 +4,7 @@ export type { DiscoveryErrorCode } from "./application/errors.js";
 export type { DiscoveryPlatform } from "./application/ports.js";
 
 // Probe recipes
-export { builtinProbeRecipes } from "./domain/adapters/index.js";
+export { builtinProbeRecipes } from "./domain/installation/adapters/index.js";
 
 // Published language and rules
 export {

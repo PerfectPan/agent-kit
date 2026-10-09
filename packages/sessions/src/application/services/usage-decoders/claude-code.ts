@@ -4,11 +4,10 @@ import {
   CLAUDE_CODE_USAGE_FILES,
   claudeCodeRoots,
   claudeCodeUsageFile,
-  claudeCodeUsageKey,
-  claudeCodeUsageLines,
   claudeCodeUsageSourceId,
   claudeCodeUsageTarget
-} from "../../../domain/adapters/claude-code/index.js";
+} from "../../../domain/session/adapters/claude-code/layout.js";
+import { claudeCodeUsageKey, claudeCodeUsageLines } from "../../../domain/usage/adapters/claude-code.js";
 import type { UsageDecoder } from "../../usage-ports.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout } from "./files.js";
 

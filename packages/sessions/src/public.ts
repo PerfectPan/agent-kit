@@ -51,26 +51,26 @@ export type {
 // Claude Code rules
 export {
   CLAUDE_CODE_CAPABILITIES,
-  claudeCodeUsage,
   type ClaudeCodeTranslateOptions,
   translateClaudeCodeRecords
-} from "./domain/adapters/claude-code/index.js";
+} from "./domain/transcript/adapters/claude-code/events.js";
+export { claudeCodeUsage } from "./domain/usage/adapters/claude-code.js";
 
 // Codex rules
 export {
   CODEX_CAPABILITIES,
-  codexUsage,
   type CodexTranslateOptions,
   translateCodexRecords
-} from "./domain/adapters/codex/index.js";
+} from "./domain/transcript/adapters/codex/events.js";
+export { codexUsage } from "./domain/usage/adapters/codex.js";
 
 // Grok rules
 export {
   GROK_CAPABILITIES,
-  grokUsage,
   type GrokTranslateOptions,
   translateGrokRecords
-} from "./domain/adapters/grok/index.js";
+} from "./domain/transcript/adapters/grok/events.js";
+export { grokUsage } from "./domain/usage/adapters/grok.js";
 
 // Published language and the rules a viewer needs to interpret events
 export {

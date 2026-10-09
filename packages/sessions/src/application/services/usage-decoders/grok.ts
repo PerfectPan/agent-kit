@@ -7,11 +7,10 @@ import {
   grokSummaryFields,
   grokSummaryPath,
   grokUpdatesPath,
-  grokUsageKey,
-  grokUsageLines,
   grokUsageSessionId,
   grokUsageSourceId
-} from "../../../domain/adapters/grok/index.js";
+} from "../../../domain/session/adapters/grok/layout.js";
+import { grokUsageKey, grokUsageLines } from "../../../domain/usage/adapters/grok.js";
 import { readText } from "../files/read-file.js";
 import type { UsageDecoder } from "../../usage-ports.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout } from "./files.js";

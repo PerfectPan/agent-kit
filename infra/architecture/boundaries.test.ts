@@ -73,13 +73,13 @@ describe("allowed imports", () => {
     ["domain/session/head.ts", `import { ok } from "${CATALOG}";\nimport type { Result } from "${CATALOG}";`],
     ["domain/session/ref.ts", `import { head } from "./head.js";`],
     [
-      "domain/adapters/codex/events.ts",
-      `import { head } from "../../session/head.js";\nimport { ok } from "${CATALOG}";`
+      "domain/transcript/adapters/codex/events.ts",
+      `import { head } from "../../../session/head.js";\nimport { ok } from "${CATALOG}";`
     ],
-    ["domain/adapters/grok/events.ts", `import { fromAcp } from "../../protocols/acp-updates.js";`],
+    ["domain/session/adapters/grok/preview.ts", `import { fromAcp } from "../../transcript/adapters/acp-updates.js";`],
     [
       "application/use-cases/list-sessions.ts",
-      `import { splitLines } from "${PLATFORM}";\nimport { x } from "../../domain/adapters/index.js";`
+      `import { splitLines } from "${PLATFORM}";\nimport { x } from "../../domain/transcript/adapters/acp-updates.js";`
     ],
     ["infra/repository/index-cache.ts", `import type { IndexCache } from "../../application/ports.js";`],
     ["public.ts", `export { listSessions } from "./application/use-cases/list-sessions.js";`]
@@ -95,7 +95,9 @@ describe("allowed imports", () => {
   });
 
   it("lets a package import an exact npm specifier from its allowlist outside domain/", () => {
-    expect(rulesOf(sessionsFile("domain/adapters/codex/line.ts", `import * as z from "zod/mini";`))).toEqual([]);
+    expect(rulesOf(sessionsFile("domain/transcript/adapters/codex/line.ts", `import * as z from "zod/mini";`))).toEqual(
+      []
+    );
     expect(rulesOf(sessionsFile("application/x.ts", `import { isPlainObject } from "es-toolkit";`))).toEqual([]);
     expect(rulesOf(sessionsFile("domain/usage/usage.ts", `import * as z from "zod/mini";`))).toEqual([
       "external-dependency"
@@ -163,11 +165,12 @@ describe("violations", () => {
     ["node:* in a domain file", "domain/session/head.ts", `import { readFile } from "node:fs";`, "node-builtin"],
     ["a bare Node built-in in application/", "application/scan.ts", `import { join } from "path";`, "node-builtin"],
     [
-      "Node types in a pure package",
-      "domain/adapters/codex/x.ts",
+      "Node types in an adapters file",
+      "domain/transcript/adapters/codex/x.ts",
       `import type { Readable } from "node:stream";`,
       "node-builtin"
     ],
+    ["Effect in an adapters file", "domain/session/adapters/codex/x.ts", `import { Effect } from "effect";`, "effect"],
     ["Effect in a pure package", "application/list.ts", `import { Effect } from "effect";`, "effect"],
     ["Effect types in a pure package", "domain/x.ts", `import type { Effect } from "effect/Effect";`, "effect"],
     [
@@ -201,28 +204,34 @@ describe("violations", () => {
       "layer"
     ],
     [
-      "domain/adapters/ importing application/",
-      "domain/adapters/codex/x.ts",
-      `import { list } from "../../../application/list.js";`,
+      "an adapters file importing application/",
+      "domain/transcript/adapters/codex/x.ts",
+      `import { list } from "../../../../application/list.js";`,
       "layer"
     ],
     [
-      "domain/adapters/ importing a non-kernel package",
-      "domain/adapters/codex/x.ts",
+      "an adapters file importing a non-kernel package",
+      "domain/transcript/adapters/codex/x.ts",
       `import type { Platform } from "${PLATFORM}";`,
       "layer"
     ],
     [
-      "domain/ importing domain/adapters/",
-      "domain/x.ts",
-      `import { codex } from "./adapters/codex/index.js";`,
+      "a concept importing its own adapters/",
+      "domain/session/x.ts",
+      `import { codex } from "./adapters/codex/layout.js";`,
       "layer"
     ],
     [
-      "domain/ importing domain/protocols/",
-      "domain/x.ts",
-      `import { fromAcp } from "./protocols/acp-updates.js";`,
+      "a concept importing another concept's adapters/",
+      "domain/usage/x.ts",
+      `import { fromAcp } from "../session/adapters/grok/preview.js";`,
       "layer"
+    ],
+    [
+      "zod/mini at the legacy src/domain/adapters/ path, which is plain domain now",
+      "domain/adapters/x.ts",
+      `import * as z from "zod/mini";`,
+      "external-dependency"
     ],
     ["domain/ importing the package root", "domain/x.ts", `import { x } from "../public.js";`, "layer"],
     ["an undeclared package dependency", "application/x.ts", `import { m } from "${TESTING}";`, "package-dependency"],
@@ -237,13 +246,13 @@ describe("violations", () => {
     ["a Platform type re-export in domain/", "domain/x.ts", `export type { FileStat } from "${PLATFORM}";`, "layer"],
     [
       "zod's full entry where only zod/mini is allowed",
-      "domain/adapters/codex/x.ts",
+      "domain/transcript/adapters/codex/x.ts",
       `import { z } from "zod";`,
       "external-dependency"
     ],
     [
       "another zod subpath",
-      "domain/adapters/codex/x.ts",
+      "domain/transcript/adapters/codex/x.ts",
       `import * as z from "zod/v4/classic";`,
       "external-dependency"
     ],

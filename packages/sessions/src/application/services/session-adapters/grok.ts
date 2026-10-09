@@ -1,10 +1,7 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import {
-  GROK_CAPABILITIES,
   GROK_SESSION_FILES,
-  applyGrokSummary,
-  grokCapabilities,
   type GrokSessionMeta,
   type GrokSubagentMeta,
   grokRoots,
@@ -12,10 +9,14 @@ import {
   grokSubagentMeta,
   grokSummaryFields,
   grokSummaryPath,
-  grokUpdatesPath,
-  previewGrokRecords,
+  grokUpdatesPath
+} from "../../../domain/session/adapters/grok/layout.js";
+import { applyGrokSummary, previewGrokRecords } from "../../../domain/session/adapters/grok/preview.js";
+import {
+  GROK_CAPABILITIES,
+  grokCapabilities,
   translateGrokRecords
-} from "../../../domain/adapters/grok/index.js";
+} from "../../../domain/transcript/adapters/grok/events.js";
 import { joinPath, type SessionHead, type SessionRef } from "../../../domain/session/index.js";
 import {
   createTranscript,

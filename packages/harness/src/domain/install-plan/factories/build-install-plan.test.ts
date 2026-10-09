@@ -1,7 +1,7 @@
 import type { Result } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vitest";
 
-import { builtinHookDialects } from "../../adapters/hook-dialects.js";
+import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";

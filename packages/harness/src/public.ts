@@ -1,6 +1,6 @@
 // The `@rivus/agent-kit/harness` entry: Effect use cases, their ports and Layers, and the plain data they exchange.
 // The hook path imports `events.ts` instead, which reaches none of this.
-export { builtinInstallAdapters } from "./domain/adapters/install-adapters.js";
+export { builtinInstallAdapters } from "./domain/bundle/adapters/install-adapters.js";
 export {
   type AppliedStep,
   applyInstall,

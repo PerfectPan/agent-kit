@@ -5,12 +5,12 @@
  */
 
 /**
- * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at `src/domain/adapters/` and
- * the wire protocols at `src/domain/protocols/` (both inside `domain/` but judged as their own layers),
- * `src/application/` and `src/infra/`. Other files (`public.ts`, `index.ts`) are unrestricted. Sources under `src/`
- * are plain `.ts` files: declaration and JavaScript files would hide imports from the check.
+ * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at
+ * `src/domain/<concept>/adapters/` (inside `domain/` but judged as their own layer), `src/application/` and
+ * `src/infra/`. Other files (`public.ts`, `index.ts`) are unrestricted. Sources under `src/` are plain `.ts` files:
+ * declaration and JavaScript files would hide imports from the check.
  */
-export type Layer = "domain" | "domain/adapters" | "domain/protocols" | "application" | "infra";
+export type Layer = "domain" | "adapters" | "application" | "infra";
 
 export interface PackageRule {
   /** Workspace packages this package may import, always by bare name, which resolves to the target's `index.ts`. */
@@ -139,21 +139,13 @@ export const boundaries: BoundaryRules = {
   sharedKernel: CATALOG,
   layers: {
     // The domain does no IO, so it never sees the Platform port, not even its types, and never reaches the agent
-    // adapters or protocols inside it: domain/<concept>/ may not import domain/adapters/ or domain/protocols/.
+    // adapters inside it: domain/<concept>/ may not import any adapters/ folder, its own or another concept's.
     domain: { layers: ["domain"], workspace: "kernel-and-types", hidden: [PLATFORM, PLATFORM_NODE], external: false },
-    // domain/adapters/ and domain/protocols/ translate external formats into the domain model. They need the shared
-    // kernel because adapter tables are keyed by CodingAgentId.
-    "domain/adapters": {
-      layers: ["domain", "domain/adapters", "domain/protocols"],
-      workspace: "kernel",
-      external: true
-    },
-    "domain/protocols": { layers: ["domain", "domain/protocols"], workspace: "kernel", external: true },
-    application: {
-      layers: ["domain", "domain/adapters", "domain/protocols", "application"],
-      workspace: "any",
-      external: true
-    },
+    // The agent adapters translate external formats into the domain model, one folder per concept whose model they
+    // produce. They may use every domain concept, also across concepts, and need the shared kernel because adapter
+    // tables are keyed by CodingAgentId.
+    adapters: { layers: ["domain", "adapters"], workspace: "kernel", external: true },
+    application: { layers: ["domain", "adapters", "application"], workspace: "any", external: true },
     infra: { layers: ["domain", "application", "infra"], workspace: "any", external: true }
   },
   effect: {
