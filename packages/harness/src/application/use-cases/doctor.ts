@@ -135,10 +135,7 @@ function hooksInFile(
     for (const [event, entries] of Object.entries(events.data)) {
       const hooks =
         source.layout === "grouped"
-          ? entries.flatMap((group) => {
-              const parsed = HookGroup.safeParse(group);
-              return parsed.success ? parsed.data.hooks : [];
-            })
+          ? entries.flatMap((group) => HookGroup.safeParse(group).data?.hooks ?? [])
           : entries;
       for (const hook of hooks) {
         const registration = HookRegistration.safeParse(hook);

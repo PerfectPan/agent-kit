@@ -76,12 +76,7 @@ export function locatorPointer(locator: Pick<ArtifactLocator, "pointer">): strin
  * only segment is empty.
  */
 export function pointerTail(pointer: string | undefined): string | undefined {
-  if (pointer === undefined) {
-    return undefined;
-  }
-  const parts = pointer.split("/");
-  const segment = parts[parts.length - 1] ?? "";
-  return segment.replaceAll("~1", "/").replaceAll("~0", "~");
+  return pointer?.split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~");
 }
 
 /**
@@ -105,11 +100,10 @@ export function locatorProblem(locator: ArtifactLocator): string | undefined {
     return ENTRY_KINDS.has(locator.kind) ? `${locator.kind} needs a pointer` : `${locator.kind} takes no pointer`;
   }
   const structured = locator.kind === "json-entry" || locator.kind === "toml-entry";
-  const pointer = locator.pointer;
-  if (structured && (pointer === undefined || !pointer.startsWith("/"))) {
+  if (structured && !locator.pointer?.startsWith("/")) {
     return "pointer is not a JSON pointer to an entry";
   }
-  if (structured && pointer !== undefined && pointer.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
+  if (structured && locator.pointer?.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
     return "pointer names an array index; address the element by `member`";
   }
   if (locator.member !== undefined && (!structured || locator.member === "")) {

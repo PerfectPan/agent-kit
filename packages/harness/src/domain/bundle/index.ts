@@ -28,7 +28,13 @@ export type {
   McpServerSpec,
   SkillSpec
 } from "./value-objects/artifact-spec.js";
-export { type Bundle, type BundleRef, checkBundle, type InvalidBundle } from "./value-objects/bundle.js";
+export {
+  type Bundle,
+  type BundleRef,
+  checkBundle,
+  type InvalidBundle,
+  legacyMarkersOf
+} from "./value-objects/bundle.js";
 export {
   type InstalledCopyRead,
   ownRecordOf,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { isWithin, locatorKey, locatorProblem, locatorsOverlap } from "./artifact-locator.js";
+import { isWithin, locatorKey, locatorProblem, locatorsOverlap, pointerTail } from "./artifact-locator.js";
+import type { ArtifactLocator } from "./artifact-locator.js";
 
 describe("artifact locators", () => {
   it("accepts absolute normalized paths with the pointer their kind needs", () => {
@@ -35,6 +36,12 @@ describe("artifact locators", () => {
     [{ kind: "json-entry", path: "/x", pointer: "/hooks/Stop", memberIn: "hook-group" }, "memberIn without a member"]
   ] as const)("rejects %o", (locator, problem) => {
     expect(locatorProblem(locator)).toBe(problem);
+  });
+
+  it("reads a null pointer as absent instead of throwing", () => {
+    const locator = { kind: "json-entry", path: "/x", pointer: null } as unknown as ArtifactLocator;
+    expect(locatorProblem(locator)).toBe("pointer is not a JSON pointer to an entry");
+    expect(pointerTail(locator.pointer)).toBeUndefined();
   });
 
   it("accepts a hook nested in an event's groups, keyed like any member, and object keys the kit writes", () => {
