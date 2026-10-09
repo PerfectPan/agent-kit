@@ -182,10 +182,13 @@ export interface GrokFieldsValue {
 export interface GrokUpdateValue extends AcpUpdateValue, GrokFieldsValue {}
 
 /**
- * The body of one recorded update, parsed in one pass: the shared `session/update` fields first, kept in sync with
+ * The body of one recorded update, parsed in one pass: the shared `session/update` fields, kept in sync with
  * `AcpUpdate` (../../transcript/adapters/acp-updates.ts, whose test reads the same fields through both readers),
- * then the fields Grok adds. The schemas stay module-private — an exported declaration typed by zod drags zod's
- * declarations into the dts of the entries that bundle this module, and those must import nothing.
+ * then the fields Grok adds. The assertion below holds this schema to exactly the fields `GrokUpdateValue` names —
+ * `AcpUpdateField` plus `GrokFieldsValue` — in both directions, so the parsed value cannot carry an undeclared
+ * field and the value cannot declare one the schema drops. The schemas stay module-private: an exported
+ * declaration typed by zod drags zod's declarations into the dts of the entries that bundle this module, and those
+ * must import nothing.
  */
 const GrokUpdateFields = z.looseObject({
   sessionUpdate: lenient(z.string()),
@@ -216,12 +219,13 @@ const GrokUpdateFields = z.looseObject({
   phase: lenient(z.string())
 });
 
-// Every field the schema parses must be named on `GrokUpdateValue`: a Grok field missing from `GrokFieldsValue`, or
-// a body field that stops matching `AcpUpdateField`, fails this assertion and stops the build. The value is read
-// below so the check counts as used.
-const _schemaFieldsDeclared: Exclude<keyof typeof GrokUpdateFields.shape, AcpUpdateField> extends keyof GrokFieldsValue
-  ? true
-  : never = true;
+// The schema's parsed fields and the fields `GrokUpdateValue` declares must be the same set, in both directions: a
+// field the schema parses without a declaration, and a declaration the schema no longer parses, both fail this
+// assertion and stop the build. The value is read below so the check counts as used.
+type _Shape = keyof typeof GrokUpdateFields.shape;
+type _Declared = AcpUpdateField | keyof GrokFieldsValue;
+const _schemaFieldsDeclared: [_Shape] extends [_Declared] ? ([_Declared] extends [_Shape] ? true : never) : never =
+  true;
 void _schemaFieldsDeclared;
 
 /** A record of `updates.jsonl`: the update under `params` or on the record, with the record's timestamp. */
@@ -354,13 +358,15 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
       if (update.sessionUpdate !== "turn_completed") {
         return ok([]);
       }
+      // The turn ends here even when its usage is absent (a cancelled turn): the model is forgotten before the
+      // early return, or the saved cursor would hand it to the next turn.
       const raw = update.usage;
+      const model = grokTurnModel(raw?.modelUsage, state.turn.model);
+      delete state.turn.model;
       const usage = grokUsageOf(raw);
       if (!usage) {
         return ok([]);
       }
-      const model = grokTurnModel(raw?.modelUsage, state.turn.model);
-      delete state.turn.model;
       const turn: UsageRecord = {
         agent: AGENT,
         sessionId: file.sessionId,

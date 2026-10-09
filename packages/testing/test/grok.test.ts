@@ -4,14 +4,19 @@ import type { Result } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
   builtinSessionAdapters,
+  decodeUsage,
   foldTranscript,
   isSessionHead,
+  isUsageRecord,
   listSessions,
   loadTranscript,
+  type DecodeUsageOptions,
   type SessionHead,
   summarizeSession,
   translateGrokRecords,
-  type Transcript
+  type Transcript,
+  type UsageCursor,
+  type UsageRecord
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vitest";
 
@@ -593,5 +598,75 @@ describe("grok coalesce fallback", () => {
       preTokens: 500,
       postTokens: 80
     });
+  });
+});
+
+describe("grok decoder cursor state", () => {
+  /** One `decodeUsage` step: the records it reports and the cursor to continue from. */
+  async function step(
+    platform: Parameters<typeof createMemoryPlatform>[0] extends never
+      ? never
+      : ReturnType<typeof createMemoryPlatform>,
+    path: string,
+    options: DecodeUsageOptions
+  ): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
+    const stream = decodeUsage(platform, "grok", { path }, options);
+    const records: UsageRecord[] = [];
+    for await (const item of stream) {
+      if (!isUsageRecord(item)) {
+        throw new Error(`${path}: ${JSON.stringify(item.error)}`);
+      }
+      records.push(item);
+    }
+    const cursor = stream.cursor === undefined ? undefined : (JSON.parse(JSON.stringify(stream.cursor)) as UsageCursor);
+    return { records, cursor };
+  }
+
+  it("forgets a turn's model at a turn_completed without usage, also across a saved cursor", async () => {
+    const dir = "/u/me/.grok/sessions/no-usage-turn";
+    const path = `${dir}/updates.jsonl`;
+    const updates = [
+      {
+        sessionUpdate: "user_message_chunk",
+        content: { type: "text", text: "Go" },
+        _meta: { promptIndex: 0, modelId: "grok-a" }
+      },
+      { sessionUpdate: "turn_completed", prompt_id: "p-1", stop_reason: "cancelled" },
+      {
+        sessionUpdate: "user_message_chunk",
+        content: { type: "text", text: "Again" },
+        _meta: { promptIndex: 0 }
+      },
+      {
+        sessionUpdate: "turn_completed",
+        prompt_id: "p-2",
+        stop_reason: "end_turn",
+        usage: { inputTokens: 1, outputTokens: 1, modelUsage: { "grok-b": { inputTokens: 1, outputTokens: 1 } } }
+      }
+    ];
+    const full = updates
+      .map(
+        (update, index) =>
+          `${JSON.stringify({ method: "session/update", timestamp: 1767225600 + index, params: { update } })}\n`
+      )
+      .join("");
+    const half = updates
+      .slice(0, 2)
+      .map(
+        (update, index) =>
+          `${JSON.stringify({ method: "session/update", timestamp: 1767225600 + index, params: { update } })}\n`
+      )
+      .join("");
+    const files = { [path]: half };
+    const platform = createMemoryPlatform({ files, home: "/u/me" });
+
+    // The first step ends on the usage-less `turn_completed`; its cursor carries the decoder state forward.
+    const first = await step(platform, path, { final: false });
+    expect(first.records).toEqual([]);
+
+    await platform.fs.writeAtomic(path, new TextEncoder().encode(full));
+    const second = await step(platform, path, { from: first.cursor, final: true });
+    expect(second.records).toHaveLength(1);
+    expect(second.records[0]).toMatchObject({ requestId: "p-2", model: "grok-b" });
   });
 });
