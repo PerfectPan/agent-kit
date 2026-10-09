@@ -53,14 +53,14 @@ describe("hookHealth", () => {
   });
 
   it("reads a timeout below one second in a milliseconds dialect as the wrong unit", () => {
-    const problems = (timeout: unknown): readonly HookProblem[] =>
+    const problems = (timeout: number | undefined): readonly HookProblem[] =>
       hookHealth(gemini, at("/hooks/Stop"), { timeout }, () => true).map(({ problem }) => problem);
     expect(problems(500)).toEqual(["timeout-unit"]);
     expect(hookHealth(gemini, at("/hooks/Stop"), { timeout: 500 }, () => true)).toEqual([
       { problem: "timeout-unit", locator: at("/hooks/Stop"), agent: "gemini-cli", timeout: 500 }
     ]);
     expect(problems(1000)).toEqual([]);
-    expect(problems("5")).toEqual([]);
+    expect(problems(undefined)).toEqual([]);
     expect(
       hookHealth(dialect({ Stop: [] }, "claude-code", "seconds"), at("/hooks/Stop"), { timeout: 5 }, () => true)
     ).toEqual([]);

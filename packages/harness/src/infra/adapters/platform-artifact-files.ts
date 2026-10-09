@@ -3,6 +3,7 @@ import type { Platform } from "@rivus/agent-kit-platform";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as z from "zod/mini";
 
 import {
   ArtifactFiles,
@@ -15,6 +16,7 @@ import {
 import type { ArtifactSource } from "../../domain/bundle/index.js";
 import type { ArtifactLocator } from "../../domain/install-plan/index.js";
 import type { ArtifactContent, JsonValue } from "../../domain/ledger/index.js";
+import type { Document } from "../services/document.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";
 import { readText } from "../services/read-text.js";
@@ -22,6 +24,9 @@ import { editToml, parseToml } from "./toml-editor.js";
 
 type FilesPlatform = Pick<Platform, "fs">;
 type Format = "json" | "toml";
+
+/** A registration stores `{ enabled: false }` to say it is switched off; anything else counts as enabled. */
+const DisabledRegistration = z.looseObject({ enabled: z.literal(false) });
 
 const parentOf = (path: string): string => path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 
@@ -92,14 +97,14 @@ function formatOf(locator: ArtifactLocator): Format {
   return locator.kind === "toml-entry" ? "toml" : "json";
 }
 
-function parseDocument(format: Format, text: string): Result<unknown, ArtifactFailure> {
+function parseDocument(format: Format, text: string): Result<Document | undefined, ArtifactFailure> {
   return format === "toml" ? parseToml(text) : parseJsonc(text);
 }
 
 function editDocument(
   format: Format,
   text: string | undefined,
-  data: unknown,
+  data: Document | undefined,
   locator: ArtifactLocator,
   value: JsonValue | undefined
 ): Result<string, ArtifactFailure> {
@@ -185,8 +190,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
             path,
             entryValue(data, { kind: "json-entry", path, pointer: locator.pointer ?? "" })
           );
-          const enabled =
-            typeof value !== "object" || value === null || (value as { enabled?: unknown }).enabled !== false;
+          const enabled = value === undefined || !DisabledRegistration.safeParse(value).success;
           return value === undefined ? undefined : { kind: "cli-registration", content: enabled, ...link };
         }
         default:

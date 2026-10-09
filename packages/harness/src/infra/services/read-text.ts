@@ -1,9 +1,13 @@
+import * as z from "zod/mini";
+
 import type { Platform } from "@rivus/agent-kit-platform";
+
+/** The codes of "nothing is at the path (or a parent is not a directory)". */
+const Missing = z.looseObject({ code: z.union([z.literal("ENOENT"), z.literal("ENOTDIR")]) });
 
 /** Whether `cause` says that nothing is at the path (or a parent is not a directory). */
 export function isMissing(cause: unknown): boolean {
-  const code = typeof cause === "object" && cause !== null ? (cause as { code?: unknown }).code : undefined;
-  return code === "ENOENT" || code === "ENOTDIR";
+  return Missing.safeParse(cause).success;
 }
 
 /** The UTF-8 text of a file, or `undefined` when it does not exist. */

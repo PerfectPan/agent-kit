@@ -16,6 +16,7 @@ export type {
   LifecycleSwitch,
   PayloadFields
 } from "./value-objects/hook-dialect.js";
+export type { PayloadView } from "./value-objects/payload-view.js";
 export type {
   LifecycleBlocker,
   LifecycleEvent,

@@ -1,3 +1,5 @@
+import { isPlainObject } from "es-toolkit";
+
 import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
@@ -460,9 +462,7 @@ export function contentAfter(
 
 /** A directory's content as files by relative path; nothing for anything else. */
 function filesOf(content: ArtifactContent | undefined): Readonly<Record<string, ArtifactContent>> {
-  return typeof content === "object" && content !== null && !Array.isArray(content)
-    ? (content as Readonly<Record<string, ArtifactContent>>)
-    : {};
+  return isPlainObject(content) ? (content as Readonly<Record<string, ArtifactContent>>) : {};
 }
 
 function textOf(content: ArtifactContent | undefined): string | undefined {

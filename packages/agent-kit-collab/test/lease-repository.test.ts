@@ -2,12 +2,14 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { afterEach, describe, it } from "@effect/vitest";
+import { afterEach, describe, expect, it } from "@effect/vitest";
+import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import { aggregateRepositoryConformance, type AggregateRepositoryFixtures } from "@rivus/agent-kit/testing/effect";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 
-import { LeaseRepository, type LeaseSnapshot } from "../src/lease/public.js";
-import { removeTempDirs } from "./support/platform.js";
+import { fileLeaseRepository, LeaseRepository, type LeaseSnapshot } from "../src/lease/public.js";
+import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases, type StoreCase } from "./support/stores.js";
 
 const KEY = "task:1";
@@ -64,4 +66,22 @@ describe.each(storeCases)("lease repository conformance with the $name repositor
   for (const conformance of aggregateRepositoryConformance(fixturesFor(storeCase))) {
     it.live(conformance.name, () => conformance.run);
   }
+});
+
+describe("file lease record storage", () => {
+  it.live("reports a stored record without its record field as an invalid record, not an unknown schema", () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, `${encodeURIComponent(KEY)}.lease.json`), JSON.stringify({ schemaVersion: 1 }));
+    return Effect.gen(function* () {
+      const failure = yield* Effect.flip(Effect.flatMap(LeaseRepository, (store) => store.load(KEY)));
+      expect(failure).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "invalid-record" });
+    }).pipe(
+      Effect.provide(
+        Layer.provideMerge(
+          fileLeaseRepository({ dir }),
+          Layer.succeed(PlatformService, testPlatform({ sqlite: false }))
+        )
+      )
+    );
+  });
 });

@@ -3,6 +3,8 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 import type { UnexpectedShape } from "../../application/ports.js";
 import type { ArtifactLocator } from "../../domain/install-plan/index.js";
 import type { JsonValue } from "../../domain/ledger/index.js";
+import type { Document } from "./document.js";
+import { isDocumentRecord } from "./document.js";
 
 /** A key of an object or an index of an array, from the document root. */
 export type EntryPath = readonly (string | number)[];
@@ -17,10 +19,7 @@ export interface EntryEdit {
   readonly insert?: true;
 }
 
-type Container = { readonly [key: string]: unknown } | readonly unknown[];
-
-const isObject = (value: unknown): value is { readonly [key: string]: unknown } =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+type Container = { readonly [key: string]: Document } | readonly Document[];
 
 /** The keys of a JSON pointer such as `/hooks/Stop`, unescaped (`~1` is `/`, `~0` is `~`). */
 export function pointerKeys(pointer: string): readonly string[] {
@@ -30,23 +29,26 @@ export function pointerKeys(pointer: string): readonly string[] {
     .map((key) => key.replaceAll("~1", "/").replaceAll("~0", "~"));
 }
 
-function child(container: unknown, key: string | number): unknown {
+function child(container: Document | undefined, key: string | number): Document | undefined {
+  if (container === undefined) {
+    return undefined;
+  }
   if (typeof key === "number") {
     return Array.isArray(container) ? container[key] : undefined;
   }
-  return isObject(container) && Object.hasOwn(container, key) ? container[key] : undefined;
+  return isDocumentRecord(container) && Object.hasOwn(container, key) ? container[key] : undefined;
 }
 
-function at(data: unknown, path: EntryPath): unknown {
-  return path.reduce<unknown>((value, key) => child(value, key), data);
+function at(data: Document | undefined, path: EntryPath): Document | undefined {
+  return path.reduce<Document | undefined>((value, key) => child(value, key), data);
 }
 
 /** An element's identity: a string element is its own identity, an object one its `command`, else its `name`. */
-function identity(element: unknown): string | undefined {
+function identity(element: Document): string | undefined {
   if (typeof element === "string") {
     return element;
   }
-  if (!isObject(element)) {
+  if (!isDocumentRecord(element)) {
     return undefined;
   }
   const { command, name } = element;
@@ -55,11 +57,11 @@ function identity(element: unknown): string | undefined {
 
 interface Found {
   readonly path: EntryPath;
-  readonly value: unknown;
+  readonly value: Document;
 }
 
 /** Where the locator's entry is in `data`, or `undefined` when it is not there. */
-function find(data: unknown, locator: ArtifactLocator): Result<Found | undefined, UnexpectedShape> {
+function find(data: Document | undefined, locator: ArtifactLocator): Result<Found | undefined, UnexpectedShape> {
   const base = pointerKeys(locator.pointer ?? "");
   const list = at(data, base);
   if (locator.member === undefined) {
@@ -76,7 +78,7 @@ function find(data: unknown, locator: ArtifactLocator): Result<Found | undefined
     return ok(index < 0 ? undefined : { path: [...base, index], value: list[index] });
   }
   for (const [group, entry] of list.entries()) {
-    const hooks = isObject(entry) ? entry.hooks : undefined;
+    const hooks = isDocumentRecord(entry) ? entry.hooks : undefined;
     if (!Array.isArray(hooks)) {
       continue;
     }
@@ -89,19 +91,22 @@ function find(data: unknown, locator: ArtifactLocator): Result<Found | undefined
 }
 
 /** The value of the locator's entry in a parsed document, or `undefined` when the document has none. */
-export function entryValue(data: unknown, locator: ArtifactLocator): Result<JsonValue | undefined, UnexpectedShape> {
+export function entryValue(
+  data: Document | undefined,
+  locator: ArtifactLocator
+): Result<JsonValue | undefined, UnexpectedShape> {
   const found = find(data, locator);
   return found.ok ? ok(found.value?.value as JsonValue | undefined) : found;
 }
 
 /** The containers on the way to `path` must be objects (or arrays where an index leads), never scalars. */
-function shapeProblem(data: unknown, path: EntryPath): UnexpectedShape | undefined {
-  let value: unknown = data;
+function shapeProblem(data: Document | undefined, path: EntryPath): UnexpectedShape | undefined {
+  let value: Document | undefined = data;
   for (const [index, key] of path.entries()) {
     if (value === undefined) {
       return undefined;
     }
-    const container: Container | undefined = isObject(value) || Array.isArray(value) ? value : undefined;
+    const container: Container | undefined = isDocumentRecord(value) || Array.isArray(value) ? value : undefined;
     if (container === undefined || Array.isArray(container) !== (typeof key === "number")) {
       return { _tag: "UnexpectedShape", detail: `/${path.slice(0, index).join("/")} cannot hold ${String(key)}` };
     }
@@ -116,7 +121,7 @@ function shapeProblem(data: unknown, path: EntryPath): UnexpectedShape | undefin
  * container: removing a group's last hook removes the group, and every container above it that holds nothing else.
  */
 export function entryEdits(
-  data: unknown,
+  data: Document | undefined,
   locator: ArtifactLocator,
   value: JsonValue | undefined
 ): Result<readonly EntryEdit[], UnexpectedShape> {
@@ -162,11 +167,11 @@ export function entryEdits(
  * root whose only content is the way to `path`, such as an event's hook list holding only the removed group, and the
  * `hooks` object holding only that list.
  */
-function emptiedAncestor(data: unknown, path: EntryPath): EntryPath {
+function emptiedAncestor(data: Document | undefined, path: EntryPath): EntryPath {
   let removed = path;
   while (removed.length > 1) {
     const parent = at(data, removed.slice(0, -1));
-    const size = Array.isArray(parent) ? parent.length : isObject(parent) ? Object.keys(parent).length : 0;
+    const size = Array.isArray(parent) ? parent.length : isDocumentRecord(parent) ? Object.keys(parent).length : 0;
     if (size !== 1) {
       break;
     }
@@ -181,7 +186,7 @@ function emptiedAncestor(data: unknown, path: EntryPath): EntryPath {
  * elements with an identity are listed, since only those can be addressed.
  */
 export function listEntries(
-  data: unknown,
+  data: Document | undefined,
   pointer: string,
   memberIn: "element" | "hook-group"
 ): readonly {
@@ -199,12 +204,12 @@ export function listEntries(
         })
       : [];
   }
-  if (!isObject(container)) {
+  if (!isDocumentRecord(container)) {
     return [];
   }
   return Object.entries(container).flatMap(([event, groups]) =>
     (Array.isArray(groups) ? groups : []).flatMap((group) => {
-      const hooks = isObject(group) && Array.isArray(group.hooks) ? group.hooks : [];
+      const hooks = isDocumentRecord(group) && Array.isArray(group.hooks) ? group.hooks : [];
       return hooks.flatMap((hook) => {
         const member = identity(hook);
         return member === undefined

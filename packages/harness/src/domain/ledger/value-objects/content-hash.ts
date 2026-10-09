@@ -19,18 +19,14 @@ export function isContentHash(value: unknown): value is ContentHash {
 
 const lf = (text: string): string => text.replaceAll("\r\n", "\n");
 
-function isRecord(value: JsonValue): value is { readonly [key: string]: JsonValue } {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (isRecord(value)) {
-    const fields = Object.keys(value)
-      .toSorted()
-      .flatMap((key) => (value[key] === undefined ? [] : [`${JSON.stringify(key)}:${canonicalJson(value[key])}`]));
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const fields = Object.entries(value)
+      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .flatMap(([key, field]) => (field === undefined ? [] : [`${JSON.stringify(key)}:${canonicalJson(field)}`]));
     return `{${fields.join(",")}}`;
   }
   return JSON.stringify(value);
@@ -49,7 +45,7 @@ export function canonicalContent(kind: ArtifactKind, content: ArtifactContent): 
   if (typeof content === "string" && kind === "symlink") {
     return content;
   }
-  if (kind === "dir" && isRecord(content)) {
+  if (kind === "dir" && content !== null && typeof content === "object" && !Array.isArray(content)) {
     return canonicalJson(
       Object.fromEntries(
         Object.entries(content).map(([path, text]) => [path, typeof text === "string" ? lf(text) : text])

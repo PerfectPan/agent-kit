@@ -109,6 +109,35 @@ describe("doctor", () => {
   );
 
   it.effect(
+    "reads a hook file leniently: a timeout of another type counts as absent, and hooks it cannot read are skipped",
+    () => {
+      const home = testHome();
+      home.write(
+        ".gemini/settings.json",
+        `${JSON.stringify(
+          {
+            hooks: {
+              Stop: [{ hooks: [{ type: "command", command: "/gone/bin/old-hook", timeout: "5" }] }],
+              PreToolUse: [{ hooks: [{ command: "/gone/bin/old-hook" }, "not a hook"] }],
+              SessionStart: "not a list"
+            }
+          },
+          null,
+          2
+        )}\n`
+      );
+      return Effect.gen(function* () {
+        const checks = yield* doctor({ agents: ["gemini-cli"] });
+        const found = (name: string) =>
+          checks.filter((check) => check.name === name).map((check) => check.locator?.pointer);
+        expect(found("timeout-unit")).toEqual([]);
+        expect(found("unknown-event")).toEqual(["/hooks/Stop", "/hooks/PreToolUse"]);
+        expect(found("stale-path")).toEqual(["/hooks/Stop", "/hooks/PreToolUse"]);
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
+
+  it.effect(
     "S110: reports an old hook in a settings file next to the plugin that replaced it, in every agent that runs both",
     () => {
       const home = testHome();

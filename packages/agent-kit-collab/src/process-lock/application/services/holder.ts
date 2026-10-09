@@ -57,6 +57,9 @@ export async function readStamp(platform: ProcessLockPlatform, path: string): Pr
   return { text, stamp: parsed.success ? parsed.data : undefined };
 }
 
+/** A Node error whose `code` says there is nothing at the path. */
+const Missing = z.looseObject({ code: z.literal("ENOENT") });
+
 /** The text of a small file, `undefined` when it does not exist. */
 export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: string): Promise<string | undefined> {
   const decoder = new TextDecoder();
@@ -66,7 +69,7 @@ export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: 
       text += decoder.decode(chunk, { stream: true });
     }
   } catch (error) {
-    if (typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT") {
+    if (Missing.safeParse(error).success) {
       return undefined;
     }
     throw error;

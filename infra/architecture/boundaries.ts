@@ -91,23 +91,24 @@ const TESTING = "@rivus/agent-kit-testing";
 export const boundaries: BoundaryRules = {
   packages: {
     [PLATFORM]: { dependsOn: [], external: [] },
-    [PLATFORM_NODE]: { dependsOn: [PLATFORM], external: [], nodeBuiltins: true },
+    [PLATFORM_NODE]: { dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
     [CATALOG]: { dependsOn: [], external: [] },
     // zod/mini is the only zod entry the plan allows. es-toolkit's root export is tree-shakable; its lodash-compatible
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; tsdown bundles zod/mini into the
-    // entries that use it. The hook path reads a few fields with `typeof` rather than a schema (cold start). The
-    // configuration editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
+    // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
+    // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
     [HARNESS]: {
       dependsOn: [CATALOG, PLATFORM],
-      external: ["zod/mini", "jsonc-parser", "@decimalturn/toml-patch"],
+      external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch"],
       testsOnly: [PLATFORM_NODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
-    // the built `/cost` entry free of imports.
-    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: [] },
+    // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which tsdown
+    // bundles into the entry.
+    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: ["zod/mini"] },
     // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a
     // fake agent through the Node platform, which only applications may provide.
     [ACP]: {
@@ -121,8 +122,8 @@ export const boundaries: BoundaryRules = {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       external: ["es-toolkit"]
     },
-    // A utility module of pure functions; it stays free of npm packages.
-    "@rivus/agent-kit-redact": { dependsOn: [], external: [] },
+    // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.
+    "@rivus/agent-kit-redact": { dependsOn: [], external: ["es-toolkit"] },
     // The second published package. It reaches agent-kit only through its public entries, which are peers at
     // runtime, so a process holds one copy of the Platform types and the Result helpers.
     [COLLAB]: {

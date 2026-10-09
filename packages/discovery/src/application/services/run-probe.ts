@@ -1,9 +1,13 @@
+import * as z from "zod/mini";
+
 import type { CommandFailed, CommandOutput } from "../../domain/installation/index.js";
 import { errnoCode } from "./abortable.js";
 import type { DiscoveryPlatform } from "../ports.js";
 
 /** The platform's code for a command that printed more than it collects. */
 const OUTPUT_LIMIT_CODE = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
+/** The platform rejects a spawn whose output exceeded its buffer with this code on the error. */
+const OutputLimit = z.looseObject({ code: z.literal(OUTPUT_LIMIT_CODE) });
 
 /**
  * Windows runs `.cmd` and `.bat` files only through `cmd.exe`, and Node refuses to spawn them without a shell. npm
@@ -55,8 +59,7 @@ export async function runProbe<T>(
     output = { code: result.code, stdout: result.stdout, stderr: result.stderr };
   } catch (error) {
     options.signal?.throwIfAborted();
-    const code = (error as { code?: unknown } | null)?.code;
-    if (code === OUTPUT_LIMIT_CODE) {
+    if (OutputLimit.safeParse(error).success) {
       return failed("output-too-large");
     }
     if (errnoCode(error) === undefined) {

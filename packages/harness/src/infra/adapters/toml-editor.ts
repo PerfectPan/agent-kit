@@ -3,10 +3,16 @@ import { parse, patch, TomlDocument } from "@decimalturn/toml-patch";
 
 import type { DocumentInvalid, UnexpectedShape } from "../../application/ports.js";
 import type { EntryEdit, EntryPath } from "../services/config-entries.js";
+import { isDocumentRecord, type Document } from "../services/document.js";
+import { parseDocument } from "../services/document.js";
 
-export function parseToml(text: string): Result<unknown, DocumentInvalid> {
+export function parseToml(text: string): Result<Document | undefined, DocumentInvalid> {
   try {
-    return ok(parse(text) as unknown);
+    const data = parse(text) as unknown;
+    const document = parseDocument(data);
+    return document === undefined && data !== undefined
+      ? err({ _tag: "DocumentInvalid", format: "toml", detail: "the document holds a value TOML does not define" })
+      : ok(document);
   } catch (cause) {
     return err({
       _tag: "DocumentInvalid",
@@ -20,13 +26,15 @@ export function parseToml(text: string): Result<unknown, DocumentInvalid> {
  * `data` with one edit applied, copying only the containers on the edit's path, so that every other value (TOML
  * dates included) stays the very object the parser returned and `patch` sees it unchanged.
  */
-function applyEdit(data: unknown, path: EntryPath, edit: EntryEdit): unknown {
+function applyEdit(data: Document | undefined, path: EntryPath, edit: EntryEdit): Document | undefined {
   const [key, ...rest] = path;
   if (key === undefined) {
     return edit.value;
   }
   if (typeof key === "number") {
-    const list = Array.isArray(data) ? [...(data as unknown[])] : [];
+    // The `undefined` slots of the working containers never survive: removed elements are spliced out, and every
+    // value written is a document value, so the returns are read back as whole documents.
+    const list: (Document | undefined)[] = Array.isArray(data) ? [...data] : [];
     if (rest.length > 0) {
       list[key] = applyEdit(list[key], rest, edit);
     } else if (edit.value === undefined) {
@@ -36,10 +44,9 @@ function applyEdit(data: unknown, path: EntryPath, edit: EntryEdit): unknown {
     } else {
       list[key] = edit.value;
     }
-    return list;
+    return list as Document[];
   }
-  const object: Record<string, unknown> =
-    typeof data === "object" && data !== null && !Array.isArray(data) ? { ...(data as Record<string, unknown>) } : {};
+  const object: Record<string, Document | undefined> = isDocumentRecord(data) ? { ...data } : {};
   if (rest.length > 0) {
     object[key] = applyEdit(object[key], rest, edit);
   } else if (edit.value === undefined) {
@@ -47,7 +54,7 @@ function applyEdit(data: unknown, path: EntryPath, edit: EntryEdit): unknown {
   } else {
     object[key] = edit.value;
   }
-  return object;
+  return object as { readonly [key: string]: Document };
 }
 
 /** The parts of toml-patch's syntax tree that removals read: 1-based lines, 0-based columns. */
@@ -204,12 +211,15 @@ function deleteRanges(text: string, ranges: readonly Range[]): string {
   return next;
 }
 
-/** JSON with sorted keys, to compare what a TOML text holds (dates as ISO text) with what the edits should give. */
-function canonical(value: unknown): string {
-  return JSON.stringify(value, (_key, inner: unknown) =>
-    typeof inner === "object" && inner !== null && !Array.isArray(inner) && !(inner instanceof Date)
+/** JSON with sorted keys, to compare what a TOML text holds (dates as ISO text, big integers as their digits) with
+ * what the edits should give. */
+function canonical(value: Document | undefined): string {
+  return JSON.stringify(value, (_key, inner: Document | bigint) =>
+    isDocumentRecord(inner)
       ? Object.fromEntries(Object.entries(inner).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
-      : inner
+      : typeof inner === "bigint"
+        ? inner.toString()
+        : inner
   );
 }
 
@@ -222,12 +232,12 @@ function canonical(value: unknown): string {
  */
 export function editToml(
   text: string | undefined,
-  data: unknown,
+  data: Document | undefined,
   edits: readonly EntryEdit[]
 ): Result<string, UnexpectedShape> {
   const refused = (detail: string) => err<UnexpectedShape>({ _tag: "UnexpectedShape", detail });
   let current = text ?? "";
-  let expected: unknown = data ?? {};
+  let expected: Document | undefined = data ?? {};
   for (const edit of edits) {
     expected = applyEdit(expected, edit.path, edit);
     if (edit.value !== undefined) {

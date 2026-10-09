@@ -50,6 +50,36 @@ describe("fromLiteLLM", () => {
     expect(fromLiteLLM("prices")).toEqual({});
   });
 
+  it("keeps an entry whose cache price is present but not a finite number, and falls back to the input price", () => {
+    expect(
+      fromLiteLLM({
+        "null-cache-read": {
+          input_cost_per_token: 2e-6,
+          output_cost_per_token: 1.2e-5,
+          cache_read_input_token_cost: null
+        },
+        "infinite-cache-write": {
+          input_cost_per_token: 2e-6,
+          output_cost_per_token: 1.2e-5,
+          cache_creation_input_token_cost: Infinity
+        }
+      })
+    ).toEqual({
+      "null-cache-read": { input: 2, output: 12, cacheWrite: 2, cacheRead: 2 },
+      "infinite-cache-write": { input: 2, output: 12, cacheWrite: 2, cacheRead: 2 }
+    });
+  });
+
+  it("drops an entry whose price is not a finite number, and keeps the rest of the table", () => {
+    expect(
+      fromLiteLLM({
+        "infinite-cost": { input_cost_per_token: Infinity, output_cost_per_token: 2e-5 },
+        "nan-cost": { input_cost_per_token: NaN, output_cost_per_token: 2e-5 },
+        "ok-model": { input_cost_per_token: 2e-6, output_cost_per_token: 1.2e-5 }
+      })
+    ).toEqual({ "ok-model": { input: 2, output: 12, cacheWrite: 2, cacheRead: 2 } });
+  });
+
   it("gives a table that createPricing looks models up in", () => {
     const pricing = createPricing(fromLiteLLM(LITELLM));
     expect(pricing.priceOf("claude-opus-4-8-20260101")?.cacheWrite1h).toBe(10);

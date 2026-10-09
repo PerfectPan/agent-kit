@@ -86,6 +86,102 @@ describe("readHookEvent", () => {
     });
   });
 
+  it("reads a field of an unexpected type as absent, at the payload root and along a nested path", () => {
+    const numberSession = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: 7 }, {});
+    expect(numberSession.phase).toBe("finish");
+    expect(numberSession.sessionId).toBeUndefined();
+    const nested = readHookEvent("opencode", { type: "session.idle", properties: { info: { id: 9 } } }, {});
+    expect(nested.phase).toBe("finish");
+    expect(nested.sessionId).toBeUndefined();
+    const deep = readHookEvent("opencode", { type: "session.idle", properties: "not a record" }, {});
+    expect(deep.phase).toBe("finish");
+    expect(deep.sessionId).toBeUndefined();
+  });
+
+  it("reads inherited keys as absent", () => {
+    const inherited: unknown = Object.create({ hook_event_name: "Stop", session_id: "proto" });
+    const event = readHookEvent("claude-code", inherited, {});
+    expect(event.phase).toBe("unknown");
+    expect(event.sessionId).toBeUndefined();
+  });
+
+  it("reads a key polluted onto Object.prototype as absent", () => {
+    Object.defineProperty(Object.prototype, "session_id", { value: "polluted", configurable: true });
+    try {
+      const event = readHookEvent("claude-code", { hook_event_name: "Stop" }, {});
+      expect(event.phase).toBe("finish");
+      expect(event.sessionId).toBeUndefined();
+    } finally {
+      delete (Object.prototype as { session_id?: unknown }).session_id;
+    }
+  });
+
+  it("reads a prototype getter of a class instance as absent", () => {
+    class Holder {
+      get session_id(): string {
+        return "getter";
+      }
+    }
+    const event = readHookEvent("claude-code", Object.assign(new Holder(), { hook_event_name: "Stop" }), {});
+    expect(event.phase).toBe("finish");
+    expect(event.sessionId).toBeUndefined();
+  });
+
+  it("never runs a getter on an unrelated key", () => {
+    const throwing: unknown = Object.create(
+      {},
+      {
+        hook_event_name: { value: "Stop", enumerable: true },
+        boom: {
+          get() {
+            throw new Error("boom");
+          },
+          enumerable: true
+        }
+      }
+    );
+    const event = readHookEvent("claude-code", throwing, {});
+    expect(event.phase).toBe("finish");
+  });
+
+  it("reads a promise on a payload path as absent instead of throwing", () => {
+    for (const agent of Object.keys(builtinHookDialects)) {
+      const event = readHookEvent(agent, { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {});
+      expect(event.sessionId).toBeUndefined();
+    }
+    expect(
+      readHookEvent("claude-code", { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {}).nativeEvent
+    ).toBe("Stop");
+  });
+
+  it("reads a promise on the sniffing path as no evidence", () => {
+    const event = readHookEvent("claude-code", { hookEventName: Promise.resolve("pre_tool_use") }, {});
+    expect(event.agent).toBe("claude-code");
+    expect(event.phase).toBe("unknown");
+  });
+
+  it("reads a promise on a dialect path as absent instead of throwing", () => {
+    const event = readHookEvent("cursor", { cursor_version: "1", workspace_roots: Promise.resolve(["/w"]) }, {});
+    expect(event.agent).toBe("cursor");
+    expect(event.cwd).toBeUndefined();
+  });
+
+  it("throws when reading the path runs a throwing getter on the key it reads", () => {
+    const throwing: unknown = Object.create(
+      {},
+      {
+        hook_event_name: { value: "Stop", enumerable: true },
+        session_id: {
+          get() {
+            throw new Error("boom");
+          },
+          enumerable: true
+        }
+      }
+    );
+    expect(() => readHookEvent("claude-code", throwing, {})).toThrow("boom");
+  });
+
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",

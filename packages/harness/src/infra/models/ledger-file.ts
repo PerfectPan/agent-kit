@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { isPlainObject } from "es-toolkit";
 import * as z from "zod/mini";
 
 import {
@@ -71,6 +72,24 @@ const Snapshot = z.object({
 });
 
 /**
+ * The envelope of a stored ledger: the fields a store reads before the shape is known. Both are whatever the file
+ * holds, so that an unknown version is reported with the value it carried and a revision of another type is still a
+ * revision the save must refuse to write over.
+ */
+const StoredLedger = z.object({ schemaVersion: z.unknown(), revision: z.optional(z.unknown()) });
+
+/** Reads the envelope of a stored ledger; a value that is no record reads as one without the fields. */
+export function storedLedgerEnvelope(json: unknown): {
+  readonly schemaVersion: unknown;
+  readonly revision: unknown;
+} {
+  const parsed = StoredLedger.safeParse(json);
+  return parsed.success
+    ? { schemaVersion: parsed.data.schemaVersion, revision: parsed.data.revision }
+    : { schemaVersion: undefined, revision: undefined };
+}
+
+/**
  * Reads a stored ledger: the version first, so that a file a newer kit wrote is refused as it is, then its shape. The
  * domain checks the invariants when it restores the snapshot.
  */
@@ -81,7 +100,7 @@ export function decodeLedger(text: string): Result<LedgerSnapshot, LedgerVersion
   } catch {
     return err({ _tag: "InvalidLedger", reason: "the ledger file is not JSON" });
   }
-  const version = checkLedgerVersion(json);
+  const version = checkLedgerVersion(storedLedgerEnvelope(json));
   if (!version.ok) {
     return version;
   }
@@ -98,13 +117,37 @@ export function encodeLedger(snapshot: LedgerSnapshot): string {
   return `${JSON.stringify(snapshot, null, 2)}\n`;
 }
 
-const PreImageFile = z.object({ content: z.unknown() });
+/**
+ * What JSON holds, plus the infinities a large TOML number can carry into a pre-image: a stored Artifact's content
+ * is exactly this, so the reading layer hands it over typed. Records keep the parser's object, so an own
+ * `"__proto__"` key survives the round trip.
+ */
+// The cast bridges zod's variance over the array members, which the schema builds mutable and the type reads readonly.
+const Json = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.custom<number, unknown>((value) => typeof value === "number" && !Number.isFinite(value)),
+    z.string(),
+    z.array(Json),
+    // The record branch: a plain object whose values are content values, kept as the parser returned it.
+    z.custom<{ readonly [key: string]: ArtifactContent }, unknown>((value) => {
+      if (!isPlainObject(value)) {
+        return false;
+      }
+      return Object.keys(value).every((key) => Json.safeParse((value as Record<string, unknown>)[key]).success);
+    })
+  ])
+) as z.ZodMiniType<ArtifactContent>;
+
+const PreImageFile = z.object({ content: z.optional(Json) });
 
 /** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. */
 export function decodePreImage(text: string): ArtifactContent | undefined {
   try {
     const parsed = PreImageFile.safeParse(JSON.parse(text));
-    return parsed.success && parsed.data.content !== undefined ? (parsed.data.content as ArtifactContent) : undefined;
+    return parsed.success ? parsed.data.content : undefined;
   } catch {
     return undefined;
   }

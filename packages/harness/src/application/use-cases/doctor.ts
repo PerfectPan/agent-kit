@@ -1,10 +1,12 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
+import * as z from "zod/mini";
 
 import { foreignHookFiles, type HookSource, type InstallAdapters, type Owner } from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
+import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
 import {
   duplicateHooks,
   type HookDialects,
@@ -69,15 +71,23 @@ export interface DoctorOptions extends ScopeOptions {
 interface FoundHook {
   readonly event: string;
   readonly command: string;
-  readonly hook: unknown;
+  /** The fields `hookHealth` reads; the rest of the registration stays in the file. */
+  readonly hook: { readonly timeout?: number };
   /** Where it is written; its pointer holds the event as that file names it. */
   readonly locator: ArtifactLocator;
   /** Written in one of the agent's own files rather than another agent's that it also runs. */
   readonly own: boolean;
 }
 
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * A hook file's shape, read leniently: an event whose list is not a list holds no hooks, a group without a hook list
+ * holds none, and a hook's `timeout` of another type reads as absent. A hook is one registration only when its
+ * `command` is a string.
+ */
+const HookList = lenient(z.array(z.unknown()), []);
+const HookEvents = lenient(z.record(z.string(), HookList), {});
+const HookGroup = lenient(z.looseObject({ hooks: HookList }), { hooks: [] });
+const HookRegistration = z.looseObject({ command: z.string(), timeout: lenient(z.optional(z.number()), undefined) });
 
 /** The paths a source names, with each `*` segment expanded to the entries of its directory. */
 function expand(pattern: string): Effect.Effect<readonly string[], never, PlatformService> {
@@ -117,23 +127,27 @@ function hooksInFile(
       (yield* ArtifactFiles).read({ kind, path, pointer: "/hooks" }),
       () => undefined
     );
-    const events = isRecord(read?.content) ? read.content : {};
+    const events = HookEvents.safeParse(read?.content);
     const found: Omit<FoundHook, "own">[] = [];
-    for (const [event, list] of Object.entries(events)) {
-      const entries = Array.isArray(list) ? list : [];
+    if (!events.success) {
+      return found;
+    }
+    for (const [event, entries] of Object.entries(events.data)) {
       const hooks =
         source.layout === "grouped"
-          ? entries.flatMap((group) => (isRecord(group) && Array.isArray(group.hooks) ? group.hooks : []))
+          ? entries.flatMap((group) => HookGroup.safeParse(group).data?.hooks ?? [])
           : entries;
       for (const hook of hooks) {
-        if (isRecord(hook) && typeof hook.command === "string") {
+        const registration = HookRegistration.safeParse(hook);
+        if (registration.success) {
+          const { command, timeout } = registration.data;
           const pointer = `/hooks/${event.replaceAll("~", "~0").replaceAll("/", "~1")}`;
           const memberIn = source.layout === "grouped" ? "hook-group" : "element";
           found.push({
             event,
-            command: hook.command,
-            hook,
-            locator: { kind, path, pointer, member: hook.command, memberIn }
+            command,
+            hook: { timeout },
+            locator: { kind, path, pointer, member: command, memberIn }
           });
         }
       }

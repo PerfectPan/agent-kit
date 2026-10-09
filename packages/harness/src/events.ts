@@ -1,5 +1,6 @@
 // The hook-path entry, `@rivus/agent-kit/harness/events`: a hook process loads only this, so it reaches nothing but
-// the lifecycle domain and the per-agent hook dialects.
+// the lifecycle domain and the per-agent hook dialects, and stays synchronous. The shell bundles `zod/mini` into the
+// built entry, so it imports nothing at runtime even though the payload readers parse through schemas.
 export {
   builtinHookDialects,
   readHookEvent,

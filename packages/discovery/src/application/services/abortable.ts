@@ -1,3 +1,5 @@
+import * as z from "zod/mini";
+
 /**
  * Settles like `promise`, or rejects with `signal.reason` as soon as `signal` aborts, so a platform call that hangs
  * (a stalled network mount) cannot hold detection past an abort. The call itself is not cancelled.
@@ -26,11 +28,16 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal | undefine
   });
 }
 
+/** An errno code such as `ENOENT`, or libuv's `UNKNOWN` for an error it cannot map. */
+const Errno = z.looseObject({
+  code: z.union([z.literal("UNKNOWN"), z.string().check(z.regex(/^E[A-Z0-9]+$/))])
+});
+
 /**
  * An errno code such as `ENOENT`, or libuv's `UNKNOWN` for an error it cannot map; `undefined` for an error that is
  * not a file system or spawn failure.
  */
 export function errnoCode(error: unknown): string | undefined {
-  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
-  return typeof code === "string" && (code === "UNKNOWN" || /^E[A-Z0-9]+$/.test(code)) ? code : undefined;
+  const parsed = Errno.safeParse(error);
+  return parsed.success ? parsed.data.code : undefined;
 }

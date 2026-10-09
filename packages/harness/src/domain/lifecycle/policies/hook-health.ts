@@ -55,12 +55,13 @@ const eventOf = (locator: ArtifactLocator): string =>
 /**
  * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,
  * means the hook never runs; a timeout below one second where the dialect reads milliseconds looks like seconds
- * written in the wrong unit; a program given by absolute path that `exists` says is missing is a stale path.
+ * written in the wrong unit; a program given by absolute path that `exists` says is missing is a stale path. The
+ * registration arrives parsed, so no shape is checked here.
  */
 export function hookHealth(
   dialect: HookDialect | undefined,
   locator: ArtifactLocator,
-  hook: unknown,
+  hook: { readonly timeout?: number },
   exists: (path: string) => boolean
 ): readonly HookFinding[] {
   const findings: HookFinding[] = [];
@@ -72,8 +73,8 @@ export function hookHealth(
   if (dialect !== undefined && !known) {
     findings.push({ problem: "unknown-event", locator, agent: dialect.agent, event });
   }
-  const timeout = typeof hook === "object" && hook !== null ? (hook as { timeout?: unknown }).timeout : undefined;
-  if (dialect?.timeout?.unit === "milliseconds" && typeof timeout === "number" && timeout < 1000) {
+  const { timeout } = hook;
+  if (dialect?.timeout?.unit === "milliseconds" && timeout !== undefined && timeout < 1000) {
     findings.push({ problem: "timeout-unit", locator, agent: dialect.agent, timeout });
   }
   const program = hookProgram(locator.member ?? "");

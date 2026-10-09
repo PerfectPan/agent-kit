@@ -56,12 +56,14 @@ export interface BeginContext {
 }
 
 /**
- * Reads only `schemaVersion` of a stored ledger, so that a store checks the version before it parses the rest: a file
- * of an unknown version is refused as it is, never parsed as the current version and never replaced.
+ * Judges the `schemaVersion` of a stored ledger, so that a store checks the version before it parses the rest: a file
+ * of an unknown version is refused as it is, never parsed as the current version and never replaced. The stored
+ * record arrives with its envelope parsed (the reading layer reads that one field); this judges the version.
  */
-export function checkLedgerVersion(stored: unknown): Result<typeof LEDGER_SCHEMA_VERSION, LedgerVersionUnsupported> {
-  const schemaVersion =
-    typeof stored === "object" && stored !== null ? (stored as { schemaVersion?: unknown }).schemaVersion : undefined;
+export function checkLedgerVersion(stored: {
+  readonly schemaVersion: unknown;
+}): Result<typeof LEDGER_SCHEMA_VERSION, LedgerVersionUnsupported> {
+  const { schemaVersion } = stored;
   return schemaVersion === LEDGER_SCHEMA_VERSION
     ? ok(LEDGER_SCHEMA_VERSION)
     : err({ _tag: "LedgerVersionUnsupported", schemaVersion, supported: [LEDGER_SCHEMA_VERSION] });
