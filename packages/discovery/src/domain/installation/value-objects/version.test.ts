@@ -12,6 +12,23 @@ describe("versionFromOutput", () => {
     expect(versionFromOutput({ code: 0, stdout: "nightly", stderr: "" })).toEqual({ output: "nightly" });
   });
 
+  it("reads the number after a comma prefix and from multi-line output with a trailing period", () => {
+    expect(versionFromOutput({ code: 0, stdout: "kimi, version 1.22.0\n", stderr: "" })).toEqual({
+      output: "kimi, version 1.22.0",
+      number: "1.22.0"
+    });
+    expect(
+      versionFromOutput({
+        code: 0,
+        stdout: "GitHub Copilot CLI 1.0.93.\nRun 'copilot update' to check for updates.\n",
+        stderr: ""
+      })
+    ).toEqual({
+      output: "GitHub Copilot CLI 1.0.93.\nRun 'copilot update' to check for updates.",
+      number: "1.0.93"
+    });
+  });
+
   it("reads nothing from a failed command or a blank output", () => {
     expect(versionFromOutput({ code: 1, stdout: "x 1.0.0", stderr: "" })).toBeUndefined();
     expect(versionFromOutput({ code: null, stdout: "x 1.0.0", stderr: "" })).toBeUndefined();

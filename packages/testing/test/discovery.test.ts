@@ -122,8 +122,8 @@ describe("detectAgents", () => {
   });
 
   it("accepts aliases once each and throws capability-unsupported for an agent without a recipe", async () => {
-    const installations = await detectAgents(machine(), { agents: ["claude", "claude-code", "kimi"] });
-    expect(installations.map((installation) => installation.agent)).toEqual(["claude-code", "kimi-code-cli"]);
+    const installations = await detectAgents(machine(), { agents: ["claude", "claude-code", "cursor-agent"] });
+    expect(installations.map((installation) => installation.agent)).toEqual(["claude-code", "cursor"]);
     const error: unknown = await detectAgents(machine(), { agents: ["my-agent"] }).catch((caught: unknown) => caught);
     expect(isAgentKitError(error)).toBe(true);
     expect(error).toMatchObject({ code: "capability-unsupported" });
@@ -154,22 +154,22 @@ describe("detectAgents", () => {
   });
 
   it("S53: reports unknown when nothing is found and a path could not be checked", async () => {
-    const base = machine({ files: { [`${HOME}/.kimi`]: "" } });
+    const base = machine({ files: { [`${HOME}/.grok`]: "" } });
     const platform: MemoryPlatform = {
       ...base,
       fs: {
         ...base.fs,
         stat: async (path, options) => {
-          if (path === `${HOME}/.kimi`) {
+          if (path === `${HOME}/.grok`) {
             throw Object.assign(new Error(`EACCES: ${path}`), { code: "EACCES" });
           }
           return base.fs.stat(path, options);
         }
       }
     };
-    const installation = await detectOne(platform, "kimi-code-cli");
+    const installation = await detectOne(platform, "grok");
     expect(installation.status).toBe("unknown");
-    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: `${HOME}/.kimi`, code: "EACCES" }]);
+    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: `${HOME}/.grok`, code: "EACCES" }]);
   });
 
   it("rejects when stat fails without an errno code, which is a defect", async () => {
@@ -291,8 +291,12 @@ describe("login state", () => {
     const platform = machine({ commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder])) });
     const installations = await detectAgents(platform, { versionProbe: false });
     expect(calls).toEqual([]);
-    expect(installations.filter((installation) => installation.command !== undefined).length).toBeGreaterThan(20);
-    expect(new Set(installations.map((installation) => installation.status))).toEqual(new Set(["found", "missing"]));
+    // Every built-in command resolves, so every agent is found by its command alone; the empty machine that leaves
+    // every agent missing is covered above.
+    expect(installations.filter((installation) => installation.command !== undefined).length).toBe(
+      Object.keys(builtinProbeRecipes).length
+    );
+    expect(new Set(installations.map((installation) => installation.status))).toEqual(new Set(["found"]));
     expect(installations.every((installation) => installation.version === undefined)).toBe(true);
     await detectAgents(platform);
     expect(calls.length).toBeGreaterThan(0);
@@ -560,16 +564,16 @@ describe("detectAgents edge cases", () => {
       fs: {
         ...base.fs,
         stat: async (path, options) => {
-          if (path === "/opt/bin/kimi") {
+          if (path === "/opt/bin/pi") {
             throw Object.assign(new Error(`EACCES: ${path}`), { code: "EACCES" });
           }
           return base.fs.stat(path, options);
         }
       }
     };
-    const installation = await detectOne(platform, "kimi-code-cli");
+    const installation = await detectOne(platform, "pi");
     expect(installation.status).toBe("unknown");
-    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: "/opt/bin/kimi", code: "EACCES" }]);
+    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: "/opt/bin/pi", code: "EACCES" }]);
   });
 
   it("treats libuv's UNKNOWN code as a check that could not complete, not as a defect", async () => {
@@ -579,17 +583,17 @@ describe("detectAgents edge cases", () => {
       fs: {
         ...base.fs,
         stat: async (path, options) => {
-          if (path === "/opt/bin/kimi") {
+          if (path === "/opt/bin/pi") {
             throw Object.assign(new Error(`UNKNOWN: ${path}`), { code: "UNKNOWN" });
           }
           return base.fs.stat(path, options);
         }
       }
     };
-    const [kimi] = await detectAgents(platform, { agents: ["kimi-code-cli", "codex"] });
-    expect(kimi).toMatchObject({
+    const [pi] = await detectAgents(platform, { agents: ["pi", "codex"] });
+    expect(pi).toMatchObject({
       status: "unknown",
-      problems: [{ _tag: "StatFailed", path: "/opt/bin/kimi", code: "UNKNOWN" }]
+      problems: [{ _tag: "StatFailed", path: "/opt/bin/pi", code: "UNKNOWN" }]
     });
   });
 
@@ -615,18 +619,33 @@ describe("detectAgents edge cases", () => {
     await expect(detectAgents(hungRead, { agents: ["grok"], signal: reading.signal })).rejects.toThrow("stop read");
   });
 
-  it("counts the Codex app only by an application whose bundle id is Codex's, never by the CLI's home", async () => {
+  it("counts an application only when its bundle id matches, and an unreadable plist by its path", async () => {
     const plist = (id: string) =>
       `<?xml version="1.0"?><plist><dict><key>CFBundleIdentifier</key>\n\t<string>${id}</string></dict></plist>`;
-    const detect = async (files: Record<string, string>) => detectOne(machine({ files }), "codex-desktop");
-    expect((await detect({ [`${HOME}/.codex/config.toml`]: "" })).status).toBe("missing");
-    expect((await detect({ "/Applications/ChatGPT.app/Contents/Info.plist": plist("com.openai.chat") })).status).toBe(
+    const recipe: ProbeRecipe = {
+      specificationVersion: "discovery-v1",
+      agent: "my-agent",
+      displayName: "My Agent",
+      kind: "app",
+      commands: [],
+      // An app name another product shares, like the Codex app installed as ChatGPT.app.
+      appPaths: ["/Applications/MyAgent.app", "/Applications/Shared.app"],
+      appBundleIds: ["com.example.myagent"],
+      configPaths: [],
+      mcpConfigPaths: [],
+      warnings: []
+    };
+    const detect = async (files: Record<string, string>) => {
+      const [installation] = await detectAgents(machine({ files }), { recipes: { "my-agent": recipe } });
+      return installation;
+    };
+    expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.other") }))?.status).toBe(
       "missing"
     );
     expect(
-      (await detect({ "/Applications/ChatGPT.app/Contents/Info.plist": plist("com.openai.codex") })).evidence
-    ).toEqual([{ kind: "app", path: "/Applications/ChatGPT.app" }]);
-    expect((await detect({ "/Applications/ChatGPT.app/Contents/Info.plist": "bplist00" })).status).toBe("found");
+      (await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.myagent") }))?.evidence
+    ).toEqual([{ kind: "app", path: "/Applications/Shared.app" }]);
+    expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": "bplist00" }))?.status).toBe("found");
   });
 
   it.each(["constructor", "__proto__", "toString"])("throws capability-unsupported for %s", async (agent) => {

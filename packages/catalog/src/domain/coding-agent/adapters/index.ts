@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "../result/index.js";
+import { err, ok, type Result } from "../../result/index.js";
 import {
   type AgentHome,
   type BuiltinCodingAgentId,
@@ -11,34 +11,14 @@ import {
   homeFromRule,
   type HomeRule,
   type InvalidCodingAgentId
-} from "../coding-agent/index.js";
-import { aider } from "./aider.js";
-import { amp } from "./amp.js";
-import { antigravity } from "./antigravity.js";
+} from "../index.js";
 import { claudeCode } from "./claude-code.js";
-import { cline } from "./cline.js";
-import { codebuddy } from "./codebuddy.js";
 import { codex } from "./codex.js";
-import { codexDesktop } from "./codex-desktop.js";
-import { commandCode } from "./command-code.js";
 import { cursor } from "./cursor.js";
 import { geminiCli } from "./gemini-cli.js";
-import { githubCopilot } from "./github-copilot.js";
 import { grok } from "./grok.js";
-import { hermes } from "./hermes.js";
-import { kimiCodeCli } from "./kimi-code-cli.js";
-import { kiroCli } from "./kiro-cli.js";
-import { neovate } from "./neovate.js";
-import { openclaw } from "./openclaw.js";
 import { opencode } from "./opencode.js";
-import { openhands } from "./openhands.js";
 import { pi } from "./pi.js";
-import { qoder } from "./qoder.js";
-import { rooCode } from "./roo-code.js";
-import { trae } from "./trae.js";
-import { vscodeCopilot } from "./vscode-copilot.js";
-import { windsurf } from "./windsurf.js";
-import { zencoder } from "./zencoder.js";
 
 /** Each built-in agent's identity; the agents whose id is a `CodingAgentIdWithHome` also have a home rule. */
 export const builtinCodingAgents: {
@@ -50,27 +30,7 @@ export const builtinCodingAgents: {
   "gemini-cli": geminiCli,
   grok,
   opencode,
-  pi,
-  aider,
-  amp,
-  antigravity,
-  cline,
-  codebuddy,
-  "codex-desktop": codexDesktop,
-  "command-code": commandCode,
-  "github-copilot": githubCopilot,
-  hermes,
-  "kimi-code-cli": kimiCodeCli,
-  "kiro-cli": kiroCli,
-  neovate,
-  openclaw,
-  openhands,
-  qoder,
-  "roo-code": rooCode,
-  trae,
-  "vscode-copilot": vscodeCopilot,
-  windsurf,
-  zencoder
+  pi
 };
 
 // Built on first use: a module-level map would keep the agent table in bundles that never parse an id, such as the

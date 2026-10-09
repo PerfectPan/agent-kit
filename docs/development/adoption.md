@@ -70,7 +70,7 @@ Bundle `/transcript/usage` and `/cost` directly, supply the needed platform port
 
 ### Agent task loop and agent-finder CLI
 
-1. Replace init, discovery, session listing and preview with `/catalog`, `/discovery`, `/sessions` and `/transcript` as needed. The agent-finder CLI calls `detectAgents`; inspect recipe warnings and accept intended corrected probe facts explicitly. Use `versionProbe: false` with default file auth for an inspection that must execute no agent command.
+1. Replace init, discovery, session listing and preview with `/catalog`, `/discovery`, `/sessions` and `/transcript` as needed. The agent-finder CLI calls `detectAgents`; `/discovery` now covers the kit's 7 agents, and its other agents can be supplied through the `recipes` option. Inspect recipe warnings and accept intended corrected probe facts explicitly. Use `versionProbe: false` with default file auth for an inspection that must execute no agent command.
 2. Delete duplicate session root and resume knowledge from the TUI, the moved session reader package, and the MoonBit scanner after the application's tests, init smoke and preview comparison pass. Verify CI no longer needs the MoonBit toolchain.
 3. Replace TaskOccupancyService's handwritten heartbeat, AbortController and release lifecycle with `createLeaseManager` and scoped `manager.acquire`. Keep task policy in the application. Fence writes using `handle.runFenced`, and make non-cancellable writes uninterruptible or wait until their AbortSignal has stopped them.
 4. Keep room-specific orchestration and ToolServer in the application. After migration is accepted, confirm with the owner before deprecating `@rivus/agent-finder-core` and ending mooncakes module updates; those external actions are a separate completion state.

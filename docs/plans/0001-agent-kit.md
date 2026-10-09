@@ -5,7 +5,7 @@ agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each 
 - Status: accepted (all decisions confirmed, see section 7); the kit side of P0–P6 is implemented. Application adoption and the real-agent checks in 6.3 remain open. `@rivus/agent-kit` 0.1.0 and 0.2.0 are published
 - Owner: PerfectPan
 - Reviewer: codex (review rounds in [A.5](#a5-review-record))
-- Last updated: 2026-10-08
+- Last updated: 2026-10-09
 - Paired Spec: [docs/specs/0001-agent-kit.md](../specs/0001-agent-kit.md) (the kit's public entries; each application's external behavior stays the same)
 - Repository: `PerfectPan/agent-kit`, generated from `PerfectPan/project-template-rush` after the decisions were confirmed
 
@@ -925,5 +925,6 @@ The line-count inventory of the source code was used to size the phases. It desc
 - 2026-10-06, codex round 4: both findings of the previous round confirmed resolved; 1 new minor (the holder identity inside the db cannot be read while it is held exclusively), fixed by writing it to an adjacent reference file. The review converged.
 - 2026-10-06, discussion with codex about the scope of Effect (two rounds): in the first round both sides chose "split by side-effect weight"; codex added measurements of Scope and supervision and the harness execution rules, and corrected the assumption that presence was bundled. In the second round the owner questioned the Promise facade plus native dual API; after reading presence setup, agent-task-loop's TaskOccupancyService and room-web's RoomLabHost, codex changed to recommending native entries only. The conclusion is in 3.7.
 - 2026-10-07, P0 and P1 implementation: decisions made while building were recorded here. 2.3 gained rows for the shell build (tsdown with the Oxc declaration generator, `isolatedDeclarations` in internal packages), dependency ranges (caret runtime dependencies, exact devDependencies and `effect` peer), the session adapter layout (pure translation in `agents/`, IO assembly and `builtinSessionAdapters` in `application/session-adapters/`) and leaving `streamEvents` out of 0.1.0. The 0.1.0 error tags, abort and throw rules are in 3.5; the public surface limit is in 3.6; usage fields on `request` events and the targets of `spawnEventId` are in 3.11; the verified home rules are in 3.1; 6.3 marks P0 and P1 implemented. codex reviewed each slice before it merged (scaffold: 6 findings; Node platform: 2; sessions core: 8; Codex adapter: 5 plus 1 follow-up; all fixed), and the Grok adapter went through the same review.
+- 2026-10-09, owner decision: catalog and discovery now keep only the agents some context supports — claude-code, codex, cursor, gemini-cli, grok, opencode and pi — so agent-finder-cli, once it switches to `/discovery`, lists these 7; the identities and probe recipes of the other 20 were removed (adding one back is one identity plus one probe recipe).
 
 This plan was compiled from four inventories and four research threads. After the decisions in section 7 were confirmed, it was converted into this Markdown version.
