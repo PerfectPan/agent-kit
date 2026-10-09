@@ -115,15 +115,16 @@ function restore(saved: unknown): GeminiCliUsageState {
   };
 }
 
-/**
- * The usage of an older chat file, one JSON object with a `messages` array, read whole. Every record points at the
- * whole file; a message id that repeats counts once.
- */
+/** An older chat: one JSON object, with the session id and the `messages` array. */
 const GeminiCliLegacyChat = z.looseObject({
   sessionId: lenient(z.string()),
   messages: lenient(z.array(z.unknown()))
 });
 
+/**
+ * The usage of an older chat file, one JSON object with a `messages` array, read whole. Every record points at the
+ * whole file; a message id that repeats counts once.
+ */
 export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: SourcePointer): UsageRecord[] {
   const chat = z.safeParse(GeminiCliLegacyChat, value).data;
   const messages = chat?.messages ?? [];

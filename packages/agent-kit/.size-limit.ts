@@ -21,8 +21,9 @@ export default [
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
   { name: "@rivus/agent-kit/platform/effect", path: "dist/platform/effect.js", import: "*", limit: "0.5 kB" },
   { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1.5 kB" },
-  // The sessions, transcript and transcript/usage budgets include the zod schemas of the usage and record readers.
-  // transcript/usage also carries a bundled zod/mini: the entry imports nothing, so tsdown inlines it.
+  // Size-limit counts dependencies, and the usage readers now import zod/mini, which the sessions and transcript
+  // graphs did not pull in on main: most of their growth is zod/mini itself. /transcript/usage also carries a
+  // bundled copy, since the entry imports nothing and tsdown inlines it.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "17.71 kB" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "35.5 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },

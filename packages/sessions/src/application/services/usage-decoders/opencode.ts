@@ -37,6 +37,9 @@ const AGENT = "opencode";
 /** Rows read per query, so a large database is not loaded whole. */
 const PAGE_ROWS = 500;
 
+/** A `message` page row; only `session_id` is read by type, the other columns are coerced in `toRows`. */
+const messageRow = z.looseObject({ session_id: lenient(z.string()) });
+
 /**
  * opencode's database `<home>/opencode.db` when it exists, which needs `platform.sqlite`; otherwise each session
  * directory of the older JSON layout.
@@ -160,18 +163,16 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
       }
     };
     const earliest = opencodeQueryFloor(options.since);
-    // A page row: only `session_id` is read by type, the rest is coerced to the shape the settlement rules use.
-    const messageRow = z.looseObject({ session_id: lenient(z.string()) });
     const toRows = (rows: Record<string, SqliteValue>[]): OpencodeTableRow[] =>
       rows.map((row) => {
-        const values = z.safeParse(messageRow, row).data;
+        const sessionId = z.safeParse(messageRow, row).data?.session_id;
         return {
-          id: String(values?.id),
-          row: Number(values?.row),
-          updated: Number(values?.time_updated),
-          created: Number(values?.time_created),
-          ...(values?.session_id === undefined ? {} : { sessionId: values.session_id }),
-          data: String(values?.data)
+          id: String(row.id),
+          row: Number(row.row),
+          updated: Number(row.time_updated),
+          created: Number(row.time_created),
+          ...(sessionId === undefined ? {} : { sessionId }),
+          data: String(row.data)
         };
       });
     try {
@@ -215,13 +216,13 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
   }, from);
 }
 
+/** The cursor state of a legacy session directory: the last file name read. */
+const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
+
 /**
  * The assistant messages of one session directory of the older JSON layout, one file each, in name order (opencode's
  * message ids grow with time). The cursor keeps the last file name read.
  */
-/** The cursor state of a legacy session directory: the last file name read. */
-const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
-
 function decodeLegacySession(platform: UsagePlatform, dir: string, options: DecodeUsageOptions): UsageStream {
   const { from, signal } = options;
   return usageStreamOf(async function* (position) {

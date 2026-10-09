@@ -27,7 +27,6 @@ const PiMessageUsage = z.looseObject({
 type PiMessageUsageValue = z.output<typeof PiMessageUsage>;
 
 /** A session file record: a `session` header, or an entry whose message carries the counts. */
-
 const PiRecord = z.looseObject({
   id: lenient(z.string()),
   type: lenient(z.string()),
