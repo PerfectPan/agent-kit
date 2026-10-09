@@ -11,7 +11,7 @@ export function homeFromRule(agent: CodingAgentId, rule: HomeRule, context: Home
         : override;
     return {
       agent,
-      path: joinSegments(base, rule.envSubpath ?? []),
+      path: joinSegments(base, rule.envSubpath === undefined ? [] : rule.envSubpath),
       source: { kind: "env", variable: rule.envVar }
     };
   }
