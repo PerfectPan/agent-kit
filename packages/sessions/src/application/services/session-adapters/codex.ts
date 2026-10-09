@@ -13,7 +13,7 @@ import {
 } from "../../../domain/transcript/adapters/codex/events.js";
 import type { SessionRef } from "../../../domain/session/index.js";
 import { createTranscript, mergeByTime, type Transcript } from "../../../domain/transcript/index.js";
-import { timedRecord } from "../../../domain/transcript/adapters/timestamp.js";
+import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { readEdges } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";

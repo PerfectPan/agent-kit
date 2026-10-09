@@ -5,9 +5,10 @@
 
 import * as z from "zod/mini";
 
-import type { TranscriptEventKind, TranscriptStreamPart } from "../index.js";
+import { timeOf, type TranscriptEventKind, type TranscriptStreamPart } from "../index.js";
 import { compactUsage, type Usage } from "../../usage/index.js";
 import { lenient } from "./lenient.js";
+import { logTimestamp } from "./timestamp.js";
 
 /** The body fields `AcpUpdate` parses, as a plain type: adapters that repeat the fields in their own schema assert
  * their set against this one. */
@@ -57,17 +58,25 @@ const AcpUpdate = z.looseObject({
   status: lenient(z.string())
 });
 
-/** The `session/update` notification record: the body under `params`, or on the record itself. */
+/** The `session/update` notification record: the body under `params`, or on the record itself, and the record time. */
 const AcpUpdateEnvelope = z.looseObject({
+  timestamp: logTimestamp,
   params: lenient(z.looseObject({ update: lenient(AcpUpdate) })),
   update: lenient(AcpUpdate)
 });
 
-/** The `session/update` body, whether it sits under `params` or on the record. */
-export function acpUpdateOf(value: unknown): AcpUpdateValue | undefined {
+/**
+ * The body of a recorded `session/update`, under `params` or on the record, with the record's own time in epoch
+ * milliseconds beside it, so a reader gets both off one parse. The body is `undefined` for a record that carries
+ * none; the whole result is `undefined` only when the value is not a record.
+ */
+export function acpRecordedUpdate(
+  value: unknown
+): { update: AcpUpdateValue | undefined; time: number | undefined } | undefined {
   const record = z.safeParse(AcpUpdateEnvelope, value).data;
-  const update: AcpUpdateValue | undefined = record?.params?.update ?? record?.update;
-  return update;
+  return record === undefined
+    ? undefined
+    : { update: record.params?.update ?? record.update, time: timeOf(record.timestamp) };
 }
 
 /** Text of one content part: the part's `text`, else the text of the block nested under its `content`. */

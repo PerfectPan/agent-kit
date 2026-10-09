@@ -1,7 +1,6 @@
 import type { SessionHead, SessionPreview } from "../../index.js";
 import { SESSION_TITLE_MAX } from "../../index.js";
-import { timeOfValue } from "../../../transcript/adapters/timestamp.js";
-import { acpChunkText, acpUpdateOf } from "../../../transcript/adapters/acp-updates.js";
+import { acpChunkText, acpRecordedUpdate } from "../../../transcript/adapters/acp-updates.js";
 import type { GrokSessionMeta } from "./layout.js";
 import { isInjectedChunk } from "../../../transcript/adapters/grok/chunks.js";
 import { grokMetaOf } from "../../../usage/adapters/grok.js";
@@ -10,12 +9,13 @@ import { grokMetaOf } from "../../../usage/adapters/grok.js";
 export function previewGrokRecords(records: readonly Record<string, unknown>[]): SessionPreview {
   const preview: SessionPreview = {};
   for (const record of records) {
-    const update = acpUpdateOf(record);
-    const ts = timeOfValue(record);
+    const recorded = acpRecordedUpdate(record);
+    const ts = recorded?.time;
     if (ts !== undefined) {
       preview.startedAt ??= ts;
       preview.lastAt = ts;
     }
+    const update = recorded?.update;
     if (preview.firstPrompt || update?.sessionUpdate !== "user_message_chunk") {
       continue;
     }

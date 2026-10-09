@@ -181,7 +181,7 @@ export const CodexEnvelopeSchema: z.ZodMiniObject<
     type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
     record_type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
     id: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
-    timestamp: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniUnion<[z.ZodMiniNumber, z.ZodMiniString]>>>;
+    timestamp: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniUnion<[z.ZodMiniString, z.ZodMiniNumber]>>>;
     formatVersion: z.ZodMiniOptional<z.ZodMiniUnknown>;
   },
   z.core.$loose

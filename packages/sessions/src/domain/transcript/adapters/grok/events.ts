@@ -32,7 +32,7 @@ import {
   mergeAcpToolUpdate
 } from "../acp-updates.js";
 import { isInjectedChunk } from "./chunks.js";
-import { recordTime } from "../timestamp.js";
+import { recordTime } from "../record-time.js";
 import type { GrokSessionMeta, GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
 import {
   followGrokTurn,

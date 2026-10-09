@@ -26,7 +26,7 @@ import {
   type SourcedRecord,
   type Transcript
 } from "../../../domain/transcript/index.js";
-import { timedRecord } from "../../../domain/transcript/adapters/timestamp.js";
+import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readEdges } from "../files/edges.js";

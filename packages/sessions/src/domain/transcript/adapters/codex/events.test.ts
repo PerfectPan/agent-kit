@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeByTime, type StampedRecord } from "../../index.js";
-import { timedRecord } from "../timestamp.js";
+import { timedRecord } from "../record-time.js";
 import { translateCodexRecords } from "./events.js";
 
 const session = (result: ReturnType<typeof translateCodexRecords>) => {

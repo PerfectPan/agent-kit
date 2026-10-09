@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { baseEvent } from "../factories/transcript-event.js";
-import { timedRecord } from "../adapters/timestamp.js";
+import { timedRecord } from "../adapters/record-time.js";
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
 import { inheritTimes, mergeByTime } from "./event-ordering.js";
 import { placeRequest } from "./request-placement.js";
