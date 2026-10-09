@@ -1,6 +1,6 @@
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { PreImage } from "../../ledger/value-objects/pre-image.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { PlanStep } from "./plan-step.js";
 import { contentAfterStep } from "./content-after.js";
 
@@ -17,7 +17,13 @@ const write = (overrides: Partial<PlanStep> = {}): PlanStep => ({
 });
 
 const remove = (removal: PlanStep["removal"]): PlanStep =>
-  write({ action: "remove", desired: undefined, agents: [], precondition: { hash: hash(2) }, removal });
+  write({
+    action: "remove",
+    desired: undefined,
+    agents: [],
+    precondition: { hash: hash(2) },
+    removal
+  });
 
 describe("contentAfterStep", () => {
   it("leaves the desired content of a non-removal", () => {

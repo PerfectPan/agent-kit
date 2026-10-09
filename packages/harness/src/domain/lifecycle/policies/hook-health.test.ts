@@ -1,5 +1,5 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 import type { HookDialect } from "../value-objects/hook-dialect.js";
@@ -46,7 +46,12 @@ describe("hookHealth", () => {
 
   it("flags an event the dialect does not know, by its own names and aliases only", () => {
     expect(hookHealth(gemini, at("/hooks/PreToolUse"), {}, () => true)).toEqual([
-      { problem: "unknown-event", locator: at("/hooks/PreToolUse"), agent: "gemini-cli", event: "PreToolUse" }
+      {
+        problem: "unknown-event",
+        locator: at("/hooks/PreToolUse"),
+        agent: "gemini-cli",
+        event: "PreToolUse"
+      }
     ]);
     expect(hookHealth(gemini, at("/hooks/SessionStart"), {}, () => true)).toEqual([]);
     expect(hookHealth(gemini, at("/hooks/Stoped"), {}, () => true)).toEqual([]);
@@ -68,7 +73,11 @@ describe("hookHealth", () => {
 
   it("flags a program by absolute path that does not exist, and nothing relative or present", () => {
     expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => false)).toEqual([
-      { problem: "stale-path", locator: at("/hooks/Stop", "/gone/bin/old-hook"), program: "/gone/bin/old-hook" }
+      {
+        problem: "stale-path",
+        locator: at("/hooks/Stop", "/gone/bin/old-hook"),
+        program: "/gone/bin/old-hook"
+      }
     ]);
     expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => true)).toEqual([]);
     expect(hookHealth(gemini, at("/hooks/Stop", "npx demo-hook"), {}, () => false)).toEqual([]);

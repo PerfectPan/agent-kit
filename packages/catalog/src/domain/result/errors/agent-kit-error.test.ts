@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { AgentKitError, isAgentKitError } from "./agent-kit-error.js";
 
@@ -7,7 +7,12 @@ describe("AgentKitError", () => {
     const cause = new Error("disk");
     const error = new AgentKitError("session-not-found", "missing", { cause });
     expect(error).toBeInstanceOf(Error);
-    expect(error).toMatchObject({ name: "AgentKitError", code: "session-not-found", message: "missing", cause });
+    expect(error).toMatchObject({
+      name: "AgentKitError",
+      code: "session-not-found",
+      message: "missing",
+      cause
+    });
     expect("cause" in new AgentKitError("x", "no cause")).toBe(false);
   });
 

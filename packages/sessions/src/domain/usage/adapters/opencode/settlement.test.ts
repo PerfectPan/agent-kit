@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   LONGEST_MESSAGE_MS,
@@ -62,7 +62,12 @@ describe("opencode settlement", () => {
     const first = createOpencodeSettlement("opencode.db", { final: false });
     first.push([row("1", 10, 1), row("2", 11, 1)]);
     first.push([row("3", 12)]);
-    const saved = first.save() as { updated: unknown; id: unknown; reported: unknown; running: unknown };
+    const saved = first.save() as {
+      updated: unknown;
+      id: unknown;
+      reported: unknown;
+      running: unknown;
+    };
     expect(saved).toMatchObject({ updated: 12, id: "3", row: 3 });
     const resumed = createOpencodeSettlement("opencode.db", {
       state: { ...saved, updated: "12", id: 3, reported: ["2", 5, "1"], running: "3" },
@@ -79,7 +84,10 @@ describe("opencode settlement", () => {
     const previous = createOpencodeSettlement("opencode.db", { final: false });
     previous.push([row("1", 10)]);
     expect(previous.runningIds()).toEqual(["1"]);
-    const settlement = createOpencodeSettlement("opencode.db", { state: previous.save(), final: true });
+    const settlement = createOpencodeSettlement("opencode.db", {
+      state: previous.save(),
+      final: true
+    });
     const records = settlement.end([row("1", 10, undefined, 1234)]);
     expect(records).toHaveLength(1);
     expect(records[0]?.timestamp).toBe(1234);
@@ -90,7 +98,10 @@ describe("opencode settlement", () => {
     const previous = createOpencodeSettlement("opencode.db", { final: false });
     previous.push([row("1", 10)]);
     previous.endByRow();
-    const settlement = createOpencodeSettlement("opencode.db", { state: previous.save(), final: true });
+    const settlement = createOpencodeSettlement("opencode.db", {
+      state: previous.save(),
+      final: true
+    });
     settlement.push([row("9", 30, 1)]);
     const before = settlement.position();
     expect(before).toEqual({ updated: 30, id: "9" });

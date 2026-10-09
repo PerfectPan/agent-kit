@@ -1,6 +1,6 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { isUsageSource, listUsageSources, type ListUsageSourcesOptions } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryFile } from "../src/memory-platform.js";
 import { readUsageHome } from "./support.js";
@@ -86,8 +86,14 @@ describe("listUsageSources", () => {
 
   it("leaves out files last modified before `since`", async () => {
     const old = "/u/me/.codex/archived_sessions/rollout-2025-12-31T00-00-00-cx-archived.jsonl";
-    const files = { ...tree, [old]: { content: tree[old]!, mtimeMs: Date.parse("2025-12-31T00:00:00.000Z") } };
-    const { sources } = await list(files, { agents: ["codex"], since: Date.parse("2026-01-01T00:00:00.000Z") });
+    const files = {
+      ...tree,
+      [old]: { content: tree[old]!, mtimeMs: Date.parse("2025-12-31T00:00:00.000Z") }
+    };
+    const { sources } = await list(files, {
+      agents: ["codex"],
+      since: Date.parse("2026-01-01T00:00:00.000Z")
+    });
     expect(sources).toHaveLength(3);
     expect(sources.some((source) => source.includes("archived"))).toBe(false);
   });

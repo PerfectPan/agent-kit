@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { builtinSessionAdapters, readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { oversizedSession, sessionAdapterConformance } from "../src/session-adapter-conformance.js";
@@ -106,7 +106,11 @@ describe("sessionAdapterConformance", () => {
     [
       "a shifted source pointer",
       "reads each source pointer back to original",
-      (t) => void (t.events[0]!.source = { ...t.events[0]!.source, offset: t.events[0]!.source.offset + 1 })
+      (t) =>
+        void (t.events[0]!.source = {
+          ...t.events[0]!.source,
+          offset: t.events[0]!.source.offset + 1
+        })
     ]
   ])("rejects %s through the check that owns it", async (_defect, name, change) => {
     expect(await failure(claude, name)).toBe("passed");

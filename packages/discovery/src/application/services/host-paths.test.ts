@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import type { ProbeRecipe } from "../../domain/installation/index.js";
@@ -14,7 +14,11 @@ const files = (...paths: string[]) => {
 };
 
 describe("expandProbePath", () => {
-  const recipe: ProbeRecipe = { ...builtinProbeRecipes.codex, agent: "my-agent", home: { defaultPath: [".mine"] } };
+  const recipe: ProbeRecipe = {
+    ...builtinProbeRecipes.codex,
+    agent: "my-agent",
+    home: { defaultPath: [".mine"] }
+  };
 
   it("expands ~ against the home directory and keeps absolute paths", () => {
     const platform = { env: {}, home: "/u/me/" };
@@ -43,7 +47,10 @@ describe("findCommand", () => {
   });
 
   it("tries each PATHEXT extension on Windows, unless the command has one", async () => {
-    const platform = { os: "win32", env: { path: "C:\\bin;D:/tools", PathExt: ".EXE;.CMD" } } as const;
+    const platform = {
+      os: "win32",
+      env: { path: "C:\\bin;D:/tools", PathExt: ".EXE;.CMD" }
+    } as const;
     const { check, checked } = files("D:/tools/tool.CMD");
     expect((await findCommand(platform, check, "tool")).path).toBe("D:/tools/tool.CMD");
     expect(checked).toEqual(["C:\\bin\\tool.EXE", "C:\\bin\\tool.CMD", "D:/tools/tool.EXE", "D:/tools/tool.CMD"]);

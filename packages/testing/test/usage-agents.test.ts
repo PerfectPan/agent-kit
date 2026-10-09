@@ -8,7 +8,7 @@ import {
   type Usage,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { readUsageHome } from "./support.js";
@@ -65,13 +65,20 @@ describe("claude-code usage", () => {
         cacheWrite1hTokens: 3,
         reasoningTokens: 4
       },
-      source: expect.objectContaining({ file: "/u/me/.claude/projects/-u-me-work/s-usage.jsonl", line: 2 })
+      source: expect.objectContaining({
+        file: "/u/me/.claude/projects/-u-me-work/s-usage.jsonl",
+        line: 2
+      })
     });
   });
 
   it("counts a message behind a gateway without request id, but no synthetic message", async () => {
     const records = await decode("claude-code", ".claude/projects/-u-me-work/s-usage.jsonl");
-    expect(records[1]).toMatchObject({ responseId: "msg-gw", model: "gateway-model", usage: { inputTokens: 7 } });
+    expect(records[1]).toMatchObject({
+      responseId: "msg-gw",
+      model: "gateway-model",
+      usage: { inputTokens: 7 }
+    });
     expect(records[1]?.requestId).toBeUndefined();
     expect(records.some((record) => record.model === "<synthetic>")).toBe(false);
   });
@@ -92,7 +99,11 @@ describe("claude-code usage", () => {
     const main = await decode("claude-code", ".claude/projects/-u-me-work/s-usage.jsonl");
     expect(main[3]?.agentLaneId).toBe("sidechain");
     const [helper] = await decode("claude-code", ".claude/projects/-u-me-work/s-usage/subagents/agent-helper.jsonl");
-    expect(helper).toMatchObject({ sessionId: "s-usage", agentLaneId: "helper", requestId: "req-h" });
+    expect(helper).toMatchObject({
+      sessionId: "s-usage",
+      agentLaneId: "helper",
+      requestId: "req-h"
+    });
   });
 
   it("leaves out a request before `since` and keeps it without a window", async () => {
@@ -178,18 +189,31 @@ describe("gemini-cli usage", () => {
       [
         "gm-1",
         "gemini-test",
-        { inputTokens: 500, outputTokens: 120, totalTokens: 620, cacheReadTokens: 0, reasoningTokens: 0 }
+        {
+          inputTokens: 500,
+          outputTokens: 120,
+          totalTokens: 620,
+          cacheReadTokens: 0,
+          reasoningTokens: 0
+        }
       ]
     ]);
   });
 
   it("reads a subagent chat and an older single-object chat", async () => {
     expect(await decode("gemini-cli", `${chats}/gm-1/sub-1.jsonl`)).toMatchObject([
-      { sessionId: "sub-1", model: "gemini-flash-test", usage: { inputTokens: 40, outputTokens: 5 } }
+      {
+        sessionId: "sub-1",
+        model: "gemini-flash-test",
+        usage: { inputTokens: 40, outputTokens: 5 }
+      }
     ]);
     const legacy = await decode("gemini-cli", `${chats}/session-legacy.json`, {});
     expect(legacy).toMatchObject([
-      { sessionId: "gm-legacy", usage: { inputTokens: 400, outputTokens: 60, cacheReadTokens: 100 } }
+      {
+        sessionId: "gm-legacy",
+        usage: { inputTokens: 400, outputTokens: 60, cacheReadTokens: 100 }
+      }
     ]);
     expect(legacy[0]?.source).toMatchObject({ offset: 0, line: 1 });
   });
@@ -239,7 +263,12 @@ describe("grok usage", () => {
       modelCalls: 9,
       model: "grok-main",
       costSource: "agent",
-      usage: { inputTokens: 600000, outputTokens: 20000, cacheReadTokens: 300000, reasoningTokens: 15000 }
+      usage: {
+        inputTokens: 600000,
+        outputTokens: 20000,
+        cacheReadTokens: 300000,
+        reasoningTokens: 15000
+      }
     });
     expect(turn?.costUsd).toBeCloseTo(0.123456789, 12);
     expect(turn?.usageByModel?.["grok-mini"]).toMatchObject({ modelCalls: 1, costSource: "agent" });

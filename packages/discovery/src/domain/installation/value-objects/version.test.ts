@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { versionFromOutput } from "./version.js";
 
@@ -9,7 +9,9 @@ describe("versionFromOutput", () => {
       number: "0.154.0"
     });
     expect(versionFromOutput({ code: 0, stdout: "tool v2.0.0-beta.1 (abc)", stderr: "" })?.number).toBe("2.0.0-beta.1");
-    expect(versionFromOutput({ code: 0, stdout: "nightly", stderr: "" })).toEqual({ output: "nightly" });
+    expect(versionFromOutput({ code: 0, stdout: "nightly", stderr: "" })).toEqual({
+      output: "nightly"
+    });
   });
 
   it("reads the number after a comma prefix and from multi-line output with a trailing period", () => {

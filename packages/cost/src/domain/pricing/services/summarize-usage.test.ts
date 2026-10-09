@@ -1,5 +1,5 @@
 import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing } from "../value-objects/pricing-table.js";
 import { summarize } from "./summarize-usage.js";
@@ -27,11 +27,17 @@ function record(usage: Usage, fields: Partial<UsageRecord> = {}): UsageRecord {
 // Ported from presence's window summary tests; presence's sources are the kit's agents.
 describe("summarize", () => {
   it("totals tokens and cost per agent and overall", () => {
-    const summary = summarize([record({ inputTokens: M, outputTokens: 0 })], pricing, { groupBy: ["agent"] });
+    const summary = summarize([record({ inputTokens: M, outputTokens: 0 })], pricing, {
+      groupBy: ["agent"]
+    });
     expect(summary.groups).toEqual([
       { agent: "claude-code", entries: 1, usage: { inputTokens: M, outputTokens: 0 }, costUsd: 5 }
     ]);
-    expect(summary.total).toEqual({ entries: 1, usage: { inputTokens: M, outputTokens: 0 }, costUsd: 5 });
+    expect(summary.total).toEqual({
+      entries: 1,
+      usage: { inputTokens: M, outputTokens: 0 },
+      costUsd: 5
+    });
   });
 
   it("keeps groups in the order of their first record, with the costs the agents reported", () => {
@@ -74,7 +80,11 @@ describe("summarize", () => {
       record({ inputTokens: 2 }, { model: undefined })
     ];
     const summary = summarize(records, pricing);
-    expect(summary.total).toEqual({ entries: 3, usage: { inputTokens: M + 7, outputTokens: 1 }, costUsd: 5 });
+    expect(summary.total).toEqual({
+      entries: 3,
+      usage: { inputTokens: M + 7, outputTokens: 1 },
+      costUsd: 5
+    });
     expect(summary.groups.map((group) => [group.model, group.costUsd])).toEqual([
       ["claude-opus-4-8", 5],
       ["mystery-model", undefined],
@@ -89,7 +99,9 @@ describe("summarize", () => {
       record({ inputTokens: 2 }, { timestamp: NOW - 1000 }),
       record({ inputTokens: 4 }, { timestamp: NOW })
     ];
-    const summary = summarize(records, pricing, { window: { since: NOW - 24 * 60 * 60 * 1000, until: NOW } });
+    const summary = summarize(records, pricing, {
+      window: { since: NOW - 24 * 60 * 60 * 1000, until: NOW }
+    });
     expect(summary.total).toMatchObject({ entries: 1, usage: { inputTokens: 2 } });
   });
 
@@ -110,7 +122,10 @@ describe("summarize", () => {
       ["gpt-5", 2, 6]
     ]);
     expect(byModel[1]).not.toHaveProperty("agent");
-    expect(summarize(records, pricing, { groupBy: [] })).toMatchObject({ total: { entries: 3 }, groups: [] });
+    expect(summarize(records, pricing, { groupBy: [] })).toMatchObject({
+      total: { entries: 3 },
+      groups: []
+    });
   });
 
   it("S28: counts a turn split by model once, with each model's share in that model's group", () => {
@@ -122,7 +137,10 @@ describe("summarize", () => {
         modelCalls: 3,
         model: "claude-opus-4-8",
         usageByModel: {
-          "claude-opus-4-8": { usage: { inputTokens: 2 * M, outputTokens: M, cacheReadTokens: M }, modelCalls: 2 },
+          "claude-opus-4-8": {
+            usage: { inputTokens: 2 * M, outputTokens: M, cacheReadTokens: M },
+            modelCalls: 2
+          },
           "gpt-5": { usage: { inputTokens: M, outputTokens: M }, modelCalls: 1 }
         }
       }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { addUsage } from "./add-usage.js";
 import { noCacheInputTokens } from "./no-cache-input.js";

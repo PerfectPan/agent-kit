@@ -15,7 +15,7 @@ import {
   translateCodexRecords,
   type Transcript
 } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryPlatform } from "../src/memory-platform.js";
 import { readTree } from "./support.js";
@@ -46,7 +46,13 @@ const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
 function stamped(values: unknown[]) {
   return mergeByTime([
     values
-      .map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+      .map((value, index) => ({
+        value,
+        file: "r.jsonl",
+        line: index + 1,
+        offset: index,
+        length: 1
+      }))
       .map(timedRecord)
   ]);
 }
@@ -54,7 +60,11 @@ function stamped(values: unknown[]) {
 describe("codex translation", () => {
   it("places one request per token_usage_record before the call output", async () => {
     const transcript = await load("plain");
-    expect(transcript).toMatchObject({ agent: "codex", agentVersion: "0.1.0", session: { id: "cx-plain" } });
+    expect(transcript).toMatchObject({
+      agent: "codex",
+      agentVersion: "0.1.0",
+      session: { id: "cx-plain" }
+    });
     expect(transcript.events.map((event) => event.kind)).toEqual([
       "user",
       "user",
@@ -104,7 +114,11 @@ describe("codex translation", () => {
       "other-usage-source",
       "other-usage-source"
     ]);
-    expect(foldTranscript(transcript)).toMatchObject({ turns: 1, durationMs: 6500, contextShape: [12, 20] });
+    expect(foldTranscript(transcript)).toMatchObject({
+      turns: 1,
+      durationMs: 6500,
+      contextShape: [12, 20]
+    });
     for (let index = 1; index < transcript.events.length; index++) {
       expect(transcript.events[index]!.ts).toBeGreaterThanOrEqual(transcript.events[index - 1]!.ts);
     }
@@ -168,7 +182,9 @@ describe("codex translation", () => {
       "request",
       "assistant"
     ]);
-    expect(transcript.events.find((event) => event.kind === "reasoning")?.payload).toEqual({ redacted: true });
+    expect(transcript.events.find((event) => event.kind === "reasoning")?.payload).toEqual({
+      redacted: true
+    });
     expect(transcript.skipped.map((skip) => skip.reason)).toEqual([
       "session-meta",
       "turn-context",
@@ -197,11 +213,23 @@ describe("codex translation", () => {
     expect(requests(transcript).map((event) => event.payload)).toEqual([
       {
         model: "gpt-fork",
-        usage: { inputTokens: 120, outputTokens: 8, totalTokens: 128, cacheReadTokens: 60, reasoningTokens: 2 }
+        usage: {
+          inputTokens: 120,
+          outputTokens: 8,
+          totalTokens: 128,
+          cacheReadTokens: 60,
+          reasoningTokens: 2
+        }
       },
       {
         model: "gpt-fork",
-        usage: { inputTokens: 130, outputTokens: 6, totalTokens: 136, cacheReadTokens: 100, reasoningTokens: 0 }
+        usage: {
+          inputTokens: 130,
+          outputTokens: 6,
+          totalTokens: 136,
+          cacheReadTokens: 100,
+          reasoningTokens: 0
+        }
       }
     ]);
     expect(transcript.events.slice(0, 2).every((event) => event.requestId === undefined)).toBe(true);
@@ -240,7 +268,11 @@ describe("codex translation", () => {
       const hex = Date.parse(iso).toString(16).padStart(12, "0");
       return `${hex.slice(0, 8)}-${hex.slice(8)}-7000-8000-000000000000`;
     };
-    const record = (type: string, payload: Record<string, unknown>) => ({ timestamp: at(0), type, payload });
+    const record = (type: string, payload: Record<string, unknown>) => ({
+      timestamp: at(0),
+      type,
+      payload
+    });
     const turn = (iso: string) => record("event_msg", { type: "task_started", turn_id: v7(iso) });
     const count = (input: number) =>
       record("event_msg", {
@@ -265,9 +297,16 @@ describe("codex translation", () => {
     const count = (ms: number, input: number) => ({
       timestamp: at(ms),
       type: "event_msg",
-      payload: { type: "token_count", info: { last_token_usage: { input_tokens: input, output_tokens: 1 } } }
+      payload: {
+        type: "token_count",
+        info: { last_token_usage: { input_tokens: input, output_tokens: 1 } }
+      }
     });
-    const meta = (payload: Record<string, unknown>) => ({ timestamp: at(0), type: "session_meta", payload });
+    const meta = (payload: Record<string, unknown>) => ({
+      timestamp: at(0),
+      type: "session_meta",
+      payload
+    });
     const usage = (records: unknown[]) => {
       const result = translateCodexRecords(stamped(records));
       return result.ok ? result.value.events.map((event) => event.payload.usage) : result.error;
@@ -287,13 +326,21 @@ describe("codex translation", () => {
       type: "response_item",
       payload: { type: "function_call", name: "shell", call_id: "c1" }
     };
-    const usage = { timestamp: at(1500), type: "token_usage_record", payload: { turn_id: "t", response_id: "r1" } };
+    const usage = {
+      timestamp: at(1500),
+      type: "token_usage_record",
+      payload: { turn_id: "t", response_id: "r1" }
+    };
     const output = {
       timestamp: at(2000),
       type: "response_item",
       payload: { type: "function_call_output", call_id: "c1", output: "ok" }
     };
-    const reasoning = { timestamp: at(4000), type: "response_item", payload: { type: "reasoning", summary: [] } };
+    const reasoning = {
+      timestamp: at(4000),
+      type: "response_item",
+      payload: { type: "reasoning", summary: [] }
+    };
     const notice = {
       timestamp: at(5000),
       type: "response_item",
@@ -303,7 +350,11 @@ describe("codex translation", () => {
         content: [{ type: "input_text", text: "<turn_aborted>\n</turn_aborted>" }]
       }
     };
-    const aborted = { timestamp: at(6000), type: "event_msg", payload: { type: "turn_aborted", turn_id: "t" } };
+    const aborted = {
+      timestamp: at(6000),
+      type: "event_msg",
+      payload: { type: "turn_aborted", turn_id: "t" }
+    };
     const finish = (records: unknown[]) => {
       const result = translateCodexRecords(stamped(records));
       return result.ok
@@ -342,7 +393,11 @@ describe("codex translation", () => {
       stamped([
         { timestamp: at(1000), type: "response_item", payload: message("old") },
         { timestamp: at(2000), type: "response_item", payload: message("new") },
-        { timestamp: at(3000), type: "compacted", payload: { message: "s", replacement_history: [message("new")] } }
+        {
+          timestamp: at(3000),
+          type: "compacted",
+          payload: { message: "s", replacement_history: [message("new")] }
+        }
       ])
     );
     expect(result.ok && result.value.events.map((event) => [event.id, event.shadowedBy])).toEqual([
@@ -413,7 +468,11 @@ describe("codex translation", () => {
         {
           timestamp: at(3000),
           type: "response_item",
-          payload: { type: "function_call_output", call_id: "c", output: '{"task_name":"/root/scout"}' }
+          payload: {
+            type: "function_call_output",
+            call_id: "c",
+            output: '{"task_name":"/root/scout"}'
+          }
         }
       ])
     );
@@ -436,8 +495,14 @@ describe("codex translation", () => {
 
   it("records a subagent lane, an agent message and an injected developer message", async () => {
     const transcript = await load("subagent");
-    expect(transcript.agents).toContainEqual({ id: "child-1", parentId: "main", spawnEventId: "L5" });
-    expect(transcript.events.find((event) => event.id === "L5")?.payload).toMatchObject({ name: "spawn_agent" });
+    expect(transcript.agents).toContainEqual({
+      id: "child-1",
+      parentId: "main",
+      spawnEventId: "L5"
+    });
+    expect(transcript.events.find((event) => event.id === "L5")?.payload).toMatchObject({
+      name: "spawn_agent"
+    });
     expect(transcript.events.find((event) => event.payload.injected === true)?.kind).toBe("system");
     expect(transcript.events.find((event) => event.payload.type === "agent_message")?.payload).toEqual({
       type: "agent_message",
@@ -457,7 +522,11 @@ describe("codex translation", () => {
       "mystery_event"
     ]);
     expect(transcript.events.filter((event) => event.kind === "tool_call").map((event) => event.payload)).toEqual([
-      { callId: "", name: "web_search", args: { type: "search", query: "vitest", queries: ["vitest"] } },
+      {
+        callId: "",
+        name: "web_search",
+        args: { type: "search", query: "vitest", queries: ["vitest"] }
+      },
       { callId: "call-ts", name: "tool_search", args: { query: "calendar", limit: 5 } }
     ]);
     const result = transcript.events.find((event) => event.kind === "tool_result");
@@ -479,7 +548,9 @@ describe("codex translation", () => {
       ["L7", "tool_result"],
       ["msg-l2", "assistant"]
     ]);
-    expect(transcript.events.find((event) => event.kind === "tool_call")?.payload.args).toEqual({ command: ["ls"] });
+    expect(transcript.events.find((event) => event.kind === "tool_call")?.payload.args).toEqual({
+      command: ["ls"]
+    });
     expect(transcript.events.find((event) => event.kind === "tool_result")?.payload).toMatchObject({
       exitCode: 0,
       isError: false
@@ -547,13 +618,20 @@ describe("sessions use cases over Codex", () => {
     expect(items.every(isSessionHead)).toBe(true);
     expect(items).toMatchObject([
       {
-        ref: { agent: "codex", path: "/u/me/.codex/sessions/2026/01/01/rollout-plain.jsonl", sessionId: "cx-plain" },
+        ref: {
+          agent: "codex",
+          path: "/u/me/.codex/sessions/2026/01/01/rollout-plain.jsonl",
+          sessionId: "cx-plain"
+        },
         title: "Run the tests",
         firstPrompt: "Run the tests",
         cwd: "/work/app",
         startedAt: Date.parse("2026-01-01T00:00:00.000Z")
       },
-      { ref: { path: "/u/me/.codex/archived_sessions/rollout-subagent.jsonl", sessionId: "cx-sub" }, title: "Delegate" }
+      {
+        ref: { path: "/u/me/.codex/archived_sessions/rollout-subagent.jsonl", sessionId: "cx-sub" },
+        title: "Delegate"
+      }
     ]);
   });
 
@@ -592,7 +670,12 @@ describe("sessions use cases over Codex", () => {
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
         ok: false,
-        error: { _tag: "ReadFailed", path: "/export/session.jsonl", message: denied.message, cause: denied }
+        error: {
+          _tag: "ReadFailed",
+          path: "/export/session.jsonl",
+          message: denied.message,
+          cause: denied
+        }
       });
     }
   });

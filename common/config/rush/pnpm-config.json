@@ -3,5 +3,13 @@
   "useWorkspaces": true,
   "autoInstallPeers": true,
   "strictPeerDependencies": true,
-  "minimumReleaseAgeMinutes": 1440
+  "minimumReleaseAgeMinutes": 1440,
+  "globalOverrides": {
+    "vite@*": "npm:@voidzero-dev/vite-plus-core@1.1.0"
+  },
+  "globalPeerDependencyRules": {
+    "allowAny": [
+      "vite"
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 import { builtinProbeRecipes, type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { probeRecipeConformance, type ProbeRecipeSamples } from "../src/probe-recipe-conformance.js";
 
@@ -9,7 +9,10 @@ const ok = (stdout: string, stderr = "") => ({ code: 0, stdout, stderr });
 const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
   "claude-code": {
     versions: [
-      { output: ok("2.1.286 (Claude Code)\n"), version: { output: "2.1.286 (Claude Code)", number: "2.1.286" } }
+      {
+        output: ok("2.1.286 (Claude Code)\n"),
+        version: { output: "2.1.286 (Claude Code)", number: "2.1.286" }
+      }
     ],
     auth: [
       {
@@ -24,7 +27,10 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
         },
         reading: { loggedIn: false }
       },
-      { output: { code: 1, stdout: "", stderr: "error: unknown command 'auth'" }, reading: undefined }
+      {
+        output: { code: 1, stdout: "", stderr: "error: unknown command 'auth'" },
+        reading: undefined
+      }
     ],
     credentialFiles: [
       {
@@ -36,20 +42,38 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
     ]
   },
   codex: {
-    versions: [{ output: ok("codex-cli 0.154.0\n"), version: { output: "codex-cli 0.154.0", number: "0.154.0" } }],
+    versions: [
+      {
+        output: ok("codex-cli 0.154.0\n"),
+        version: { output: "codex-cli 0.154.0", number: "0.154.0" }
+      }
+    ],
     auth: [
-      { output: ok("", "Logged in using ChatGPT\n"), reading: { loggedIn: true, method: "chatgpt" } },
-      { output: ok("", "Logged in using an API key - sk-***1234\n"), reading: { loggedIn: true, method: "api-key" } },
+      {
+        output: ok("", "Logged in using ChatGPT\n"),
+        reading: { loggedIn: true, method: "chatgpt" }
+      },
+      {
+        output: ok("", "Logged in using an API key - sk-***1234\n"),
+        reading: { loggedIn: true, method: "api-key" }
+      },
       {
         output: ok("", "Logged in using Amazon Bedrock AWS access keys\n"),
         reading: { loggedIn: true, method: "bedrock-access-keys" }
       },
       { output: ok("", "Logged in using a method added later\n"), reading: { loggedIn: true } },
       {
-        output: { code: 1, stdout: "", stderr: "WARNING: proceeding, even though...\nNot logged in\n" },
+        output: {
+          code: 1,
+          stdout: "",
+          stderr: "WARNING: proceeding, even though...\nNot logged in\n"
+        },
         reading: { loggedIn: false }
       },
-      { output: { code: 1, stdout: "", stderr: "Error checking login status: bad file" }, reading: undefined }
+      {
+        output: { code: 1, stdout: "", stderr: "Error checking login status: bad file" },
+        reading: undefined
+      }
     ],
     credentialFiles: [
       {
@@ -86,13 +110,23 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
         json: { anthropic: { type: "oauth", refresh: "r", access: "a", expires: 1 } },
         reading: { loggedIn: true }
       },
-      { path: "~/.local/share/opencode/auth.json", json: { broken: { type: "other" } }, reading: { loggedIn: false } }
+      {
+        path: "~/.local/share/opencode/auth.json",
+        json: { broken: { type: "other" } },
+        reading: { loggedIn: false }
+      }
     ]
   },
   cursor: {
     auth: [
-      { output: ok('{"status":"authenticated","isAuthenticated":true}'), reading: { loggedIn: true } },
-      { output: ok('{"status":"unauthenticated","isAuthenticated":false}'), reading: { loggedIn: false } },
+      {
+        output: ok('{"status":"authenticated","isAuthenticated":true}'),
+        reading: { loggedIn: true }
+      },
+      {
+        output: ok('{"status":"unauthenticated","isAuthenticated":false}'),
+        reading: { loggedIn: false }
+      },
       { output: { code: 1, stdout: '{"status":"error"}', stderr: "" }, reading: undefined }
     ]
   }
@@ -153,7 +187,12 @@ describe("probe recipe conformance catches", () => {
     ],
     [
       "a login command that is not one of its commands",
-      { ...good, auth: { command: { command: "other", args: ["status"], parse: () => undefined, sideEffects: [] } } },
+      {
+        ...good,
+        auth: {
+          command: { command: "other", args: ["status"], parse: () => undefined, sideEffects: [] }
+        }
+      },
       "probes bare command names"
     ],
     [
@@ -163,7 +202,10 @@ describe("probe recipe conformance catches", () => {
     ],
     [
       "a blank side effect",
-      { ...good, auth: { command: { args: ["status"], parse: () => undefined, sideEffects: [" "] } } },
+      {
+        ...good,
+        auth: { command: { args: ["status"], parse: () => undefined, sideEffects: [" "] } }
+      },
       "probes bare command names"
     ],
     [
@@ -184,7 +226,11 @@ describe("probe recipe conformance catches", () => {
     ["a relative path", { ...good, configPaths: [".my-agent"] }, "checks only absolute"],
     [
       "a path above an agent home",
-      { ...good, home: { defaultPath: [".x"] }, configPaths: [{ agentHome: "my-agent", path: "../y" }] },
+      {
+        ...good,
+        home: { defaultPath: [".x"] },
+        configPaths: [{ agentHome: "my-agent", path: "../y" }]
+      },
       "checks only absolute"
     ],
     ["an agent home without a rule", { ...good, configPaths: [{ agentHome: "my-agent" }] }, "checks only absolute"],
@@ -220,7 +266,12 @@ describe("probe recipe conformance catches", () => {
       }
     };
     const samples: ProbeRecipeSamples = {
-      auth: [{ output: { code: 0, stdout: "api_key", stderr: "" }, reading: { loggedIn: true, method: "api_key" } }]
+      auth: [
+        {
+          output: { code: 0, stdout: "api_key", stderr: "" },
+          reading: { loggedIn: true, method: "api_key" }
+        }
+      ]
     };
     expect(await failure(leaky, "never returns a credential value", samples)).toBeInstanceOf(Error);
   });
@@ -231,13 +282,21 @@ describe("probe recipe conformance catches", () => {
       auth: {
         command: {
           args: ["status"],
-          parse: (output) => ({ loggedIn: true, method: output.stdout.trim().slice(0, 12) || "none" }),
+          parse: (output) => ({
+            loggedIn: true,
+            method: output.stdout.trim().slice(0, 12) || "none"
+          }),
           sideEffects: []
         }
       }
     };
     const samples: ProbeRecipeSamples = {
-      auth: [{ output: { code: 0, stdout: "ok", stderr: "" }, reading: { loggedIn: true, method: "ok" } }]
+      auth: [
+        {
+          output: { code: 0, stdout: "ok", stderr: "" },
+          reading: { loggedIn: true, method: "ok" }
+        }
+      ]
     };
     expect(await failure(slicing, "never returns a credential value", samples)).toBeInstanceOf(Error);
   });
@@ -250,7 +309,9 @@ describe("probe recipe conformance catches", () => {
     expect(await failure(withCommand, "never returns a credential value")).toBeInstanceOf(Error);
     const withFile: ProbeRecipe = {
       ...good,
-      auth: { credentialFiles: [{ path: "~/.my-agent/auth.json", parse: () => ({ loggedIn: true }) }] }
+      auth: {
+        credentialFiles: [{ path: "~/.my-agent/auth.json", parse: () => ({ loggedIn: true }) }]
+      }
     };
     expect(await failure(withFile, "never returns a credential value")).toBeInstanceOf(Error);
     const sampled: ProbeRecipeSamples = {
@@ -262,7 +323,10 @@ describe("probe recipe conformance catches", () => {
   it("rejects a sample its parser reads differently", async () => {
     const samples: ProbeRecipeSamples = {
       versions: [
-        { output: { code: 0, stdout: "my-agent 2.0", stderr: "" }, version: { output: "my-agent 2.0", number: "2.1" } }
+        {
+          output: { code: 0, stdout: "my-agent 2.0", stderr: "" },
+          version: { output: "my-agent 2.0", number: "2.1" }
+        }
       ]
     };
     expect(await failure(good, "reads its sample outputs", samples)).toBeInstanceOf(Error);

@@ -1,11 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { Evidence } from "../value-objects/evidence.js";
 import type { ProbeProblem } from "../value-objects/probe-problem.js";
 import { classifyInstallation } from "./classify-installation.js";
 
 const command: Evidence = { kind: "command", command: "x", path: "/bin/x" };
-const version: Evidence = { kind: "version", path: "/bin/x", args: ["--version"], version: { output: "x 1.0" } };
+const version: Evidence = {
+  kind: "version",
+  path: "/bin/x",
+  args: ["--version"],
+  version: { output: "x 1.0" }
+};
 const config: Evidence = { kind: "config", path: "/u/me/.x" };
 const unreadable: ProbeProblem = { _tag: "StatFailed", path: "/u/me/.x", code: "EACCES" };
 const timedOut: ProbeProblem = {

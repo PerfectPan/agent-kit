@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
 import type { LedgerEntry } from "../entities/ledger-entry.js";

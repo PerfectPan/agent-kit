@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { type BoundaryRules, boundaries } from "./boundaries.ts";
 import {
@@ -27,7 +27,10 @@ const COLLAB = "@rivus/agent-kit-collab";
 /** The real workspace plus fixture packages and files. */
 function withFiles(files: Record<string, string>, extraPackages: WorkspacePackage[] = []): Workspace {
   const entryFiles = extraPackages.flatMap((pkg) =>
-    ["index.ts", "public.ts"].map((name) => ({ path: `${pkg.folder}/src/${name}`, source: "export {};\n" }))
+    ["index.ts", "public.ts"].map((name) => ({
+      path: `${pkg.folder}/src/${name}`,
+      source: "export {};\n"
+    }))
   );
   return {
     packages: [...real.packages, ...extraPackages],
@@ -379,7 +382,9 @@ describe("violations", () => {
     const root = mkdtempSync(join(tmpdir(), "boundaries-"));
     try {
       const files: Record<string, string> = {
-        "rush.json": JSON.stringify({ projects: [{ packageName: SESSIONS, projectFolder: "packages/sessions" }] }),
+        "rush.json": JSON.stringify({
+          projects: [{ packageName: SESSIONS, projectFolder: "packages/sessions" }]
+        }),
         "packages/sessions/package.json": "{}",
         "packages/sessions/src/index.ts": "export {};",
         "packages/sessions/src/public.ts": "export {};",
@@ -392,7 +397,10 @@ describe("violations", () => {
         writeFileSync(join(root, path), source);
       }
       expect(checkBoundaries(loadWorkspace(root), boundaries)).toEqual([
-        expect.objectContaining({ file: "packages/sessions/src/domain/bridge.d.ts", rule: "source-file" })
+        expect.objectContaining({
+          file: "packages/sessions/src/domain/bridge.d.ts",
+          rule: "source-file"
+        })
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -417,7 +425,9 @@ describe("violations", () => {
 
   it("keeps a library allowed only in some files out of the others", () => {
     const acp = (path: string) =>
-      withFiles({ [`packages/acp/src/${path}`]: `import * as acp from "@agentclientprotocol/sdk";` });
+      withFiles({
+        [`packages/acp/src/${path}`]: `import * as acp from "@agentclientprotocol/sdk";`
+      });
     expect(rulesOf(acp("application/services/wire.ts"))).toEqual([]);
     expect(rulesOf(acp("application/connect-agent-extra.ts"))).toEqual(["external-dependency"]);
     expect(rulesOf(acp("infra/repository/transport.ts"))).toEqual(["external-dependency"]);

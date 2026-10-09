@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { claudeCodeUsageSourceId, claudeCodeUsageTarget } from "./layout.js";
 
@@ -16,6 +16,8 @@ describe("claude-code usage sources", () => {
       sessionId: "s-1",
       agentLaneId: "a"
     });
-    expect(claudeCodeUsageTarget("/h/projects/proj/s-1/subagents/agent-a.meta.json")).toEqual({ sessionId: "unknown" });
+    expect(claudeCodeUsageTarget("/h/projects/proj/s-1/subagents/agent-a.meta.json")).toEqual({
+      sessionId: "unknown"
+    });
   });
 });

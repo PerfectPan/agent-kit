@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 
 import { readHookEvent } from "../src/domain/lifecycle/adapters/hook-dialects.js";
@@ -50,7 +50,11 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
         version: "1",
         digest: "d",
         artifacts: [
-          { type: "hooks", command, events: { opencode: ["session.created", "tool.execute.before", "session.idle"] } }
+          {
+            type: "hooks",
+            command,
+            events: { opencode: ["session.created", "tool.execute.before", "session.idle"] }
+          }
         ]
       },
       "opencode"
@@ -64,7 +68,10 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
     expect(Object.values(module).every((value) => typeof value === "function")).toBe(true);
     const hooks = await module.AgentKitHooks!({ directory: "/u/me/work" });
     await hooks.event!({
-      event: { type: "session.created", properties: { info: { id: "ses_1", directory: "/u/me/work" } } }
+      event: {
+        type: "session.created",
+        properties: { info: { id: "ses_1", directory: "/u/me/work" } }
+      }
     });
     await hooks.event!({ event: { type: "message.updated", properties: {} } });
     await hooks["tool.execute.before"]!({ tool: "bash", sessionID: "ses_1", callID: "call_1" });
@@ -72,8 +79,17 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
     const events = (await payloads(home, 2)).map((payload) => readHookEvent("opencode", payload, {}));
     expect(events).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ phase: "start", scope: "session", sessionId: "ses_1", cwd: "/u/me/work" }),
-        expect.objectContaining({ phase: "activity", sessionId: "ses_1", tool: { name: "bash", callId: "call_1" } })
+        expect.objectContaining({
+          phase: "start",
+          scope: "session",
+          sessionId: "ses_1",
+          cwd: "/u/me/work"
+        }),
+        expect.objectContaining({
+          phase: "activity",
+          sessionId: "ses_1",
+          tool: { name: "bash", callId: "call_1" }
+        })
       ])
     );
   });
@@ -104,7 +120,12 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
     const events = (await payloads(home, 2)).map((payload) => readHookEvent("pi", payload, {}));
     expect(events).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ phase: "start", scope: "turn", sessionId: "pi-1", cwd: "/u/me/work" }),
+        expect.objectContaining({
+          phase: "start",
+          scope: "turn",
+          sessionId: "pi-1",
+          cwd: "/u/me/work"
+        }),
         expect.objectContaining({ phase: "finish", scope: "session", sessionId: "pi-1" })
       ])
     );

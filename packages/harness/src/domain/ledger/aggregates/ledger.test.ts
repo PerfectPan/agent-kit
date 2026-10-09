@@ -1,5 +1,5 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
@@ -15,7 +15,10 @@ const HOME = "/u/me";
 const OWNER = "agent-presence";
 const AT = "2026-10-08T00:00:00.000Z";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
-const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
+const file = (name: string): ArtifactLocator => ({
+  kind: "file",
+  path: `${HOME}/.claude/skills/${name}/SKILL.md`
+});
 const BUNDLE: Bundle = { owner: OWNER, version: "2.0.0", digest: "d2", artifacts: [] };
 
 function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
@@ -76,7 +79,13 @@ function planOn(
 }
 
 const want = (locator: ArtifactLocator, n: number) =>
-  ({ agent: "claude-code", locator, content: `content ${n}`, hash: h(n), strategy: "native-plugin" }) as const;
+  ({
+    agent: "claude-code",
+    locator,
+    content: `content ${n}`,
+    hash: h(n),
+    strategy: "native-plugin"
+  }) as const;
 
 /** Begins the plan and reports every step done. */
 function applied(ledger: Ledger, plan: InstallPlan): Ledger {
@@ -128,7 +137,10 @@ describe("Ledger", () => {
       entries: {},
       pending: []
     });
-    expect(Ledger.create("")).toEqual({ ok: false, error: { _tag: "InvalidLedger", reason: "lineage is empty" } });
+    expect(Ledger.create("")).toEqual({
+      ok: false,
+      error: { _tag: "InvalidLedger", reason: "lineage is empty" }
+    });
   });
 
   it("refuses an unknown schema version and leaves the stored data as it was", () => {
@@ -171,7 +183,10 @@ describe("Ledger", () => {
 
   it("refuses an entry stored under another key", () => {
     const value = { ...snapshot(), entries: { '["/u/me/other"]': entry(file("a")) } };
-    expect(Ledger.restore(value)).toMatchObject({ ok: false, error: { reason: "entry is not keyed by its locator" } });
+    expect(Ledger.restore(value)).toMatchObject({
+      ok: false,
+      error: { reason: "entry is not keyed by its locator" }
+    });
   });
 
   it("records pending operations before acting, then the outcomes, one revision each", () => {
@@ -195,7 +210,11 @@ describe("Ledger", () => {
     const missing = thrown(() => ledger.begin(plan, { at: AT, toolVersion: "0.2.0" }));
     expect(isAgentKitError(missing) && missing.code).toBe("pre-image-missing");
 
-    const begun = ledger.begin(plan, { at: AT, toolVersion: "0.2.0", preImages: { [locatorKey(backed)]: preImage } });
+    const begun = ledger.begin(plan, {
+      at: AT,
+      toolVersion: "0.2.0",
+      preImages: { [locatorKey(backed)]: preImage }
+    });
     expect(begun.ok).toBe(true);
     if (!begun.ok) {
       return;
@@ -217,13 +236,39 @@ describe("Ledger", () => {
     expect(done.state.pending).toEqual([]);
     expect(done.state.entry(old)).toBeUndefined();
     expect(done.state.entry(fresh)).toEqual(
-      entry(fresh, { contentHash: h(2), bundleVersion: "2.0.0", toolVersion: "0.2.0", appliedAt: AT, entryRevision: 5 })
+      entry(fresh, {
+        contentHash: h(2),
+        bundleVersion: "2.0.0",
+        toolVersion: "0.2.0",
+        appliedAt: AT,
+        entryRevision: 5
+      })
     );
     expect(done.state.entry(backed)).toMatchObject({ contentHash: h(3), preImage });
     expect(done.events).toEqual([
-      { _tag: "ArtifactInstalled", owner: OWNER, locator: fresh, action: "create", contentHash: h(2), revision: 5 },
-      { _tag: "ArtifactInstalled", owner: OWNER, locator: backed, action: "adopt", contentHash: h(3), revision: 5 },
-      { _tag: "ArtifactRemoved", owner: OWNER, locator: old, removal: "restore-pre-image", revision: 5 }
+      {
+        _tag: "ArtifactInstalled",
+        owner: OWNER,
+        locator: fresh,
+        action: "create",
+        contentHash: h(2),
+        revision: 5
+      },
+      {
+        _tag: "ArtifactInstalled",
+        owner: OWNER,
+        locator: backed,
+        action: "adopt",
+        contentHash: h(3),
+        revision: 5
+      },
+      {
+        _tag: "ArtifactRemoved",
+        owner: OWNER,
+        locator: old,
+        removal: "restore-pre-image",
+        revision: 5
+      }
     ]);
   });
 
@@ -269,7 +314,9 @@ describe("Ledger", () => {
     const b = file("b");
     const c = file("c");
     const ledger = restore(snapshot([entry(a)]));
-    const plan = planOn(ledger, [{ locator: a, hash: h(1) }], { desired: [want(a, 2), want(b, 3), want(c, 4)] });
+    const plan = planOn(ledger, [{ locator: a, hash: h(1) }], {
+      desired: [want(a, 2), want(b, 3), want(c, 4)]
+    });
     const begun = ledger.begin(plan, { at: AT, toolVersion: "0.2.0" });
     if (!begun.ok) {
       throw new Error("begin failed");
@@ -378,7 +425,11 @@ describe("Ledger", () => {
       choices: { [locatorKey(shared)]: "force" }
     });
     const taken = applied(both, forced);
-    expect(taken.entry(shared)).toMatchObject({ owners: [OWNER], activeOwner: OWNER, contentHash: h(2) });
+    expect(taken.entry(shared)).toMatchObject({
+      owners: [OWNER],
+      activeOwner: OWNER,
+      contentHash: h(2)
+    });
     const uninstall = planOn(taken, [{ locator: shared, hash: h(2) }]);
     expect(uninstall.steps).toEqual([expect.objectContaining({ action: "remove", removal: "delete" })]);
   });
@@ -387,7 +438,11 @@ describe("Ledger", () => {
     const shared = file("shared");
     const both = restore(
       snapshot([
-        entry(shared, { owners: [OWNER, "other-app"], activeOwner: "other-app", agents: ["claude-code", "codex"] })
+        entry(shared, {
+          owners: [OWNER, "other-app"],
+          activeOwner: "other-app",
+          agents: ["claude-code", "codex"]
+        })
       ])
     );
     const forced = planOn(both, [{ locator: shared, hash: h(1) }], {
@@ -395,7 +450,11 @@ describe("Ledger", () => {
       choices: { [locatorKey(shared)]: "force" }
     });
     const taken = applied(both, forced);
-    expect(taken.entry(shared)).toMatchObject({ owners: [OWNER], agents: ["claude-code"], contentHash: h(2) });
+    expect(taken.entry(shared)).toMatchObject({
+      owners: [OWNER],
+      agents: ["claude-code"],
+      contentHash: h(2)
+    });
     expect(planOn(taken, [{ locator: shared, hash: h(2) }]).steps).toEqual([
       expect.objectContaining({ action: "remove", removal: "delete", agents: [] })
     ]);
@@ -502,7 +561,10 @@ describe("Ledger", () => {
     );
     expect(isAgentKitError(badBlob) && badBlob.code).toBe("invalid-ledger-state");
     expect(
-      Ledger.restore({ ...snapshot(), pending: [{ ...pendingOf(backup), resultHash: "sha256:x" as ContentHash }] })
+      Ledger.restore({
+        ...snapshot(),
+        pending: [{ ...pendingOf(backup), resultHash: "sha256:x" as ContentHash }]
+      })
     ).toMatchObject({
       ok: false,
       error: { _tag: "InvalidLedger" }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { LifecycleEvent } from "../value-objects/lifecycle-event.js";
 import { INITIAL_LIFECYCLE_STATE, type LifecycleState } from "../value-objects/lifecycle-state.js";
@@ -104,7 +104,10 @@ describe("reduceLifecycle", () => {
       { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
       { phase: "activity", turnId: "t1", subagent: a2 }
     ]);
-    expect(sibling).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent", id: "a1" }] });
+    expect(sibling).toMatchObject({
+      status: "blocked",
+      blockedBy: [{ kind: "subagent", id: "a1" }]
+    });
     expect(fold([{ phase: "activity", turnId: "t1", subagent: a1 }], sibling).status).toBe("working");
 
     const both = fold(
@@ -125,7 +128,11 @@ describe("reduceLifecycle", () => {
       { phase: "activity", subagent: explore, at: 2000 },
       { phase: "blocked", blocker: "permission", subagent: explore, at: 3000 }
     ]);
-    expect(blocked).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent" }], updatedAt: 1000 });
+    expect(blocked).toMatchObject({
+      status: "blocked",
+      blockedBy: [{ kind: "subagent" }],
+      updatedAt: 1000
+    });
     expect(lifecycleStatus(blocked, { ttlMs: TTL, now: 1000 + TTL + 1 })).toBe("unknown");
     expect(fold([{ phase: "activity", at: 4000 }], blocked).status).toBe("blocked");
     expect(fold([{ phase: "finish", scope: "turn", at: 4000 }], blocked).status).toBe("idle");
@@ -138,7 +145,10 @@ describe("reduceLifecycle", () => {
       { phase: "blocked", blocker: "permission", turnId: "t1", subagent: a1 },
       { phase: "activity", turnId: "t1" }
     ]);
-    expect(subagentWaits).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent", id: "a1" }] });
+    expect(subagentWaits).toMatchObject({
+      status: "blocked",
+      blockedBy: [{ kind: "subagent", id: "a1" }]
+    });
 
     const waiting = fold([
       { phase: "start", scope: "turn", turnId: "t1" },
@@ -202,7 +212,12 @@ describe("reduceLifecycle", () => {
     const working = fold([{ phase: "start", scope: "turn", at: 0 }]);
     const later = reduceLifecycle(
       working,
-      { agent: "claude-code", nativeEvent: "SubagentStop", phase: "finish", subagent: { id: "a1" } },
+      {
+        agent: "claude-code",
+        nativeEvent: "SubagentStop",
+        phase: "finish",
+        subagent: { id: "a1" }
+      },
       { ttlMs: TTL, now: 100_000 }
     );
     expect(later.status).toBe("working");
@@ -241,7 +256,10 @@ describe("reduceLifecycle", () => {
   });
 
   it("keeps a bounded list of ended turns", () => {
-    const steps = Array.from({ length: 40 }, (_, index): Step => ({ phase: "finish", turnId: `t${index}` }));
+    const steps = Array.from({ length: 40 }, (_, index): Step => ({
+      phase: "finish",
+      turnId: `t${index}`
+    }));
     const state = fold(steps);
     expect(state.endedTurns).toHaveLength(16);
     expect(state.endedTurns.at(-1)).toBe("t39");

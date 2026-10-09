@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { calendarWindow, costOf, createPricing, type Price, summarize } from "@rivus/agent-kit-cost";
 import { decodeUsage, isUsageRecord, noCacheInputTokens, type UsageRecord } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { readUsageHome } from "./support.js";
@@ -108,12 +108,18 @@ describe("pricing decoded usage", () => {
     ]);
     expect(byAgent("opencode").map((record) => costOf(record, pricing)?.costUsd)).toEqual([0.01, 0]);
     // Grok logged the turn's cost and each model's; the models' amounts are used, and they add up to the turn's.
-    expect(costOf(byAgent("grok")[0]!, pricing)).toEqual({ costUsd: 0.12 + 0.003456789, costSource: "agent" });
+    expect(costOf(byAgent("grok")[0]!, pricing)).toEqual({
+      costUsd: 0.12 + 0.003456789,
+      costSource: "agent"
+    });
     expect(costOf(byAgent("grok")[0]!, pricing)?.costUsd).toBeCloseTo(0.123456789, 12);
   });
 
   it("summarizes a calendar window per agent and model, with tokens in the kit's convention", () => {
-    const window = calendarWindow(2, { now: Date.parse("2026-01-02T12:00:00.000Z"), timeZone: "UTC" });
+    const window = calendarWindow(2, {
+      now: Date.parse("2026-01-02T12:00:00.000Z"),
+      timeZone: "UTC"
+    });
     const summary = summarize(records, pricing, { window });
     // A Claude Code and a Gemini CLI request from December are outside the window.
     expect(records).toHaveLength(17);
@@ -139,7 +145,10 @@ describe("pricing decoded usage", () => {
       cacheWrite1hTokens: 3 + 2103,
       reasoningTokens: 4
     });
-    expect(summary.groups.at(-1)?.usage).toMatchObject({ inputTokens: 10000, cacheReadTokens: 5000 });
+    expect(summary.groups.at(-1)?.usage).toMatchObject({
+      inputTokens: 10000,
+      cacheReadTokens: 5000
+    });
     expect(summary.total.costUsd).toBeCloseTo(0.0130305 + 0.0094525 + 0.00173 + 0.5 + 0.01 + 0.123456789, 12);
   });
 });

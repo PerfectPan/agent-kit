@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
@@ -12,7 +12,10 @@ import { InstallPlan, type InstallPlanDraft } from "./install-plan.js";
 const HOME = "/u/me";
 const OWNER = "agent-presence";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
-const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
+const file = (name: string): ArtifactLocator => ({
+  kind: "file",
+  path: `${HOME}/.claude/skills/${name}/SKILL.md`
+});
 
 function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
   return {
@@ -71,7 +74,12 @@ const create = (
   steps: readonly PlanStep[],
   entries: readonly LedgerEntry[] = [],
   observed: readonly ObservedArtifact[] = observedFor(steps)
-) => InstallPlan.create(draft(steps), { ledger: ledger(entries), observed, legacyMarkers: ["@rivus/agent-presence"] });
+) =>
+  InstallPlan.create(draft(steps), {
+    ledger: ledger(entries),
+    observed,
+    legacyMarkers: ["@rivus/agent-presence"]
+  });
 
 describe("InstallPlan.create", () => {
   const userFile = file("notes");
@@ -80,7 +88,11 @@ describe("InstallPlan.create", () => {
     const step = remove(userFile, { legacy: true });
     expect(create([step])).toMatchObject({
       ok: false,
-      error: { _tag: "InvalidPlan", reason: "not-owned", detail: "no observed evidence of an older install" }
+      error: {
+        _tag: "InvalidPlan",
+        reason: "not-owned",
+        detail: "no observed evidence of an older install"
+      }
     });
     expect(create([step], [], [{ locator: userFile, hash: h(1), content: "my own notes" }])).toMatchObject({
       ok: false,
@@ -105,7 +117,10 @@ describe("InstallPlan.create", () => {
       create([remove(userFile, { removal: "release", agents: ["claude-code"] })], [entry(userFile)])
     ).toMatchObject({
       ok: false,
-      error: { reason: "not-owned", detail: "a release that would leave it without owners or agents" }
+      error: {
+        reason: "not-owned",
+        detail: "a release that would leave it without owners or agents"
+      }
     });
     expect(
       create([remove(userFile)], [entry(userFile, { preImage: { existed: true, hash: h(5), blobRef: "b" } })])
@@ -141,17 +156,31 @@ describe("InstallPlan.create", () => {
     };
     expect(create([write])).toMatchObject({
       ok: false,
-      error: { reason: "not-owned", detail: "an unrecorded file overwritten without an adopt or backup choice" }
+      error: {
+        reason: "not-owned",
+        detail: "an unrecorded file overwritten without an adopt or backup choice"
+      }
     });
     expect(
-      create([{ ...write, action: "adopt", conflict: "unmanaged-exists", choice: "backup", capturePreImage: true }])
+      create([
+        {
+          ...write,
+          action: "adopt",
+          conflict: "unmanaged-exists",
+          choice: "backup",
+          capturePreImage: true
+        }
+      ])
     ).toMatchObject({
       ok: true
     });
     expect(create([write], [entry(userFile)], [{ locator: userFile, hash: h(1), managedBy: "chezmoi" }])).toMatchObject(
       {
         ok: false,
-        error: { reason: "not-owned", detail: "a write or delete at a dotfiles-managed or symlinked path" }
+        error: {
+          reason: "not-owned",
+          detail: "a write or delete at a dotfiles-managed or symlinked path"
+        }
       }
     );
     expect(create([write], [entry(userFile)], [{ locator: userFile, hash: h(9) }])).toMatchObject({
@@ -190,7 +219,9 @@ describe("InstallPlan.create", () => {
     };
     expect(create([take])).toMatchObject({ ok: false, error: reason });
     expect(create([{ ...take, action: "adopt" }])).toMatchObject({ ok: false, error: reason });
-    expect(create([{ ...take, action: "adopt", capturePreImage: true }])).toMatchObject({ ok: true });
+    expect(create([{ ...take, action: "adopt", capturePreImage: true }])).toMatchObject({
+      ok: true
+    });
   });
 
   it("offers adopt for a symlinked target only where no ledger entry exists, the one case adopt resolves", () => {
@@ -204,9 +235,15 @@ describe("InstallPlan.create", () => {
       conflict: "symlinked-target"
     };
     const linked = [{ locator: userFile, hash: h(2), symlinkTarget: "/dotfiles/notes.md" }];
-    expect(create([conflict], [], linked)).toMatchObject({ ok: false, error: { conflicts: [{ choices: ["adopt"] }] } });
+    expect(create([conflict], [], linked)).toMatchObject({
+      ok: false,
+      error: { conflicts: [{ choices: ["adopt"] }] }
+    });
     const theirs = entry(userFile, { owners: ["other-app"], activeOwner: "other-app" });
-    expect(create([conflict], [theirs], linked)).toMatchObject({ ok: false, error: { conflicts: [{ choices: [] }] } });
+    expect(create([conflict], [theirs], linked)).toMatchObject({
+      ok: false,
+      error: { conflicts: [{ choices: [] }] }
+    });
   });
 
   it("rejects a conflict without a reason as invalid and one with a reason as PlanConflict", () => {
@@ -251,15 +288,26 @@ describe("InstallPlan.create", () => {
       bundle: { owner: OWNER, version: "2.0.0", digest: "d", artifacts: [] },
       target: { scope: "user", agents: ["claude-code"], roots: [`${HOME}/.claude`] }
     } as const;
-    const want = { agent: "claude-code", locator: userFile, content: "x", strategy: "native-plugin" } as const;
+    const want = {
+      agent: "claude-code",
+      locator: userFile,
+      content: "x",
+      strategy: "native-plugin"
+    } as const;
     expect(
       buildInstallPlan({ ...request, desired: [{ ...want, hash: "sha256:ABC" as ContentHash }] }, ledger(), [])
-    ).toMatchObject({ ok: false, error: { reason: "invalid-step", detail: "an invalid desired hash" } });
+    ).toMatchObject({
+      ok: false,
+      error: { reason: "invalid-step", detail: "an invalid desired hash" }
+    });
     expect(
       buildInstallPlan({ ...request, desired: [{ ...want, hash: h(2) }] }, ledger([entry(userFile)]), [
         { locator: userFile, hash: "md5:1" as ContentHash }
       ])
-    ).toMatchObject({ ok: false, error: { reason: "invalid-step", detail: "an invalid precondition" } });
+    ).toMatchObject({
+      ok: false,
+      error: { reason: "invalid-step", detail: "an invalid precondition" }
+    });
   });
 });
 
@@ -273,8 +321,12 @@ describe("InstallPlan.staleAgainst", () => {
     }
     const plan = created.value;
     expect(plan.staleAgainst({ lineage: "lineage-1", revision: 3 })).toBeUndefined();
-    expect(plan.staleAgainst({ lineage: "lineage-2", revision: 3 })).toMatchObject({ reason: "ledger-moved" });
-    expect(plan.staleAgainst({ lineage: "lineage-1", revision: 4 })).toMatchObject({ reason: "ledger-moved" });
+    expect(plan.staleAgainst({ lineage: "lineage-2", revision: 3 })).toMatchObject({
+      reason: "ledger-moved"
+    });
+    expect(plan.staleAgainst({ lineage: "lineage-1", revision: 4 })).toMatchObject({
+      reason: "ledger-moved"
+    });
   });
 
   it("reports a closed plan before any ledger comparison", () => {

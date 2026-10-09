@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing, type PriceOverrides, type PricingTable } from "./pricing-table.js";
 
@@ -55,7 +55,10 @@ describe("createPricing", () => {
 
   it("S70: merges a partial override over the entry with the same key, which wins over longer table keys", () => {
     // The override key is `opus`, so its other prices come from the opus alias, not from claude-opus-4-8.
-    expect(presence({ opus: { input: 99 } }).priceOf("claude-opus-4-8")).toMatchObject({ input: 99, output: 75 });
+    expect(presence({ opus: { input: 99 } }).priceOf("claude-opus-4-8")).toMatchObject({
+      input: 99,
+      output: 75
+    });
     expect(presence({ "GPT-5.5": { input: 7 } }).priceOf("gpt-5.5")).toEqual({
       input: 7,
       output: 30,
@@ -83,7 +86,12 @@ describe("createPricing", () => {
       cacheWrite1h: 20,
       cacheRead: 1
     });
-    expect(presence().priceOf("gpt-5.6-sol")).toMatchObject({ input: 5, output: 30, cacheWrite: 6.25, cacheRead: 0.5 });
+    expect(presence().priceOf("gpt-5.6-sol")).toMatchObject({
+      input: 5,
+      output: 30,
+      cacheWrite: 6.25,
+      cacheRead: 0.5
+    });
     expect(presence().priceOf("claude-sonnet-5")).toMatchObject({
       input: 2,
       output: 10,

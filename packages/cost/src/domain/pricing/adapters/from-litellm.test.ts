@@ -1,11 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing } from "../value-objects/pricing-table.js";
 import { fromLiteLLM } from "./from-litellm.js";
 
 // Entries in the shape of LiteLLM's model_prices_and_context_window.json, trimmed to the fields that matter.
 const LITELLM = {
-  sample_spec: { input_cost_per_token: 0, output_cost_per_token: 0, litellm_provider: "one of the providers" },
+  sample_spec: {
+    input_cost_per_token: 0,
+    output_cost_per_token: 0,
+    litellm_provider: "one of the providers"
+  },
   "claude-opus-4-8": {
     input_cost_per_token: 5e-6,
     output_cost_per_token: 2.5e-5,
@@ -38,7 +42,13 @@ const LITELLM = {
 describe("fromLiteLLM", () => {
   it("S74: converts per-token prices into prices per million tokens, as presence's snapshot holds them", () => {
     expect(fromLiteLLM(LITELLM)).toEqual({
-      "claude-opus-4-8": { input: 5, output: 25, cacheWrite: 6.25, cacheWrite1h: 10, cacheRead: 0.5 },
+      "claude-opus-4-8": {
+        input: 5,
+        output: 25,
+        cacheWrite: 6.25,
+        cacheWrite1h: 10,
+        cacheRead: 0.5
+      },
       "gpt-5.5": { input: 5, output: 30, cacheWrite: 5, cacheRead: 0.5 },
       "deepseek-v4-pro": { input: 0.435, output: 0.87, cacheWrite: 0, cacheRead: 0.003625 },
       "no-cache-prices": { input: 2, output: 12, cacheWrite: 2, cacheRead: 2 }

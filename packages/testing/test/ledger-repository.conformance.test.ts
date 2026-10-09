@@ -4,7 +4,7 @@ import type { Platform } from "@rivus/agent-kit-platform";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { aggregateRepositoryConformance, type AggregateRepositoryFixtures } from "../src/effect.js";
 import { createMemoryPlatform } from "../src/memory-platform.js";

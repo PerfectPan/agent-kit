@@ -1,5 +1,5 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { calendarWindow } from "./calendar-window.js";
 

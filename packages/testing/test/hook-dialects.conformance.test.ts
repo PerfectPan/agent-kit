@@ -1,5 +1,5 @@
 import { builtinHookDialects } from "@rivus/agent-kit-harness";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { type HookDialectSample, hookDialectConformance } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";

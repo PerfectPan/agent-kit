@@ -8,7 +8,7 @@ import {
   versionFromOutput
 } from "@rivus/agent-kit-discovery";
 import type { RunOptions } from "@rivus/agent-kit-platform";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   createMemoryPlatform,
@@ -122,7 +122,9 @@ describe("detectAgents", () => {
   });
 
   it("accepts aliases once each and throws capability-unsupported for an agent without a recipe", async () => {
-    const installations = await detectAgents(machine(), { agents: ["claude", "claude-code", "cursor-agent"] });
+    const installations = await detectAgents(machine(), {
+      agents: ["claude", "claude-code", "cursor-agent"]
+    });
     expect(installations.map((installation) => installation.agent)).toEqual(["claude-code", "cursor"]);
     const error: unknown = await detectAgents(machine(), { agents: ["my-agent"] }).catch((caught: unknown) => caught);
     expect(isAgentKitError(error)).toBe(true);
@@ -146,7 +148,12 @@ describe("detectAgents", () => {
     expect(codex?.problems).toEqual([{ ...base, path: "/opt/bin/codex", reason: "timed-out" }]);
     expect(claude?.status).toBe("found");
     expect(claude?.problems).toEqual([
-      { ...base, path: "/opt/bin/claude", reason: "start-failed", message: "EACCES: /opt/bin/claude" }
+      {
+        ...base,
+        path: "/opt/bin/claude",
+        reason: "start-failed",
+        message: "EACCES: /opt/bin/claude"
+      }
     ]);
     expect(gemini?.status).toBe("found");
     expect(gemini?.problems).toEqual([{ ...base, path: "/opt/bin/gemini", reason: "unrecognized", exitCode: 0 }]);
@@ -190,7 +197,10 @@ describe("detectAgents", () => {
     const platform = machine({
       env: { PATH: ["bin", "", "/opt/dir", "/opt/b/", "/opt/c"].join(":") },
       files: { "/opt/dir/codex/inner": "", "/u/me/bin/codex": "" },
-      commands: { "/opt/b/codex": program("codex-cli 1.0.0"), "/opt/c/codex": program("codex-cli 2.0.0") }
+      commands: {
+        "/opt/b/codex": program("codex-cli 1.0.0"),
+        "/opt/c/codex": program("codex-cli 2.0.0")
+      }
     });
     const installation = await detectOne(platform, "codex");
     expect(installation.command).toBe("/opt/b/codex");
@@ -214,7 +224,10 @@ describe("detectAgents", () => {
       runs.push({ args, options });
       return args[0] === "--version" ? { stdout: "codex-cli 0.154.0" } : { stderr: "Not logged in", code: 1 };
     };
-    const platform = machine({ env: { CODEX_HOME: "/cfg/codex" }, commands: { "/opt/bin/codex": record } });
+    const platform = machine({
+      env: { CODEX_HOME: "/cfg/codex" },
+      commands: { "/opt/bin/codex": record }
+    });
     await detectOne(platform, "codex", { timeoutMs: 1_234, authProbe: "commands" });
     expect(runs.map((run) => run.args)).toEqual([["--version"], ["login", "status"]]);
     for (const { options } of runs) {
@@ -223,7 +236,9 @@ describe("detectAgents", () => {
   });
 
   it("aborting rejects with the signal's reason", async () => {
-    const platform = machine({ commands: { "/opt/bin/codex": () => new Promise(() => undefined) } });
+    const platform = machine({
+      commands: { "/opt/bin/codex": () => new Promise(() => undefined) }
+    });
     const controller = new AbortController();
     const detection = detectAgents(platform, { agents: ["codex"], signal: controller.signal });
     setTimeout(() => controller.abort(new Error("stop")), 10);
@@ -235,7 +250,10 @@ describe("detectAgents", () => {
 
 describe("login state", () => {
   const commands = { authProbe: "commands" } as const;
-  const claudeStatus = (json: object, code: number): MemoryCommand => ({ code, stdout: JSON.stringify(json) });
+  const claudeStatus = (json: object, code: number): MemoryCommand => ({
+    code,
+    stdout: JSON.stringify(json)
+  });
 
   it("S56: reads only credential files and variables by default, and runs status commands only when asked", async () => {
     const calls: string[] = [];
@@ -246,7 +264,12 @@ describe("login state", () => {
       }
     });
     const platform = machine({
-      files: { [`${HOME}/.codex/auth.json`]: JSON.stringify({ auth_mode: "chatgpt", tokens: { id_token: "secret" } }) },
+      files: {
+        [`${HOME}/.codex/auth.json`]: JSON.stringify({
+          auth_mode: "chatgpt",
+          tokens: { id_token: "secret" }
+        })
+      },
       commands: { "/opt/bin/codex": codex }
     });
     const byFile = await detectOne(platform, "codex");
@@ -273,7 +296,9 @@ describe("login state", () => {
     };
     const names = Object.values(builtinProbeRecipes).flatMap((recipe) => recipe.commands);
     const everything = () =>
-      machine({ commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder])) });
+      machine({
+        commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder]))
+      });
     await detectAgents(everything());
     expect([...calls]).toEqual(["--version"]);
     calls.clear();
@@ -288,7 +313,9 @@ describe("login state", () => {
       return { stdout: "tool 1.0.0" };
     };
     const names = Object.values(builtinProbeRecipes).flatMap((recipe) => recipe.commands);
-    const platform = machine({ commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder])) });
+    const platform = machine({
+      commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder]))
+    });
     const installations = await detectAgents(platform, { versionProbe: false });
     expect(calls).toEqual([]);
     // Every built-in command resolves, so every agent is found by its command alone; the empty machine that leaves
@@ -305,7 +332,9 @@ describe("login state", () => {
   it("counts a claude.ai account in ~/.claude.json as logged in without returning it", async () => {
     const platform = machine({
       files: {
-        [`${HOME}/.claude.json`]: JSON.stringify({ oauthAccount: { emailAddress: "someone@example.invalid" } })
+        [`${HOME}/.claude.json`]: JSON.stringify({
+          oauthAccount: { emailAddress: "someone@example.invalid" }
+        })
       },
       commands: { "/opt/bin/claude": program("2.1.286 (Claude Code)") }
     });
@@ -343,13 +372,17 @@ describe("login state", () => {
         })
       }
     });
-    expect((await detectOne(loggedOut, "claude-code", commands)).auth).toMatchObject({ status: "logged-out" });
+    expect((await detectOne(loggedOut, "claude-code", commands)).auth).toMatchObject({
+      status: "logged-out"
+    });
   });
 
   it("reads Codex's login status from standard error", async () => {
     const platform = machine({
       commands: {
-        "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": { stderr: "Logged in using ChatGPT\n" } })
+        "/opt/bin/codex": program("codex-cli 0.154.0", {
+          "login status": { stderr: "Logged in using ChatGPT\n" }
+        })
       }
     });
     expect((await detectOne(platform, "codex", commands)).auth).toMatchObject({
@@ -359,15 +392,24 @@ describe("login state", () => {
   });
 
   it("reads Cursor's CLI status from its output, since it exits with 0 when logged out", async () => {
-    const status = (value: string): MemoryRunResult => ({ code: 0, stdout: JSON.stringify({ status: value }) });
+    const status = (value: string): MemoryRunResult => ({
+      code: 0,
+      stdout: JSON.stringify({ status: value })
+    });
     const platform = (value: string) =>
       machine({
         files: { "/Applications/Cursor.app/Contents/Info.plist": "" },
-        commands: { "/opt/bin/cursor-agent": (args) => (args[0] === "status" ? status(value) : { code: 2 }) }
+        commands: {
+          "/opt/bin/cursor-agent": (args) => (args[0] === "status" ? status(value) : { code: 2 })
+        }
       });
     expect((await detectOne(platform("unauthenticated"), "cursor", commands)).auth).toEqual({
       status: "logged-out",
-      source: { kind: "command", command: "/opt/bin/cursor-agent", args: ["status", "--format", "json"] }
+      source: {
+        kind: "command",
+        command: "/opt/bin/cursor-agent",
+        args: ["status", "--format", "json"]
+      }
     });
     expect((await detectOne(platform("authenticated"), "cursor", commands)).auth).toMatchObject({
       status: "logged-in"
@@ -378,10 +420,15 @@ describe("login state", () => {
     const platform = machine({
       files: { [`${HOME}/.gemini/settings.json`]: "{}" },
       commands: {
-        "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": { code: 1, stderr: "Not logged in\n" } })
+        "/opt/bin/codex": program("codex-cli 0.154.0", {
+          "login status": { code: 1, stderr: "Not logged in\n" }
+        })
       }
     });
-    const [codex, gemini] = await detectAgents(platform, { agents: ["codex", "gemini-cli"], ...commands });
+    const [codex, gemini] = await detectAgents(platform, {
+      agents: ["codex", "gemini-cli"],
+      ...commands
+    });
     expect(codex?.auth).toEqual({
       status: "logged-out",
       source: { kind: "command", command: "/opt/bin/codex", args: ["login", "status"] }
@@ -399,7 +446,9 @@ describe("login state", () => {
     expect(calls).toEqual(["--version"]);
     expect(found.auth).toEqual({ status: "unknown" });
 
-    const odd = machine({ commands: { "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": {} }) } });
+    const odd = machine({
+      commands: { "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": {} }) }
+    });
     const installation = await detectOne(odd, "codex", commands);
     expect(installation.auth).toEqual({ status: "unknown" });
     expect(installation.problems).toEqual([
@@ -424,7 +473,10 @@ describe("login state", () => {
       status: "logged-in",
       source: { kind: "credential-file", path: "/alt/.gemini/oauth_creds.json" }
     });
-    const keyOnly = machine({ env: { GEMINI_API_KEY: "k" }, commands: { "/opt/bin/gemini": program("0.9.0") } });
+    const keyOnly = machine({
+      env: { GEMINI_API_KEY: "k" },
+      commands: { "/opt/bin/gemini": program("0.9.0") }
+    });
     expect((await detectOne(keyOnly, "gemini-cli")).auth).toEqual({
       status: "logged-in",
       method: "api-key",
@@ -489,18 +541,27 @@ describe("login state", () => {
     };
     const detect = async (platform: MemoryPlatform) =>
       (await detectAgents(platform, { recipes: { "my-agent": recipe } }))[0]?.auth;
-    const withFile = machine({ files: { [`${HOME}/.my-agent/credentials.json`]: "{}" }, env: { MY_AGENT_KEY: "x" } });
+    const withFile = machine({
+      files: { [`${HOME}/.my-agent/credentials.json`]: "{}" },
+      env: { MY_AGENT_KEY: "x" }
+    });
     expect(await detect(withFile)).toEqual({
       status: "logged-in",
       source: { kind: "credential-file", path: `${HOME}/.my-agent/credentials.json` }
     });
-    const withVariable = machine({ files: { [`${HOME}/.my-agent/config`]: "" }, env: { MY_AGENT_KEY: "x" } });
+    const withVariable = machine({
+      files: { [`${HOME}/.my-agent/config`]: "" },
+      env: { MY_AGENT_KEY: "x" }
+    });
     expect(await detect(withVariable)).toEqual({
       status: "logged-in",
       method: "api-key",
       source: { kind: "env", variable: "MY_AGENT_KEY" }
     });
-    const blank = machine({ files: { [`${HOME}/.my-agent/config`]: "" }, env: { MY_AGENT_KEY: " " } });
+    const blank = machine({
+      files: { [`${HOME}/.my-agent/config`]: "" },
+      env: { MY_AGENT_KEY: " " }
+    });
     expect(await detect(blank)).toEqual({ status: "unknown" });
   });
 
@@ -636,14 +697,20 @@ describe("detectAgents edge cases", () => {
       warnings: []
     };
     const detect = async (files: Record<string, string>) => {
-      const [installation] = await detectAgents(machine({ files }), { recipes: { "my-agent": recipe } });
+      const [installation] = await detectAgents(machine({ files }), {
+        recipes: { "my-agent": recipe }
+      });
       return installation;
     };
     expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.other") }))?.status).toBe(
       "missing"
     );
     expect(
-      (await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.myagent") }))?.evidence
+      (
+        await detect({
+          "/Applications/Shared.app/Contents/Info.plist": plist("com.example.myagent")
+        })
+      )?.evidence
     ).toEqual([{ kind: "app", path: "/Applications/Shared.app" }]);
     expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": "bplist00" }))?.status).toBe("found");
   });
@@ -665,11 +732,16 @@ describe("detectAgents edge cases", () => {
       auth: { credentialFiles: [{ path: { agentHome: "no-such-agent", path: "auth.json" } }] }
     };
     await expect(
-      detectAgents(machine({ commands: { "/opt/bin/codex": recorder } }), { recipes: { codex: broken } })
+      detectAgents(machine({ commands: { "/opt/bin/codex": recorder } }), {
+        recipes: { codex: broken }
+      })
     ).rejects.toMatchObject({ code: "capability-unsupported" });
     expect(calls).toEqual([]);
 
-    const ownHome: ProbeRecipe = { ...builtinProbeRecipes.codex, home: { defaultPath: [".codex-alt"] } };
+    const ownHome: ProbeRecipe = {
+      ...builtinProbeRecipes.codex,
+      home: { defaultPath: [".codex-alt"] }
+    };
     const [codex] = await detectAgents(machine({ files: { [`${HOME}/.codex-alt/config.toml`]: "" } }), {
       recipes: { codex: ownHome },
       versionProbe: false

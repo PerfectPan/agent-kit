@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 
@@ -83,7 +83,11 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechan
     const path = join(tempDir(), "daemon.lock");
     const held = await acquireProcessLock(platform, path);
     const reason = new Error("stop");
-    const waiting = acquireProcessLock(platform, path, { wait: true, retryMs: 10, signal: AbortSignal.timeout(100) });
+    const waiting = acquireProcessLock(platform, path, {
+      wait: true,
+      retryMs: 10,
+      signal: AbortSignal.timeout(100)
+    });
     await expect(waiting).rejects.toMatchObject({ name: "TimeoutError" });
     const aborted = new AbortController();
     aborted.abort(reason);
@@ -142,7 +146,11 @@ describe("acquireProcessLock while waiting with SQLite", () => {
         }
       }
     };
-    const waiting = acquireProcessLock(counting, path, { wait: true, retryMs: 10, signal: AbortSignal.timeout(600) });
+    const waiting = acquireProcessLock(counting, path, {
+      wait: true,
+      retryMs: 10,
+      signal: AbortSignal.timeout(600)
+    });
     await expect(waiting).rejects.toMatchObject({ name: "TimeoutError" });
     // One settling attempt (with its retries), then waits of 10, 20, 40, … ms instead of one attempt every 10 ms.
     const blocking = timeouts.filter((pragma) => !pragma.endsWith("= 0"));
@@ -175,7 +183,11 @@ describe("acquireProcessLock with a lock file", () => {
 
   it("does not hold a lock whose stamp a stalled holder overwrote right after it was written", async () => {
     const path = join(tempDir(), "daemon.lock");
-    const late = JSON.stringify({ ...platform.process.self, acquiredAt: 0, nonce: "stalled-holder" });
+    const late = JSON.stringify({
+      ...platform.process.self,
+      acquiredAt: 0,
+      nonce: "stalled-holder"
+    });
     const overwriting: Platform = {
       ...platform,
       fs: {

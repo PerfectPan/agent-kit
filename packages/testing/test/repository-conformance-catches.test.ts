@@ -1,7 +1,7 @@
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   aggregateRepositoryConformance,
@@ -31,7 +31,11 @@ interface Envelope {
 type Defect = "no-comparison" | "compares-too-loosely" | "write-then-conflict" | "ignores-schema";
 
 const conflict = (expectedRevision: number | undefined, storedRevision: number | undefined): Error =>
-  Object.assign(new Error("conflict"), { _tag: "RevisionConflict", expectedRevision, storedRevision });
+  Object.assign(new Error("conflict"), {
+    _tag: "RevisionConflict",
+    expectedRevision,
+    storedRevision
+  });
 
 const unsupportedSchema = (): Error => Object.assign(new Error("unsupported schema"), { _tag: "UnsupportedSchema" });
 

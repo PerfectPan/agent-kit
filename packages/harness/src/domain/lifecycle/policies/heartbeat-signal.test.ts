@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { LifecycleEvent } from "../value-objects/lifecycle-event.js";
 import { INITIAL_LIFECYCLE_STATE, type LifecycleState } from "../value-objects/lifecycle-state.js";

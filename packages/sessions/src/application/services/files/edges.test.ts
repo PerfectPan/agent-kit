@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { SessionPlatform } from "../../ports.js";
 import { EDGE_BYTES, edgeRecords, readEdges } from "./edges.js";

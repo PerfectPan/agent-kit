@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { SESSION_TITLE_MAX, sessionHead } from "./session-head.js";
 import type { SessionPreview } from "../value-objects/session-preview.js";

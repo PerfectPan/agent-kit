@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { SessionPlatform } from "../../ports.js";
 import { catchIoFailure } from "./io-failure.js";
@@ -34,7 +34,10 @@ const getterThrows = (error: Error, key: string): Error => {
 describe("catchIoFailure", () => {
   it("turns ENOENT into SessionNotFound and another errno into ReadFailed at the error's or caller's path", async () => {
     const notFound = await read(throwing(() => Object.assign(new Error("no"), { code: "ENOENT" })));
-    expect(notFound).toStrictEqual({ ok: false, error: { _tag: "SessionNotFound", path: "/caller/path" } });
+    expect(notFound).toStrictEqual({
+      ok: false,
+      error: { _tag: "SessionNotFound", path: "/caller/path" }
+    });
 
     const denied = await read(throwing(() => Object.assign(new Error("no"), { code: "EACCES", path: "/on/error" })));
     expect(denied).toStrictEqual({
@@ -45,7 +48,12 @@ describe("catchIoFailure", () => {
     const plain = await read(throwing(() => ({ code: "EISDIR" })));
     expect(plain).toStrictEqual({
       ok: false,
-      error: { _tag: "ReadFailed", path: "/caller/path", message: "EISDIR", cause: expect.anything() }
+      error: {
+        _tag: "ReadFailed",
+        path: "/caller/path",
+        message: "EISDIR",
+        cause: expect.anything()
+      }
     });
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { InstallAdapter } from "../../bundle/value-objects/install-adapter.js";
 import type { HookSpec } from "../../bundle/value-objects/artifact-spec.js";
@@ -32,7 +32,14 @@ describe("strategyRequirement", () => {
 
   it("has no built-in strategy for mcp servers or instructions", () => {
     expect(strategyRequirement({ type: "instructions", id: "x", text: "y" }, "codex")).toBe("unsupported");
-    expect(strategyUnsupported("codex", { type: "mcp-server", name: "x", transport: "stdio", command: "x" })).toEqual({
+    expect(
+      strategyUnsupported("codex", {
+        type: "mcp-server",
+        name: "x",
+        transport: "stdio",
+        command: "x"
+      })
+    ).toEqual({
       _tag: "StrategyUnavailable",
       agent: "codex",
       artifact: "mcp-server",
@@ -54,7 +61,11 @@ describe("chooseStrategy", () => {
   });
 
   it("falls to the next strategy when the first needs a missing executable, naming what was missing", () => {
-    expect(chooseStrategy(adapter({ hookStrategies: ["native-plugin"] }), "hooks", { available: new Set() })).toEqual({
+    expect(
+      chooseStrategy(adapter({ hookStrategies: ["native-plugin"] }), "hooks", {
+        available: new Set()
+      })
+    ).toEqual({
       ok: false,
       error: {
         _tag: "StrategyUnavailable",

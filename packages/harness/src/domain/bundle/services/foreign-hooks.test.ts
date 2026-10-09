@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
 import { builtinInstallAdapters } from "../../bundle/adapters/install-adapters.js";
@@ -63,7 +63,10 @@ describe("droppedHooksOf", () => {
     const dropped = droppedHooksOf(placed.value);
     const stop = dropped.filter((hook) => hook.firedBy.event === "Stop");
     expect(stop).toEqual([
-      { agent: "grok", firedBy: { agent: "claude-code", event: "Stop", file: "~/.claude/settings.json" } }
+      {
+        agent: "grok",
+        firedBy: { agent: "claude-code", event: "Stop", file: "~/.claude/settings.json" }
+      }
     ]);
   });
 });

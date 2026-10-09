@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinCodingAgents, homeRuleOf, isBuiltinCodingAgentId, parseCodingAgentId, resolveHome } from "./index.js";
 
@@ -16,7 +16,11 @@ describe("resolveHome", () => {
     ["opencode", "/u/me/.local/share/opencode"],
     ["pi", "/u/me/.pi/agent"]
   ] as const)("defaults %s to %s", (id, path) => {
-    expect(resolveHome(id, { env: {}, home })).toEqual({ agent: id, path, source: { kind: "default" } });
+    expect(resolveHome(id, { env: {}, home })).toEqual({
+      agent: id,
+      path,
+      source: { kind: "default" }
+    });
   });
 
   it.each([
@@ -101,7 +105,10 @@ describe("parseCodingAgentId", () => {
   it("accepts a third-party id of the right shape and rejects anything else", () => {
     expect(parseCodingAgentId("my-agent")).toEqual({ ok: true, value: "my-agent" });
     for (const input of ["", "my agent", "-x", "x-", "a/b"]) {
-      expect(parseCodingAgentId(input)).toEqual({ ok: false, error: { _tag: "InvalidCodingAgentId", input } });
+      expect(parseCodingAgentId(input)).toEqual({
+        ok: false,
+        error: { _tag: "InvalidCodingAgentId", input }
+      });
     }
   });
 });

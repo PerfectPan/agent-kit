@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { ByteRange } from "@rivus/agent-kit-platform";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { nodeFs } from "./fs.js";
 
@@ -38,10 +38,17 @@ describe("stat", () => {
     await mkdir(join(dir, "sub"));
     await symlink(join(dir, "file"), join(dir, "link"));
 
-    expect(await nodeFs.stat(join(dir, "file"))).toEqual({ kind: "file", size: 3, mtimeMs: expect.any(Number) });
+    expect(await nodeFs.stat(join(dir, "file"))).toEqual({
+      kind: "file",
+      size: 3,
+      mtimeMs: expect.any(Number)
+    });
     expect((await nodeFs.stat(join(dir, "sub")))?.kind).toBe("dir");
     expect((await nodeFs.stat(join(dir, "link")))?.kind).toBe("symlink");
-    expect(await nodeFs.stat(join(dir, "link"), { followSymlinks: true })).toMatchObject({ kind: "file", size: 3 });
+    expect(await nodeFs.stat(join(dir, "link"), { followSymlinks: true })).toMatchObject({
+      kind: "file",
+      size: 3
+    });
   });
 
   it("resolves to undefined for a missing path, a path under a file and a dangling link it follows", async () => {
@@ -169,7 +176,9 @@ describe("writeAtomic", () => {
     await mkdir(join(dir, "occupied"));
     await writeFile(join(dir, "occupied", "keep"), "");
 
-    await expect(nodeFs.writeAtomic(join(dir, "occupied"), "data")).rejects.toMatchObject({ code: "EISDIR" });
+    await expect(nodeFs.writeAtomic(join(dir, "occupied"), "data")).rejects.toMatchObject({
+      code: "EISDIR"
+    });
     expect(await readdir(dir)).toEqual(["occupied"]);
   });
 });

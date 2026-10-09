@@ -6,7 +6,7 @@ import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 import { createLeaseManager, sqliteLeaseRepository } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
@@ -94,7 +94,9 @@ describe("lease lost across processes", () => {
         expect(readFileSync(log, "utf8")).toBe("F:start\n");
 
         stalled.signal("SIGCONT");
-        expect(yield* Effect.promise(() => stalled.next("fenced-result"))).toMatchObject({ tag: "LeaseLost" });
+        expect(yield* Effect.promise(() => stalled.next("fenced-result"))).toMatchObject({
+          tag: "LeaseLost"
+        });
         yield* Fiber.join(successor);
         expect(readFileSync(log, "utf8")).toBe("F:start\nF:interrupted\nP:start\n");
       }).pipe(Effect.scoped, Effect.provide(layer));

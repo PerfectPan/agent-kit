@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { admit, nextToStart, wakeResult } from "../policies/admission.js";
 import { type LaneLimits, laneLimits } from "../value-objects/lane-limits.js";
