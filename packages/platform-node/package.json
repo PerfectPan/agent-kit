@@ -20,7 +20,8 @@
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
   },
   "dependencies": {
-    "@rivus/agent-kit-platform": "workspace:*"
+    "@rivus/agent-kit-platform": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@effect/tsgo": "0.49.0",

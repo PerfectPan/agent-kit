@@ -1,3 +1,4 @@
+export { fromLiteLLM } from "./domain/pricing/adapters/from-litellm.js";
 export {
   type CalendarWindow,
   type CalendarWindowOptions,
@@ -6,7 +7,6 @@ export {
   type CostErrorCode,
   costOf,
   createPricing,
-  fromLiteLLM,
   type Price,
   type PriceOverrides,
   type Pricing,

@@ -18,8 +18,9 @@ export default [
   { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78 kB" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by tsdown.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "10 kB" },
-  { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "3 kB", ...nodeOnly },
-  { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "3 kB", ...nodeOnly },
+  // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
+  { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "6.25 kB", ...nodeOnly },
+  { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "6.25 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
   { name: "@rivus/agent-kit/platform/effect", path: "dist/platform/effect.js", import: "*", limit: "0.5 kB" },
   { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1.5 kB" },

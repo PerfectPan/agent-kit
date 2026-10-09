@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Read hook payloads with own-property schema levels and a lazily cached view (back to about 1 µs per event), accept TOML's infinities, NaN and big integers in configuration documents and pre-image blobs, keep an own `__proto__` key through an edit, and refuse a stored ledger whose revision is not a number. The LiteLLM price adapter parses through zod/mini, so `/cost` now bundles it, and the `/node` entries grow with the platform's error-code schema.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@rivus/agent-kit-catalog": "workspace:*",
-    "@rivus/agent-kit-sessions": "workspace:*"
+    "@rivus/agent-kit-sessions": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",

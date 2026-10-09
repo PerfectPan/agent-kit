@@ -1,3 +1,5 @@
+import { isPlainObject } from "es-toolkit";
+
 export interface RedactOptions {
   /**
    * The home directory to hide, as the host spells it: `/u/me` or `C:\Profiles\me`. Every spelling of it becomes
@@ -89,15 +91,6 @@ function redactValue(value: unknown, options: RedactOptions): unknown {
     );
   }
   return value;
-}
-
-// The package stays free of runtime dependencies, so this one check is written out instead of taken from es-toolkit.
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const prototype: unknown = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }
 
 function homePatterns(home: string): HomePatterns {
