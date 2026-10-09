@@ -50,6 +50,16 @@ describe("fromLiteLLM", () => {
     expect(fromLiteLLM("prices")).toEqual({});
   });
 
+  it("drops an entry whose price is not a finite number, and keeps the rest of the table", () => {
+    expect(
+      fromLiteLLM({
+        "infinite-cost": { input_cost_per_token: Infinity, output_cost_per_token: 2e-5 },
+        "nan-cost": { input_cost_per_token: NaN, output_cost_per_token: 2e-5 },
+        "ok-model": { input_cost_per_token: 2e-6, output_cost_per_token: 1.2e-5 }
+      })
+    ).toEqual({ "ok-model": { input: 2, output: 12, cacheWrite: 2, cacheRead: 2 } });
+  });
+
   it("gives a table that createPricing looks models up in", () => {
     const pricing = createPricing(fromLiteLLM(LITELLM));
     expect(pricing.priceOf("claude-opus-4-8-20260101")?.cacheWrite1h).toBe(10);

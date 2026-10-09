@@ -31,11 +31,13 @@ const shared = (entryNames: string[]): UserConfig => ({
 });
 
 export default defineConfig([
-  {
-    ...shared(ZERO_DEPENDENCY_ENTRIES),
+  // One build per zero-dependency entry: sharing a build would let the bundler put zod/mini into a common chunk the
+  // entries import, and the built entry files must inline it instead.
+  ...ZERO_DEPENDENCY_ENTRIES.map((name): UserConfig => ({
+    ...shared([name]),
     // alwaysBundle matches whole import specifiers, so the pattern covers the `zod/mini` subpath.
     deps: { neverBundle: [/^node:/], alwaysBundle: [/^zod(\/|$)/], dts: { alwaysBundle: [/^zod(\/|$)/] } }
-  },
+  })),
   {
     ...shared(Object.keys(entry).filter((name) => !ZERO_DEPENDENCY_ENTRIES.includes(name))),
     // The internal packages are devDependencies, so they are bundled; dependencies, peers and node:* stay external.
