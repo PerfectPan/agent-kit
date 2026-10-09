@@ -1,14 +1,16 @@
 import { ok, type Result } from "@rivus/agent-kit-catalog";
 
 import {
-  CODEX_CAPABILITIES,
   CODEX_SESSION_FILES,
-  codexCapabilities,
   codexRoots,
-  looksLikeCodexSession,
-  previewCodexRecords,
+  looksLikeCodexSession
+} from "../../../domain/session/adapters/codex/layout.js";
+import { previewCodexRecords } from "../../../domain/session/adapters/codex/preview.js";
+import {
+  CODEX_CAPABILITIES,
+  codexCapabilities,
   translateCodexRecords
-} from "../../../domain/adapters/codex/index.js";
+} from "../../../domain/transcript/adapters/codex/events.js";
 import type { SessionRef } from "../../../domain/session/index.js";
 import { createTranscript, mergeByTime, type Transcript } from "../../../domain/transcript/index.js";
 import { discoverSessions } from "../discover-sessions.js";

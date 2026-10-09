@@ -1,19 +1,20 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 import type { SqliteDatabase, SqliteValue } from "@rivus/agent-kit-platform";
 
-import { asRecord, asString } from "../../../domain/protocols/record-fields.js";
+import { asRecord, asString } from "../../../domain/transcript/adapters/record-fields.js";
 import {
   OPENCODE_MESSAGE_PAGE,
   OPENCODE_MESSAGES_BY_ROW,
   opencodeDatabasePath,
   opencodeLegacyMessageRoot,
-  opencodeMessagesById,
-  opencodeMessageUsage,
-  opencodeUsageKey,
+  opencodeMessagesById
+} from "../../../domain/session/adapters/opencode.js";
+import { opencodeMessageUsage, opencodeUsageKey } from "../../../domain/usage/adapters/opencode/usage.js";
+import {
+  type OpencodeTableRow,
   createOpencodeSettlement,
-  opencodeQueryFloor,
-  type OpencodeTableRow
-} from "../../../domain/adapters/opencode/index.js";
+  opencodeQueryFloor
+} from "../../../domain/usage/adapters/opencode/settlement.js";
 import { basenamePath, joinPath, type ReadFailed } from "../../../domain/session/index.js";
 import { decodeIsFinal, type UsageRecord } from "../../../domain/usage/index.js";
 import { guardIo } from "../files/io-failure.js";

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Move the agent adapters of acp, harness and sessions into their domain concepts: each file now lives under the `adapters/` of the concept whose model it produces (`domain/<concept>/adapters/`), each concept's `builtinXxx` table lives in that concept's `adapters/`, and sessions' `domain/protocols/` was dissolved into `domain/transcript/adapters/`. The published surface is unchanged.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

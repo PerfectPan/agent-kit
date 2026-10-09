@@ -1,21 +1,23 @@
 import { ok, type Result } from "@rivus/agent-kit-catalog";
 
 import {
-  CLAUDE_CODE_CAPABILITIES,
   CLAUDE_CODE_SESSION_FILES,
   CLAUDE_CODE_SUBAGENT_DEPTH,
   claudeCodeAgentIdFromFile,
   claudeCodeAgentMeta,
   type ClaudeCodeAgentMeta,
-  claudeCodeCapabilities,
   claudeCodeMetaPath,
   claudeCodeRoots,
   claudeCodeSubagentDir,
   claudeCodeSubagentFile,
-  looksLikeClaudeCodeSession,
-  previewClaudeCodeRecords,
+  looksLikeClaudeCodeSession
+} from "../../../domain/session/adapters/claude-code/layout.js";
+import { previewClaudeCodeRecords } from "../../../domain/session/adapters/claude-code/preview.js";
+import {
+  CLAUDE_CODE_CAPABILITIES,
+  claudeCodeCapabilities,
   translateClaudeCodeRecords
-} from "../../../domain/adapters/claude-code/index.js";
+} from "../../../domain/transcript/adapters/claude-code/events.js";
 import type { SessionRef } from "../../../domain/session/index.js";
 import {
   createTranscript,

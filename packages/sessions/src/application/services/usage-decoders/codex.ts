@@ -2,10 +2,9 @@ import {
   CODEX_SESSION_FILES,
   codexRoots,
   codexSessionStem,
-  codexUsageKey,
-  codexUsageLines,
   codexUsageSourceId
-} from "../../../domain/adapters/codex/index.js";
+} from "../../../domain/session/adapters/codex/layout.js";
+import { codexUsageKey, codexUsageLines } from "../../../domain/usage/adapters/codex.js";
 import type { UsageDecoder } from "../../usage-ports.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout, sameFile } from "./files.js";
 

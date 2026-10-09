@@ -1,13 +1,15 @@
 import {
   GEMINI_CLI_CHAT_FILES,
-  geminiCliLegacyUsage,
   geminiCliSessionStem,
-  geminiCliUsageKey,
-  geminiCliUsageLines,
   geminiCliUsageRoots,
   isGeminiCliLegacyChat,
   isGeminiCliUsageSource
-} from "../../../domain/adapters/gemini-cli/index.js";
+} from "../../../domain/session/adapters/gemini-cli.js";
+import {
+  geminiCliLegacyUsage,
+  geminiCliUsageKey,
+  geminiCliUsageLines
+} from "../../../domain/usage/adapters/gemini-cli.js";
 import type { UsageRecord } from "../../../domain/usage/index.js";
 import { belowRoot } from "../../../domain/session/index.js";
 import { guardIo } from "../files/io-failure.js";

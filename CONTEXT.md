@@ -278,7 +278,7 @@ The port through which the kit reaches files, processes, environment variables, 
 A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.
 
 **Agent adapter**:
-The per-agent implementation of a context's adapter interface, under `domain/adapters/<agent>/`. It translates the agent's external format into the context's model and is registered in that context's `builtinXxx` table.
+The per-agent implementation of a context's adapter interface, under the `adapters/` of the domain concept whose model it produces (`domain/<concept>/adapters/`). It translates the agent's external format into that concept's model and is registered in that concept's `builtinXxx` table.
 
 **Repository**:
 The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).
@@ -306,7 +306,7 @@ A test suite, exported from `/testing` (the aggregate-repository suite from `/te
 | Lane | In sessions, a subagent's execution line; in lanes, a scheduling unit serialized by key | Each context keeps its own meaning; the two are never mixed |
 | Generation | In lease, the fencing token | In sessions, a format generation of an agent's logs |
 | Revision | The Ledger's revision (per apply or uninstall) and a lease record's revision (per write) | Each counter belongs to its own record |
-| Adapter | An agent adapter (`domain/adapters/`) or a port adapter (`infra/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
+| Adapter | An agent adapter (a concept's `adapters/`) or a port adapter (`infra/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
 | Scope | An install scope (`user` / `project`); `LifecycleEvent.scope` (`session` / `turn`) | An Effect `Scope`, which owns long-lived resources |
 | Event | TranscriptEvent (recorded activity) and LifecycleEvent (hook signal) | Domain events returned by aggregate transitions; ACP `session/update` notifications |
 | Lock | LedgerLock (harness), ProcessLock and Lease (collab) | harness cannot depend on collab, so the LedgerLock and the ProcessLock are separate implementations of the same technique |

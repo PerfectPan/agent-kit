@@ -1,6 +1,6 @@
 import { type CodingAgentId, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { UsageFile, UsageLineDecoder } from "../../../domain/adapters/usage-lines.js";
+import type { UsageFile, UsageLineDecoder } from "../../../domain/usage/adapters/usage-lines.js";
 import type { SessionListError } from "../../../domain/session/index.js";
 import type { SourceChanged } from "../../../domain/transcript/index.js";
 import { decodeIsFinal, type UsageRecord } from "../../../domain/usage/index.js";

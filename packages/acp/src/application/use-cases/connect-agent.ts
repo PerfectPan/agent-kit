@@ -9,7 +9,7 @@ import * as FiberSet from "effect/FiberSet";
 import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
-import { type AcpProfiles, builtinAcpProfiles } from "../../domain/adapters/index.js";
+import { type AcpProfiles, builtinAcpProfiles } from "../../domain/acp-session/adapters/index.js";
 import {
   type AcpProfile,
   AcpSession,
