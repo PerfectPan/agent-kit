@@ -67,16 +67,12 @@ const AcpUpdateEnvelope = z.looseObject({
 
 /**
  * The body of a recorded `session/update`, under `params` or on the record, with the record's own time in epoch
- * milliseconds beside it, so a reader gets both off one parse. The body is `undefined` for a record that carries
- * none; the whole result is `undefined` only when the value is not a record.
+ * milliseconds beside it, so a reader gets both off one parse. Both are `undefined` when the value is not a record
+ * or the record carries no body.
  */
-export function acpRecordedUpdate(
-  value: unknown
-): { update: AcpUpdateValue | undefined; time: number | undefined } | undefined {
+export function acpRecordedUpdate(value: unknown): { update: AcpUpdateValue | undefined; time: number | undefined } {
   const record = z.safeParse(AcpUpdateEnvelope, value).data;
-  return record === undefined
-    ? undefined
-    : { update: record.params?.update ?? record.update, time: timeOf(record.timestamp) };
+  return { update: record?.params?.update ?? record?.update, time: timeOf(record?.timestamp) };
 }
 
 /** Text of one content part: the part's `text`, else the text of the block nested under its `content`. */

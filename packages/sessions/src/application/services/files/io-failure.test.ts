@@ -8,11 +8,9 @@ const throwing = (make: () => unknown): SessionPlatform => ({
   fs: {
     stat: () => Promise.reject(make()),
     list: () => Promise.reject(make()),
-    read: () =>
-      // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file
-      (async function* () {
-        throw make();
-      })()
+    read: () => {
+      throw make();
+    }
   }
 });
 
@@ -62,6 +60,25 @@ describe("catchIoFailure", () => {
     expect(byArray).toStrictEqual({
       ok: false,
       error: { _tag: "ReadFailed", path: "/caller/path", message: "a", cause: expect.anything() }
+    });
+  });
+
+  it("marks the error of a file read too, through the guarded generator's catch", async () => {
+    const failure = await catchIoFailure(
+      throwing(() => Object.assign(new Error("io"), { code: "EIO" })),
+      "/caller/path",
+      undefined,
+      async (guarded) => {
+        let bytes = 0;
+        for await (const chunk of guarded.fs.read("/x")) {
+          bytes += chunk.length;
+        }
+        return bytes;
+      }
+    );
+    expect(failure).toStrictEqual({
+      ok: false,
+      error: { _tag: "ReadFailed", path: "/caller/path", message: "io", cause: expect.anything() }
     });
   });
 

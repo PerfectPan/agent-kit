@@ -9,13 +9,11 @@ import { grokMetaOf } from "../../../usage/adapters/grok.js";
 export function previewGrokRecords(records: readonly Record<string, unknown>[]): SessionPreview {
   const preview: SessionPreview = {};
   for (const record of records) {
-    const recorded = acpRecordedUpdate(record);
-    const ts = recorded?.time;
+    const { update, time: ts } = acpRecordedUpdate(record);
     if (ts !== undefined) {
       preview.startedAt ??= ts;
       preview.lastAt = ts;
     }
-    const update = recorded?.update;
     if (preview.firstPrompt || update?.sessionUpdate !== "user_message_chunk") {
       continue;
     }

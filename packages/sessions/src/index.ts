@@ -33,7 +33,7 @@ export {
   timeOf,
   unknownFormatGeneration
 } from "./domain/transcript/index.js";
-export { recordTime, timedRecord } from "./domain/transcript/adapters/record-time.js";
+export { timedRecord } from "./domain/transcript/adapters/record-time.js";
 export type { SessionPreview } from "./domain/session/index.js";
 export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";
 export type { UsageDecoder, UsageDecoders } from "./application/usage-ports.js";
