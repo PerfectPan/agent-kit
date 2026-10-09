@@ -1,5 +1,11 @@
 import { type Env, ownValue, readField } from "../policies/payload-fields.js";
-import type { HookEventSpec, LifecycleSwitch, PayloadFields, PreparedDialect } from "../value-objects/hook-dialect.js";
+import {
+  type HookDialect,
+  type HookEventSpec,
+  foreignHooksOf,
+  type LifecycleSwitch,
+  type PayloadFields
+} from "../value-objects/hook-dialect.js";
 import type { LifecycleEvent, LifecycleMapping } from "../value-objects/lifecycle-event.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 
@@ -7,7 +13,7 @@ function isSwitch(lifecycle: HookEventSpec["lifecycle"]): lifecycle is Lifecycle
   return "cases" in lifecycle;
 }
 
-function ownSpec(dialect: PreparedDialect, name: string): HookEventSpec | undefined {
+function ownSpec(dialect: HookDialect, name: string): HookEventSpec | undefined {
   return ownValue(dialect.events, name);
 }
 
@@ -15,7 +21,7 @@ function ownSpec(dialect: PreparedDialect, name: string): HookEventSpec | undefi
  * The event spec for a name in a payload: a native name, one of its aliases, or a foreign agent's name that this
  * agent renames when it runs that agent's hooks.
  */
-function eventSpec(dialect: PreparedDialect, nativeEvent: string): HookEventSpec | undefined {
+function eventSpec(dialect: HookDialect, nativeEvent: string): HookEventSpec | undefined {
   const own = ownSpec(dialect, nativeEvent);
   if (own !== undefined) {
     return own;
@@ -24,7 +30,7 @@ function eventSpec(dialect: PreparedDialect, nativeEvent: string): HookEventSpec
   if (aliased !== undefined) {
     return aliased;
   }
-  for (const foreign of dialect.runsHooksOf) {
+  for (const foreign of foreignHooksOf(dialect)) {
     const renamed = ownValue(foreign.events, nativeEvent);
     if (typeof renamed === "string") {
       return ownSpec(dialect, renamed);
@@ -45,8 +51,8 @@ function resolveMapping(spec: HookEventSpec, payload: PayloadView): LifecycleMap
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
-/** Reads one payload with one prepared dialect. Unknown shapes and events read as phase `unknown`; nothing throws. */
-export function readWithDialect(dialect: PreparedDialect, payload: PayloadView, env: Env): LifecycleEvent {
+/** Reads one payload with one dialect. Unknown shapes and events read as phase `unknown`; nothing throws. */
+export function readWithDialect(dialect: HookDialect, payload: PayloadView, env: Env): LifecycleEvent {
   const { fields } = dialect;
   const read = (key: keyof PayloadFields) => readField(payload, env, fields[key]);
   const nativeEvent = read("event") ?? "";

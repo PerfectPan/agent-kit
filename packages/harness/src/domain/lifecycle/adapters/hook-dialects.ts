@@ -9,7 +9,6 @@ import {
   sniffSource,
   terminalIdentity
 } from "../index.js";
-import { type PreparedDialects, prepareDialects } from "../value-objects/hook-dialect.js";
 import { payloadView } from "./payload-shape.js";
 import { claudeCodeHookDialect } from "./claude-code.js";
 import { codexHookDialect } from "./codex.js";
@@ -35,9 +34,6 @@ export const builtinHookDialects: Readonly<Record<HookAgentId, HookDialect>> = {
   pi: piHookDialect
 };
 
-/** Builtins with every-reader defaults filled once, so `readHookEvent` does not copy them per payload. */
-const preparedBuiltins: PreparedDialects = prepareDialects(builtinHookDialects);
-
 export interface ReadHookEventOptions {
   /** Dialects for this call, merged over `builtinHookDialects`, such as a third-party agent's. */
   readonly adapters?: HookDialects;
@@ -62,10 +58,8 @@ export function readHookEvent(
   env: Env,
   options: ReadHookEventOptions = {}
 ): LifecycleEvent {
-  const dialects: PreparedDialects =
-    options.adapters === undefined
-      ? preparedBuiltins
-      : prepareDialects({ ...builtinHookDialects, ...options.adapters });
+  const dialects: HookDialects =
+    options.adapters === undefined ? builtinHookDialects : { ...builtinHookDialects, ...options.adapters };
   const declared = Object.hasOwn(dialects, agent) ? dialects[agent] : undefined;
   if (declared === undefined) {
     throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no hook dialect`);
