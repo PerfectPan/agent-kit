@@ -19,7 +19,7 @@
     "format:check": "vp fmt --check ."
   },
   "devDependencies": {
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.5.0",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.3.2",
     "typescript": "7.0.2",
     "vite-plus": "1.1.0"
   }
