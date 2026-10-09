@@ -93,4 +93,35 @@ describe("claudeCodeUsageLines", () => {
       lanes: {}
     });
   });
+
+  it("keeps the lanes and requests it can read and drops the ones it cannot", () => {
+    const decoder = claudeCodeUsageLines(file, {
+      lastTime: 3,
+      lanes: {
+        sub: {
+          open: [{ key: "k", usage: { inputTokens: 1 }, timestamp: 2, offset: 0, length: 0, line: 1 }],
+          reported: ["h"]
+        },
+        bad: 5,
+        worse: {
+          open: [
+            // No `line`: not a reportable request, so absent while the next one stays.
+            { key: "lost", usage: { inputTokens: 1 }, timestamp: 2, offset: 0, length: 0 },
+            { key: "kept", usage: {}, timestamp: 4, offset: 1, length: 2, line: 3 }
+          ],
+          reported: [7]
+        }
+      }
+    });
+    expect(decoder.save()).toEqual({
+      lastTime: 3,
+      lanes: {
+        sub: {
+          open: [{ key: "k", usage: { inputTokens: 1 }, timestamp: 2, offset: 0, length: 0, line: 1 }],
+          reported: ["h"]
+        },
+        worse: { open: [{ key: "kept", usage: {}, timestamp: 4, offset: 1, length: 2, line: 3 }], reported: [] }
+      }
+    });
+  });
 });

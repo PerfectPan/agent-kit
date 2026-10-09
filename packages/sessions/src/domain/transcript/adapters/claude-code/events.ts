@@ -104,6 +104,8 @@ export function translateClaudeCodeRecords(
   const skipped: SkippedRecord[] = [];
   const requests = new Map<string, TranscriptEvent>();
   const parentOf = new Map<string, string | undefined>();
+  /** Each event's parsed record, so the later passes never parse a record again. */
+  const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
   let sessionId = options.sessionId;
   let title: string | undefined;
   let titleExplicit = false;
@@ -152,17 +154,17 @@ export function translateClaudeCodeRecords(
     }
 
     const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
-      events.push(
-        baseEvent(record, kind, payload, { id: eventId(uuid, record, part), ts, agentId, parentId, requestId })
-      );
+      const event = baseEvent(record, kind, payload, { id: eventId(uuid, record, part), ts, agentId, parentId, requestId });
+      events.push(event);
+      parsed.set(event, rec);
     };
 
     if (type === "user" || type === "assistant") {
-      const message = rec.message;
       const requestId = claudeCodeRequestKey(rec);
       if (requestId) {
-        mergeRequest(requests, events, record, ts, agentId, requestId, message);
+        mergeRequest(requests, events, parsed, rec, record, ts, agentId, requestId);
       }
+      const message = rec.message;
       const flags: ClaudeCodeUserFlags = type === "user" ? userFlags(rec) : {};
       const content = message?.content;
       if (type === "user" && !agentId && isPromptFlags(flags)) {
@@ -218,11 +220,11 @@ export function translateClaudeCodeRecords(
   }
 
   resolveParents(events, parentOf);
-  shadowRemoved(events);
+  shadowRemoved(events, parsed);
   markOrphanToolResults(events);
   assignSeq(events);
 
-  const agents = agentLanes(events, options.agentMeta);
+  const agents = agentLanes(events, options.agentMeta, parsed);
   const fallbackId = options.path === undefined ? undefined : claudeCodeSessionStem(options.path) || "unknown";
   const session: TranscriptSession = {
     id: sessionId ?? fallbackId ?? "unknown",
@@ -250,18 +252,21 @@ function eventId(uuid: string | undefined, record: SourcedRecord, part: number):
 function mergeRequest(
   requests: Map<string, TranscriptEvent>,
   events: TranscriptEvent[],
+  parsed: Map<TranscriptEvent, ClaudeCodeRecordValue>,
+  rec: ClaudeCodeRecordValue,
   record: SourcedRecord,
   ts: number,
   agentId: string | undefined,
-  requestId: string,
-  message: ClaudeCodeRecordValue["message"]
+  requestId: string
 ): void {
   let event = requests.get(requestId);
   if (!event) {
     event = baseEvent(record, "request", {}, { id: `request:${requestId}`, ts, agentId, requestId });
     requests.set(requestId, event);
     events.push(event);
+    parsed.set(event, rec);
   }
+  const message = rec.message;
   const usage = claudeCodeRequestUsage(event.payload.usage as Usage | undefined, claudeCodeUsageOf(message?.usage));
   if (usage) {
     event.payload.usage = usage;
@@ -400,8 +405,12 @@ function resolveParents(events: readonly TranscriptEvent[], parentOf: ReadonlyMa
 }
 
 /** Record uuids from `compactMetadata.preservedSegment.headUuid` to `tailUuid`, which the compaction kept. */
-function preservedUuids(events: readonly TranscriptEvent[], compaction: TranscriptEvent): Set<string> | undefined {
-  const segment = parseClaudeCodeRecord(compaction.original)?.compactMetadata?.preservedSegment;
+function preservedUuids(
+  events: readonly TranscriptEvent[],
+  compaction: TranscriptEvent,
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): Set<string> | undefined {
+  const segment = parsed.get(compaction)?.compactMetadata?.preservedSegment;
   const head = segment?.headUuid;
   const tail = segment?.tailUuid;
   if (!head || !tail) {
@@ -413,7 +422,7 @@ function preservedUuids(events: readonly TranscriptEvent[], compaction: Transcri
     if (event === compaction) {
       break;
     }
-    const uuid = parseClaudeCodeRecord(event.original)?.uuid;
+    const uuid = parsed.get(event)?.uuid;
     if (!uuid) {
       continue;
     }
@@ -428,18 +437,21 @@ function preservedUuids(events: readonly TranscriptEvent[], compaction: Transcri
   return keep;
 }
 
-function shadowRemoved(events: readonly TranscriptEvent[]): void {
+function shadowRemoved(
+  events: readonly TranscriptEvent[],
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): void {
   for (const compaction of events) {
     if (compaction.kind !== "compaction") {
       continue;
     }
-    const keep = preservedUuids(events, compaction);
+    const keep = preservedUuids(events, compaction, parsed);
     // A prompt snapshot is not conversation: a compaction does not remove it.
     shadowBefore(events, compaction, (event) => {
       if (promptSnapshot(event)) {
         return true;
       }
-      const uuid = parseClaudeCodeRecord(event.original)?.uuid;
+      const uuid = parsed.get(event)?.uuid;
       return keep !== undefined && uuid !== undefined && keep.has(uuid);
     });
   }
@@ -449,7 +461,11 @@ function shadowRemoved(events: readonly TranscriptEvent[]): void {
  * One lane per agent id. The spawning tool call comes from the meta file's `toolUseId`, else from the tool result
  * whose `toolUseResult.agentId` names the agent; a lane with neither has no `spawnEventId`.
  */
-function agentLanes(events: readonly TranscriptEvent[], metas?: ReadonlyMap<string, ClaudeCodeAgentMeta>): Lane[] {
+function agentLanes(
+  events: readonly TranscriptEvent[],
+  metas: ReadonlyMap<string, ClaudeCodeAgentMeta> | undefined,
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): Lane[] {
   const calls = new Map<string, TranscriptEvent>();
   const spawnCall = new Map<string, string>();
   for (const event of events) {
@@ -458,7 +474,7 @@ function agentLanes(events: readonly TranscriptEvent[], metas?: ReadonlyMap<stri
     if (event.kind === "tool_call" && typeof callId === "string" && callId) {
       calls.set(callId, event);
     }
-    const spawned = parseClaudeCodeRecord(event.original)?.toolUseResult?.agentId;
+    const spawned = parsed.get(event)?.toolUseResult?.agentId;
     if (event.kind === "tool_result" && typeof callId === "string" && callId && spawned && !spawnCall.has(spawned)) {
       spawnCall.set(spawned, callId);
     }

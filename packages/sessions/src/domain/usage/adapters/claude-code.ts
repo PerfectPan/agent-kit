@@ -6,7 +6,7 @@ import {
   type ClaudeCodeMessageUsageValue,
   type ClaudeCodeRecordValue,
   parseClaudeCodeMessageUsage,
-  parseClaudeCodeRecord
+  parseClaudeCodeUsageRecord
 } from "../../transcript/adapters/claude-code/record.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
@@ -52,7 +52,7 @@ const SYNTHETIC_MODEL = "<synthetic>";
  * The key of the model request a `user` or `assistant` record belongs to: its `requestId`. Behind an API gateway that
  * returns no request id, the message id is the key. A synthetic message has a message id but no request behind it.
  */
-export function claudeCodeRequestKey(rec: ClaudeCodeRecordValue): string | undefined {
+export function claudeCodeRequestKey(rec: Pick<ClaudeCodeRecordValue, "requestId" | "message">): string | undefined {
   return rec.requestId ?? (rec.message?.model === SYNTHETIC_MODEL ? undefined : rec.message?.id);
 }
 
@@ -116,17 +116,18 @@ const SavedUsage = z.looseObject({
   reasoningTokens: lenient(z.number())
 });
 
+/** A request that may still get records. A saved entry without its key, counts or place in the file is not one. */
 const SavedOpenRequest = z.looseObject({
-  key: lenient(z.string()),
+  key: z.string(),
   byMessage: lenient(z.literal(true)),
   responseId: lenient(z.string()),
   model: lenient(z.string()),
-  usage: lenient(SavedUsage),
-  timestamp: lenient(z.number()),
+  usage: SavedUsage,
+  timestamp: z.number(),
   sessionId: lenient(z.string()),
-  offset: lenient(z.number()),
-  length: lenient(z.number()),
-  line: lenient(z.number())
+  offset: z.number(),
+  length: z.number(),
+  line: z.number()
 });
 
 const SavedLaneState = z.looseObject({
@@ -138,7 +139,7 @@ const SavedLaneState = z.looseObject({
 const SavedClaudeCodeUsageState = z.looseObject({
   sessionId: lenient(z.string()),
   lastTime: lenient(z.number()),
-  lanes: lenient(z.record(z.string(), SavedLaneState))
+  lanes: lenient(z.record(z.string(), lenient(SavedLaneState)))
 });
 
 /**
@@ -176,7 +177,7 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
   };
   return {
     push(record) {
-      const rec = parseClaudeCodeRecord(record.value);
+      const rec = parseClaudeCodeUsageRecord(record.value);
       if (!rec) {
         return err(unknownFormatGeneration(AGENT, record));
       }
@@ -277,30 +278,10 @@ function restore(saved: unknown): ClaudeCodeUsageState {
     if (!lane) {
       continue;
     }
-    // A request the state cannot report - without its key, counts or place in the file - is absent.
     const open: OpenRequest[] = [];
     for (const request of lane.open ?? []) {
-      const { key, usage, timestamp, offset, length, line } = request ?? {};
-      if (
-        key !== undefined &&
-        usage !== undefined &&
-        timestamp !== undefined &&
-        offset !== undefined &&
-        length !== undefined &&
-        line !== undefined
-      ) {
-        open.push({
-          key,
-          usage,
-          timestamp,
-          offset,
-          length,
-          line,
-          ...(request?.byMessage ? { byMessage: true as const } : {}),
-          ...(request?.responseId !== undefined ? { responseId: request.responseId } : {}),
-          ...(request?.model !== undefined ? { model: request.model } : {}),
-          ...(request?.sessionId !== undefined ? { sessionId: request.sessionId } : {})
-        });
+      if (request) {
+        open.push(request);
       }
     }
     lanes[id] = { open, reported: (lane.reported ?? []).filter((key) => key !== undefined) };

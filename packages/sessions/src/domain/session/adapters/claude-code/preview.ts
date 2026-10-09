@@ -1,13 +1,13 @@
 import type { SessionPreview } from "../../index.js";
 import { timeOf } from "../../../transcript/index.js";
-import { parseClaudeCodeRecordBody } from "../../../transcript/adapters/claude-code/record.js";
+import { parseClaudeCodePreviewRecord } from "../../../transcript/adapters/claude-code/record.js";
 import { isPromptFlags, recordText, userFlags } from "../../../transcript/adapters/claude-code/user-flags.js";
 
 /** The first prompt follows the turn rule: the first real user prompt on the main lane. */
 export function previewClaudeCodeRecords(records: readonly Record<string, unknown>[]): SessionPreview {
   const preview: SessionPreview = {};
   for (const value of records) {
-    const record = parseClaudeCodeRecordBody(value);
+    const record = parseClaudeCodePreviewRecord(value);
     if (!record) {
       continue;
     }

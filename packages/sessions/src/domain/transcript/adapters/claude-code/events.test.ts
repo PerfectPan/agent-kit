@@ -43,6 +43,7 @@ describe("translateClaudeCodeRecords", () => {
       { type: "user", version: 2 },
       { type: "user", version: "2.1" },
       { type: "user", formatVersion: null },
+      { type: "user", formatVersion: undefined },
       "user",
       ["user"]
     ]) {
@@ -55,6 +56,12 @@ describe("translateClaudeCodeRecords", () => {
           line: 1
         }
       });
+    }
+  });
+
+  it("keeps a record whose version is a value JSON cannot carry, like the hand-written readers did", () => {
+    for (const version of [new Date(), new Map(), 2n, () => "2.0.0"]) {
+      expect(translateClaudeCodeRecords(stamped({ type: "user", uuid: "m-1", version })).ok).toBe(true);
     }
   });
 
