@@ -1,5 +1,6 @@
-// The hook path has zero dependencies (no zod) and reads a handful of fields, so payloads are checked with typeof
-// guards. Every lookup uses own properties only: an event named "constructor" must not find Object.prototype.
+// The built `/harness/events` entry imports nothing, so a hook process loads it on its own; tsdown bundles zod/mini
+// into it if the path ever uses one. The path reads a handful of fields, so payloads are checked with typeof guards.
+// Every lookup uses own properties only: an event named "constructor" must not find Object.prototype.
 
 import type { FieldPath, FieldSource } from "../value-objects/hook-dialect.js";
 

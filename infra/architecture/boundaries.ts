@@ -97,7 +97,8 @@ export const boundaries: BoundaryRules = {
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
-    // The hook path (`src/events.ts`) must stay free of npm packages; check-dist enforces it on the built entry. The
+    // The built `/harness/events` entry imports nothing, which check-dist enforces; tsdown bundles zod/mini into the
+    // entries that use it. The hook path reads a few fields with `typeof` rather than a schema (cold start). The
     // configuration editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
     [HARNESS]: {
       dependsOn: [CATALOG, PLATFORM],

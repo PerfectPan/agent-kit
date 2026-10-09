@@ -83,10 +83,23 @@ function externalImports(entryFile: string): Map<string, string> {
 
 /**
  * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a `//#region <source>`
- * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders.
+ * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders. The
+ * zero-dependency entries bundle `zod/mini` into their own files instead of importing it; no other dist file may
+ * inline a dependency, so the built entries keep importing `zod/mini` and the optional `effect` peer stays external.
  */
 function inlinedDependencies(): string[] {
   const problems: string[] = [];
+  const zodBundleAllowed = new Set<string>();
+  for (const [subpath, target] of Object.entries(manifest.exports)) {
+    if (subpath === "./package.json" || typeof target !== "object" || !ZERO_DEPENDENCY_ENTRIES.has(subpath)) {
+      continue;
+    }
+    for (const file of [target.default, target.types]) {
+      if (typeof file === "string") {
+        zodBundleAllowed.add(file.replace(/^\.\//, "").replace(/^dist\//, ""));
+      }
+    }
+  }
   let regions = 0;
   const dist = join(packageRoot, "dist");
   for (const file of readdirSync(dist, { recursive: true, encoding: "utf8" })) {
@@ -95,9 +108,13 @@ function inlinedDependencies(): string[] {
     }
     for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
       regions += 1;
-      if (source.includes("node_modules/")) {
-        problems.push(`dist/${file} inlines ${source}; dependencies and peers such as effect stay external`);
+      if (!source.includes("node_modules/")) {
+        continue;
       }
+      if (zodBundleAllowed.has(file) && /\/node_modules\/zod\//.test(source)) {
+        continue;
+      }
+      problems.push(`dist/${file} inlines ${source}; dependencies and peers such as effect stay external`);
     }
   }
   return regions > 0 ? problems : ["dist has no //#region comments, so inlined dependencies cannot be detected"];
