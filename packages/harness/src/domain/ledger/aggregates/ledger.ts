@@ -120,6 +120,10 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
   if (!isRevision(snapshot.revision)) {
     return invalid("revision is not a non-negative integer");
   }
+  // decodeLedger's zod schema rejects `entries: null` from the file repository, but LedgerRepository is a public
+  // port: an implementation written outside this package (in JS, or over untyped storage) can hand restore null,
+  // and `typeof null` is "object", which slips past the typeof check on this line into Object.entries.
+  // oxlint-disable-next-line no-unnecessary-condition
   if (typeof snapshot.entries !== "object" || snapshot.entries === null || !Array.isArray(snapshot.pending)) {
     return invalid("entries or pending are missing");
   }

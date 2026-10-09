@@ -31,7 +31,8 @@ const doc: z.ZodMiniType<Document> = z.lazy(() =>
     z.instanceof(Date),
     z.array(doc),
     // The record branch: a record whose values are document values, kept as the parser returned it.
-    z.custom<{ readonly [key: string]: Document }>((value) => {
+    // `unknown` because the check runs on unvalidated parser output; the inferred parameter type only claims a record.
+    z.custom<{ readonly [key: string]: Document }>((value: unknown) => {
       if (value === null || typeof value !== "object" || Array.isArray(value) || value instanceof Date) {
         return false;
       }

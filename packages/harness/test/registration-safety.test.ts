@@ -180,7 +180,7 @@ describe("CLI registration side-effect paths", () => {
         ...home.platform.process,
         async run(command, args, options) {
           const result = await home.platform.process.run(command, args, options);
-          if (armed && args?.join(" ") === "plugin remove demo-app@demo-app") {
+          if (armed && args.join(" ") === "plugin remove demo-app@demo-app") {
             replaceWithLink(home, "ancestor");
           }
           return result;

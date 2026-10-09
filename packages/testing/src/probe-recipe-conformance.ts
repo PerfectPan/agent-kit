@@ -98,6 +98,8 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
     {
       name: "names a catalog agent, or a third-party agent by a canonical id",
       run: async () => {
+        // A conformance suite judges the recipe as given, and a JS adapter can author one that ignores ProbeRecipe.
+        // oxlint-disable-next-line no-unnecessary-condition
         check(recipe.specificationVersion === "discovery-v1", `specificationVersion is ${recipe.specificationVersion}`);
         const parsed = parseCodingAgentId(recipe.agent);
         check(parsed.ok && parsed.value === recipe.agent, `${recipe.agent} is not a canonical agent id`);
@@ -239,7 +241,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
           `command is ${installation.command}`
         );
         const readsVersion = recipe.version !== undefined && command !== undefined;
-        const expected = readsVersion && recipe.version?.parse(versionOutput) !== undefined ? "runnable" : "found";
+        const expected = readsVersion && recipe.version.parse(versionOutput) !== undefined ? "runnable" : "found";
         check(installation.status === expected, `status is ${installation.status}, expected ${expected}`);
         // Without login samples the machine cannot answer login checks the way the agent would.
         const problems = installation.problems.filter((problem) => !isAuthProblem(problem));

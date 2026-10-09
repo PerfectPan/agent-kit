@@ -218,9 +218,7 @@ describe("buildInstallPlan", () => {
     });
     expect(result).toMatchObject({ ok: false, error: { _tag: "PlanConflict", planId: "plan-1" } });
     const conflicts =
-      !result.ok && (result.error as PlanConflict)._tag === "PlanConflict"
-        ? (result.error as PlanConflict).conflicts
-        : [];
+      !result.ok && result.error._tag === "PlanConflict" ? (result.error as PlanConflict).conflicts : [];
     const byPath = new Map(
       conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
     );
@@ -241,9 +239,7 @@ describe("buildInstallPlan", () => {
     });
     expect(result).toMatchObject({ ok: false, error: { _tag: "PlanConflict", planId: "plan-1" } });
     const conflicts =
-      !result.ok && (result.error as PlanConflict)._tag === "PlanConflict"
-        ? (result.error as PlanConflict).conflicts
-        : [];
+      !result.ok && result.error._tag === "PlanConflict" ? (result.error as PlanConflict).conflicts : [];
     const byPath = new Map(
       conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
     );
