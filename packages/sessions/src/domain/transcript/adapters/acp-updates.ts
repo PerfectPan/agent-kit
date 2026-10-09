@@ -9,6 +9,19 @@ import type { TranscriptEventKind, TranscriptStreamPart } from "../index.js";
 import { compactUsage, type Usage } from "../../usage/index.js";
 import { lenient } from "./lenient.js";
 
+/** The body fields `AcpUpdate` parses, as a plain type: adapters that repeat the fields in their own schema assert
+ * their set against this one. */
+export type AcpUpdateField =
+  | "sessionUpdate"
+  | "content"
+  | "messageId"
+  | "toolCallId"
+  | "title"
+  | "toolName"
+  | "rawInput"
+  | "rawOutput"
+  | "status";
+
 /**
  * The `session/update` body as this module reads it. Fields it does not name stay on the record, so Grok's `_meta`
  * and `usage` reach the grok adapters unchanged.

@@ -4,11 +4,28 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, type ModelUsage, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
-import { type AcpUpdateValue, acpUpdateOf } from "../../transcript/adapters/acp-updates.js";
-import { grokMetaOf } from "../../transcript/adapters/grok/chunks.js";
+import type { AcpUpdateField, AcpUpdateValue } from "../../transcript/adapters/acp-updates.js";
 import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "grok";
+
+/** Grok's per-update metadata: the turn's prompt index, its model, and whether the host hides the chunk. */
+export interface GrokMetaValue {
+  promptIndex?: number;
+  modelId?: string;
+  hideFromScrollback?: boolean;
+}
+
+const GrokMeta = z.looseObject({
+  promptIndex: lenient(z.number()),
+  modelId: lenient(z.string()),
+  hideFromScrollback: lenient(z.boolean())
+});
+
+/** `_meta` parsed; a `null` or non-record metadata reads as absent. The preview's records are not schema-parsed. */
+export function grokMetaOf(meta: unknown): GrokMetaValue | undefined {
+  return z.safeParse(GrokMeta, meta).data ?? undefined;
+}
 
 /** One model's share of a turn summary. `modelCalls` is how many model calls this share covers. */
 export interface GrokModelUsage {
@@ -77,13 +94,14 @@ export function grokTurnUsage(update: GrokUpdateValue): GrokTurnUsageValue | und
 }
 
 /** Per-model detail of a turn summary. Entries with no token counts are left out. */
-export function grokUsageByModel(value: unknown): Record<string, GrokModelUsage> | undefined {
-  const models = z.safeParse(z.record(z.string(), lenient(GrokCounts)), value).data;
-  if (!models) {
+export function grokUsageByModel(
+  modelUsage: GrokTurnUsageValue["modelUsage"]
+): Record<string, GrokModelUsage> | undefined {
+  if (!modelUsage) {
     return undefined;
   }
   const out: Record<string, GrokModelUsage> = {};
-  for (const [model, counts] of Object.entries(models)) {
+  for (const [model, counts] of Object.entries(modelUsage)) {
     if (!counts) {
       continue;
     }
@@ -102,11 +120,11 @@ export function grokUsageByModel(value: unknown): Record<string, GrokModelUsage>
 
 /**
  * Dollars of a `costUsdTicks` count. The Grok CLI user guide (the `grok usage` subcommand and the headless JSON output)
- * defines the unit as 10^10 ticks per USD: `total_cost_usd_ticks` 126890500 is `total_cost_usd` 0.01268905.
+ * defines the unit as 10^10 ticks per USD: `total_cost_usd_ticks` 126890500 is `total_cost_usd` 0.01268905. The count
+ * arrives parsed, so the price is one division.
  */
-export function grokCostUsd(ticks: unknown): number | undefined {
-  const count = z.safeParse(lenient(z.number()), ticks).data;
-  return count === undefined ? undefined : count / 1e10;
+export function grokCostUsd(ticks: number | undefined): number | undefined {
+  return ticks === undefined ? undefined : ticks / 1e10;
 }
 
 /** One hook run of a `hook_execution`, as the event reports it. */
@@ -137,10 +155,11 @@ const GrokHookRun = z.looseObject({
 });
 
 /**
- * The fields Grok adds to a recorded `session/update`, as this module's readers read them. `usage` and `_meta`
- * stay on the record, for the usage schemas above and `grokMetaOf` to parse per reader.
+ * The fields Grok adds to a recorded `session/update`, as this module's readers read them. `usage` stays on the
+ * record, for `grokTurnUsage` to parse where a turn completes.
  */
 export interface GrokFieldsValue {
+  _meta?: GrokMetaValue;
   formatVersion?: unknown;
   schema_version?: number;
   prompt_id?: string;
@@ -162,8 +181,23 @@ export interface GrokFieldsValue {
 /** A recorded `session/update` of a generation this adapter reads. */
 export interface GrokUpdateValue extends AcpUpdateValue, GrokFieldsValue {}
 
-/** The fields Grok adds to a recorded update; a field of an unexpected type counts as absent. */
+/**
+ * The body of one recorded update, parsed in one pass: the shared `session/update` fields first, kept in sync with
+ * `AcpUpdate` (../../transcript/adapters/acp-updates.ts, whose test reads the same fields through both readers),
+ * then the fields Grok adds. The schemas stay module-private — an exported declaration typed by zod drags zod's
+ * declarations into the dts of the entries that bundle this module, and those must import nothing.
+ */
 const GrokUpdateFields = z.looseObject({
+  sessionUpdate: lenient(z.string()),
+  content: lenient(z.unknown()),
+  messageId: lenient(z.string()),
+  toolCallId: lenient(z.string()),
+  title: lenient(z.string()),
+  toolName: lenient(z.string()),
+  rawInput: lenient(z.unknown()),
+  rawOutput: lenient(z.unknown()),
+  status: lenient(z.string()),
+  _meta: lenient(GrokMeta),
   formatVersion: z.optional(z.unknown()),
   schema_version: lenient(z.number()),
   prompt_id: lenient(z.string()),
@@ -182,6 +216,14 @@ const GrokUpdateFields = z.looseObject({
   phase: lenient(z.string())
 });
 
+// Every field the schema parses must be named on `GrokUpdateValue`: a Grok field missing from `GrokFieldsValue`, or
+// a body field that stops matching `AcpUpdateField`, fails this assertion and stops the build. The value is read
+// below so the check counts as used.
+const _schemaFieldsDeclared: Exclude<keyof typeof GrokUpdateFields.shape, AcpUpdateField> extends keyof GrokFieldsValue
+  ? true
+  : never = true;
+void _schemaFieldsDeclared;
+
 /** A record of `updates.jsonl`: the update under `params` or on the record, with the record's timestamp. */
 const GrokRecordedUpdate = z.looseObject({
   formatVersion: z.optional(z.unknown()),
@@ -190,50 +232,18 @@ const GrokRecordedUpdate = z.looseObject({
   update: lenient(GrokUpdateFields)
 });
 
-/** A record parsed for its readers: the update body and the record's timestamp. */
-interface GrokKnownRecord {
-  readonly update: GrokUpdateValue;
-  readonly timestamp?: number | string;
-}
-
-/**
- * A record of a format generation this adapter reads, split for its readers. JSON has no `undefined` value, so a
- * present `formatVersion` is a non-undefined one; `schema_version` counts only when it is a number, and another
- * number than 1 is an unknown generation.
- */
-function parseKnownGrokUpdate(value: unknown): GrokKnownRecord | undefined {
-  const record = z.safeParse(GrokRecordedUpdate, value).data;
-  const grok = record?.params?.update ?? record?.update;
-  const acp = acpUpdateOf(value);
-  if (!acp || !grok || record?.formatVersion !== undefined || grok.formatVersion !== undefined) {
-    return undefined;
-  }
-  const schemaVersion = grok.schema_version;
-  if (schemaVersion !== undefined && schemaVersion !== 1) {
-    return undefined;
-  }
-  // The shared reader parses the ACP fields of the body, the record schema the Grok fields. The merge copies the
-  // parsed Grok fields one by one, so no raw pass-through field of either parse can pose as a parsed one; the
-  // `satisfies` fails when the record schema grows a field this copy does not carry.
-  const fields = {
-    formatVersion: grok.formatVersion,
-    schema_version: grok.schema_version,
-    prompt_id: grok.prompt_id,
-    elapsed_ms: grok.elapsed_ms,
-    stop_reason: grok.stop_reason,
-    event_name: grok.event_name,
-    tool_name: grok.tool_name,
-    runs: grok.runs,
-    tokens_before: grok.tokens_before,
-    tokens_used: grok.tokens_used,
-    tokens_after: grok.tokens_after,
-    subagent_id: grok.subagent_id,
-    child_session_id: grok.child_session_id,
-    duration_ms: grok.duration_ms,
-    description: grok.description,
-    phase: grok.phase
-  } satisfies Record<keyof GrokFieldsValue, unknown>;
-  return { update: Object.assign(acp, fields), timestamp: record?.timestamp };
+/** Whether a parsed record names a format generation this adapter reads. */
+function knownGeneration(
+  update: { readonly formatVersion?: unknown; readonly schema_version?: number },
+  record?: { readonly formatVersion?: unknown }
+): boolean {
+  // JSON has no `undefined` value, so a present `formatVersion` is a non-undefined one; `schema_version` counts only
+  // when it is a number, and another number than 1 is an unknown generation.
+  return (
+    record?.formatVersion === undefined &&
+    update.formatVersion === undefined &&
+    (update.schema_version === undefined || update.schema_version === 1)
+  );
 }
 
 /**
@@ -241,7 +251,14 @@ function parseKnownGrokUpdate(value: unknown): GrokKnownRecord | undefined {
  * record or the update, and a `schema_version` of 1 when the update names one.
  */
 export function knownGrokUpdate(value: unknown): GrokUpdateValue | undefined {
-  return parseKnownGrokUpdate(value)?.update;
+  const record = z.safeParse(GrokRecordedUpdate, value).data;
+  const update: GrokUpdateValue | undefined = record?.params?.update ?? record?.update;
+  return update !== undefined && knownGeneration(update, record) ? update : undefined;
+}
+
+/** The update fields the turn follower reads; both the translation's and the usage path's schemas parse them. */
+export interface GrokTurnUpdate {
+  _meta?: GrokMetaValue;
 }
 
 /** The prompt the current update belongs to, and the model its turn named so far. */
@@ -254,9 +271,8 @@ export interface GrokTurn {
  * Follows `_meta.promptIndex` and `_meta.modelId` through the updates. A new prompt forgets the previous turn's
  * model, and so does `turn_completed`, whose handler deletes `model`: a later turn must not inherit it.
  */
-export function followGrokTurn(turn: GrokTurn, update: GrokUpdateValue): void {
-  const meta = grokMetaOf(update._meta);
-  const promptIndex = meta?.promptIndex;
+export function followGrokTurn(turn: GrokTurn, update: GrokTurnUpdate): void {
+  const promptIndex = update._meta?.promptIndex;
   if (promptIndex !== undefined) {
     const prompt = String(promptIndex);
     if (prompt !== turn.prompt) {
@@ -264,22 +280,58 @@ export function followGrokTurn(turn: GrokTurn, update: GrokUpdateValue): void {
     }
     turn.prompt = prompt;
   }
-  const model = meta?.modelId;
+  const model = update._meta?.modelId;
   if (model) {
     turn.model = model;
   }
 }
 
 /** A completed turn's model: the one its updates named, else the only model of its `modelUsage`. */
-export function grokTurnModel(update: GrokUpdateValue, turnModel: string | undefined): string | undefined {
-  const models = Object.keys(grokTurnUsage(update)?.modelUsage ?? {});
-  return turnModel ?? (models.length === 1 ? models[0] : undefined);
+export function grokTurnModel(
+  modelUsage: GrokTurnUsageValue["modelUsage"],
+  turnModel: string | undefined
+): string | undefined {
+  if (turnModel !== undefined || !modelUsage) {
+    return turnModel;
+  }
+  const models = Object.keys(modelUsage);
+  return models.length === 1 ? models[0] : undefined;
 }
 
 interface GrokUsageState {
   turn: GrokTurn;
   lastTime?: number;
 }
+
+/**
+ * The fields of a recorded update the usage decoder reads. It runs per record over whole sessions, so unlike the
+ * translation's `GrokUpdateFields` it parses no content blocks and no tool fields.
+ */
+const GrokUsageUpdateFields = z.looseObject({
+  sessionUpdate: lenient(z.string()),
+  prompt_id: lenient(z.string()),
+  formatVersion: z.optional(z.unknown()),
+  schema_version: lenient(z.number()),
+  _meta: lenient(GrokMeta),
+  usage: lenient(GrokTurnUsage)
+});
+
+interface GrokUsageUpdateValue {
+  sessionUpdate?: string;
+  prompt_id?: string;
+  formatVersion?: unknown;
+  schema_version?: number;
+  _meta?: GrokMetaValue;
+  usage?: GrokTurnUsageValue;
+}
+
+/** The usage decoder's record envelope, around the slim body schema. */
+const GrokUsageRecordedUpdate = z.looseObject({
+  formatVersion: z.optional(z.unknown()),
+  timestamp: lenient(z.union([z.number(), z.string()])),
+  params: lenient(z.looseObject({ update: lenient(GrokUsageUpdateFields) })),
+  update: lenient(GrokUsageUpdateFields)
+});
 
 /**
  * Grok's usage over one session's `updates.jsonl`. Grok records usage only per turn (`turn_completed.usage` sums the
@@ -291,24 +343,24 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
   const state = restore(saved);
   return {
     push(record) {
-      const known = parseKnownGrokUpdate(record.value);
-      if (!known) {
+      const parsed = z.safeParse(GrokUsageRecordedUpdate, record.value).data;
+      const update: GrokUsageUpdateValue | undefined = parsed?.params?.update ?? parsed?.update;
+      if (!update || !knownGeneration(update, parsed)) {
         return err(unknownFormatGeneration(AGENT, record));
       }
-      const { update } = known;
-      const ts = timeOf(known.timestamp) ?? state.lastTime ?? file.mtimeMs;
+      const ts = timeOf(parsed?.timestamp) ?? state.lastTime ?? file.mtimeMs;
       state.lastTime = ts;
       followGrokTurn(state.turn, update);
       if (update.sessionUpdate !== "turn_completed") {
         return ok([]);
       }
-      const model = grokTurnModel(update, state.turn.model);
-      delete state.turn.model;
-      const raw = grokTurnUsage(update);
+      const raw = update.usage;
       const usage = grokUsageOf(raw);
       if (!usage) {
         return ok([]);
       }
+      const model = grokTurnModel(raw?.modelUsage, state.turn.model);
+      delete state.turn.model;
       const turn: UsageRecord = {
         agent: AGENT,
         sessionId: file.sessionId,
@@ -349,28 +401,17 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
 }
 
 /** Per-model detail with the cost each model's ticks price; entries with no token counts are left out. */
-function modelUsageWithCost(value: unknown): Record<string, ModelUsage> | undefined {
-  const entries = z.safeParse(z.record(z.string(), lenient(GrokCounts)), value).data;
-  if (!entries) {
+function modelUsageWithCost(modelUsage: GrokTurnUsageValue["modelUsage"]): Record<string, ModelUsage> | undefined {
+  const byModel = grokUsageByModel(modelUsage);
+  if (!byModel) {
     return undefined;
   }
   const out: Record<string, ModelUsage> = {};
-  for (const [model, counts] of Object.entries(entries)) {
-    if (!counts) {
-      continue;
-    }
-    const usage = grokUsageOf(counts);
-    if (!usage) {
-      continue;
-    }
-    const detail: ModelUsage = { usage };
-    if (counts.modelCalls !== undefined) {
-      detail.modelCalls = counts.modelCalls;
-    }
-    const costUsd = grokCostUsd(counts.costUsdTicks);
+  for (const [model, detail] of Object.entries(byModel)) {
+    const costUsd = grokCostUsd(modelUsage?.[model]?.costUsdTicks);
     out[model] = costUsd === undefined ? detail : { ...detail, costUsd, costSource: "agent" };
   }
-  return Object.keys(out).length > 0 ? out : undefined;
+  return out;
 }
 
 /** The state a cursor carries back, reading only the fields it understands. */

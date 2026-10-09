@@ -200,7 +200,7 @@ export function translateGrokRecords(
       segment = placeRequest(
         events,
         segment,
-        baseEvent(record, "request", requestPayload(update, grokTurnModel(update, turn.model)), {
+        baseEvent(record, "request", requestPayload(update, turn.model), {
           id,
           ts,
           requestId: key
@@ -323,9 +323,10 @@ function applySubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubag
 }
 
 /** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
-function requestPayload(update: GrokUpdateValue, model: string | undefined): Record<string, unknown> {
+function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): Record<string, unknown> {
   const raw = grokTurnUsage(update);
   const usage = grokUsageOf(raw);
+  const model = grokTurnModel(raw?.modelUsage, turnModel);
   const byModel = grokUsageByModel(raw?.modelUsage);
   // `baseEvent` stores a record. `satisfies` keeps the fields on `RequestPayload`.
   return {

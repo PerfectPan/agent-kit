@@ -4,6 +4,7 @@ import { timeOf } from "../../../transcript/index.js";
 import { acpChunkText, acpUpdateOf } from "../../../transcript/adapters/acp-updates.js";
 import type { GrokSessionMeta } from "./layout.js";
 import { isInjectedChunk } from "../../../transcript/adapters/grok/chunks.js";
+import { grokMetaOf } from "../../../usage/adapters/grok.js";
 
 /** The first prompt follows the turn rule: the first user chunk that is not injected. */
 export function previewGrokRecords(records: readonly Record<string, unknown>[]): SessionPreview {
@@ -19,7 +20,7 @@ export function previewGrokRecords(records: readonly Record<string, unknown>[]):
       continue;
     }
     const text = acpChunkText(update.content);
-    if (text && !isInjectedChunk(update._meta, text)) {
+    if (text && !isInjectedChunk(grokMetaOf(update._meta), text)) {
       preview.firstPrompt = text.slice(0, 500);
     }
   }

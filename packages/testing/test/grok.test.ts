@@ -556,3 +556,42 @@ describe("grok lenient reading", () => {
     expect(lenient.events[0]?.payload).toEqual({ text: "x" });
   });
 });
+
+describe("grok coalesce fallback", () => {
+  it("falls back to the status field when a hook run's own exit_code or output has the wrong type", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            runs: [
+              { exit_code: "x", status: { status: "ok", exit_code: 3 } },
+              { output: 5, status: { status: "ok", output: "from status" } }
+            ]
+          },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "hook")?.payload.runs).toEqual([
+      { status: "ok", exitCode: 3 },
+      { status: "ok", output: "from status" }
+    ]);
+  });
+
+  it("falls back to tokens_used when tokens_before has the wrong type", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          { sessionUpdate: "auto_compact_completed", tokens_before: "500", tokens_used: 500, tokens_after: 80 },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "compaction")?.payload).toEqual({
+      trigger: "auto",
+      preTokens: 500,
+      postTokens: 80
+    });
+  });
+});

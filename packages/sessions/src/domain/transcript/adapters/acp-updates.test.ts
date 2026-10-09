@@ -188,6 +188,9 @@ describe("lenient reading of one update", () => {
     expect(translator.update(42 as unknown as Record<string, unknown>)).toEqual([
       { type: "update", id: "t.0", kind: "unknown", payload: { type: "update" }, original: 42 }
     ]);
+    expect(translator.update(null as unknown as Record<string, unknown>)).toEqual([
+      { type: "update", id: "t.1", kind: "unknown", payload: { type: "update" }, original: null }
+    ]);
   });
 });
 

@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Grok's log readers and the shared ACP session/update reader parse unknown fields through zod/mini schemas instead of the record-fields accessors, which the grok files no longer import; published entry sizes rose with the schemas and their budgets follow.",
+      "comment": "Grok's log readers and the shared ACP session/update reader parse unknown fields through zod/mini schemas instead of the record-fields accessors, which the grok files no longer import; the grok record is parsed once per reader pass through a full and a slim update schema, and published entry sizes rose with the schemas and their budgets follow.",
       "type": "patch"
     }
   ],
