@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { AuthReading, CommandOutput, ProbeRecipe } from "../installation/index.js";
+import type { AuthReading, CommandOutput, ProbeRecipe } from "../index.js";
 import { VERSION_FLAG } from "./version-flag.js";
 
 const AuthStatus = z.object({ loggedIn: z.boolean(), authMethod: z.optional(z.string()) });

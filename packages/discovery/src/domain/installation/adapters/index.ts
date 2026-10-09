@@ -1,6 +1,6 @@
 import type { BuiltinCodingAgentId } from "@rivus/agent-kit-catalog";
 
-import type { ProbeRecipe } from "../installation/index.js";
+import type { ProbeRecipe } from "../index.js";
 import { claudeCodeProbe } from "./claude-code.js";
 import { codexProbe } from "./codex.js";
 import { cursorProbe } from "./cursor.js";

@@ -223,9 +223,15 @@ describe("violations", () => {
     ],
     [
       "a concept importing another concept's adapters/",
-      "domain/x.ts",
-      `import { fromAcp } from "./session/adapters/grok/preview.js";`,
+      "domain/usage/x.ts",
+      `import { fromAcp } from "../session/adapters/grok/preview.js";`,
       "layer"
+    ],
+    [
+      "zod/mini at the legacy src/domain/adapters/ path, which is plain domain now",
+      "domain/adapters/x.ts",
+      `import * as z from "zod/mini";`,
+      "external-dependency"
     ],
     ["domain/ importing the package root", "domain/x.ts", `import { x } from "../public.js";`, "layer"],
     ["an undeclared package dependency", "application/x.ts", `import { m } from "${TESTING}";`, "package-dependency"],

@@ -278,7 +278,7 @@ The port through which the kit reaches files, processes, environment variables, 
 A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.
 
 **Agent adapter**:
-The per-agent implementation of a context's adapter interface, under the `adapters/` of the domain concept whose model it produces (`domain/<concept>/adapters/`). It translates the agent's external format into that concept's model and is registered in that concept's `builtinXxx` table.
+The per-agent implementation of a context's adapter interface, under the `adapters/` of the domain concept whose model it produces (`domain/<concept>/adapters/`). It translates the agent's external format into that concept's model and is registered in a `builtinXxx` table — in the concept's `adapters/` when the table's entries are pure, in `application/services/` when they need Platform.
 
 **Repository**:
 The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).

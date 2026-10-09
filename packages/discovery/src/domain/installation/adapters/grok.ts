@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { AuthReading, ProbeRecipe } from "../installation/index.js";
+import type { AuthReading, ProbeRecipe } from "../index.js";
 import { VERSION_FLAG } from "./version-flag.js";
 
 const Entries = z.record(z.string(), z.unknown());

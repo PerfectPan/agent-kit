@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { builtinProbeRecipes } from "../../domain/adapters/index.js";
+import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import type { ProbeRecipe } from "../../domain/installation/index.js";
 import { expandProbePath, findCommand, type PathCheck } from "./host-paths.js";
 

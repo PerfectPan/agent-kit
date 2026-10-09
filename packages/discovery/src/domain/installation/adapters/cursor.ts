@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { AuthReading, CommandOutput, ProbeRecipe } from "../installation/index.js";
+import type { AuthReading, CommandOutput, ProbeRecipe } from "../index.js";
 
 const Status = z.object({ status: z.string() });
 

@@ -34,8 +34,8 @@ Every context package uses the same layout, creating only the directories it nee
 <context>/src/
   domain/<concept>/
     aggregates/  entities/  value-objects/  policies/  factories/  errors/  events/  services/
-    adapters/           agent adapters (anti-corruption layer) for this concept's model; the
-                        concept's builtinXxx table of pure adapters lives here (index.ts)
+    adapters/           agent adapters (anti-corruption layer) for this concept's model; a
+                        builtinXxx table of pure adapters may live here
     index.ts            the concept's facade inside the package
   application/
     use-cases/          the public use cases, a file per use case; closely related operations may share one
@@ -55,9 +55,12 @@ Every context package uses the same layout, creating only the directories it nee
 
 One agent's code is split by concept, not grouped by agent: each file lives in the `adapters/` of the concept whose
 model it produces — in sessions, a log line's translation in `transcript`, the directory layout and preview in
-`session`, the usage decoding in `usage` — and each concept's `builtinXxx` table lives in that concept's `adapters/`.
-A wire format shared across agents at one protocol boundary, such as sessions' translation of ACP `session/update`
-streams, is an adapter too and lives in the adapters of the concept whose model it reads and writes.
+`session`, the usage decoding in `usage`. A concept's `builtinXxx` table lives in that concept's `adapters/` when its
+entries are pure (harness's `install-adapters.ts` and `hook-dialects.ts`); a table whose entries need Platform lives
+in `application/services/` (sessions' `builtinSessionAdapters` and `builtinUsageDecoders`), because `adapters/` may
+not import Platform. A wire format shared across agents at one protocol boundary, such as sessions' translation of
+ACP `session/update` streams, is an adapter too and lives in the adapters of the concept whose model it reads and
+writes; counted as adapters, it may import other adapters, which the removed `domain/protocols/` layer forbade.
 
 The layer principles:
 

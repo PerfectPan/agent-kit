@@ -1,4 +1,4 @@
-import type { ProbeRecipe } from "../installation/index.js";
+import type { ProbeRecipe } from "../index.js";
 import { VERSION_FLAG } from "./version-flag.js";
 
 export const geminiCliProbe: ProbeRecipe = {
