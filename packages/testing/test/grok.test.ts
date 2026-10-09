@@ -4,14 +4,19 @@ import type { Result } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
   builtinSessionAdapters,
+  decodeUsage,
   foldTranscript,
   isSessionHead,
+  isUsageRecord,
   listSessions,
   loadTranscript,
+  type DecodeUsageOptions,
   type SessionHead,
   summarizeSession,
   translateGrokRecords,
-  type Transcript
+  type Transcript,
+  type UsageCursor,
+  type UsageRecord
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vitest";
 
@@ -483,5 +488,185 @@ describe("grok translation", () => {
       ok: false,
       error: { _tag: "ReadFailed", path: updates, message: denied.message, cause: denied }
     });
+  });
+});
+
+describe("grok lenient reading", () => {
+  it("reads a field of an unexpected type as absent", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          { sessionUpdate: "user_message_chunk", content: "First", _meta: { promptIndex: "0", modelId: 7 } },
+          1
+        ),
+        grokRecord({ sessionUpdate: 7, content: "not an update" }, 2),
+        grokRecord(
+          { sessionUpdate: "turn_completed", elapsed_ms: "25", usage: { inputTokens: 15, outputTokens: 4 } },
+          3
+        ),
+        grokRecord({ sessionUpdate: "subagent_spawned", subagent_id: 7, description: "Look", status: 1 }, 4)
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "request")?.payload).toEqual({
+      granularity: "turn",
+      usage: { inputTokens: 15, outputTokens: 4, totalTokens: 19 }
+    });
+    expect(parsed.events.some((event) => event.payload.type === "turn_duration")).toBe(false);
+    expect(parsed.events.find((event) => event.payload.type === "subagent_spawned")?.payload).toEqual({
+      type: "subagent_spawned"
+    });
+    expect(parsed.agents.map((agent) => agent.id)).toEqual(["main"]);
+    expect(parsed.events.filter((event) => event.kind === "user").map((event) => event.payload)).toEqual([
+      { text: "First" }
+    ]);
+    expect(parsed.events.find((event) => event.kind === "unknown")?.payload).toEqual({ type: "update" });
+  });
+
+  it("keeps the hook runs it can read and drops the rest", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord({ sessionUpdate: "hook_execution", runs: "once" }, 1),
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            runs: [
+              "junk",
+              { name: 5, status: "done" },
+              { name: "lint", status: { status: "ok", elapsed_ms: "5", exit_code: 3 } }
+            ]
+          },
+          2
+        )
+      ])
+    );
+    expect(parsed.events.filter((event) => event.kind === "hook").map((event) => event.payload.runs)).toEqual([
+      [],
+      [{}, { name: "lint", status: "ok", exitCode: 3 }]
+    ]);
+  });
+
+  it("treats a present formatVersion as another generation and a wrong-typed schema_version as absent", () => {
+    const record = {
+      timestamp: 1767225600,
+      params: { update: { sessionUpdate: "user_message_chunk", content: "x" } },
+      formatVersion: 2
+    };
+    expect(translateGrokRecords([{ value: record, file: "updates.jsonl", line: 1, offset: 0, length: 1 }])).toEqual({
+      ok: false,
+      error: { _tag: "UnknownFormatGeneration", agent: "grok", file: "updates.jsonl", line: 1 }
+    });
+    const lenient = value(
+      translateGrokRecords([grokRecord({ sessionUpdate: "user_message_chunk", content: "x", schema_version: "2" }, 1)])
+    );
+    expect(lenient.events[0]?.payload).toEqual({ text: "x" });
+  });
+});
+
+describe("grok coalesce fallback", () => {
+  it("falls back to the status field when a hook run's own exit_code or output has the wrong type", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            runs: [
+              { exit_code: "x", status: { status: "ok", exit_code: 3 } },
+              { output: 5, status: { status: "ok", output: "from status" } }
+            ]
+          },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "hook")?.payload.runs).toEqual([
+      { status: "ok", exitCode: 3 },
+      { status: "ok", output: "from status" }
+    ]);
+  });
+
+  it("falls back to tokens_used when tokens_before has the wrong type", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          { sessionUpdate: "auto_compact_completed", tokens_before: "500", tokens_used: 500, tokens_after: 80 },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "compaction")?.payload).toEqual({
+      trigger: "auto",
+      preTokens: 500,
+      postTokens: 80
+    });
+  });
+});
+
+describe("grok decoder cursor state", () => {
+  /** One `decodeUsage` step: the records it reports and the cursor to continue from. */
+  async function step(
+    platform: Parameters<typeof createMemoryPlatform>[0] extends never
+      ? never
+      : ReturnType<typeof createMemoryPlatform>,
+    path: string,
+    options: DecodeUsageOptions
+  ): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
+    const stream = decodeUsage(platform, "grok", { path }, options);
+    const records: UsageRecord[] = [];
+    for await (const item of stream) {
+      if (!isUsageRecord(item)) {
+        throw new Error(`${path}: ${JSON.stringify(item.error)}`);
+      }
+      records.push(item);
+    }
+    const cursor = stream.cursor === undefined ? undefined : (JSON.parse(JSON.stringify(stream.cursor)) as UsageCursor);
+    return { records, cursor };
+  }
+
+  it("forgets a turn's model at a turn_completed without usage, also across a saved cursor", async () => {
+    const dir = "/u/me/.grok/sessions/no-usage-turn";
+    const path = `${dir}/updates.jsonl`;
+    const updates = [
+      {
+        sessionUpdate: "user_message_chunk",
+        content: { type: "text", text: "Go" },
+        _meta: { promptIndex: 0, modelId: "grok-a" }
+      },
+      { sessionUpdate: "turn_completed", prompt_id: "p-1", stop_reason: "cancelled" },
+      {
+        sessionUpdate: "user_message_chunk",
+        content: { type: "text", text: "Again" },
+        _meta: { promptIndex: 0 }
+      },
+      {
+        sessionUpdate: "turn_completed",
+        prompt_id: "p-2",
+        stop_reason: "end_turn",
+        usage: { inputTokens: 1, outputTokens: 1, modelUsage: { "grok-b": { inputTokens: 1, outputTokens: 1 } } }
+      }
+    ];
+    const full = updates
+      .map(
+        (update, index) =>
+          `${JSON.stringify({ method: "session/update", timestamp: 1767225600 + index, params: { update } })}\n`
+      )
+      .join("");
+    const half = updates
+      .slice(0, 2)
+      .map(
+        (update, index) =>
+          `${JSON.stringify({ method: "session/update", timestamp: 1767225600 + index, params: { update } })}\n`
+      )
+      .join("");
+    const files = { [path]: half };
+    const platform = createMemoryPlatform({ files, home: "/u/me" });
+
+    // The first step ends on the usage-less `turn_completed`; its cursor carries the decoder state forward.
+    const first = await step(platform, path, { final: false });
+    expect(first.records).toEqual([]);
+
+    await platform.fs.writeAtomic(path, new TextEncoder().encode(full));
+    const second = await step(platform, path, { from: first.cursor, final: true });
+    expect(second.records).toHaveLength(1);
+    expect(second.records[0]).toMatchObject({ requestId: "p-2", model: "grok-b" });
   });
 });

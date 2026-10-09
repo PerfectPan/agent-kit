@@ -31,15 +31,17 @@ import {
   isAcpToolDone,
   mergeAcpToolUpdate
 } from "../acp-updates.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
-import { GROK_META_KEY, isInjectedChunk } from "./chunks.js";
+import { isInjectedChunk } from "./chunks.js";
 import type { GrokSessionMeta, GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
 import {
   followGrokTurn,
+  type GrokHookRunValue,
   type GrokTurn,
+  type GrokUpdateValue,
   grokTurnModel,
-  grokUsage,
+  grokTurnUsage,
   grokUsageByModel,
+  grokUsageOf,
   knownGrokUpdate
 } from "../../../usage/adapters/grok.js";
 
@@ -152,10 +154,9 @@ export function translateGrokRecords(
       return err(unknownFormatGeneration(AGENT, record));
     }
 
-    const kind = asString(update.sessionUpdate) ?? "update";
+    const kind = update.sessionUpdate ?? "update";
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);
-    const updateMeta = asRecord(update[GROK_META_KEY]);
     followGrokTurn(turn, update);
     const prompt = turn.prompt;
 
@@ -173,7 +174,7 @@ export function translateGrokRecords(
         continue;
       }
       const flags: Record<string, unknown> = {};
-      if (isInjectedChunk(updateMeta, text)) {
+      if (isInjectedChunk(update._meta, text)) {
         flags.injected = true;
       }
       // A later chunk of a prompt that already started a turn does not start another.
@@ -193,20 +194,20 @@ export function translateGrokRecords(
     }
 
     if (kind === "turn_completed") {
-      const key = prompt ?? asString(update.prompt_id) ?? lineId(record);
+      const key = prompt ?? update.prompt_id ?? lineId(record);
       const requestId = `request:${key}`;
       const id = events.some((event) => event.id === requestId) ? `request:${lineId(record)}` : requestId;
       segment = placeRequest(
         events,
         segment,
-        baseEvent(record, "request", requestPayload(update, grokTurnModel(update, turn.model)), {
+        baseEvent(record, "request", requestPayload(update, turn.model), {
           id,
           ts,
           requestId: key
         })
       );
       delete turn.model;
-      const durationMs = asNumber(update.elapsed_ms);
+      const durationMs = update.elapsed_ms;
       if (durationMs !== undefined) {
         emit("system", { type: "turn_duration", durationMs });
       }
@@ -215,12 +216,10 @@ export function translateGrokRecords(
     }
 
     if (kind === "hook_execution") {
-      const eventName = asString(update.event_name);
-      const toolName = asString(update.tool_name);
       emit("hook", {
         type: "hook_execution",
-        ...(eventName ? { event_name: eventName } : {}),
-        ...(toolName ? { tool_name: toolName } : {}),
+        ...(update.event_name ? { event_name: update.event_name } : {}),
+        ...(update.tool_name ? { tool_name: update.tool_name } : {}),
         runs: hookRuns(update.runs)
       });
       continue;
@@ -232,8 +231,8 @@ export function translateGrokRecords(
       continue;
     }
     if (kind === "auto_compact_completed") {
-      const pre = asNumber(update.tokens_before ?? update.tokens_used);
-      const post = asNumber(update.tokens_after);
+      const pre = update.tokens_before ?? update.tokens_used;
+      const post = update.tokens_after;
       emit("compaction", {
         trigger: "auto",
         ...(pre === undefined ? {} : { preTokens: pre }),
@@ -248,9 +247,9 @@ export function translateGrokRecords(
     }
 
     if (kind === "subagent_spawned" || kind === "subagent_finished") {
-      const agentId = asString(update.subagent_id) ?? asString(update.child_session_id);
-      const status = asString(update.status);
-      const durationMs = asNumber(update.duration_ms);
+      const agentId = update.subagent_id ?? update.child_session_id;
+      const status = update.status;
+      const durationMs = update.duration_ms;
       const event = emit("system", {
         type: kind,
         ...(agentId ? { agentId } : {}),
@@ -259,15 +258,17 @@ export function translateGrokRecords(
       });
       // The log records the launch as `subagent_spawned`, not as a tool call.
       if (agentId) {
-        rememberAgent(agentId, asString(update.description), kind === "subagent_spawned" ? event.id : undefined);
+        rememberAgent(agentId, update.description, kind === "subagent_spawned" ? event.id : undefined);
       }
       continue;
     }
 
     if (STATUS.has(kind)) {
-      const status = asString(update.status);
-      const phase = asString(update.phase);
-      emit("system", { type: kind, ...(status ? { status } : {}), ...(phase ? { phase } : {}) });
+      emit("system", {
+        type: kind,
+        ...(update.status ? { status: update.status } : {}),
+        ...(update.phase ? { phase: update.phase } : {})
+      });
       continue;
     }
 
@@ -322,56 +323,49 @@ function applySubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubag
 }
 
 /** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
-function requestPayload(update: Record<string, unknown>, model: string | undefined): Record<string, unknown> {
-  const usageRaw = asRecord(update.usage);
-  const usage = grokUsage(usageRaw);
-  const finishReason = asString(update.stop_reason);
-  const modelCalls = asNumber(usageRaw?.modelCalls);
-  const byModel = grokUsageByModel(usageRaw?.modelUsage);
+function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): Record<string, unknown> {
+  const raw = grokTurnUsage(update);
+  const usage = grokUsageOf(raw);
+  const model = grokTurnModel(raw?.modelUsage, turnModel);
+  const byModel = grokUsageByModel(raw?.modelUsage);
   // `baseEvent` stores a record. `satisfies` keeps the fields on `RequestPayload`.
   return {
     granularity: "turn",
     ...(model ? { model } : {}),
     ...(usage ? { usage } : {}),
-    ...(finishReason ? { finishReason } : {}),
-    ...(modelCalls === undefined ? {} : { modelCalls }),
+    ...(update.stop_reason ? { finishReason: update.stop_reason } : {}),
+    ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
     ...(byModel ? { usageByModel: byModel } : {})
   } satisfies RequestPayload;
 }
 
-function hookRuns(runs: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(runs)) {
-    return [];
+function hookRuns(runs: readonly (GrokHookRunValue | undefined)[] | undefined): Record<string, unknown>[] {
+  return (runs ?? []).flatMap((run) => (run ? [hookRunBody(run)] : []));
+}
+
+/** The fields of one hook run the event keeps; a field the run does not record stays absent. */
+function hookRunBody(run: GrokHookRunValue): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (run.name) {
+    body.name = run.name;
   }
-  return runs.flatMap((item) => {
-    const run = asRecord(item);
-    if (!run) {
-      return [];
-    }
-    const status = asRecord(run.status);
-    const body: Record<string, unknown> = {};
-    const name = asString(run.name);
-    const state = asString(status?.status);
-    const elapsedMs = asNumber(status?.elapsed_ms);
-    const exitCode = asNumber(run.exit_code ?? status?.exit_code);
-    const output = asString(run.output ?? status?.output);
-    if (name) {
-      body.name = name;
-    }
-    if (state) {
-      body.status = state;
-    }
-    if (elapsedMs !== undefined) {
-      body.elapsedMs = elapsedMs;
-    }
-    if (exitCode !== undefined) {
-      body.exitCode = exitCode;
-    }
-    if (output) {
-      body.output = output;
-    }
-    return [body];
-  });
+  const state = run.status?.status;
+  if (state) {
+    body.status = state;
+  }
+  const elapsedMs = run.status?.elapsed_ms;
+  if (elapsedMs !== undefined) {
+    body.elapsedMs = elapsedMs;
+  }
+  const exitCode = run.exit_code ?? run.status?.exit_code;
+  if (exitCode !== undefined) {
+    body.exitCode = exitCode;
+  }
+  const output = run.output ?? run.status?.output;
+  if (output) {
+    body.output = output;
+  }
+  return body;
 }
 
 /** The events a tool call produced so far; its merged state is the shared ACP tool state. */
@@ -386,7 +380,7 @@ interface ToolEvents {
  */
 function recordTool(
   kind: string,
-  update: Record<string, unknown>,
+  update: GrokUpdateValue,
   record: SourcedRecord,
   calls: { readonly tools: Map<string, AcpToolState>; readonly events: Map<string, ToolEvents> },
   skipped: SkippedRecord[],
