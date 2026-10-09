@@ -1,4 +1,5 @@
 import { type AgentHome, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import { basenamePath, dirnamePath, joinPath } from "../../index.js";
 import {
@@ -7,7 +8,7 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../../transcript/index.js";
-import { asNumber, asRecord, asString } from "../../../transcript/adapters/record-fields.js";
+import { lenient } from "../../../transcript/adapters/lenient.js";
 
 // Grok keeps one directory per session under `<home>/sessions/<encoded-cwd>/<session-id>/`. The transcript is
 // `updates.jsonl`. `summary.json`, `system_prompt.txt` and `tool_definitions.json` sit beside it. A subagent's
@@ -60,16 +61,19 @@ export interface GrokSubagentMeta {
   title?: string;
 }
 
+const SubagentMetaFile = z.looseObject({
+  subagent_id: lenient(z.string()),
+  description: lenient(z.string())
+});
+
 export function grokSubagentMeta(value: unknown): GrokSubagentMeta {
-  const meta = asRecord(value);
+  const meta = z.safeParse(SubagentMetaFile, value).data;
   const out: GrokSubagentMeta = {};
-  const id = asString(meta?.subagent_id);
-  const title = asString(meta?.description);
-  if (id) {
-    out.id = id;
+  if (meta?.subagent_id) {
+    out.id = meta.subagent_id;
   }
-  if (title) {
-    out.title = title;
+  if (meta?.description) {
+    out.title = meta.description;
   }
   return out;
 }
@@ -87,6 +91,20 @@ export interface GrokSessionMeta {
 }
 
 /**
+ * Fields of `summary.json`, read leniently like every agent log. `created_at` and `last_active_at` may be epoch
+ * seconds or a timestamp string, which `timeOf` tells apart.
+ */
+const SummaryFile = z.looseObject({
+  chat_format_version: lenient(z.number()),
+  generated_title: lenient(z.string()),
+  session_summary: lenient(z.string()),
+  current_model_id: lenient(z.string()),
+  created_at: lenient(z.union([z.number(), z.string()])),
+  last_active_at: lenient(z.union([z.number(), z.string()])),
+  info: lenient(z.looseObject({ id: lenient(z.string()), cwd: lenient(z.string()) }))
+});
+
+/**
  * Fields of `summary.json`. `chat_format_version` other than 1 is an unknown generation. A missing version is the
  * generation this adapter reads.
  */
@@ -94,19 +112,18 @@ export function grokSummaryFields(
   value: unknown,
   source: SourcePointer
 ): Result<GrokSessionMeta, UnknownFormatGeneration> {
-  const summary = asRecord(value) ?? {};
-  const format = asNumber(summary.chat_format_version);
+  const summary = z.safeParse(SummaryFile, value).data;
+  const format = summary?.chat_format_version;
   if (format !== undefined && format !== 1) {
     return err(unknownFormatGeneration("grok", source));
   }
-  const info = asRecord(summary.info);
   const meta: GrokSessionMeta = {};
-  const id = asString(info?.id);
-  const cwd = asString(info?.cwd);
-  const title = asString(summary.generated_title) ?? asString(summary.session_summary);
-  const startedAt = timeOf(summary.created_at);
-  const endedAt = timeOf(summary.last_active_at);
-  const model = asString(summary.current_model_id);
+  const id = summary?.info?.id;
+  const cwd = summary?.info?.cwd;
+  const title = summary?.generated_title ?? summary?.session_summary;
+  const startedAt = timeOf(summary?.created_at);
+  const endedAt = timeOf(summary?.last_active_at);
+  const model = summary?.current_model_id;
   if (id) {
     meta.id = id;
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { translateGrokRecords } from "./grok/events.js";
 import { foldStreamParts, type SourcedRecord, type TranscriptStreamPart } from "../index.js";
-import { acpUsage, createAcpPartTranslator } from "./acp-updates.js";
+import { acpChunkText, acpUsage, createAcpPartTranslator } from "./acp-updates.js";
 
 const chunk = (sessionUpdate: string, text: string, messageId?: string) => ({
   sessionUpdate,
@@ -152,6 +152,42 @@ describe("acpUsage", () => {
       reasoningTokens: 2
     });
     expect(acpUsage(undefined)).toBeUndefined();
+  });
+
+  it("reads a count of an unexpected type as absent, like every log field", () => {
+    expect(acpUsage({ inputTokens: "10", outputTokens: Infinity, totalTokens: 5 })).toEqual({ totalTokens: 5 });
+    expect(acpUsage({ inputTokens: NaN })).toBeUndefined();
+  });
+});
+
+describe("lenient reading of one update", () => {
+  it("reads text only from content a chunk shape can hold, and other shapes as empty", () => {
+    expect(acpChunkText({ text: 5 })).toBe("");
+    expect(acpChunkText(42)).toBe("");
+    expect(acpChunkText({ content: { text: 7 } })).toBe("");
+    expect(acpChunkText([{ text: 5 }, { content: { text: "kept" } }])).toBe("kept");
+  });
+
+  it("keeps an update whose fields have the wrong types as an unknown update, not a failure", () => {
+    const translator = createAcpPartTranslator("t.");
+    const typed = { sessionUpdate: 5, content: { text: "hi" } };
+    expect(translator.update(typed)).toEqual([
+      { type: "update", id: "t.0", kind: "unknown", payload: { type: "update" }, original: typed }
+    ]);
+    expect(
+      translator.update({ sessionUpdate: "tool_call", toolCallId: 5, title: "bash", rawInput: { cmd: "ls" } })
+    ).toEqual([
+      { type: "tool-input-start", toolCallId: "", toolName: "bash" },
+      { type: "tool-input-available", toolCallId: "", toolName: "bash", input: { cmd: "ls" } }
+    ]);
+  });
+
+  it("reads a non-record update as an update with no fields", () => {
+    const translator = createAcpPartTranslator("t.");
+    // The interface names a record; the runtime keeps a caller honest by reading one that is not.
+    expect(translator.update(42 as unknown as Record<string, unknown>)).toEqual([
+      { type: "update", id: "t.0", kind: "unknown", payload: { type: "update" }, original: 42 }
+    ]);
   });
 });
 

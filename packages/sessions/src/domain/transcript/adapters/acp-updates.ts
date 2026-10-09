@@ -1,36 +1,81 @@
 // ACP `session/update` notifications, read the way both of their readers need: the live stream of `/acp` and the
 // Grok adapter, whose `updates.jsonl` stores the same notifications. Like every log reader, this module reads
-// leniently and imports no package, because the Grok usage decoder in `/transcript/usage` uses it too.
+// leniently. It is bundled into the zero-dependency `/transcript/usage` entry, whose built files import nothing
+// because tsdown bundles `zod/mini` into that entry and keeps it external for every other entry.
+
+import * as z from "zod/mini";
 
 import type { TranscriptEventKind, TranscriptStreamPart } from "../index.js";
 import { compactUsage, type Usage } from "../../usage/index.js";
-import { asNumber, asRecord, asString } from "./record-fields.js";
+import { lenient } from "./lenient.js";
+
+/**
+ * The `session/update` body as this module reads it. Fields it does not name stay on the record, so Grok's `_meta`
+ * and `usage` reach the grok adapters unchanged.
+ */
+export interface AcpUpdateValue {
+  sessionUpdate?: string;
+  /** Text, a `{ text }` block, or content parts; kept as received, like `rawInput` and `rawOutput`. */
+  content?: unknown;
+  messageId?: string;
+  toolCallId?: string;
+  title?: string;
+  toolName?: string;
+  rawInput?: unknown;
+  rawOutput?: unknown;
+  status?: string;
+  [field: string]: unknown;
+}
+
+/**
+ * The `session/update` body, one field per reader; a field of an unexpected type counts as absent. The schema stays
+ * module-private: an exported declaration typed by zod drags zod's declarations into the dts of the entries that
+ * bundle this module, and those must import nothing.
+ */
+const AcpUpdate = z.looseObject({
+  sessionUpdate: lenient(z.string()),
+  content: lenient(z.unknown()),
+  messageId: lenient(z.string()),
+  toolCallId: lenient(z.string()),
+  title: lenient(z.string()),
+  toolName: lenient(z.string()),
+  rawInput: lenient(z.unknown()),
+  rawOutput: lenient(z.unknown()),
+  status: lenient(z.string())
+});
+
+/** The `session/update` notification record: the body under `params`, or on the record itself. */
+const AcpUpdateEnvelope = z.looseObject({
+  params: lenient(z.looseObject({ update: lenient(AcpUpdate) })),
+  update: lenient(AcpUpdate)
+});
 
 /** The `session/update` body, whether it sits under `params` or on the record. */
-export function acpUpdateOf(value: unknown): Record<string, unknown> | undefined {
-  const record = asRecord(value);
-  return asRecord(asRecord(record?.params)?.update) ?? asRecord(record?.update);
+export function acpUpdateOf(value: unknown): AcpUpdateValue | undefined {
+  const record = z.safeParse(AcpUpdateEnvelope, value).data;
+  const update: AcpUpdateValue | undefined = record?.params?.update ?? record?.update;
+  return update;
 }
+
+/** Text of one content part: the part's `text`, else the text of the block nested under its `content`. */
+const AcpChunkPart = z.looseObject({
+  text: lenient(z.string()),
+  content: lenient(z.looseObject({ text: lenient(z.string()) }))
+});
+
+/** Content of a message chunk: a string, a `{ text }` block, or such parts. */
+const AcpChunkContent = z.union([z.string(), AcpChunkPart, z.array(lenient(AcpChunkPart))]);
 
 /** Text of a message chunk: a string, `{ text }`, or parts whose text is nested under `content`. */
 export function acpChunkText(content: unknown): string {
-  const direct = asString(asRecord(content)?.text);
-  if (direct) {
-    return direct;
+  const parsed = z.safeParse(AcpChunkContent, content).data;
+  if (typeof parsed === "string") {
+    return parsed;
   }
-  if (typeof content === "string") {
-    return content;
+  if (Array.isArray(parsed)) {
+    return parsed.map((part) => part?.content?.text ?? part?.text ?? "").join("");
   }
-  if (!Array.isArray(content)) {
-    return "";
-  }
-  return content
-    .map((part) => {
-      const inner = asRecord(part);
-      const nested = asRecord(inner?.content);
-      return asString(nested?.text) ?? asString(inner?.text) ?? "";
-    })
-    .join("");
+  return parsed?.text ?? "";
 }
 
 const MESSAGE_KINDS: Readonly<Record<string, "user" | "assistant" | "reasoning">> = {
@@ -62,13 +107,13 @@ const TOOL_DONE = new Set(["completed", "failed", "error"]);
  */
 export function mergeAcpToolUpdate(
   tools: Map<string, AcpToolState>,
-  update: Record<string, unknown>
+  update: AcpUpdateValue
 ): { readonly state: AcpToolState; readonly first: boolean } {
-  const callId = asString(update.toolCallId) ?? "";
+  const callId = update.toolCallId ?? "";
   const existing = tools.get(callId);
   const state: AcpToolState = existing ?? { callId, name: "" };
   tools.set(callId, state);
-  const name = asString(update.title) ?? asString(update.toolName);
+  const name = update.title ?? update.toolName;
   if (name) {
     state.name = name;
   }
@@ -81,7 +126,7 @@ export function mergeAcpToolUpdate(
   } else if (supplied(update.rawOutput)) {
     state.output = update.rawOutput;
   }
-  const status = asString(update.status);
+  const status = update.status;
   if (status) {
     state.status = status;
   }
@@ -130,25 +175,35 @@ const SESSION_UPDATES = new Set([
   "usage_update"
 ]);
 
+/** Token counts of a `session/prompt` response (ACP marks it unstable). */
+const AcpResponseUsage = z.looseObject({
+  inputTokens: lenient(z.number()),
+  outputTokens: lenient(z.number()),
+  cachedReadTokens: lenient(z.number()),
+  cachedWriteTokens: lenient(z.number()),
+  thoughtTokens: lenient(z.number()),
+  totalTokens: lenient(z.number())
+});
+
 /**
  * Usage of a `session/prompt` response (ACP marks it unstable). ACP's `totalTokens` sums every count, so its
  * `inputTokens` leaves out cache reads and writes and its `outputTokens` leaves out thought tokens; both are added
  * back for the kit's convention, where they are subsets.
  */
 export function acpUsage(value: unknown): Usage | undefined {
-  const raw = asRecord(value);
+  const raw = z.safeParse(AcpResponseUsage, value).data;
   if (!raw) {
     return undefined;
   }
-  const input = asNumber(raw.inputTokens);
-  const output = asNumber(raw.outputTokens);
-  const cacheRead = asNumber(raw.cachedReadTokens);
-  const cacheWrite = asNumber(raw.cachedWriteTokens);
-  const thought = asNumber(raw.thoughtTokens);
+  const input = raw.inputTokens;
+  const output = raw.outputTokens;
+  const cacheRead = raw.cachedReadTokens;
+  const cacheWrite = raw.cachedWriteTokens;
+  const thought = raw.thoughtTokens;
   return compactUsage({
     inputTokens: input === undefined ? undefined : input + (cacheRead ?? 0) + (cacheWrite ?? 0),
     outputTokens: output === undefined ? undefined : output + (thought ?? 0),
-    totalTokens: asNumber(raw.totalTokens),
+    totalTokens: raw.totalTokens,
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
     reasoningTokens: thought
@@ -200,7 +255,7 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
     return parts;
   };
 
-  const tool = (update: Record<string, unknown>): TranscriptStreamPart[] => {
+  const tool = (update: AcpUpdateValue): TranscriptStreamPart[] => {
     const parts = close();
     const { state, first } = mergeAcpToolUpdate(tools, update);
     const { callId: toolCallId, name: toolName } = state;
@@ -227,23 +282,27 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
     { type: "update", id: nextId(), kind, payload, original } satisfies TranscriptStreamPart
   ];
 
+  // An empty record parses to an all-absent update; it stands in when the body is not a record at all.
+  const noUpdate: AcpUpdateValue = z.parse(AcpUpdate, {});
+
   return {
     update(update) {
-      const sessionUpdate = asString(update.sessionUpdate) ?? "update";
+      const body = z.safeParse(AcpUpdate, update).data ?? noUpdate;
+      const sessionUpdate = body.sessionUpdate ?? "update";
       const messageKind = acpMessageKind(sessionUpdate);
       if (messageKind !== undefined) {
-        const text = acpChunkText(update.content);
+        const text = acpChunkText(body.content);
         if (!text) {
           return [];
         }
-        const messageId = asString(update.messageId);
+        const messageId = body.messageId;
         if (messageKind === "user") {
           return other("user", { text }, update);
         }
         return chunk(messageKind === "assistant" ? "text" : "reasoning", text, messageId);
       }
       if (sessionUpdate === "tool_call" || sessionUpdate === "tool_call_update") {
-        return tool(update);
+        return tool(body);
       }
       return other(SESSION_UPDATES.has(sessionUpdate) ? "system" : "unknown", { type: sessionUpdate }, update);
     },

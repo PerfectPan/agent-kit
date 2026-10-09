@@ -485,3 +485,74 @@ describe("grok translation", () => {
     });
   });
 });
+
+describe("grok lenient reading", () => {
+  it("reads a field of an unexpected type as absent", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          { sessionUpdate: "user_message_chunk", content: "First", _meta: { promptIndex: "0", modelId: 7 } },
+          1
+        ),
+        grokRecord({ sessionUpdate: 7, content: "not an update" }, 2),
+        grokRecord(
+          { sessionUpdate: "turn_completed", elapsed_ms: "25", usage: { inputTokens: 15, outputTokens: 4 } },
+          3
+        ),
+        grokRecord({ sessionUpdate: "subagent_spawned", subagent_id: 7, description: "Look", status: 1 }, 4)
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "request")?.payload).toEqual({
+      granularity: "turn",
+      usage: { inputTokens: 15, outputTokens: 4, totalTokens: 19 }
+    });
+    expect(parsed.events.some((event) => event.payload.type === "turn_duration")).toBe(false);
+    expect(parsed.events.find((event) => event.payload.type === "subagent_spawned")?.payload).toEqual({
+      type: "subagent_spawned"
+    });
+    expect(parsed.agents.map((agent) => agent.id)).toEqual(["main"]);
+    expect(parsed.events.filter((event) => event.kind === "user").map((event) => event.payload)).toEqual([
+      { text: "First" }
+    ]);
+    expect(parsed.events.find((event) => event.kind === "unknown")?.payload).toEqual({ type: "update" });
+  });
+
+  it("keeps the hook runs it can read and drops the rest", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord({ sessionUpdate: "hook_execution", runs: "once" }, 1),
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            runs: [
+              "junk",
+              { name: 5, status: "done" },
+              { name: "lint", status: { status: "ok", elapsed_ms: "5", exit_code: 3 } }
+            ]
+          },
+          2
+        )
+      ])
+    );
+    expect(parsed.events.filter((event) => event.kind === "hook").map((event) => event.payload.runs)).toEqual([
+      [],
+      [{}, { name: "lint", status: "ok", exitCode: 3 }]
+    ]);
+  });
+
+  it("treats a present formatVersion as another generation and a wrong-typed schema_version as absent", () => {
+    const record = {
+      timestamp: 1767225600,
+      params: { update: { sessionUpdate: "user_message_chunk", content: "x" } },
+      formatVersion: 2
+    };
+    expect(translateGrokRecords([{ value: record, file: "updates.jsonl", line: 1, offset: 0, length: 1 }])).toEqual({
+      ok: false,
+      error: { _tag: "UnknownFormatGeneration", agent: "grok", file: "updates.jsonl", line: 1 }
+    });
+    const lenient = value(
+      translateGrokRecords([grokRecord({ sessionUpdate: "user_message_chunk", content: "x", schema_version: "2" }, 1)])
+    );
+    expect(lenient.events[0]?.payload).toEqual({ text: "x" });
+  });
+});
