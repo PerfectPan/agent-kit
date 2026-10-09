@@ -1,8 +1,15 @@
 import { err, ok } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
-import { asNumber, asRecord, asString } from "../../transcript/adapters/record-fields.js";
+import { lenient } from "../../transcript/adapters/lenient.js";
+import {
+  CodexEnvelopeSchema,
+  codexTokenCounts,
+  type KeysExact,
+  knownCodexRecord
+} from "../../transcript/adapters/codex/records.js";
 import { rememberKey, type UsageFile, type UsageLineDecoder } from "./usage-lines.js";
 import {
   endForkReplay,
@@ -13,22 +20,75 @@ import {
 
 const AGENT = "codex";
 
+/** The payload fields the usage rule reads, of whatever envelope carries them. */
+interface CodexUsagePayload {
+  type?: string;
+  id?: string;
+  session_id?: string;
+  model?: string;
+  turn_id?: string;
+  response_id?: string;
+  forked_from_id?: string;
+  source?: { subagent?: { thread_spawn?: unknown } };
+  usage?: Record<string, unknown>;
+  info?: {
+    total_token_usage?: unknown;
+    last_token_usage?: unknown;
+  };
+  thread_settings?: { service_tier?: string };
+}
+
+/**
+ * The payload fields the usage rule reads, with those the fork replay rule reads in the same pass. The decoder runs
+ * over every record of every rollout, so it parses only these fields, not the whole payload. The totals stay the raw
+ * values they were: the usage rule compares them by their JSON text.
+ */
+const CodexUsagePayloadSchema = z.looseObject({
+  type: lenient(z.string()),
+  id: lenient(z.string()),
+  session_id: lenient(z.string()),
+  model: lenient(z.string()),
+  turn_id: lenient(z.string()),
+  response_id: lenient(z.string()),
+  forked_from_id: lenient(z.string()),
+  source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
+  usage: lenient(z.record(z.string(), z.unknown())),
+  info: lenient(
+    z.looseObject({
+      total_token_usage: z.optional(z.unknown()),
+      last_token_usage: z.optional(z.unknown())
+    })
+  ),
+  thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
+});
+
+const _codexUsagePayloadKeys: true = true satisfies KeysExact<typeof CodexUsagePayloadSchema.shape, CodexUsagePayload>;
+
+/** Compiled: the decoder's payload schema names exactly the keys of its interface. */
+export type CodexUsageKeysExact = [typeof _codexUsagePayloadKeys];
+
+/**
+ * One rollout record for the usage rule: the envelope every codex reader parses, and the payload fields above. One
+ * parse takes only these fields, not the whole payload.
+ */
+const CodexUsageRecord = z.looseObject({ ...CodexEnvelopeSchema.shape, payload: lenient(CodexUsagePayloadSchema) });
+
 /**
  * The Usage of one model call from a Codex usage object: `token_usage_record.usage` or
  * `token_count.info.last_token_usage`. `input_tokens` already includes cached input, so it is the input count as it is.
  */
 export function codexUsage(value: unknown): Usage | undefined {
-  const usage = asRecord(value);
+  const usage = codexTokenCounts(value);
   if (!usage) {
     return undefined;
   }
   return compactUsage({
-    inputTokens: asNumber(usage.input_tokens),
-    outputTokens: asNumber(usage.output_tokens),
-    totalTokens: asNumber(usage.total_tokens),
-    cacheReadTokens: asNumber(usage.cached_input_tokens),
-    cacheWriteTokens: asNumber(usage.cache_write_input_tokens),
-    reasoningTokens: asNumber(usage.reasoning_output_tokens)
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    totalTokens: usage.total_tokens,
+    cacheReadTokens: usage.cached_input_tokens,
+    cacheWriteTokens: usage.cache_write_input_tokens,
+    reasoningTokens: usage.reasoning_output_tokens
   });
 }
 
@@ -46,30 +106,19 @@ const COUNT_KEYS = [
  * `last_token_usage`: each count's increase, never below 0. A count that `total` does not report stays absent.
  */
 export function codexUsageDelta(total: unknown, previous: unknown): Usage | undefined {
-  const current = asRecord(total);
+  const current = codexTokenCounts(total);
   if (!current) {
     return undefined;
   }
-  const before = asRecord(previous);
+  const before = codexTokenCounts(previous);
   const delta: Record<string, number> = {};
   for (const key of COUNT_KEYS) {
-    const value = asNumber(current[key]);
+    const value = current[key];
     if (value !== undefined) {
-      delta[key] = Math.max(0, value - (asNumber(before?.[key]) ?? 0));
+      delta[key] = Math.max(0, value - (before?.[key] ?? 0));
     }
   }
   return codexUsage(delta);
-}
-
-/**
- * A record of a format generation this adapter reads: no `formatVersion`, and a string `type`, a `record_type`
- * bookkeeping marker, or the `timestamp` and `id` of an older rollout's header.
- */
-export function knownCodexGeneration(rec: Record<string, unknown>): boolean {
-  if ("formatVersion" in rec) {
-    return false;
-  }
-  return Boolean(asString(rec.type) || asString(rec.record_type)) || ("timestamp" in rec && "id" in rec);
 }
 
 /** What reading usage keeps between the records of one rollout. */
@@ -95,7 +144,7 @@ export type CodexRecordUsage =
 export function codexRecordUsage(
   tracker: CodexUsageTracker,
   envelope: string,
-  payload: Record<string, unknown>,
+  payload: CodexUsagePayload,
   replayed: boolean,
   seen: (responseId: string) => boolean
 ): CodexRecordUsage | undefined {
@@ -103,7 +152,7 @@ export function codexRecordUsage(
     tracker.usageRecords = true;
     // From here on the totals are not read again.
     delete tracker.totals;
-    const responseId = asString(payload.response_id);
+    const responseId = payload.response_id;
     if (responseId && seen(responseId)) {
       return { skip: "duplicate-usage" };
     }
@@ -115,7 +164,7 @@ export function codexRecordUsage(
   if (envelope !== "event_msg" || payload.type !== "token_count") {
     return undefined;
   }
-  const info = asRecord(payload.info);
+  const info = payload.info;
   const total = info?.total_token_usage;
   const previous = tracker.totals;
   const unchanged = total !== undefined && previous !== undefined && JSON.stringify(total) === JSON.stringify(previous);
@@ -134,7 +183,8 @@ export function codexRecordUsage(
   if (unchanged) {
     return { skip: "unchanged-usage" };
   }
-  const last = asRecord(info.last_token_usage);
+  // The last call's usage reads as a record, as it always did: a non-record one falls back to the totals' increase.
+  const last = codexTokenCounts(info.last_token_usage);
   return { usage: last ? codexUsage(last) : codexUsageDelta(total, previous) };
 }
 
@@ -191,31 +241,31 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
   };
   return {
     push(record) {
-      const rec = asRecord(record.value);
-      if (!rec || !knownCodexGeneration(rec)) {
+      const rec = z.safeParse(CodexUsageRecord, record.value).data;
+      if (!knownCodexRecord(rec)) {
         return err(unknownFormatGeneration(AGENT, record));
       }
       const ts = timeOf(rec.timestamp) ?? state.lastTime ?? file.mtimeMs;
       state.lastTime = ts;
-      const step = stepForkReplay(state.fork, rec, ts);
+      const payload = rec.payload ?? {};
+      const step = stepForkReplay(state.fork, rec, payload, ts);
       state.fork = step.state;
       const out = settle(step.settled);
-      const envelope = asString(rec.type);
-      if (!envelope) {
+      const envelope = rec.type;
+      if (envelope === undefined) {
         // An older rollout's header names the session; a `record_type` marker is bookkeeping.
-        if (!asString(rec.record_type)) {
-          state.sessionId ??= asString(rec.id);
+        if (rec.record_type === undefined) {
+          state.sessionId ??= rec.id;
         }
         return ok(out);
       }
-      const payload = asRecord(rec.payload) ?? {};
       if (envelope === "session_meta") {
-        state.sessionId ??= asString(payload.id) ?? asString(payload.session_id);
+        state.sessionId ??= payload.id ?? payload.session_id;
       } else if (envelope === "turn_context") {
-        state.model = asString(payload.model) ?? state.model;
+        state.model = payload.model ?? state.model;
       } else if (envelope === "event_msg" && payload.type === "thread_settings_applied") {
         // The settings in force from here on: a tier left out is the standard one.
-        const tier = asString(asRecord(payload.thread_settings)?.service_tier);
+        const tier = payload.thread_settings?.service_tier;
         if (tier === undefined) {
           delete state.serviceTier;
         } else {
@@ -277,16 +327,37 @@ function callRecord(
   return record;
 }
 
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+/** The state a cursor carries back, read field by field: a field of an unexpected type counts as absent. */
+const CodexSavedState = z.looseObject({
+  sessionId: lenient(z.string()),
+  model: lenient(z.string()),
+  serviceTier: lenient(z.string()),
+  lastTime: lenient(z.number()),
+  fork: lenient(
+    z.looseObject({
+      phase: lenient(z.string()),
+      forkTime: lenient(z.number()),
+      second: lenient(z.number())
+    })
+  ),
+  tracker: lenient(z.looseObject({ usageRecords: lenient(z.boolean()), totals: z.optional(z.unknown()) })),
+  responses: lenient(z.array(lenient(z.string()))),
+  waiting: z.optional(z.unknown())
+});
+
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. The state
+ * is cloned first, so an emitted record and the caller's cursor never share an object. */
 function restore(saved: unknown): CodexUsageState {
-  const state = structuredClone(asRecord(saved) ?? {});
-  const fork = asRecord(state.fork);
-  const tracker = asRecord(state.tracker);
+  const state = z.safeParse(CodexSavedState, structuredClone(saved)).data;
   return {
-    ...(state as Partial<CodexUsageState>),
-    fork: typeof fork?.phase === "string" ? (fork as unknown as ForkReplayState) : FORK_REPLAY_START,
-    tracker: { ...tracker, usageRecords: tracker?.usageRecords === true },
-    responses: Array.isArray(state.responses) ? state.responses.filter((id) => typeof id === "string") : []
+    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+    ...(state?.model === undefined ? {} : { model: state.model }),
+    ...(state?.serviceTier === undefined ? {} : { serviceTier: state.serviceTier }),
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
+    ...(state?.waiting === undefined ? {} : { waiting: state.waiting as UsageRecord }),
+    fork: state?.fork?.phase === undefined ? FORK_REPLAY_START : (state.fork as ForkReplayState),
+    tracker: { ...state?.tracker, usageRecords: state?.tracker?.usageRecords === true },
+    responses: state?.responses?.filter((id): id is string => id !== undefined) ?? []
   };
 }
 

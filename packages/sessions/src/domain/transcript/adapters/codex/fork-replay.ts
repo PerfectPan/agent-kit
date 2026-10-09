@@ -1,5 +1,5 @@
 import { type StampedRecord, timeOf } from "../../index.js";
-import { asRecord, asString } from "../record-fields.js";
+import { codexPayload, codexRecord, type CodexPayloadValue, type CodexRecordValue } from "./records.js";
 
 // A forked or subagent rollout (its first record is a `session_meta` with `forked_from_id` or a `thread_spawn` source)
 // starts by copying the parent's records with new timestamps, so record times cannot tell the copy from the rollout's
@@ -33,14 +33,31 @@ export interface ForkReplayStep {
   readonly settled?: boolean;
 }
 
+/** The payload fields the replay rule reads; a reader that parses fewer fields passes what it has. */
+export interface ForkReplayPayload {
+  type?: string;
+  id?: string;
+  turn_id?: string;
+  forked_from_id?: string;
+  timestamp?: unknown;
+  source?: { subagent?: { thread_spawn?: unknown } };
+  info?: unknown;
+}
+
 export const FORK_REPLAY_START: ForkReplayState = { phase: "start" };
 
-/** Advances the replay rule by one record, with its time in epoch milliseconds. */
-export function stepForkReplay(state: ForkReplayState, value: unknown, ts: number): ForkReplayStep {
-  const rec = asRecord(value);
+/**
+ * Advances the replay rule by one parsed record, with its parsed payload and time in epoch milliseconds. The caller
+ * parses both once; the rule reads the payload through the parameters instead of parsing it again per helper.
+ */
+export function stepForkReplay(
+  state: ForkReplayState,
+  rec: CodexRecordValue | undefined,
+  payload: ForkReplayPayload | undefined,
+  ts: number
+): ForkReplayStep {
   switch (state.phase) {
     case "start": {
-      const payload = asRecord(rec?.payload);
       if (rec?.type !== "session_meta" || !isFork(payload)) {
         return { state: { phase: "own" }, replayed: false };
       }
@@ -50,25 +67,25 @@ export function stepForkReplay(state: ForkReplayState, value: unknown, ts: numbe
     case "own":
       return { state, replayed: false };
     case "open": {
-      const created = uuidV7Time(turnStartId(rec));
+      const created = uuidV7Time(turnStartId(rec, payload));
       if (created !== undefined && state.forkTime !== undefined) {
         return created >= state.forkTime
           ? { state: { phase: "own" }, replayed: false }
           : { state: { phase: "turns", forkTime: state.forkTime }, replayed: true };
       }
-      if (isUsageRecord(rec)) {
+      if (isUsageRecord(rec, payload)) {
         return { state: { phase: "second", second: secondOf(ts) }, replayed: undefined };
       }
       return { state, replayed: undefined };
     }
     case "turns": {
-      const created = uuidV7Time(turnStartId(rec));
+      const created = uuidV7Time(turnStartId(rec, payload));
       return created !== undefined && created >= (state.forkTime ?? 0)
         ? { state: { phase: "own" }, replayed: false }
         : { state, replayed: true };
     }
     case "second":
-      if (!isUsageRecord(rec)) {
+      if (!isUsageRecord(rec, payload)) {
         return { state, replayed: undefined };
       }
       return secondOf(ts) === state.second
@@ -84,31 +101,48 @@ export function endForkReplay(state: ForkReplayState): { readonly state: ForkRep
   return state.phase === "second" ? { state: { phase: "own" }, settled: false } : { state };
 }
 
-/** The number of records at the start of a rollout that replay a parent session's history. */
-export function forkReplayEnd(stamped: readonly StampedRecord[]): number {
+/** The replay rule over one rollout: where the replay ends, and each record parsed once for the reader that follows. */
+export interface ForkReplayScan {
+  /** The number of records at the start of the rollout that replay a parent session's history. */
+  readonly end: number;
+  readonly records: readonly (CodexRecordValue | undefined)[];
+  readonly payloads: readonly (CodexPayloadValue | undefined)[];
+}
+
+export function scanForkReplay(stamped: readonly StampedRecord[]): ForkReplayScan {
   let state = FORK_REPLAY_START;
+  let end = 0;
+  let decided = false;
+  const records: (CodexRecordValue | undefined)[] = [];
+  const payloads: (CodexPayloadValue | undefined)[] = [];
   for (const [index, { record, ts }] of stamped.entries()) {
-    const step = stepForkReplay(state, record.value, ts);
-    if (step.settled === false) {
-      return 0;
-    }
-    if (step.replayed === false) {
-      return index;
+    const rec = codexRecord(record.value);
+    const payload = codexPayload(rec?.payload);
+    records.push(rec);
+    payloads.push(payload);
+    const step = stepForkReplay(state, rec, payload, ts);
+    if (!decided) {
+      if (step.settled === false) {
+        decided = true;
+      } else if (step.replayed === false) {
+        end = index;
+        decided = true;
+      }
     }
     state = step.state;
   }
-  return state.phase === "turns" || state.phase === "second-replay" ? stamped.length : 0;
+  if (!decided && (state.phase === "turns" || state.phase === "second-replay")) {
+    end = stamped.length;
+  }
+  return { end, records, payloads };
 }
 
-function isFork(meta: Record<string, unknown> | undefined): boolean {
-  return (
-    typeof meta?.forked_from_id === "string" || asRecord(asRecord(meta?.source)?.subagent)?.thread_spawn !== undefined
-  );
+function isFork(meta: ForkReplayPayload | undefined): boolean {
+  return meta?.forked_from_id !== undefined || meta?.source?.subagent?.thread_spawn !== undefined;
 }
 
 /** The turn id of a record that starts a turn: `event_msg` `task_started`, or `turn_context`. */
-function turnStartId(rec: Record<string, unknown> | undefined): unknown {
-  const payload = asRecord(rec?.payload);
+function turnStartId(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): string | undefined {
   const starts = rec?.type === "turn_context" || (rec?.type === "event_msg" && payload?.type === "task_started");
   return starts ? payload?.turn_id : undefined;
 }
@@ -116,17 +150,15 @@ function turnStartId(rec: Record<string, unknown> | undefined): unknown {
 const UUID_V7 = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
 
 /** The creation time in epoch milliseconds that a UUIDv7 carries in its first 48 bits. */
-function uuidV7Time(value: unknown): number | undefined {
-  const id = asString(value);
+function uuidV7Time(id: string | undefined): number | undefined {
   return id !== undefined && UUID_V7.test(id) ? Number.parseInt(id.slice(0, 8) + id.slice(9, 13), 16) : undefined;
 }
 
-function isUsageRecord(rec: Record<string, unknown> | undefined): boolean {
-  if (rec?.type === "token_usage_record") {
-    return true;
-  }
-  const payload = asRecord(rec?.payload);
-  return rec?.type === "event_msg" && payload?.type === "token_count" && asRecord(payload.info) !== undefined;
+function isUsageRecord(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): boolean {
+  return (
+    rec?.type === "token_usage_record" ||
+    (rec?.type === "event_msg" && payload?.type === "token_count" && payload.info !== undefined)
+  );
 }
 
 function secondOf(ts: number): number {
