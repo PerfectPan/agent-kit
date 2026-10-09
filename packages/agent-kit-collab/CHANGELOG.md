@@ -1,6 +1,17 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Thu, 08 Oct 2026 22:27:28 GMT and should not be manually modified.
+This log was last generated on Fri, 09 Oct 2026 09:29:24 GMT and should not be manually modified.
+
+## 0.5.0
+Fri, 09 Oct 2026 09:29:24 GMT
+
+### Patches
+
+- The file lease envelope, the holder file's ENOENT read and the SQLite busy check parse with zod/mini schemas; a stored record missing its `record` field fails as an invalid record again. The `/lease` and `/process-lock` entries grow by their schema code.
+
+### Updates
+
+- Parse the file lease envelope, the holder file's ENOENT code and the SQLite busy check with zod/mini schemas instead of hand-written shape checks. Observed behavior is unchanged.
 
 ## 0.4.0
 Thu, 08 Oct 2026 22:27:28 GMT
