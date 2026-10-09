@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Read hook payloads with own-property schema levels and a lazily cached view (back to about 1 µs per event), accept TOML's infinities, NaN and big integers in configuration documents and pre-image blobs, keep an own `__proto__` key through an edit, and refuse a stored ledger whose revision is not a number. The LiteLLM price adapter parses through zod/mini, so `/cost` now bundles it, and the `/node` entries grow with the platform's error-code schema.",
+      "comment": "Editing a TOML configuration document that holds a big integer no longer throws. `/cost` bundles zod/mini for its LiteLLM price parser and `/node` grows with the platform's error-code schema. redact now recognizes plain objects from another realm and returns objects branded with `Symbol.toStringTag` unchanged.",
       "type": "patch"
     }
   ],
