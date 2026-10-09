@@ -29,7 +29,7 @@ export async function readSmallFile(
       text += decoder.decode(next.value, { stream: true });
     }
   } catch (error) {
-    void chunks.return?.()?.catch(() => undefined);
+    void chunks.return?.().catch(() => undefined);
     signal?.throwIfAborted();
     const code = errnoCode(error);
     if (code === undefined) {

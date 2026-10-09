@@ -13,7 +13,7 @@
     "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
   },
   "devDependencies": {
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.4.0",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.5.0",
     "@types/node": "24.19.1",
     "oxc-parser": "0.153.0",
     "oxfmt": "0.71.0",

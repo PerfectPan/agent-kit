@@ -121,6 +121,9 @@ export function hookDialectConformance(dialect: HookDialect, fixtures: HookDiale
     {
       name: "declares harness-v1 and how its hooks are delivered",
       run: async () => {
+        // A conformance suite judges the dialect object as given, and a JS adapter can author one that ignores
+        // HookDialect, where these literal comparisons do check anything the type would otherwise guarantee.
+        // oxlint-disable-next-line no-unnecessary-condition
         check(dialect.specificationVersion === "harness-v1", `specificationVersion ${dialect.specificationVersion}`);
         check(dialect.agent !== "", "names no agent");
         check(events.length > 0, "maps no event");
@@ -131,6 +134,8 @@ export function hookDialectConformance(dialect: HookDialect, fixtures: HookDiale
             check((spec.output ?? dialect.output) !== undefined, `${name}: no output rules`);
           }
         } else {
+          // Same as above: the narrowed type only holds for a dialect authored against HookDialect.
+          // oxlint-disable-next-line no-unnecessary-condition
           check(dialect.delivery === "plugin", `delivery ${String(dialect.delivery)}`);
           check(dialect.timeout === undefined, "an in-process plugin has no hook timeout");
         }
@@ -204,7 +209,8 @@ export function hookDialectConformance(dialect: HookDialect, fixtures: HookDiale
           const event = read(dialect.agent, payload);
           check(
             event.phase === "unknown" && typeof event.nativeEvent === "string",
-            `${JSON.stringify(payload) ?? String(payload)} read as ${JSON.stringify(event)}`
+            // JSON.stringify's declared return hides that an odd payload can stringify to undefined.
+            `${(JSON.stringify(payload) as string | undefined) ?? String(payload)} read as ${JSON.stringify(event)}`
           );
         }
       }

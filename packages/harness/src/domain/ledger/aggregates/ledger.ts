@@ -120,6 +120,9 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
   if (!isRevision(snapshot.revision)) {
     return invalid("revision is not a non-negative integer");
   }
+  // restore judges a stored record that only claims to be a LedgerSnapshot, so `entries` can be null on disk;
+  // `typeof null` is "object", which slips past the typeof check and would reach Object.entries.
+  // oxlint-disable-next-line no-unnecessary-condition
   if (typeof snapshot.entries !== "object" || snapshot.entries === null || !Array.isArray(snapshot.pending)) {
     return invalid("entries or pending are missing");
   }

@@ -64,9 +64,11 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
   fixtures: AggregateRepositoryFixtures<Id, S>
 ): AggregateRepositoryCase[] {
   const { id, sample, open } = fixtures;
-  const describeSnapshot = (snapshot: unknown): string => JSON.stringify(snapshot) ?? String(snapshot);
+  // JSON.stringify returns undefined at runtime for an undefined input, which its declared `string` return hides.
+  const describeSnapshot = (snapshot: unknown): string =>
+    (JSON.stringify(snapshot) as string | undefined) ?? String(snapshot);
   const describeError = (error: unknown): string =>
-    error instanceof Error ? error.message : (JSON.stringify(error) ?? String(error));
+    error instanceof Error ? error.message : ((JSON.stringify(error) as string | undefined) ?? String(error));
 
   /** Reports every failure of `effect` as an `Error`, so a case's error channel stays `Error`. */
   const asCase = (effect: Effect.Effect<void, unknown>): Effect.Effect<void, Error> =>

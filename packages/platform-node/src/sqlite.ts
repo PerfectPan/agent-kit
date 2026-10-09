@@ -28,7 +28,8 @@ function loadSqlite(): SqliteModule {
     }
   } as typeof emitWarning;
   try {
-    sqliteModule = process.getBuiltinModule("node:sqlite");
+    // @types/node types the known-id overload as always present, but Node without node:sqlite returns undefined.
+    sqliteModule = process.getBuiltinModule("node:sqlite") as SqliteModule | undefined;
   } finally {
     process.emitWarning = emitWarning;
   }

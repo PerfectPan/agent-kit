@@ -26,6 +26,9 @@ function canonicalJson(value: JsonValue): string {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     const fields = Object.entries(value)
       .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      // Skips undefined-valued keys like JSON.stringify does, for content from a caller that ignores the JsonValue
+      // type (a JS object can hold them); canonicalJson(undefined) would stringify as the bare text "undefined".
+      // oxlint-disable-next-line no-unnecessary-condition
       .flatMap(([key, field]) => (field === undefined ? [] : [`${JSON.stringify(key)}:${canonicalJson(field)}`]));
     return `{${fields.join(",")}}`;
   }
