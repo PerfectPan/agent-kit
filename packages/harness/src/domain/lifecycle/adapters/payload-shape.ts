@@ -35,23 +35,25 @@ const pathKey = (path: FieldPath): string => path.join("\u0000");
 
 /**
  * Reads one payload path: `undefined` as soon as a level is not a record or list, or the leaf is absent or of
- * another type. A promise left in a payload field makes zod's synchronous parse throw, so the descent is guarded
- * and such a value ends the path — `readHookEvent` never throws, whatever the payload holds. The keys come from a
- * hook dialect, so the descent runs through schemas instead of scattered `typeof` checks.
+ * another type. A value zod's synchronous parse refuses, such as a promise left in a payload field, ends the path;
+ * anything else that throws while reading — a throwing getter on the key the path reads, a trapping proxy —
+ * propagates. The keys come from a hook dialect, so the descent runs through schemas instead of scattered `typeof`
+ * checks.
  */
 function readPath(path: FieldPath, payload: unknown): string | undefined {
   try {
+    // The level schemas are total transforms: a parse either returns the child value or throws, and only zod's
+    // refusal to read a value synchronously is an expected outcome here.
     let value: unknown = payload;
     for (const key of path) {
-      const step = level(key).safeParse(value);
-      if (!step.success) {
-        return undefined;
-      }
-      value = step.data;
+      value = level(key).safeParse(value).data;
     }
     return Leaf.safeParse(value).data;
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (error instanceof z.core.$ZodAsyncError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 

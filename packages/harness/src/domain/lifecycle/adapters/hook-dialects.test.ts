@@ -166,6 +166,22 @@ describe("readHookEvent", () => {
     expect(event.cwd).toBeUndefined();
   });
 
+  it("throws when reading the path runs a throwing getter on the key it reads", () => {
+    const throwing: unknown = Object.create(
+      {},
+      {
+        hook_event_name: { value: "Stop", enumerable: true },
+        session_id: {
+          get() {
+            throw new Error("boom");
+          },
+          enumerable: true
+        }
+      }
+    );
+    expect(() => readHookEvent("claude-code", throwing, {})).toThrow("boom");
+  });
+
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",
