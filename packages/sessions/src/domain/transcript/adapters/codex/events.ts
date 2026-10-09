@@ -1,5 +1,7 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
+import { lenient } from "../lenient.js";
 import {
   assignSeq,
   baseEvent,
@@ -21,11 +23,11 @@ import {
   unknownFormatGeneration
 } from "../../index.js";
 import type { Usage } from "../../../usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { codexPayload, type CodexHistoryItemValue, knownCodexGeneration } from "./records.js";
 import { codexSessionStem } from "../../../session/adapters/codex/layout.js";
-import { forkReplayEnd } from "./fork-replay.js";
-import { emitResponseItem, textFrom } from "./response-items.js";
-import { codexRecordUsage, type CodexUsageTracker, knownCodexGeneration } from "../../../usage/adapters/codex.js";
+import { scanForkReplay } from "./fork-replay.js";
+import { emitResponseItem, INJECTED_USER, textFrom } from "./response-items.js";
+import { codexRecordUsage, type CodexUsageTracker } from "../../../usage/adapters/codex.js";
 
 const AGENT = "codex";
 
@@ -79,6 +81,20 @@ const EVENT_MARKERS = new Map([
   ["thread_goal_updated", "thread-goal"]
 ]);
 
+/** What the translator keeps per event about the item that produced it, for the passes after the loop. */
+interface CodexItemInfo {
+  /** The ids Codex gave the item: its own `id` and `call_id`, non-empty. */
+  ids: string[];
+  /** The `callId` the event's payload carries. */
+  callId?: string;
+  /** The tool output the event's payload carries, read for the spawn link. */
+  output?: unknown;
+  /** The `text` the event's payload carries, when the item gave it one. */
+  text?: string;
+  /** The `replacement_history` of a `compacted` record. */
+  history?: (CodexHistoryItemValue | undefined)[];
+}
+
 export interface CodexTranslateOptions {
   /** Wins over the id the rollout records. */
   sessionId?: string;
@@ -105,7 +121,10 @@ export function translateCodexRecords(
   const responses = new Set<string>();
   const agents: Lane[] = [{ id: MAIN_LANE_ID }];
   const agentByPath = new Map<string, string>();
-  const replayEnd = forkReplayEnd(stamped);
+  const emitted = new Map<TranscriptEvent, CodexItemInfo>();
+  // The fork rule parses every record to find the replay's end; the loop reads those parsed values instead of the
+  // schemas again.
+  const replay = scanForkReplay(stamped);
   let sessionId = options.sessionId;
   let cwd: string | undefined;
   let title: string | undefined;
@@ -120,39 +139,48 @@ export function translateCodexRecords(
   let turnStart = 0;
 
   for (const [index, { record, ts }] of stamped.entries()) {
-    const rec = asRecord(record.value);
-    if (!rec || !knownCodexGeneration(rec)) {
+    const rec = replay.records[index]!;
+    if (!rec || !knownCodexGeneration(record.value)) {
       return err(unknownFormatGeneration(AGENT, record));
     }
-    if (index === replayEnd) {
+    if (index === replay.end) {
       // The first request after a replay covers only the rollout's own records.
       segment = events.length;
     }
-    const replayed = index < replayEnd;
-    const envelope = asString(rec.type);
-    if (!envelope) {
-      const recordType = asString(rec.record_type);
-      if (recordType) {
-        skipRecord(skipped, record, `record-${recordType}`);
+    const replayed = index < replay.end;
+    const envelope = rec.type;
+    if (envelope === undefined) {
+      if (rec.record_type !== undefined) {
+        skipRecord(skipped, record, `record-${rec.record_type}`);
       } else {
-        sessionId ??= asString(rec.id);
+        sessionId ??= rec.id;
         skipRecord(skipped, record, "legacy-header");
       }
       continue;
     }
     const bare = (rec.payload === undefined || rec.payload === null) && BARE_ITEMS.has(envelope);
-    const payload = bare ? rec : (asRecord(rec.payload) ?? {});
+    // A bare item's fields sit on the record itself, so only its reader parses the record as the payload.
+    const payload = (bare ? codexPayload(record.value) : replay.payloads[index]) ?? {};
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);
 
+    const track = (event: TranscriptEvent): void => {
+      emitted.set(event, {
+        ids: [payload.id, payload.call_id].filter((id): id is string => id !== undefined && id !== ""),
+        callId: payload.call_id,
+        output: payload.output
+      });
+    };
+
     const emit = (kind: TranscriptEventKind, body: Record<string, unknown>, id?: string): TranscriptEvent => {
-      let eventId = id ?? asString(payload.id) ?? lineKey(record);
+      let eventId = id ?? payload.id ?? lineKey(record);
       if (usedIds.has(eventId)) {
         eventId = lineKey(record);
       }
       usedIds.add(eventId);
       const event = baseEvent(record, kind, body, { id: eventId, ts });
       events.push(event);
+      track(event);
       return event;
     };
 
@@ -166,23 +194,24 @@ export function translateCodexRecords(
       };
       const event = baseEvent(record, "request", body, { id: `request:${key}`, ts, requestId: key });
       usedIds.add(event.id);
+      track(event);
       segment = placeRequest(events, segment, event);
     };
 
     if (envelope === "session_meta") {
       // A forked or resumed rollout repeats earlier sessions' `session_meta`; the first one is this file's.
-      sessionId ??= asString(payload.id) ?? asString(payload.session_id);
-      cwd ??= asString(payload.cwd);
-      agentVersion ??= asString(payload.cli_version);
+      sessionId ??= payload.id ?? payload.session_id;
+      cwd ??= payload.cwd;
+      agentVersion ??= payload.cli_version;
       if (!seenMeta) {
         seenMeta = true;
-        systemPrompt = asString(asRecord(payload.base_instructions)?.text);
+        systemPrompt = payload.base_instructions?.text;
       }
       skipRecord(skipped, record, "session-meta");
       continue;
     }
     if (envelope === "turn_context") {
-      model = asString(payload.model) ?? model;
+      model = payload.model ?? model;
       skipRecord(skipped, record, "turn-context");
       continue;
     }
@@ -211,15 +240,19 @@ export function translateCodexRecords(
       (bare && envelope === "compaction") ||
       (envelope === "response_item" && payload.type === "compaction")
     ) {
-      emit("compaction", {});
+      const event = emit("compaction", {});
+      // A bare record carries no payload, and the history of one is nobody's.
+      if (!bare) {
+        emitted.get(event)!.history = payload.replacement_history;
+      }
       continue;
     }
 
     if (envelope === "event_msg") {
-      const inner = asString(payload.type) ?? "event_msg";
+      const inner = payload.type ?? "event_msg";
       if (inner === "item_completed") {
-        const item = asRecord(payload.item);
-        const agentId = asString(item?.agent_thread_id);
+        const item = payload.item;
+        const agentId = item?.agent_thread_id;
         if (item?.type !== "SubAgentActivity" || !agentId) {
           skipRecord(skipped, record, "item-completed");
           continue;
@@ -227,12 +260,11 @@ export function translateCodexRecords(
         if (!agents.some((agent) => agent.id === agentId)) {
           agents.push({ id: agentId, parentId: MAIN_LANE_ID });
         }
-        const path = asString(item.agent_path);
-        if (path) {
-          agentByPath.set(path, agentId);
+        if (item.agent_path) {
+          agentByPath.set(item.agent_path, agentId);
         }
-        const kind = asString(item.kind);
-        const event = emit("system", { type: "subagent", agentId, ...(kind ? { kind } : {}) }, asString(item.id));
+        const kind = item.kind;
+        const event = emit("system", { type: "subagent", agentId, ...(kind ? { kind } : {}) }, item.id);
         event.agentId = agentId;
         continue;
       }
@@ -248,9 +280,9 @@ export function translateCodexRecords(
           events.slice(Math.max(segment, turnStart)).some((event) => MODEL_OUTPUT.has(event.kind));
         if (interrupted) {
           segment = Math.max(segment, turnStart);
-          request(undefined, undefined, asString(payload.reason) ?? "interrupted");
+          request(undefined, undefined, payload.reason ?? "interrupted");
         }
-        const durationMs = asNumber(payload.duration_ms);
+        const durationMs = payload.duration_ms;
         if (durationMs === undefined || replayed) {
           if (!interrupted) {
             skipRecord(skipped, record, durationMs === undefined ? "task-marker" : "fork-replay");
@@ -278,14 +310,17 @@ export function translateCodexRecords(
       emit("unknown", { type: envelope }, lineKey(record));
       continue;
     }
-    const event = emitResponseItem(bare ? envelope : (asString(payload.type) ?? "response_item"), payload, emit);
-    if (event.kind === "user" && !event.payload.injected && !title) {
-      title = asString(event.payload.text)?.slice(0, 80);
+    const { event, text } = emitResponseItem(bare ? envelope : (payload.type ?? "response_item"), payload, emit);
+    if (text !== undefined) {
+      emitted.get(event)!.text = text;
+    }
+    if (event.kind === "user" && !(text !== undefined && INJECTED_USER.test(text)) && !title) {
+      title = text?.slice(0, 80);
     }
   }
 
-  shadowCompactions(events);
-  linkSpawns(events, agents, agentByPath);
+  shadowCompactions(events, emitted);
+  linkSpawns(events, agents, agentByPath, emitted);
   markOrphanToolResults(events);
   assignSeq(events);
   const session: TranscriptSession = {
@@ -302,13 +337,6 @@ export function translateCodexRecords(
 
 function lineKey(record: SourcedRecord): string {
   return `L${record.line}`;
-}
-
-/** The ids Codex gave the record of an event: the item's `id` and `call_id`. */
-function itemIds(event: TranscriptEvent): string[] {
-  const item = asRecord(asRecord(event.original)?.payload) ?? asRecord(event.original);
-  const ids = [asString(item?.id), asString(item?.call_id), asString(event.payload.callId)];
-  return ids.filter((id): id is string => Boolean(id));
 }
 
 const HISTORY_KIND: Readonly<Record<string, TranscriptEventKind>> = {
@@ -330,9 +358,9 @@ const ITEM_KIND: Readonly<Record<string, TranscriptEventKind>> = {
 };
 
 /** The event kind a history item was translated to; a call and its output share a `call_id` but not a kind. */
-function itemKind(item: Record<string, unknown>): TranscriptEventKind | undefined {
-  const type = asString(item.type) ?? "";
-  return type === "message" ? HISTORY_KIND[asString(item.role) ?? ""] : ITEM_KIND[type];
+function itemKind(item: CodexHistoryItemValue): TranscriptEventKind | undefined {
+  const type = item.type ?? "";
+  return type === "message" ? HISTORY_KIND[item.role ?? ""] : ITEM_KIND[type];
 }
 
 /**
@@ -343,8 +371,9 @@ function itemKind(item: Record<string, unknown>): TranscriptEventKind | undefine
  */
 function keptEvents(
   candidates: readonly TranscriptEvent[],
-  items: readonly Record<string, unknown>[],
-  carried: ReadonlySet<string>
+  items: readonly CodexHistoryItemValue[],
+  carried: ReadonlySet<string>,
+  emitted: ReadonlyMap<TranscriptEvent, CodexItemInfo>
 ): Set<TranscriptEvent> {
   const kept = new Set<TranscriptEvent>();
   const claim = (matches: (event: TranscriptEvent) => boolean): void => {
@@ -353,51 +382,65 @@ function keptEvents(
       kept.add(event);
     }
   };
-  const idOf = (item: Record<string, unknown>): string | undefined => {
-    const id = asString(item.id) ?? asString(item.call_id);
+  const idOf = (item: CodexHistoryItemValue): string | undefined => {
+    const id = item.id ?? item.call_id;
     return id && carried.has(id) ? id : undefined;
   };
   for (const item of items) {
     const id = idOf(item);
     const kind = itemKind(item);
     if (id) {
-      claim((event) => (kind === undefined || event.kind === kind) && itemIds(event).includes(id));
+      claim((event) => (kind === undefined || event.kind === kind) && (emitted.get(event)?.ids ?? []).includes(id));
     }
   }
   for (const item of items) {
     const kind = itemKind(item);
     const text = textFrom(item.content);
-    if (!idOf(item) && asString(item.type) === "message" && kind && text !== undefined) {
-      claim((event) => event.kind === kind && event.payload.text === text);
+    if (!idOf(item) && item.type === "message" && kind && text !== undefined) {
+      claim((event) => event.kind === kind && emitted.get(event)?.text === text);
     }
   }
   return kept;
 }
 
 /** A `compacted` record removes the earlier events of its lane that its `replacement_history` does not keep. */
-function shadowCompactions(events: readonly TranscriptEvent[]): void {
+function shadowCompactions(
+  events: readonly TranscriptEvent[],
+  emitted: ReadonlyMap<TranscriptEvent, CodexItemInfo>
+): void {
   const carried = new Set<string>();
   for (const [index, event] of events.entries()) {
     if (event.kind === "compaction") {
-      const history = asRecord(asRecord(event.original)?.payload)?.replacement_history;
+      const history = emitted.get(event)?.history;
       const lane = event.agentId ?? "";
-      const kept = Array.isArray(history)
+      const kept = history
         ? keptEvents(
             events.slice(0, index).filter((earlier) => (earlier.agentId ?? "") === lane && !earlier.shadowedBy),
-            history.map((item) => asRecord(item)).filter((item): item is Record<string, unknown> => item !== undefined),
-            carried
+            history.filter((item): item is CodexHistoryItemValue => item !== undefined),
+            carried,
+            emitted
           )
         : undefined;
       shadowBefore(events, event, kept ? (earlier) => kept.has(earlier) : undefined);
     }
-    for (const id of itemIds(event)) {
+    for (const id of emitted.get(event)?.ids ?? []) {
       carried.add(id);
     }
   }
 }
 
-function callIdOf(event: TranscriptEvent): string | undefined {
-  return asString(event.payload.callId);
+/** A spawn result: the spawn_agent tool's JSON output, or the object it already was. */
+const SpawnResult = z.looseObject({ agent_id: lenient(z.string()), task_name: lenient(z.string()) });
+
+function spawnResultOf(output: unknown): z.output<typeof SpawnResult> | undefined {
+  if (typeof output !== "string") {
+    return z.safeParse(SpawnResult, output).data;
+  }
+  try {
+    return z.safeParse(SpawnResult, JSON.parse(output)).data;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -407,19 +450,20 @@ function callIdOf(event: TranscriptEvent): string | undefined {
 function linkSpawns(
   events: readonly TranscriptEvent[],
   agents: readonly Lane[],
-  agentByPath: ReadonlyMap<string, string>
+  agentByPath: ReadonlyMap<string, string>,
+  emitted: ReadonlyMap<TranscriptEvent, CodexItemInfo>
 ): void {
   const spawns = new Map<string, TranscriptEvent>();
   for (const event of events) {
     if (event.kind === "tool_call" && event.payload.name === "spawn_agent") {
-      spawns.set(callIdOf(event) ?? "", event);
+      spawns.set(emitted.get(event)?.callId ?? "", event);
     }
   }
   const spawnOf = new Map<string, TranscriptEvent>();
   for (const event of events) {
-    const spawn = event.kind === "tool_result" ? spawns.get(callIdOf(event) ?? "") : undefined;
-    const result = spawn ? jsonRecord(event.payload.output) : undefined;
-    const agentId = asString(result?.agent_id) ?? agentByPath.get(asString(result?.task_name) ?? "");
+    const spawn = event.kind === "tool_result" ? spawns.get(emitted.get(event)?.callId ?? "") : undefined;
+    const result = spawn ? spawnResultOf(emitted.get(event)?.output) : undefined;
+    const agentId = result?.agent_id ?? agentByPath.get(result?.task_name ?? "");
     if (spawn && agentId && !spawnOf.has(agentId)) {
       spawnOf.set(agentId, spawn);
     }
@@ -429,16 +473,5 @@ function linkSpawns(
     if (agent.id !== MAIN_LANE_ID && spawn) {
       agent.spawnEventId = spawn.id;
     }
-  }
-}
-
-function jsonRecord(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value !== "string") {
-    return asRecord(value);
-  }
-  try {
-    return asRecord(JSON.parse(value) as unknown);
-  } catch {
-    return undefined;
   }
 }

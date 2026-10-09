@@ -1,108 +1,137 @@
+import * as z from "zod/mini";
+
 import type { TranscriptEvent, TranscriptEventKind } from "../../index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import { lenient } from "../lenient.js";
+import type { CodexPayloadValue } from "./records.js";
 
 /** User-role text that Codex injects (environment, instructions, notifications). Not prompts. */
 export const INJECTED_USER: RegExp =
   /^\s*(?:<(?:environment_context|user_instructions|turn_aborted|subagent_notification|skill|recommended_plugins|heartbeat|goal_context|codex_delegation|hook_prompt|codex_internal_context)>|# AGENTS\.md instructions)/;
 
+/** The text fields of one content part: `text` wins over `output`. */
+const ContentPart = z.looseObject({
+  text: lenient(z.string()),
+  output: lenient(z.string())
+});
+
+/** A content value: a string, or an array of parts whose parts that are not objects are skipped. */
+const ContentText = z.union([z.string(), z.array(lenient(ContentPart))]);
+
 /** The text of a content value: a string, or the `text` (or `output`) parts of an array joined. */
 export function textFrom(content: unknown): string | undefined {
-  if (typeof content === "string") {
-    return content;
+  const value = z.safeParse(ContentText, content).data;
+  if (typeof value === "string") {
+    return value;
   }
-  if (!Array.isArray(content)) {
-    return undefined;
-  }
-  const parts: string[] = [];
-  for (const part of content) {
-    const item = asRecord(part);
-    const text = asString(item?.text) ?? asString(item?.output);
-    if (text) {
-      parts.push(text);
-    }
-  }
+  const parts = (value ?? [])
+    .map((part) => part?.text ?? part?.output)
+    .filter((text) => text !== undefined && text !== "");
   return parts.length > 0 ? parts.join("") : undefined;
 }
 
 export type EmitEvent = (kind: TranscriptEventKind, payload: Record<string, unknown>) => TranscriptEvent;
 
+/** The event of one response item, with the `text` its payload carries when the item gave it one. */
+export interface EmittedResponseItem {
+  event: TranscriptEvent;
+  text?: string;
+}
+
+function emitted(event: TranscriptEvent, text?: string): EmittedResponseItem {
+  return { event, ...(text ? { text } : {}) };
+}
+
 /**
  * Emits the event of one response item (`response_item.payload`, or a bare item of an older rollout). The caller
  * handles `compaction` items; any type not listed here becomes an `unknown` event.
  */
-export function emitResponseItem(type: string, item: Record<string, unknown>, emit: EmitEvent): TranscriptEvent {
+export function emitResponseItem(type: string, item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
   switch (type) {
     case "message":
       return emitMessage(item, emit);
     case "agent_message": {
       // A message between agents (`author` → `recipient`), not this model's own reply.
       const text = textFrom(item.content);
-      const author = asString(item.author);
-      const recipient = asString(item.recipient);
-      return emit("system", {
-        type: "agent_message",
-        ...(author ? { author } : {}),
-        ...(recipient ? { recipient } : {}),
-        ...(text ? { text } : {})
-      });
+      return emitted(
+        emit("system", {
+          type: "agent_message",
+          ...(item.author ? { author: item.author } : {}),
+          ...(item.recipient ? { recipient: item.recipient } : {}),
+          ...(text ? { text } : {})
+        }),
+        text
+      );
     }
     case "reasoning": {
       const text = textFrom(item.summary);
-      return emit("reasoning", text ? { text } : { redacted: true });
+      return emitted(emit("reasoning", text ? { text } : { redacted: true }), text);
     }
     case "web_search_call":
-      return emit("tool_call", {
-        callId: asString(item.call_id) ?? asString(item.id) ?? "",
-        name: "web_search",
-        ...(item.action === undefined ? {} : { args: item.action })
-      });
+      return emitted(
+        emit("tool_call", {
+          callId: item.call_id ?? item.id ?? "",
+          name: "web_search",
+          ...(item.action === undefined ? {} : { args: item.action })
+        })
+      );
     case "tool_search_call":
-      return emit("tool_call", {
-        callId: asString(item.call_id) ?? "",
-        name: "tool_search",
-        ...(item.arguments === undefined ? {} : { args: item.arguments })
-      });
+      return emitted(
+        emit("tool_call", {
+          callId: item.call_id ?? "",
+          name: "tool_search",
+          ...(item.arguments === undefined ? {} : { args: item.arguments })
+        })
+      );
     case "tool_search_output": {
-      const status = asString(item.status);
-      return emit("tool_result", {
-        callId: asString(item.call_id) ?? "",
-        ...(item.tools === undefined ? {} : { output: item.tools }),
-        ...(status === "failed" || status === "error" ? { isError: true } : {})
-      });
+      const status = item.status;
+      return emitted(
+        emit("tool_result", {
+          callId: item.call_id ?? "",
+          ...(item.tools === undefined ? {} : { output: item.tools }),
+          ...(status === "failed" || status === "error" ? { isError: true } : {})
+        })
+      );
     }
     case "function_call":
     case "custom_tool_call": {
       const args = item.arguments ?? item.input;
-      return emit("tool_call", {
-        callId: asString(item.call_id) ?? "",
-        name: asString(item.name) ?? "",
-        ...(args === undefined ? {} : { args: argsOf(args) })
-      });
+      return emitted(
+        emit("tool_call", {
+          callId: item.call_id ?? "",
+          name: item.name ?? "",
+          ...(args === undefined ? {} : { args: argsOf(args) })
+        })
+      );
     }
     case "function_call_output":
     case "custom_tool_call_output":
-      return emit("tool_result", {
-        callId: asString(item.call_id) ?? "",
-        ...resultFlags(item.output),
-        ...(item.output === undefined ? {} : { output: item.output })
-      });
+      return emitted(
+        emit("tool_result", {
+          callId: item.call_id ?? "",
+          ...resultFlags(item.output),
+          ...(item.output === undefined ? {} : { output: item.output })
+        })
+      );
     default:
-      return emit("unknown", { type });
+      return emitted(emit("unknown", { type }));
   }
 }
 
 /** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */
-function emitMessage(item: Record<string, unknown>, emit: EmitEvent): TranscriptEvent {
-  const role = asString(item.role);
+function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
+  const role = item.role;
   const text = textFrom(item.content);
   const body = text ? { text } : {};
   if (role === "developer") {
-    return emit("system", { ...body, injected: true });
+    return emitted(emit("system", { ...body, injected: true }), text);
   }
   if (role === "user") {
-    return emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) });
+    return emitted(
+      emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }),
+      text
+    );
   }
-  return emit(role === "assistant" ? "assistant" : "system", body);
+  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text);
 }
 
 /** Function call arguments are a JSON string; a string that is not JSON stays as it is. */
@@ -120,6 +149,9 @@ function argsOf(value: unknown): unknown {
 /** Exit-code headers Codex writes before a shell tool's output. */
 const EXIT_LINE = /^(?:Exit code: |Process exited with code )(-?\d+)$/m;
 
+/** `metadata.exit_code` of a JSON output, read through the schema of that output object. */
+const ExitCodeOutput = z.looseObject({ metadata: lenient(z.looseObject({ exit_code: lenient(z.number()) })) });
+
 function resultFlags(output: unknown): { isError?: boolean; exitCode?: number } {
   const exitCode = exitCodeOf(output);
   return exitCode === undefined ? {} : { exitCode, isError: exitCode !== 0 };
@@ -132,7 +164,7 @@ function exitCodeOf(output: unknown): number | undefined {
   }
   if (output.startsWith("{")) {
     try {
-      const code = asNumber(asRecord(asRecord(JSON.parse(output) as unknown)?.metadata)?.exit_code);
+      const code = z.safeParse(ExitCodeOutput, JSON.parse(output)).data?.metadata?.exit_code;
       if (code !== undefined) {
         return code;
       }
