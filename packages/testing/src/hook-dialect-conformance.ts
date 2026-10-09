@@ -122,7 +122,7 @@ export function hookDialectConformance(dialect: HookDialect, fixtures: HookDiale
       name: "declares harness-v1 and how its hooks are delivered",
       run: async () => {
         // A conformance suite judges the dialect object as given, and a JS adapter can author one that ignores
-        // HookDialect, where these literal comparisons do check anything the type would otherwise guarantee.
+        // HookDialect, so this comparison checks at runtime what the type only promises.
         // oxlint-disable-next-line no-unnecessary-condition
         check(dialect.specificationVersion === "harness-v1", `specificationVersion ${dialect.specificationVersion}`);
         check(dialect.agent !== "", "names no agent");
