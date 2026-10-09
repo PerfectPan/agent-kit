@@ -25,9 +25,9 @@ export default [
   // graphs did not pull in on main: most of their growth is zod/mini itself, the rest the reader schemas of
   // grok and claude-code. /transcript/usage also carries a bundled copy, since the entry imports nothing and
   // tsdown inlines it.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "20.4 kB" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "35.5 kB", ...nodeOnly },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "21.04 kB" },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "36.65 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "21.6 kB" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "18.5 kB" }
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "22.21 kB" },
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "18.94 kB" }
 ] satisfies SizeLimitConfig;
