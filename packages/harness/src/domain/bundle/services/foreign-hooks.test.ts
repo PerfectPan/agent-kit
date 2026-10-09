@@ -63,10 +63,7 @@ describe("droppedHooksOf", () => {
     const dropped = droppedHooksOf(placed.value);
     const stop = dropped.filter((hook) => hook.firedBy.event === "Stop");
     expect(stop).toEqual([
-      {
-        agent: "grok",
-        firedBy: { agent: "claude-code", event: "Stop", file: "~/.claude/settings.json" }
-      }
+      { agent: "grok", firedBy: { agent: "claude-code", event: "Stop", file: "~/.claude/settings.json" } }
     ]);
   });
 });

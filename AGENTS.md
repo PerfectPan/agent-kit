@@ -37,8 +37,7 @@ npm run build         # rush rebuild: internal packages have no build step, so a
 npm run lint          # vp lint: oxlint with type-aware rules and TypeScript diagnostics
 npm run typecheck
 npm run test          # includes the architecture boundary test in infra/architecture
-npm run check:package # after build: size-limit and the dist check of the shell; publint and attw
-                      # (ESM-only) run inside `vp pack`
+npm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
 
 # Record a release note for changed packages, then verify one exists (CI runs the verify step on PRs):
 npm run change

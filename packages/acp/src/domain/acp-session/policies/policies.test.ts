@@ -28,9 +28,7 @@ describe("permissionOutcome", () => {
       outcome: "selected",
       optionId: "reject_always"
     });
-    expect(permissionOutcome(request(["allow_once"]), undefined, false)).toEqual({
-      outcome: "cancelled"
-    });
+    expect(permissionOutcome(request(["allow_once"]), undefined, false)).toEqual({ outcome: "cancelled" });
   });
 
   it("accepts only an option the request offered, and answers cancelled while cancelling", () => {
@@ -43,9 +41,7 @@ describe("permissionOutcome", () => {
       outcome: "selected",
       optionId: "reject_once"
     });
-    expect(permissionOutcome(offered, optionOfKind(offered, "allow_once"), true)).toEqual({
-      outcome: "cancelled"
-    });
+    expect(permissionOutcome(offered, optionOfKind(offered, "allow_once"), true)).toEqual({ outcome: "cancelled" });
     expect(optionOfKind(offered, "allow_always")).toBeUndefined();
   });
 });

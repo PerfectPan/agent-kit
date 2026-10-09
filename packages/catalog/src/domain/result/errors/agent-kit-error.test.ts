@@ -7,12 +7,7 @@ describe("AgentKitError", () => {
     const cause = new Error("disk");
     const error = new AgentKitError("session-not-found", "missing", { cause });
     expect(error).toBeInstanceOf(Error);
-    expect(error).toMatchObject({
-      name: "AgentKitError",
-      code: "session-not-found",
-      message: "missing",
-      cause
-    });
+    expect(error).toMatchObject({ name: "AgentKitError", code: "session-not-found", message: "missing", cause });
     expect("cause" in new AgentKitError("x", "no cause")).toBe(false);
   });
 

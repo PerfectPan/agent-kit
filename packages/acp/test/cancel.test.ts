@@ -45,9 +45,7 @@ describe("cancel", () => {
         { type: "finish", id: "1.1", finishReason: "cancelled" }
       ]);
       expect((yield* session.snapshot).state).toBe("ready");
-      expect(yield* (yield* SessionBindingStore).get("chat:1")).toMatchObject({
-        sessionId: session.sessionId
-      });
+      expect(yield* (yield* SessionBindingStore).get("chat:1")).toMatchObject({ sessionId: session.sessionId });
       expect(eventTexts(yield* Stream.runCollect(session.prompt([text("next")])))).toEqual(["turn 2: next"]);
       yield* session.cancel();
     }).pipe(Effect.scoped, Effect.provide(TestLive))
@@ -111,9 +109,7 @@ describe("cancel", () => {
         const parts = yield* Stream.runCollect(session.prompt([text("permission")]));
         expect(eventTexts(parts)).toEqual(['permission {"outcome":"cancelled"}']);
         expect(parts.at(-2)).toMatchObject({ type: "finish", finishReason: "cancelled" });
-        expect(yield* (yield* SessionBindingStore).get(sessionKey)).toMatchObject({
-          sessionId: session.sessionId
-        });
+        expect(yield* (yield* SessionBindingStore).get(sessionKey)).toMatchObject({ sessionId: session.sessionId });
       }
       expect(calls).toBe(2);
       const [cancelled, closed] = handles as [AcpSessionHandle, AcpSessionHandle];
@@ -195,14 +191,8 @@ describe("cancel", () => {
         expect(Exit.isFailure(bystanderExit) && Exit.findErrorOption(bystanderExit)).toMatchObject({
           value: { _tag: "ConnectionClosed", reason: "cancel-unsettled" }
         });
-        expect(yield* stubborn.snapshot).toMatchObject({
-          state: "closed",
-          closeReason: "cancel-unsettled"
-        });
-        expect(yield* other.snapshot).toMatchObject({
-          state: "closed",
-          closeReason: "connection-closed"
-        });
+        expect(yield* stubborn.snapshot).toMatchObject({ state: "closed", closeReason: "cancel-unsettled" });
+        expect(yield* other.snapshot).toMatchObject({ state: "closed", closeReason: "connection-closed" });
 
         const ended = yield* connection.ended;
         expect(ended.reason).toBe("cancel-unsettled");
@@ -255,10 +245,7 @@ describe("the connection's end", () => {
       });
       const ended = yield* connection.ended;
       expect(ended).toMatchObject({ reason: "exited" });
-      expect(yield* other.snapshot).toMatchObject({
-        state: "closed",
-        closeReason: "connection-closed"
-      });
+      expect(yield* other.snapshot).toMatchObject({ state: "closed", closeReason: "connection-closed" });
       const opened = yield* Effect.exit(connection.newSession());
       expect(Exit.isFailure(opened) && Exit.findErrorOption(opened)).toMatchObject({
         value: { _tag: "ConnectionClosed", reason: "exited" }

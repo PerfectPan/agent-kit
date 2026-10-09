@@ -17,13 +17,7 @@ const write = (overrides: Partial<PlanStep> = {}): PlanStep => ({
 });
 
 const remove = (removal: PlanStep["removal"]): PlanStep =>
-  write({
-    action: "remove",
-    desired: undefined,
-    agents: [],
-    precondition: { hash: hash(2) },
-    removal
-  });
+  write({ action: "remove", desired: undefined, agents: [], precondition: { hash: hash(2) }, removal });
 
 describe("contentAfterStep", () => {
   it("leaves the desired content of a non-removal", () => {

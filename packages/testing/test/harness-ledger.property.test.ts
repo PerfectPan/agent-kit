@@ -63,22 +63,11 @@ const POOL: readonly ArtifactLocator[] = [
   { kind: "dir", path: `${HOME}/.claude/plugins/p1` },
   { kind: "json-entry", path: settings, pointer: "/hooks/Stop", member: "shim Stop" },
   { kind: "json-entry", path: settings, pointer: "/hooks/Stop", member: "old-shim Stop" },
-  {
-    kind: "json-entry",
-    path: settings,
-    pointer: "/hooks/SessionStart",
-    member: "shim SessionStart"
-  },
+  { kind: "json-entry", path: settings, pointer: "/hooks/SessionStart", member: "shim SessionStart" },
   { kind: "cli-registration", path: `${HOME}/.claude/plugins.json`, pointer: "p1@skills-dir" }
 ];
 const CONTENTS: readonly ContentHash[] = ["c1", "c2", "c3", "c4"].map(fixtureHash);
-const BUNDLE: Bundle = {
-  owner: OWNER,
-  version: "2.0.0",
-  digest: "d",
-  artifacts: [],
-  legacyMarkers: [MARKER]
-};
+const BUNDLE: Bundle = { owner: OWNER, version: "2.0.0", digest: "d", artifacts: [], legacyMarkers: [MARKER] };
 
 interface Scenario {
   readonly ledger: Ledger;
@@ -295,14 +284,7 @@ describe("Ledger invariants", () => {
       );
 
       const outcomes: StepOutcome[] = plan.steps.flatMap((step) =>
-        chance(0.15)
-          ? []
-          : [
-              {
-                locator: step.locator,
-                status: pick(["done", "done", "skipped", "failed"] as const)
-              }
-            ]
+        chance(0.15) ? [] : [{ locator: step.locator, status: pick(["done", "done", "skipped", "failed"] as const) }]
       );
       const status = new Map(outcomes.map((outcome) => [locatorKey(outcome.locator), outcome.status]));
       const completed = pending.complete(outcomes, { at: "t2" }).state;
@@ -421,12 +403,7 @@ describe("three-way verify", () => {
     for (const ledger of values) {
       for (const actual of values) {
         for (const desired of values) {
-          expect({
-            ledger,
-            actual,
-            desired,
-            status: threeWayVerify({ ledger, actual, desired })
-          }).toEqual({
+          expect({ ledger, actual, desired, status: threeWayVerify({ ledger, actual, desired }) }).toEqual({
             ledger,
             actual,
             desired,

@@ -117,9 +117,7 @@ describe("usage decoded while a file grows equals one decode of the whole file",
     const names = Object.keys(tree)
       .filter((path) => path.startsWith(`${dir}/`))
       .toSorted();
-    const whole = await decodeAll(createMemoryPlatform({ files: tree }), "opencode", dir, {
-      final: true
-    });
+    const whole = await decodeAll(createMemoryPlatform({ files: tree }), "opencode", dir, { final: true });
     const platform = createMemoryPlatform({ files: {} });
     const records: UsageRecord[] = [];
     let cursor: UsageCursor | undefined;
@@ -162,11 +160,7 @@ function claudeLines(records: readonly (readonly [string, number, number])[]): s
         requestId,
         sessionId: "s",
         timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
-        message: {
-          id: `msg-${requestId}`,
-          model: "claude-test",
-          usage: { input_tokens: input, output_tokens: output }
-        }
+        message: { id: `msg-${requestId}`, model: "claude-test", usage: { input_tokens: input, output_tokens: output } }
       })
     )
     .map((line) => `${line}\n`)
@@ -184,9 +178,7 @@ describe("claude-code requests across cursors", () => {
       ["req-a", 7, 3],
       ["req-a", 7, 500]
     ]);
-    const platform = createMemoryPlatform({
-      files: { [path]: text.slice(0, text.indexOf("\n") + 1) }
-    });
+    const platform = createMemoryPlatform({ files: { [path]: text.slice(0, text.indexOf("\n") + 1) } });
     const first = await decodeAll(platform, "claude-code", path);
     await platform.fs.writeAtomic(path, text);
     const next = await decodeAll(platform, "claude-code", path, {
@@ -228,10 +220,7 @@ describe("codex fork replay across cursors", () => {
       JSON.stringify({
         timestamp: new Date(Date.UTC(2026, 0, 1) + ms).toISOString(),
         type: "event_msg",
-        payload: {
-          type: "token_count",
-          info: { last_token_usage: { input_tokens: input, output_tokens: 1 } }
-        }
+        payload: { type: "token_count", info: { last_token_usage: { input_tokens: input, output_tokens: 1 } } }
       });
     const meta = JSON.stringify({
       timestamp: new Date(Date.UTC(2026, 0, 1)).toISOString(),

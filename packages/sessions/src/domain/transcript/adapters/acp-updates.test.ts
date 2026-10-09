@@ -17,13 +17,7 @@ function translate(updates: readonly Record<string, unknown>[], stopReason = "en
 }
 
 const TOOL_UPDATES = [
-  {
-    sessionUpdate: "tool_call",
-    toolCallId: "c1",
-    title: "bash",
-    status: "pending",
-    rawInput: { cmd: "ls" }
-  },
+  { sessionUpdate: "tool_call", toolCallId: "c1", title: "bash", status: "pending", rawInput: { cmd: "ls" } },
   { sessionUpdate: "tool_call_update", toolCallId: "c1", status: "in_progress", rawInput: null },
   {
     sessionUpdate: "tool_call_update",
@@ -61,12 +55,7 @@ describe("createAcpPartTranslator", () => {
     expect(translate(TOOL_UPDATES)).toEqual([
       { type: "tool-input-start", toolCallId: "c1", toolName: "bash" },
       { type: "tool-input-available", toolCallId: "c1", toolName: "bash", input: { cmd: "ls" } },
-      {
-        type: "tool-output-error",
-        toolCallId: "c1",
-        errorText: "no such dir",
-        output: "no such dir"
-      },
+      { type: "tool-output-error", toolCallId: "c1", errorText: "no such dir", output: "no such dir" },
       { type: "finish", id: "t.0", finishReason: "end_turn" }
     ]);
   });
@@ -86,11 +75,7 @@ describe("createAcpPartTranslator", () => {
       errorText: "the tool call failed",
       output: { code: 7 }
     });
-    expect(foldStreamParts(parts, () => 1)[1]?.payload).toEqual({
-      callId: "c2",
-      isError: true,
-      output: { code: 7 }
-    });
+    expect(foldStreamParts(parts, () => 1)[1]?.payload).toEqual({ callId: "c2", isError: true, output: { code: 7 } });
   });
 
   it("keeps other updates whole: user chunks as user events, session updates as system, the rest unknown", () => {
@@ -98,21 +83,9 @@ describe("createAcpPartTranslator", () => {
     const odd = { sessionUpdate: "something_new" };
     const parts = translate([chunk("user_message_chunk", "hi"), plan, odd]);
     expect(parts.slice(0, 3)).toEqual([
-      {
-        type: "update",
-        id: "t.0",
-        kind: "user",
-        payload: { text: "hi" },
-        original: chunk("user_message_chunk", "hi")
-      },
+      { type: "update", id: "t.0", kind: "user", payload: { text: "hi" }, original: chunk("user_message_chunk", "hi") },
       { type: "update", id: "t.1", kind: "system", payload: { type: "plan" }, original: plan },
-      {
-        type: "update",
-        id: "t.2",
-        kind: "unknown",
-        payload: { type: "something_new" },
-        original: odd
-      }
+      { type: "update", id: "t.2", kind: "unknown", payload: { type: "something_new" }, original: odd }
     ]);
   });
 });
@@ -182,9 +155,7 @@ describe("acpUsage", () => {
   });
 
   it("reads a count of an unexpected type as absent, like every log field", () => {
-    expect(acpUsage({ inputTokens: "10", outputTokens: Infinity, totalTokens: 5 })).toEqual({
-      totalTokens: 5
-    });
+    expect(acpUsage({ inputTokens: "10", outputTokens: Infinity, totalTokens: 5 })).toEqual({ totalTokens: 5 });
     expect(acpUsage({ inputTokens: NaN })).toBeUndefined();
   });
 });
@@ -204,12 +175,7 @@ describe("lenient reading of one update", () => {
       { type: "update", id: "t.0", kind: "unknown", payload: { type: "update" }, original: typed }
     ]);
     expect(
-      translator.update({
-        sessionUpdate: "tool_call",
-        toolCallId: 5,
-        title: "bash",
-        rawInput: { cmd: "ls" }
-      })
+      translator.update({ sessionUpdate: "tool_call", toolCallId: 5, title: "bash", rawInput: { cmd: "ls" } })
     ).toEqual([
       { type: "tool-input-start", toolCallId: "", toolName: "bash" },
       { type: "tool-input-available", toolCallId: "", toolName: "bash", input: { cmd: "ls" } }

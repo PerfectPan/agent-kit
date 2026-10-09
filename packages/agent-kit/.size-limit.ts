@@ -17,7 +17,7 @@ export default [
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
   // (about 5 kB) above all.
   { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78 kB" },
-  // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by tsdown.
+  // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8.25 kB" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "6.25 kB", ...nodeOnly },
@@ -28,7 +28,7 @@ export default [
   // Size-limit counts dependencies, and the log readers now import zod/mini, which the sessions and transcript
   // graphs did not pull in on main: most of their growth is zod/mini itself, the rest the reader schemas of
   // grok, claude-code and codex. /transcript/usage also carries a bundled copy, since the entry imports nothing
-  // and tsdown inlines it. The conformance suites also bundle cost, whose LiteLLM adapter now parses with zod/mini.
+  // and `vp pack` inlines it. The conformance suites also bundle cost, whose LiteLLM adapter now parses with zod/mini.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "21.73 kB" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "37.72 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },

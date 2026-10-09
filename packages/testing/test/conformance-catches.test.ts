@@ -106,11 +106,7 @@ describe("sessionAdapterConformance", () => {
     [
       "a shifted source pointer",
       "reads each source pointer back to original",
-      (t) =>
-        void (t.events[0]!.source = {
-          ...t.events[0]!.source,
-          offset: t.events[0]!.source.offset + 1
-        })
+      (t) => void (t.events[0]!.source = { ...t.events[0]!.source, offset: t.events[0]!.source.offset + 1 })
     ]
   ])("rejects %s through the check that owns it", async (_defect, name, change) => {
     expect(await failure(claude, name)).toBe("passed");

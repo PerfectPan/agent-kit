@@ -36,11 +36,7 @@ const BUNDLE: Bundle = {
   artifacts: [],
   legacyMarkers: ["agent-presence hook", "@rivus/agent-presence"]
 };
-const TARGET: InstallTarget = {
-  scope: "user",
-  agents: ["claude-code"],
-  roots: [`${HOME}/.claude`, `${HOME}/.agents`]
-};
+const TARGET: InstallTarget = { scope: "user", agents: ["claude-code"], roots: [`${HOME}/.claude`, `${HOME}/.agents`] };
 
 function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
   return {
@@ -157,10 +153,7 @@ describe("buildInstallPlan", () => {
     expect(result.ok && result.value.expectedTrustPrompts).toEqual([
       { agent: "claude-code", kind: "hook-review", locator: shim }
     ]);
-    expect(result.ok && result.value.basedOn).toEqual({
-      ledgerLineage: "lineage-1",
-      ledgerRevision: 3
-    });
+    expect(result.ok && result.value.basedOn).toEqual({ ledgerLineage: "lineage-1", ledgerRevision: 3 });
   });
 
   it("updates an outdated artifact and takes the disk's content when the ledger is behind", () => {
@@ -172,20 +165,13 @@ describe("buildInstallPlan", () => {
         observed: [seen(skill, 1), seen(behind, 5)]
       })
     );
-    expect(stepAt(all, skill)).toMatchObject({
-      action: "update",
-      drift: "outdated",
-      precondition: { hash: h(1) }
-    });
+    expect(stepAt(all, skill)).toMatchObject({ action: "update", drift: "outdated", precondition: { hash: h(1) } });
     expect(stepAt(all, behind)).toMatchObject({ action: "noop", desired: { hash: h(5) } });
   });
 
   it("S32 (domain): rejects the whole plan on a conflict without a choice, and applies each allowed choice", () => {
     const foreign = file(".claude/skills/presence/extra.md");
-    const unresolved = plan({
-      desired: [want(skill, 2), want(foreign, 3)],
-      observed: [seen(foreign, 9)]
-    });
+    const unresolved = plan({ desired: [want(skill, 2), want(foreign, 3)], observed: [seen(foreign, 9)] });
     expect(unresolved).toEqual({
       ok: false,
       error: {
@@ -193,11 +179,7 @@ describe("buildInstallPlan", () => {
         planId: "plan-1",
         conflicts: [
           {
-            step: expect.objectContaining({
-              locator: foreign,
-              action: "conflict",
-              conflict: "unmanaged-exists"
-            }),
+            step: expect.objectContaining({ locator: foreign, action: "conflict", conflict: "unmanaged-exists" }),
             choices: ["adopt", "backup"]
           }
         ]
@@ -205,11 +187,7 @@ describe("buildInstallPlan", () => {
     });
     const key = locatorKey(foreign);
     const choose = (choice: ConflictChoice) =>
-      plan({
-        desired: [want(foreign, 3)],
-        observed: [seen(foreign, 9)],
-        choices: { [key]: choice }
-      });
+      plan({ desired: [want(foreign, 3)], observed: [seen(foreign, 9)], choices: { [key]: choice } });
     expect(steps(choose("adopt"))).toEqual([
       expect.objectContaining({
         action: "adopt",
@@ -219,11 +197,7 @@ describe("buildInstallPlan", () => {
       })
     ]);
     expect(steps(choose("backup"))).toEqual([
-      expect.objectContaining({
-        action: "adopt",
-        capturePreImage: true,
-        precondition: { hash: h(9) }
-      })
+      expect.objectContaining({ action: "adopt", capturePreImage: true, precondition: { hash: h(9) } })
     ]);
     expect(choose("force")).toMatchObject({ ok: false, error: { _tag: "PlanConflict" } });
   });
@@ -249,10 +223,7 @@ describe("buildInstallPlan", () => {
       conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
     );
     expect(byPath.size).toBe(2);
-    expect(byPath.get(foreign.path)).toEqual({
-      conflict: "unmanaged-exists",
-      choices: ["adopt", "backup"]
-    });
+    expect(byPath.get(foreign.path)).toEqual({ conflict: "unmanaged-exists", choices: ["adopt", "backup"] });
     expect(byPath.get(oldHook.path)).toEqual({ conflict: "other-owner", choices: [] });
   });
 
@@ -273,24 +244,15 @@ describe("buildInstallPlan", () => {
       conflicts.map(({ step, choices }) => [step.locator.path, { conflict: step.conflict, choices }])
     );
     expect(byPath.size).toBe(2);
-    expect(byPath.get(foreign.path)).toEqual({
-      conflict: "unmanaged-exists",
-      choices: ["adopt", "backup"]
-    });
+    expect(byPath.get(foreign.path)).toEqual({ conflict: "unmanaged-exists", choices: ["adopt", "backup"] });
     expect(byPath.get(oldHook.path)).toEqual({ conflict: "user-modified", choices: [] });
   });
 
   it("asks before overwriting what the user changed, and overwrites only on force", () => {
-    const input = {
-      desired: [want(skill, 2)],
-      ledger: ledger([entry(skill)]),
-      observed: [seen(skill, 7)]
-    };
+    const input = { desired: [want(skill, 2)], ledger: ledger([entry(skill)]), observed: [seen(skill, 7)] };
     expect(plan(input)).toMatchObject({
       ok: false,
-      error: {
-        conflicts: [{ step: { conflict: "user-modified", drift: "user-modified" }, choices: ["force"] }]
-      }
+      error: { conflicts: [{ step: { conflict: "user-modified", drift: "user-modified" }, choices: ["force"] }] }
     });
     expect(steps(plan({ ...input, choices: { [locatorKey(skill)]: "force" } }))).toEqual([
       expect.objectContaining({ action: "update", precondition: { hash: h(7) }, choice: "force" })
@@ -310,11 +272,7 @@ describe("buildInstallPlan", () => {
 
   it("re-creates an artifact deleted outside harness", () => {
     expect(steps(plan({ desired: [want(skill, 2)], ledger: ledger([entry(skill, { contentHash: h(2) })]) }))).toEqual([
-      expect.objectContaining({
-        action: "create",
-        drift: "deleted-externally",
-        precondition: { absent: true }
-      })
+      expect.objectContaining({ action: "create", drift: "deleted-externally", precondition: { absent: true } })
     ]);
   });
 
@@ -348,28 +306,17 @@ describe("buildInstallPlan", () => {
     };
     expect(plan(input)).toMatchObject({
       ok: false,
-      error: {
-        conflicts: [{ step: { locator: linked, conflict: "symlinked-target" }, choices: ["adopt"] }]
-      }
+      error: { conflicts: [{ step: { locator: linked, conflict: "symlinked-target" }, choices: ["adopt"] }] }
     });
     const all = steps(plan({ ...input, choices: { [locatorKey(linked)]: "adopt" } }));
     expect(all.map((step) => [step.locator, step.action, step.choice])).toEqual([
       [linked, "adopt", "adopt"],
       [managed, "noop", undefined]
     ]);
-    expect(stepAt(all, linked)).toMatchObject({
-      precondition: { hash: h(3) },
-      desired: { hash: h(3) }
-    });
+    expect(stepAt(all, linked)).toMatchObject({ precondition: { hash: h(3) }, desired: { hash: h(3) } });
     expect(
-      plan({
-        ...input,
-        observed: [managedSeen, seen(linked, 4, { symlinkTarget: "/dotfiles/skill.md" })]
-      })
-    ).toMatchObject({
-      ok: false,
-      error: { conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }] }
-    });
+      plan({ ...input, observed: [managedSeen, seen(linked, 4, { symlinkTarget: "/dotfiles/skill.md" })] })
+    ).toMatchObject({ ok: false, error: { conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }] } });
   });
 
   it("refuses to add an entry to a file a dotfiles manager owns or that is a symlink, though the entry is not there yet", () => {
@@ -377,21 +324,12 @@ describe("buildInstallPlan", () => {
     const managed = plan({ desired: [want(hook, 2)], managedPaths: { [hook.path]: "chezmoi" } });
     expect(managed).toMatchObject({
       ok: false,
-      error: {
-        _tag: "PlanConflict",
-        conflicts: [{ step: { conflict: "dotfiles-managed" }, choices: [] }]
-      }
+      error: { _tag: "PlanConflict", conflicts: [{ step: { conflict: "dotfiles-managed" }, choices: [] }] }
     });
-    const linked = plan({
-      desired: [want(hook, 2)],
-      linkedPaths: { [hook.path]: "/dotfiles/settings.json" }
-    });
+    const linked = plan({ desired: [want(hook, 2)], linkedPaths: { [hook.path]: "/dotfiles/settings.json" } });
     expect(linked).toMatchObject({
       ok: false,
-      error: {
-        _tag: "PlanConflict",
-        conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }]
-      }
+      error: { _tag: "PlanConflict", conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }] }
     });
     expect(
       steps(plan({ desired: [want(hook, 2)], managedPaths: { [`${HOME}/other.json`]: "chezmoi" } }))
@@ -406,16 +344,10 @@ describe("buildInstallPlan", () => {
       [{ symlinkTarget: "/dotfiles/settings.json" }, "symlinked-target"]
     ] as const) {
       expect(
-        plan({
-          desired: [want(skill, 2)],
-          observed: [seen(oldHook, 12, { ...legacy, ...foreign })]
-        })
+        plan({ desired: [want(skill, 2)], observed: [seen(oldHook, 12, { ...legacy, ...foreign })] })
       ).toMatchObject({
         ok: false,
-        error: {
-          _tag: "PlanConflict",
-          conflicts: [{ step: { locator: oldHook, conflict }, choices: [] }]
-        }
+        error: { _tag: "PlanConflict", conflicts: [{ step: { locator: oldHook, conflict }, choices: [] }] }
       });
     }
   });
@@ -429,10 +361,7 @@ describe("buildInstallPlan", () => {
       observed: [
         seen(managed, 1, { managedBy: "chezmoi" }),
         seen(linked, 1, { symlinkTarget: "/dotfiles/b.md" }),
-        seen(oldHook, 12, {
-          content: { command: oldHook.member ?? "" },
-          symlinkTarget: "/dotfiles/settings.json"
-        })
+        seen(oldHook, 12, { content: { command: oldHook.member ?? "" }, symlinkTarget: "/dotfiles/settings.json" })
       ],
       choices: { [locatorKey(managed)]: "force" }
     });
@@ -473,15 +402,8 @@ describe("buildInstallPlan", () => {
       [skill, "create", undefined],
       [oldHook, "remove", true]
     ]);
-    expect(stepAt(all, extension)).toMatchObject({
-      capturePreImage: false,
-      desired: { hash: h(4) }
-    });
-    expect(stepAt(all, oldHook)).toMatchObject({
-      removal: "delete",
-      precondition: { hash: h(12) },
-      agents: []
-    });
+    expect(stepAt(all, extension)).toMatchObject({ capturePreImage: false, desired: { hash: h(4) } });
+    expect(stepAt(all, oldHook)).toMatchObject({ removal: "delete", precondition: { hash: h(12) }, agents: [] });
   });
 
   it("S33 (domain): uninstall removes or restores what the owner holds and keeps what the user changed", () => {
@@ -511,11 +433,7 @@ describe("buildInstallPlan", () => {
     expect(stepAt(all, gone)?.precondition).toEqual({ absent: true });
     expect(planned({ ledger: held, observed }).kept).toEqual([edited]);
     const forced = steps(plan({ ledger: held, observed, choices: { [locatorKey(edited)]: "force" } }));
-    expect(stepAt(forced, edited)).toMatchObject({
-      action: "remove",
-      removal: "delete",
-      precondition: { hash: h(6) }
-    });
+    expect(stepAt(forced, edited)).toMatchObject({ action: "remove", removal: "delete", precondition: { hash: h(6) } });
     expect(planned({ ledger: held, observed, choices: { [locatorKey(edited)]: "force" } }).kept).toEqual([]);
   });
 
@@ -547,58 +465,27 @@ describe("buildInstallPlan", () => {
   });
 
   it("joins another owner on identical content and conflicts on different content", () => {
-    const theirs = entry(skill, {
-      owners: ["other-app"],
-      activeOwner: "other-app",
-      agents: ["codex"]
-    });
+    const theirs = entry(skill, { owners: ["other-app"], activeOwner: "other-app", agents: ["codex"] });
     const target = { ...TARGET, agents: ["claude-code", "codex"] };
     expect(
-      steps(
-        plan({
-          desired: [want(skill, 1)],
-          ledger: ledger([theirs]),
-          observed: [seen(skill, 1)],
-          target
-        })
-      )
+      steps(plan({ desired: [want(skill, 1)], ledger: ledger([theirs]), observed: [seen(skill, 1)], target }))
     ).toEqual([
-      expect.objectContaining({
-        action: "adopt",
-        agents: ["claude-code", "codex"],
-        precondition: { hash: h(1) }
-      })
+      expect.objectContaining({ action: "adopt", agents: ["claude-code", "codex"], precondition: { hash: h(1) } })
     ]);
-    const different = {
-      desired: [want(skill, 2)],
-      ledger: ledger([theirs]),
-      observed: [seen(skill, 1)],
-      target
-    };
-    expect(plan(different)).toMatchObject({
-      ok: false,
-      error: { conflicts: [{ step: { conflict: "other-owner" } }] }
-    });
+    const different = { desired: [want(skill, 2)], ledger: ledger([theirs]), observed: [seen(skill, 1)], target };
+    expect(plan(different)).toMatchObject({ ok: false, error: { conflicts: [{ step: { conflict: "other-owner" } }] } });
     expect(steps(plan({ ...different, choices: { [locatorKey(skill)]: "force" } }))).toEqual([
       expect.objectContaining({ action: "update", choice: "force" })
     ]);
   });
 
   it("joins another owner only on its recorded content, never on a disk that already drifted from it", () => {
-    const theirs = entry(skill, {
-      owners: ["other-app"],
-      activeOwner: "other-app",
-      contentHash: h(1)
-    });
+    const theirs = entry(skill, { owners: ["other-app"], activeOwner: "other-app", contentHash: h(1) });
     expect(plan({ desired: [want(skill, 2)], ledger: ledger([theirs]), observed: [seen(skill, 2)] })).toMatchObject({
       ok: false,
       error: { conflicts: [{ step: { conflict: "other-owner" }, choices: ["force"] }] }
     });
-    const shared = entry(skill, {
-      owners: [OWNER, "other-app"],
-      activeOwner: "other-app",
-      contentHash: h(1)
-    });
+    const shared = entry(skill, { owners: [OWNER, "other-app"], activeOwner: "other-app", contentHash: h(1) });
     expect(plan({ desired: [want(skill, 2)], ledger: ledger([shared]), observed: [seen(skill, 2)] })).toMatchObject({
       ok: false,
       error: { conflicts: [{ step: { conflict: "other-owner" } }] }
@@ -609,18 +496,10 @@ describe("buildInstallPlan", () => {
     const target = { ...TARGET, agents: ["codex", "grok"] };
     const shared = file(".agents/skills/presence/SKILL.md");
     expect(
-      steps(
-        plan({
-          desired: [want(shared, 2, { agent: "grok" }), want(shared, 2, { agent: "codex" })],
-          target
-        })
-      )
+      steps(plan({ desired: [want(shared, 2, { agent: "grok" }), want(shared, 2, { agent: "codex" })], target }))
     ).toEqual([expect.objectContaining({ action: "create", agents: ["codex", "grok"] })]);
     expect(
-      plan({
-        desired: [want(shared, 2, { agent: "grok" }), want(shared, 3, { agent: "codex" })],
-        target
-      })
+      plan({ desired: [want(shared, 2, { agent: "grok" }), want(shared, 3, { agent: "codex" })], target })
     ).toEqual({
       ok: false,
       error: { _tag: "InvalidPlan", reason: "conflicting-desired", locator: shared }
@@ -674,11 +553,7 @@ describe("buildInstallPlan", () => {
       pointer: "presence@skills-dir"
     } as const;
     const oldDir = { kind: "dir", path: `${HOME}/.claude/skills/old` } as const;
-    const oldRegistration = {
-      kind: "cli-registration",
-      path: `${HOME}/.claude/plugins.json`,
-      pointer: "old"
-    } as const;
+    const oldRegistration = { kind: "cli-registration", path: `${HOME}/.claude/plugins.json`, pointer: "old" } as const;
     const all = steps(
       plan({
         desired: [want(registration, 2), want(dir, 3)],

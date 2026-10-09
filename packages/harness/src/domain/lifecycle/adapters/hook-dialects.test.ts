@@ -15,22 +15,13 @@ describe("readHookEvent", () => {
   });
 
   it("S30: lets payload evidence decide; GROK_SESSION_ID never names Grok, CURSOR_VERSION only for agents Cursor runs", () => {
-    const codex = {
-      hook_event_name: "PreToolUse",
-      session_id: "c1",
-      turn_id: "t1",
-      tool_name: "Bash"
-    };
+    const codex = { hook_event_name: "PreToolUse", session_id: "c1", turn_id: "t1", tool_name: "Bash" };
     expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }).agent).toBe("codex");
     expect(readHookEvent("codex", codex, { CURSOR_VERSION: "3.13.25" }).agent).toBe("codex");
     expect(readHookEvent("gemini-cli", { hook_event_name: "BeforeTool" }, { CURSOR_VERSION: "3.13.25" }).agent).toBe(
       "gemini-cli"
     );
-    const fromCursor = {
-      hook_event_name: "preToolUse",
-      cursor_version: "3.13.25",
-      conversation_id: "x"
-    };
+    const fromCursor = { hook_event_name: "preToolUse", cursor_version: "3.13.25", conversation_id: "x" };
     expect(readHookEvent("claude-code", fromCursor, { GROK_SESSION_ID: "g1" }).agent).toBe("cursor");
     expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { GROK_SESSION_ID: "g1" }).agent).toBe(
       "claude-code"
@@ -59,10 +50,7 @@ describe("readHookEvent", () => {
 
   it("S43: returns the terminal pane apart from the session, preferring the host over tmux", () => {
     const payload = { hook_event_name: "Stop", session_id: "s1" };
-    expect(readHookEvent("claude-code", payload, { TMUX_PANE: "%4" }).terminal).toEqual({
-      host: "tmux",
-      paneId: "%4"
-    });
+    expect(readHookEvent("claude-code", payload, { TMUX_PANE: "%4" }).terminal).toEqual({ host: "tmux", paneId: "%4" });
     expect(readHookEvent("claude-code", payload, { TMUX_PANE: "%4", SUPERSET_TERMINAL_ID: "t-9" }).terminal).toEqual({
       host: "superset",
       paneId: "t-9"
@@ -118,10 +106,7 @@ describe("readHookEvent", () => {
   });
 
   it("reads a key polluted onto Object.prototype as absent", () => {
-    Object.defineProperty(Object.prototype, "session_id", {
-      value: "polluted",
-      configurable: true
-    });
+    Object.defineProperty(Object.prototype, "session_id", { value: "polluted", configurable: true });
     try {
       const event = readHookEvent("claude-code", { hook_event_name: "Stop" }, {});
       expect(event.phase).toBe("finish");
@@ -200,12 +185,7 @@ describe("readHookEvent", () => {
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",
-      {
-        hook_event_name: "PreToolUse",
-        tool_name: "Bash",
-        tool_use_id: "c1",
-        tool_input: { command: "cat secret" }
-      },
+      { hook_event_name: "PreToolUse", tool_name: "Bash", tool_use_id: "c1", tool_input: { command: "cat secret" } },
       {}
     );
     expect(event.tool).toEqual({ name: "Bash", callId: "c1" });
@@ -430,13 +410,7 @@ describe("readHookEvent", () => {
           fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
         })
       )
-    ).toEqual({
-      agent: "my-agent",
-      phase: "finish",
-      scope: "turn",
-      nativeEvent: "done",
-      sessionId: "env-s"
-    });
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "env-s" });
     expect(
       readHookEvent(
         "my-agent",
@@ -447,13 +421,7 @@ describe("readHookEvent", () => {
           fields: { event: { paths: [["kind"]] }, sessionId: { paths: [["sid"]], env: null } }
         })
       )
-    ).toEqual({
-      agent: "my-agent",
-      phase: "finish",
-      scope: "turn",
-      nativeEvent: "done",
-      sessionId: "s"
-    });
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "s" });
     expect(
       readHookEvent(
         "claude-code",
@@ -523,11 +491,7 @@ describe("hook dialect facts", () => {
     const renamed = cursor.runsHooksOf?.find((foreign) => foreign.agent === "claude-code")?.events.PreToolUse;
     expect(renamed).toBe("preToolUse");
     const output = cursor.events.preToolUse?.output;
-    expect(output).toMatchObject({
-      invalidStdout: "block",
-      exitCode2: "block",
-      emptyStdout: "undocumented"
-    });
+    expect(output).toMatchObject({ invalidStdout: "block", exitCode2: "block", emptyStdout: "undocumented" });
     // An observer registered in Claude Code's settings prints the same thing in every agent that runs it.
     for (const agent of ["claude-code", "cursor", "grok"] as const) {
       const spec = builtinHookDialects[agent].events[agent === "cursor" ? "preToolUse" : "PreToolUse"];

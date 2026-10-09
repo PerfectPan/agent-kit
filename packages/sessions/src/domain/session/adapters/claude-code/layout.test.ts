@@ -16,8 +16,6 @@ describe("claude-code usage sources", () => {
       sessionId: "s-1",
       agentLaneId: "a"
     });
-    expect(claudeCodeUsageTarget("/h/projects/proj/s-1/subagents/agent-a.meta.json")).toEqual({
-      sessionId: "unknown"
-    });
+    expect(claudeCodeUsageTarget("/h/projects/proj/s-1/subagents/agent-a.meta.json")).toEqual({ sessionId: "unknown" });
   });
 });

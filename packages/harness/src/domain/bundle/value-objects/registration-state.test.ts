@@ -16,27 +16,18 @@ const registration = (): CliRegistration => ({
 describe("registrationContent", () => {
   it("reads an enabled registration as its installed copy's text, so an outdated copy is planned again", () => {
     expect(
-      registrationContent(true, {
-        installedCopy: "/u/me/copy",
-        copy: { isFile: true, content: "copy text" }
-      })
+      registrationContent(true, { installedCopy: "/u/me/copy", copy: { isFile: true, content: "copy text" } })
     ).toBe("copy text");
-    expect(
-      registrationContent(true, {
-        installedCopy: "/u/me/copy",
-        copy: { isFile: false, content: null }
-      })
-    ).toBe(true);
+    expect(registrationContent(true, { installedCopy: "/u/me/copy", copy: { isFile: false, content: null } })).toBe(
+      true
+    );
     expect(registrationContent(true, {})).toBe(true);
   });
 
   it("keeps an explicitly disabled registration as false even with a matching copy", () => {
-    expect(
-      registrationContent(false, {
-        installedCopy: "/u/me/copy",
-        copy: { isFile: true, content: "copy" }
-      })
-    ).toBe(false);
+    expect(registrationContent(false, { installedCopy: "/u/me/copy", copy: { isFile: true, content: "copy" } })).toBe(
+      false
+    );
   });
 
   it("reads as the record itself without an installed copy", () => {

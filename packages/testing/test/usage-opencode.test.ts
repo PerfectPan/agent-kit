@@ -203,10 +203,7 @@ describe("opencode usage (SQLite)", () => {
     const { path } = await database();
     const first = await decode(path);
     expect(first.records.map((record) => record.requestId)).not.toContain("msg_5");
-    const last = await decode(path, {
-      ...(first.cursor ? { from: first.cursor } : {}),
-      final: true
-    });
+    const last = await decode(path, { ...(first.cursor ? { from: first.cursor } : {}), final: true });
     expect(last.records.map((record) => [record.requestId, record.timestamp])).toEqual([["msg_5", 1767225606000]]);
     expect((await decode(path, { final: true })).records.map((record) => record.requestId)).toContain("msg_5");
   });
@@ -281,10 +278,7 @@ describe("opencode usage (SQLite)", () => {
     const whole = ids((await decode(path, { ...(first.cursor ? { from: first.cursor } : {}), final: true })).records);
     expect(whole).toEqual(["msg_5", "msg_5b"]);
     for (let take = 1; take <= whole.length; take++) {
-      const head = await decodePart(path, take, {
-        ...(first.cursor ? { from: first.cursor } : {}),
-        final: true
-      });
+      const head = await decodePart(path, take, { ...(first.cursor ? { from: first.cursor } : {}), final: true });
       const rest = await decodeRest(path, head.cursor, { final: true });
       expect([...ids(head.records), ...ids(rest)]).toEqual(whole);
     }
@@ -295,10 +289,7 @@ describe("opencode usage (SQLite)", () => {
     const records: UsageRecord[] = [];
     let cursor: UsageCursor | undefined;
     const step = async (final = false) => {
-      const next = await decode(path, {
-        ...(cursor ? { from: cursor } : {}),
-        ...(final ? { final } : {})
-      });
+      const next = await decode(path, { ...(cursor ? { from: cursor } : {}), ...(final ? { final } : {}) });
       records.push(...next.records);
       cursor = next.cursor;
     };

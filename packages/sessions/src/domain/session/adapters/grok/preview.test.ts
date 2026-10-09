@@ -57,10 +57,7 @@ describe("applyGrokSummary", () => {
 describe("previewGrokRecords", () => {
   it("takes the first prompt from the first user chunk that is not injected", () => {
     const preview = previewGrokRecords([
-      {
-        timestamp: "2026-01-01T00:00:00.000Z",
-        update: { sessionUpdate: "user_message_chunk", content: "hidden" }
-      },
+      { timestamp: "2026-01-01T00:00:00.000Z", update: { sessionUpdate: "user_message_chunk", content: "hidden" } },
       {
         timestamp: 1767225601,
         update: {
@@ -76,19 +73,12 @@ describe("previewGrokRecords", () => {
         }
       }
     ]);
-    expect(preview).toEqual({
-      startedAt: 1767225600000,
-      lastAt: 1767225601000,
-      firstPrompt: "hidden"
-    });
+    expect(preview).toEqual({ startedAt: 1767225600000, lastAt: 1767225601000, firstPrompt: "hidden" });
   });
 
   it("reads a field of an unexpected type as absent: no time, no text, no injected flag", () => {
     const preview = previewGrokRecords([
-      {
-        timestamp: "yesterday",
-        update: { sessionUpdate: "user_message_chunk", content: { text: 5 } }
-      },
+      { timestamp: "yesterday", update: { sessionUpdate: "user_message_chunk", content: { text: 5 } } },
       { timestamp: 1767225600, update: { sessionUpdate: 7, content: "not a chunk" } },
       {
         update: {
@@ -98,11 +88,7 @@ describe("previewGrokRecords", () => {
         }
       }
     ]);
-    expect(preview).toEqual({
-      startedAt: 1767225600000,
-      lastAt: 1767225600000,
-      firstPrompt: "Taken as a prompt"
-    });
+    expect(preview).toEqual({ startedAt: 1767225600000, lastAt: 1767225600000, firstPrompt: "Taken as a prompt" });
   });
 });
 

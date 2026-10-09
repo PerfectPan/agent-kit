@@ -51,12 +51,7 @@ describe("pi usage lines", () => {
     expect(
       pushed(
         decoder.push(
-          record(
-            message({
-              id: "e2",
-              message: { role: "assistant", usage: { input: 1, cost: { total: 0 } } }
-            })
-          )
+          record(message({ id: "e2", message: { role: "assistant", usage: { input: 1, cost: { total: 0 } } } }))
         )
       )
     ).toEqual([expect.objectContaining({ requestId: "e2", costUsd: 0, costSource: "agent" })]);
@@ -77,10 +72,7 @@ describe("pi usage lines", () => {
       pushed(
         decoder.push(
           record(
-            message({
-              id: "e2",
-              message: { role: "assistant", usage: { input: "1", output: 2, totalTokens: 2 } }
-            })
+            message({ id: "e2", message: { role: "assistant", usage: { input: "1", output: 2, totalTokens: 2 } } })
           )
         )
       )
@@ -90,12 +82,7 @@ describe("pi usage lines", () => {
     ).toEqual([]);
     const noCost = pushed(
       decoder.push(
-        record(
-          message({
-            id: "e4",
-            message: { role: "assistant", usage: { input: 1, cost: { total: "0" } } }
-          })
-        )
+        record(message({ id: "e4", message: { role: "assistant", usage: { input: 1, cost: { total: "0" } } } }))
       )
     );
     expect(noCost[0]).toMatchObject({ requestId: "e4" });
@@ -113,10 +100,7 @@ describe("pi usage lines", () => {
   });
 
   it("continues from a saved cursor state, reading a field of an unexpected type as absent", () => {
-    const decoder = piUsageLines(file, {
-      lastTime: "no",
-      forkTime: Date.parse("2026-01-01T00:00:00.000Z")
-    });
+    const decoder = piUsageLines(file, { lastTime: "no", forkTime: Date.parse("2026-01-01T00:00:00.000Z") });
     expect(pushed(decoder.push(record(message({ timestamp: "2025-12-31T00:00:00.000Z" }))))).toEqual([]);
   });
 });

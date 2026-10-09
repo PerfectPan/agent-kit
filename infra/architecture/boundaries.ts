@@ -97,7 +97,7 @@ export const boundaries: BoundaryRules = {
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
-    // The built `/harness/events` entry imports nothing, which check-dist enforces; tsdown bundles zod/mini into the
+    // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
     // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
     [HARNESS]: {
@@ -106,7 +106,7 @@ export const boundaries: BoundaryRules = {
       testsOnly: [PLATFORM_NODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
-    // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which tsdown
+    // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
     // bundles into the entry.
     [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: ["zod/mini"] },
     // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a

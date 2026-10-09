@@ -93,9 +93,7 @@ describe("grok translation", () => {
       usageByModel: { "grok-test": { usage: turnUsage, modelCalls: 2 } }
     });
     expect(request?.original).toMatchObject({
-      params: {
-        update: { usage: { costUsdTicks: 7, modelUsage: { "grok-test": { costUsdTicks: 7 } } } }
-      }
+      params: { update: { usage: { costUsdTicks: 7, modelUsage: { "grok-test": { costUsdTicks: 7 } } } } }
     });
     expect(request?.requestId).toBe("0");
     expect(
@@ -169,11 +167,7 @@ describe("grok translation", () => {
       title: "Look around",
       spawnEventId: spawned?.id
     });
-    expect(transcript.agents).toContainEqual({
-      id: "meta-only",
-      parentId: "main",
-      title: "From meta"
-    });
+    expect(transcript.agents).toContainEqual({ id: "meta-only", parentId: "main", title: "From meta" });
     expect(transcript.agents.find((lane) => lane.id === "main")?.spawnEventId).toBeUndefined();
     expect(transcript.events.filter((event) => event.kind === "system").map((event) => event.payload.type)).toEqual([
       "subagent_spawned",
@@ -319,11 +313,7 @@ describe("grok translation", () => {
         grokRecord(
           {
             sessionUpdate: "turn_completed",
-            usage: {
-              inputTokens: 1,
-              outputTokens: 1,
-              modelUsage: { "grok-old": { inputTokens: 1, outputTokens: 1 } }
-            }
+            usage: { inputTokens: 1, outputTokens: 1, modelUsage: { "grok-old": { inputTokens: 1, outputTokens: 1 } } }
           },
           2
         ),
@@ -351,11 +341,7 @@ describe("grok translation", () => {
     const requests = parsed.events.filter((event) => event.kind === "request");
     expect(requests[0]?.payload.model).toBe("grok-old");
     expect(requests[1]?.payload.model).toBe("grok-new");
-    expect(requests[1]?.payload.usage).toEqual({
-      inputTokens: 20,
-      outputTokens: 2,
-      totalTokens: 22
-    });
+    expect(requests[1]?.payload.usage).toEqual({ inputTokens: 20, outputTokens: 2, totalTokens: 22 });
     expect(requests[1]?.payload.usageByModel).toEqual({
       "grok-new": { usage: { inputTokens: 20, outputTokens: 2, totalTokens: 22 } }
     });
@@ -391,10 +377,7 @@ describe("grok translation", () => {
     const seen: unknown[] = [];
     await expect(
       (async () => {
-        for await (const item of listSessions(platform, {
-          agents: ["grok"],
-          signal: controller.signal
-        })) {
+        for await (const item of listSessions(platform, { agents: ["grok"], signal: controller.signal })) {
           seen.push(item);
         }
       })()
@@ -424,12 +407,7 @@ describe("grok translation", () => {
   it("replaces tool arguments and output with empty values and keeps them when the field is null", () => {
     const call = (id: string, line: number) =>
       grokRecord(
-        {
-          sessionUpdate: "tool_call",
-          toolCallId: id,
-          title: "shell",
-          rawInput: { command: "npm test" }
-        },
+        { sessionUpdate: "tool_call", toolCallId: id, title: "shell", rawInput: { command: "npm test" } },
         line
       );
     const done = (id: string, line: number, extra: Record<string, unknown>) =>
@@ -440,9 +418,7 @@ describe("grok translation", () => {
         done("empty-string", 2, { rawOutput: "temporary" }),
         done("empty-string", 3, { rawInput: {}, rawOutput: "" }),
         call("empty-content", 4),
-        done("empty-content", 5, {
-          content: [{ type: "content", content: { type: "text", text: "temporary" } }]
-        }),
+        done("empty-content", 5, { content: [{ type: "content", content: { type: "text", text: "temporary" } }] }),
         done("empty-content", 6, { content: "" }),
         call("empty-array", 7),
         done("empty-array", 8, { rawOutput: "temporary" }),
@@ -471,24 +447,11 @@ describe("grok translation", () => {
   it("marks a terminal tool update that has no call as an orphan result", () => {
     const parsed = value(
       translateGrokRecords([
-        grokRecord(
-          {
-            sessionUpdate: "tool_call_update",
-            toolCallId: "c1",
-            status: "completed",
-            rawOutput: "done"
-          },
-          1
-        )
+        grokRecord({ sessionUpdate: "tool_call_update", toolCallId: "c1", status: "completed", rawOutput: "done" }, 1)
       ])
     );
     expect(parsed.events.map((event) => event.kind)).toEqual(["tool_result"]);
-    expect(parsed.events[0]?.payload).toEqual({
-      callId: "c1",
-      isError: false,
-      output: "done",
-      orphan: true
-    });
+    expect(parsed.events[0]?.payload).toEqual({ callId: "c1", isError: false, output: "done", orphan: true });
   });
 
   it("returns ReadFailed when summary.json cannot be stated and no agent is named", async () => {
@@ -533,20 +496,12 @@ describe("grok lenient reading", () => {
     const parsed = value(
       translateGrokRecords([
         grokRecord(
-          {
-            sessionUpdate: "user_message_chunk",
-            content: "First",
-            _meta: { promptIndex: "0", modelId: 7 }
-          },
+          { sessionUpdate: "user_message_chunk", content: "First", _meta: { promptIndex: "0", modelId: 7 } },
           1
         ),
         grokRecord({ sessionUpdate: 7, content: "not an update" }, 2),
         grokRecord(
-          {
-            sessionUpdate: "turn_completed",
-            elapsed_ms: "25",
-            usage: { inputTokens: 15, outputTokens: 4 }
-          },
+          { sessionUpdate: "turn_completed", elapsed_ms: "25", usage: { inputTokens: 15, outputTokens: 4 } },
           3
         ),
         grokRecord({ sessionUpdate: "subagent_spawned", subagent_id: 7, description: "Look", status: 1 }, 4)
@@ -564,9 +519,7 @@ describe("grok lenient reading", () => {
     expect(parsed.events.filter((event) => event.kind === "user").map((event) => event.payload)).toEqual([
       { text: "First" }
     ]);
-    expect(parsed.events.find((event) => event.kind === "unknown")?.payload).toEqual({
-      type: "update"
-    });
+    expect(parsed.events.find((event) => event.kind === "unknown")?.payload).toEqual({ type: "update" });
   });
 
   it("keeps the hook runs it can read and drops the rest", () => {
@@ -635,12 +588,7 @@ describe("grok coalesce fallback", () => {
     const parsed = value(
       translateGrokRecords([
         grokRecord(
-          {
-            sessionUpdate: "auto_compact_completed",
-            tokens_before: "500",
-            tokens_used: 500,
-            tokens_after: 80
-          },
+          { sessionUpdate: "auto_compact_completed", tokens_before: "500", tokens_used: 500, tokens_after: 80 },
           1
         )
       ])
@@ -693,11 +641,7 @@ describe("grok decoder cursor state", () => {
         sessionUpdate: "turn_completed",
         prompt_id: "p-2",
         stop_reason: "end_turn",
-        usage: {
-          inputTokens: 1,
-          outputTokens: 1,
-          modelUsage: { "grok-b": { inputTokens: 1, outputTokens: 1 } }
-        }
+        usage: { inputTokens: 1, outputTokens: 1, modelUsage: { "grok-b": { inputTokens: 1, outputTokens: 1 } } }
       }
     ];
     const full = updates

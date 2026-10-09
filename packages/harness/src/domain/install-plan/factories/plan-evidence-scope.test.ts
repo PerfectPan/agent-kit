@@ -30,10 +30,7 @@ const hookBundle = (overrides: Partial<Bundle> = {}): Bundle => ({
 
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
 
-const grokHookFile: ArtifactLocator = {
-  kind: "file",
-  path: "/u/me/.grok/hooks/agent-presence.json"
-};
+const grokHookFile: ArtifactLocator = { kind: "file", path: "/u/me/.grok/hooks/agent-presence.json" };
 const claudeStop = (command: string): ArtifactLocator => ({
   kind: "json-entry",
   path: "/u/me/.claude/settings.json",

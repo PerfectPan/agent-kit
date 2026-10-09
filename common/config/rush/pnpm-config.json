@@ -4,6 +4,10 @@
   "autoInstallPeers": true,
   "strictPeerDependencies": true,
   "minimumReleaseAgeMinutes": 1440,
+  // Vite+ version lockstep: `vite-plus`, the core alias pinned here, and the `vitest` devDeps kept for
+  // `@effect/vitest` (5.0.3 = the version vite-plus bundles) must move together. A lone vitest bump puts a second
+  // vitest instance beside vite-plus's; a lone vite-plus bump leaves this override on the old core. Dependabot's
+  // `toolchain` group opens one PR for both.
   "globalOverrides": {
     "vite@*": "npm:@voidzero-dev/vite-plus-core@1.1.0"
   },

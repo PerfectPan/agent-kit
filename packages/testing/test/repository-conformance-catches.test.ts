@@ -31,11 +31,7 @@ interface Envelope {
 type Defect = "no-comparison" | "compares-too-loosely" | "write-then-conflict" | "ignores-schema";
 
 const conflict = (expectedRevision: number | undefined, storedRevision: number | undefined): Error =>
-  Object.assign(new Error("conflict"), {
-    _tag: "RevisionConflict",
-    expectedRevision,
-    storedRevision
-  });
+  Object.assign(new Error("conflict"), { _tag: "RevisionConflict", expectedRevision, storedRevision });
 
 const unsupportedSchema = (): Error => Object.assign(new Error("unsupported schema"), { _tag: "UnsupportedSchema" });
 

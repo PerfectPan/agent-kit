@@ -79,10 +79,7 @@ describe("decodeUsage cursors", () => {
     const head = await decode(platform, agent, path, { until, final: true });
     expect(head.items).toHaveLength(2);
     expect(head.items.every((item) => isUsageRecord(item) && item.timestamp < until)).toBe(true);
-    const rest = await decode(platform, agent, path, {
-      ...(head.cursor ? { from: head.cursor } : {}),
-      final: true
-    });
+    const rest = await decode(platform, agent, path, { ...(head.cursor ? { from: head.cursor } : {}), final: true });
     expect([...head.items, ...rest.items]).toEqual(whole.items);
   });
 
@@ -107,10 +104,7 @@ describe("decodeUsage cursors", () => {
     const first = await decode(platform, "pi", path, { final: true });
     expect(first.cursor?.offset).toBe(lineStart);
     await platform.fs.writeAtomic(path, full);
-    const next = await decode(platform, "pi", path, {
-      ...(first.cursor ? { from: first.cursor } : {}),
-      final: true
-    });
+    const next = await decode(platform, "pi", path, { ...(first.cursor ? { from: first.cursor } : {}), final: true });
     expect(ids(next.items)).toEqual(["resp-pi-2"]);
   });
 
@@ -124,10 +118,7 @@ describe("decodeUsage cursors", () => {
       {
         agent,
         path,
-        error: {
-          _tag: "SourceChanged",
-          source: { file: path, offset: cursor?.offset, length: 0, line: cursor?.line }
-        }
+        error: { _tag: "SourceChanged", source: { file: path, offset: cursor?.offset, length: 0, line: cursor?.line } }
       }
     ]);
     expect(changed.cursor).toBeUndefined();
@@ -153,11 +144,7 @@ describe("decodeUsage reads", () => {
         type: "assistant",
         requestId: `req-${index}`,
         timestamp: "2026-01-01T00:00:00.000Z",
-        message: {
-          id: `msg-${index}`,
-          usage: { input_tokens: 1, output_tokens: 1 },
-          content: "x".repeat(200)
-        }
+        message: { id: `msg-${index}`, usage: { input_tokens: 1, output_tokens: 1 }, content: "x".repeat(200) }
       });
     const path = "/u/me/.claude/projects/big/session.jsonl";
     const base = createMemoryPlatform({

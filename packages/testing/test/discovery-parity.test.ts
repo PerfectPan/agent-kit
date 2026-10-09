@@ -57,10 +57,7 @@ interface ParityCase {
 const fixtures = fileURLToPath(new URL("fixtures/discovery/agent-finder", import.meta.url));
 const cases: ParityCase[] = readdirSync(fixtures)
   .filter((file) => file.endsWith(".json") && file !== "providers.json")
-  .map((file) => ({
-    name: file.slice(0, -5),
-    ...JSON.parse(readFileSync(`${fixtures}/${file}`, "utf8"))
-  }));
+  .map((file) => ({ name: file.slice(0, -5), ...JSON.parse(readFileSync(`${fixtures}/${file}`, "utf8")) }));
 
 /** One of agent-finder's provider specs. */
 interface ProviderSpec {
@@ -94,13 +91,7 @@ const finderRecipes: Readonly<Record<string, ProbeRecipe>> = Object.fromEntries(
       mcpConfigPaths: provider.mcpConfigPathCandidates,
       ...(provider.versionProbe === null
         ? {}
-        : {
-            version: {
-              args: provider.versionProbe.split(" "),
-              parse: versionFromOutput,
-              sideEffects: []
-            }
-          }),
+        : { version: { args: provider.versionProbe.split(" "), parse: versionFromOutput, sideEffects: [] } }),
       warnings: provider.warnings
     } satisfies ProbeRecipe
   ])
@@ -203,11 +194,7 @@ const PI_CONFIG = "https://github.com/earendil-works/pi/blob/main/packages/codin
  */
 const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string }[] = [
   // Catalog owns display names.
-  {
-    agent: "opencode",
-    fact: "name",
-    source: "packages/catalog/src/domain/coding-agent/adapters/opencode.ts"
-  },
+  { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/coding-agent/adapters/opencode.ts" },
   // opencode also reads opencode.jsonc.
   { agent: "opencode", fact: "mcpConfigPaths", source: OPENCODE_CONFIG },
   { agent: "opencode", fact: "warnings", source: OPENCODE_CONFIG },
@@ -242,9 +229,7 @@ describe("parity with agent-finder", () => {
 
   for (const parityCase of cases) {
     it(`reports what agent-finder reported for ${parityCase.name} (${parityCase.source})`, async () => {
-      const installations = await detectAgents(machineOf(parityCase.probe), {
-        recipes: finderRecipes
-      });
+      const installations = await detectAgents(machineOf(parityCase.probe), { recipes: finderRecipes });
       expect(installations.map(toFinderRecord)).toEqual(parityCase.report.agents);
     });
   }
@@ -252,9 +237,7 @@ describe("parity with agent-finder", () => {
   it("counts statuses like agent-finder's doctor", async () => {
     const parityCase = cases.find((candidateCase) => candidateCase.name === "doctor-config-only");
     expect(parityCase).toBeDefined();
-    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), {
-      recipes: finderRecipes
-    });
+    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), { recipes: finderRecipes });
     const count = (status: string) => installations.filter((installation) => installation.status === status).length;
     expect([installations.length, count("found"), count("runnable"), count("missing"), count("unknown")]).toEqual([
       26, 1, 0, 25, 0

@@ -120,10 +120,7 @@ describe("claudeCodeUsageLines", () => {
           open: [{ key: "k", usage: { inputTokens: 1 }, timestamp: 2, offset: 0, length: 0, line: 1 }],
           reported: ["h"]
         },
-        worse: {
-          open: [{ key: "kept", usage: {}, timestamp: 4, offset: 1, length: 2, line: 3 }],
-          reported: []
-        }
+        worse: { open: [{ key: "kept", usage: {}, timestamp: 4, offset: 1, length: 2, line: 3 }], reported: [] }
       }
     });
   });

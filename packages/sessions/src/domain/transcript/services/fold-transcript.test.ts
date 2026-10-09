@@ -21,11 +21,7 @@ describe("foldTranscript", () => {
         capabilities: [],
         events: [
           event({ id: "u", kind: "user" }),
-          event({
-            id: "r",
-            kind: "request",
-            payload: { usage: { inputTokens: 3, outputTokens: 1 }, durationMs: 5 }
-          }),
+          event({ id: "r", kind: "request", payload: { usage: { inputTokens: 3, outputTokens: 1 }, durationMs: 5 } }),
           event({ id: "t", kind: "tool_result", payload: { callId: "c", isError: true } })
         ]
       })
@@ -46,12 +42,7 @@ describe("foldTranscript", () => {
           event({ id: "i", kind: "user", payload: { injected: true } }),
           event({ id: "s", kind: "user", agentId: "child" }),
           event({ id: "u-block", kind: "user" }),
-          event({
-            id: "n",
-            kind: "user",
-            payload: { continued: true },
-            source: { ...source, line: 3 }
-          }),
+          event({ id: "n", kind: "user", payload: { continued: true }, source: { ...source, line: 3 } }),
           event({ id: "v", kind: "user", source: { ...source, line: 2 } })
         ]
       })
@@ -61,11 +52,7 @@ describe("foldTranscript", () => {
 
   it("sums turn durations, and request durations only when no turn has one", () => {
     const request = event({ id: "r", kind: "request", payload: { durationMs: 7 } });
-    const turn = event({
-      id: "t",
-      kind: "system",
-      payload: { type: "turn_duration", durationMs: 40 }
-    });
+    const turn = event({ id: "t", kind: "system", payload: { type: "turn_duration", durationMs: 40 } });
     expect(foldTranscript(transcript({ capabilities: ["durations"], events: [request, turn] })).durationMs).toBe(40);
     expect(foldTranscript(transcript({ capabilities: ["durations"], events: [request] })).durationMs).toBe(7);
   });

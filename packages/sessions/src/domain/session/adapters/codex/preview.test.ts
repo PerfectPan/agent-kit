@@ -21,11 +21,7 @@ describe("previewCodexRecords", () => {
     expect(
       previewCodexRecords([
         { timestamp: AT, type: "session_meta", payload: { id: "cx-1", cwd: "/work/app" } },
-        {
-          type: "message",
-          role: "user",
-          content: [{ type: "input_text", text: "List the files" }]
-        }
+        { type: "message", role: "user", content: [{ type: "input_text", text: "List the files" }] }
       ])
     ).toEqual({
       sessionId: "cx-1",

@@ -10,10 +10,7 @@ const { readFile, execFile } = vi.hoisted(() => ({
   readFile: vi.fn<(path: string) => string>(),
   execFile: vi.fn<(file: string, args: readonly string[]) => string>()
 }));
-vi.mock("node:fs", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  readFileSync: readFile
-}));
+vi.mock("node:fs", async (importOriginal) => ({ ...(await importOriginal<object>()), readFileSync: readFile }));
 vi.mock("node:child_process", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   execFileSync: execFile
@@ -60,12 +57,7 @@ describe("linux identity", () => {
       "/proc/sys/kernel/random/boot_id": `${BOOT_ID}\n`,
       "/proc/42/stat": procStat(42, "a) b (c", "S", 98_765)
     });
-    expect(createIdentify("linux")(42)).toEqual({
-      host: hostname(),
-      bootId: BOOT_ID,
-      pid: 42,
-      startTime: 98_765
-    });
+    expect(createIdentify("linux")(42)).toEqual({ host: hostname(), bootId: BOOT_ID, pid: 42, startTime: 98_765 });
   });
 
   it("returns undefined for a missing, exiting or zombie process", () => {

@@ -19,12 +19,7 @@ const tags = (transition: AcpSessionTransition) => transition.events.map((event)
 describe("AcpSession", () => {
   it("starts, opens and runs one turn at a time", () => {
     const starting = value(AcpSession.create({ agent: "codex" }));
-    expect(starting.toSnapshot()).toEqual({
-      agent: "codex",
-      state: "starting",
-      turns: 0,
-      pendingPermissions: 0
-    });
+    expect(starting.toSnapshot()).toEqual({ agent: "codex", state: "starting", turns: 0, pendingPermissions: 0 });
     expect(starting.startTurn()).toEqual({
       ok: false,
       error: { _tag: "IllegalTransition", transition: "startTurn", state: "starting" }
@@ -39,10 +34,7 @@ describe("AcpSession", () => {
     });
     const finished = value(started.state.finishTurn("end_turn"));
     expect(finished.events).toEqual([{ _tag: "TurnFinished", sessionId: "s1", turn: 1, finishReason: "end_turn" }]);
-    expect(value(finished.state.startTurn()).state.toSnapshot()).toMatchObject({
-      state: "turn",
-      turns: 2
-    });
+    expect(value(finished.state.startTurn()).state.toSnapshot()).toMatchObject({ state: "turn", turns: 2 });
   });
 
   it("leaves the previous state unchanged and freezes every state", () => {
@@ -56,23 +48,11 @@ describe("AcpSession", () => {
   it("counts permission requests and returns to the turn when all are answered", () => {
     const turn = value(ready().startTurn()).state;
     const asked = value(value(turn.requestPermission()).state.requestPermission()).state;
-    expect(asked.toSnapshot()).toMatchObject({
-      state: "awaiting-permission",
-      pendingPermissions: 2
-    });
+    expect(asked.toSnapshot()).toMatchObject({ state: "awaiting-permission", pendingPermissions: 2 });
     const once = value(asked.answerPermission()).state;
-    expect(once.toSnapshot()).toMatchObject({
-      state: "awaiting-permission",
-      pendingPermissions: 1
-    });
-    expect(value(once.answerPermission()).state.toSnapshot()).toMatchObject({
-      state: "turn",
-      pendingPermissions: 0
-    });
-    expect(ready().requestPermission()).toMatchObject({
-      ok: false,
-      error: { _tag: "IllegalTransition" }
-    });
+    expect(once.toSnapshot()).toMatchObject({ state: "awaiting-permission", pendingPermissions: 1 });
+    expect(value(once.answerPermission()).state.toSnapshot()).toMatchObject({ state: "turn", pendingPermissions: 0 });
+    expect(ready().requestPermission()).toMatchObject({ ok: false, error: { _tag: "IllegalTransition" } });
   });
 
   it("cancels a running turn once and finishes it from cancelling", () => {
@@ -80,10 +60,7 @@ describe("AcpSession", () => {
     const asked = value(value(ready().startTurn()).state.requestPermission()).state;
     const cancelling = value(asked.cancel());
     expect(cancelling.events).toEqual([{ _tag: "CancelRequested", sessionId: "s1", turn: 1 }]);
-    expect(cancelling.state.toSnapshot()).toMatchObject({
-      state: "cancelling",
-      pendingPermissions: 1
-    });
+    expect(cancelling.state.toSnapshot()).toMatchObject({ state: "cancelling", pendingPermissions: 1 });
     expect(tags(value(cancelling.state.cancel()))).toEqual([]);
     expect(value(cancelling.state.answerPermission()).state.toSnapshot().state).toBe("cancelling");
     const finished = value(cancelling.state.finishTurn("cancelled"));
@@ -97,10 +74,7 @@ describe("AcpSession", () => {
       { _tag: "BindingInvalidated", sessionId: "s1", sessionKey: "chat:1" },
       { _tag: "SessionEnded", sessionId: "s1", reason: "cancel-unsettled" }
     ]);
-    expect(unsettled.state.toSnapshot()).toMatchObject({
-      state: "closed",
-      closeReason: "cancel-unsettled"
-    });
+    expect(unsettled.state.toSnapshot()).toMatchObject({ state: "closed", closeReason: "cancel-unsettled" });
     expect(value(ready().startTurn()).state.cancelUnsettled()).toMatchObject({
       ok: false,
       error: { _tag: "IllegalTransition", transition: "cancelUnsettled" }
@@ -110,10 +84,7 @@ describe("AcpSession", () => {
   it("refuses everything after close, and closing again changes nothing", () => {
     const closed = ready().close("connection-closed");
     expect(closed.events).toEqual([{ _tag: "SessionEnded", sessionId: "s1", reason: "connection-closed" }]);
-    const refused = {
-      ok: false,
-      error: { _tag: "SessionClosed", sessionId: "s1", reason: "connection-closed" }
-    };
+    const refused = { ok: false, error: { _tag: "SessionClosed", sessionId: "s1", reason: "connection-closed" } };
     expect(closed.state.startTurn()).toEqual(refused);
     expect(closed.state.cancel()).toEqual(refused);
     expect(closed.state.requestPermission()).toEqual(refused);
@@ -127,28 +98,12 @@ describe("AcpSession", () => {
     for (const snapshot of [
       { agent: "codex", state: "turn", turns: 1, pendingPermissions: 0 },
       { agent: "codex", sessionId: "s1", state: "turn", turns: 0, pendingPermissions: 0 },
-      {
-        agent: "codex",
-        sessionId: "s1",
-        state: "awaiting-permission",
-        turns: 1,
-        pendingPermissions: 0
-      },
+      { agent: "codex", sessionId: "s1", state: "awaiting-permission", turns: 1, pendingPermissions: 0 },
       { agent: "codex", sessionId: "s1", state: "ready", turns: 1, pendingPermissions: 2 },
       { agent: "codex", sessionId: "s1", state: "closed", turns: 1, pendingPermissions: 0 },
-      {
-        agent: "codex",
-        sessionId: "s1",
-        sessionKey: "",
-        state: "ready",
-        turns: 0,
-        pendingPermissions: 0
-      }
+      { agent: "codex", sessionId: "s1", sessionKey: "", state: "ready", turns: 0, pendingPermissions: 0 }
     ] as const) {
-      expect(AcpSession.restore(snapshot)).toMatchObject({
-        ok: false,
-        error: { _tag: "AcpSessionInvalid" }
-      });
+      expect(AcpSession.restore(snapshot)).toMatchObject({ ok: false, error: { _tag: "AcpSessionInvalid" } });
     }
   });
 });

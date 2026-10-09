@@ -24,13 +24,7 @@ const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
 function stamped(values: unknown[]): StampedRecord[] {
   return mergeByTime([
     values
-      .map((value, index) => ({
-        value,
-        file: "r.jsonl",
-        line: index + 1,
-        offset: index,
-        length: 1
-      }))
+      .map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
       .map(timedRecord)
   ]);
 }
@@ -38,10 +32,7 @@ function stamped(values: unknown[]): StampedRecord[] {
 const count = (ms: number, input: number) => ({
   timestamp: at(ms),
   type: "event_msg",
-  payload: {
-    type: "token_count",
-    info: { last_token_usage: { input_tokens: input, output_tokens: 1 } }
-  }
+  payload: { type: "token_count", info: { last_token_usage: { input_tokens: input, output_tokens: 1 } } }
 });
 
 describe("translateCodexRecords", () => {
@@ -69,11 +60,7 @@ describe("translateCodexRecords", () => {
             type: "token_usage_record",
             payload: { response_id: "r1", usage: "12 tokens" }
           },
-          {
-            timestamp: at(3000),
-            type: "event_msg",
-            payload: { type: "task_complete", duration_ms: "slow" }
-          }
+          { timestamp: at(3000), type: "event_msg", payload: { type: "task_complete", duration_ms: "slow" } }
         ])
       )
     );
@@ -117,10 +104,7 @@ describe("translateCodexRecords", () => {
           {
             timestamp: at(2000),
             type: "event_msg",
-            payload: {
-              type: "token_count",
-              info: { total_token_usage: { input_tokens: 150 }, last_token_usage: 5 }
-            }
+            payload: { type: "token_count", info: { total_token_usage: { input_tokens: 150 }, last_token_usage: 5 } }
           }
         ])
       )
@@ -164,11 +148,7 @@ describe("translateCodexRecords", () => {
       payload: { id: "cx-fork", forked_from_id: forkedFrom }
     });
     const counts = [count(100, 1), count(200, 2), count(1500, 3)];
-    const usage = (input: number) => ({
-      inputTokens: input,
-      outputTokens: 1,
-      totalTokens: input + 1
-    });
+    const usage = (input: number) => ({ inputTokens: input, outputTokens: 1, totalTokens: input + 1 });
     const usages = (records: unknown[]) => {
       const result = translated(translateCodexRecords(stamped(records)));
       return result.events.flatMap((event) => ("usage" in event.payload ? [event.payload.usage] : []));
@@ -216,17 +196,9 @@ describe("translateCodexRecords", () => {
           {
             timestamp: at(2000),
             type: "response_item",
-            payload: {
-              type: "message",
-              role: "user",
-              content: [{ type: "input_text", text: "Keep" }]
-            }
+            payload: { type: "message", role: "user", content: [{ type: "input_text", text: "Keep" }] }
           },
-          {
-            timestamp: at(3000),
-            type: "compacted",
-            payload: { message: "s", replacement_history: [{ id: "E1" }] }
-          }
+          { timestamp: at(3000), type: "compacted", payload: { message: "s", replacement_history: [{ id: "E1" }] } }
         ])
       )
     );

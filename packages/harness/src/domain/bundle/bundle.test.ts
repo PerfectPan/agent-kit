@@ -22,19 +22,10 @@ describe("checkBundle", () => {
     const valid = bundle({
       owner: "@scope/app",
       artifacts: [
-        {
-          type: "skill",
-          name: "presence-status",
-          files: { "SKILL.md": "# x", "scripts/run.sh": "echo" }
-        },
+        { type: "skill", name: "presence-status", files: { "SKILL.md": "# x", "scripts/run.sh": "echo" } },
         { type: "mcp-server", name: "presence_mcp", transport: "stdio", command: "presence-mcp" },
         { type: "instructions", id: "presence", text: "Report status." },
-        {
-          type: "hooks",
-          command: "/u/me/.local/bin/presence-hook",
-          events: { codex: ["Stop"] },
-          timeoutSeconds: 5
-        }
+        { type: "hooks", command: "/u/me/.local/bin/presence-hook", events: { codex: ["Stop"] }, timeoutSeconds: 5 }
       ]
     });
     expect(checkBundle(valid)).toEqual({ ok: true, value: valid });
@@ -82,9 +73,7 @@ describe("checkBundle", () => {
       "hook timeout is not a positive number of seconds"
     ],
     [
-      {
-        artifacts: [{ type: "mcp-server", name: "2048", transport: "http", url: "http://localhost:2048" }]
-      },
+      { artifacts: [{ type: "mcp-server", name: "2048", transport: "http", url: "http://localhost:2048" }] },
       'MCP server name "2048" does not start with a letter or "_" followed by letters, digits, "_" or "-"'
     ],
     [
@@ -121,10 +110,7 @@ describe("isLegacyArtifact", () => {
       })
     ).toBe(true);
     expect(
-      isLegacyArtifact(markers, {
-        type: "command",
-        command: "node /opt/x/dist/src/cli.js hook --event Stop"
-      })
+      isLegacyArtifact(markers, { type: "command", command: "node /opt/x/dist/src/cli.js hook --event Stop" })
     ).toBe(true);
     expect(isLegacyArtifact(markers, "./plugins/agent-signature.js")).toBe(true);
     expect(isLegacyArtifact(markers, "// @rivus/agent-presence pi extension\nexport default () => {}")).toBe(true);
@@ -175,21 +161,13 @@ describe("hookRegistrations", () => {
       ok: true,
       value: [{ event: "session.idle", command: "/u/me/.local/bin/presence-hook" }]
     });
-    expect(hookRegistrations(spec({ codex: ["Stop"] }), builtinHookDialects.grok)).toEqual({
-      ok: true,
-      value: []
-    });
+    expect(hookRegistrations(spec({ codex: ["Stop"] }), builtinHookDialects.grok)).toEqual({ ok: true, value: [] });
   });
 
   it("refuses an event the dialect does not know, such as Gemini's old Claude-style names (agent-presence#86)", () => {
     expect(hookRegistrations(spec({ "gemini-cli": ["PreToolUse"] }), builtinHookDialects["gemini-cli"])).toEqual({
       ok: false,
-      error: {
-        _tag: "HookSpecRejected",
-        agent: "gemini-cli",
-        event: "PreToolUse",
-        reason: "unknown-event"
-      }
+      error: { _tag: "HookSpecRejected", agent: "gemini-cli", event: "PreToolUse", reason: "unknown-event" }
     });
     expect(hookRegistrations(spec({ codex: ["constructor"] }), builtinHookDialects.codex)).toMatchObject({
       ok: false,
@@ -200,12 +178,7 @@ describe("hookRegistrations", () => {
   it("never registers an observer on a gate where silence does not let the operation proceed", () => {
     expect(hookRegistrations(spec({ cursor: ["postToolUse", "preToolUse"] }), builtinHookDialects.cursor)).toEqual({
       ok: false,
-      error: {
-        _tag: "HookSpecRejected",
-        agent: "cursor",
-        event: "preToolUse",
-        reason: "blocking-gate"
-      }
+      error: { _tag: "HookSpecRejected", agent: "cursor", event: "preToolUse", reason: "blocking-gate" }
     });
     expect(
       hookRegistrations(spec({ "claude-code": ["PreToolUse"] }), builtinHookDialects["claude-code"])
@@ -249,19 +222,14 @@ describe("hookRegistrations across agents that run each other's hooks", () => {
 
   it("allows it where no other agent loads it, such as a skills-dir plugin", () => {
     const runBy = runnersOf("claude-code", "~/.claude/skills/presence/hooks/hooks.json", builtinHookDialects);
-    expect(hookRegistrations(spec, builtinHookDialects["claude-code"], { runBy })).toMatchObject({
-      ok: true
-    });
+    expect(hookRegistrations(spec, builtinHookDialects["claude-code"], { runBy })).toMatchObject({ ok: true });
   });
 });
 
 describe("placeHooks", () => {
   const command = "/u/me/.local/bin/presence-hook";
   const settings = { agent: "claude-code", file: "~/.claude/settings.json" } as const;
-  const plugin = {
-    agent: "claude-code",
-    file: "~/.claude/skills/presence/hooks/hooks.json"
-  } as const;
+  const plugin = { agent: "claude-code", file: "~/.claude/skills/presence/hooks/hooks.json" } as const;
   const grok = { agent: "grok", file: "~/.grok/hooks/presence.json" } as const;
   const cursor = { agent: "cursor", file: "~/.cursor/hooks.json" } as const;
   const spec = (events: HookSpec["events"]): HookSpec => ({ type: "hooks", command, events });
@@ -272,10 +240,7 @@ describe("placeHooks", () => {
     ).toEqual({
       ok: true,
       value: [
-        {
-          ...settings,
-          registrations: [{ event: "Stop", command, agents: ["claude-code", "grok"] }]
-        },
+        { ...settings, registrations: [{ event: "Stop", command, agents: ["claude-code", "grok"] }] },
         { ...grok, registrations: [] }
       ]
     });
@@ -348,20 +313,12 @@ describe("placeHooks", () => {
   it("checks the gates of every agent that could run the file, even one reported as turned off (agent-presence#89)", () => {
     const cursorOff = [{ runner: "cursor", agent: "claude-code", enabled: false }] as const;
     expect(
-      placeHooks(spec({ "claude-code": ["PreToolUse"] }), [settings], builtinHookDialects, {
-        compat: cursorOff
-      })
-    ).toMatchObject({
-      ok: false,
-      error: { reason: "blocking-gate", runBy: { agent: "cursor", event: "preToolUse" } }
-    });
+      placeHooks(spec({ "claude-code": ["PreToolUse"] }), [settings], builtinHookDialects, { compat: cursorOff })
+    ).toMatchObject({ ok: false, error: { reason: "blocking-gate", runBy: { agent: "cursor", event: "preToolUse" } } });
     const optIn = {
       ...builtinHookDialects.cursor,
       agent: "opt-in",
-      runsHooksOf: builtinHookDialects.cursor.runsHooksOf?.map((hooks) => ({
-        ...hooks,
-        byDefault: false
-      }))
+      runsHooksOf: builtinHookDialects.cursor.runsHooksOf?.map((hooks) => ({ ...hooks, byDefault: false }))
     };
     expect(runnersOf("claude-code", "~/.claude/settings.json", { "opt-in": optIn }).map((d) => d.agent)).toEqual([
       "opt-in"
@@ -388,11 +345,7 @@ describe("placeHooks", () => {
     [[settings, plugin], { agent: "claude-code", file: plugin.file, reason: "repeated-agent" }],
     [
       [{ agent: "claude-code", file: "/u/me/.claude/settings.json" }, grok],
-      {
-        agent: "claude-code",
-        file: "/u/me/.claude/settings.json",
-        reason: "not-home-or-project-relative"
-      }
+      { agent: "claude-code", file: "/u/me/.claude/settings.json", reason: "not-home-or-project-relative" }
     ],
     [
       [{ agent: "grok", file: "~/../etc/hooks.json" }],

@@ -8,12 +8,7 @@ describe("artifact locators", () => {
     expect(locatorProblem({ kind: "file", path: "/u/me/.claude/skills/x/SKILL.md" })).toBeUndefined();
     expect(locatorProblem({ kind: "dir", path: "C:\\Users\\me\\.codex\\plugins\\x" })).toBeUndefined();
     expect(
-      locatorProblem({
-        kind: "json-entry",
-        path: "/u/me/.claude/settings.json",
-        pointer: "/hooks/Stop",
-        member: "x"
-      })
+      locatorProblem({ kind: "json-entry", path: "/u/me/.claude/settings.json", pointer: "/hooks/Stop", member: "x" })
     ).toBeUndefined();
     expect(locatorProblem({ kind: "managed-block", path: "/p/AGENTS.md", pointer: "presence" })).toBeUndefined();
   });
@@ -63,12 +58,7 @@ describe("artifact locators", () => {
   });
 
   it("identifies an array element by its member, so the user's edits around it do not change its key", () => {
-    const ours = {
-      kind: "json-entry",
-      path: "/x",
-      pointer: "/hooks/Stop",
-      member: "/u/me/bin/shim Stop"
-    } as const;
+    const ours = { kind: "json-entry", path: "/x", pointer: "/hooks/Stop", member: "/u/me/bin/shim Stop" } as const;
     const theirs = { ...ours, member: "~/bin/notify.sh" };
     expect(locatorKey(ours)).toBe(JSON.stringify(["/x", "/hooks/Stop", "/u/me/bin/shim Stop"]));
     expect(locatorKey(ours)).not.toBe(locatorKey(theirs));

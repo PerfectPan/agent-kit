@@ -165,11 +165,7 @@ describe("releaseErrors", () => {
   });
 
   it("rejects a prerelease policy version", () => {
-    const policy = {
-      policyName: "main",
-      definitionName: "lockStepVersion",
-      version: "1.2.3-rc.0"
-    } as const;
+    const policy = { policyName: "main", definitionName: "lockStepVersion", version: "1.2.3-rc.0" } as const;
     expect(releaseErrors(input({ tag: "v1.2.3-rc.0", policy }))).toContain(
       'policy main version must be a stable x.y.z release, got "1.2.3-rc.0"'
     );
@@ -210,13 +206,7 @@ describe("releaseErrors", () => {
 describe("releaseState", () => {
   const head = "a".repeat(40);
   const state = (overrides: Partial<ReleaseStateInput>) =>
-    releaseState({
-      pendingChangeFiles: [],
-      version: "0.1.0",
-      head,
-      taggedCommit: undefined,
-      ...overrides
-    });
+    releaseState({ pendingChangeFiles: [], version: "0.1.0", head, taggedCommit: undefined, ...overrides });
 
   it("prepares the release PR while change files are pending, whatever the tags say", () => {
     expect(state({ pendingChangeFiles: ["@scope/lib/x.json"] })).toBe("version");

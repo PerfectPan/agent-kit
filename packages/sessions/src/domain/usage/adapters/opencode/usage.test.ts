@@ -60,9 +60,7 @@ describe("opencode message usage", () => {
     expect(opencodeMessageUsage({ ...message, time: { created: 1000 } }, row({ settledAt: 5000 }))).toMatchObject({
       timestamp: 1000
     });
-    expect(opencodeMessageUsage(message, row({ settledAt: 5000 }))).toMatchObject({
-      timestamp: 5000
-    });
+    expect(opencodeMessageUsage(message, row({ settledAt: 5000 }))).toMatchObject({ timestamp: 5000 });
     expect(
       opencodeMessageUsage({ ...message, time: { created: 1000, completed: "soon" } }, row({ settledAt: 5000 }))
     ).toMatchObject({ timestamp: 1000 });
@@ -76,13 +74,7 @@ describe("opencode message usage", () => {
     expect(record).toMatchObject({ sessionId: "ses", usage: { inputTokens: 1 } });
     expect(record).not.toHaveProperty("model");
     const bare = opencodeMessageUsage(
-      {
-        role: "assistant",
-        modelID: "",
-        providerID: "",
-        cost: "1",
-        tokens: { input: 1, output: 1 }
-      },
+      { role: "assistant", modelID: "", providerID: "", cost: "1", tokens: { input: 1, output: 1 } },
       row({ settledAt: 5000 })
     );
     expect(bare).not.toHaveProperty("model");

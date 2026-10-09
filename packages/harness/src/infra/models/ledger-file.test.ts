@@ -15,19 +15,10 @@ describe("storedLedgerEnvelope", () => {
       schemaVersion: "1",
       revision: "3"
     });
-    expect(storedLedgerEnvelope({ schemaVersion: 1, revision: null })).toEqual({
-      schemaVersion: 1,
-      revision: null
-    });
-    expect(storedLedgerEnvelope({ schemaVersion: 1, revision: 3 })).toEqual({
-      schemaVersion: 1,
-      revision: 3
-    });
+    expect(storedLedgerEnvelope({ schemaVersion: 1, revision: null })).toEqual({ schemaVersion: 1, revision: null });
+    expect(storedLedgerEnvelope({ schemaVersion: 1, revision: 3 })).toEqual({ schemaVersion: 1, revision: 3 });
     for (const envelope of [storedLedgerEnvelope({ schemaVersion: "1" }), storedLedgerEnvelope(null)]) {
-      expect(checkLedgerVersion(envelope)).toMatchObject({
-        ok: false,
-        error: { _tag: "LedgerVersionUnsupported" }
-      });
+      expect(checkLedgerVersion(envelope)).toMatchObject({ ok: false, error: { _tag: "LedgerVersionUnsupported" } });
     }
   });
 });

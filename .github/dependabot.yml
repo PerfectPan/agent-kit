@@ -16,9 +16,7 @@ updates:
     groups:
       toolchain:
         patterns:
-          - "oxfmt"
-          - "oxlint"
-          - "oxlint-tsgolint"
+          - "vite-plus"
           - "typescript"
           - "vitest"
           - "@types/node"

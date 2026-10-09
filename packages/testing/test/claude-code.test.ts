@@ -60,13 +60,7 @@ describe("claude-code translation", () => {
       model: "claude-test",
       responseId: "msg-1",
       finishReason: "tool_use",
-      usage: {
-        inputTokens: 13,
-        outputTokens: 4,
-        totalTokens: 17,
-        cacheReadTokens: 1,
-        cacheWriteTokens: 2
-      }
+      usage: { inputTokens: 13, outputTokens: 4, totalTokens: 17, cacheReadTokens: 1, cacheWriteTokens: 2 }
     });
     // The one-hour breakdown is the cache write count, and thinking tokens are the reasoning count.
     expect(requests[1]?.payload.usage).toEqual({
@@ -88,11 +82,7 @@ describe("claude-code translation", () => {
     expect(transcript.events.find((event) => event.kind === "reasoning")?.payload).toEqual({
       text: "Look at the test command."
     });
-    expect(transcript).toMatchObject({
-      agent: "claude-code",
-      agentVersion: "2.0.0",
-      session: { id: "s-plain" }
-    });
+    expect(transcript).toMatchObject({ agent: "claude-code", agentVersion: "2.0.0", session: { id: "s-plain" } });
   });
 
   it("merges request ids A, B, A, accounts for nested journals and resolves a parent that became no event", async () => {
@@ -237,10 +227,7 @@ describe("claude-code subagent metadata", () => {
       length: meta.length,
       line: 1
     });
-    expect(await readOriginal(withBom, skip!.source)).toEqual({
-      ok: true,
-      value: { description: "Look around" }
-    });
+    expect(await readOriginal(withBom, skip!.source)).toEqual({ ok: true, value: { description: "Look around" } });
     expect(transcript.agents.find((lane) => lane.id === "a")?.title).toBe("Look around");
   });
 });
@@ -259,16 +246,10 @@ describe("claude-code prompt snapshots", () => {
       type: "prompt_snapshot",
       systemPrompt: "You are a test agent.\n\nPrompt version one."
     });
-    expect(snapshots[1]?.payload).toMatchObject({
-      cliPrefix: "Test CLI prefix.",
-      tools: [{ name: "Read" }]
-    });
+    expect(snapshots[1]?.payload).toMatchObject({ cliPrefix: "Test CLI prefix.", tools: [{ name: "Read" }] });
     expect(snapshots[3]?.payload.tools).toHaveLength(2);
     for (const event of snapshots) {
-      expect(await readOriginal(platform, event.source)).toEqual({
-        ok: true,
-        value: event.original
-      });
+      expect(await readOriginal(platform, event.source)).toEqual({ ok: true, value: event.original });
     }
     expect(transcript.skipped.some((skip) => skip.reason === "attachment:prompt_snapshot")).toBe(false);
   });
@@ -319,9 +300,7 @@ describe("sessions use cases over Claude Code", () => {
 
   it("reads the home from CLAUDE_CONFIG_DIR and reports a missing root as a failure item", async () => {
     const moved = createMemoryPlatform({
-      files: {
-        "/cfg/claude/projects/p/a.jsonl": '{"type":"user","sessionId":"a","message":{"content":"Hi"}}\n'
-      },
+      files: { "/cfg/claude/projects/p/a.jsonl": '{"type":"user","sessionId":"a","message":{"content":"Hi"}}\n' },
       env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }
     });
     expect(await list({ agents: ["claude-code"] }, moved)).toMatchObject([
@@ -373,18 +352,10 @@ describe("sessions use cases over Claude Code", () => {
     };
     expect(await loadTranscript(locked, { agent: "claude-code", path: session("subagent") })).toEqual({
       ok: false,
-      error: {
-        _tag: "ReadFailed",
-        path: session("subagent"),
-        message: denied.message,
-        cause: denied
-      }
+      error: { _tag: "ReadFailed", path: session("subagent"), message: denied.message, cause: denied }
     });
     const source = { file: session("plain"), offset: 1, length: 10, line: 1 };
-    expect(await readOriginal(platform, source)).toEqual({
-      ok: false,
-      error: { _tag: "SourceChanged", source }
-    });
+    expect(await readOriginal(platform, source)).toEqual({ ok: false, error: { _tag: "SourceChanged", source } });
     expect(await readOriginal(platform, { ...source, file: "/gone.jsonl" })).toEqual({
       ok: false,
       error: { _tag: "SessionNotFound", path: "/gone.jsonl" }
@@ -436,9 +407,7 @@ describe("sessions use cases over Claude Code", () => {
       }
     );
     await expect(lying).rejects.toBe(fakeErrno);
-    const range = Object.assign(new RangeError("offset out of range"), {
-      code: "ERR_OUT_OF_RANGE"
-    });
+    const range = Object.assign(new RangeError("offset out of range"), { code: "ERR_OUT_OF_RANGE" });
     const strict = { fs: { ...platform.fs, read: () => failing(range) } };
     await expect(readOriginal(strict, { file: session("plain"), offset: -1, length: 1, line: 1 })).rejects.toBe(range);
   });
@@ -459,12 +428,7 @@ describe("sessions use cases over Claude Code", () => {
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: session("plain") }, { adapters: { "my-agent": custom } })).toEqual({
         ok: false,
-        error: {
-          _tag: "ReadFailed",
-          path: session("plain"),
-          message: denied.message,
-          cause: denied
-        }
+        error: { _tag: "ReadFailed", path: session("plain"), message: denied.message, cause: denied }
       });
     }
   });
@@ -543,12 +507,7 @@ describe("sessions use cases over Claude Code", () => {
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
         ok: false,
-        error: {
-          _tag: "ReadFailed",
-          path: "/export/session.jsonl",
-          message: denied.message,
-          cause: denied
-        }
+        error: { _tag: "ReadFailed", path: "/export/session.jsonl", message: denied.message, cause: denied }
       });
     }
   });

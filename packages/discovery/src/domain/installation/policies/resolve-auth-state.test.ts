@@ -12,17 +12,11 @@ const file: AuthObservation = {
   source: { kind: "credential-file", path: "/u/me/.x/auth" },
   reading: { loggedIn: true }
 };
-const variable: AuthObservation = {
-  source: { kind: "env", variable: "X_KEY" },
-  reading: { loggedIn: true }
-};
+const variable: AuthObservation = { source: { kind: "env", variable: "X_KEY" }, reading: { loggedIn: true } };
 
 describe("resolveAuthState", () => {
   it("lets the status command decide, even against stored credentials", () => {
-    expect(resolveAuthState([file, command(false)])).toEqual({
-      status: "logged-out",
-      source: command(false).source
-    });
+    expect(resolveAuthState([file, command(false)])).toEqual({ status: "logged-out", source: command(false).source });
     expect(resolveAuthState([variable, command(true, "api-key")])).toEqual({
       status: "logged-in",
       method: "api-key",
@@ -31,10 +25,7 @@ describe("resolveAuthState", () => {
   });
 
   it("counts stored credentials as logged in, in observation order", () => {
-    expect(resolveAuthState([variable, file])).toEqual({
-      status: "logged-in",
-      source: variable.source
-    });
+    expect(resolveAuthState([variable, file])).toEqual({ status: "logged-in", source: variable.source });
   });
 
   it("never reports logged-out without a command", () => {
@@ -44,9 +35,7 @@ describe("resolveAuthState", () => {
   });
 
   it("reads a source that was only checked for existence as logged in", () => {
-    const unparsed: AuthObservation = {
-      source: { kind: "credential-file", path: "/u/me/.x/auth" }
-    };
+    const unparsed: AuthObservation = { source: { kind: "credential-file", path: "/u/me/.x/auth" } };
     expect(resolveAuthState([unparsed])).toEqual({ status: "logged-in", source: unparsed.source });
     const denied: AuthObservation = { ...unparsed, reading: { loggedIn: false } };
     expect(resolveAuthState([denied])).toEqual({ status: "unknown" });

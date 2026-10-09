@@ -14,22 +14,13 @@ const KEY = "task:1";
 const host = { host: "box", bootId: "boot-1" };
 const holderA: Holder = { ...host, pid: 10, startTime: 1000 };
 const holderB: Holder = { ...host, pid: 20, startTime: 2000 };
-const claim = (holder: Holder, holderId: string, now = 0): LeaseClaim => ({
-  key: KEY,
-  holder,
-  holderId,
-  now
-});
+const claim = (holder: Holder, holderId: string, now = 0): LeaseClaim => ({ key: KEY, holder, holderId, now });
 const alive = { fresh: true, liveness: "alive" } as const;
 
 describe("Lease", () => {
   it("S37: never moves the generation back: release leaves a tombstone and the next holder goes one further", () => {
     const created = Lease.create(claim(holderA, "a1"));
-    expect(created.state.toSnapshot()).toMatchObject({
-      generation: 1,
-      revision: 1,
-      holderId: "a1"
-    });
+    expect(created.state.toSnapshot()).toMatchObject({ generation: 1, revision: 1, holderId: "a1" });
 
     const released = created.state.release({ holderId: "a1", generation: 1 }, 5);
     if (!released.ok) {
@@ -44,15 +35,8 @@ describe("Lease", () => {
       renewedAt: 5
     });
 
-    const again = released.value.state.acquire(claim(holderA, "a2"), {
-      fresh: false,
-      liveness: "unknown"
-    });
-    expect(again.ok && again.value.state.toSnapshot()).toMatchObject({
-      generation: 2,
-      revision: 3,
-      holderId: "a2"
-    });
+    const again = released.value.state.acquire(claim(holderA, "a2"), { fresh: false, liveness: "unknown" });
+    expect(again.ok && again.value.state.toSnapshot()).toMatchObject({ generation: 2, revision: 3, holderId: "a2" });
   });
 
   it("refuses a live, fresh holder and takes over a dead or silent one, moving the generation on", () => {
@@ -67,10 +51,7 @@ describe("Lease", () => {
       { fresh: false, liveness: "unknown" }
     ] as const) {
       const taken = lease.acquire(claim(holderB, "b1"), view);
-      expect(taken.ok && taken.value.state.toSnapshot()).toMatchObject({
-        generation: 2,
-        holder: holderB
-      });
+      expect(taken.ok && taken.value.state.toSnapshot()).toMatchObject({ generation: 2, holder: holderB });
       expect(taken.ok && taken.value.events).toEqual([
         { _tag: "LeaseAcquired", key: KEY, generation: 2, holderId: "b1", previousHolderId: "a1" }
       ]);
@@ -83,11 +64,7 @@ describe("Lease", () => {
     expect(lease.holds(holding)).toBe(true);
     expect(lease.lossOf(holding)).toBeUndefined();
     const renewed = lease.renew(holding, 7);
-    expect(renewed.ok && renewed.value.state.toSnapshot()).toMatchObject({
-      generation: 1,
-      revision: 2,
-      renewedAt: 7
-    });
+    expect(renewed.ok && renewed.value.state.toSnapshot()).toMatchObject({ generation: 1, revision: 2, renewedAt: 7 });
 
     // ABA: the same process, holding again under a new acquisition, is not the old holding.
     const taken = lease.acquire(claim(holderA, "a2"), { fresh: false, liveness: "alive" });
@@ -111,14 +88,7 @@ describe("Lease", () => {
   });
 
   it("restores only records that keep the invariants", () => {
-    const valid: LeaseSnapshot = {
-      key: KEY,
-      generation: 2,
-      revision: 5,
-      holder: holderA,
-      holderId: "a",
-      renewedAt: 1
-    };
+    const valid: LeaseSnapshot = { key: KEY, generation: 2, revision: 5, holder: holderA, holderId: "a", renewedAt: 1 };
     expect(Lease.restore(valid).ok).toBe(true);
     for (const broken of [
       { ...valid, key: "" },
@@ -186,10 +156,7 @@ describe("lease rules", () => {
       value: { key: KEY, generation: 1 }
     });
     expect(checkFence(lastSeen, { key: KEY, generation: 3 }).ok).toBe(true);
-    expect(checkFence(lastSeen, { key: KEY, generation: 4 })).toEqual({
-      ok: true,
-      value: { key: KEY, generation: 4 }
-    });
+    expect(checkFence(lastSeen, { key: KEY, generation: 4 })).toEqual({ ok: true, value: { key: KEY, generation: 4 } });
     expect(checkFence(lastSeen, { key: KEY, generation: 1 })).toEqual({
       ok: false,
       error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
@@ -207,20 +174,14 @@ describe("lease rules", () => {
     });
     // A JS caller may pass null where the type says optional; it falls back like an absent retryMs.
     const nullRetry = { ttlMs: 100, heartbeatMs: 50, retryMs: null } as unknown as LeaseTimingInput;
-    expect(leaseTiming(nullRetry)).toEqual({
-      ok: true,
-      value: { ttlMs: 100, heartbeatMs: 50, retryMs: 50 }
-    });
+    expect(leaseTiming(nullRetry)).toEqual({ ok: true, value: { ttlMs: 100, heartbeatMs: 50, retryMs: 50 } });
     for (const input of [
       { ttlMs: 100, heartbeatMs: 60 },
       { ttlMs: 0, heartbeatMs: 0 },
       { ttlMs: 100, heartbeatMs: 50, retryMs: -1 },
       { ttlMs: Number.NaN, heartbeatMs: 10 }
     ]) {
-      expect(leaseTiming(input)).toMatchObject({
-        ok: false,
-        error: { _tag: "LeaseConfigInvalid" }
-      });
+      expect(leaseTiming(input)).toMatchObject({ ok: false, error: { _tag: "LeaseConfigInvalid" } });
     }
   });
 

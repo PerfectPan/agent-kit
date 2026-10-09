@@ -95,11 +95,7 @@ describe("codex usage lines", () => {
   });
 
   it("continues from a saved cursor, reading a field of an unexpected type as absent", () => {
-    const decoder = codexUsageLines(file, {
-      lastTime: AT,
-      model: 5,
-      tracker: { usageRecords: true }
-    });
+    const decoder = codexUsageLines(file, { lastTime: AT, model: 5, tracker: { usageRecords: true } });
     // A `token_count` behind a cursor that saw a `token_usage_record` is the other usage source, not usage.
     expect(
       pushed(
@@ -107,10 +103,7 @@ describe("codex usage lines", () => {
           record({
             timestamp: AT,
             type: "event_msg",
-            payload: {
-              type: "token_count",
-              info: { last_token_usage: { input_tokens: 5, output_tokens: 1 } }
-            }
+            payload: { type: "token_count", info: { last_token_usage: { input_tokens: 5, output_tokens: 1 } } }
           })
         )
       )
@@ -118,12 +111,7 @@ describe("codex usage lines", () => {
     // A record without a time falls back to the file's mtime once `lastTime` reads as absent.
     const fresh = codexUsageLines(file, { lastTime: "2026-01-01T00:00:01.000Z", responses: "r1" });
     const records = pushed(
-      fresh.push(
-        record({
-          type: "token_usage_record",
-          payload: { response_id: "r1", usage: { input_tokens: 1 } }
-        })
-      )
+      fresh.push(record({ type: "token_usage_record", payload: { response_id: "r1", usage: { input_tokens: 1 } } }))
     );
     expect(records.map((item) => [item.timestamp, item.model])).toEqual([[1000, undefined]]);
   });
@@ -164,13 +152,7 @@ describe("codex usage lines", () => {
     const first = codexUsageLines(file);
     expect(
       pushed(
-        first.push(
-          record({
-            timestamp: at(0),
-            type: "session_meta",
-            payload: { id: "cx-f", forked_from_id: "p" }
-          })
-        )
+        first.push(record({ timestamp: at(0), type: "session_meta", payload: { id: "cx-f", forked_from_id: "p" } }))
       )
     ).toEqual([]);
     expect(
@@ -179,10 +161,7 @@ describe("codex usage lines", () => {
           record({
             timestamp: at(100),
             type: "event_msg",
-            payload: {
-              type: "token_count",
-              info: { last_token_usage: { input_tokens: 1, output_tokens: 1 } }
-            }
+            payload: { type: "token_count", info: { last_token_usage: { input_tokens: 1, output_tokens: 1 } } }
           })
         )
       )
@@ -195,10 +174,7 @@ describe("codex usage lines", () => {
         record({
           timestamp: at(5000),
           type: "event_msg",
-          payload: {
-            type: "token_count",
-            info: { last_token_usage: { input_tokens: 2, output_tokens: 1 } }
-          }
+          payload: { type: "token_count", info: { last_token_usage: { input_tokens: 2, output_tokens: 1 } } }
         })
       )
     );

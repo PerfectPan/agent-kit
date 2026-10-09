@@ -13,9 +13,7 @@ const SNAPSHOT: PricingTable = {
   "gpt-5.5": { input: 5, output: 30, cacheWrite: 5, cacheRead: 0.5 },
   "gpt-5.6-sol": { input: 5, output: 30, cacheWrite: 6.25, cacheRead: 0.5 }
 };
-const ALIASES: PricingTable = {
-  "gpt-5": { input: 1.25, output: 10, cacheWrite: 1.25, cacheRead: 0.125 }
-};
+const ALIASES: PricingTable = { "gpt-5": { input: 1.25, output: 10, cacheWrite: 1.25, cacheRead: 0.125 } };
 const pricing = (overrides?: PriceOverrides) =>
   createPricing(SNAPSHOT, { fallback: ALIASES, ...(overrides ? { overrides } : {}) });
 
@@ -37,14 +35,8 @@ function record(usage: Usage, fields: Partial<UsageRecord> = {}): UsageRecord {
 describe("costOf", () => {
   it("uses the cost the record carries, also when it is 0", () => {
     const pi = { agent: "pi", model: "glm-5.1", costSource: "agent" } as const;
-    expect(costOf(record({}, { ...pi, costUsd: 0 }), pricing())).toEqual({
-      costUsd: 0,
-      costSource: "agent"
-    });
-    expect(costOf(record({}, { ...pi, costUsd: 1.23 }), pricing())).toEqual({
-      costUsd: 1.23,
-      costSource: "agent"
-    });
+    expect(costOf(record({}, { ...pi, costUsd: 0 }), pricing())).toEqual({ costUsd: 0, costSource: "agent" });
+    expect(costOf(record({}, { ...pi, costUsd: 1.23 }), pricing())).toEqual({ costUsd: 1.23, costSource: "agent" });
   });
 
   it("prices each count at the table's price when the record carries no cost", () => {
@@ -67,12 +59,7 @@ describe("costOf", () => {
     const usage = { inputTokens: 2 * M, outputTokens: M, cacheReadTokens: M };
     const computed = record(usage, { agent: "codex", model: "gpt-5.6-sol", pricingMultiplier: 2 });
     expect(costOf(computed, pricing())?.costUsd).toBeCloseTo((5 + 30 + 0.5) * 2, 6);
-    const reported = record(usage, {
-      model: "gpt-5.6-sol",
-      pricingMultiplier: 2,
-      costUsd: 0.25,
-      costSource: "agent"
-    });
+    const reported = record(usage, { model: "gpt-5.6-sol", pricingMultiplier: 2, costUsd: 0.25, costSource: "agent" });
     expect(costOf(reported, pricing())).toEqual({ costUsd: 0.25, costSource: "agent" });
   });
 
@@ -138,35 +125,16 @@ describe("costOf", () => {
         costSource: "agent"
       });
       const split = {
-        "claude-opus-4-8": {
-          usage: { inputTokens: 2 * M },
-          costUsd: 0.25,
-          costSource: "agent" as const
-        },
-        "claude-sonnet-5": {
-          usage: { inputTokens: M },
-          costUsd: 0.125,
-          costSource: "agent" as const
-        }
+        "claude-opus-4-8": { usage: { inputTokens: 2 * M }, costUsd: 0.25, costSource: "agent" as const },
+        "claude-sonnet-5": { usage: { inputTokens: M }, costUsd: 0.125, costSource: "agent" as const }
       };
-      expect(costOf(turn({ usageByModel: split }), pricing())).toEqual({
-        costUsd: 0.375,
-        costSource: "agent"
-      });
+      expect(costOf(turn({ usageByModel: split }), pricing())).toEqual({ costUsd: 0.375, costSource: "agent" });
     });
 
     it("takes the models' amounts over the turn's in costOf and summarize alike", () => {
       const split = {
-        "claude-opus-4-8": {
-          usage: { inputTokens: 2 * M },
-          costUsd: 0.25,
-          costSource: "agent" as const
-        },
-        "claude-sonnet-5": {
-          usage: { inputTokens: M },
-          costUsd: 0.125,
-          costSource: "agent" as const
-        }
+        "claude-opus-4-8": { usage: { inputTokens: 2 * M }, costUsd: 0.25, costSource: "agent" as const },
+        "claude-sonnet-5": { usage: { inputTokens: M }, costUsd: 0.125, costSource: "agent" as const }
       };
       const both = turn({ costUsd: 0.5, costSource: "agent", usageByModel: split });
       expect(costOf(both, pricing())).toEqual({ costUsd: 0.375, costSource: "agent" });
@@ -215,9 +183,7 @@ describe("ccusage parity of the per-bucket formula", () => {
   it("prices models the table has, and only those", () => {
     expect(costOf(codex({ inputTokens: M }, { model: "gpt-5.5" }), pricing())?.costUsd).toBeCloseTo(5, 6);
     expect(costOf(codex({ inputTokens: M }, { model: "openrouter-3o" }), pricing())).toBeUndefined();
-    const override = pricing({
-      "openrouter-3o": { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 }
-    });
+    const override = pricing({ "openrouter-3o": { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 } });
     expect(costOf(codex({ inputTokens: M }, { model: "openrouter-3o" }), override)?.costUsd).toBeCloseTo(15, 6);
   });
 });

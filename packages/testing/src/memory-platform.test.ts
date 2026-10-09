@@ -85,27 +85,15 @@ describe("createMemoryPlatform", () => {
 
   it("renames like POSIX: replaces a file or an empty directory, and refuses the rest", async () => {
     const platform = createMemoryPlatform({
-      files: {
-        "/a/x.txt": "x",
-        "/a/y.txt": "y",
-        "/src/in.txt": "in",
-        "/full/kept.txt": "kept",
-        "/empty/.keep": ""
-      }
+      files: { "/a/x.txt": "x", "/a/y.txt": "y", "/src/in.txt": "in", "/full/kept.txt": "kept", "/empty/.keep": "" }
     });
     await platform.fs.remove("/empty/.keep");
     await expect(platform.fs.rename("/src", "/full")).rejects.toMatchObject({ code: "ENOTEMPTY" });
     await expect(platform.fs.rename("/src", "/a/x.txt")).rejects.toMatchObject({ code: "ENOTDIR" });
     await expect(platform.fs.rename("/a/x.txt", "/full")).rejects.toMatchObject({ code: "EISDIR" });
-    await expect(platform.fs.rename("/src", "/src/deeper")).rejects.toMatchObject({
-      code: "EINVAL"
-    });
-    await expect(platform.fs.rename("/a/x.txt", "/nowhere/x.txt")).rejects.toMatchObject({
-      code: "ENOENT"
-    });
-    await expect(platform.fs.rename("/missing", "/a/z.txt")).rejects.toMatchObject({
-      code: "ENOENT"
-    });
+    await expect(platform.fs.rename("/src", "/src/deeper")).rejects.toMatchObject({ code: "EINVAL" });
+    await expect(platform.fs.rename("/a/x.txt", "/nowhere/x.txt")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(platform.fs.rename("/missing", "/a/z.txt")).rejects.toMatchObject({ code: "ENOENT" });
     expect(await platform.fs.list("/full")).toEqual([{ name: "kept.txt", kind: "file" }]);
     expect(await platform.fs.stat("/a/x.txt")).toMatchObject({ kind: "file" });
 
@@ -152,10 +140,7 @@ describe("createMemoryPlatform", () => {
       env: { PATH: "/bin" },
       files: { "/u/me/notes.txt": "" },
       commands: {
-        "/bin/echo": (args, options) => ({
-          stdout: `${args.join(" ")} ${options.env?.PATH}`,
-          stderr: "warn"
-        }),
+        "/bin/echo": (args, options) => ({ stdout: `${args.join(" ")} ${options.env?.PATH}`, stderr: "warn" }),
         "/bin/fail": { code: 3 }
       }
     });
@@ -167,10 +152,7 @@ describe("createMemoryPlatform", () => {
       stderr: "warn",
       timedOut: false
     });
-    expect(await platform.process.run("/bin/fail", [], { timeoutMs: 100 })).toMatchObject({
-      code: 3,
-      stdout: ""
-    });
+    expect(await platform.process.run("/bin/fail", [], { timeoutMs: 100 })).toMatchObject({ code: 3, stdout: "" });
     const run = (command: string, cwd?: string) =>
       platform.process.run(command, [], { timeoutMs: 100, ...(cwd === undefined ? {} : { cwd }) });
     await expect(run("/bin/missing")).rejects.toMatchObject({ code: "ENOENT" });
@@ -181,26 +163,17 @@ describe("createMemoryPlatform", () => {
   });
 
   it("refuses a .cmd or .bat file on Windows with EINVAL, as Node does without a shell", async () => {
-    const commands = {
-      "C:\\npm\\tool.cmd": { stdout: "ran" },
-      "C:\\npm\\tool.BAT": { stdout: "ran" }
-    };
+    const commands = { "C:\\npm\\tool.cmd": { stdout: "ran" }, "C:\\npm\\tool.BAT": { stdout: "ran" } };
     const windows = createMemoryPlatform({ os: "win32", commands });
     for (const command of Object.keys(commands)) {
-      await expect(windows.process.run(command, [], { timeoutMs: 100 })).rejects.toMatchObject({
-        code: "EINVAL"
-      });
+      await expect(windows.process.run(command, [], { timeoutMs: 100 })).rejects.toMatchObject({ code: "EINVAL" });
     }
     const linux = createMemoryPlatform({ commands });
-    expect(await linux.process.run("C:\\npm\\tool.cmd", [], { timeoutMs: 100 })).toMatchObject({
-      stdout: "ran"
-    });
+    expect(await linux.process.run("C:\\npm\\tool.cmd", [], { timeoutMs: 100 })).toMatchObject({ stdout: "ran" });
   });
 
   it("times a program out and rejects an aborted run with the signal's reason", async () => {
-    const platform = createMemoryPlatform({
-      commands: { "/bin/hang": () => new Promise(() => undefined) }
-    });
+    const platform = createMemoryPlatform({ commands: { "/bin/hang": () => new Promise(() => undefined) } });
     expect(await platform.process.run("/bin/hang", [], { timeoutMs: 5 })).toEqual({
       code: null,
       signal: "SIGTERM",
@@ -209,17 +182,11 @@ describe("createMemoryPlatform", () => {
       timedOut: true
     });
     const controller = new AbortController();
-    const running = platform.process.run("/bin/hang", [], {
-      timeoutMs: 10_000,
-      signal: controller.signal
-    });
+    const running = platform.process.run("/bin/hang", [], { timeoutMs: 10_000, signal: controller.signal });
     controller.abort(new Error("cancelled"));
     await expect(running).rejects.toThrow("cancelled");
     await expect(
-      platform.process.run("/bin/hang", [], {
-        timeoutMs: 10_000,
-        signal: AbortSignal.abort(new Error("before"))
-      })
+      platform.process.run("/bin/hang", [], { timeoutMs: 10_000, signal: AbortSignal.abort(new Error("before")) })
     ).rejects.toThrow("before");
   });
 });

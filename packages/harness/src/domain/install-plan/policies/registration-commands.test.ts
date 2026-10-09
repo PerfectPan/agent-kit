@@ -41,12 +41,7 @@ describe("registrationCommands", () => {
   it("unregisters a removal", () => {
     expect(
       registrationCommands(
-        step(registration, {
-          action: "remove",
-          agents: [],
-          precondition: { hash: hash(9) },
-          removal: "delete"
-        }),
+        step(registration, { action: "remove", agents: [], precondition: { hash: hash(9) }, removal: "delete" }),
         entryWithAgents(["codex"])
       )
     ).toEqual({ agent: "codex", purposes: ["unregister"] });
@@ -82,23 +77,13 @@ describe("registrationCommands", () => {
     expect(registrationCommands(step(file), undefined)).toBeUndefined();
     expect(
       registrationCommands(
-        step(registration, {
-          action: "remove",
-          agents: [],
-          precondition: { hash: hash(9) },
-          removal: "release"
-        }),
+        step(registration, { action: "remove", agents: [], precondition: { hash: hash(9) }, removal: "release" }),
         undefined
       )
     ).toBeUndefined();
     expect(
       registrationCommands(
-        step(registration, {
-          action: "remove",
-          agents: [],
-          precondition: { hash: hash(9) },
-          removal: "release"
-        }),
+        step(registration, { action: "remove", agents: [], precondition: { hash: hash(9) }, removal: "release" }),
         entryWithAgents(["codex"])
       )
     ).toEqual({ agent: "codex", purposes: ["unregister"] });

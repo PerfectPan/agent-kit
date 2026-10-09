@@ -55,17 +55,12 @@ describe("run", () => {
     const script = "process.stdout.write(String(process.env.MARKER))";
 
     expect((await platform.process.run(node, ["-e", script], { timeoutMs: 10_000 })).stdout).toBe("injected");
-    const explicit = await platform.process.run(node, ["-e", script], {
-      env: { OTHER: "1" },
-      timeoutMs: 10_000
-    });
+    const explicit = await platform.process.run(node, ["-e", script], { env: { OTHER: "1" }, timeoutMs: 10_000 });
     expect(explicit.stdout).toBe("undefined");
   });
 
   it("kills the command when the timeout fires and reports it", async () => {
-    const result = await platform.process.run(node, ["-e", "setTimeout(() => {}, 30_000)"], {
-      timeoutMs: 200
-    });
+    const result = await platform.process.run(node, ["-e", "setTimeout(() => {}, 30_000)"], { timeoutMs: 200 });
     expect(result).toMatchObject({ code: null, signal: "SIGTERM", timedOut: true });
   });
 
@@ -92,9 +87,7 @@ describe("run", () => {
 
   it("does not wait for a grandchild that keeps stdout open", async () => {
     const started = performance.now();
-    const result = await platform.process.run("sh", ["-c", "sleep 5 & echo hi"], {
-      timeoutMs: 10_000
-    });
+    const result = await platform.process.run("sh", ["-c", "sleep 5 & echo hi"], { timeoutMs: 10_000 });
     expect(result).toMatchObject({ code: 0, stdout: "hi\n", timedOut: false });
     expect(performance.now() - started).toBeLessThan(4000);
   });
@@ -110,10 +103,7 @@ describe("run", () => {
 
 describe("spawn", () => {
   it("round-trips stdin to stdout through Web Streams", async () => {
-    const child = platform.process.spawn(node, ["-e", "process.stdin.pipe(process.stdout)"], {
-      cwd,
-      env: {}
-    });
+    const child = platform.process.spawn(node, ["-e", "process.stdin.pipe(process.stdout)"], { cwd, env: {} });
     const writer = child.stdin.getWriter();
     await writer.write(new TextEncoder().encode("hello\n"));
     await writer.close();
@@ -138,11 +128,7 @@ describe("spawn", () => {
   it("S24: escalates an abort to SIGKILL for a child that ignores SIGTERM", async () => {
     const controller = new AbortController();
     const script = 'process.on("SIGTERM", () => {}); console.log("ready"); setInterval(() => {}, 1000)';
-    const child = platform.process.spawn(node, ["-e", script], {
-      cwd,
-      env: {},
-      signal: controller.signal
-    });
+    const child = platform.process.spawn(node, ["-e", script], { cwd, env: {}, signal: controller.signal });
     await waitFor(child.stdout, "ready");
 
     const started = performance.now();
@@ -173,11 +159,7 @@ describe("spawn", () => {
 describe("identity", () => {
   it("identifies the current process as self", () => {
     const { self } = platform.process;
-    expect(self).toMatchObject({
-      pid: process.pid,
-      host: expect.any(String),
-      bootId: expect.stringMatching(/\S/)
-    });
+    expect(self).toMatchObject({ pid: process.pid, host: expect.any(String), bootId: expect.stringMatching(/\S/) });
     expect(platform.process.identify(process.pid)).toEqual(self);
   });
 
@@ -196,10 +178,7 @@ describe("identity", () => {
 
   it("treats a zombie and invalid pids as absent", async () => {
     // `exec sleep` replaces the shell without reaping the background child, which stays a zombie until sleep exits.
-    const child = platform.process.spawn("sh", ["-c", "sleep 0 & echo $!; exec sleep 3"], {
-      cwd,
-      env: { PATH }
-    });
+    const child = platform.process.spawn("sh", ["-c", "sleep 0 & echo $!; exec sleep 3"], { cwd, env: { PATH } });
     const zombie = Number((await readLine(child.stdout)).trim());
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(platform.process.identify(zombie)).toBeUndefined();

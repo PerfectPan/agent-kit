@@ -15,12 +15,12 @@ const entry = Object.fromEntries(
 );
 
 export default defineConfig({
-  // The generated changelogs are release output, not repository sources; the test blocks are @effect/vitest's
-  // it.effect and it.live, which the standalone-expect rule does not know by default.
+  // The generated changelogs are release output, not repository sources.
   fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
   lint: {
     ...lint,
     ignorePatterns: ["dist/**"],
+    // it.effect and it.live are test blocks that the standalone-expect rule does not know by default.
     rules: {
       ...lint.rules,
       "vitest/no-standalone-expect": ["error", { additionalTestBlockFunctions: ["it.effect", "it.live"] }]

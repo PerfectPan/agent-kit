@@ -46,10 +46,7 @@ describe("hookDialectConformance", () => {
     expect(await failure(withEvent("preToolUse", { lifecycle: { phase: "activity" }, gate: true }), name)).toMatch(
       /preToolUse is a gate/
     );
-    const allows = {
-      ...cursor.events.preToolUse!.output!,
-      passThrough: '{"permission":"allow","x":1}'
-    };
+    const allows = { ...cursor.events.preToolUse!.output!, passThrough: '{"permission":"allow","x":1}' };
     expect(
       await failure(withEvent("preToolUse", { lifecycle: { phase: "activity" }, gate: true, output: allows }), name)
     ).toMatch(/fields the event does not accept: x/);
@@ -59,10 +56,7 @@ describe("hookDialectConformance", () => {
     const name = "renames foreign events onto its own events";
     expect(await failure(cursor, name)).toBe("passed");
     const [claude] = cursor.runsHooksOf!;
-    const broken = {
-      ...cursor,
-      runsHooksOf: [{ ...claude!, events: { Notification: "notification" } }]
-    };
+    const broken = { ...cursor, runsHooksOf: [{ ...claude!, events: { Notification: "notification" } }] };
     expect(await failure(broken, name)).toMatch(/renames to unmapped event notification/);
   });
 

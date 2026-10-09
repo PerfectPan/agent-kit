@@ -35,10 +35,7 @@ const platform: SessionPlatform = {
 
 async function discover(root: string): Promise<(SessionHead | SessionListFailure)[]> {
   const items: (SessionHead | SessionListFailure)[] = [];
-  const options = {
-    files: { match: (name: string) => name.endsWith(".jsonl"), maxDepth: 3 },
-    preview: () => ({})
-  };
+  const options = { files: { match: (name: string) => name.endsWith(".jsonl"), maxDepth: 3 }, preview: () => ({}) };
   for await (const item of discoverSessions(platform, "demo", root, options)) {
     items.push(item);
   }
@@ -50,26 +47,15 @@ describe("discoverSessions", () => {
     expect(await discover("/r")).toEqual([
       {
         ref: { agent: "demo", path: "/r/bad" },
-        error: expect.objectContaining({
-          _tag: "ReadFailed",
-          path: "/r/bad",
-          message: "EACCES: /r/bad"
-        })
+        error: expect.objectContaining({ _tag: "ReadFailed", path: "/r/bad", message: "EACCES: /r/bad" })
       },
-      {
-        ref: { agent: "demo", path: "/r/good/s.jsonl" },
-        lastActiveAt: 7,
-        sizeBytes: content.length
-      }
+      { ref: { agent: "demo", path: "/r/good/s.jsonl" }, lastActiveAt: 7, sizeBytes: content.length }
     ]);
   });
 
   it("reports a root that cannot be listed as one failure", async () => {
     expect(await discover("/r/bad")).toEqual([
-      {
-        ref: { agent: "demo", path: "/r/bad" },
-        error: expect.objectContaining({ _tag: "ReadFailed" })
-      }
+      { ref: { agent: "demo", path: "/r/bad" }, error: expect.objectContaining({ _tag: "ReadFailed" }) }
     ]);
   });
 });

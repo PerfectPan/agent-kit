@@ -33,10 +33,7 @@ function home(): Record<string, MemoryFile> {
     .split("\n")
     .filter((line) => line.includes('"req-1"'))
     .join("\n");
-  files[copy] = {
-    content: `${copied}\n${claude("req-own", "copy", 2, 2)}\n`,
-    mtimeMs: T0 - 60 * MINUTE
-  };
+  files[copy] = { content: `${copied}\n${claude("req-own", "copy", 2, 2)}\n`, mtimeMs: T0 - 60 * MINUTE };
   return files;
 }
 
@@ -48,24 +45,14 @@ function claude(requestId: string, agentId: string | undefined, input: number, o
     ...(agentId ? { agentId } : {}),
     requestId,
     timestamp: "2026-01-04T00:00:00.000Z",
-    message: {
-      id: `msg-${requestId}`,
-      model: "claude-test",
-      usage: { input_tokens: input, output_tokens: output }
-    }
+    message: { id: `msg-${requestId}`, model: "claude-test", usage: { input_tokens: input, output_tokens: output } }
   });
 }
 
 /** A platform whose clock the test moves. */
-function platformAt(files: Record<string, MemoryFile>): {
-  platform: MemoryPlatform;
-  at: (time: number) => void;
-} {
+function platformAt(files: Record<string, MemoryFile>): { platform: MemoryPlatform; at: (time: number) => void } {
   let now = T0;
-  return {
-    platform: createMemoryPlatform({ files, home: "/u/me", now: () => now }),
-    at: (time) => (now = time)
-  };
+  return { platform: createMemoryPlatform({ files, home: "/u/me", now: () => now }), at: (time) => (now = time) };
 }
 
 async function scan(
@@ -218,11 +205,7 @@ describe("scanUsage", () => {
       type: "message",
       id: "e5",
       timestamp: "2026-01-01T00:00:03.000Z",
-      message: {
-        role: "assistant",
-        model: "model-test",
-        usage: { input: 1, output: 1, totalTokens: 2 }
-      }
+      message: { role: "assistant", model: "model-test", usage: { input: 1, output: 1, totalTokens: 2 } }
     });
     await platform.fs.writeAtomic(
       pi,
@@ -310,10 +293,7 @@ ${text(pi)}${same}
       thrown = error;
     }
     expect(isAgentKitError(thrown) && thrown.code).toBe("invalid-cursor");
-    const later = await scan(platform, {
-      since: Date.parse("2026-01-01T00:00:00.000Z"),
-      state: first.state
-    });
+    const later = await scan(platform, { since: Date.parse("2026-01-01T00:00:00.000Z"), state: first.state });
     // The days that ended before `since` are dropped: the request of 2025-12-01 goes, those of 2026-01-01 stay.
     expect(Object.values(later.state.requests["claude-code"] ?? {}).join("")).toHaveLength(6 * 9);
     const until = Date.parse("2026-01-01T00:00:04.000Z");
@@ -325,13 +305,7 @@ ${text(pi)}${same}
   it("counts records whose provider ids repeat across sessions, keyed by session and the agent's own id", async () => {
     const piSession = (id: string, entries: readonly string[]) =>
       [
-        JSON.stringify({
-          type: "session",
-          version: 3,
-          id,
-          timestamp: "2026-01-01T00:00:00.000Z",
-          cwd: "/u/me/work"
-        }),
+        JSON.stringify({ type: "session", version: 3, id, timestamp: "2026-01-01T00:00:00.000Z", cwd: "/u/me/work" }),
         ...entries.map((entry, index) =>
           JSON.stringify({
             type: "message",
@@ -349,18 +323,11 @@ ${text(pi)}${same}
       ].join("\n") + "\n";
     const rollout = (id: string) =>
       [
-        JSON.stringify({
-          timestamp: "2026-01-01T00:00:00.000Z",
-          type: "session_meta",
-          payload: { id }
-        }),
+        JSON.stringify({ timestamp: "2026-01-01T00:00:00.000Z", type: "session_meta", payload: { id } }),
         JSON.stringify({
           timestamp: "2026-01-01T00:00:01.000Z",
           type: "token_usage_record",
-          payload: {
-            response_id: "resp_7",
-            usage: { input_tokens: 3, output_tokens: 1, total_tokens: 4 }
-          }
+          payload: { response_id: "resp_7", usage: { input_tokens: 3, output_tokens: 1, total_tokens: 4 } }
         })
       ].join("\n") + "\n";
     const gateway = (sessionId: string) =>
@@ -368,11 +335,7 @@ ${text(pi)}${same}
         type: "assistant",
         sessionId,
         timestamp: "2026-01-01T00:00:01.000Z",
-        message: {
-          id: "msg_1",
-          model: "gateway-model",
-          usage: { input_tokens: 5, output_tokens: 1 }
-        }
+        message: { id: "msg_1", model: "gateway-model", usage: { input_tokens: 5, output_tokens: 1 } }
       }) + "\n";
     const old = T0 - 60 * MINUTE;
     const { platform } = platformAt({
@@ -430,10 +393,7 @@ ${text(pi)}${same}
   it("keeps a cursor per path for an id one scan finds at two paths, so neither reads the other's", async () => {
     const files = home();
     const elsewhere = "/u/me/.claude/projects/-u-me-old-work/s-usage.jsonl";
-    files[elsewhere] = {
-      content: text(main).split("\n").slice(0, 3).join("\n") + "\n",
-      mtimeMs: T0 - 60 * MINUTE
-    };
+    files[elsewhere] = { content: text(main).split("\n").slice(0, 3).join("\n") + "\n", mtimeMs: T0 - 60 * MINUTE };
     const { platform } = platformAt(files);
     const first = await scan(platform, { agents: ["claude-code"], since });
     const next = await scan(platform, { agents: ["claude-code"], since, state: first.state });

@@ -63,11 +63,7 @@ describe("document values", () => {
 
   it("edits a TOML document that holds a big integer, and keeps it", () => {
     const text = 'big = 9223372036854775807\nmodel = "gpt"\n';
-    const locator: ArtifactLocator = {
-      kind: "toml-entry",
-      path: "/codex/config.toml",
-      pointer: "/model"
-    };
+    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
     const edited = toml(text, locator, "o4");
     expect(edited).toContain("big = 9223372036854775807");
     expect(edited).toContain('model = "o4"');
@@ -89,11 +85,7 @@ describe("document values", () => {
       throw new Error("no document");
     }
     expect(Object.hasOwn(parsed.value, "__proto__")).toBe(true);
-    const locator: ArtifactLocator = {
-      kind: "toml-entry",
-      path: "/codex/config.toml",
-      pointer: "/model"
-    };
+    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
     expect(toml(text, locator, "o4")).toContain('"__proto__" = "x"');
   });
 });
@@ -123,22 +115,14 @@ describe("JSONC entries", () => {
     const added = jsonc(SETTINGS, hook("Stop", "/opt/x hook"), ours);
     expect(added).toContain("// comment kept");
     const data = parseJsonc(added);
-    expect(data.ok && entryValue(data.value, hook("Stop", "/opt/x hook"))).toEqual({
-      ok: true,
-      value: ours
-    });
-    expect(data.ok && entryValue(data.value, hook("Stop", "~/bin/notify.sh"))).toMatchObject({
-      ok: true
-    });
+    expect(data.ok && entryValue(data.value, hook("Stop", "/opt/x hook"))).toEqual({ ok: true, value: ours });
+    expect(data.ok && entryValue(data.value, hook("Stop", "~/bin/notify.sh"))).toMatchObject({ ok: true });
     expect(jsonc(added, hook("Stop", "/opt/x hook"), undefined)).toBe(SETTINGS);
   });
 
   it("creates the event list and the hooks object, and removes them again when they hold nothing else", () => {
     const text = '{\n  "model": "opus"\n}\n';
-    const added = jsonc(text, hook("SessionStart", "/opt/x"), {
-      type: "command",
-      command: "/opt/x"
-    });
+    const added = jsonc(text, hook("SessionStart", "/opt/x"), { type: "command", command: "/opt/x" });
     expect(JSON.parse(added)).toEqual({
       model: "opus",
       hooks: { SessionStart: [{ hooks: [{ type: "command", command: "/opt/x" }] }] }
@@ -165,10 +149,7 @@ describe("JSONC entries", () => {
   });
 
   it("refuses a document with a syntax error and an entry where a list belongs to something else", () => {
-    expect(parseJsonc("{ broken")).toMatchObject({
-      ok: false,
-      error: { _tag: "DocumentInvalid", format: "json" }
-    });
+    expect(parseJsonc("{ broken")).toMatchObject({ ok: false, error: { _tag: "DocumentInvalid", format: "json" } });
     expect(entryEdits({ hooks: { Stop: "x" } }, hook("Stop", "/opt/x"), {})).toMatchObject({
       ok: false,
       error: { _tag: "UnexpectedShape" }
@@ -218,10 +199,7 @@ describe("TOML entries", () => {
   });
 
   it("refuses a document that does not parse", () => {
-    expect(parseToml("[broken")).toMatchObject({
-      ok: false,
-      error: { _tag: "DocumentInvalid", format: "toml" }
-    });
+    expect(parseToml("[broken")).toMatchObject({ ok: false, error: { _tag: "DocumentInvalid", format: "toml" } });
   });
 
   /** One hook group in Codex's documented layout: an array table and its handlers as array tables. */

@@ -94,9 +94,7 @@ describe("lease lost across processes", () => {
         expect(readFileSync(log, "utf8")).toBe("F:start\n");
 
         stalled.signal("SIGCONT");
-        expect(yield* Effect.promise(() => stalled.next("fenced-result"))).toMatchObject({
-          tag: "LeaseLost"
-        });
+        expect(yield* Effect.promise(() => stalled.next("fenced-result"))).toMatchObject({ tag: "LeaseLost" });
         yield* Fiber.join(successor);
         expect(readFileSync(log, "utf8")).toBe("F:start\nF:interrupted\nP:start\n");
       }).pipe(Effect.scoped, Effect.provide(layer));

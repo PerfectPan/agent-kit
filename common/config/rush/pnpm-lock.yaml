@@ -324,9 +324,6 @@ importers:
       vite-plus:
         specifier: 1.1.0
         version: 1.1.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.3)(publint@0.3.25)(typescript@7.0.2)
-      vitest:
-        specifier: 5.0.3
-        version: 5.0.3(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/browser-preview@5.0.3)(@vitest/ui@5.0.3)(@voidzero-dev/vite-plus-core@1.1.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(publint@0.3.25)(typescript@7.0.2))(publint@0.3.25)(typescript@7.0.2)
 
   ../../packages/platform-node:
     dependencies:

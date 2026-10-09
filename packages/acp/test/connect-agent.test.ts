@@ -36,12 +36,7 @@ describe("connectAgent", () => {
     Effect.gen(function* () {
       const connection = yield* connectFake();
       expect(connection.agentInfo).toEqual({ name: "fake-agent", version: "1.2.3" });
-      expect(connection.features).toMatchObject({
-        loadSession: false,
-        image: true,
-        mcpHttp: true,
-        mcpSse: false
-      });
+      expect(connection.features).toMatchObject({ loadSession: false, image: true, mcpHttp: true, mcpSse: false });
       expect(connection.authMethods).toEqual([{ id: "fake-login", name: "Fake login" }]);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
@@ -173,12 +168,7 @@ describe("connectAgent", () => {
       expect(asked).toEqual([
         {
           sessionId: "fake-session-1",
-          toolCall: {
-            callId: "call-p",
-            title: "write_file",
-            kind: "edit",
-            rawInput: { path: "b.txt" }
-          },
+          toolCall: { callId: "call-p", title: "write_file", kind: "edit", rawInput: { path: "b.txt" } },
           options: [
             { optionId: "allow", name: "Allow once", kind: "allow_once" },
             { optionId: "reject", name: "Reject once", kind: "reject_once" }
@@ -186,9 +176,7 @@ describe("connectAgent", () => {
         }
       ]);
 
-      const invented = yield* connectFake({
-        onPermission: () => Effect.succeed({ optionId: "not-offered" })
-      });
+      const invented = yield* connectFake({ onPermission: () => Effect.succeed({ optionId: "not-offered" }) });
       const denied = yield* run((yield* invented.newSession()).prompt([text("permission")]));
       expect(eventTexts(denied)).toEqual(['permission {"outcome":"selected","optionId":"reject"}']);
 
@@ -201,12 +189,7 @@ describe("connectAgent", () => {
   it.effect("puts the system prompt where the profile says and passes MCP servers and _meta through", () =>
     Effect.gen(function* () {
       const mcpServers = [
-        {
-          name: "tools",
-          command: "/opt/tools",
-          args: ["--stdio"],
-          env: [{ name: "TOKEN", value: "x" }]
-        },
+        { name: "tools", command: "/opt/tools", args: ["--stdio"], env: [{ name: "TOKEN", value: "x" }] },
         { type: "http" as const, name: "web", url: "http://127.0.0.1:9/mcp", headers: [] }
       ];
       const viaMeta = yield* connectFake({ mcpServers });
@@ -299,10 +282,10 @@ describe("starting and stopping the agent", () => {
 
   it.effect("S87: the handshake deadline is the handshake timeout, on the Effect clock", () =>
     Effect.gen(function* () {
-      const connecting = yield* connectFake({
-        fake: { FAKE_ACP_INITIALIZE: "hang" },
-        handshakeTimeoutMs: 2_000
-      }).pipe(Effect.exit, Effect.forkChild);
+      const connecting = yield* connectFake({ fake: { FAKE_ACP_INITIALIZE: "hang" }, handshakeTimeoutMs: 2_000 }).pipe(
+        Effect.exit,
+        Effect.forkChild
+      );
       yield* TestClock.adjust(1_999);
       expect(connecting.pollUnsafe()).toBeUndefined();
       yield* TestClock.adjust(1);
@@ -315,10 +298,7 @@ describe("starting and stopping the agent", () => {
 
   it.effect("bounds session/new with the request timeout", () =>
     Effect.gen(function* () {
-      const connection = yield* connectFake({
-        fake: { FAKE_ACP_NEW: "hang" },
-        requestTimeoutMs: 1_000
-      });
+      const connection = yield* connectFake({ fake: { FAKE_ACP_NEW: "hang" }, requestTimeoutMs: 1_000 });
       const opening = yield* connection.newSession().pipe(Effect.exit, Effect.forkChild);
       yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
       yield* TestClock.adjust(1_000);
@@ -337,9 +317,7 @@ describe("probeAgent", () => {
         probeAgent("fake-agent", {
           cwd: workDir(),
           env: { ...options.fake },
-          profiles: {
-            "fake-agent": fakeProfile(options.command === undefined ? {} : { command: options.command })
-          }
+          profiles: { "fake-agent": fakeProfile(options.command === undefined ? {} : { command: options.command }) }
         });
       expect(yield* probe({})).toMatchObject({
         status: "ready",
@@ -433,12 +411,7 @@ describe("session bindings", () => {
         })
       );
       const store = yield* SessionBindingStore;
-      expect(yield* store.get("chat:1")).toEqual({
-        sessionKey: "chat:1",
-        agent: "fake-agent",
-        sessionId,
-        cwd
-      });
+      expect(yield* store.get("chat:1")).toEqual({ sessionKey: "chat:1", agent: "fake-agent", sessionId, cwd });
 
       const connection = yield* connectFake({ fake });
       const loaded = yield* connection.loadSession({ sessionKey: "chat:1" });
@@ -446,9 +419,7 @@ describe("session bindings", () => {
       const parts = yield* run(loaded.prompt([text("inspect")]));
       expect(eventTexts(parts, "user")).toEqual([]);
       expect(JSON.parse(eventTexts(parts)[0] ?? "{}").cwd).toBe(cwd);
-      expect(yield* connection.loadSession({ sessionKey: "chat:1" })).toMatchObject({
-        sessionId
-      });
+      expect(yield* connection.loadSession({ sessionKey: "chat:1" })).toMatchObject({ sessionId });
 
       const missing = yield* Effect.exit(connection.loadSession({ sessionKey: "chat:2" }));
       expect(Exit.isFailure(missing) && Exit.findErrorOption(missing)).toMatchObject({
@@ -469,9 +440,7 @@ describe("session bindings", () => {
           Effect.map(connection.newSession(), (session) => session.sessionId)
         )
       );
-      const connection = yield* connectFake({
-        fake: { FAKE_ACP_LOAD: "load", FAKE_ACP_STATE: state }
-      });
+      const connection = yield* connectFake({ fake: { FAKE_ACP_LOAD: "load", FAKE_ACP_STATE: state } });
       const [first, second] = yield* Effect.all(
         [connection.loadSession({ sessionId }), connection.loadSession({ sessionId })],
         { concurrency: "unbounded" }
@@ -499,20 +468,14 @@ describe("session bindings", () => {
       });
       const close = yield* closing.close().pipe(Effect.forkChild);
       yield* Effect.sleep(50);
-      expect(yield* load(closing)).toMatchObject({
-        value: { _tag: "ConnectionClosed", reason: "closed" }
-      });
+      expect(yield* load(closing)).toMatchObject({ value: { _tag: "ConnectionClosed", reason: "closed" } });
       expect(yield* load(closing)).toMatchObject({ value: { _tag: "ConnectionClosed" } });
       yield* Fiber.join(close);
       expect(yield* load(closing)).toMatchObject({ value: { _tag: "ConnectionClosed" } });
 
-      const closed = yield* connectFake({
-        fake: { FAKE_ACP_LOAD: "load", FAKE_ACP_STATE: state }
-      });
+      const closed = yield* connectFake({ fake: { FAKE_ACP_LOAD: "load", FAKE_ACP_STATE: state } });
       yield* closed.close();
-      expect(yield* load(closed)).toMatchObject({
-        value: { _tag: "ConnectionClosed", reason: "closed" }
-      });
+      expect(yield* load(closed)).toMatchObject({ value: { _tag: "ConnectionClosed", reason: "closed" } });
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
@@ -521,14 +484,9 @@ describe("session bindings", () => {
       const connection = yield* connectFake({ fake: { FAKE_ACP_LOAD: "load" } });
       const opened = yield* connection.newSession();
       expect(opened.sessionKey).toBeUndefined();
-      const keyed = yield* connection.loadSession({
-        sessionId: opened.sessionId,
-        sessionKey: "chat:9"
-      });
+      const keyed = yield* connection.loadSession({ sessionId: opened.sessionId, sessionKey: "chat:9" });
       expect(keyed.sessionKey).toBe("chat:9");
-      expect(yield* (yield* SessionBindingStore).get("chat:9")).toMatchObject({
-        sessionId: opened.sessionId
-      });
+      expect(yield* (yield* SessionBindingStore).get("chat:9")).toMatchObject({ sessionId: opened.sessionId });
       expect((yield* connection.loadSession({ sessionKey: "chat:9" })).sessionKey).toBe("chat:9");
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
@@ -541,9 +499,7 @@ describe("session bindings", () => {
           Effect.map(connection.newSession(), (session) => session.sessionId)
         )
       );
-      const resuming = yield* connectFake({
-        fake: { FAKE_ACP_LOAD: "resume", FAKE_ACP_STATE: state }
-      });
+      const resuming = yield* connectFake({ fake: { FAKE_ACP_LOAD: "resume", FAKE_ACP_STATE: state } });
       expect((yield* resuming.loadSession({ sessionId })).sessionId).toBe(sessionId);
       const neither = yield* connectFake({ fake: { FAKE_ACP_STATE: state } });
       const refused = yield* Effect.exit(neither.loadSession({ sessionId }));
