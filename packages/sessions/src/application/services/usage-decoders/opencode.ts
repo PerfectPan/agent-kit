@@ -1,7 +1,8 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
 import type { SqliteDatabase, SqliteValue } from "@rivus/agent-kit-platform";
+import * as z from "zod/mini";
 
-import { asRecord, asString } from "../../../domain/transcript/adapters/record-fields.js";
+import { lenient } from "../../../domain/transcript/adapters/lenient.js";
 import {
   OPENCODE_MESSAGE_PAGE,
   OPENCODE_MESSAGES_BY_ROW,
@@ -35,6 +36,9 @@ const AGENT = "opencode";
 
 /** Rows read per query, so a large database is not loaded whole. */
 const PAGE_ROWS = 500;
+
+/** A `message` page row; only `session_id` is read by type, the other columns are coerced in `toRows`. */
+const messageRow = z.looseObject({ session_id: lenient(z.string()) });
 
 /**
  * opencode's database `<home>/opencode.db` when it exists, which needs `platform.sqlite`; otherwise each session
@@ -160,14 +164,17 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
     };
     const earliest = opencodeQueryFloor(options.since);
     const toRows = (rows: Record<string, SqliteValue>[]): OpencodeTableRow[] =>
-      rows.map((row) => ({
-        id: String(row.id),
-        row: Number(row.row),
-        updated: Number(row.time_updated),
-        created: Number(row.time_created),
-        ...(asString(row.session_id) === undefined ? {} : { sessionId: asString(row.session_id) }),
-        data: String(row.data)
-      }));
+      rows.map((row) => {
+        const sessionId = z.safeParse(messageRow, row).data?.session_id;
+        return {
+          id: String(row.id),
+          row: Number(row.row),
+          updated: Number(row.time_updated),
+          created: Number(row.time_created),
+          ...(sessionId === undefined ? {} : { sessionId }),
+          data: String(row.data)
+        };
+      });
     try {
       // The first read goes by row id, a single pass over the table; the following pages go by the newest change.
       // The settled records go through `queue`, so the ones a loop left early keeps are saved with the cursor.
@@ -209,6 +216,9 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
   }, from);
 }
 
+/** The cursor state of a legacy session directory: the last file name read. */
+const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
+
 /**
  * The assistant messages of one session directory of the older JSON layout, one file each, in name order (opencode's
  * message ids grow with time). The cursor keeps the last file name read.
@@ -217,7 +227,7 @@ function decodeLegacySession(platform: UsagePlatform, dir: string, options: Deco
   const { from, signal } = options;
   return usageStreamOf(async function* (position) {
     const io = guardIo(platform);
-    let after = asString(asRecord(from?.state)?.after);
+    let after = z.safeParse(legacyCursorState, from?.state).data?.after;
     const queue: UsageRecord[] = [...(from?.queue ?? [])];
     position.cursor = () => ({
       agent: AGENT,

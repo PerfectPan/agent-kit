@@ -1,7 +1,6 @@
 // Agent logs are read leniently: a field of an unexpected type counts as absent, and only the record envelope
-// decides whether the format generation is known. These accessors are that rule; they are not a schema. They use
-// `typeof` checks rather than a library because `/transcript/usage` bundles them and must import nothing: a host
-// that cannot install dependencies loads that entry on its own.
+// decides whether the format generation is known. Schema readers express that with `lenient` (./lenient.js); these
+// accessors are the same rule for the readers that are not schemas.
 
 /** A JSON object. Arrays and `null` are not records. */
 export function asRecord(value: unknown): Record<string, unknown> | undefined {

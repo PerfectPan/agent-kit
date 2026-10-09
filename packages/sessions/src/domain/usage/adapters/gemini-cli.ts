@@ -1,11 +1,33 @@
 import { ok } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import { type SourcePointer, sourceOf, timeOf } from "../../transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../index.js";
-import { asNumber, asRecord, asString } from "../../transcript/adapters/record-fields.js";
+import { lenient } from "../../transcript/adapters/lenient.js";
 import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "gemini-cli";
+
+/** The `tokens` of a `gemini` message, which copy the API's usage metadata. */
+const GeminiCliTokens = z.looseObject({
+  input: lenient(z.number()),
+  output: lenient(z.number()),
+  thoughts: lenient(z.number()),
+  tool: lenient(z.number()),
+  total: lenient(z.number()),
+  cached: lenient(z.number())
+});
+
+/** A chat record. Fields this reader does not name stay in the record, so a `$patch` marker is still visible. */
+const GeminiCliRecord = z.looseObject({
+  id: lenient(z.string()),
+  type: lenient(z.string()),
+  model: lenient(z.string()),
+  projectHash: lenient(z.string()),
+  sessionId: lenient(z.string())
+});
+
+type GeminiCliRecordValue = z.output<typeof GeminiCliRecord>;
 
 /**
  * The Usage of a `gemini` message's `tokens`, which copy the API's usage metadata. `input` (the prompt count) already
@@ -13,19 +35,13 @@ const AGENT = "gemini-cli";
  * they are added to the input. `thoughts` are reasoning, billed as output and not part of `output`.
  */
 export function geminiCliUsage(value: unknown): Usage | undefined {
-  const tokens = asRecord(value);
-  if (!tokens) {
-    return undefined;
-  }
-  const input = asNumber(tokens.input);
-  const output = asNumber(tokens.output);
-  const thoughts = asNumber(tokens.thoughts);
+  const tokens = z.safeParse(GeminiCliTokens, value).data;
   return compactUsage({
-    inputTokens: input === undefined ? undefined : input + (asNumber(tokens.tool) ?? 0),
-    outputTokens: output === undefined ? undefined : output + (thoughts ?? 0),
-    totalTokens: asNumber(tokens.total),
-    cacheReadTokens: asNumber(tokens.cached),
-    reasoningTokens: thoughts
+    inputTokens: tokens?.input === undefined ? undefined : tokens.input + (tokens.tool ?? 0),
+    outputTokens: tokens?.output === undefined ? undefined : tokens.output + (tokens.thoughts ?? 0),
+    totalTokens: tokens?.total,
+    cacheReadTokens: tokens?.cached,
+    reasoningTokens: tokens?.thoughts
   });
 }
 
@@ -37,6 +53,14 @@ interface GeminiCliUsageState {
   lastReported?: boolean;
 }
 
+/** The state a cursor carries back, reading only the fields it understands. */
+const GeminiCliSavedState = z.looseObject({
+  sessionId: lenient(z.string()),
+  lastTime: lenient(z.number()),
+  lastId: lenient(z.string()),
+  lastReported: lenient(z.boolean())
+});
+
 /**
  * Gemini CLI's usage over one `.jsonl` chat: one record per `gemini` message that has `tokens`. The CLI appends a
  * message again each time it changes (tokens attached, tool calls added), only while it is the chat's last message,
@@ -46,16 +70,16 @@ export function geminiCliUsageLines(file: UsageFile, saved?: unknown): UsageLine
   const state = restore(saved);
   return {
     push(record) {
-      const rec = asRecord(record.value);
+      const rec = z.safeParse(GeminiCliRecord, record.value).data;
       if (!rec) {
         return ok([]);
       }
       const ts = timeOf(rec.timestamp) ?? state.lastTime ?? file.mtimeMs;
       state.lastTime = ts;
-      if (typeof rec.projectHash === "string") {
-        state.sessionId ??= asString(rec.sessionId);
+      if (rec.projectHash !== undefined) {
+        state.sessionId ??= rec.sessionId;
       }
-      const id = asString(rec.id);
+      const id = rec.id;
       if (!id || "$patch" in rec) {
         return ok([]);
       }
@@ -81,19 +105,35 @@ export function geminiCliUsageLines(file: UsageFile, saved?: unknown): UsageLine
   };
 }
 
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+function restore(saved: unknown): GeminiCliUsageState {
+  const state = z.safeParse(GeminiCliSavedState, saved).data;
+  return {
+    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
+    ...(state?.lastId === undefined ? {} : { lastId: state.lastId, lastReported: state.lastReported === true })
+  };
+}
+
+/** An older chat: one JSON object, with the session id and the `messages` array. */
+const GeminiCliLegacyChat = z.looseObject({
+  sessionId: lenient(z.string()),
+  messages: lenient(z.array(z.unknown()))
+});
+
 /**
  * The usage of an older chat file, one JSON object with a `messages` array, read whole. Every record points at the
  * whole file; a message id that repeats counts once.
  */
 export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: SourcePointer): UsageRecord[] {
-  const chat = asRecord(value);
-  const messages = Array.isArray(chat?.messages) ? chat.messages : [];
-  const sessionId = asString(chat?.sessionId) ?? file.sessionId;
+  const chat = z.safeParse(GeminiCliLegacyChat, value).data;
+  const messages = chat?.messages ?? [];
+  const sessionId = chat?.sessionId ?? file.sessionId;
   const seen = new Set<string>();
   const out: UsageRecord[] = [];
   for (const item of messages) {
-    const message = asRecord(item);
-    const id = asString(message?.id);
+    const message = z.safeParse(GeminiCliRecord, item).data;
+    const id = message?.id;
     const usage = message?.type === "gemini" ? geminiCliUsage(message.tokens) : undefined;
     if (!message || !usage || (id !== undefined && seen.has(id))) {
       continue;
@@ -111,14 +151,13 @@ export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: So
  * `.jsonl` file, so a total over both files counts the message once.
  */
 function messageRecord(
-  message: Record<string, unknown>,
+  message: GeminiCliRecordValue,
   usage: Usage,
   timestamp: number,
   sessionId: string,
   source: SourcePointer
 ): UsageRecord {
-  const id = asString(message.id);
-  const model = asString(message.model);
+  const { id, model } = message;
   return {
     agent: AGENT,
     sessionId,
@@ -128,19 +167,6 @@ function messageRecord(
     ...(model ? { model } : {}),
     usage,
     source
-  };
-}
-
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
-function restore(saved: unknown): GeminiCliUsageState {
-  const state = asRecord(saved);
-  const sessionId = asString(state?.sessionId);
-  const lastTime = asNumber(state?.lastTime);
-  const lastId = asString(state?.lastId);
-  return {
-    ...(sessionId === undefined ? {} : { sessionId }),
-    ...(lastTime === undefined ? {} : { lastTime }),
-    ...(lastId === undefined ? {} : { lastId, lastReported: state?.lastReported === true })
   };
 }
 

@@ -1,28 +1,36 @@
+import * as z from "zod/mini";
+
 import type { SourcePointer } from "../../../transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../../index.js";
-import { asNumber, asRecord, asString } from "../../../transcript/adapters/record-fields.js";
+import { lenient } from "../../../transcript/adapters/lenient.js";
 
 const AGENT = "opencode";
 
 /**
- * The Usage of a stored message's `tokens`. opencode counts `input` without the cache and `output` without reasoning
- * (its `total` is the sum of all five counts), so both are added back.
+ * The `tokens` of a stored message. opencode counts `input` without the cache and `output` without reasoning (its
+ * `total` is the sum of all five counts), so both are added back.
  */
-export function opencodeUsage(value: unknown): Usage | undefined {
-  const tokens = asRecord(value);
-  if (!tokens) {
-    return undefined;
-  }
-  const cache = asRecord(tokens.cache);
-  const input = asNumber(tokens.input);
-  const output = asNumber(tokens.output);
-  const reasoning = asNumber(tokens.reasoning);
-  const cacheRead = asNumber(cache?.read);
-  const cacheWrite = asNumber(cache?.write);
+const OpencodeTokens = z.looseObject({
+  input: lenient(z.number()),
+  output: lenient(z.number()),
+  reasoning: lenient(z.number()),
+  total: lenient(z.number()),
+  cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
+});
+
+type OpencodeTokensValue = z.output<typeof OpencodeTokens>;
+
+/** The Usage of a stored message's parsed `tokens`, with the cache and reasoning added back. */
+function opencodeUsage(tokens: OpencodeTokensValue | undefined): Usage | undefined {
+  const input = tokens?.input;
+  const output = tokens?.output;
+  const reasoning = tokens?.reasoning;
+  const cacheRead = tokens?.cache?.read;
+  const cacheWrite = tokens?.cache?.write;
   return compactUsage({
     inputTokens: input === undefined ? undefined : input + (cacheRead ?? 0) + (cacheWrite ?? 0),
     outputTokens: output === undefined ? undefined : output + (reasoning ?? 0),
-    totalTokens: asNumber(tokens.total),
+    totalTokens: tokens?.total,
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
     reasoningTokens: reasoning
@@ -43,19 +51,30 @@ export interface OpencodeMessageRow {
   readonly settledAt?: number;
 }
 
+/** A stored message and the fields its usage rules read. */
+const OpencodeMessage = z.looseObject({
+  id: lenient(z.string()),
+  role: lenient(z.string()),
+  sessionID: lenient(z.string()),
+  modelID: lenient(z.string()),
+  providerID: lenient(z.string()),
+  cost: lenient(z.number()),
+  time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) })),
+  tokens: lenient(OpencodeTokens)
+});
+
 /**
  * The usage of one stored message: `undefined` for a message that is not an assistant's or has no token counts, and
  * `running` for an assistant message that has not finished (opencode sets `time.completed` when it ends, also on an
  * error or an abort), whose counts may still grow. opencode logs the message's cost, which is kept as the agent's.
  */
 export function opencodeMessageUsage(value: unknown, row: OpencodeMessageRow): UsageRecord | "running" | undefined {
-  const message = asRecord(value);
+  const message = z.safeParse(OpencodeMessage, value).data;
   if (message?.role !== "assistant") {
     return undefined;
   }
-  const time = asRecord(message.time);
   const timestamp =
-    asNumber(time?.completed) ?? (row.settledAt === undefined ? undefined : (asNumber(time?.created) ?? row.settledAt));
+    message.time?.completed ?? (row.settledAt === undefined ? undefined : (message.time?.created ?? row.settledAt));
   if (timestamp === undefined) {
     return "running";
   }
@@ -63,19 +82,17 @@ export function opencodeMessageUsage(value: unknown, row: OpencodeMessageRow): U
   if (!usage) {
     return undefined;
   }
-  const id = asString(message.id) ?? row.id;
+  const id = message.id ?? row.id;
   const record: UsageRecord = {
     agent: AGENT,
-    sessionId: asString(message.sessionID) ?? row.sessionId ?? "unknown",
+    sessionId: message.sessionID ?? row.sessionId ?? "unknown",
     granularity: "request",
     ...(id ? { requestId: id } : {}),
     timestamp,
     usage,
     source: row.source
   };
-  const model = asString(message.modelID);
-  const provider = asString(message.providerID);
-  const cost = asNumber(message.cost);
+  const { modelID: model, providerID: provider, cost } = message;
   if (model) {
     record.model = model;
   }

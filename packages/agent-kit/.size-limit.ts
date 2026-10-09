@@ -21,9 +21,12 @@ export default [
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "1 kB" },
   { name: "@rivus/agent-kit/platform/effect", path: "dist/platform/effect.js", import: "*", limit: "0.5 kB" },
   { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1.5 kB" },
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "14.5 kB" },
+  // Size-limit counts dependencies, and the usage readers now import zod/mini, which the sessions and transcript
+  // graphs did not pull in on main: most of their growth is zod/mini itself. /transcript/usage also carries a
+  // bundled copy, since the entry imports nothing and tsdown inlines it.
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "17.71 kB" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "35.5 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "15.5 kB" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "12.25 kB" }
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "18.7 kB" },
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "16.91 kB" }
 ] satisfies SizeLimitConfig;

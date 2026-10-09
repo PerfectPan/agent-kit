@@ -1,4 +1,5 @@
-import { asRecord } from "../../../domain/transcript/adapters/record-fields.js";
+import * as z from "zod/mini";
+
 import { readBytes } from "./read-file.js";
 import type { SessionPlatform } from "../../ports.js";
 
@@ -64,14 +65,17 @@ export function edgeLines(edges: FileEdges): string[] {
   return [...textLines(edges.headBytes.subarray(0, headCut)), ...textLines(edges.tailBytes.subarray(tailFrom))];
 }
 
+/** A JSON object. Arrays and `null` are not records. */
+const jsonRecord = z.record(z.string(), z.unknown());
+
 /** JSON object records from both ends; lines that are not JSON objects are left out. */
 export function edgeRecords(edges: FileEdges): Record<string, unknown>[] {
   const records: Record<string, unknown>[] = [];
   for (const line of edgeLines(edges)) {
     try {
-      const record = asRecord(JSON.parse(line) as unknown);
-      if (record) {
-        records.push(record);
+      const record = z.safeParse(jsonRecord, JSON.parse(line));
+      if (record.success) {
+        records.push(record.data);
       }
     } catch {
       // A line cut by the edge, or not JSON; the preview skips it.

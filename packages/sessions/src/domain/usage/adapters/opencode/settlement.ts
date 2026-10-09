@@ -1,5 +1,7 @@
-import { asNumber, asRecord, asString } from "../../../transcript/adapters/record-fields.js";
+import * as z from "zod/mini";
+
 import type { UsageRecord } from "../../index.js";
+import { lenient } from "../../../transcript/adapters/lenient.js";
 import { rememberKey } from "../usage-lines.js";
 import { opencodeMessageUsage } from "./usage.js";
 
@@ -44,15 +46,24 @@ export interface OpencodeSettlementState {
   reported: string[];
 }
 
+/** The state a cursor carries back, reading only the fields it understands; a wrong-typed id in a list is dropped. */
+const OpencodeSavedSettlement = z.looseObject({
+  updated: lenient(z.number()),
+  id: lenient(z.string()),
+  row: lenient(z.number()),
+  running: lenient(z.array(lenient(z.string()))),
+  reported: lenient(z.array(lenient(z.string())))
+});
+
 /** Restores the settlement state a cursor carries, reading only the fields it understands. */
 function restoreOpencodeSettlement(saved: unknown): OpencodeSettlementState {
-  const state = asRecord(saved);
-  const ids = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
-  const row = asNumber(state?.row);
+  const state = z.safeParse(OpencodeSavedSettlement, saved).data;
+  const ids = (value: readonly (string | undefined)[] | undefined): string[] =>
+    value?.filter((id): id is string => id !== undefined) ?? [];
+  const row = state?.row;
   return {
-    updated: asNumber(state?.updated) ?? 0,
-    id: asString(state?.id) ?? "",
+    updated: state?.updated ?? 0,
+    id: state?.id ?? "",
     ...(row === undefined ? {} : { row }),
     running: ids(state?.running),
     reported: ids(state?.reported)

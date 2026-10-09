@@ -58,6 +58,23 @@ describe("opencode settlement", () => {
     expect(settlement.runningIds()).toEqual([]);
   });
 
+  it("continues from a saved state, reading a field of an unexpected type as absent", () => {
+    const first = createOpencodeSettlement("opencode.db", { final: false });
+    first.push([row("1", 10, 1), row("2", 11, 1)]);
+    first.push([row("3", 12)]);
+    const saved = first.save() as { updated: unknown; id: unknown; reported: unknown; running: unknown };
+    expect(saved).toMatchObject({ updated: 12, id: "3", row: 3 });
+    const resumed = createOpencodeSettlement("opencode.db", {
+      state: { ...saved, updated: "12", id: 3, reported: ["2", 5, "1"], running: "3" },
+      final: false
+    });
+    expect(resumed.position()).toEqual({ row: 3, updated: 0, id: "" });
+    expect(resumed.runningIds()).toEqual([]);
+    // A still-remembered id counts again only after it changes; an id dropped from a broken list would report twice.
+    expect(resumed.push([row("1", 10, 1)])).toEqual([]);
+    expect(resumed.push([row("9", 14, 3)])).toHaveLength(1);
+  });
+
   it("reports a message still running from a previous decode at its creation time when final", () => {
     const previous = createOpencodeSettlement("opencode.db", { final: false });
     previous.push([row("1", 10)]);
