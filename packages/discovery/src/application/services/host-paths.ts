@@ -1,7 +1,7 @@
 import { type CodingAgentId, homeFromRule, type HomeRule, homeRuleOf } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 
-import type { ProbePath, ProbeRecipe, StatFailed } from "../../domain/installation/index.js";
+import { authProbeLists, type ProbePath, type ProbeRecipe, type StatFailed } from "../../domain/installation/index.js";
 import { abortable, errnoCode } from "./abortable.js";
 import { capabilityUnsupported } from "../errors.js";
 import type { DiscoveryPlatform } from "../ports.js";
@@ -65,7 +65,7 @@ export function recipePaths(recipe: ProbeRecipe): ProbePath[] {
     ...recipe.appPaths,
     ...recipe.configPaths,
     ...recipe.mcpConfigPaths,
-    ...(recipe.auth?.credentialFiles ?? []).map((file) => file.path)
+    ...authProbeLists(recipe.auth).credentialFiles.map((file) => file.path)
   ];
 }
 

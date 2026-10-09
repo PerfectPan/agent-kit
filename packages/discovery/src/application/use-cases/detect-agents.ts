@@ -12,6 +12,7 @@ import {
   type ProbeProblem,
   type ProbeRecipe,
   type ProbeRecipes,
+  authProbeLists,
   probesAuth,
   resolveAuthState,
   type Version
@@ -234,7 +235,8 @@ async function detectAuth(
       }
     }
   }
-  for (const file of auth.credentialFiles ?? []) {
+  const lists = authProbeLists(auth);
+  for (const file of lists.credentialFiles) {
     const path = expandProbePath(file.path, platform, recipe);
     const found = await check(path);
     if (found !== undefined && "_tag" in found) {
@@ -256,7 +258,7 @@ async function detectAuth(
       observations.push({ source: { kind: "credential-file", path }, reading: read.reading });
     }
   }
-  for (const { name, method } of auth.env ?? []) {
+  for (const { name, method } of lists.env) {
     if (envValue(platform, name)?.trim()) {
       observations.push({ source: { kind: "env", variable: name }, reading: envReading(method) });
     }

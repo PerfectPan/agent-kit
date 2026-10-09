@@ -7,15 +7,16 @@ export { DETECTION_STATUSES, type DetectionStatus } from "./value-objects/detect
 export type { Evidence, EvidenceKind } from "./value-objects/evidence.js";
 export type { Installation } from "./value-objects/installation.js";
 export type { CommandFailed, CredentialFileFailed, ProbeProblem, StatFailed } from "./value-objects/probe-problem.js";
-export type {
-  AuthCommandProbe,
-  AuthProbe,
-  AuthVariable,
-  CredentialFileProbe,
-  InstallationKind,
-  ProbePath,
-  ProbeRecipe,
-  ProbeRecipes,
-  VersionProbe
+export {
+  authProbeLists,
+  type AuthCommandProbe,
+  type AuthProbe,
+  type AuthVariable,
+  type CredentialFileProbe,
+  type InstallationKind,
+  type ProbePath,
+  type ProbeRecipe,
+  type ProbeRecipes,
+  type VersionProbe
 } from "./value-objects/probe-recipe.js";
 export { type CommandOutput, type Version, versionFromOutput } from "./value-objects/version.js";
