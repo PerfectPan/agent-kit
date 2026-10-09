@@ -1,5 +1,5 @@
 import { splitLines } from "@rivus/agent-kit-platform";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "./memory-platform.js";
 

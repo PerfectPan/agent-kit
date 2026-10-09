@@ -1,7 +1,7 @@
 // ACP `session/update` notifications, read the way both of their readers need: the live stream of `/acp` and the
 // Grok adapter, whose `updates.jsonl` stores the same notifications. Like every log reader, this module reads
 // leniently. It is bundled into the zero-dependency `/transcript/usage` entry, whose built files import nothing
-// because tsdown bundles `zod/mini` into that entry and keeps it external for every other entry.
+// because `vp pack` bundles `zod/mini` into that entry and keeps it external for every other entry.
 
 import * as z from "zod/mini";
 

@@ -1,5 +1,5 @@
 import type { Result } from "@rivus/agent-kit-catalog";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";

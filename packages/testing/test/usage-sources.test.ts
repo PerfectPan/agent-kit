@@ -1,6 +1,6 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { isUsageSource, listUsageSources, type ListUsageSourcesOptions } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryFile } from "../src/memory-platform.js";
 import { readUsageHome } from "./support.js";

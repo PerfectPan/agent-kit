@@ -12,21 +12,18 @@
   },
   "scripts": {
     "build": "",
-    "lint": "oxlint",
+    "lint": "vp lint 2>&1",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
-    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+    "test": "vp test 2>&1",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
   },
   "dependencies": {
     "es-toolkit": "^1.52.0"
   },
   "devDependencies": {
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.5.0",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
-    "oxlint-tsgolint": "7.0.2003",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vite-plus": "1.1.0"
   }
 }

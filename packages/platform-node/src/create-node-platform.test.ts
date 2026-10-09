@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "./create-node-platform.js";
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing } from "../value-objects/pricing-table.js";
 import { fromLiteLLM } from "./from-litellm.js";

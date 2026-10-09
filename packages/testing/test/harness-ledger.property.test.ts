@@ -22,7 +22,7 @@ import {
   type VerifyStatus
 } from "@rivus/agent-kit-harness";
 import { isEqual } from "es-toolkit";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { fixtureHash, type LedgerEntryFixture, ledgerFixture, ledgerSnapshotFixture } from "../src/ledger-fixture.js";
 

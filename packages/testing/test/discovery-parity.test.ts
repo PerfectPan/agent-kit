@@ -12,7 +12,7 @@ import {
   versionFromOutput
 } from "@rivus/agent-kit-discovery";
 import type { OperatingSystem } from "@rivus/agent-kit-platform";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryCommand, type MemoryPlatform } from "../src/memory-platform.js";
 

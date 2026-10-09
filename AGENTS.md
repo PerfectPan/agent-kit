@@ -34,7 +34,7 @@ npm run check
 npm run format        # or format:check
 npm run build         # rush rebuild: internal packages have no build step, so an incremental build would skip
                       # the shell after an internal-package change
-npm run lint          # oxlint with type-aware rules and TypeScript diagnostics
+npm run lint          # vp lint: oxlint with type-aware rules and TypeScript diagnostics
 npm run typecheck
 npm run test          # includes the architecture boundary test in infra/architecture
 npm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
@@ -60,8 +60,8 @@ Rush projects are listed in `rush.json`:
 
 - `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files only re-export names,
   one by one, from internal packages' `public.ts` (or a lighter public sub-entry such as
-  `@rivus/agent-kit-harness/public/events`); every subpath in its `exports` map is one tsdown entry, and tsdown
-  bundles the internal packages and their declarations into `dist`.
+  `@rivus/agent-kit-harness/public/events`); every subpath in its `exports` map is one entry in the `pack` block of
+  its `vite.config.ts`, and `vp pack` bundles the internal packages and their declarations into `dist`.
 - `packages/agent-kit-collab` is `@rivus/agent-kit-collab`, the second published package, with its own code: each
   entry lives in `src/<entry>/` (layers at `src/<entry>/<layer>/`, entry file `src/<entry>/public.ts`). It reaches
   `@rivus/agent-kit` only through the public entries listed in `boundaries.ts`, as a peer (`workspace:^`). Both

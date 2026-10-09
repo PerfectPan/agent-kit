@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { isWithin, locatorKey, locatorProblem, locatorsOverlap, pointerTail } from "./artifact-locator.js";
 import type { ArtifactLocator } from "./artifact-locator.js";

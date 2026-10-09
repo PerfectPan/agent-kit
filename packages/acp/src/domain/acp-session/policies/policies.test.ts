@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { PermissionRequest } from "../value-objects/permission-request.js";
 import { agentEnv } from "./agent-env.js";

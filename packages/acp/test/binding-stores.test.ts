@@ -6,7 +6,7 @@ import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 import {
   FileSessionBindingStoreLive,

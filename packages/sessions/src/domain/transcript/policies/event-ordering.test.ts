@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { baseEvent } from "../factories/transcript-event.js";
 import { timedRecord } from "../adapters/record-time.js";

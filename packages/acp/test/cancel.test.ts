@@ -5,7 +5,7 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
 import * as Layer from "effect/Layer";

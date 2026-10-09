@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { builtinSessionAdapters, type SessionPlatform } from "@rivus/agent-kit-sessions";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { oversizedSession, sessionAdapterConformance } from "../src/session-adapter-conformance.js";

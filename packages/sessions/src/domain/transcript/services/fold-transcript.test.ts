@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { checkLedgerVersion } from "../../domain/ledger/index.js";
 import { decodePreImage, storedLedgerEnvelope } from "./ledger-file.js";

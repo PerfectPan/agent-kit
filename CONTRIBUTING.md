@@ -30,7 +30,7 @@ The publishable packages are `packages/agent-kit` (`@rivus/agent-kit`) and `pack
 collab owns its entry code and uses agent-kit's public subpaths through a peer dependency. See
 [Authoring Conventions](docs/architecture/authoring.md) for their layouts and dependency boundaries.
 To add an internal package for a bounded context, copy
-`packages/platform` (its `package.json`, `tsconfig.json` and `.oxlintrc.json`), name it `@rivus/agent-kit-<folder>`,
+`packages/platform` (its `package.json`, `tsconfig.json` and `vite.config.ts`), name it `@rivus/agent-kit-<folder>`,
 register it in `rush.json` with `"shouldPublish": false`, declare its dependencies in
 `infra/architecture/boundaries.ts`, add it to the shell's devDependencies as `workspace:*` when the shell re-exports
 it, and run `node common/scripts/install-run-rush.js update`. A new public entry is a subpath in the shell's

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing, type PriceOverrides, type PricingTable } from "./pricing-table.js";
 

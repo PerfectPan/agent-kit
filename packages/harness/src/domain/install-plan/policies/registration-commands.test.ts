@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";

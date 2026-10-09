@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { keylessRecordRead, nextMark, type UsageScanMark } from "./scan-state.js";
 

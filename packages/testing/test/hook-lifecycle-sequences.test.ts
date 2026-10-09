@@ -6,7 +6,7 @@ import {
   readHookEvent,
   reduceLifecycle
 } from "@rivus/agent-kit-harness";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialectSample } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";

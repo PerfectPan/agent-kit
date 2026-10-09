@@ -14,21 +14,18 @@
   },
   "scripts": {
     "build": "",
-    "lint": "oxlint && effect-tsgo diagnostics --project tsconfig.json --strict",
+    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
-    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+    "test": "vp test 2>&1",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
   },
   "devDependencies": {
     "@effect/tsgo": "0.49.0",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.5.0",
     "effect": "4.0.1",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
-    "oxlint-tsgolint": "7.0.2003",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vite-plus": "1.1.0"
   },
   "peerDependencies": {
     "effect": "4.0.1"

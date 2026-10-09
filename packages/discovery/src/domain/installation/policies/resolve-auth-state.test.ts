@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { DetectionStatus } from "../value-objects/detection-status.js";
 import type { AuthObservation } from "../value-objects/auth-state.js";

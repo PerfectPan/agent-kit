@@ -6,7 +6,7 @@ import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 import { createLeaseManager, sqliteLeaseRepository } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";

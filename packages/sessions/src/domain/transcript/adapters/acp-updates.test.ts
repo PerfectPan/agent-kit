@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { translateGrokRecords } from "./grok/events.js";
 import { foldStreamParts, type SourcedRecord, type TranscriptStreamPart } from "../index.js";

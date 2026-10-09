@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { UsageRecord } from "../value-objects/usage-record.js";
 import { restoreUsageWindow } from "./usage-window.js";

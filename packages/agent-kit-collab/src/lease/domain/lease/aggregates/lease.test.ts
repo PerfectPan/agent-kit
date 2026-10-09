@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { canAcquire } from "../policies/acquisition.js";
 import { checkFence, nextFencingToken } from "../policies/fence-check.js";

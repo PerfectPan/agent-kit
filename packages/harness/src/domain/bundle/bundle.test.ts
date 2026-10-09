@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../lifecycle/adapters/hook-dialects.js";
 import { buildInstallPlan } from "../install-plan/factories/build-install-plan.js";

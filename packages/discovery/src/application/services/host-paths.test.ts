@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import type { ProbeRecipe } from "../../domain/installation/index.js";

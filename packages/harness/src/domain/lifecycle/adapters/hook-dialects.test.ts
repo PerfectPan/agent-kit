@@ -1,5 +1,5 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialect, HookDialects } from "../index.js";
 import { builtinHookDialects, readHookEvent } from "./hook-dialects.js";

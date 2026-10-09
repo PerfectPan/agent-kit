@@ -13,7 +13,7 @@ import {
   type UsagePlatform,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { nodeReadFs, nodeSqlite } from "./support.js";
 

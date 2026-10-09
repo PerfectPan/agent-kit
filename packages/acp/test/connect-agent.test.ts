@@ -11,7 +11,7 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 
 import { connectAgent, optionOfKind, probeAgent, SessionBindingStore } from "../src/public.js";
 import {

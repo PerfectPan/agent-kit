@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { mergeByTime, type StampedRecord } from "../../index.js";
 import { timedRecord } from "../record-time.js";

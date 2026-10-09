@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { AcpSession, type AcpSessionTransition } from "./acp-session.js";
 

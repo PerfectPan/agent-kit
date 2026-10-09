@@ -13,11 +13,11 @@
   },
   "scripts": {
     "build": "",
-    "lint": "oxlint && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
+    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
     "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
-    "test": "vitest run",
-    "format": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json .",
-    "format:check": "oxfmt -c node_modules/@perfectpan/lint-config/oxfmt.json --check ."
+    "test": "vp test 2>&1",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
   },
   "dependencies": {
     "@decimalturn/toml-patch": "^3.3.0",
@@ -34,10 +34,8 @@
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@types/node": "24.19.1",
     "effect": "4.0.1",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
-    "oxlint-tsgolint": "7.0.2003",
     "typescript": "7.0.2",
+    "vite-plus": "1.1.0",
     "vitest": "5.0.3"
   },
   "peerDependencies": {

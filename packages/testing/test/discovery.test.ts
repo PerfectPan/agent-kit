@@ -8,7 +8,7 @@ import {
   versionFromOutput
 } from "@rivus/agent-kit-discovery";
 import type { RunOptions } from "@rivus/agent-kit-platform";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   createMemoryPlatform,

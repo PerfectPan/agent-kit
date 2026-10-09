@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 
 import { readHookEvent } from "../src/domain/lifecycle/adapters/hook-dialects.js";

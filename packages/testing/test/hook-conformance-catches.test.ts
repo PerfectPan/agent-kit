@@ -1,5 +1,5 @@
 import { builtinHookDialects, type HookDialect } from "@rivus/agent-kit-harness";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { hookDialectConformance } from "../src/hook-dialect-conformance.js";
 import { cursorSamples } from "./fixtures/hooks/cursor.js";

@@ -16,7 +16,7 @@ import {
   translateClaudeCodeRecords,
   type Transcript
 } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { readTree } from "./support.js";

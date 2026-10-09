@@ -1,5 +1,5 @@
 import { builtinProbeRecipes, type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { probeRecipeConformance, type ProbeRecipeSamples } from "../src/probe-recipe-conformance.js";
 

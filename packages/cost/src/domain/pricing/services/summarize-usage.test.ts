@@ -1,5 +1,5 @@
 import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing } from "../value-objects/pricing-table.js";
 import { summarize } from "./summarize-usage.js";

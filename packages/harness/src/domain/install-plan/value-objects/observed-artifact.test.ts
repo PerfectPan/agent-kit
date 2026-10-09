@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import type { ObservedArtifact } from "./observed-artifact.js";
 import { isBrokenSymlink } from "./observed-artifact.js";
