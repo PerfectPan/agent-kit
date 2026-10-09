@@ -139,7 +139,7 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
       return invalid(problem, locatorKey(op.locator));
     }
   }
-  for (const [key, kept] of Object.entries(snapshot.kept ?? {})) {
+  for (const [key, kept] of Object.entries(keptRecordsOf(snapshot))) {
     if (locatorProblem(kept.locator) !== undefined || key !== locatorKey(kept.locator) || kept.owner === "") {
       return invalid("a kept Artifact has an invalid locator or no owner", key);
     }
@@ -148,6 +148,11 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
   return new Set(pendingKeys).size === pendingKeys.length
     ? undefined
     : invalid("two pending operations on one locator");
+}
+
+/** `kept` as a record. A snapshot that omits it, because it holds none, reads as empty. */
+function keptRecordsOf(snapshot: LedgerSnapshot): Readonly<Record<LocatorKey, KeptArtifact>> {
+  return snapshot.kept ?? {};
 }
 
 function freeze<T>(value: T): T {
@@ -184,8 +189,12 @@ export class Ledger {
 
   private readonly snapshot: LedgerSnapshot;
 
+  /** The snapshot's kept artifacts. Empty when the stored snapshot omits `kept`. */
+  private readonly keptByKey: Readonly<Record<LocatorKey, KeptArtifact>>;
+
   private constructor(snapshot: LedgerSnapshot) {
     this.snapshot = freeze(snapshot);
+    this.keptByKey = freeze(keptRecordsOf(this.snapshot));
     Object.freeze(this);
   }
 
@@ -220,10 +229,15 @@ export class Ledger {
     return agentsOfEntries(this.entriesOf(owner));
   }
 
+  /** Artifacts kept on removal, keyed by locator. Empty when the snapshot omits `kept`. */
+  keptRecords(): Readonly<Record<LocatorKey, KeptArtifact>> {
+    return this.keptByKey;
+  }
+
   /** The record of an Artifact an owner let go of because the user changed it, if this locator has one. */
   kept(locator: ArtifactLocator, owner?: Owner): KeptArtifact | undefined {
     const key = locatorKey(locator);
-    const kept = this.snapshot.kept ?? {};
+    const kept = this.keptByKey;
     if (Object.hasOwn(kept, key) && (owner === undefined || kept[key]?.owner === owner)) {
       return kept[key];
     }
@@ -404,7 +418,7 @@ export class Ledger {
   private next(
     entries: Readonly<Record<LocatorKey, LedgerEntry>>,
     pending: readonly PendingOperation[],
-    kept: Readonly<Record<LocatorKey, KeptArtifact>> = this.snapshot.kept ?? {}
+    kept: Readonly<Record<LocatorKey, KeptArtifact>> = this.keptByKey
   ): Ledger {
     const { kept: _previous, ...rest } = this.snapshot;
     const snapshot: LedgerSnapshot = {

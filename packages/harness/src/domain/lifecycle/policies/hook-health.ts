@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { hasLegacyMarker } from "../../bundle/policies/legacy-markers.js";
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import { type ArtifactLocator, pointerTail } from "../../install-plan/value-objects/artifact-locator.js";
 import type { HookDialect } from "../value-objects/hook-dialect.js";
 
 /** Why `doctor` flags a command hook: it never runs, its timeout unit looks wrong, its program is gone, or it fires twice. */
@@ -48,9 +48,8 @@ export function hookProgram(command: string): string {
   return command.trim().split(/\s+/).map(unquote)[0] ?? "";
 }
 
-/** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. */
-const eventOf = (locator: ArtifactLocator): string =>
-  (locator.pointer ?? "").split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~") ?? "";
+/** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
+const eventOf = (locator: ArtifactLocator): string => pointerTail(locator.pointer) ?? "";
 
 /**
  * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,

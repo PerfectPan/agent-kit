@@ -31,6 +31,12 @@ describe("checkBundle", () => {
     expect(checkBundle(valid)).toEqual({ ok: true, value: valid });
   });
 
+  it("reads absent or null legacy markers as none", () => {
+    const unmarked = bundle({});
+    (unmarked as { legacyMarkers?: readonly string[] | null }).legacyMarkers = null;
+    expect(checkBundle(unmarked)).toEqual({ ok: true, value: unmarked });
+  });
+
   it.each([
     [{ owner: "Agent Presence" }, 'owner "Agent Presence" is not a package-style name'],
     [{ digest: "" }, "version and digest must not be empty"],

@@ -1,6 +1,11 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { ForeignHooks, HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import {
+  type ForeignHooks,
+  type HookDialect,
+  type HookDialects,
+  foreignHooksOf
+} from "../../lifecycle/value-objects/hook-dialect.js";
 import type { HookSource, InstallAdapters, InstallContext } from "../value-objects/install-adapter.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 
@@ -54,7 +59,7 @@ export function foreignHooksIn(
   file: string,
   compat: readonly HookCompat[] = []
 ): ForeignHooks | undefined {
-  const foreign = runner.runsHooksOf?.find((hooks) => hooks.agent === agent && hooks.files.includes(file));
+  const foreign = foreignHooksOf(runner).find((hooks) => hooks.agent === agent && hooks.files.includes(file));
   const setting = compat.find((entry) => entry.runner === runner.agent && entry.agent === agent);
   return foreign !== undefined && (setting?.enabled ?? foreign.byDefault) ? foreign : undefined;
 }
@@ -64,9 +69,8 @@ export function foreignHooksIn(
  * them all, because a runner turned off now can be turned on without a new plan (and some always load them).
  */
 export function runnersOf(agent: CodingAgentId, file: string, dialects: HookDialects): readonly HookDialect[] {
-  return Object.values(dialects).filter(
-    (dialect): dialect is HookDialect =>
-      dialect?.runsHooksOf?.some((hooks) => hooks.agent === agent && hooks.files.includes(file)) === true
+  return Object.values(dialects).filter((dialect): dialect is HookDialect =>
+    foreignHooksOf(dialect).some((hooks) => hooks.agent === agent && hooks.files.includes(file))
   );
 }
 
@@ -101,7 +105,7 @@ export function foreignHookFiles(
     return [];
   }
   const files: ForeignHookFile[] = [];
-  for (const foreign of dialect.runsHooksOf ?? []) {
+  for (const foreign of foreignHooksOf(dialect)) {
     const known = adapters[foreign.agent]?.hookSources?.(context) ?? [];
     for (const file of foreign.files) {
       if (!file.startsWith("~/") || foreignHooksIn(dialect, foreign.agent, file, compat) === undefined) {
@@ -152,7 +156,7 @@ export function hookRegistrations(
       return err({ _tag: "HookSpecRejected", agent: dialect.agent, event, reason: "blocking-gate" });
     }
     for (const runner of options.runBy ?? []) {
-      for (const foreign of runner.runsHooksOf ?? []) {
+      for (const foreign of foreignHooksOf(runner)) {
         const renamed =
           foreign.agent === dialect.agent && Object.hasOwn(foreign.events, event) ? foreign.events[event] : undefined;
         if (renamed !== undefined && blocksOnSilence(runner, renamed)) {

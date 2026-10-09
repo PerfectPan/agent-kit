@@ -1,5 +1,11 @@
 import { type Env, ownValue, readField } from "../policies/payload-fields.js";
-import type { HookDialect, HookEventSpec, LifecycleSwitch, PayloadFields } from "../value-objects/hook-dialect.js";
+import {
+  type HookDialect,
+  type HookEventSpec,
+  foreignHooksOf,
+  type LifecycleSwitch,
+  type PayloadFields
+} from "../value-objects/hook-dialect.js";
 import type { LifecycleEvent, LifecycleMapping } from "../value-objects/lifecycle-event.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 
@@ -24,7 +30,7 @@ function eventSpec(dialect: HookDialect, nativeEvent: string): HookEventSpec | u
   if (aliased !== undefined) {
     return aliased;
   }
-  for (const foreign of dialect.runsHooksOf ?? []) {
+  for (const foreign of foreignHooksOf(dialect)) {
     const renamed = ownValue(foreign.events, nativeEvent);
     if (typeof renamed === "string") {
       return ownSpec(dialect, renamed);

@@ -1,7 +1,7 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vitest";
 
-import type { HookDialect } from "../index.js";
+import type { HookDialect, HookDialects } from "../index.js";
 import { builtinHookDialects, readHookEvent } from "./hook-dialects.js";
 
 describe("readHookEvent", () => {
@@ -213,6 +213,225 @@ describe("readHookEvent", () => {
       thrown = error;
     }
     expect(isAgentKitError(thrown) && thrown.code).toBe("capability-unsupported");
+  });
+
+  it("reads a third-party dialect inherited from a builtin through its prototype", () => {
+    const inherited = Object.create(builtinHookDialects["claude-code"]);
+    inherited.agent = "my-agent";
+    expect(
+      readHookEvent(
+        "my-agent",
+        { hook_event_name: "Stop", session_id: "s" },
+        {},
+        { adapters: { "my-agent": inherited as HookDialect } }
+      )
+    ).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      outcome: "completed",
+      nativeEvent: "Stop",
+      sessionId: "s"
+    });
+  });
+
+  it("reads a third-party dialect whose facts are getters", () => {
+    class Foreign {
+      get specificationVersion(): "harness-v1" {
+        return "harness-v1";
+      }
+      get agent(): "my-agent" {
+        return "my-agent";
+      }
+      get delivery(): "command" {
+        return "command";
+      }
+      get fields(): { event: { paths: readonly string[][] } } {
+        return { event: { paths: [["kind"]] } };
+      }
+      get events(): Record<string, { lifecycle: { phase: "finish"; scope: "turn" } }> {
+        return { done: { lifecycle: { phase: "finish", scope: "turn" } } };
+      }
+    }
+    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters: { "my-agent": new Foreign() } })).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      nativeEvent: "done"
+    });
+  });
+
+  it("reads a third-party dialect live, so a change after a first read applies", () => {
+    const mine: { -readonly [K in keyof HookDialect]: HookDialect[K] } = {
+      specificationVersion: "harness-v1",
+      agent: "my-agent",
+      delivery: "command",
+      fields: { event: { paths: [["kind"]] } },
+      events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
+    };
+    const adapters = { "my-agent": mine };
+    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters })).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      nativeEvent: "done"
+    });
+    mine.events = { done: { lifecycle: { phase: "start", scope: "session" } } };
+    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters })).toEqual({
+      agent: "my-agent",
+      phase: "start",
+      scope: "session",
+      nativeEvent: "done"
+    });
+  });
+
+  it("reads `runsHooksOf` live: a list added or deleted after a first read applies", () => {
+    const mine: { -readonly [K in keyof HookDialect]: HookDialect[K] } = {
+      specificationVersion: "harness-v1",
+      agent: "my-agent",
+      delivery: "command",
+      fields: { event: { paths: [["kind"]] } },
+      events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
+    };
+    const adapters = { "my-agent": mine };
+    readHookEvent("my-agent", { kind: "done" }, {}, { adapters });
+    mine.runsHooksOf = [{ agent: "claude-code", files: [], byDefault: true, events: { Halt: "done" } }];
+    expect(readHookEvent("my-agent", { kind: "Halt" }, {}, { adapters })).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      nativeEvent: "Halt"
+    });
+    delete mine.runsHooksOf;
+    expect(readHookEvent("my-agent", { kind: "Halt" }, {}, { adapters })).toEqual({
+      agent: "my-agent",
+      nativeEvent: "Halt",
+      phase: "unknown"
+    });
+  });
+
+  it("reads the builtin dialects live, so a changed builtin applies to later reads", () => {
+    const claudeCode = builtinHookDialects["claude-code"] as { events: Record<string, unknown> };
+    const events = claudeCode.events;
+    claudeCode.events = { ...events, Hooked: { lifecycle: { phase: "start", scope: "session" } } };
+    try {
+      expect(readHookEvent("claude-code", { hook_event_name: "Hooked" }, {})).toEqual({
+        agent: "claude-code",
+        phase: "start",
+        scope: "session",
+        nativeEvent: "Hooked"
+      });
+    } finally {
+      claudeCode.events = events;
+    }
+  });
+
+  it("never reads an unrelated adapter entry: a null or unreadable one does not affect another agent's read", () => {
+    const unreadable = {
+      get runsHooksOf(): never {
+        throw new Error("boom");
+      }
+    } as unknown as HookDialect;
+    const plain = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: "s" }, {});
+    const adapters = { codex: null, "gemini-cli": unreadable } as unknown as HookDialects;
+    expect(readHookEvent("claude-code", { hook_event_name: "Stop", session_id: "s" }, {}, { adapters })).toEqual(plain);
+  });
+
+  it('reads a dialect keyed "__proto__" in the adapters table as its own entry', () => {
+    const dialect = {
+      specificationVersion: "harness-v1",
+      agent: "__proto__",
+      delivery: "command",
+      fields: { event: { paths: [["kind"]] } },
+      events: { Stop: { lifecycle: { phase: "idle" } } }
+    } as unknown as HookDialect;
+    const adapters = {} as Record<string, HookDialect>;
+    Object.defineProperty(adapters, "__proto__", {
+      value: dialect,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+    expect(
+      readHookEvent("__proto__" as never, { kind: "Stop" }, {}, { adapters: adapters as unknown as HookDialects })
+    ).toEqual({
+      agent: "__proto__",
+      phase: "idle",
+      nativeEvent: "Stop"
+    });
+  });
+
+  it("reads absent or null dialect lists as empty instead of throwing", () => {
+    const base = {
+      specificationVersion: "harness-v1",
+      agent: "my-agent",
+      delivery: "command",
+      fields: { event: { paths: [["kind"]] } },
+      events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
+    };
+    const adaptersOf = (dialect: unknown): { adapters: HookDialects } => ({
+      adapters: { "my-agent": dialect } as unknown as HookDialects
+    });
+    expect(readHookEvent("my-agent", { kind: "done" }, {}, adaptersOf({ ...base, runsHooksOf: null }))).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      nativeEvent: "done"
+    });
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: null }
+        })
+      )
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done" });
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
+        })
+      )
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done" });
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        { SID: "env-s" },
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
+        })
+      )
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "env-s" });
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: [["sid"]], env: null } }
+        })
+      )
+    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "s" });
+    expect(
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop" },
+        { CURSOR_VERSION: "1" },
+        {
+          adapters: { cursor: null } as unknown as HookDialects
+        }
+      )
+    ).toEqual(readHookEvent("claude-code", { hook_event_name: "Stop" }, {}));
   });
 });
 

@@ -125,3 +125,19 @@ export interface HookDialect {
 
 /** Hook dialects by agent id; `readHookEvent` defaults to `builtinHookDialects`. */
 export type HookDialects = Readonly<Partial<Record<CodingAgentId, HookDialect>>>;
+
+/**
+ * The agents whose hooks this dialect also runs. A dialect is caller data, so the optional list is read live through
+ * this one accessor at every site: a dialect that lists none — or lists `null` — runs none.
+ */
+export function foreignHooksOf(dialect: HookDialect | undefined): readonly ForeignHooks[] {
+  return dialect?.runsHooksOf ?? [];
+}
+
+/** Alias spellings of one event, or none when the events record, the event or its aliases are absent. */
+export function aliasesOf(
+  events: Readonly<Record<string, HookEventSpec>> | undefined,
+  name: string
+): readonly string[] {
+  return events?.[name]?.aliases ?? [];
+}

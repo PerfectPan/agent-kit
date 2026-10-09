@@ -19,6 +19,15 @@ export interface Bundle {
 
 export type BundleRef = Pick<Bundle, "owner" | "version" | "digest">;
 
+/**
+ * The substrings by which the owner recognizes what its older versions installed. A bundle is caller data, so the
+ * optional list is read live through this one accessor at every site: a bundle that names none — or names `null` —
+ * has none.
+ */
+export function legacyMarkersOf(bundle: Bundle): readonly string[] {
+  return bundle.legacyMarkers ?? [];
+}
+
 export interface InvalidBundle {
   readonly _tag: "InvalidBundle";
   readonly reason: string;
@@ -77,7 +86,7 @@ export function checkBundle(bundle: Bundle): Result<Bundle, InvalidBundle> {
   if (bundle.version === "" || bundle.digest === "") {
     return invalid("version and digest must not be empty");
   }
-  if (bundle.legacyMarkers?.some((marker) => marker.trim() === "")) {
+  if (legacyMarkersOf(bundle).some((marker) => marker.trim() === "")) {
     return invalid("an empty legacy marker would match everything");
   }
   const seen = new Set<string>();

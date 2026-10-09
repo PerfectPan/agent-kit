@@ -1,5 +1,5 @@
 import { type CliRegistration, type InstallAdapter, type InstallContext, ownerSlug } from "../../index.js";
-import type { ArtifactLocator } from "../../../install-plan/index.js";
+import { type ArtifactLocator, locatorPointer } from "../../../install-plan/index.js";
 import type { ArtifactContent } from "../../../ledger/index.js";
 import { agentsOf, commandHook, groupedHooksFile, jsonText, sharedSkillsDir } from "../install-files.js";
 import { codexConfigFile, codexHome, codexHooksFile, codexMarketplaceDir, codexPluginCache } from "./config-files.js";
@@ -27,7 +27,8 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
     path: codexConfigFile(context),
     pointer
   });
-  const marketplace = /^\/marketplaces\/([^/]+)$/.exec(locator.pointer ?? "")?.[1];
+  const pointer = locatorPointer(locator);
+  const marketplace = /^\/marketplaces\/([^/]+)$/.exec(pointer)?.[1];
   if (marketplace !== undefined) {
     const dir = `${codexHome(context)}/plugins/${marketplace}`;
     return {
@@ -36,7 +37,7 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
       recorded: { entries: [record(`/marketplaces/${marketplace}`)], copies: [] }
     };
   }
-  const id = /^\/plugins\/([^/@]+)@([^/@]+)$/.exec(locator.pointer ?? "");
+  const id = /^\/plugins\/([^/@]+)@([^/@]+)$/.exec(pointer);
   if (id === null) {
     return undefined;
   }

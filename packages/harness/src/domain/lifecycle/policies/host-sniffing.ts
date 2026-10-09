@@ -1,6 +1,6 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
-import type { HookDialects } from "../value-objects/hook-dialect.js";
+import { type HookDialects, foreignHooksOf } from "../value-objects/hook-dialect.js";
 import type { TerminalIdentity } from "../value-objects/lifecycle-event.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 import type { Env } from "./payload-fields.js";
@@ -28,8 +28,7 @@ export function sniffSource(
     return "cursor";
   }
   const cursorRunsDeclared =
-    Object.hasOwn(dialects, "cursor") &&
-    dialects.cursor?.runsHooksOf?.some((foreign) => foreign.agent === declared) === true;
+    Object.hasOwn(dialects, "cursor") && foreignHooksOf(dialects.cursor).some((foreign) => foreign.agent === declared);
   if (cursorRunsDeclared && present(Object.hasOwn(env, "CURSOR_VERSION") ? env.CURSOR_VERSION : undefined)) {
     return "cursor";
   }

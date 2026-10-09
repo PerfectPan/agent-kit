@@ -91,3 +91,14 @@ export interface ProbeRecipe {
 
 /** Probe recipes by agent id; `detectAgents` defaults to `builtinProbeRecipes`. */
 export type ProbeRecipes = Readonly<Partial<Record<CodingAgentId, ProbeRecipe>>>;
+
+/** Credential files and variables an auth probe walks. Absent auth, and absent lists, are empty. */
+export function authProbeLists(auth: AuthProbe | undefined): {
+  readonly credentialFiles: readonly CredentialFileProbe[];
+  readonly env: readonly AuthVariable[];
+} {
+  return {
+    credentialFiles: auth?.credentialFiles ?? [],
+    env: auth?.env ?? []
+  };
+}

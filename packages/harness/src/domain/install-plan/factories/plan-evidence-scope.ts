@@ -2,7 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
 import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/value-objects/install-adapter.js";
-import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
@@ -109,10 +109,8 @@ export function planEvidenceScope(input: {
   const ownerHoldsHookGroup = ledger
     .entries()
     .some((entry) => holds(entry, bundle.owner) && entry.locator.memberIn === "hook-group");
-  const keptHookGroup = Object.values(ledger.toSnapshot().kept ?? {}).some(
-    (kept) => kept.locator.memberIn === "hook-group"
-  );
-  const scanLegacy = (bundle.legacyMarkers ?? []).length > 0 || ownerHoldsHookGroup || keptHookGroup;
+  const keptHookGroup = Object.values(ledger.keptRecords()).some((kept) => kept.locator.memberIn === "hook-group");
+  const scanLegacy = legacyMarkersOf(bundle).length > 0 || ownerHoldsHookGroup || keptHookGroup;
   const sources = scanLegacy ? legacyHookSources(agents, adapters, dialects, context, input.compat ?? []) : [];
   const rootedAgents = new Set([
     ...agents,

@@ -66,6 +66,19 @@ export function locatorKey(locator: ArtifactLocator): LocatorKey {
   );
 }
 
+/** The pointer text, or `""` when the locator kind has none. */
+export function locatorPointer(locator: Pick<ArtifactLocator, "pointer">): string {
+  return locator.pointer ?? "";
+}
+
+/**
+ * The last segment of a JSON pointer, with `~1` and `~0` undone. A missing pointer has none; an empty pointer's
+ * only segment is empty.
+ */
+export function pointerTail(pointer: string | undefined): string | undefined {
+  return pointer?.split("/").at(-1)?.replaceAll("~1", "/").replaceAll("~0", "~");
+}
+
 /**
  * The segments of an absolute, normalized path (POSIX `/a/b` or Windows `C:\a\b`), or `undefined` for any other
  * path. Both separators split, so a backslash in a POSIX file name makes the check stricter, never looser.

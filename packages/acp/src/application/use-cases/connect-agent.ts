@@ -378,6 +378,14 @@ function open(
   });
 }
 
+/** MCP servers for one session: its own list, else the connection default, else none. */
+function sessionMcpServers(
+  options: { readonly mcpServers?: readonly McpServerConfig[] },
+  defaults: ConnectAgentOptions
+): readonly McpServerConfig[] {
+  return options.mcpServers ?? defaults.mcpServers ?? [];
+}
+
 function newSession(
   conn: ConnectionState,
   defaults: ConnectAgentOptions,
@@ -392,7 +400,7 @@ function newSession(
       "session/new",
       conn.wire.newSession({
         cwd,
-        mcpServers: options.mcpServers ?? defaults.mcpServers ?? [],
+        mcpServers: sessionMcpServers(options, defaults),
         ...metaOf(conn.profile, options)
       })
     );
@@ -492,7 +500,7 @@ function openLoaded(
       method,
       conn.wire.loadSession(method, sessionId, {
         cwd: options.cwd,
-        mcpServers: options.mcpServers ?? defaults.mcpServers ?? [],
+        mcpServers: sessionMcpServers(options, defaults),
         ...metaOf(conn.profile, options)
       })
     ).pipe(Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, [])));

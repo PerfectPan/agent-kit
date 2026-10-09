@@ -1,9 +1,10 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
-import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import { aliasesOf } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
@@ -62,7 +63,7 @@ export function protectedReplacement(
   return (
     ledger.kept(seen.locator, bundle.owner) !== undefined ||
     missingOwnedHook(seen.locator, bundle.owner, ledger, observed) ||
-    isLegacyArtifact(bundle.legacyMarkers ?? [], seen.content) ||
+    isLegacyArtifact(legacyMarkersOf(bundle), seen.content) ||
     bundle.artifacts.some(
       (spec) =>
         spec.type === "hooks" &&
@@ -76,7 +77,7 @@ export function protectedReplacement(
 
 /** Whether the runner installs a hook for the same event, under the event's own name or one of its dialect aliases. */
 function bundleFiresEvent(bundle: Bundle, runner: CodingAgentId, event: string, dialects: HookDialects): boolean {
-  const aliases = new Set(dialects[runner]?.events[event]?.aliases ?? []);
+  const aliases = new Set(aliasesOf(dialects[runner]?.events, event));
   return bundle.artifacts.some(
     (spec) => spec.type === "hooks" && spec.events[runner]?.some((name) => name === event || aliases.has(name)) === true
   );
