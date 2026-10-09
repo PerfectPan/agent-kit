@@ -69,9 +69,8 @@ export function foreignHooksIn(
  * them all, because a runner turned off now can be turned on without a new plan (and some always load them).
  */
 export function runnersOf(agent: CodingAgentId, file: string, dialects: HookDialects): readonly HookDialect[] {
-  return Object.values(dialects).filter(
-    (dialect): dialect is HookDialect =>
-      foreignHooksOf(dialect).some((hooks) => hooks.agent === agent && hooks.files.includes(file))
+  return Object.values(dialects).filter((dialect): dialect is HookDialect =>
+    foreignHooksOf(dialect).some((hooks) => hooks.agent === agent && hooks.files.includes(file))
   );
 }
 

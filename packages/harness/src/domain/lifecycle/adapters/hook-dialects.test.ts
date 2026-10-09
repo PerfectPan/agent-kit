@@ -218,7 +218,14 @@ describe("readHookEvent", () => {
   it("reads a third-party dialect inherited from a builtin through its prototype", () => {
     const inherited = Object.create(builtinHookDialects["claude-code"]);
     inherited.agent = "my-agent";
-    expect(readHookEvent("my-agent", { hook_event_name: "Stop", session_id: "s" }, {}, { adapters: { "my-agent": inherited as HookDialect } })).toEqual({
+    expect(
+      readHookEvent(
+        "my-agent",
+        { hook_event_name: "Stop", session_id: "s" },
+        {},
+        { adapters: { "my-agent": inherited as HookDialect } }
+      )
+    ).toEqual({
       agent: "my-agent",
       phase: "finish",
       scope: "turn",
@@ -330,7 +337,7 @@ describe("readHookEvent", () => {
     expect(readHookEvent("claude-code", { hook_event_name: "Stop", session_id: "s" }, {}, { adapters })).toEqual(plain);
   });
 
-  it("reads a dialect keyed \"__proto__\" in the adapters table as its own entry", () => {
+  it('reads a dialect keyed "__proto__" in the adapters table as its own entry', () => {
     const dialect = {
       specificationVersion: "harness-v1",
       agent: "__proto__",
@@ -339,8 +346,15 @@ describe("readHookEvent", () => {
       events: { Stop: { lifecycle: { phase: "idle" } } }
     } as unknown as HookDialect;
     const adapters = {} as Record<string, HookDialect>;
-    Object.defineProperty(adapters, "__proto__", { value: dialect, enumerable: true, configurable: true, writable: true });
-    expect(readHookEvent("__proto__" as never, { kind: "Stop" }, {}, { adapters: adapters as unknown as HookDialects })).toEqual({
+    Object.defineProperty(adapters, "__proto__", {
+      value: dialect,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+    expect(
+      readHookEvent("__proto__" as never, { kind: "Stop" }, {}, { adapters: adapters as unknown as HookDialects })
+    ).toEqual({
       agent: "__proto__",
       phase: "idle",
       nativeEvent: "Stop"
@@ -358,37 +372,65 @@ describe("readHookEvent", () => {
     const adaptersOf = (dialect: unknown): { adapters: HookDialects } => ({
       adapters: { "my-agent": dialect } as unknown as HookDialects
     });
+    expect(readHookEvent("my-agent", { kind: "done" }, {}, adaptersOf({ ...base, runsHooksOf: null }))).toEqual({
+      agent: "my-agent",
+      phase: "finish",
+      scope: "turn",
+      nativeEvent: "done"
+    });
     expect(
-      readHookEvent("my-agent", { kind: "done" }, {}, adaptersOf({ ...base, runsHooksOf: null }))
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: null }
+        })
+      )
     ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done" });
     expect(
-      readHookEvent("my-agent", { kind: "done", sid: "s" }, {}, adaptersOf({
-        ...base,
-        fields: { event: { paths: [["kind"]] }, sessionId: null }
-      }))
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
+        })
+      )
     ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done" });
     expect(
-      readHookEvent("my-agent", { kind: "done", sid: "s" }, {}, adaptersOf({
-        ...base,
-        fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
-      }))
-    ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done" });
-    expect(
-      readHookEvent("my-agent", { kind: "done", sid: "s" }, { SID: "env-s" }, adaptersOf({
-        ...base,
-        fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
-      }))
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        { SID: "env-s" },
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: null, env: ["SID"] } }
+        })
+      )
     ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "env-s" });
     expect(
-      readHookEvent("my-agent", { kind: "done", sid: "s" }, {}, adaptersOf({
-        ...base,
-        fields: { event: { paths: [["kind"]] }, sessionId: { paths: [["sid"]], env: null } }
-      }))
+      readHookEvent(
+        "my-agent",
+        { kind: "done", sid: "s" },
+        {},
+        adaptersOf({
+          ...base,
+          fields: { event: { paths: [["kind"]] }, sessionId: { paths: [["sid"]], env: null } }
+        })
+      )
     ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "s" });
     expect(
-      readHookEvent("claude-code", { hook_event_name: "Stop" }, { CURSOR_VERSION: "1" }, {
-        adapters: { cursor: null } as unknown as HookDialects
-      })
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop" },
+        { CURSOR_VERSION: "1" },
+        {
+          adapters: { cursor: null } as unknown as HookDialects
+        }
+      )
     ).toEqual(readHookEvent("claude-code", { hook_event_name: "Stop" }, {}));
   });
 });
