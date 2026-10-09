@@ -22,16 +22,20 @@ import {
   unknownFormatGeneration
 } from "../../index.js";
 import type { Usage } from "../../../usage/index.js";
-import { asNumber, asRecord, asString } from "../record-fields.js";
+import {
+  type ClaudeCodeAttachment,
+  type ClaudeCodeContentBlockValue,
+  type ClaudeCodeRecordValue,
+  parseClaudeCodeRecord
+} from "./record.js";
 import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "../../../session/adapters/claude-code/layout.js";
 import { applySnapshots, promptSnapshotPayload, snapshotCapabilities } from "./prompt-snapshot.js";
 import {
   claudeCodeRequestKey,
   claudeCodeRequestUsage,
-  claudeCodeUsage,
-  knownClaudeCodeGeneration
+  claudeCodeUsageOf
 } from "../../../usage/adapters/claude-code.js";
-import { isPromptFlags, recordText, userFlags } from "./user-flags.js";
+import { type ClaudeCodeUserFlags, isPromptFlags, recordText, userFlags } from "./user-flags.js";
 
 const AGENT = "claude-code";
 
@@ -100,6 +104,8 @@ export function translateClaudeCodeRecords(
   const skipped: SkippedRecord[] = [];
   const requests = new Map<string, TranscriptEvent>();
   const parentOf = new Map<string, string | undefined>();
+  /** Each event's parsed record, so the later passes never parse a record again. */
+  const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
   let sessionId = options.sessionId;
   let title: string | undefined;
   let titleExplicit = false;
@@ -121,56 +127,62 @@ export function translateClaudeCodeRecords(
   };
 
   for (const { record, ts } of stamped) {
-    const rec = asRecord(record.value);
-    if (!rec || !knownClaudeCodeGeneration(rec)) {
+    const rec = parseClaudeCodeRecord(record.value);
+    if (!rec) {
       return err(unknownFormatGeneration(AGENT, record));
     }
-    const type = asString(rec.type) ?? "unknown";
-    const uuid = asString(rec.uuid);
+    const type = rec.type;
+    const uuid = rec.uuid;
     if (startedAt === undefined || ts < startedAt) {
       startedAt = ts;
     }
     if (endedAt === undefined || ts > endedAt) {
       endedAt = ts;
     }
-    sessionId ||= asString(rec.sessionId);
-    cwd ||= asString(rec.cwd);
+    sessionId ||= rec.sessionId;
+    cwd ||= rec.cwd;
     if (!agentVersion && typeof rec.version === "string") {
       agentVersion = rec.version;
     }
-    let agentId = asString(rec.agentId) ?? options.agentForFile?.(record.file);
-    if (rec.isSidechain === true) {
+    let agentId = rec.agentId ?? options.agentForFile?.(record.file);
+    if (rec.isSidechain) {
       agentId ??= "sidechain";
     }
-    const parentId = asString(rec.parentUuid);
+    const parentId = rec.parentUuid;
     if (uuid) {
       parentOf.set(uuid, parentId);
     }
 
     const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
-      events.push(
-        baseEvent(record, kind, payload, { id: eventId(uuid, record, part), ts, agentId, parentId, requestId })
-      );
+      const event = baseEvent(record, kind, payload, {
+        id: eventId(uuid, record, part),
+        ts,
+        agentId,
+        parentId,
+        requestId
+      });
+      events.push(event);
+      parsed.set(event, rec);
     };
 
     if (type === "user" || type === "assistant") {
-      const message = asRecord(rec.message) ?? {};
-      const requestId = claudeCodeRequestKey(rec, message);
+      const requestId = claudeCodeRequestKey(rec);
       if (requestId) {
-        mergeRequest(requests, events, record, ts, agentId, requestId, message);
+        mergeRequest(requests, events, parsed, rec, record, ts, agentId, requestId);
       }
-      const flags = type === "user" ? userFlags(rec, message.content) : {};
-      const content = message.content;
+      const message = rec.message;
+      const flags: ClaudeCodeUserFlags = type === "user" ? userFlags(rec) : {};
+      const content = message?.content;
       if (type === "user" && !agentId && isPromptFlags(flags)) {
-        rememberTitle(recordText(content));
+        rememberTitle(recordText(rec));
       }
       if (typeof content === "string") {
         emit(type, { ...flags, ...(content ? { text: content } : {}) }, 0, requestId);
       } else if (!Array.isArray(content) || content.length === 0) {
-        emit(type, flags, 0, requestId);
+        emit(type, { ...flags }, 0, requestId);
       } else {
         content.forEach((block, part) => {
-          const [kind, payload] = blockEvent(type, flags, asRecord(block));
+          const [kind, payload] = blockEvent(type, flags, block);
           emit(kind, payload, part, requestId);
         });
       }
@@ -184,8 +196,8 @@ export function translateClaudeCodeRecords(
     }
 
     if (type === "attachment") {
-      const attachment = asRecord(rec.attachment);
-      const attachmentType = asString(attachment?.type) ?? "";
+      const attachment = rec.attachment;
+      const attachmentType = attachment?.type ?? "";
       if (attachment && attachmentType === "prompt_snapshot") {
         const payload = promptSnapshotPayload(attachment);
         if (!payload) {
@@ -201,10 +213,10 @@ export function translateClaudeCodeRecords(
     }
 
     if (type === "custom-title") {
-      rememberTitle(asString(rec.customTitle), true);
+      rememberTitle(rec.customTitle, true);
       skipRecord(skipped, record, "custom-title");
     } else if (type === "ai-title" || type === "summary") {
-      rememberTitle(asString(rec.aiTitle) ?? asString(rec.summary) ?? asString(rec.title));
+      rememberTitle(rec.aiTitle ?? rec.summary ?? rec.title);
       skipRecord(skipped, record, type);
     } else if (BOOKKEEPING.has(type)) {
       skipRecord(skipped, record, type);
@@ -214,11 +226,11 @@ export function translateClaudeCodeRecords(
   }
 
   resolveParents(events, parentOf);
-  shadowRemoved(events);
+  shadowRemoved(events, parsed);
   markOrphanToolResults(events);
   assignSeq(events);
 
-  const agents = agentLanes(events, options.agentMeta);
+  const agents = agentLanes(events, options.agentMeta, parsed);
   const fallbackId = options.path === undefined ? undefined : claudeCodeSessionStem(options.path) || "unknown";
   const session: TranscriptSession = {
     id: sessionId ?? fallbackId ?? "unknown",
@@ -246,31 +258,34 @@ function eventId(uuid: string | undefined, record: SourcedRecord, part: number):
 function mergeRequest(
   requests: Map<string, TranscriptEvent>,
   events: TranscriptEvent[],
+  parsed: Map<TranscriptEvent, ClaudeCodeRecordValue>,
+  rec: ClaudeCodeRecordValue,
   record: SourcedRecord,
   ts: number,
   agentId: string | undefined,
-  requestId: string,
-  message: Record<string, unknown>
+  requestId: string
 ): void {
   let event = requests.get(requestId);
   if (!event) {
     event = baseEvent(record, "request", {}, { id: `request:${requestId}`, ts, agentId, requestId });
     requests.set(requestId, event);
     events.push(event);
+    parsed.set(event, rec);
   }
-  const usage = claudeCodeRequestUsage(event.payload.usage as Usage | undefined, claudeCodeUsage(message.usage));
+  const message = rec.message;
+  const usage = claudeCodeRequestUsage(event.payload.usage as Usage | undefined, claudeCodeUsageOf(message?.usage));
   if (usage) {
     event.payload.usage = usage;
   }
-  const model = asString(message.model);
+  const model = message?.model;
   if (model) {
     event.payload.model = model;
   }
-  const responseId = asString(message.id);
+  const responseId = message?.id;
   if (responseId) {
     event.payload.responseId = responseId;
   }
-  const finishReason = asString(message.stop_reason);
+  const finishReason = message?.stop_reason;
   if (finishReason) {
     event.payload.finishReason = finishReason;
   }
@@ -278,39 +293,39 @@ function mergeRequest(
 
 function blockEvent(
   role: "user" | "assistant",
-  flags: Record<string, unknown>,
-  item: Record<string, unknown> | undefined
+  flags: ClaudeCodeUserFlags,
+  item: ClaudeCodeContentBlockValue | undefined
 ): [TranscriptEventKind, Record<string, unknown>] {
-  const blockType = asString(item?.type);
+  const blockType = item?.type;
   if (!item || !blockType) {
     return ["unknown", { type: "block" }];
   }
   switch (blockType) {
     case "text": {
-      const text = asString(item.text) ?? "";
+      const text = item.text ?? "";
       return [role, { ...flags, ...(text ? { text } : {}) }];
     }
     case "image": {
-      const mediaType = asString(asRecord(item.source)?.media_type);
+      const mediaType = item.source?.media_type;
       return [role, { ...flags, image: true, ...(mediaType ? { mediaType } : {}) }];
     }
     case "fallback": {
       // The response switched models mid-stream (`from.model` → `to.model`).
-      const from = asString(asRecord(item.from)?.model);
-      const to = asString(asRecord(item.to)?.model);
+      const from = item.from?.model;
+      const to = item.to?.model;
       return ["system", { type: "fallback", ...(from ? { fromModel: from } : {}), ...(to ? { toModel: to } : {}) }];
     }
     case "thinking":
     case "redacted_thinking": {
-      const text = asString(item.thinking);
+      const text = item.thinking;
       return ["reasoning", text ? { text } : { redacted: true }];
     }
     case "tool_use":
       return [
         "tool_call",
         {
-          callId: asString(item.id) ?? "",
-          name: asString(item.name) ?? "",
+          callId: item.id ?? "",
+          name: item.name ?? "",
           ...(item.input === undefined ? {} : { args: item.input })
         }
       ];
@@ -318,9 +333,9 @@ function blockEvent(
       return [
         "tool_result",
         {
-          callId: asString(item.tool_use_id) ?? "",
+          callId: item.tool_use_id ?? "",
           ...(item.content === undefined ? {} : { output: item.content }),
-          ...(typeof item.is_error === "boolean" ? { isError: item.is_error } : {})
+          ...(item.is_error === undefined ? {} : { isError: item.is_error })
         }
       ];
     default:
@@ -328,13 +343,12 @@ function blockEvent(
   }
 }
 
-function systemEvent(rec: Record<string, unknown>): [TranscriptEventKind, Record<string, unknown>] {
-  const subtype = asString(rec.subtype) ?? "system";
+function systemEvent(rec: ClaudeCodeRecordValue): [TranscriptEventKind, Record<string, unknown>] {
+  const subtype = rec.subtype ?? "system";
   if (subtype === "compact_boundary") {
-    const meta = asRecord(rec.compactMetadata);
-    const trigger = asString(meta?.trigger);
-    const preTokens = asNumber(meta?.preTokens);
-    const postTokens = asNumber(meta?.postTokens);
+    const trigger = rec.compactMetadata?.trigger;
+    const preTokens = rec.compactMetadata?.preTokens;
+    const postTokens = rec.compactMetadata?.postTokens;
     return [
       "compaction",
       {
@@ -345,17 +359,17 @@ function systemEvent(rec: Record<string, unknown>): [TranscriptEventKind, Record
     ];
   }
   if (subtype === "turn_duration") {
-    const durationMs = asNumber(rec.durationMs);
+    const durationMs = rec.durationMs;
     return ["system", { type: "turn_duration", ...(durationMs === undefined ? {} : { durationMs }) }];
   }
   if (subtype.includes("hook")) {
     return ["hook", { type: subtype }];
   }
-  const text = asString(rec.content);
+  const text = rec.content;
   const payload: Record<string, unknown> = { type: subtype, ...(text ? { text } : {}) };
   // `model_refusal_fallback` / `model_refusal_no_fallback`: the API refused and the CLI retried on another model, or did not.
   for (const key of ["originalModel", "fallbackModel", "apiRefusalCategory"] as const) {
-    const value = asString(rec[key]);
+    const value = rec[key];
     if (value) {
       payload[key] = value;
     }
@@ -363,10 +377,10 @@ function systemEvent(rec: Record<string, unknown>): [TranscriptEventKind, Record
   return ["system", payload];
 }
 
-function hookPayload(type: string, attachment: Record<string, unknown> | undefined): Record<string, unknown> {
-  const name = asString(attachment?.hookName);
-  const event = asString(attachment?.hookEvent);
-  const exitCode = asNumber(attachment?.exitCode);
+function hookPayload(type: string, attachment: ClaudeCodeAttachment | undefined): Record<string, unknown> {
+  const name = attachment?.hookName;
+  const event = attachment?.hookEvent;
+  const exitCode = attachment?.exitCode;
   return {
     type,
     ...(name ? { name } : {}),
@@ -397,10 +411,14 @@ function resolveParents(events: readonly TranscriptEvent[], parentOf: ReadonlyMa
 }
 
 /** Record uuids from `compactMetadata.preservedSegment.headUuid` to `tailUuid`, which the compaction kept. */
-function preservedUuids(events: readonly TranscriptEvent[], compaction: TranscriptEvent): Set<string> | undefined {
-  const segment = asRecord(asRecord(asRecord(compaction.original)?.compactMetadata)?.preservedSegment);
-  const head = asString(segment?.headUuid);
-  const tail = asString(segment?.tailUuid);
+function preservedUuids(
+  events: readonly TranscriptEvent[],
+  compaction: TranscriptEvent,
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): Set<string> | undefined {
+  const segment = parsed.get(compaction)?.compactMetadata?.preservedSegment;
+  const head = segment?.headUuid;
+  const tail = segment?.tailUuid;
   if (!head || !tail) {
     return undefined;
   }
@@ -410,7 +428,7 @@ function preservedUuids(events: readonly TranscriptEvent[], compaction: Transcri
     if (event === compaction) {
       break;
     }
-    const uuid = asString(asRecord(event.original)?.uuid);
+    const uuid = parsed.get(event)?.uuid;
     if (!uuid) {
       continue;
     }
@@ -425,18 +443,21 @@ function preservedUuids(events: readonly TranscriptEvent[], compaction: Transcri
   return keep;
 }
 
-function shadowRemoved(events: readonly TranscriptEvent[]): void {
+function shadowRemoved(
+  events: readonly TranscriptEvent[],
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): void {
   for (const compaction of events) {
     if (compaction.kind !== "compaction") {
       continue;
     }
-    const keep = preservedUuids(events, compaction);
+    const keep = preservedUuids(events, compaction, parsed);
     // A prompt snapshot is not conversation: a compaction does not remove it.
     shadowBefore(events, compaction, (event) => {
       if (promptSnapshot(event)) {
         return true;
       }
-      const uuid = asString(asRecord(event.original)?.uuid);
+      const uuid = parsed.get(event)?.uuid;
       return keep !== undefined && uuid !== undefined && keep.has(uuid);
     });
   }
@@ -446,16 +467,21 @@ function shadowRemoved(events: readonly TranscriptEvent[]): void {
  * One lane per agent id. The spawning tool call comes from the meta file's `toolUseId`, else from the tool result
  * whose `toolUseResult.agentId` names the agent; a lane with neither has no `spawnEventId`.
  */
-function agentLanes(events: readonly TranscriptEvent[], metas?: ReadonlyMap<string, ClaudeCodeAgentMeta>): Lane[] {
+function agentLanes(
+  events: readonly TranscriptEvent[],
+  metas: ReadonlyMap<string, ClaudeCodeAgentMeta> | undefined,
+  parsed: ReadonlyMap<TranscriptEvent, ClaudeCodeRecordValue>
+): Lane[] {
   const calls = new Map<string, TranscriptEvent>();
   const spawnCall = new Map<string, string>();
   for (const event of events) {
-    const callId = asString(event.payload.callId);
-    if (event.kind === "tool_call" && callId) {
+    // `callId` is this translation's own payload field, a string for every tool call and result it emits.
+    const callId = event.payload.callId;
+    if (event.kind === "tool_call" && typeof callId === "string" && callId) {
       calls.set(callId, event);
     }
-    const spawned = asString(asRecord(asRecord(event.original)?.toolUseResult)?.agentId);
-    if (event.kind === "tool_result" && callId && spawned && !spawnCall.has(spawned)) {
+    const spawned = parsed.get(event)?.toolUseResult?.agentId;
+    if (event.kind === "tool_result" && typeof callId === "string" && callId && spawned && !spawnCall.has(spawned)) {
       spawnCall.set(spawned, callId);
     }
   }

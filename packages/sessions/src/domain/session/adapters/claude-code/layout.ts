@@ -1,7 +1,8 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import { basenamePath, belowRoot, dirnamePath, joinPath } from "../../index.js";
-import { asRecord, asString } from "../../../transcript/adapters/record-fields.js";
+import { lenient } from "../../../transcript/adapters/lenient.js";
 
 // Claude Code keeps one JSONL file per session under `<home>/projects/<project>/<session>.jsonl`. Subagent
 // transcripts live in `<project>/<session>/subagents/` (workflows nest one level deeper) as `agent-<id>.jsonl`,
@@ -51,10 +52,13 @@ export function claudeCodeMetaPath(transcriptPath: string): string {
   return `${transcriptPath.slice(0, -".jsonl".length)}.meta.json`;
 }
 
+/** The `agentId` a subagent transcript's records carry, read one record at a time until one names it. */
+const AgentIdRecord = z.looseObject({ agentId: lenient(z.string()) });
+
 /** A subagent's lane id: the `agentId` its records carry, else the file name after `agent-`. */
 export function claudeCodeAgentIdFromFile(path: string, records: readonly { value: unknown }[]): string {
   for (const record of records) {
-    const id = asString(asRecord(record.value)?.agentId);
+    const id = z.safeParse(AgentIdRecord, record.value).data?.agentId;
     if (id) {
       return id;
     }
@@ -70,22 +74,19 @@ export interface ClaudeCodeAgentMeta {
   parentAgentId?: string;
 }
 
+const AgentMeta = z.looseObject({
+  description: lenient(z.string()),
+  toolUseId: lenient(z.string()),
+  parentAgentId: lenient(z.string())
+});
+
 export function claudeCodeAgentMeta(value: unknown): ClaudeCodeAgentMeta {
-  const meta = asRecord(value);
-  const out: ClaudeCodeAgentMeta = {};
-  const title = asString(meta?.description);
-  const toolUseId = asString(meta?.toolUseId);
-  const parentAgentId = asString(meta?.parentAgentId);
-  if (title) {
-    out.title = title;
-  }
-  if (toolUseId) {
-    out.toolUseId = toolUseId;
-  }
-  if (parentAgentId) {
-    out.parentAgentId = parentAgentId;
-  }
-  return out;
+  const meta = z.safeParse(AgentMeta, value).data;
+  return {
+    ...(meta?.description ? { title: meta.description } : {}),
+    ...(meta?.toolUseId ? { toolUseId: meta.toolUseId } : {}),
+    ...(meta?.parentAgentId ? { parentAgentId: meta.parentAgentId } : {})
+  };
 }
 
 /** A path under the default projects directory, or a head that reads like a Claude Code session. */

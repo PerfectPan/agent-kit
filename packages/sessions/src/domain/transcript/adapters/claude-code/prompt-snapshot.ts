@@ -1,3 +1,5 @@
+import * as z from "zod/mini";
+
 import {
   type Capability,
   type Lane,
@@ -9,39 +11,50 @@ import {
   type TranscriptEvent,
   type TranscriptSession
 } from "../../index.js";
-import { asString } from "../record-fields.js";
+import { lenient } from "../lenient.js";
+import type { ClaudeCodeAttachment } from "./record.js";
 
 /** Blocks of a recorded `systemPrompt` array are joined with a blank line; the original keeps the blocks. */
 const BLOCK_SEPARATOR = "\n\n";
 
 /**
- * The payload of an `attachment.type: 'prompt_snapshot'` record (Claude Code 2.1.268 and later): the system prompt
- * the CLI sent, as a string array, and on some snapshots the tool list and `cliPrefix`. `undefined` when a field has
- * another shape, which is an unknown format generation.
+ * The fields of a recognized `prompt_snapshot` attachment. Unlike the record's lenient fields, a `systemPrompt`
+ * or `tools` of another shape is an unknown format generation, so these parse strictly; `cliPrefix` stays
+ * lenient, where a wrong type counts as absent.
  */
-export function promptSnapshotPayload(attachment: Record<string, unknown>): Record<string, unknown> | undefined {
+const PromptSnapshotAttachment = z.object({
+  systemPrompt: z.optional(z.union([z.string(), z.array(z.string())])),
+  tools: z.optional(z.array(z.unknown())),
+  cliPrefix: lenient(z.string())
+});
+
+/**
+ * The payload of an `attachment.type: 'prompt_snapshot'` record (Claude Code 2.1.268 and later): the system prompt
+ * the CLI sent, as a string array, and on some snapshots the tool list and `cliPrefix`. `undefined` when a strict
+ * field has another shape, which is an unknown format generation.
+ */
+export function promptSnapshotPayload(attachment: ClaudeCodeAttachment): Record<string, unknown> | undefined {
+  const snapshot = z.safeParse(PromptSnapshotAttachment, attachment).data;
+  if (!snapshot) {
+    return undefined;
+  }
   const payload: Record<string, unknown> = { type: "prompt_snapshot" };
-  const prompt = attachment.systemPrompt;
+  const prompt = snapshot.systemPrompt;
   if (typeof prompt === "string") {
     if (prompt) {
       payload.systemPrompt = prompt;
     }
-  } else if (Array.isArray(prompt) && prompt.every((block) => typeof block === "string")) {
+  } else if (prompt !== undefined) {
     const text = prompt.join(BLOCK_SEPARATOR);
     if (text) {
       payload.systemPrompt = text;
     }
-  } else if (prompt !== undefined) {
-    return undefined;
   }
-  if (Array.isArray(attachment.tools)) {
-    payload.tools = attachment.tools;
-  } else if (attachment.tools !== undefined) {
-    return undefined;
+  if (snapshot.tools !== undefined) {
+    payload.tools = snapshot.tools;
   }
-  const cliPrefix = asString(attachment.cliPrefix);
-  if (cliPrefix) {
-    payload.cliPrefix = cliPrefix;
+  if (snapshot.cliPrefix) {
+    payload.cliPrefix = snapshot.cliPrefix;
   }
   return payload;
 }

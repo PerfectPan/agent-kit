@@ -136,10 +136,7 @@ async function readSubagents(
     const start = UTF8_BOM.every((byte, at) => bytes[at] === byte) ? UTF8_BOM.length : 0;
     const source = { file: metaPath, offset: start, length: bytes.byteLength - start, line: 1 };
     try {
-      out.metas.set(
-        agentId,
-        claudeCodeAgentMeta(JSON.parse(new TextDecoder().decode(bytes.subarray(start))) as unknown)
-      );
+      out.metas.set(agentId, claudeCodeAgentMeta(JSON.parse(new TextDecoder().decode(bytes.subarray(start)))));
       out.skipped.push({ reason: "agent-meta", source });
     } catch {
       out.skipped.push({ reason: "invalid-json", source });

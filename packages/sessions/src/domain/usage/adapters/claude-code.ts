@@ -1,49 +1,48 @@
 import { err, ok } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import { timeOf, unknownFormatGeneration } from "../../transcript/index.js";
+import {
+  type ClaudeCodeMessageUsageValue,
+  type ClaudeCodeRecordValue,
+  parseClaudeCodeMessageUsage,
+  parseClaudeCodeUsageRecord
+} from "../../transcript/adapters/claude-code/record.js";
+import { lenient } from "../../transcript/adapters/lenient.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
-import { asNumber, asRecord, asString } from "../../transcript/adapters/record-fields.js";
 import { rememberKey, type UsageFile, type UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "claude-code";
 
 /**
- * The Usage of one assistant message's `usage` object. Claude Code reports `input_tokens` without the cache, so
- * cache reads and writes are added back; without `input_tokens` the total input is unknown, and only the cache counts
- * that are present remain. When the log has the `cache_creation` breakdown by TTL, it is the cache
- * write count: the flat `cache_creation_input_tokens` can be 0 while the one-hour bucket is not.
+ * The Usage of one assistant message's parsed `usage` object. Claude Code reports `input_tokens` without the
+ * cache, so cache reads and writes are added back; without `input_tokens` the total input is unknown, and only
+ * the cache counts that are present remain. When the log has the `cache_creation` breakdown by TTL, it is the
+ * cache write count: the flat `cache_creation_input_tokens` can be 0 while the one-hour bucket is not.
  */
-export function claudeCodeUsage(value: unknown): Usage | undefined {
-  const usage = asRecord(value);
-  if (!usage) {
-    return undefined;
-  }
-  const input = asNumber(usage.input_tokens);
-  const cacheRead = asNumber(usage.cache_read_input_tokens);
-  const byTtl = asRecord(usage.cache_creation);
-  const write5m = asNumber(byTtl?.ephemeral_5m_input_tokens);
-  const write1h = asNumber(byTtl?.ephemeral_1h_input_tokens);
+export function claudeCodeUsageOf(usage: ClaudeCodeMessageUsageValue | undefined): Usage | undefined {
+  const input = usage?.input_tokens;
+  const cacheRead = usage?.cache_read_input_tokens;
+  const byTtl = usage?.cache_creation;
+  const write5m = byTtl?.ephemeral_5m_input_tokens;
+  const write1h = byTtl?.ephemeral_1h_input_tokens;
   const cacheWrite =
     write5m !== undefined || write1h !== undefined
       ? (write5m ?? 0) + (write1h ?? 0)
-      : asNumber(usage.cache_creation_input_tokens);
+      : usage?.cache_creation_input_tokens;
   return compactUsage({
     inputTokens: input === undefined ? undefined : input + (cacheRead ?? 0) + (cacheWrite ?? 0),
-    outputTokens: asNumber(usage.output_tokens),
+    outputTokens: usage?.output_tokens,
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
     cacheWrite1hTokens: write1h,
-    reasoningTokens: asNumber(asRecord(usage.output_tokens_details)?.thinking_tokens)
+    reasoningTokens: usage?.output_tokens_details?.thinking_tokens
   });
 }
 
-/** A record envelope this adapter knows: a string `type`, no `formatVersion`, a semver `version` when present. */
-export function knownClaudeCodeGeneration(rec: Record<string, unknown>): boolean {
-  if ("formatVersion" in rec || typeof rec.type !== "string") {
-    return false;
-  }
-  const version = rec.version;
-  return !(typeof version === "number" || (typeof version === "string" && !/^\d+\.\d+\.\d+/.test(version)));
+/** The Usage of one assistant message's `usage` object, of any shape the log carries. */
+export function claudeCodeUsage(value: unknown): Usage | undefined {
+  return claudeCodeUsageOf(parseClaudeCodeMessageUsage(value));
 }
 
 /** The model id of a message Claude Code wrote itself, such as an API error, without calling a model. */
@@ -53,11 +52,8 @@ const SYNTHETIC_MODEL = "<synthetic>";
  * The key of the model request a `user` or `assistant` record belongs to: its `requestId`. Behind an API gateway that
  * returns no request id, the message id is the key. A synthetic message has a message id but no request behind it.
  */
-export function claudeCodeRequestKey(
-  rec: Record<string, unknown>,
-  message: Record<string, unknown>
-): string | undefined {
-  return asString(rec.requestId) ?? (message.model === SYNTHETIC_MODEL ? undefined : asString(message.id));
+export function claudeCodeRequestKey(rec: Pick<ClaudeCodeRecordValue, "requestId" | "message">): string | undefined {
+  return rec.requestId ?? (rec.message?.model === SYNTHETIC_MODEL ? undefined : rec.message?.id);
 }
 
 /**
@@ -109,6 +105,43 @@ interface ClaudeCodeUsageState {
   lanes: Record<string, LaneState>;
 }
 
+/** The counts of a saved request, as `Usage` reports them. */
+const SavedUsage = z.looseObject({
+  inputTokens: lenient(z.number()),
+  outputTokens: lenient(z.number()),
+  totalTokens: lenient(z.number()),
+  cacheReadTokens: lenient(z.number()),
+  cacheWriteTokens: lenient(z.number()),
+  cacheWrite1hTokens: lenient(z.number()),
+  reasoningTokens: lenient(z.number())
+});
+
+/** A request that may still get records. A saved entry without its key, counts or place in the file is not one. */
+const SavedOpenRequest = z.looseObject({
+  key: z.string(),
+  byMessage: lenient(z.literal(true)),
+  responseId: lenient(z.string()),
+  model: lenient(z.string()),
+  usage: SavedUsage,
+  timestamp: z.number(),
+  sessionId: lenient(z.string()),
+  offset: z.number(),
+  length: z.number(),
+  line: z.number()
+});
+
+const SavedLaneState = z.looseObject({
+  open: lenient(z.array(lenient(SavedOpenRequest))),
+  reported: lenient(z.array(lenient(z.string())))
+});
+
+/** The state a cursor carries back, reading only the fields it understands; a wrong-typed entry is absent. */
+const SavedClaudeCodeUsageState = z.looseObject({
+  sessionId: lenient(z.string()),
+  lastTime: lenient(z.number()),
+  lanes: lenient(z.record(z.string(), lenient(SavedLaneState)))
+});
+
 /**
  * How many requests a lane keeps open. A request's records follow each other, with the lane's tool results and
  * attachments between them, but a lane does not start another request in between in the logs we have read; up to this
@@ -144,30 +177,29 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
   };
   return {
     push(record) {
-      const rec = asRecord(record.value);
-      if (!rec || !knownClaudeCodeGeneration(rec)) {
+      const rec = parseClaudeCodeUsageRecord(record.value);
+      if (!rec) {
         return err(unknownFormatGeneration(AGENT, record));
       }
       const ts = timeOf(rec.timestamp) ?? state.lastTime ?? file.mtimeMs;
       state.lastTime = ts;
-      state.sessionId ||= asString(rec.sessionId);
+      state.sessionId ||= rec.sessionId;
       if (rec.type !== "user" && rec.type !== "assistant") {
         return ok([]);
       }
-      const message = asRecord(rec.message) ?? {};
-      const key = claudeCodeRequestKey(rec, message);
+      const key = claudeCodeRequestKey(rec);
       if (!key) {
         return ok([]);
       }
-      let laneId = asString(rec.agentId) ?? file.agentLaneId;
-      if (rec.isSidechain === true) {
+      let laneId = rec.agentId ?? file.agentLaneId;
+      if (rec.isSidechain) {
         laneId ??= "sidechain";
       }
       const laneKey = laneId ?? "";
       const lane = (state.lanes[laneKey] ??= { open: [], reported: [] });
-      const usage = claudeCodeUsage(message.usage);
-      const model = asString(message.model);
-      const responseId = asString(message.id);
+      const usage = claudeCodeUsageOf(rec.message?.usage);
+      const model = rec.message?.model;
+      const responseId = rec.message?.id;
       const at = lane.open.findIndex((open) => open.key === key);
       if (at >= 0) {
         const [open] = lane.open.splice(at, 1);
@@ -189,7 +221,7 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
         offset: record.offset,
         length: record.length,
         line: record.line,
-        ...(asString(rec.requestId) ? {} : { byMessage: true as const }),
+        ...(rec.requestId ? {} : { byMessage: true as const }),
         ...(responseId && responseId !== key ? { responseId } : {}),
         ...(model ? { model } : {}),
         ...(state.sessionId ? {} : { sessionId: file.sessionId })
@@ -240,11 +272,24 @@ function requestRecord(
 
 /** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
 function restore(saved: unknown): ClaudeCodeUsageState {
-  const state = asRecord(saved);
-  const sessionId = asString(state?.sessionId);
-  const lastTime = asNumber(state?.lastTime);
+  const state = z.safeParse(SavedClaudeCodeUsageState, saved).data;
+  const lanes: Record<string, LaneState> = {};
+  for (const [id, lane] of Object.entries(state?.lanes ?? {})) {
+    if (!lane) {
+      continue;
+    }
+    const open: OpenRequest[] = [];
+    for (const request of lane.open ?? []) {
+      if (request) {
+        open.push(request);
+      }
+    }
+    lanes[id] = { open, reported: (lane.reported ?? []).filter((key) => key !== undefined) };
+  }
+  const sessionId = state?.sessionId;
+  const lastTime = state?.lastTime;
   return {
-    lanes: structuredClone(asRecord(state?.lanes) ?? {}) as Record<string, LaneState>,
+    lanes,
     ...(sessionId ? { sessionId } : {}),
     ...(lastTime === undefined ? {} : { lastTime })
   };
