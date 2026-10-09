@@ -11,6 +11,7 @@ import {
   type SessionHead,
   type SessionListFailure,
   summarizeSession,
+  timedRecord,
   translateCodexRecords,
   type Transcript
 } from "@rivus/agent-kit-sessions";
@@ -44,7 +45,9 @@ const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
 /** Records of one rollout, stamped like the adapter stamps them. */
 function stamped(values: unknown[]) {
   return mergeByTime([
-    values.map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+    values
+      .map((value, index) => ({ value, file: "r.jsonl", line: index + 1, offset: index, length: 1 }))
+      .map(timedRecord)
   ]);
 }
 

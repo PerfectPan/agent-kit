@@ -1,6 +1,8 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import * as z from "zod/mini";
 
 import type { ReadFailed, SessionNotFound } from "../../../domain/session/index.js";
+import { lenient } from "../../../domain/transcript/adapters/lenient.js";
 import type { SessionPlatform } from "../../ports.js";
 
 /** Errno codes of file system failures a read can meet. Any other error is a defect and is not turned into a value. */
@@ -23,6 +25,21 @@ const FS_ERRNO = new Set([
   "ETIMEDOUT"
 ]);
 
+/**
+ * The fields of a file system error the guarded calls throw: the `code` it carries, and the `path` it failed on.
+ * `code` stays the raw value and the errno test is `String(code)`, exactly as before, so a code that stringifies to
+ * an errno (a `String` object, a one-element array) still marks its error. A `path` of any other shape counts as
+ * absent, so the caller's path wins, as before.
+ */
+const FsError = z.object({
+  code: z.unknown(),
+  path: lenient(z.string())
+});
+
+/** The one field marking reads. Marking must not touch the rest of the error — classification reads `path` beside
+ * `code`, but a property a host hangs on a non-fs error may throw, and the original error has to win. */
+const MarkedError = z.object({ code: z.unknown() });
+
 /** A view of a platform whose file system errors can be told from other errors, and turned into values. */
 export interface GuardedIo {
   readonly platform: SessionPlatform;
@@ -37,8 +54,10 @@ export interface GuardedIo {
 export function guardIo(platform: SessionPlatform): GuardedIo {
   const fsErrors = new WeakSet<object>();
   const mark = (error: unknown): never => {
-    if (typeof error === "object" && error !== null && FS_ERRNO.has(String((error as { code?: unknown }).code))) {
-      fsErrors.add(error);
+    const marked = z.safeParse(MarkedError, error).data;
+    if (marked !== undefined && FS_ERRNO.has(String(marked.code))) {
+      // The parse only succeeds for objects, so the error is one the `WeakSet` can hold.
+      fsErrors.add(error as object);
     }
     throw error;
   };
@@ -58,7 +77,23 @@ export function guardIo(platform: SessionPlatform): GuardedIo {
       }
     },
     failure(error, path) {
-      return typeof error === "object" && error !== null && fsErrors.has(error) ? classify(error, path) : undefined;
+      // The membership check goes first: a non-fs error never has its properties read, so a throwing `code` or
+      // `path` getter cannot replace the original throw with the getter's error.
+      if (!(typeof error === "object" && error !== null && fsErrors.has(error))) {
+        return undefined;
+      }
+      // Only marked errors get here, and marking parsed the same shape, so this parse cannot fail either.
+      const fs = z.safeParse(FsError, error).data;
+      if (fs === undefined) {
+        return undefined;
+      }
+      // The raw code value, as the marking errno test saw it.
+      const code = fs.code as string;
+      const at = fs.path ?? path;
+      if (code === "ENOENT") {
+        return { _tag: "SessionNotFound", path: at };
+      }
+      return { _tag: "ReadFailed", path: at, message: error instanceof Error ? error.message : code, cause: error };
     }
   };
 }
@@ -86,13 +121,4 @@ export async function catchIoFailure<T>(
     }
     return err(failure);
   }
-}
-
-function classify(error: object, path: string): SessionNotFound | ReadFailed {
-  const { code, path: errorPath } = error as { code: string; path?: unknown };
-  const at = typeof errorPath === "string" ? errorPath : path;
-  if (code === "ENOENT") {
-    return { _tag: "SessionNotFound", path: at };
-  }
-  return { _tag: "ReadFailed", path: at, message: error instanceof Error ? error.message : code, cause: error };
 }

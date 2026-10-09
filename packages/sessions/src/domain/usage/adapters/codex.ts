@@ -4,6 +4,7 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../transcript/adapters/timestamp.js";
 import {
   CodexEnvelopeSchema,
   codexTokenCounts,
@@ -31,6 +32,8 @@ interface CodexUsagePayload {
   forked_from_id?: string;
   source?: { subagent?: { thread_spawn?: unknown } };
   usage?: Record<string, unknown>;
+  /** A payload's own time, as a `session_meta` carries it for the fork replay rule. */
+  timestamp?: number | string;
   info?: {
     total_token_usage?: unknown;
     last_token_usage?: unknown;
@@ -53,6 +56,7 @@ const CodexUsagePayloadSchema = z.looseObject({
   forked_from_id: lenient(z.string()),
   source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
   usage: lenient(z.record(z.string(), z.unknown())),
+  timestamp: logTimestamp,
   info: lenient(
     z.looseObject({
       total_token_usage: z.optional(z.unknown()),

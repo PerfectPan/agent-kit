@@ -39,7 +39,7 @@ export interface ForkReplayPayload {
   id?: string;
   turn_id?: string;
   forked_from_id?: string;
-  timestamp?: unknown;
+  timestamp?: number | string;
   source?: { subagent?: { thread_spawn?: unknown } };
   info?: unknown;
 }

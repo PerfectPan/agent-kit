@@ -1,6 +1,7 @@
 import * as z from "zod/mini";
 
 import { lenient } from "../lenient.js";
+import { logTimestamp } from "../timestamp.js";
 
 /**
  * The `usage` of an assistant message. Claude Code reports `input_tokens` without the cache, and may carry the
@@ -196,7 +197,7 @@ const ClaudeCodeRecord = knownGenerationRecord({
   cwd: lenient(z.string()),
   agentId: lenient(z.string()),
   requestId: lenient(z.string()),
-  timestamp: lenient(z.union([z.number(), z.string()])),
+  timestamp: logTimestamp,
   isSidechain: lenient(z.literal(true)),
   isMeta: lenient(z.literal(true)),
   isCompactSummary: lenient(z.literal(true)),
@@ -256,7 +257,7 @@ const ClaudeCodeUsageRecord = knownGenerationRecord({
   sessionId: lenient(z.string()),
   agentId: lenient(z.string()),
   isSidechain: lenient(z.literal(true)),
-  timestamp: lenient(z.union([z.number(), z.string()])),
+  timestamp: logTimestamp,
   message: lenient(
     z.looseObject({
       id: lenient(z.string()),
@@ -287,7 +288,7 @@ const ClaudeCodePreviewRecord = z.looseObject({
   cwd: lenient(z.string()),
   customTitle: lenient(z.string()),
   aiTitle: lenient(z.string()),
-  timestamp: lenient(z.union([z.number(), z.string()])),
+  timestamp: logTimestamp,
   isSidechain: lenient(z.literal(true)),
   isMeta: lenient(z.literal(true)),
   isCompactSummary: lenient(z.literal(true)),

@@ -4,6 +4,7 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf } from "../../transcript/index.js";
 import { compactUsage, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
+import { logTimestamp } from "../../transcript/adapters/timestamp.js";
 import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "pi";
@@ -31,12 +32,14 @@ const PiRecord = z.looseObject({
   id: lenient(z.string()),
   type: lenient(z.string()),
   parentSession: lenient(z.string()),
+  timestamp: logTimestamp,
   message: lenient(
     z.looseObject({
       role: lenient(z.string()),
       model: lenient(z.string()),
       provider: lenient(z.string()),
       responseId: lenient(z.string()),
+      timestamp: logTimestamp,
       usage: lenient(PiMessageUsage)
     })
   )

@@ -9,7 +9,14 @@ export {
   skipRecord
 } from "./factories/transcript-event.js";
 export { shadowBefore, shadowedIn } from "./policies/compaction-shadowing.js";
-export { assignSeq, inheritTimes, mergeByTime, type StampedRecord, timeOf } from "./policies/event-ordering.js";
+export {
+  assignSeq,
+  inheritTimes,
+  mergeByTime,
+  type StampedRecord,
+  timeOf,
+  type TimedRecord
+} from "./policies/event-ordering.js";
 export {
   latestSnapshot,
   promptSnapshot,
