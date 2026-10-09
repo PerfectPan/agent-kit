@@ -154,7 +154,13 @@ export function translateClaudeCodeRecords(
     }
 
     const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
-      const event = baseEvent(record, kind, payload, { id: eventId(uuid, record, part), ts, agentId, parentId, requestId });
+      const event = baseEvent(record, kind, payload, {
+        id: eventId(uuid, record, part),
+        ts,
+        agentId,
+        parentId,
+        requestId
+      });
       events.push(event);
       parsed.set(event, rec);
     };

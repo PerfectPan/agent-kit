@@ -170,9 +170,11 @@ const textBlock = {
  * the hand-written readers before.
  */
 const knownVersion = z.optional(
-  z.unknown().check(
-    z.refine((value) => typeof value !== "number" && !(typeof value === "string" && !/^\d+\.\d+\.\d/.test(value)))
-  )
+  z
+    .unknown()
+    .check(
+      z.refine((value) => typeof value !== "number" && !(typeof value === "string" && !/^\d+\.\d+\.\d/.test(value)))
+    )
 );
 
 /** A record that carries its own envelope generation, in any form, is one this kit does not know. */
@@ -296,7 +298,9 @@ const ClaudeCodePreviewRecord = z.looseObject({
   isMeta: lenient(z.literal(true)),
   isCompactSummary: lenient(z.literal(true)),
   origin: lenient(z.looseObject({ kind: lenient(z.string()) })),
-  message: lenient(z.looseObject({ content: lenient(z.union([z.string(), z.array(lenient(z.looseObject(textBlock)))])) }))
+  message: lenient(
+    z.looseObject({ content: lenient(z.union([z.string(), z.array(lenient(z.looseObject(textBlock)))])) })
+  )
 });
 
 /** Parses one record for the preview. */
