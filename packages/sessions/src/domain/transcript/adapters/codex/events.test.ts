@@ -88,6 +88,56 @@ describe("translateCodexRecords", () => {
     ]);
   });
 
+  it("reads a mistyped last_token_usage as no record, so the totals' increase is the usage", () => {
+    const transcript = translated(
+      translateCodexRecords(
+        stamped([
+          { timestamp: at(0), type: "session_meta", payload: { id: "cx-last" } },
+          {
+            timestamp: at(1000),
+            type: "event_msg",
+            payload: { type: "token_count", info: { total_token_usage: { input_tokens: 100 } } }
+          },
+          {
+            timestamp: at(2000),
+            type: "event_msg",
+            payload: { type: "token_count", info: { total_token_usage: { input_tokens: 150 }, last_token_usage: 5 } }
+          }
+        ])
+      )
+    );
+    expect(transcript.events.flatMap((event) => ("usage" in event.payload ? [event.payload.usage] : []))).toEqual([
+      { inputTokens: 100 },
+      { inputTokens: 50 }
+    ]);
+  });
+
+  it("compares the totals as they were written: a null or mistyped total never stands in for the last one", () => {
+    const usages = (totals: unknown[]) => {
+      const transcript = translated(
+        translateCodexRecords(
+          stamped([
+            { timestamp: at(0), type: "session_meta", payload: { id: "cx-totals" } },
+            ...totals.map((total, index) => ({
+              timestamp: at(1000 + index),
+              type: "event_msg",
+              payload: { type: "token_count", info: { total_token_usage: total } }
+            }))
+          ])
+        )
+      );
+      return transcript.events.flatMap((event) => ("usage" in event.payload ? [event.payload.usage] : []));
+    };
+    expect(usages([{ input_tokens: 100 }, null, null, { input_tokens: 150 }])).toEqual([
+      { inputTokens: 100 },
+      { inputTokens: 150 }
+    ]);
+    expect(usages([{ input_tokens: 100 }, 5, { input_tokens: 130 }])).toEqual([
+      { inputTokens: 100 },
+      { inputTokens: 130 }
+    ]);
+  });
+
   it("treats a fork marker of an unexpected type as no fork, so the usage is the rollout's own", () => {
     const meta = (forkedFrom: unknown) => ({
       timestamp: at(0),

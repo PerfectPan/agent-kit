@@ -4,7 +4,12 @@ import * as z from "zod/mini";
 import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "../index.js";
 import { lenient } from "../../transcript/adapters/lenient.js";
-import { codexTokenCounts, knownCodexRecord } from "../../transcript/adapters/codex/records.js";
+import {
+  CodexEnvelopeSchema,
+  codexTokenCounts,
+  type KeysExact,
+  knownCodexRecord
+} from "../../transcript/adapters/codex/records.js";
 import { rememberKey, type UsageFile, type UsageLineDecoder } from "./usage-lines.js";
 import {
   endForkReplay,
@@ -34,39 +39,39 @@ interface CodexUsagePayload {
 }
 
 /**
- * One rollout record for the usage rule: the envelope, and the payload fields the usage rule reads, with those the
- * fork replay rule reads in the same pass. The decoder runs over every record of every rollout, so one parse takes
- * only these fields, not the whole payload. The envelope is the same one `records.ts` parses, down to the
- * non-empty `type` and the raw presence markers, and the totals stay the raw values they were (the usage rule
- * compares them by their JSON text).
+ * The payload fields the usage rule reads, with those the fork replay rule reads in the same pass. The decoder runs
+ * over every record of every rollout, so it parses only these fields, not the whole payload. The totals stay the raw
+ * values they were: the usage rule compares them by their JSON text.
  */
-const CodexUsageRecord = z.looseObject({
-  type: lenient(z.string().check(z.minLength(1))),
-  record_type: lenient(z.string().check(z.minLength(1))),
+const CodexUsagePayloadSchema = z.looseObject({
+  type: lenient(z.string()),
   id: lenient(z.string()),
-  timestamp: z.optional(z.unknown()),
-  formatVersion: z.optional(z.unknown()),
-  payload: lenient(
+  session_id: lenient(z.string()),
+  model: lenient(z.string()),
+  turn_id: lenient(z.string()),
+  response_id: lenient(z.string()),
+  forked_from_id: lenient(z.string()),
+  source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
+  usage: lenient(z.record(z.string(), z.unknown())),
+  info: lenient(
     z.looseObject({
-      type: lenient(z.string()),
-      id: lenient(z.string()),
-      session_id: lenient(z.string()),
-      model: lenient(z.string()),
-      turn_id: lenient(z.string()),
-      response_id: lenient(z.string()),
-      forked_from_id: lenient(z.string()),
-      source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
-      usage: lenient(z.record(z.string(), z.unknown())),
-      info: lenient(
-        z.looseObject({
-          total_token_usage: z.optional(z.unknown()),
-          last_token_usage: z.optional(z.unknown())
-        })
-      ),
-      thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
+      total_token_usage: z.optional(z.unknown()),
+      last_token_usage: z.optional(z.unknown())
     })
-  )
+  ),
+  thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
 });
+
+const _codexUsagePayloadKeys: true = true satisfies KeysExact<typeof CodexUsagePayloadSchema.shape, CodexUsagePayload>;
+
+/** Compiled: the decoder's payload schema names exactly the keys of its interface. */
+export type CodexUsageKeysExact = [typeof _codexUsagePayloadKeys];
+
+/**
+ * One rollout record for the usage rule: the envelope every codex reader parses, and the payload fields above. One
+ * parse takes only these fields, not the whole payload.
+ */
+const CodexUsageRecord = z.looseObject({ ...CodexEnvelopeSchema.shape, payload: lenient(CodexUsagePayloadSchema) });
 
 /**
  * The Usage of one model call from a Codex usage object: `token_usage_record.usage` or
@@ -178,7 +183,8 @@ export function codexRecordUsage(
   if (unchanged) {
     return { skip: "unchanged-usage" };
   }
-  const last = info.last_token_usage;
+  // The last call's usage reads as a record, as it always did: a non-record one falls back to the totals' increase.
+  const last = codexTokenCounts(info.last_token_usage);
   return { usage: last ? codexUsage(last) : codexUsageDelta(total, previous) };
 }
 

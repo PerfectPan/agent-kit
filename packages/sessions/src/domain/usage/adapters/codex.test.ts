@@ -36,6 +36,13 @@ const totalsCount = (total: unknown) => ({
   payload: { type: "token_count", info: { total_token_usage: total } }
 });
 
+/** A `token_count` whose last call's usage is present, right or not: the totals then only carry the comparison. */
+const totalsCountWithLast = (total: unknown, last: unknown) => ({
+  timestamp: AT,
+  type: "event_msg",
+  payload: { type: "token_count", info: { total_token_usage: total, last_token_usage: last } }
+});
+
 const inputOf = (records: UsageRecord[]): (number | undefined)[] => records.map((item) => item.usage.inputTokens);
 
 const at = (ms: number) => new Date(Date.UTC(2026, 0, 1) + ms).toISOString();
@@ -50,12 +57,20 @@ describe("codex usage lines", () => {
   });
 
   it("fails a record whose envelope names an unknown format generation", () => {
-    for (const value of [{}, [1], { formatVersion: 9, type: "session_meta" }]) {
+    for (const value of [{}, [1], { formatVersion: 9, type: "session_meta" }, { type: "" }, { record_type: "" }]) {
       expect(codexUsageLines(file).push(record(value))).toEqual({
         ok: false,
         error: { _tag: "UnknownFormatGeneration", agent: "codex", file: file.path, line: 1 }
       });
     }
+  });
+
+  it("reads an empty envelope marker as absent: the header rule decides, and names the session", () => {
+    const decoder = codexUsageLines(file);
+    expect(pushed(decoder.push(record({ record_type: "", id: "cx-empty", timestamp: AT })))).toEqual([]);
+    expect(pushed(decoder.push(record(usageRecord("r1", { input_tokens: 10, output_tokens: 1 }))))).toEqual([
+      expect.objectContaining({ sessionId: "cx-empty" })
+    ]);
   });
 
   it("names the session from a pre-envelope header, whose id may have any type", () => {
@@ -119,6 +134,18 @@ describe("codex usage lines", () => {
         ...pushed(mistyped.push(record(totalsCount({ input_tokens: 130 }))))
       ])
     ).toEqual([100, 130]);
+  });
+
+  it("reads a mistyped last_token_usage as no record, so the totals' increase is the usage", () => {
+    for (const mistyped of [5, "x", true, []]) {
+      const decoder = codexUsageLines(file);
+      expect(
+        inputOf([
+          ...pushed(decoder.push(record(totalsCount({ input_tokens: 100 })))),
+          ...pushed(decoder.push(record(totalsCountWithLast({ input_tokens: 150 }, mistyped))))
+        ])
+      ).toEqual([100, 50]);
+    }
   });
 
   it("emits a waiting record the caller's cursor does not share", () => {

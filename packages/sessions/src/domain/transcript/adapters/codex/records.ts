@@ -9,7 +9,7 @@ import { lenient } from "../lenient.js";
  * A field named on one side of a schema/interface pair only — an interface typo, or a schema field the interface
  * misses — fails to compile with this: the schema's keys and the value type's keys must be the same.
  */
-type KeysExact<Schema extends object, Value> =
+export type KeysExact<Schema extends object, Value> =
   | Exclude<keyof Schema, keyof Value>
   | Exclude<keyof Value, keyof Schema> extends never
   ? true
@@ -165,14 +165,29 @@ interface CodexRecord {
 // The envelope type is a non-empty string: the old readers treated an empty envelope like an absent one.
 const NonEmptyString = z.string().check(z.minLength(1));
 
-const CodexRecordSchema = z.looseObject({
+/**
+ * The envelope every codex reader parses: the non-empty `type`, the `record_type` bookkeeping marker, the header `id`
+ * of a pre-envelope rollout, and the `timestamp` and `formatVersion` presence markers the generation check reads.
+ * Readers that parse their own payload spread `.shape` and add a `payload` field of theirs.
+ */
+export const CodexEnvelopeSchema: z.ZodMiniObject<
+  {
+    type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
+    record_type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
+    id: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
+    timestamp: z.ZodMiniOptional<z.ZodMiniUnknown>;
+    formatVersion: z.ZodMiniOptional<z.ZodMiniUnknown>;
+  },
+  z.core.$loose
+> = z.looseObject({
   type: lenient(NonEmptyString),
   record_type: lenient(NonEmptyString),
   id: lenient(z.string()),
   timestamp: z.optional(z.unknown()),
-  formatVersion: z.optional(z.unknown()),
-  payload: z.optional(z.unknown())
+  formatVersion: z.optional(z.unknown())
 });
+
+const CodexRecordSchema = z.looseObject({ ...CodexEnvelopeSchema.shape, payload: z.optional(z.unknown()) });
 
 /**
  * A record of a format generation this adapter reads: no `formatVersion`, and a non-empty `type`, a `record_type`
