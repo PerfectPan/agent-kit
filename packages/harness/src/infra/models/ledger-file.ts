@@ -118,9 +118,9 @@ export function encodeLedger(snapshot: LedgerSnapshot): string {
 }
 
 /**
- * What JSON holds, plus the infinities and big integers a TOML entry value can carry into a pre-image: a stored
- * Artifact's content is exactly this, so the reading layer hands it over typed. Records keep the parser's object, so
- * an own `"__proto__"` key survives the round trip.
+ * What JSON holds, plus the infinities a large TOML number can carry into a pre-image: a stored Artifact's content
+ * is exactly this, so the reading layer hands it over typed. Records keep the parser's object, so an own
+ * `"__proto__"` key survives the round trip.
  */
 // The cast bridges zod's variance over the array members, which the schema builds mutable and the type reads readonly.
 const Json = z.lazy(() =>
@@ -129,27 +129,25 @@ const Json = z.lazy(() =>
     z.boolean(),
     z.number(),
     z.custom<number, unknown>((value) => typeof value === "number" && !Number.isFinite(value)),
-    z.bigint(),
     z.string(),
     z.array(Json),
     // The record branch: a plain object whose values are content values, kept as the parser returned it.
-    z.custom<{ readonly [key: string]: ArtifactContent | bigint }, unknown>((value) => {
+    z.custom<{ readonly [key: string]: ArtifactContent }, unknown>((value) => {
       if (!isPlainObject(value)) {
         return false;
       }
       return Object.keys(value).every((key) => Json.safeParse((value as Record<string, unknown>)[key]).success);
     })
   ])
-) as z.ZodMiniType<ArtifactContent | bigint>;
+) as z.ZodMiniType<ArtifactContent>;
 
 const PreImageFile = z.object({ content: z.optional(Json) });
 
-/** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. A TOML big integer stays in the
- * content under the `JsonValue` type, the way a date already does. */
+/** A pre-image blob holds `{ "content": … }`, the Artifact's content as it was. */
 export function decodePreImage(text: string): ArtifactContent | undefined {
   try {
     const parsed = PreImageFile.safeParse(JSON.parse(text));
-    return parsed.success ? (parsed.data.content as ArtifactContent | undefined) : undefined;
+    return parsed.success ? parsed.data.content : undefined;
   } catch {
     return undefined;
   }

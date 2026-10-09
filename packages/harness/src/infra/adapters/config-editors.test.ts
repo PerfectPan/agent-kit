@@ -61,6 +61,14 @@ describe("document values", () => {
     expect(parsed.value).toEqual({ limit: Infinity, v: NaN, big: 9223372036854775807n });
   });
 
+  it("edits a TOML document that holds a big integer, and keeps it", () => {
+    const text = 'big = 9223372036854775807\nmodel = "gpt"\n';
+    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
+    const edited = toml(text, locator, "o4");
+    expect(edited).toContain("big = 9223372036854775807");
+    expect(edited).toContain('model = "o4"');
+  });
+
   it("reads a JSON number too large for double precision as infinity", () => {
     const parsed = parseJsonc('{"wide": 1e400}');
     expect(parsed).toMatchObject({ ok: true, value: { wide: Infinity } });
@@ -83,6 +91,25 @@ describe("document values", () => {
 });
 
 describe("JSONC entries", () => {
+  it("reads a document whose __proto__ key the parser turned into the prototype, and edits it", () => {
+    const text = '{"__proto__": {"x": 1}, "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "a"}]}]}}';
+    const parsed = parseJsonc(text);
+    expect(parsed).toMatchObject({ ok: true });
+    if (!parsed.ok || typeof parsed.value !== "object" || parsed.value === null) {
+      throw new Error("no document");
+    }
+    expect(entryValue(parsed.value, hook("Stop", "a"))).toMatchObject({ ok: true });
+    const added = jsonc(text, hook("Stop", "b"), { type: "command", command: "b" });
+    expect(JSON.parse(added)).toMatchObject({
+      hooks: { Stop: [{ hooks: [{ command: "a" }] }, { hooks: [{ command: "b" }] }] }
+    });
+  });
+
+  it("reads a document with a nested __proto__-keyed object", () => {
+    const parsed = parseJsonc('{"a": {"__proto__": {"b": 1}}}');
+    expect(parsed).toMatchObject({ ok: true });
+  });
+
   it("S93: adds a hook as a group of its own next to the user's, and removing it restores the text", () => {
     const ours = { type: "command", command: "/opt/x hook", timeout: 5 };
     const added = jsonc(SETTINGS, hook("Stop", "/opt/x hook"), ours);

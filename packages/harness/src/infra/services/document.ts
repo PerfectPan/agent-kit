@@ -1,11 +1,11 @@
-import { isPlainObject } from "es-toolkit";
 import * as z from "zod/mini";
 
 /**
  * A parsed configuration document: what JSON (with comments) or TOML holds — JSON's values plus TOML's dates, big
  * integers, infinities and NaN. The schema validates the tree and hands the parser's own objects over unchanged, so
  * an untouched subtree keeps its identity and an own `"__proto__"` key survives an edit; readers of a document use
- * own-key accessors, so no prototype member can be found through it.
+ * own-key accessors, so no prototype member can be found through it. A record is any object that is not a list or a
+ * date: jsonc-parser turns a `"__proto__"` key into the object's prototype, so the prototype is not judged.
  */
 export type Document =
   | null
@@ -30,9 +30,9 @@ const doc: z.ZodMiniType<Document> = z.lazy(() =>
     z.string(),
     z.instanceof(Date),
     z.array(doc),
-    // The record branch: a plain object whose values are document values, kept as the parser returned it.
+    // The record branch: a record whose values are document values, kept as the parser returned it.
     z.custom<{ readonly [key: string]: Document }>((value) => {
-      if (!isPlainObject(value)) {
+      if (value === null || typeof value !== "object" || Array.isArray(value) || value instanceof Date) {
         return false;
       }
       return Object.keys(value).every((key) => doc.safeParse((value as Record<string, unknown>)[key]).success);
@@ -53,5 +53,5 @@ export function parseDocument(value: unknown): Document | undefined {
 export function isDocumentRecord(
   value: Document | undefined
 ): value is Extract<Document, { readonly [key: string]: Document }> {
-  return isPlainObject(value);
+  return value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date);
 }

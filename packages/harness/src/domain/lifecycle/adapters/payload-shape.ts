@@ -35,15 +35,24 @@ const pathKey = (path: FieldPath): string => path.join("\u0000");
 
 /**
  * Reads one payload path: `undefined` as soon as a level is not a record or list, or the leaf is absent or of
- * another type. The keys come from a hook dialect, so the descent runs through schemas instead of scattered
- * `typeof` checks.
+ * another type. A promise left in a payload field makes zod's synchronous parse throw, so the descent is guarded
+ * and such a value ends the path — `readHookEvent` never throws, whatever the payload holds. The keys come from a
+ * hook dialect, so the descent runs through schemas instead of scattered `typeof` checks.
  */
 function readPath(path: FieldPath, payload: unknown): string | undefined {
-  let value: unknown = payload;
-  for (const key of path) {
-    value = level(key).parse(value);
+  try {
+    let value: unknown = payload;
+    for (const key of path) {
+      const step = level(key).safeParse(value);
+      if (!step.success) {
+        return undefined;
+      }
+      value = step.data;
+    }
+    return Leaf.safeParse(value).data;
+  } catch {
+    return undefined;
   }
-  return Leaf.safeParse(value).data;
 }
 
 /**

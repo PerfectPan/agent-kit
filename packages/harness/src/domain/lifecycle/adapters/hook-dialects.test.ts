@@ -144,6 +144,28 @@ describe("readHookEvent", () => {
     expect(event.phase).toBe("finish");
   });
 
+  it("reads a promise on a payload path as absent instead of throwing", () => {
+    for (const agent of Object.keys(builtinHookDialects)) {
+      const event = readHookEvent(agent, { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {});
+      expect(event.sessionId).toBeUndefined();
+    }
+    expect(
+      readHookEvent("claude-code", { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {}).nativeEvent
+    ).toBe("Stop");
+  });
+
+  it("reads a promise on the sniffing path as no evidence", () => {
+    const event = readHookEvent("claude-code", { hookEventName: Promise.resolve("pre_tool_use") }, {});
+    expect(event.agent).toBe("claude-code");
+    expect(event.phase).toBe("unknown");
+  });
+
+  it("reads a promise on a dialect path as absent instead of throwing", () => {
+    const event = readHookEvent("cursor", { cursor_version: "1", workspace_roots: Promise.resolve(["/w"]) }, {});
+    expect(event.agent).toBe("cursor");
+    expect(event.cwd).toBeUndefined();
+  });
+
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",
