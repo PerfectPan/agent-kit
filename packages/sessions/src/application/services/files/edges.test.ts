@@ -75,6 +75,12 @@ describe("readEdges", () => {
     expect(reads).toEqual([{ start: 0, end: 8 }]);
     expect(edgeRecords(edges!)).toEqual([{ n: 0 }]);
   });
+
+  it("leaves lines out that are not JSON or not JSON objects", async () => {
+    const text = ['{"n":0}', "[0]", "5", '"s"', "null", "{cut", ""].join("\n");
+    const edges = await readEdges(bytesPlatform(new TextEncoder().encode(text)), "session.jsonl");
+    expect(edgeRecords(edges!)).toEqual([{ n: 0 }]);
+  });
 });
 
 describe("readEdges cancellation", () => {
