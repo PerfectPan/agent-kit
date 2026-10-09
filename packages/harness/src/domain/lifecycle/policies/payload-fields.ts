@@ -17,18 +17,13 @@ export function ownValue<T>(record: Readonly<Record<string, T>>, key: string): T
  * the parsed view; the environment is typed, and a variable of the same name on `Object.prototype` cannot be found.
  */
 export function readField(payload: PayloadView, env: Env, source: FieldSource | undefined): string | undefined {
-  if (source === undefined) {
-    return undefined;
-  }
-  const paths = source.paths === undefined ? [] : source.paths;
-  const names = source.env === undefined ? [] : source.env;
-  for (const path of paths) {
+  for (const path of source?.paths ?? []) {
     const found = payload.get(path);
     if (found !== undefined && found !== "") {
       return found;
     }
   }
-  for (const name of names) {
+  for (const name of source?.env ?? []) {
     const found = Object.hasOwn(env, name) ? env[name] : undefined;
     if (found !== undefined && found !== "") {
       return found;

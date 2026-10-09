@@ -98,7 +98,7 @@ export function authProbeLists(auth: AuthProbe | undefined): {
   readonly env: readonly AuthVariable[];
 } {
   return {
-    credentialFiles: auth === undefined || auth.credentialFiles === undefined ? [] : auth.credentialFiles,
-    env: auth === undefined || auth.env === undefined ? [] : auth.env
+    credentialFiles: auth?.credentialFiles ?? [],
+    env: auth?.env ?? []
   };
 }

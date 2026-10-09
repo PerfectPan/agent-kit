@@ -68,7 +68,7 @@ export function locatorKey(locator: ArtifactLocator): LocatorKey {
 
 /** The pointer text, or `""` when the locator kind has none. */
 export function locatorPointer(locator: Pick<ArtifactLocator, "pointer">): string {
-  return locator.pointer === undefined ? "" : locator.pointer;
+  return locator.pointer ?? "";
 }
 
 /**

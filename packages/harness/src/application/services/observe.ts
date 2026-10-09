@@ -22,12 +22,9 @@ export type RegistrationLookup = (
 export function registrationLookup(adapters: InstallAdapters, context: InstallContext): RegistrationLookup {
   return (locator) => {
     for (const adapter of Object.values(adapters)) {
-      if (adapter === undefined) {
-        continue;
-      }
-      const registration = adapter.cliRegistration?.(locator, context);
+      const registration = adapter?.cliRegistration?.(locator, context);
       if (registration !== undefined) {
-        return { ...registration, roots: adapter.roots(context) };
+        return { ...registration, roots: adapter?.roots(context) ?? [] };
       }
     }
     return undefined;

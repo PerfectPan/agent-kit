@@ -152,7 +152,7 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
 
 /** `kept` as a record. A snapshot that omits it, because it holds none, reads as empty. */
 function keptRecordsOf(snapshot: LedgerSnapshot): Readonly<Record<LocatorKey, KeptArtifact>> {
-  return snapshot.kept === undefined ? {} : snapshot.kept;
+  return snapshot.kept ?? {};
 }
 
 function freeze<T>(value: T): T {
@@ -194,8 +194,7 @@ export class Ledger {
 
   private constructor(snapshot: LedgerSnapshot) {
     this.snapshot = freeze(snapshot);
-    const kept = keptRecordsOf(this.snapshot);
-    this.keptByKey = this.snapshot.kept === undefined ? freeze(kept) : kept;
+    this.keptByKey = freeze(keptRecordsOf(this.snapshot));
     Object.freeze(this);
   }
 

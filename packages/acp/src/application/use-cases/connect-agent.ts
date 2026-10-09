@@ -383,10 +383,7 @@ function sessionMcpServers(
   options: { readonly mcpServers?: readonly McpServerConfig[] },
   defaults: ConnectAgentOptions
 ): readonly McpServerConfig[] {
-  if (options.mcpServers !== undefined) {
-    return options.mcpServers;
-  }
-  return defaults.mcpServers === undefined ? [] : defaults.mcpServers;
+  return options.mcpServers ?? defaults.mcpServers ?? [];
 }
 
 function newSession(

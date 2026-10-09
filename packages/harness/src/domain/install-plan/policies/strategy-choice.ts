@@ -33,8 +33,7 @@ export function strategyRequirement(spec: ArtifactSpec, agent: CodingAgentId): S
 
 /** Strategies an adapter declares for one kind. Absent means the agent does not take that kind. */
 function declaredStrategies(adapter: InstallAdapter, artifact: StrategyArtifactKind): readonly Strategy[] {
-  const declared = artifact === "hooks" ? adapter.hookStrategies : adapter.skillStrategies;
-  return declared === undefined ? [] : declared;
+  return (artifact === "hooks" ? adapter.hookStrategies : adapter.skillStrategies) ?? [];
 }
 
 /**
