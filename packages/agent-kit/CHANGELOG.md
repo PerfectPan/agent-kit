@@ -1,6 +1,26 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Thu, 08 Oct 2026 22:27:28 GMT and should not be manually modified.
+This log was last generated on Fri, 09 Oct 2026 09:29:24 GMT and should not be manually modified.
+
+## 0.5.0
+Fri, 09 Oct 2026 09:29:24 GMT
+
+### Minor changes
+
+- Catalog and discovery keep only the agents some context supports (claude-code, codex, cursor, gemini-cli, grok, opencode, pi); removed the identities and probe recipes of aider, amp, antigravity, cline, codebuddy, codex-desktop, command-code, github-copilot, hermes, kimi-code-cli, kiro-cli, neovate, openclaw, openhands, qoder, roo-code, trae, vscode-copilot, windsurf and zencoder.
+
+### Patches
+
+- The claude-code session, transcript and usage adapters read the logs through zod/mini schemas, like the other agents; behavior is unchanged.
+- Read the Codex session, transcript and usage logs through zod schemas, which grows /sessions, /transcript and /transcript/usage to about 18.8-22.3 kB.
+- Grok's log readers and the shared ACP session/update reader parse unknown fields through zod/mini schemas instead of the record-fields accessors, which the grok files no longer import; the grok record is parsed once per reader pass through a full and a slim update schema, and published entry sizes rose with the schemas and their budgets follow.
+- Read agent logs through zod schemas; the zero-dependency entries bundle zod/mini into their built files instead of importing it, which grows /transcript/usage to about 16 kB.
+- Parse unknown input with zod/mini schemas outside sessions: hook payloads (`/harness/events` reads dialect paths through schemas and stays synchronous, with zod/mini bundled into the built entry), stored ledgers and leases, configuration documents, and caught platform errors. Observed behavior is unchanged, and `/harness/events` grows by about 5 kB of bundled zod.
+- Editing a TOML configuration document that holds a big integer no longer throws. `/cost` bundles zod/mini for its LiteLLM price parser and `/node` grows with the platform's error-code schema. redact now recognizes plain objects from another realm and returns objects branded with `Symbol.toStringTag` unchanged.
+
+### Updates
+
+- Move the agent adapters of acp, harness, sessions and discovery into their domain concepts: each file now lives under the `adapters/` of the concept whose model it produces (`domain/<concept>/adapters/`), tables of pure adapters live in the concept's `adapters/`, and sessions' `domain/protocols/` was dissolved into `domain/transcript/adapters/`. The published surface is unchanged.
 
 ## 0.4.0
 Thu, 08 Oct 2026 22:27:28 GMT

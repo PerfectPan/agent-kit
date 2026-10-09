@@ -1,6 +1,6 @@
 {
   "name": "@rivus/agent-kit-collab",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Collaboration primitives between coding agents: fenced leases, single-instance process locks and keyed scheduling lanes.",
   "license": "MIT",
   "repository": {
