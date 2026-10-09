@@ -28,7 +28,7 @@ export default [
   // Size-limit counts dependencies, and the usage readers now import zod/mini, which the sessions and transcript
   // graphs did not pull in on main: most of their growth is zod/mini itself, the rest the reader schemas of
   // grok and claude-code. /transcript/usage also carries a bundled copy, since the entry imports nothing and
-  // tsdown inlines it.
+  // tsdown inlines it. The conformance suites also bundle cost, whose LiteLLM adapter now parses with zod/mini.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "21.04 kB" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "36.65 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
