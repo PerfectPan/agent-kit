@@ -13,6 +13,7 @@ export {
   assignSeq,
   inheritTimes,
   mergeByTime,
+  mergeByTimeStream,
   type StampedRecord,
   timeOf,
   type TimedRecord
@@ -32,10 +33,22 @@ export {
   mainAgentId,
   promptStarts,
   recordKey,
-  requestUsage
+  requestUsage,
+  sessionPrompts
 } from "./policies/turns.js";
 export { createStreamFolder, foldStreamParts, type StreamFolder } from "./services/fold-stream-parts.js";
-export { foldTranscript, summaryOf } from "./services/fold-transcript.js";
+export {
+  addRequest,
+  addRequestDuration,
+  addTurnDuration,
+  downsampleContextShape,
+  emptyTotals,
+  finishTotals,
+  foldTranscript,
+  type SummaryGates,
+  summaryOf,
+  type SummaryTotals
+} from "./services/fold-transcript.js";
 export {
   type SkippedRecord,
   type SourcedRecord,

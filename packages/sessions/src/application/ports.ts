@@ -6,8 +6,9 @@ import type {
   SessionHead,
   SessionListFailure,
   SessionNotFound,
+  SessionPromptsOptions,
   SessionRef,
-  SessionSummary
+  SessionSummaryWithPrompts
 } from "../domain/session/index.js";
 import type { Capability, Transcript, UnknownFormatGeneration } from "../domain/transcript/index.js";
 
@@ -64,12 +65,17 @@ export interface SessionAdapter {
     ref: SessionRef,
     options?: LoadOptions
   ): Promise<Result<Transcript, SessionReadError>>;
-  /** A faster pass than folding the loaded transcript, with the same result. */
+  /**
+   * A faster pass than folding the loaded transcript, with the same result: bounded memory, no transcript or event
+   * payloads kept. With `prompts`, the summary also carries the main lane's user prompts under the given caps, by
+   * the same rule `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails
+   * the conformance suite.
+   */
   summarize?(
     platform: SessionPlatform,
     ref: SessionRef,
-    options?: { readonly signal?: AbortSignal }
-  ): Promise<Result<SessionSummary, SessionReadError>>;
+    options?: { readonly signal?: AbortSignal; readonly prompts?: SessionPromptsOptions }
+  ): Promise<Result<SessionSummaryWithPrompts, SessionReadError>>;
 }
 
 /** The expected failures of reading one session's files. */

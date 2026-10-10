@@ -14,4 +14,10 @@ export {
 export { SESSION_TITLE_MAX, sessionHead } from "./factories/session-head.js";
 export type { SessionPreview } from "./value-objects/session-preview.js";
 export type { SessionRef } from "./value-objects/session-ref.js";
-export { SESSION_SUMMARY_VERSION, type SessionSummary } from "./value-objects/session-summary.js";
+export {
+  type SessionPrompt,
+  type SessionPromptsOptions,
+  type SessionSummary,
+  type SessionSummaryWithPrompts,
+  SESSION_SUMMARY_VERSION
+} from "./value-objects/session-summary.js";

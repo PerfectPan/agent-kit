@@ -12,7 +12,9 @@ import {
   readOriginal,
   type SessionAdapter,
   type SessionPlatform,
+  type SessionPromptsOptions,
   type SessionRef,
+  sessionPrompts,
   snapshotHasSystemPrompt,
   snapshotHasTools,
   summarizeSession,
@@ -448,6 +450,34 @@ export function sessionAdapterConformance(
             isEqual(summary, foldTranscript(transcript)),
             `${session.path}: summary differs from the folded transcript`
           );
+        });
+      }
+    },
+    {
+      name: "collects the main lane's prompts like the kit's prompt rule",
+      run: async () => {
+        const generous: SessionPromptsOptions = { limit: Number.MAX_SAFE_INTEGER, maxChars: Number.MAX_SAFE_INTEGER };
+        const capped: SessionPromptsOptions = { limit: 1, maxChars: 8 };
+        await eachTranscript(async (transcript, session) => {
+          const summarize = async (prompts: SessionPromptsOptions): Promise<unknown> =>
+            value(
+              await summarizeSession(platform, refOf(session), { adapters: { [adapter.agent]: adapter }, prompts }),
+              `summarize ${session.path}`
+            );
+          for (const prompts of [generous, capped]) {
+            check(
+              isEqual(await summarize(prompts), {
+                ...foldTranscript(transcript),
+                prompts: sessionPrompts(transcript, prompts)
+              }),
+              `${session.path}: prompts under ${JSON.stringify(prompts)} differ from the kit's prompt rule`
+            );
+          }
+          const plain = value(
+            await summarizeSession(platform, refOf(session), { adapters: { [adapter.agent]: adapter } }),
+            `summarize ${session.path}`
+          );
+          check(!("prompts" in plain), `${session.path}: prompts are present without the option`);
         });
       }
     }

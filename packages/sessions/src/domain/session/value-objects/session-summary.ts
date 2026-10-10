@@ -20,3 +20,19 @@ export interface SessionSummary {
  * cache of summaries knows to recompute them.
  */
 export const SESSION_SUMMARY_VERSION = 1;
+
+/** One main-lane user prompt of a Session: the kit's prompt rule, its text capped at the caller's `maxChars`. */
+export interface SessionPrompt {
+  text: string;
+}
+
+/** Caps for the user prompts a summary pass collects. */
+export interface SessionPromptsOptions {
+  /** Keep at most this many prompts: the first ones in transcript order. Must be a non-negative integer. */
+  readonly limit: number;
+  /** Cap each prompt's text at this many characters. Must be a positive integer. */
+  readonly maxChars: number;
+}
+
+/** A SessionSummary that also carries the user prompts a caller asked for with the `prompts` option. */
+export type SessionSummaryWithPrompts = SessionSummary & { prompts?: SessionPrompt[] };

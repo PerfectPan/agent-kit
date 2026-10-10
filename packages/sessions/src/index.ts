@@ -4,7 +4,7 @@ export * from "./public.js";
 export { previewClaudeCodeRecords } from "./domain/session/adapters/claude-code/preview.js";
 export { discoverSessions, type DiscoverSessionsOptions } from "./application/services/discover-sessions.js";
 export { EDGE_BYTES, edgeRecords, type FileEdges, readEdges } from "./application/services/files/edges.js";
-export { type JsonlRecords, readJsonlRecords } from "./application/services/files/jsonl.js";
+export { type JsonlRecords, readJsonlRecords, readJsonlStream } from "./application/services/files/jsonl.js";
 export {
   readBytes,
   readLines,
@@ -25,7 +25,9 @@ export {
   lineId,
   markOrphanToolResults,
   mergeByTime,
+  mergeByTimeStream,
   placeRequest,
+  sessionPrompts,
   shadowBefore,
   skipRecord,
   sourceOf,

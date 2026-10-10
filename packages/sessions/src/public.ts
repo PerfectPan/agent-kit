@@ -54,6 +54,10 @@ export {
   type ClaudeCodeTranslateOptions,
   translateClaudeCodeRecords
 } from "./domain/transcript/adapters/claude-code/events.js";
+export {
+  type ClaudeCodeSummarizeOptions,
+  summarizeClaudeCodeRecords
+} from "./domain/transcript/adapters/claude-code/summarize.js";
 export { claudeCodeUsage } from "./domain/usage/adapters/claude-code.js";
 
 // Codex rules
@@ -83,8 +87,11 @@ export {
   type SessionListError,
   type SessionListFailure,
   type SessionNotFound,
+  type SessionPromptsOptions,
+  type SessionPrompt,
   type SessionRef,
-  type SessionSummary
+  type SessionSummary,
+  type SessionSummaryWithPrompts
 } from "./domain/session/index.js";
 export {
   CAPABILITIES,
@@ -109,6 +116,7 @@ export {
   recordKey,
   type RequestPayload,
   requestUsage,
+  sessionPrompts,
   shadowedIn,
   type SkippedRecord,
   snapshotHasSystemPrompt,

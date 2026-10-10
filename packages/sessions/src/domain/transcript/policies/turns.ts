@@ -1,3 +1,4 @@
+import type { SessionPrompt, SessionPromptsOptions } from "../../session/index.js";
 import type { RequestPayload, TranscriptEvent } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 
@@ -70,4 +71,39 @@ export function requestUsage(event: TranscriptEvent): { inputTokens?: number; ou
     out.outputTokens = usage.outputTokens;
   }
   return out;
+}
+
+/**
+ * The main lane's user prompts, by the kit's prompt rule: one per prompt record, its text the record's first
+ * non-empty `payload.text`, the first `limit` in transcript order, each capped at `maxChars`. A prompt record
+ * without text, such as an image-only one, is a turn but yields no prompt.
+ */
+export function sessionPrompts(
+  transcript: Pick<Transcript, "events" | "agents">,
+  options: SessionPromptsOptions
+): SessionPrompt[] {
+  const mainId = mainAgentId(transcript);
+  const texts = new Map<string, string>();
+  for (const event of transcript.events) {
+    if (!isPrompt(event) || laneOf(event, mainId) !== mainId) {
+      continue;
+    }
+    const key = `${laneOf(event, mainId)}\0${recordKey(event)}`;
+    const text = typeof event.payload.text === "string" ? event.payload.text : "";
+    const known = texts.get(key);
+    if (known === undefined || (known === "" && text !== "")) {
+      texts.set(key, text);
+    }
+  }
+  const prompts: SessionPrompt[] = [];
+  for (const text of texts.values()) {
+    if (prompts.length >= options.limit) {
+      break;
+    }
+    if (text === "") {
+      continue;
+    }
+    prompts.push({ text: text.slice(0, options.maxChars) });
+  }
+  return prompts;
 }
