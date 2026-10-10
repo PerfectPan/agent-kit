@@ -3,16 +3,13 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 import {
   addTurnDuration,
   emptyTotals,
-  finishTotals,
-  type Capability,
   type StampedRecord,
-  summaryOf,
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../index.js";
-import { addRequest } from "../../services/fold-transcript.js";
+import { addRequest, emptyPrompts, finishPass } from "../../services/fold-transcript.js";
 import { isPrompt, requestUsage } from "../../policies/turns.js";
-import type { SessionPromptsOptions, SessionPrompt, SessionSummaryWithPrompts } from "../../../session/index.js";
+import type { SessionPromptsOptions, SessionSummaryWithPrompts } from "../../../session/index.js";
 import { CODEX_CAPABILITIES } from "./events.js";
 import { codexPayload, codexRecord } from "./records.js";
 import { FORK_REPLAY_START, stepForkReplay, trackForkReplayEnd } from "./fork-replay.js";
@@ -72,9 +69,7 @@ export async function summarizeCodexRecords(
   const { end, decided, covered } = await scanForkReplayEndWhileReading(stamped());
   const pass = createCodexTranslation({ retain: false });
   const totals = emptyTotals();
-  const prompts = options.prompts === undefined ? undefined : ([] as SessionPrompt[]);
-  const limit = options.prompts?.limit ?? 0;
-  const maxChars = options.prompts?.maxChars ?? 0;
+  const prompts = emptyPrompts(options.prompts);
   let seen = 0;
   for await (const { record, ts } of stamped()) {
     // While the end is undecided it is the record count, which an append moves: fold exactly what the first read
@@ -100,29 +95,17 @@ export async function summarizeCodexRecords(
         totals.compactions += 1;
       } else if (part.kind === "user" && isPrompt(part)) {
         totals.turns += 1;
-        if (prompts !== undefined && prompts.length < limit) {
-          const text = part.payload.text;
-          if (typeof text === "string" && text !== "") {
-            prompts.push({ text: text.slice(0, maxChars) });
-          }
-        }
+        prompts.add(part.payload.text);
       }
     }
   }
   // `CODEX_CAPABILITIES` lists requests, usage, durations, compaction and subagents for every rollout.
-  const declared = new Set<Capability>(CODEX_CAPABILITIES);
-  const summary = summaryOf(
-    finishTotals(
+  return ok(
+    finishPass(
       totals,
-      {
-        requests: declared.has("requests"),
-        usage: declared.has("usage"),
-        durations: declared.has("durations"),
-        compaction: declared.has("compaction"),
-        subagents: declared.has("subagents")
-      },
-      pass.agents.filter((agent) => agent.parentId !== undefined).length
+      CODEX_CAPABILITIES,
+      pass.agents.filter((agent) => agent.parentId !== undefined).length,
+      prompts.list
     )
   );
-  return ok(prompts === undefined ? summary : { ...summary, prompts });
 }

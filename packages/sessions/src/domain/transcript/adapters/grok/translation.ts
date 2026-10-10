@@ -4,6 +4,7 @@ import {
   lineId,
   MAIN_LANE_ID,
   placeRequest,
+  type RequestPayload,
   type SourcedRecord,
   type TranscriptEvent,
   type TranscriptEventKind
@@ -61,7 +62,7 @@ function requestPayload(update: GrokUpdateValue, turnModel: string | undefined):
     ...(update.stop_reason ? { finishReason: update.stop_reason } : {}),
     ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
     ...(byModel ? { usageByModel: byModel } : {})
-  };
+  } satisfies RequestPayload;
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -164,7 +165,11 @@ export interface GrokTranslation {
   readonly agents: readonly Lane[];
   /** The final failure of each call that reached a done status, keyed by call id; the summary's `failedTools`. */
   readonly toolResults: ReadonlyMap<string, boolean>;
-  step(record: SourcedRecord, ts: number): GrokStep;
+  /**
+   * Steps one record. `ts` is the record's inherited time, which the retain mode stamps its events with; the
+   * bounded pass reads no times and omits it.
+   */
+  step(record: SourcedRecord, ts?: number): GrokStep;
 }
 
 export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation {
@@ -226,16 +231,21 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
           skips.push({ reason, record });
         }
       };
+      /** The retain emit: the `TranscriptEvent` itself, pushed to the sequence and to this record's parts. */
+      const emitEvent = (eventKind: TranscriptEventKind, payload: Record<string, unknown>): TranscriptEvent => {
+        const event = baseEvent(record, eventKind, payload, { id: lineId(record), ts });
+        events.push(event);
+        parts.push(event);
+        return event;
+      };
+      /** The mode's emit: the event with retain, a light part without. */
       const emit = (eventKind: TranscriptEventKind, payload: Record<string, unknown>): GrokPart => {
         if (!retain) {
           const part: GrokPart = { kind: eventKind, payload };
           parts.push(part);
           return part;
         }
-        const event = baseEvent(record, eventKind, payload, { id: lineId(record), ts });
-        events.push(event);
-        parts.push(event);
-        return event;
+        return emitEvent(eventKind, payload);
       };
 
       followGrokTurn(turn, update);
@@ -284,7 +294,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
               noteSkip("tool-progress");
               return { ok: true, parts };
             }
-            seen.call = emit("tool_call", acpToolCallPayload(state)) as TranscriptEvent;
+            seen.call = emitEvent("tool_call", acpToolCallPayload(state));
             return { ok: true, parts };
           }
           if (seen.call) {
@@ -296,7 +306,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
           }
           // A result with no earlier call stays an orphan. Inventing the call would hide that.
           if (!seen.result) {
-            seen.result = emit("tool_result", acpToolResultPayload(state)) as TranscriptEvent;
+            seen.result = emitEvent("tool_result", acpToolResultPayload(state));
             return { ok: true, parts };
           }
           Object.assign(seen.result.payload, acpToolResultPayload(state));

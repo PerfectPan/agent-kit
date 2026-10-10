@@ -40,7 +40,6 @@ export { createStreamFolder, foldStreamParts, type StreamFolder } from "./servic
 export {
   addTurnDuration,
   emptyTotals,
-  finishTotals,
   foldTranscript,
   summaryOf,
   type SummaryTotals

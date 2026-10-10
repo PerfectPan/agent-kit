@@ -27,13 +27,10 @@ import {
 } from "../../../domain/session/index.js";
 import {
   createTranscript,
-  mergeByTimeStream,
   type SkippedRecord,
-  type StampedRecord,
   type Transcript,
   type UnknownFormatGeneration
 } from "../../../domain/transcript/index.js";
-import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { EDGE_BYTES } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
@@ -262,25 +259,11 @@ async function grokGenerationError(
   return parsed.ok ? undefined : parsed.error;
 }
 
-/** The `updates.jsonl` records, stamped with their inherited times, one at a time; a read stops when the loop leaves. */
-function timedLines(
-  platform: SessionPlatform,
-  file: string,
-  signal: AbortSignal | undefined
-): AsyncGenerator<StampedRecord, void, undefined> {
-  return mergeByTimeStream([
-    (async function* () {
-      for await (const record of readJsonlStream(platform, file, { signal })) {
-        yield timedRecord(record);
-      }
-    })()
-  ]);
-}
-
 /**
  * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
  * `loadGrok` it holds no records: `summary.json` is read for the generation check alone, the subagent metas for
- * the lane count, and the updates stream through `mergeByTimeStream` into the pass.
+ * the lane count, and `updates.jsonl` streams straight into the pass — one file in file order needs no time merge,
+ * and the pass reads no record times, so nothing buffers a session whose records name none.
  */
 async function summarizeGrok(
   platform: SessionPlatform,
@@ -296,7 +279,7 @@ async function summarizeGrok(
       return err(generation);
     }
     const subagents = await readSubagentMetas(guarded, dir, { signal, progress: readProgress(undefined) }, []);
-    const summarized = await summarizeGrokRecords(timedLines(guarded, grokUpdatesPath(ref.path), signal), {
+    const summarized = await summarizeGrokRecords(readJsonlStream(guarded, grokUpdatesPath(ref.path), { signal }), {
       subagents,
       ...(prompts === undefined ? {} : { prompts })
     });

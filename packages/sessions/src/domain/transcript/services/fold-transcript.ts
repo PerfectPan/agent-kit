@@ -1,4 +1,10 @@
-import type { SessionSummary } from "../../session/index.js";
+import type { Capability } from "../index.js";
+import type {
+  SessionPromptsOptions,
+  SessionPrompt,
+  SessionSummary,
+  SessionSummaryWithPrompts
+} from "../../session/index.js";
 import { mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
 import type { Transcript } from "../value-objects/transcript.js";
 
@@ -97,11 +103,50 @@ function gated(declared: boolean, value: number | undefined): number | undefined
   return declared ? value : undefined;
 }
 
+/** The gates a summary's numbers sit behind, from the capabilities the source declares. */
+export function summaryGates(capabilities: Iterable<Capability>): SummaryGates {
+  const declared = capabilities instanceof Set ? capabilities : new Set(capabilities);
+  return {
+    requests: declared.has("requests"),
+    usage: declared.has("usage"),
+    durations: declared.has("durations"),
+    compaction: declared.has("compaction"),
+    subagents: declared.has("subagents")
+  };
+}
+
+/** The prompts one summary pass collects under the caller's caps. */
+export interface PromptSink {
+  /** The collected prompts; `undefined` when the caller asked for none, like the summary's `prompts` field. */
+  readonly list: SessionPrompt[] | undefined;
+  /** Adds one prompt start's text: it lands while the collection is under `limit`, and only a non-empty string. */
+  add(text: unknown): void;
+}
+
 /**
- * The SessionSummary of filled totals, under the capabilities the source lists: the same rules `foldTranscript`
- * states, so a fast pass and the folded transcript give the same numbers.
+ * The sink a pass fills while it folds: the first `limit` non-empty texts of the main lane's prompt starts, each
+ * sliced to `maxChars` — the rule `sessionPrompts` applies to a loaded transcript.
  */
-export function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: number): SessionSummary {
+export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
+  const limit = options?.limit ?? 0;
+  const maxChars = options?.maxChars ?? 0;
+  const list = options === undefined ? undefined : ([] as SessionPrompt[]);
+  return {
+    list,
+    add(text) {
+      if (list !== undefined && list.length < limit && typeof text === "string" && text !== "") {
+        list.push({ text: text.slice(0, maxChars) });
+      }
+    }
+  };
+}
+
+/**
+ * The SessionSummary of filled totals, under the gates the source declares: the same rules `foldTranscript`
+ * states, so a fast pass and the folded transcript give the same numbers. `finishPass` and `foldTranscript` are
+ * its only callers.
+ */
+function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: number): SessionSummary {
   const inputPoints = inputPointsOf(totals);
   return {
     turns: totals.turns,
@@ -122,12 +167,26 @@ export function summaryOf(summary: SessionSummary): SessionSummary {
 }
 
 /**
+ * The summary of a finished pass: the fold rules over the totals behind the capabilities' gates, with the collected
+ * prompts. The one assembly `foldTranscript` and the adapters' summarize passes share, so their numbers cannot
+ * drift.
+ */
+export function finishPass(
+  totals: SummaryTotals,
+  capabilities: Iterable<Capability>,
+  subagents: number,
+  prompts: SessionPrompt[] | undefined
+): SessionSummaryWithPrompts {
+  const summary = summaryOf(finishTotals(totals, summaryGates(capabilities), subagents));
+  return prompts === undefined ? summary : { ...summary, prompts };
+}
+
+/**
  * The SessionSummary of a transcript. A turn is one real prompt record on the main lane. Durations are the
  * recorded turn durations (`system` events with `type: 'turn_duration'`) when the agent records them, otherwise the
  * sum of request durations.
  */
 export function foldTranscript(transcript: Transcript): SessionSummary {
-  const capabilities = new Set(transcript.capabilities);
   const totals = emptyTotals();
   for (const event of transcript.events) {
     if (event.kind === "request") {
@@ -142,17 +201,10 @@ export function foldTranscript(transcript: Transcript): SessionSummary {
     }
   }
   totals.turns = promptStarts(transcript, mainAgentId(transcript)).length;
-  return summaryOf(
-    finishTotals(
-      totals,
-      {
-        requests: capabilities.has("requests"),
-        usage: capabilities.has("usage"),
-        durations: capabilities.has("durations"),
-        compaction: capabilities.has("compaction"),
-        subagents: capabilities.has("subagents")
-      },
-      transcript.agents.filter((agent) => agent.parentId !== undefined).length
-    )
+  return finishPass(
+    totals,
+    transcript.capabilities,
+    transcript.agents.filter((agent) => agent.parentId !== undefined).length,
+    undefined
   );
 }
