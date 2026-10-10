@@ -50,7 +50,7 @@ export function createStreamFolder(): StreamFolder {
     const payload = {
       callId,
       name: tool.name,
-      ...(tool.title !== undefined && tool.title !== tool.name ? { title: tool.title } : {}),
+      ...(tool.title === undefined ? {} : { title: tool.title }),
       ...(tool.input === undefined ? {} : { args: tool.input })
     };
     return [event("tool_call", `tool_call:${callId}`, payload, ts)];
@@ -93,7 +93,10 @@ export function createStreamFolder(): StreamFolder {
         case "tool-input-available": {
           const tool = toolOf(part.toolCallId, part.toolName);
           tool.input = part.input;
-          if (part.title !== undefined) {
+          // `title` is the call's current display title: leaving it out clears an earlier one.
+          if (part.title === undefined) {
+            delete tool.title;
+          } else {
             tool.title = part.title;
           }
           return [];

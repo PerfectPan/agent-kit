@@ -26,7 +26,7 @@ export type TranscriptStreamPart =
       readonly type: "tool-input-start";
       readonly toolCallId: string;
       readonly toolName: string;
-      /** The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``. */
+      /** The agent's display title when the call starts, while it differs from `toolName`. */
       readonly title?: string;
     }
   | {
@@ -34,7 +34,10 @@ export type TranscriptStreamPart =
       readonly toolCallId: string;
       readonly toolName: string;
       readonly input: unknown;
-      /** The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``. */
+      /**
+       * The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``; this is the
+       * call's current title, so leaving it out clears an earlier one.
+       */
       readonly title?: string;
     }
   | { readonly type: "tool-output-available"; readonly toolCallId: string; readonly output?: unknown }

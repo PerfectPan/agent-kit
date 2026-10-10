@@ -110,9 +110,9 @@ export function acpMessageKind(sessionUpdate: string): "user" | "assistant" | "r
 /** What one tool call has reported so far, merged from its `tool_call` and `tool_call_update` updates. */
 export interface AcpToolState {
   readonly callId: string;
-  /** The first non-empty `title ?? toolName` of the call's updates; a later value never replaces it. */
+  /** The first non-empty `title || toolName` of the call's updates; a later value never replaces it. */
   name: string;
-  /** The latest `title ?? toolName` while it differs from `name`; a display title such as `` Read `/u/me/x.md` ``. */
+  /** The latest `title || toolName` while it differs from `name`; a display title such as `` Read `/u/me/x.md` ``. */
   title?: string;
   args?: unknown;
   output?: unknown;
@@ -135,7 +135,8 @@ function plainRecord(value: unknown): value is Record<string, unknown> {
  * Merges one `tool_call` or `tool_call_update` into the state of its call, creating the state on first sight. An
  * update may carry only the fields that changed: only an omitted or `null` `rawInput`, `content` or `rawOutput` leaves
  * the previous value. Text content wins over `rawOutput` as the output. The call is named by its first non-empty
- * `title ?? toolName`; a later value only moves into `title` while it differs from the name. A plain-object
+ * `title || toolName`; a later value only moves into `title` while it differs from the name, and a value equal to the
+ * name clears `title` again. A plain-object
  * `rawInput` merges shallowly into plain-object previous args, update keys winning; any other supplied `rawInput`
  * replaces the args, because Grok's `tool_call_update` repeats the whole args object with its normalized keys.
  */
@@ -147,7 +148,7 @@ export function mergeAcpToolUpdate(
   const existing = tools.get(callId);
   const state: AcpToolState = existing ?? { callId, name: "" };
   tools.set(callId, state);
-  const name = update.title ?? update.toolName;
+  const name = update.title || update.toolName;
   if (name) {
     if (!state.name) {
       state.name = name;
@@ -188,7 +189,7 @@ export function acpToolCallPayload(state: AcpToolState): Record<string, unknown>
   return {
     callId: state.callId,
     name: state.name,
-    ...(state.title !== undefined && state.title !== state.name ? { title: state.title } : {}),
+    ...(state.title === undefined ? {} : { title: state.title }),
     ...(state.args === undefined ? {} : { args: state.args })
   };
 }
@@ -298,13 +299,17 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
 
   const tool = (update: AcpUpdateValue): TranscriptStreamPart[] => {
     const parts = close();
+    const prevTitle = tools.get(update.toolCallId ?? "")?.title;
     const { state, first } = mergeAcpToolUpdate(tools, update);
     const { callId: toolCallId, name: toolName } = state;
-    const title = state.title !== undefined && state.title !== state.name ? { title: state.title } : {};
+    // mergeAcpToolUpdate keeps `title` different from `name`, and clears it when a later title equals the name.
+    const title = state.title === undefined ? {} : { title: state.title };
     if (first) {
       parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
     }
-    if (supplied(update.rawInput)) {
+    // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
+    // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
+    if (supplied(update.rawInput) || state.title !== prevTitle) {
       parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
     }
     if (isAcpToolDone(state) && !ended.has(toolCallId)) {
