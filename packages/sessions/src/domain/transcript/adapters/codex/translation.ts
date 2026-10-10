@@ -1,4 +1,5 @@
 import { MAIN_LANE_ID, type Lane, type SourcedRecord, type TranscriptEventKind } from "../../index.js";
+import { OUTPUT_KINDS, placeRequest } from "../../policies/request-placement.js";
 import type { Usage } from "../../../usage/index.js";
 import {
   codexPayload,
@@ -37,9 +38,6 @@ const BOOKKEEPING = new Map([
   ["inter_agent_communication_metadata", "inter-agent"]
 ]);
 
-/** Events a model response produces; their request is placed before the first of them. */
-const MODEL_OUTPUT = new Set<TranscriptEventKind>(["assistant", "reasoning", "tool_call"]);
-
 const lineKey = (record: SourcedRecord): string => `L${record.line}`;
 
 /**
@@ -77,8 +75,6 @@ export interface CodexStep {
   ok: boolean;
   rec: CodexRecordValue | undefined;
   payload: CodexPayloadValue;
-  item: CodexPayloadValue | undefined;
-  bare: boolean;
   envelope: string | undefined;
   /** The events this record emitted, in order. */
   parts: readonly CodexPart[];
@@ -198,7 +194,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           usedIds.add(eventId);
         }
         const part: CodexPart = { kind, payload: body, id: eventId, ts, record, itemIds: [] };
-        if (MODEL_OUTPUT.has(kind)) {
+        if (OUTPUT_KINDS.has(kind)) {
           lastOutputIndex = eventCount;
         }
         eventCount += 1;
@@ -231,28 +227,9 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         recordParts.push(part);
         eventCount += 1;
         if (retain) {
-          if (usedIds.has(part.id)) {
-            part.id = lineKey(record);
-          }
+          // A request keeps `request:<key>` even when it collides with an event id, as the translation always did.
           usedIds.add(part.id);
-          let at = parts.length;
-          for (let index = segment; index < parts.length; index++) {
-            if (MODEL_OUTPUT.has(parts[index]!.kind)) {
-              at = index;
-              break;
-            }
-          }
-          if (at < parts.length) {
-            part.ts = parts[at]!.ts;
-          }
-          parts.splice(at, 0, part);
-          for (let index = segment; index < parts.length; index++) {
-            const other = parts[index]!;
-            if (other !== part && !other.requestId && part.requestId) {
-              other.requestId = part.requestId;
-            }
-          }
-          segment = parts.length;
+          segment = placeRequest(parts, segment, part);
         } else {
           segment = eventCount;
         }
@@ -261,17 +238,17 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
       if (envelope === "session_meta") {
         // A forked or resumed rollout repeats earlier sessions' `session_meta`; the first one is this file's.
         noteSkip("session-meta");
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       if (envelope === "turn_context") {
         model = payload.model ?? model;
         noteSkip("turn-context");
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       const bookkeeping = BOOKKEEPING.get(envelope);
       if (bookkeeping) {
         noteSkip(bookkeeping);
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       const found = codexRecordUsage(tracker, envelope, payload, replay.replayed, (responseId) => {
         if (responses.has(responseId)) {
@@ -286,7 +263,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         } else {
           request(found.usage, found.responseId);
         }
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       if (
         envelope === "compacted" ||
@@ -298,7 +275,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         if (!bare) {
           part.history = payload.replacement_history;
         }
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
 
       if (envelope === "event_msg") {
@@ -308,7 +285,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           const agentId = innerItem?.agent_thread_id;
           if (innerItem?.type !== "SubAgentActivity" || !agentId) {
             noteSkip("item-completed");
-            return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+            return { ok: true, rec, payload, envelope, parts: recordParts };
           }
           if (!agents.some((agent) => agent.id === agentId)) {
             agents.push({ id: agentId, parentId: MAIN_LANE_ID });
@@ -319,9 +296,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           const kind = innerItem.kind;
           const part = emit("system", { type: "subagent", agentId, ...(kind ? { kind } : {}) }, innerItem.id);
           part.agentId = agentId;
-          // The ids of a subagent item are the inner item's, as the translation's `emitted` holds them.
-          part.itemIds = [innerItem.id].filter((id): id is string => id !== undefined && id !== "");
-          return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+          return { ok: true, rec, payload, envelope, parts: recordParts };
         }
         if (inner === "task_started") {
           turnStart = eventCount;
@@ -329,7 +304,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         if (inner === "task_complete" || inner === "turn_aborted") {
           const windowStart = Math.max(segment, turnStart);
           const outputSince = retain
-            ? parts.slice(windowStart).some((part) => MODEL_OUTPUT.has(part.kind))
+            ? parts.slice(windowStart).some((part) => OUTPUT_KINDS.has(part.kind))
             : lastOutputIndex >= windowStart;
           // A usage record means the response finished. Model output after the turn's last one is the response the
           // cancel interrupted, which Codex records no usage for: it becomes a request of its own.
@@ -343,7 +318,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
             if (!interrupted) {
               noteSkip(durationMs === undefined ? "task-marker" : "fork-replay");
             }
-            return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+            return { ok: true, rec, payload, envelope, parts: recordParts };
           }
           // The turn's duration stays on the turn marker, never on a request.
           emit(
@@ -351,7 +326,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
             { type: "turn_duration", durationMs, ...(inner === "turn_aborted" ? { aborted: true } : {}) },
             lineKey(record)
           );
-          return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+          return { ok: true, rec, payload, envelope, parts: recordParts };
         }
         const marker = EVENT_MARKERS.get(inner);
         if (marker) {
@@ -359,12 +334,12 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         } else {
           emit("unknown", { type: inner }, lineKey(record));
         }
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
 
       if (envelope !== "response_item" && !bare) {
         emit("unknown", { type: envelope }, lineKey(record));
-        return { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+        return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       const { text, callId, output } = emitResponseItem(
         bare ? envelope : (payload.type ?? "response_item"),
@@ -381,7 +356,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
       if (output !== undefined) {
         last.output = output;
       }
-      const outcome: CodexStep = { ok: true, rec, payload, item, bare, envelope, parts: recordParts };
+      const outcome: CodexStep = { ok: true, rec, payload, envelope, parts: recordParts };
       if (last.kind === "user" && last.payload.injected !== true && typeof last.payload.text === "string") {
         outcome.titleCandidate = last.payload.text;
       }

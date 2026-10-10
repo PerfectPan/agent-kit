@@ -11,6 +11,7 @@ import {
   markOrphanToolResults,
   type ParsedTranscript,
   shadowBefore,
+  sourceOf,
   type StampedRecord,
   type TranscriptEvent,
   type TranscriptEventKind,
@@ -51,7 +52,7 @@ export function codexCapabilities(session: TranscriptSession): Capability[] {
 /** What the translator keeps per event about the item that produced it, for the passes after the loop. */
 interface CodexItemInfo {
   /** The ids Codex gave the item: its own `id` and `call_id`, non-empty. */
-  ids: string[];
+  ids: readonly string[];
   /** The `callId` of the event's payload, as the item emitter wrote it. */
   callId?: string;
   /** The tool output of the event's payload, as the item emitter wrote it, read for the spawn link. */
@@ -254,8 +255,8 @@ export function translateCodexRecords(
         systemPrompt = outcome.payload.base_instructions?.text;
       }
     }
-    if (outcome.envelope === undefined) {
-      // An older rollout's header names the session.
+    if (outcome.envelope === undefined && outcome.rec?.record_type === undefined) {
+      // An older rollout's header names the session; a `record_type` marker names nothing.
       sessionId ??= outcome.rec?.id;
     }
     if (!title && outcome.titleCandidate !== undefined) {
@@ -271,7 +272,7 @@ export function translateCodexRecords(
       requestId: part.requestId
     });
     emitted.set(event, {
-      ids: [...part.itemIds],
+      ids: part.itemIds,
       ...(part.callId === undefined ? {} : { callId: part.callId }),
       ...(part.output === undefined ? {} : { output: part.output }),
       ...(part.text === undefined ? {} : { text: part.text }),
@@ -281,10 +282,10 @@ export function translateCodexRecords(
   });
 
   shadowCompactions(events, emitted);
-  linkSpawns(events, [...translation.agents], translation.agentByPath as ReadonlyMap<string, string>, emitted);
+  linkSpawns(events, translation.agents, translation.agentByPath, emitted);
   markOrphanToolResults(events);
   assignSeq(events);
-  const skipped = translation.skipped.map(({ reason, record }) => ({ reason, source: { ...record } }));
+  const skipped = translation.skipped.map(({ reason, record }) => ({ reason, source: sourceOf(record) }));
   const session: TranscriptSession = {
     id:
       sessionId ?? (options.path === undefined ? undefined : codexSessionStem(options.path) || "unknown") ?? "unknown",

@@ -140,6 +140,8 @@ export function endForkReplay(state: ForkReplayState): { readonly state: ForkRep
 /** Where the replay's end lands, tracked while a rollout is read: the batch rule's bookkeeping, one step at a time. */
 export interface ForkReplayEndTracker {
   step(step: ForkReplayStep, index: number): void;
+  /** Whether the end is decided: the records after this one cannot change it, so a reader may stop. */
+  isDecided(): boolean;
   /**
    * The end the batch rule reports: decided at the record that settled the rule, or — never decided — the whole
    * rollout when its last records were still replay, else nothing is replay.
@@ -162,6 +164,7 @@ export function trackForkReplayEnd(): ForkReplayEndTracker {
         decided = true;
       }
     },
+    isDecided: () => decided,
     end(total, state) {
       if (decided) {
         return decidedEnd ?? 0;

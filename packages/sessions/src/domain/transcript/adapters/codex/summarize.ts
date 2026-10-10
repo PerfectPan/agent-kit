@@ -28,21 +28,29 @@ export interface CodexSummarizeOptions {
 /**
  * The end of a forked rollout's replay, decided while the records stream past: the same bookkeeping
  * `scanForkReplay` runs, a record at a time and without holding any of them. The batch rule's
- * `replayed = index < end` needs the end before the fold, so this is the summarize pass's first read.
+ * `replayed = index < end` needs the end before the fold, so this is the summarize pass's first read. Reading stops
+ * once the end is decided — a non-fork rollout decides at its first record — because appended records cannot
+ * un-decide it. While the end is undecided it is `total`, which an append moves, so the outcome reports how many
+ * records the end was decided on and the fold reads no further than that.
  */
-async function scanForkReplayEndWhileReading(stamped: AsyncIterable<StampedRecord>): Promise<number> {
+async function scanForkReplayEndWhileReading(
+  stamped: AsyncIterable<StampedRecord>
+): Promise<{ end: number; decided: boolean; covered: number }> {
   let state = FORK_REPLAY_START;
-  const end = trackForkReplayEnd();
+  const tracker = trackForkReplayEnd();
   let total = 0;
   for await (const { record, ts } of stamped) {
     const rec = codexRecord(record.value);
     const payload = codexPayload(rec?.payload);
     const step = stepForkReplay(state, rec, payload, ts);
-    end.step(step, total);
+    tracker.step(step, total);
     total += 1;
     state = step.state;
+    if (tracker.isDecided()) {
+      break;
+    }
   }
-  return end.end(total, state);
+  return { end: tracker.end(total, state), decided: tracker.isDecided(), covered: total };
 }
 
 /**
@@ -61,7 +69,7 @@ export async function summarizeCodexRecords(
   stamped: () => AsyncIterable<StampedRecord>,
   options: CodexSummarizeOptions = {}
 ): Promise<Result<SessionSummaryWithPrompts, UnknownFormatGeneration>> {
-  const end = await scanForkReplayEndWhileReading(stamped());
+  const { end, decided, covered } = await scanForkReplayEndWhileReading(stamped());
   const pass = createCodexTranslation({ retain: false });
   const totals = emptyTotals();
   const prompts = options.prompts === undefined ? undefined : ([] as SessionPrompt[]);
@@ -69,6 +77,11 @@ export async function summarizeCodexRecords(
   const maxChars = options.prompts?.maxChars ?? 0;
   let seen = 0;
   for await (const { record, ts } of stamped()) {
+    // While the end is undecided it is the record count, which an append moves: fold exactly what the first read
+    // covered. A decided end cannot be un-decided by an append, so the fold reads on.
+    if (!decided && seen >= covered) {
+      break;
+    }
     const outcome = pass.step(record, ts, { replayed: seen < end, justEnded: seen === end });
     if (!outcome.ok) {
       return err(unknownFormatGeneration(AGENT, record));
