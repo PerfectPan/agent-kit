@@ -1,0 +1,1971 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > compaction: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Start",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Start",
+      },
+      "seq": 0,
+      "shadowedBy": "updates.jsonl:3",
+      "source": {
+        "file": "/grok/conformance/compaction/updates.jsonl",
+        "length": 214,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "compaction",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "elapsed_ms": 10,
+            "sessionUpdate": "auto_compact_completed",
+            "summary_preview": null,
+            "tokens_after": 80,
+            "tokens_before": 500,
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "postTokens": 80,
+        "preTokens": 500,
+        "trigger": "auto",
+      },
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/compaction/updates.jsonl",
+        "length": 206,
+        "line": 3,
+        "offset": 420,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "updates.jsonl:4",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "hideFromScrollback": true,
+              "modelId": "grok-test",
+              "promptIndex": 1,
+            },
+            "content": {
+              "text": "After",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "injected": true,
+        "text": "After",
+      },
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/compaction/updates.jsonl",
+        "length": 240,
+        "line": 4,
+        "offset": 627,
+      },
+      "ts": 1767225603000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225603000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [
+    {
+      "reason": "compact-started",
+      "source": {
+        "file": "/grok/conformance/compaction/updates.jsonl",
+        "length": 204,
+        "line": 2,
+        "offset": 215,
+      },
+    },
+  ],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > duplicate-turn: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Go",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Go",
+      },
+      "requestId": "0",
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 195,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "request:0",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 25,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 10,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 10,
+                  "modelCalls": 1,
+                  "outputTokens": 2,
+                  "totalTokens": 12,
+                },
+              },
+              "outputTokens": 2,
+              "totalTokens": 12,
+            },
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+        "modelCalls": 1,
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 2,
+          "totalTokens": 12,
+        },
+        "usageByModel": {
+          "grok-test": {
+            "modelCalls": 1,
+            "usage": {
+              "inputTokens": 10,
+              "outputTokens": 2,
+              "totalTokens": 12,
+            },
+          },
+        },
+      },
+      "requestId": "0",
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 335,
+        "line": 3,
+        "offset": 351,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "assistant",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "content": {
+              "text": "Working.",
+              "type": "text",
+            },
+            "sessionUpdate": "agent_message_chunk",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "text": "Working.",
+      },
+      "requestId": "0",
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 154,
+        "line": 2,
+        "offset": 196,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 25,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 10,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 10,
+                  "modelCalls": 1,
+                  "outputTokens": 2,
+                  "totalTokens": 12,
+                },
+              },
+              "outputTokens": 2,
+              "totalTokens": 12,
+            },
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "durationMs": 25,
+        "type": "turn_duration",
+      },
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 335,
+        "line": 3,
+        "offset": 351,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "request:updates.jsonl:4",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+      },
+      "requestId": "0",
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 148,
+        "line": 4,
+        "offset": 687,
+      },
+      "ts": 1767225603000,
+    },
+    {
+      "id": "updates.jsonl:5",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 1,
+            },
+            "content": {
+              "text": "Again",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225604,
+      },
+      "payload": {
+        "text": "Again",
+      },
+      "requestId": "1",
+      "seq": 5,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 198,
+        "line": 5,
+        "offset": 836,
+      },
+      "ts": 1767225604000,
+    },
+    {
+      "id": "request:1",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": "40",
+            "prompt_id": "p-2",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+          },
+        },
+        "timestamp": 1767225605,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+      },
+      "requestId": "1",
+      "seq": 6,
+      "source": {
+        "file": "/grok/conformance/duplicate-turn/updates.jsonl",
+        "length": 166,
+        "line": 6,
+        "offset": 1035,
+      },
+      "ts": 1767225605000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225605000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > plain: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Run the tests",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Run the tests",
+      },
+      "requestId": "0",
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 222,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "now",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600.5,
+      },
+      "payload": {
+        "continued": true,
+        "text": "now",
+      },
+      "requestId": "0",
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 214,
+        "line": 2,
+        "offset": 223,
+      },
+      "ts": 1767225600500,
+    },
+    {
+      "id": "request:0",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "elapsed_ms": 25,
+            "prompt_id": "prompt-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "apiDurationMs": 20,
+              "cacheCreationTokens": 1,
+              "cachedReadTokens": 3,
+              "costUsdTicks": 7,
+              "inputTokens": 15,
+              "modelCalls": 2,
+              "modelUsage": {
+                "grok-test": {
+                  "apiDurationMs": 20,
+                  "cacheCreationTokens": 1,
+                  "cachedReadTokens": 3,
+                  "costUsdTicks": 7,
+                  "inputTokens": 15,
+                  "modelCalls": 2,
+                  "outputTokens": 4,
+                  "reasoningTokens": 2,
+                  "totalTokens": 19,
+                },
+              },
+              "numTurns": 1,
+              "outputTokens": 4,
+              "reasoningTokens": 2,
+              "totalTokens": 19,
+            },
+          },
+        },
+        "timestamp": 1767225605,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+        "modelCalls": 2,
+        "usage": {
+          "cacheReadTokens": 3,
+          "cacheWriteTokens": 1,
+          "inputTokens": 15,
+          "outputTokens": 4,
+          "reasoningTokens": 2,
+          "totalTokens": 19,
+        },
+        "usageByModel": {
+          "grok-test": {
+            "modelCalls": 2,
+            "usage": {
+              "cacheReadTokens": 3,
+              "cacheWriteTokens": 1,
+              "inputTokens": 15,
+              "outputTokens": 4,
+              "reasoningTokens": 2,
+              "totalTokens": 19,
+            },
+          },
+        },
+      },
+      "requestId": "0",
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 571,
+        "line": 8,
+        "offset": 1508,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "reasoning",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "content": {
+              "text": "Look at the script.",
+              "type": "text",
+            },
+            "sessionUpdate": "agent_thought_chunk",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "text": "Look at the script.",
+      },
+      "requestId": "0",
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 181,
+        "line": 3,
+        "offset": 438,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:4",
+      "kind": "tool_call",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {},
+            "rawInput": {
+              "command": "npm test",
+            },
+            "sessionUpdate": "tool_call",
+            "title": "shell",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "args": {
+          "command": "npm test",
+        },
+        "callId": "call-1",
+        "name": "shell",
+      },
+      "requestId": "0",
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 199,
+        "line": 4,
+        "offset": 620,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "updates.jsonl:5",
+      "kind": "tool_result",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "content": [
+              {
+                "content": {
+                  "text": "1 failed",
+                  "type": "text",
+                },
+                "type": "content",
+              },
+            ],
+            "rawOutput": {
+              "exit_code": 1,
+            },
+            "sessionUpdate": "tool_call_update",
+            "status": "failed",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "callId": "call-1",
+        "isError": true,
+        "output": "1 failed",
+      },
+      "requestId": "0",
+      "seq": 5,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 266,
+        "line": 5,
+        "offset": 820,
+      },
+      "ts": 1767225603000,
+    },
+    {
+      "id": "updates.jsonl:6",
+      "kind": "hook",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "event_name": "PostToolUse",
+            "runs": [
+              {
+                "name": "lint",
+                "status": {
+                  "elapsed_ms": 5,
+                  "status": "success",
+                },
+              },
+            ],
+            "sessionUpdate": "hook_execution",
+            "tool_name": "shell",
+          },
+        },
+        "timestamp": 1767225603.5,
+      },
+      "payload": {
+        "event_name": "PostToolUse",
+        "runs": [
+          {
+            "elapsedMs": 5,
+            "name": "lint",
+            "status": "success",
+          },
+        ],
+        "tool_name": "shell",
+        "type": "hook_execution",
+      },
+      "requestId": "0",
+      "seq": 6,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 240,
+        "line": 6,
+        "offset": 1087,
+      },
+      "ts": 1767225603500,
+    },
+    {
+      "id": "updates.jsonl:7",
+      "kind": "assistant",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "content": {
+              "text": "The suite failed.",
+              "type": "text",
+            },
+            "sessionUpdate": "agent_message_chunk",
+          },
+        },
+        "timestamp": 1767225604,
+      },
+      "payload": {
+        "text": "The suite failed.",
+      },
+      "requestId": "0",
+      "seq": 7,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 179,
+        "line": 7,
+        "offset": 1328,
+      },
+      "ts": 1767225604000,
+    },
+    {
+      "id": "updates.jsonl:8",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "elapsed_ms": 25,
+            "prompt_id": "prompt-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "apiDurationMs": 20,
+              "cacheCreationTokens": 1,
+              "cachedReadTokens": 3,
+              "costUsdTicks": 7,
+              "inputTokens": 15,
+              "modelCalls": 2,
+              "modelUsage": {
+                "grok-test": {
+                  "apiDurationMs": 20,
+                  "cacheCreationTokens": 1,
+                  "cachedReadTokens": 3,
+                  "costUsdTicks": 7,
+                  "inputTokens": 15,
+                  "modelCalls": 2,
+                  "outputTokens": 4,
+                  "reasoningTokens": 2,
+                  "totalTokens": 19,
+                },
+              },
+              "numTurns": 1,
+              "outputTokens": 4,
+              "reasoningTokens": 2,
+              "totalTokens": 19,
+            },
+          },
+        },
+        "timestamp": 1767225605,
+      },
+      "payload": {
+        "durationMs": 25,
+        "type": "turn_duration",
+      },
+      "seq": 8,
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 571,
+        "line": 8,
+        "offset": 1508,
+      },
+      "ts": 1767225605000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225606000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [
+    {
+      "reason": "tool-progress",
+      "source": {
+        "file": "/grok/conformance/plain/updates.jsonl",
+        "length": 238,
+        "line": 9,
+        "offset": 2080,
+      },
+    },
+  ],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > subagent: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+    {
+      "id": "child-1",
+      "parentId": "main",
+      "spawnEventId": "updates.jsonl:3",
+      "title": "Look around",
+    },
+    {
+      "id": "meta-only",
+      "parentId": "main",
+      "title": "From meta",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "<system-reminder>
+Today is a test day.
+</system-reminder>",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225599,
+      },
+      "payload": {
+        "injected": true,
+        "text": "<system-reminder>
+Today is a test day.
+</system-reminder>",
+      },
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 268,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225599000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Delegate",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Delegate",
+      },
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 217,
+        "line": 2,
+        "offset": 269,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "child_session_id": "child-session-1",
+            "description": "Look around",
+            "effective_context_source": "fresh",
+            "model": "grok-test",
+            "parent_prompt_id": "prompt-1",
+            "parent_session_id": "g-sub",
+            "sessionUpdate": "subagent_spawned",
+            "subagent_id": "child-1",
+            "subagent_type": "explore",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "agentId": "child-1",
+        "type": "subagent_spawned",
+      },
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 351,
+        "line": 3,
+        "offset": 487,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:4",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "child_session_id": "child-session-1",
+            "duration_ms": 12,
+            "output": "Found it.",
+            "sessionUpdate": "subagent_finished",
+            "status": "completed",
+            "subagent_id": "child-1",
+            "tokens_used": 30,
+            "tool_calls": 1,
+            "turns": 1,
+            "will_wake": false,
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "agentId": "child-1",
+        "durationMs": 12,
+        "status": "completed",
+        "type": "subagent_finished",
+      },
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 304,
+        "line": 4,
+        "offset": 839,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "updates.jsonl:5",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "elapsed_ms": 3000,
+            "goal_id": "goal-1",
+            "objective": "Look around",
+            "phase": "working",
+            "sessionUpdate": "goal_updated",
+            "status": "active",
+            "tokens_used": 10,
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "phase": "working",
+        "status": "active",
+        "type": "goal_updated",
+      },
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 235,
+        "line": 5,
+        "offset": 1144,
+      },
+      "ts": 1767225603000,
+    },
+    {
+      "id": "updates.jsonl:6",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "observation_count": 2,
+            "sessionUpdate": "memory_dream_started",
+          },
+        },
+        "timestamp": 1767225604,
+      },
+      "payload": {
+        "type": "memory_dream_started",
+      },
+      "seq": 5,
+      "source": {
+        "file": "/grok/conformance/subagent/updates.jsonl",
+        "length": 149,
+        "line": 6,
+        "offset": 1380,
+      },
+      "ts": 1767225604000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225604000,
+    "id": "unknown",
+    "startedAt": 1767225599000,
+  },
+  "skipped": [],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > subagent-meta-id: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+    {
+      "id": "worker",
+      "parentId": "main",
+      "spawnEventId": "updates.jsonl:2",
+      "title": "Dig",
+    },
+    {
+      "id": "worker-actual",
+      "parentId": "main",
+      "title": "From meta",
+    },
+    {
+      "id": "byname",
+      "parentId": "main",
+      "title": "Named by dir",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Fan out",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Fan out",
+      },
+      "requestId": "0",
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/subagent-meta-id/updates.jsonl",
+        "length": 200,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "child_session_id": "child-session-9",
+            "description": "Dig",
+            "sessionUpdate": "subagent_spawned",
+            "subagent_id": "worker",
+            "subagent_type": "explore",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "agentId": "worker",
+        "type": "subagent_spawned",
+      },
+      "requestId": "0",
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/subagent-meta-id/updates.jsonl",
+        "length": 213,
+        "line": 2,
+        "offset": 201,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "duration_ms": 5,
+            "sessionUpdate": "subagent_finished",
+            "status": "completed",
+            "subagent_id": "worker",
+            "tokens_used": 8,
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "agentId": "worker",
+        "durationMs": 5,
+        "status": "completed",
+        "type": "subagent_finished",
+      },
+      "requestId": "0",
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/subagent-meta-id/updates.jsonl",
+        "length": 184,
+        "line": 3,
+        "offset": 415,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "request:0",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 15,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 9,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 9,
+                  "modelCalls": 1,
+                  "outputTokens": 2,
+                  "totalTokens": 11,
+                },
+              },
+              "outputTokens": 2,
+              "totalTokens": 11,
+            },
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+        "modelCalls": 1,
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 2,
+          "totalTokens": 11,
+        },
+        "usageByModel": {
+          "grok-test": {
+            "modelCalls": 1,
+            "usage": {
+              "inputTokens": 9,
+              "outputTokens": 2,
+              "totalTokens": 11,
+            },
+          },
+        },
+      },
+      "requestId": "0",
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/subagent-meta-id/updates.jsonl",
+        "length": 333,
+        "line": 4,
+        "offset": 600,
+      },
+      "ts": 1767225603000,
+    },
+    {
+      "id": "updates.jsonl:4",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 15,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 9,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 9,
+                  "modelCalls": 1,
+                  "outputTokens": 2,
+                  "totalTokens": 11,
+                },
+              },
+              "outputTokens": 2,
+              "totalTokens": 11,
+            },
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "durationMs": 15,
+        "type": "turn_duration",
+      },
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/subagent-meta-id/updates.jsonl",
+        "length": 333,
+        "line": 4,
+        "offset": 600,
+      },
+      "ts": 1767225603000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225603000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > tool-progress: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Break it",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Break it",
+      },
+      "requestId": "0",
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 201,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "request:0",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 30,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 12,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 12,
+                  "modelCalls": 1,
+                  "outputTokens": 3,
+                  "totalTokens": 15,
+                },
+              },
+              "outputTokens": 3,
+              "totalTokens": 15,
+            },
+          },
+        },
+        "timestamp": 1767225609,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+        "modelCalls": 1,
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 3,
+          "totalTokens": 15,
+        },
+        "usageByModel": {
+          "grok-test": {
+            "modelCalls": 1,
+            "usage": {
+              "inputTokens": 12,
+              "outputTokens": 3,
+              "totalTokens": 15,
+            },
+          },
+        },
+      },
+      "requestId": "0",
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 335,
+        "line": 10,
+        "offset": 1555,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "tool_call",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "rawInput": {
+              "command": "npm test",
+            },
+            "sessionUpdate": "tool_call",
+            "title": "shell",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "args": {
+          "command": "npm test",
+        },
+        "callId": "call-1",
+        "name": "shell",
+        "title": "shell (npm)",
+      },
+      "requestId": "0",
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 172,
+        "line": 2,
+        "offset": 202,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "tool_result",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "content": [
+              {
+                "content": {
+                  "text": "1 failed",
+                  "type": "text",
+                },
+                "type": "content",
+              },
+            ],
+            "sessionUpdate": "tool_call_update",
+            "status": "failed",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "callId": "call-1",
+        "isError": false,
+        "output": "all green",
+      },
+      "requestId": "0",
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 222,
+        "line": 3,
+        "offset": 375,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "updates.jsonl:7",
+      "kind": "tool_call",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "rawInput": {
+              "where": "nowhere",
+            },
+            "sessionUpdate": "tool_call",
+            "title": "ghost",
+            "toolCallId": "",
+          },
+        },
+        "timestamp": 1767225606,
+      },
+      "payload": {
+        "args": {
+          "where": "nowhere",
+        },
+        "callId": "",
+        "name": "ghost",
+      },
+      "requestId": "0",
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 163,
+        "line": 7,
+        "offset": 1074,
+      },
+      "ts": 1767225606000,
+    },
+    {
+      "id": "updates.jsonl:8",
+      "kind": "tool_result",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "rawOutput": "boom",
+            "sessionUpdate": "tool_call_update",
+            "status": "error",
+            "toolCallId": "",
+          },
+        },
+        "timestamp": 1767225607,
+      },
+      "payload": {
+        "callId": "",
+        "isError": true,
+        "orphan": true,
+        "output": "boom",
+      },
+      "requestId": "0",
+      "seq": 5,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 159,
+        "line": 8,
+        "offset": 1238,
+      },
+      "ts": 1767225607000,
+    },
+    {
+      "id": "updates.jsonl:9",
+      "kind": "assistant",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "content": {
+              "text": "Recovered.",
+              "type": "text",
+            },
+            "sessionUpdate": "agent_message_chunk",
+          },
+        },
+        "timestamp": 1767225608,
+      },
+      "payload": {
+        "text": "Recovered.",
+      },
+      "requestId": "0",
+      "seq": 6,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 156,
+        "line": 9,
+        "offset": 1398,
+      },
+      "ts": 1767225608000,
+    },
+    {
+      "id": "updates.jsonl:10",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "update": {
+            "elapsed_ms": 30,
+            "prompt_id": "p-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "inputTokens": 12,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "inputTokens": 12,
+                  "modelCalls": 1,
+                  "outputTokens": 3,
+                  "totalTokens": 15,
+                },
+              },
+              "outputTokens": 3,
+              "totalTokens": 15,
+            },
+          },
+        },
+        "timestamp": 1767225609,
+      },
+      "payload": {
+        "durationMs": 30,
+        "type": "turn_duration",
+      },
+      "seq": 7,
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 335,
+        "line": 10,
+        "offset": 1555,
+      },
+      "ts": 1767225609000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225609000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [
+    {
+      "reason": "tool-progress",
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 151,
+        "line": 4,
+        "offset": 598,
+      },
+    },
+    {
+      "reason": "tool-progress",
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 148,
+        "line": 5,
+        "offset": 750,
+      },
+    },
+    {
+      "reason": "tool-progress",
+      "source": {
+        "file": "/grok/conformance/tool-progress/updates.jsonl",
+        "length": 174,
+        "line": 6,
+        "offset": 899,
+      },
+    },
+  ],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > tool-title: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "user",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "_meta": {
+              "modelId": "grok-test",
+              "promptIndex": 0,
+            },
+            "content": {
+              "text": "Show the file",
+              "type": "text",
+            },
+            "sessionUpdate": "user_message_chunk",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "text": "Show the file",
+      },
+      "requestId": "0",
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 228,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+    {
+      "id": "request:0",
+      "kind": "request",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "elapsed_ms": 30,
+            "prompt_id": "prompt-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "apiDurationMs": 10,
+              "cacheCreationTokens": 0,
+              "cachedReadTokens": 0,
+              "costUsdTicks": 2,
+              "inputTokens": 10,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "apiDurationMs": 10,
+                  "cacheCreationTokens": 0,
+                  "cachedReadTokens": 0,
+                  "costUsdTicks": 2,
+                  "inputTokens": 10,
+                  "modelCalls": 1,
+                  "outputTokens": 3,
+                  "reasoningTokens": 1,
+                  "totalTokens": 14,
+                },
+              },
+              "numTurns": 1,
+              "outputTokens": 3,
+              "reasoningTokens": 1,
+              "totalTokens": 14,
+            },
+          },
+        },
+        "timestamp": 1767225604,
+      },
+      "payload": {
+        "finishReason": "end_turn",
+        "granularity": "turn",
+        "model": "grok-test",
+        "modelCalls": 1,
+        "usage": {
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "inputTokens": 10,
+          "outputTokens": 3,
+          "reasoningTokens": 1,
+          "totalTokens": 14,
+        },
+        "usageByModel": {
+          "grok-test": {
+            "modelCalls": 1,
+            "usage": {
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "inputTokens": 10,
+              "outputTokens": 3,
+              "reasoningTokens": 1,
+              "totalTokens": 14,
+            },
+          },
+        },
+      },
+      "requestId": "0",
+      "seq": 1,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 577,
+        "line": 5,
+        "offset": 1010,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:2",
+      "kind": "tool_call",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "_meta": {},
+            "rawInput": {
+              "background": false,
+              "path": "/u/me/x.md",
+            },
+            "sessionUpdate": "tool_call",
+            "title": "read_file",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225601,
+      },
+      "payload": {
+        "args": {
+          "-i": false,
+          "background": false,
+          "multiline": false,
+          "path": "/u/me/x.md",
+          "type": "text",
+          "variant": "content",
+        },
+        "callId": "call-1",
+        "name": "read_file",
+        "title": "Read \`/u/me/x.md\`",
+      },
+      "requestId": "0",
+      "seq": 2,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 227,
+        "line": 2,
+        "offset": 229,
+      },
+      "ts": 1767225601000,
+    },
+    {
+      "id": "updates.jsonl:3",
+      "kind": "tool_result",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "content": [
+              {
+                "content": {
+                  "text": "file body",
+                  "type": "text",
+                },
+                "type": "content",
+              },
+            ],
+            "rawInput": {
+              "-i": false,
+              "multiline": false,
+              "path": "/u/me/x.md",
+              "type": "text",
+              "variant": "content",
+            },
+            "sessionUpdate": "tool_call_update",
+            "status": "completed",
+            "title": "Read \`/u/me/x.md\`",
+            "toolCallId": "call-1",
+          },
+        },
+        "timestamp": 1767225602,
+      },
+      "payload": {
+        "callId": "call-1",
+        "isError": false,
+        "output": "file body",
+      },
+      "requestId": "0",
+      "seq": 3,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 372,
+        "line": 3,
+        "offset": 457,
+      },
+      "ts": 1767225602000,
+    },
+    {
+      "id": "updates.jsonl:4",
+      "kind": "assistant",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "content": {
+              "text": "Here it is.",
+              "type": "text",
+            },
+            "sessionUpdate": "agent_message_chunk",
+          },
+        },
+        "timestamp": 1767225603,
+      },
+      "payload": {
+        "text": "Here it is.",
+      },
+      "requestId": "0",
+      "seq": 4,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 179,
+        "line": 4,
+        "offset": 830,
+      },
+      "ts": 1767225603000,
+    },
+    {
+      "id": "updates.jsonl:5",
+      "kind": "system",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g-title",
+          "update": {
+            "elapsed_ms": 30,
+            "prompt_id": "prompt-1",
+            "sessionUpdate": "turn_completed",
+            "stop_reason": "end_turn",
+            "usage": {
+              "apiDurationMs": 10,
+              "cacheCreationTokens": 0,
+              "cachedReadTokens": 0,
+              "costUsdTicks": 2,
+              "inputTokens": 10,
+              "modelCalls": 1,
+              "modelUsage": {
+                "grok-test": {
+                  "apiDurationMs": 10,
+                  "cacheCreationTokens": 0,
+                  "cachedReadTokens": 0,
+                  "costUsdTicks": 2,
+                  "inputTokens": 10,
+                  "modelCalls": 1,
+                  "outputTokens": 3,
+                  "reasoningTokens": 1,
+                  "totalTokens": 14,
+                },
+              },
+              "numTurns": 1,
+              "outputTokens": 3,
+              "reasoningTokens": 1,
+              "totalTokens": 14,
+            },
+          },
+        },
+        "timestamp": 1767225604,
+      },
+      "payload": {
+        "durationMs": 30,
+        "type": "turn_duration",
+      },
+      "seq": 5,
+      "source": {
+        "file": "/grok/conformance/tool-title/updates.jsonl",
+        "length": 577,
+        "line": 5,
+        "offset": 1010,
+      },
+      "ts": 1767225604000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225604000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [],
+}
+`;
+
+exports[`grok translation output pins > pins the whole translation of every conformance fixture > unknown-type: events, skipped, session and agents 1`] = `
+{
+  "agents": [
+    {
+      "id": "main",
+    },
+  ],
+  "events": [
+    {
+      "id": "updates.jsonl:1",
+      "kind": "unknown",
+      "original": {
+        "method": "session/update",
+        "params": {
+          "sessionId": "g",
+          "update": {
+            "sessionUpdate": "widget",
+          },
+        },
+        "timestamp": 1767225600,
+      },
+      "payload": {
+        "type": "widget",
+      },
+      "seq": 0,
+      "source": {
+        "file": "/grok/conformance/unknown-type/updates.jsonl",
+        "length": 113,
+        "line": 1,
+        "offset": 0,
+      },
+      "ts": 1767225600000,
+    },
+  ],
+  "session": {
+    "endedAt": 1767225600000,
+    "id": "unknown",
+    "startedAt": 1767225600000,
+  },
+  "skipped": [],
+}
+`;

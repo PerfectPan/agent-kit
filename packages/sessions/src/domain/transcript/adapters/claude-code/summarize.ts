@@ -3,16 +3,13 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog";
 import {
   addTurnDuration,
   emptyTotals,
-  finishTotals,
-  type Capability,
   MAIN_LANE_ID,
   type StampedRecord,
-  summaryOf,
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../index.js";
-import { addRequest } from "../../services/fold-transcript.js";
-import type { SessionPromptsOptions, SessionPrompt, SessionSummaryWithPrompts } from "../../../session/index.js";
+import { addRequest, emptyPrompts, finishPass } from "../../services/fold-transcript.js";
+import type { SessionPromptsOptions, SessionSummaryWithPrompts } from "../../../session/index.js";
 import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "./record.js";
 import { CLAUDE_CODE_CAPABILITIES } from "./events.js";
 import { type ClaudeCodeEventPart, claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
@@ -59,9 +56,7 @@ export async function summarizeClaudeCodeRecords(
   const requests = new Map<string, RequestState>();
   /** The lanes of the records that translated to an event; each becomes a subagent lane. */
   const lanes = new Set<string>();
-  const prompts = options.prompts === undefined ? undefined : ([] as SessionPrompt[]);
-  const limit = options.prompts?.limit ?? 0;
-  const maxChars = options.prompts?.maxChars ?? 0;
+  const prompts = emptyPrompts(options.prompts);
 
   const mergeRequest = (rec: ClaudeCodeRecordValue, key: string): void => {
     let state = requests.get(key);
@@ -121,15 +116,12 @@ export async function summarizeClaudeCodeRecords(
     }
     if (promptPart !== undefined && (laneId === undefined || laneId === MAIN_LANE_ID)) {
       totals.turns += 1;
-      if (prompts !== undefined && prompts.length < limit) {
-        // The prompt's text is the first text any of the record's user events carries.
-        const text = classified.events.find(
+      // The prompt's text is the first non-empty text any of the record's user events carries.
+      prompts.add(
+        classified.events.find(
           (part) => part.kind === "user" && typeof part.payload.text === "string" && part.payload.text !== ""
-        )?.payload.text;
-        if (typeof text === "string") {
-          prompts.push({ text: text.slice(0, maxChars) });
-        }
-      }
+        )?.payload.text
+      );
     }
 
     if (classified.events.length > 0 && laneId !== undefined && laneId !== MAIN_LANE_ID) {
@@ -138,19 +130,5 @@ export async function summarizeClaudeCodeRecords(
   }
 
   // `CLAUDE_CODE_CAPABILITIES` lists requests, usage, durations, compaction and subagents for every session.
-  const declared = new Set<Capability>(CLAUDE_CODE_CAPABILITIES);
-  const summary = summaryOf(
-    finishTotals(
-      totals,
-      {
-        requests: declared.has("requests"),
-        usage: declared.has("usage"),
-        durations: declared.has("durations"),
-        compaction: declared.has("compaction"),
-        subagents: declared.has("subagents")
-      },
-      lanes.size
-    )
-  );
-  return ok(prompts === undefined ? summary : { ...summary, prompts });
+  return ok(finishPass(totals, CLAUDE_CODE_CAPABILITIES, lanes.size, prompts.list));
 }

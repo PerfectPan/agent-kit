@@ -1,0 +1,4 @@
+{"method":"session/update","params":{"update":{"sessionUpdate":"user_message_chunk","content":{"type":"text","text":"Fan out"},"_meta":{"modelId":"grok-test","promptIndex":0}}},"timestamp":1767225600}
+{"method":"session/update","params":{"update":{"sessionUpdate":"subagent_spawned","subagent_id":"worker","child_session_id":"child-session-9","description":"Dig","subagent_type":"explore"}},"timestamp":1767225601}
+{"method":"session/update","params":{"update":{"sessionUpdate":"subagent_finished","subagent_id":"worker","status":"completed","duration_ms":5,"tokens_used":8}},"timestamp":1767225602}
+{"method":"session/update","params":{"update":{"sessionUpdate":"turn_completed","prompt_id":"p-1","stop_reason":"end_turn","elapsed_ms":15,"usage":{"inputTokens":9,"outputTokens":2,"totalTokens":11,"modelCalls":1,"modelUsage":{"grok-test":{"inputTokens":9,"outputTokens":2,"totalTokens":11,"modelCalls":1}}}}},"timestamp":1767225603}

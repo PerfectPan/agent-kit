@@ -70,7 +70,9 @@ export interface SessionAdapter {
    * and the state it holds grows with the session's requests, lanes and tool calls, never with its bytes. With
    * `prompts`, the summary also carries the main lane's user prompts under the given caps, by the same rule
    * `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails the conformance
-   * suite.
+   * suite. The equality covers the summary's numbers and prompts, not the failure modes: the pass may read fewer
+   * files than `load` (side files the summary's numbers never read) and in its own order, so an IO error on one of
+   * those can fail `load` while `summarize` succeeds, or the reverse.
    */
   summarize?(
     platform: SessionPlatform,

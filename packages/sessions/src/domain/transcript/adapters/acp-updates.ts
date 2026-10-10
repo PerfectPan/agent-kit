@@ -175,6 +175,21 @@ export function mergeAcpToolUpdate(
   return { state, first: existing === undefined };
 }
 
+/**
+ * The status rule of `mergeAcpToolUpdate` alone, for the reader that tracks a call's end without its text: the
+ * latest non-empty `status` wins, exactly as the full merge sets it, so the done predicates read the same state.
+ */
+export function mergeAcpToolStatus(tools: Map<string, AcpToolState>, update: AcpUpdateValue): AcpToolState {
+  const callId = update.toolCallId ?? "";
+  const existing = tools.get(callId);
+  const state: AcpToolState = existing ?? { callId, name: "" };
+  tools.set(callId, state);
+  if (update.status) {
+    state.status = update.status;
+  }
+  return state;
+}
+
 /** A call has ended once its status is `completed`, `failed` or `error`. */
 export function isAcpToolDone(state: AcpToolState): boolean {
   return state.status !== undefined && TOOL_DONE.has(state.status);
