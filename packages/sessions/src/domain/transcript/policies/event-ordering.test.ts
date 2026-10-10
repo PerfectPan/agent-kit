@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { baseEvent } from "../factories/transcript-event.js";
 import { timedRecord } from "../adapters/record-time.js";
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
-import { inheritTimes, mergeByTime } from "./event-ordering.js";
+import { inheritTimes, mergeByTime, mergeByTimeStream, type TimedRecord } from "./event-ordering.js";
 import { placeRequest } from "./request-placement.js";
 
 function records(file: string, times: (string | undefined)[]): SourcedRecord[] {
@@ -34,6 +34,95 @@ describe("mergeByTime", () => {
     const sub = records("sub", [at(2), at(3)]).map(timedRecord);
     const merged = mergeByTime([main, sub]).map(({ record }) => `${record.file}:${record.line}`);
     expect(merged).toEqual(["main:1", "sub:1", "main:2", "main:3", "sub:2", "main:4"]);
+  });
+});
+
+describe("mergeByTimeStream", () => {
+  const patterns: readonly (number | undefined)[][] = [
+    [undefined, undefined, undefined, undefined],
+    [undefined, 0, undefined, 5, undefined],
+    [0, undefined, 1],
+    [3, 2, 1],
+    [undefined],
+    [1]
+  ];
+
+  async function collect(groups: readonly AsyncIterable<TimedRecord>[]): Promise<string[]> {
+    const out: string[] = [];
+    for await (const stamped of mergeByTimeStream(groups)) {
+      out.push(`${stamped.record.file}:${stamped.record.line}`);
+    }
+    return out;
+  }
+  const streamed = (times: readonly (number | undefined)[], index: number): AsyncGenerator<TimedRecord> =>
+    (async function* () {
+      yield* records(
+        `g${index}`,
+        times.map((second) => (second === undefined ? undefined : at(second)))
+      ).map(timedRecord);
+    })();
+
+  it("gives mergeByTime's merge on generated groups with missing times", async () => {
+    for (const a of patterns) {
+      for (const b of patterns) {
+        for (const c of patterns) {
+          const groups = [a, b, c].map((times, index) =>
+            records(
+              `g${index}`,
+              times.map((second) => (second === undefined ? undefined : at(second)))
+            ).map(timedRecord)
+          );
+          const expected = mergeByTime(groups).map(({ record }) => `${record.file}:${record.line}`);
+          expect(
+            await collect([a, b, c].map((times, index) => streamed(times, index))),
+            `${JSON.stringify([a, b, c])}`
+          ).toEqual(expected);
+        }
+      }
+    }
+  });
+
+  it("returns the iterators it has not read to the end when the consumer stops early", async () => {
+    const closed: string[] = [];
+    const group = async function* (
+      name: string,
+      times: (string | undefined)[]
+    ): AsyncGenerator<ReturnType<typeof timedRecord>> {
+      try {
+        for (const record of records(name, times)) {
+          yield timedRecord(record);
+        }
+      } finally {
+        closed.push(name);
+      }
+    };
+    let taken = 0;
+    for await (const stamped of mergeByTimeStream([group("main", [at(0), at(2)]), group("sub", [at(1), at(3)])])) {
+      if ((taken += 1) === 2) {
+        break;
+      }
+      void stamped;
+    }
+    expect(closed).toStrictEqual(["main", "sub"]);
+  });
+
+  it("returns the other iterators when one group's read throws", async () => {
+    const closed: string[] = [];
+    const healthy = async function* (): AsyncGenerator<ReturnType<typeof timedRecord>> {
+      try {
+        for (const record of records("healthy", [at(0), at(1)])) {
+          yield timedRecord(record);
+        }
+      } finally {
+        closed.push("healthy");
+      }
+    };
+    const failing = async function* (): AsyncGenerator<ReturnType<typeof timedRecord>> {
+      yield timedRecord(records("failing", [at(0)])[0]!);
+      throw new Error("read failed");
+    };
+    await expect(collect([healthy(), failing()])).rejects.toThrow("read failed");
+    expect(closed).toStrictEqual(["healthy"]);
   });
 });
 

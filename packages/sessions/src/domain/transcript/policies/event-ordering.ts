@@ -91,7 +91,7 @@ interface TimedStream {
 }
 
 async function pull(stream: TimedStream): Promise<void> {
-  if (stream.head !== undefined || stream.done) {
+  if (stream.head !== undefined) {
     return;
   }
   for (;;) {
@@ -100,6 +100,7 @@ async function pull(stream: TimedStream): Promise<void> {
       stream.head = at;
       return;
     }
+    // A finished group can still hold ready records; only an empty one has nothing left to take.
     if (stream.done) {
       return;
     }
@@ -151,30 +152,41 @@ export async function* mergeByTimeStream(
     done: false,
     head: undefined
   }));
-  for (const stream of streams) {
-    await pull(stream);
-  }
-  for (;;) {
-    let pick = -1;
-    for (const [index, stream] of streams.entries()) {
-      if (stream.head === undefined) {
-        continue;
+  try {
+    for (const stream of streams) {
+      await pull(stream);
+    }
+    for (;;) {
+      let pick = -1;
+      for (const [index, stream] of streams.entries()) {
+        if (stream.head === undefined) {
+          continue;
+        }
+        if (pick < 0 || stream.head.ts < streams[pick]!.head!.ts) {
+          pick = index;
+        }
       }
-      if (pick < 0 || stream.head.ts < streams[pick]!.head!.ts) {
-        pick = index;
+      if (pick < 0) {
+        return;
+      }
+      const picked = streams[pick]!;
+      if (picked.head === undefined) {
+        return;
+      }
+      const { record, ts } = picked.head;
+      yield { record, ts };
+      picked.head = undefined;
+      await pull(picked);
+    }
+  } finally {
+    // The merge holds one open reader per group, and a caller that stops early — a record the pass rejects, an
+    // abort, an IO error, a break — leaves the others mid-read: return them, so their files close.
+    for (const stream of streams) {
+      if (!stream.done) {
+        stream.done = true;
+        await stream.iterator.return?.();
       }
     }
-    if (pick < 0) {
-      return;
-    }
-    const picked = streams[pick]!;
-    if (picked.head === undefined) {
-      return;
-    }
-    const { record, ts } = picked.head;
-    yield { record, ts };
-    picked.head = undefined;
-    await pull(picked);
   }
 }
 
