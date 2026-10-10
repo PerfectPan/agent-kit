@@ -2,6 +2,18 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.7.0",
+      "tag": "@rivus/agent-kit_v0.7.0",
+      "date": "Sat, 10 Oct 2026 13:27:57 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Redaction hides a multi-segment home's project slug after any character that is not a letter, digit, `_` or `%` (e.g. `*-Users-me-proj*`)."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.6.0",
       "tag": "@rivus/agent-kit_v0.6.0",
       "date": "Sat, 10 Oct 2026 05:42:15 GMT",

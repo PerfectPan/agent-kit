@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Sat, 10 Oct 2026 05:42:15 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 13:27:57 GMT and should not be manually modified.
+
+## 0.7.0
+Sat, 10 Oct 2026 13:27:57 GMT
+
+### Patches
+
+- Redaction hides a multi-segment home's project slug after any character that is not a letter, digit, `_` or `%` (e.g. `*-Users-me-proj*`).
 
 ## 0.6.0
 Sat, 10 Oct 2026 05:42:15 GMT
