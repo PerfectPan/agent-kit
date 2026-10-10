@@ -60,6 +60,93 @@ export function oversizedSession(line: string): string {
   return once.repeat(Math.floor(DISCOVER_BUDGET / lineBytes) + 1);
 }
 
+function value<T>(result: Result<T, { readonly _tag: string }>, what: string): T {
+  if (!result.ok) {
+    throw new Error(`${what} failed: ${result.error._tag}`);
+  }
+  return result.value;
+}
+
+export function check(condition: boolean, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function capabilitySeen(transcript: Transcript, capability: Capability): boolean {
+  const { events } = transcript;
+  const finite = (value: unknown): boolean => typeof value === "number" && Number.isFinite(value);
+  switch (capability) {
+    case "requests":
+      return events.some((event) => event.kind === "request");
+    case "usage":
+      return events.some((event) => event.kind === "request" && isPlainObject(event.payload.usage));
+    case "durations":
+      return events.some(
+        (event) =>
+          (event.kind === "request" || (event.kind === "system" && event.payload.type === "turn_duration")) &&
+          finite(event.payload.durationMs)
+      );
+    case "reasoning":
+      return events.some((event) => event.kind === "reasoning");
+    case "compaction":
+      return events.some((event) => event.kind === "compaction");
+    case "compactionTokens":
+      return events.some(
+        (event) => event.kind === "compaction" && (finite(event.payload.preTokens) || finite(event.payload.postTokens))
+      );
+    case "subagents":
+      return transcript.agents.some((lane) => lane.parentId !== undefined);
+    case "systemPrompt":
+      return (
+        Boolean(transcript.session.systemPrompt) ||
+        transcript.agents.some((lane) => Boolean(lane.systemPrompt)) ||
+        latestSnapshot(events, snapshotHasSystemPrompt) !== undefined
+      );
+    case "toolSchemas":
+      return transcript.session.tools !== undefined || latestSnapshot(events, snapshotHasTools) !== undefined;
+    case "hooks":
+      return events.some((event) => event.kind === "hook");
+    default:
+      return false;
+  }
+}
+
+/** Logs the bytes and ranges read through the returned platform, per path. */
+function readLog(platform: SessionPlatform): ReadLog {
+  const { fs } = platform;
+  const bytes = new Map<string, number>();
+  const ranges = new Map<string, { start: number; end: number }[]>();
+  const record = (path: string, start: number, end: number): void => {
+    bytes.set(path, (bytes.get(path) ?? 0) + end - start);
+    ranges.set(path, [...(ranges.get(path) ?? []), { start, end }]);
+  };
+  return {
+    bytes,
+    ranges,
+    platform: {
+      fs: {
+        stat: (path, options) => fs.stat(path, options),
+        list: (dir) => fs.list(dir),
+        async *read(path: string, range?: ByteRange) {
+          const start = range?.start ?? 0;
+          let end = start;
+          try {
+            for await (const chunk of fs.read(path, range)) {
+              end += chunk.byteLength;
+              yield chunk;
+            }
+          } finally {
+            if (end > start) {
+              record(path, start, end);
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
 /**
  * The checks every session adapter must pass, independent of a test runner: wire each into the runner, for example
  * `for (const { name, run } of sessionAdapterConformance(adapter, fixtures)) it(name, run)`.
@@ -367,96 +454,9 @@ export function sessionAdapterConformance(
   ];
 }
 
-function value<T>(result: Result<T, { readonly _tag: string }>, what: string): T {
-  if (!result.ok) {
-    throw new Error(`${what} failed: ${result.error._tag}`);
-  }
-  return result.value;
-}
-
-export function check(condition: boolean, message: string): asserts condition {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function capabilitySeen(transcript: Transcript, capability: Capability): boolean {
-  const { events } = transcript;
-  const finite = (value: unknown): boolean => typeof value === "number" && Number.isFinite(value);
-  switch (capability) {
-    case "requests":
-      return events.some((event) => event.kind === "request");
-    case "usage":
-      return events.some((event) => event.kind === "request" && isPlainObject(event.payload.usage));
-    case "durations":
-      return events.some(
-        (event) =>
-          (event.kind === "request" || (event.kind === "system" && event.payload.type === "turn_duration")) &&
-          finite(event.payload.durationMs)
-      );
-    case "reasoning":
-      return events.some((event) => event.kind === "reasoning");
-    case "compaction":
-      return events.some((event) => event.kind === "compaction");
-    case "compactionTokens":
-      return events.some(
-        (event) => event.kind === "compaction" && (finite(event.payload.preTokens) || finite(event.payload.postTokens))
-      );
-    case "subagents":
-      return transcript.agents.some((lane) => lane.parentId !== undefined);
-    case "systemPrompt":
-      return (
-        Boolean(transcript.session.systemPrompt) ||
-        transcript.agents.some((lane) => Boolean(lane.systemPrompt)) ||
-        latestSnapshot(events, snapshotHasSystemPrompt) !== undefined
-      );
-    case "toolSchemas":
-      return transcript.session.tools !== undefined || latestSnapshot(events, snapshotHasTools) !== undefined;
-    case "hooks":
-      return events.some((event) => event.kind === "hook");
-    default:
-      return false;
-  }
-}
-
 interface ReadLog {
   /** The wrapped platform, whose reads are logged. */
   readonly platform: SessionPlatform;
   readonly bytes: Map<string, number>;
   readonly ranges: Map<string, { start: number; end: number }[]>;
-}
-
-/** Logs the bytes and ranges read through the returned platform, per path. */
-function readLog(platform: SessionPlatform): ReadLog {
-  const { fs } = platform;
-  const bytes = new Map<string, number>();
-  const ranges = new Map<string, { start: number; end: number }[]>();
-  const record = (path: string, start: number, end: number): void => {
-    bytes.set(path, (bytes.get(path) ?? 0) + end - start);
-    ranges.set(path, [...(ranges.get(path) ?? []), { start, end }]);
-  };
-  return {
-    bytes,
-    ranges,
-    platform: {
-      fs: {
-        stat: (path, options) => fs.stat(path, options),
-        list: (dir) => fs.list(dir),
-        async *read(path: string, range?: ByteRange) {
-          const start = range?.start ?? 0;
-          let end = start;
-          try {
-            for await (const chunk of fs.read(path, range)) {
-              end += chunk.byteLength;
-              yield chunk;
-            }
-          } finally {
-            if (end > start) {
-              record(path, start, end);
-            }
-          }
-        }
-      }
-    }
-  };
 }

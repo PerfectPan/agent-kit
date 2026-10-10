@@ -23,6 +23,18 @@ const main = "/u/me/.claude/projects/-u-me-work/s-usage.jsonl";
 const copy = "/u/me/.claude/projects/-u-me-work/s-usage/subagents/agent-copy.jsonl";
 const pi = "/u/me/.pi/agent/sessions/--u-me-work--/2026-01-01T00-00-00-000Z_pi-1.jsonl";
 
+/** A Claude Code assistant record. */
+function claude(requestId: string, agentId: string | undefined, input: number, output: number): string {
+  return JSON.stringify({
+    type: "assistant",
+    sessionId: "s-usage",
+    ...(agentId ? { agentId } : {}),
+    requestId,
+    timestamp: "2026-01-04T00:00:00.000Z",
+    message: { id: `msg-${requestId}`, model: "claude-test", usage: { input_tokens: input, output_tokens: output } }
+  });
+}
+
 /** The fixture home, last written an hour before `T0`, with a subagent file that starts with a copy of `req-1`. */
 function home(): Record<string, MemoryFile> {
   const files: Record<string, MemoryFile> = {};
@@ -35,18 +47,6 @@ function home(): Record<string, MemoryFile> {
     .join("\n");
   files[copy] = { content: `${copied}\n${claude("req-own", "copy", 2, 2)}\n`, mtimeMs: T0 - 60 * MINUTE };
   return files;
-}
-
-/** A Claude Code assistant record. */
-function claude(requestId: string, agentId: string | undefined, input: number, output: number): string {
-  return JSON.stringify({
-    type: "assistant",
-    sessionId: "s-usage",
-    ...(agentId ? { agentId } : {}),
-    requestId,
-    timestamp: "2026-01-04T00:00:00.000Z",
-    message: { id: `msg-${requestId}`, model: "claude-test", usage: { input_tokens: input, output_tokens: output } }
-  });
 }
 
 /** A platform whose clock the test moves. */
