@@ -22,12 +22,20 @@ export type TranscriptStreamPart =
   | { readonly type: "reasoning-start"; readonly id: string }
   | { readonly type: "reasoning-delta"; readonly id: string; readonly delta: string }
   | { readonly type: "reasoning-end"; readonly id: string }
-  | { readonly type: "tool-input-start"; readonly toolCallId: string; readonly toolName: string }
+  | {
+      readonly type: "tool-input-start";
+      readonly toolCallId: string;
+      readonly toolName: string;
+      /** The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``. */
+      readonly title?: string;
+    }
   | {
       readonly type: "tool-input-available";
       readonly toolCallId: string;
       readonly toolName: string;
       readonly input: unknown;
+      /** The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``. */
+      readonly title?: string;
     }
   | { readonly type: "tool-output-available"; readonly toolCallId: string; readonly output?: unknown }
   | {

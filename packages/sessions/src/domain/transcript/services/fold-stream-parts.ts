@@ -9,6 +9,7 @@ export interface StreamFolder {
 
 interface ToolFold {
   name: string;
+  title?: string;
   input?: unknown;
   called: boolean;
 }
@@ -46,7 +47,12 @@ export function createStreamFolder(): StreamFolder {
       return [];
     }
     tool.called = true;
-    const payload = { callId, name: tool.name, ...(tool.input === undefined ? {} : { args: tool.input }) };
+    const payload = {
+      callId,
+      name: tool.name,
+      ...(tool.title !== undefined && tool.title !== tool.name ? { title: tool.title } : {}),
+      ...(tool.input === undefined ? {} : { args: tool.input })
+    };
     return [event("tool_call", `tool_call:${callId}`, payload, ts)];
   };
 
@@ -77,12 +83,19 @@ export function createStreamFolder(): StreamFolder {
         case "text-end":
         case "reasoning-end":
           return closeText(part.id, ts);
-        case "tool-input-start":
-          toolOf(part.toolCallId, part.toolName);
+        case "tool-input-start": {
+          const tool = toolOf(part.toolCallId, part.toolName);
+          if (part.title !== undefined) {
+            tool.title = part.title;
+          }
           return [];
+        }
         case "tool-input-available": {
           const tool = toolOf(part.toolCallId, part.toolName);
           tool.input = part.input;
+          if (part.title !== undefined) {
+            tool.title = part.title;
+          }
           return [];
         }
         case "tool-output-available":

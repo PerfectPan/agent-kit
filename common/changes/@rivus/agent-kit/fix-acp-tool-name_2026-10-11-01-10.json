@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Keep a Grok tool call's name across its updates: the first `title ?? toolName` names it, a later display title moves to the payload's `title`, and plain-object `rawInput` merges into the previous args.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

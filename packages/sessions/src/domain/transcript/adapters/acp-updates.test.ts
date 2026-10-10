@@ -2,7 +2,14 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { translateGrokRecords } from "./grok/events.js";
 import { foldStreamParts, type SourcedRecord, type TranscriptStreamPart } from "../index.js";
-import { acpChunkText, acpUsage, createAcpPartTranslator } from "./acp-updates.js";
+import {
+  acpChunkText,
+  acpToolCallPayload,
+  acpUsage,
+  createAcpPartTranslator,
+  mergeAcpToolUpdate,
+  type AcpToolState
+} from "./acp-updates.js";
 
 const chunk = (sessionUpdate: string, text: string, messageId?: string) => ({
   sessionUpdate,
@@ -194,6 +201,33 @@ describe("lenient reading of one update", () => {
   });
 });
 
+/** A Grok `tool_call` for `read_file` and the later `tool_call_update` that shows a display title and the full args. */
+const GROK_TITLE_UPDATES = [
+  {
+    sessionUpdate: "tool_call",
+    toolCallId: "c1",
+    title: "read_file",
+    rawInput: { path: "/u/me/x.md", background: false }
+  },
+  {
+    sessionUpdate: "tool_call_update",
+    toolCallId: "c1",
+    title: "Read `/u/me/x.md`",
+    rawInput: { path: "/u/me/x.md", variant: "content", "-i": false, type: "text", multiline: false },
+    status: "completed",
+    content: [{ type: "content", content: { type: "text", text: "file body" } }]
+  }
+] as const;
+
+const MERGED_ARGS = {
+  path: "/u/me/x.md",
+  background: false,
+  variant: "content",
+  "-i": false,
+  type: "text",
+  multiline: false
+};
+
 describe("S89: Grok logs and live turns read ACP updates with the same rules", () => {
   it("merges a tool call's updates into the same call and result", () => {
     const records: SourcedRecord[] = TOOL_UPDATES.map((update, index) => ({
@@ -214,5 +248,125 @@ describe("S89: Grok logs and live turns read ACP updates with the same rules", (
     expect(live.map((event) => [event.kind, event.payload])).toEqual(
       recorded.map((event) => [event.kind, event.payload])
     );
+  });
+
+  it("reads a titled call and its display-title update to the same name, title and args on both paths", () => {
+    const records: SourcedRecord[] = GROK_TITLE_UPDATES.map((update, index) => ({
+      file: "updates.jsonl",
+      offset: index * 100,
+      length: 100,
+      line: index + 1,
+      value: { timestamp: "2026-01-01T00:00:00.000Z", params: { update } }
+    }));
+    const grok = translateGrokRecords(records);
+    if (!grok.ok) {
+      throw new Error(grok.error._tag);
+    }
+    const recorded = grok.value.events.filter((event) => event.kind === "tool_call");
+    const live = foldStreamParts(translate(GROK_TITLE_UPDATES)).filter((event) => event.kind === "tool_call");
+    expect(live.map((event) => event.payload)).toEqual(recorded.map((event) => event.payload));
+  });
+});
+
+describe("tool names and args across updates", () => {
+  const merged = (updates: readonly Record<string, unknown>[]): AcpToolState | undefined => {
+    const tools = new Map<string, AcpToolState>();
+    for (const update of updates) {
+      mergeAcpToolUpdate(tools, update);
+    }
+    return tools.get("c1");
+  };
+
+  it("names the call with its first non-empty title ?? toolName and keeps a later display title as title", () => {
+    const state = merged(GROK_TITLE_UPDATES);
+    expect(state?.name).toBe("read_file");
+    expect(state?.title).toBe("Read `/u/me/x.md`");
+    expect(acpToolCallPayload(state!)).toEqual({
+      callId: "c1",
+      name: "read_file",
+      title: "Read `/u/me/x.md`",
+      args: MERGED_ARGS
+    });
+  });
+
+  it("names the call with the first non-empty value of title ?? toolName, toolName only after an absent title", () => {
+    expect(merged([{ sessionUpdate: "tool_call", toolCallId: "c1", toolName: "read_file" }])?.name).toBe("read_file");
+    // An empty title is the update's candidate and is empty, so the call stays unnamed until a non-empty one.
+    expect(merged([{ sessionUpdate: "tool_call", toolCallId: "c1", title: "", toolName: "read_file" }])?.name).toBe("");
+    const named = merged([
+      { sessionUpdate: "tool_call", toolCallId: "c1", title: "", toolName: "read_file" },
+      { sessionUpdate: "tool_call_update", toolCallId: "c1", title: "Read `/u/me/x.md`" }
+    ]);
+    expect(named?.name).toBe("Read `/u/me/x.md`");
+    expect(named?.title).toBeUndefined();
+  });
+
+  it("repeats a later title only while it differs from the name", () => {
+    const state = merged([
+      { sessionUpdate: "tool_call", toolCallId: "c1", title: "read_file" },
+      { sessionUpdate: "tool_call_update", toolCallId: "c1", title: "Read `/u/me/x.md`" },
+      { sessionUpdate: "tool_call_update", toolCallId: "c1", title: "read_file" }
+    ]);
+    expect(state?.name).toBe("read_file");
+    expect(state?.title).toBeUndefined();
+    expect(acpToolCallPayload(state!)).toEqual({ callId: "c1", name: "read_file" });
+  });
+
+  it("merges a plain-object rawInput into plain-object previous args and replaces any other shape", () => {
+    const state = merged(GROK_TITLE_UPDATES);
+    expect(state?.args).toEqual(MERGED_ARGS);
+    expect(merged([{ toolCallId: "c1" }, { toolCallId: "c1", rawInput: { a: 1 } }])?.args).toEqual({ a: 1 });
+    expect(
+      merged([
+        { toolCallId: "c1", rawInput: { a: 1 } },
+        { toolCallId: "c1", rawInput: null }
+      ])?.args
+    ).toEqual({
+      a: 1
+    });
+    // A previous args that is not a plain object, or an update that is not one, keeps the replace rule.
+    expect(
+      merged([
+        { toolCallId: "c1", rawInput: { a: 1 } },
+        { toolCallId: "c1", rawInput: [1] }
+      ])?.args
+    ).toEqual([1]);
+    expect(
+      merged([
+        { toolCallId: "c1", rawInput: [1] },
+        { toolCallId: "c1", rawInput: { a: 1 } }
+      ])?.args
+    ).toEqual({
+      a: 1
+    });
+  });
+
+  it("carries the name and the merged args through the live fold, with the display title on the parts", () => {
+    const parts = translate(GROK_TITLE_UPDATES);
+    expect(parts).toEqual([
+      { type: "tool-input-start", toolCallId: "c1", toolName: "read_file" },
+      {
+        type: "tool-input-available",
+        toolCallId: "c1",
+        toolName: "read_file",
+        input: { path: "/u/me/x.md", background: false }
+      },
+      {
+        type: "tool-input-available",
+        toolCallId: "c1",
+        toolName: "read_file",
+        title: "Read `/u/me/x.md`",
+        input: MERGED_ARGS
+      },
+      { type: "tool-output-available", toolCallId: "c1", output: "file body" },
+      { type: "finish", id: "t.0", finishReason: "end_turn" }
+    ]);
+    const events = foldStreamParts(parts, () => 1);
+    expect(events.find((event) => event.kind === "tool_call")?.payload).toEqual({
+      callId: "c1",
+      name: "read_file",
+      title: "Read `/u/me/x.md`",
+      args: MERGED_ARGS
+    });
   });
 });
