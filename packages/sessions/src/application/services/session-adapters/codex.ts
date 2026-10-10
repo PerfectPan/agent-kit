@@ -11,13 +11,20 @@ import {
   codexCapabilities,
   translateCodexRecords
 } from "../../../domain/transcript/adapters/codex/events.js";
-import type { SessionRef } from "../../../domain/session/index.js";
-import { createTranscript, mergeByTime, type Transcript } from "../../../domain/transcript/index.js";
+import { summarizeCodexRecords } from "../../../domain/transcript/adapters/codex/summarize.js";
+import type { SessionPromptsOptions, SessionRef, SessionSummaryWithPrompts } from "../../../domain/session/index.js";
+import {
+  createTranscript,
+  mergeByTime,
+  mergeByTimeStream,
+  type StampedRecord,
+  type Transcript
+} from "../../../domain/transcript/index.js";
 import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { readEdges } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
-import { readJsonlRecords } from "../files/jsonl.js";
+import { readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { readProgress } from "../files/read-file.js";
 import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
 
@@ -49,6 +56,42 @@ async function loadCodex(
   return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
 }
 
+/** The rollout's records, stamped with their inherited times, one at a time; a read stops when the loop leaves. */
+function timedLines(
+  platform: SessionPlatform,
+  file: string,
+  signal: AbortSignal | undefined
+): AsyncGenerator<StampedRecord, void, undefined> {
+  return mergeByTimeStream([
+    (async function* () {
+      for await (const record of readJsonlStream(platform, file, { signal })) {
+        yield timedRecord(record);
+      }
+    })()
+  ]);
+}
+
+/**
+ * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
+ * `loadCodex` it holds no records: the fork replay's end is decided in a first streaming read, and the fold keeps
+ * only the running numbers.
+ */
+async function summarizeCodex(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  signal: AbortSignal | undefined,
+  prompts: SessionPromptsOptions | undefined
+): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
+  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
+    signal?.throwIfAborted();
+    return summarizeCodexRecords(() => timedLines(guarded, ref.path, signal), prompts === undefined ? {} : { prompts });
+  });
+  if (!read.ok) {
+    return read;
+  }
+  return read.value;
+}
+
 export const codexSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: AGENT,
@@ -69,5 +112,6 @@ export const codexSessionAdapter: SessionAdapter = {
     // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
     return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
   },
-  load: loadCodex
+  load: loadCodex,
+  summarize: (platform, ref, options = {}) => summarizeCodex(platform, ref, options.signal, options.prompts)
 };

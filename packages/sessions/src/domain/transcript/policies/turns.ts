@@ -61,7 +61,7 @@ export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, 
 }
 
 /** The recorded input and output tokens of a `request` event; a count is absent when not recorded. */
-export function requestUsage(event: TranscriptEvent): { inputTokens?: number; outputTokens?: number } {
+export function requestUsage(event: Pick<TranscriptEvent, "payload">): { inputTokens?: number; outputTokens?: number } {
   const usage = (event.payload as RequestPayload).usage;
   const out: { inputTokens?: number; outputTokens?: number } = {};
   if (typeof usage?.inputTokens === "number") {

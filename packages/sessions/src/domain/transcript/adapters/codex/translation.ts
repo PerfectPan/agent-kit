@@ -228,6 +228,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           itemIds: []
         };
         track(part);
+        recordParts.push(part);
         eventCount += 1;
         if (retain) {
           if (usedIds.has(part.id)) {
