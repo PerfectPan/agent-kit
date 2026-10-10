@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Summarize Grok sessions in one bounded pass: the record dispatch the translation runs also folds the summary, holding per-turn usage, subagent lanes, tool-call statuses and capped prompts, never the session's bytes.",
+      "type": "minor",
+      "packageName": "@rivus/agent-kit"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

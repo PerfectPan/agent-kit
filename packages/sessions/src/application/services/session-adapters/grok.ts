@@ -17,17 +17,27 @@ import {
   grokCapabilities,
   translateGrokRecords
 } from "../../../domain/transcript/adapters/grok/events.js";
-import { joinPath, type SessionHead, type SessionRef } from "../../../domain/session/index.js";
+import { summarizeGrokRecords } from "../../../domain/transcript/adapters/grok/summarize.js";
+import {
+  joinPath,
+  type SessionHead,
+  type SessionPromptsOptions,
+  type SessionRef,
+  type SessionSummaryWithPrompts
+} from "../../../domain/session/index.js";
 import {
   createTranscript,
+  mergeByTimeStream,
   type SkippedRecord,
+  type StampedRecord,
   type Transcript,
   type UnknownFormatGeneration
 } from "../../../domain/transcript/index.js";
+import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { EDGE_BYTES } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
-import { type JsonlRecords, readJsonlRecords } from "../files/jsonl.js";
+import { type JsonlRecords, readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { type ReadProgress, readProgress, readText } from "../files/read-file.js";
 import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
 
@@ -229,6 +239,76 @@ async function detectGrok(platform: SessionPlatform, ref: SessionRef): Promise<b
   return summary?.kind === "file" && updates?.kind === "file";
 }
 
+/**
+ * The unknown-generation error `summary.json` reports, or `undefined` when the summary is missing, is not JSON
+ * (the load path records an `invalid-json` skip, which no summary number reads), or names a generation this
+ * adapter reads. The check runs before the records stream, so a foreign generation fails the read up front.
+ */
+async function grokGenerationError(
+  platform: SessionPlatform,
+  dir: string,
+  signal: AbortSignal | undefined
+): Promise<UnknownFormatGeneration | undefined> {
+  const summaryPath = grokSummaryPath(dir);
+  if ((await platform.fs.stat(summaryPath, { followSymlinks: true }))?.kind !== "file") {
+    return undefined;
+  }
+  const text = await readText(platform, summaryPath, { signal, progress: readProgress(undefined) });
+  const value = parseJson(text);
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = grokSummaryFields(value, textSource(summaryPath, text));
+  return parsed.ok ? undefined : parsed.error;
+}
+
+/** The `updates.jsonl` records, stamped with their inherited times, one at a time; a read stops when the loop leaves. */
+function timedLines(
+  platform: SessionPlatform,
+  file: string,
+  signal: AbortSignal | undefined
+): AsyncGenerator<StampedRecord, void, undefined> {
+  return mergeByTimeStream([
+    (async function* () {
+      for await (const record of readJsonlStream(platform, file, { signal })) {
+        yield timedRecord(record);
+      }
+    })()
+  ]);
+}
+
+/**
+ * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
+ * `loadGrok` it holds no records: `summary.json` is read for the generation check alone, the subagent metas for
+ * the lane count, and the updates stream through `mergeByTimeStream` into the pass.
+ */
+async function summarizeGrok(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  signal: AbortSignal | undefined,
+  prompts: SessionPromptsOptions | undefined
+): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
+  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
+    signal?.throwIfAborted();
+    const dir = grokSessionDir(ref.path);
+    const generation = await grokGenerationError(guarded, dir, signal);
+    if (generation) {
+      return err(generation);
+    }
+    const subagents = await readSubagentMetas(guarded, dir, { signal, progress: readProgress(undefined) }, []);
+    const summarized = await summarizeGrokRecords(timedLines(guarded, grokUpdatesPath(ref.path), signal), {
+      subagents,
+      ...(prompts === undefined ? {} : { prompts })
+    });
+    signal?.throwIfAborted();
+    return summarized;
+  });
+  if (!read.ok) {
+    return read;
+  }
+  return read.value;
+}
+
 export const grokSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: AGENT,
@@ -244,7 +324,8 @@ export const grokSessionAdapter: SessionAdapter = {
     });
   },
   detect: detectGrok,
-  load: loadGrok
+  load: loadGrok,
+  summarize: (platform, ref, options = {}) => summarizeGrok(platform, ref, options.signal, options.prompts)
 };
 
 interface GrokSessionFiles {
