@@ -1,12 +1,13 @@
-import { type CodingAgentId, err, ok, parseCodingAgentId, type Result } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, err, ok, parseCodingAgentId, type Result } from "@rivus/agent-kit-catalog";
 
 import type {
   CapabilityUnsupported,
   NoAdapterAccepted,
+  SessionPromptsOptions,
   SessionRef,
-  SessionSummary
+  SessionSummaryWithPrompts
 } from "../../domain/session/index.js";
-import { foldTranscript, summaryOf, type Transcript } from "../../domain/transcript/index.js";
+import { foldTranscript, sessionPrompts, summaryOf, type Transcript } from "../../domain/transcript/index.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import type { SessionAdapter, SessionAdapters, SessionPlatform, SessionReadError } from "../ports.js";
 import { builtinSessionAdapters } from "../services/session-adapters/index.js";
@@ -100,12 +101,40 @@ export async function loadTranscript(
   return transcript;
 }
 
-/** The adapter's own summary pass when it has one, else `foldTranscript` of the loaded transcript. */
+/** The user prompts a caller asked a summary pass to collect, with the caps they carry. */
+function promptsOption(options: { readonly prompts?: SessionPromptsOptions }): SessionPromptsOptions | undefined {
+  const rejected = (): AgentKitError =>
+    new AgentKitError(
+      "invalid-prompts",
+      `prompts.limit must be a non-negative integer and prompts.maxChars a positive integer, got ${JSON.stringify(options.prompts)}`
+    );
+  // A JS caller can pass `null`, or any other value, where the type says the option is absent.
+  const prompts: unknown = options.prompts;
+  if (prompts === null) {
+    throw rejected();
+  }
+  if (prompts === undefined) {
+    return undefined;
+  }
+  const { limit, maxChars } = prompts as SessionPromptsOptions;
+  if (!Number.isInteger(limit) || limit < 0 || !Number.isInteger(maxChars) || maxChars < 1) {
+    throw rejected();
+  }
+  return { limit, maxChars };
+}
+
+/**
+ * The adapter's own summary pass when it has one, else `foldTranscript` of the loaded transcript — the same numbers
+ * either way, so a cache of summaries cannot tell them apart. With `prompts`, the summary also carries the main
+ * lane's user prompts: from the pass for an adapter that implements one, else from the loaded transcript, always by
+ * the kit's prompt rule (`sessionPrompts`).
+ */
 export async function summarizeSession(
   platform: SessionPlatform,
   target: SessionTarget,
-  options: Omit<LoadTranscriptOptions, "onProgress"> = {}
-): Promise<Result<SessionSummary, LoadTranscriptError>> {
+  options: Omit<LoadTranscriptOptions, "onProgress"> & { readonly prompts?: SessionPromptsOptions } = {}
+): Promise<Result<SessionSummaryWithPrompts, LoadTranscriptError>> {
+  const prompts = promptsOption(options);
   const resolved = await resolveTarget(platform, target, options);
   if (!resolved.ok) {
     options.signal?.throwIfAborted();
@@ -113,12 +142,17 @@ export async function summarizeSession(
   }
   const { adapter, ref } = resolved.value;
   const signal = options.signal ? { signal: options.signal } : {};
+  const asked = prompts === undefined ? signal : { ...signal, prompts };
   if (adapter.summarize) {
-    const summary = await adapter.summarize(platform, ref, signal);
+    const summary = await adapter.summarize(platform, ref, asked);
     options.signal?.throwIfAborted();
     return summary.ok ? ok(summaryOf(summary.value)) : summary;
   }
   const transcript = await adapter.load(platform, ref, signal);
   options.signal?.throwIfAborted();
-  return transcript.ok ? ok(foldTranscript(transcript.value)) : transcript;
+  if (!transcript.ok) {
+    return transcript;
+  }
+  const summary = foldTranscript(transcript.value);
+  return ok(prompts === undefined ? summary : { ...summary, prompts: sessionPrompts(transcript.value, prompts) });
 }

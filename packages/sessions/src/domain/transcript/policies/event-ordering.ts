@@ -77,6 +77,119 @@ export function mergeByTime(groups: readonly (readonly TimedRecord[])[]): Stampe
   }
 }
 
+/** One group of `mergeByTimeStream`: its iterator, and the state that applies `inheritTimes` a record at a time. */
+interface TimedStream {
+  iterator: AsyncIterator<TimedRecord>;
+  /** Records whose time is decided, waiting for the merge to pick them. */
+  ready: StampedRecord[];
+  /** The leading records before the group's first known time, which that time backfills. */
+  leading: TimedRecord[];
+  lastKnown: number | undefined;
+  done: boolean;
+  /** The record the merge has pulled from `ready` and not emitted yet. */
+  head: StampedRecord | undefined;
+}
+
+async function pull(stream: TimedStream): Promise<void> {
+  if (stream.head !== undefined) {
+    return;
+  }
+  for (;;) {
+    const at = stream.ready.shift();
+    if (at !== undefined) {
+      stream.head = at;
+      return;
+    }
+    // A finished group can still hold ready records; only an empty one has nothing left to take.
+    if (stream.done) {
+      return;
+    }
+    const step = await stream.iterator.next();
+    if (step.done) {
+      stream.done = true;
+      // A group whose records name no time at all takes 1, like `inheritTimes` leaves them.
+      for (const timed of stream.leading) {
+        stream.ready.push({ record: timed.record, ts: 1 });
+      }
+      stream.leading = [];
+      continue;
+    }
+    const { record, time } = step.value;
+    if (time === undefined) {
+      if (stream.lastKnown !== undefined) {
+        stream.ready.push({ record, ts: stream.lastKnown });
+      } else {
+        stream.leading.push(step.value);
+      }
+      continue;
+    }
+    if (stream.lastKnown === undefined && stream.leading.length > 0) {
+      // The first known time is also the leading gap's: every record before it takes it.
+      for (const timed of stream.leading) {
+        stream.ready.push({ record: timed.record, ts: time });
+      }
+      stream.leading = [];
+    }
+    stream.lastKnown = time;
+    stream.ready.push({ record, ts: time });
+  }
+}
+
+/**
+ * Streams the merge `mergeByTime` gives, one record at a time: each step takes the head record with the smallest
+ * time, a tie goes to the earlier group, and no group is reordered. Each group applies `inheritTimes` as its records
+ * are pulled, so a caller that keeps no records buffers at most a group's leading records before its first known
+ * time — the whole group only when none of its records names a time.
+ */
+export async function* mergeByTimeStream(
+  groups: readonly AsyncIterable<TimedRecord>[]
+): AsyncGenerator<StampedRecord, void, undefined> {
+  const streams: TimedStream[] = groups.map((group) => ({
+    iterator: group[Symbol.asyncIterator](),
+    ready: [],
+    leading: [],
+    lastKnown: undefined,
+    done: false,
+    head: undefined
+  }));
+  try {
+    for (const stream of streams) {
+      await pull(stream);
+    }
+    for (;;) {
+      let pick = -1;
+      for (const [index, stream] of streams.entries()) {
+        if (stream.head === undefined) {
+          continue;
+        }
+        if (pick < 0 || stream.head.ts < streams[pick]!.head!.ts) {
+          pick = index;
+        }
+      }
+      if (pick < 0) {
+        return;
+      }
+      const picked = streams[pick]!;
+      if (picked.head === undefined) {
+        return;
+      }
+      const { record, ts } = picked.head;
+      yield { record, ts };
+      picked.head = undefined;
+      await pull(picked);
+    }
+  } finally {
+    // The merge holds one open reader per group, and a caller that stops early — a record the pass rejects, an
+    // abort, an IO error, a break — leaves the others mid-read: return them, so their files close.
+    for (const stream of streams) {
+      if (!stream.done) {
+        stream.done = true;
+        await stream.iterator.return?.();
+      }
+    }
+  }
+}
+
 /** Sets `seq` to each event's index; the last step of every translation. */
 export function assignSeq(events: TranscriptEvent[]): void {
   for (let index = 0; index < events.length; index++) {

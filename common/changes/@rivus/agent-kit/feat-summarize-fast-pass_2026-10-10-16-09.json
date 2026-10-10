@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "summarizeSession gains a prompts option ({ limit, maxChars }) returning the main lane's user prompts, and the claude-code adapter summarizes sessions in one bounded fast pass with the same numbers as folding the loaded transcript.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

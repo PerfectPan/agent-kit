@@ -140,6 +140,26 @@ export function claudeCodeSessions(root: string): ConformanceSession[] {
       files: [at("prompt-snapshot/session.jsonl"), at("prompt-snapshot/session/subagents/agent-worker.jsonl")],
       records: 13,
       capabilities: ["requests", "usage", "subagents", "systemPrompt", "toolSchemas"]
+    },
+    {
+      path: at("empty-ids/session.jsonl"),
+      files: [
+        at("empty-ids/session.jsonl"),
+        at("empty-ids/session/subagents/agent-.jsonl"),
+        at("empty-ids/session/subagents/agent-mixed.jsonl")
+      ],
+      records: 9,
+      capabilities: ["requests", "usage", "subagents"]
+    },
+    {
+      path: at("summarize/session.jsonl"),
+      files: [
+        at("summarize/session.jsonl"),
+        at("summarize/session/subagents/agent-helper.jsonl"),
+        at("summarize/session/subagents/agent-fallback.jsonl")
+      ],
+      records: 11,
+      capabilities: ["requests", "usage", "durations", "subagents"]
     }
   ];
 }

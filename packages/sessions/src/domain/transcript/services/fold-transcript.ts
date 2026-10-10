@@ -1,12 +1,81 @@
 import type { SessionSummary } from "../../session/index.js";
 import { mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
-import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
 
-function gated(declared: boolean, value: number | undefined): number | undefined {
-  return declared ? value : undefined;
+/** The capabilities whose absence leaves a summary number out. The others are counted regardless. */
+export interface SummaryGates {
+  readonly requests: boolean;
+  readonly usage: boolean;
+  readonly durations: boolean;
+  readonly compaction: boolean;
+  readonly subagents: boolean;
+}
+
+/**
+ * The running numbers one summary pass keeps: `foldTranscript` fills them from a transcript's events, an adapter's
+ * summarize pass from its records, and `finishTotals` applies the fold rules to both. Nothing here holds payload
+ * text, and everything grows with requests and turns, never with bytes.
+ */
+export interface SummaryTotals {
+  turns: number;
+  requests: number;
+  compactions: number;
+  failedTools: number;
+  /** The usage of each request in order; an entry whose counts the record left out stays empty. */
+  usage: { inputTokens?: number; outputTokens?: number }[];
+  /** The recorded turn durations and the request durations, as `durationMs` prefers them. */
+  turnDurations: number[];
+  requestDurations: number[];
+}
+
+/** Empty totals for one pass. */
+export function emptyTotals(): SummaryTotals {
+  return { turns: 0, requests: 0, compactions: 0, failedTools: 0, usage: [], turnDurations: [], requestDurations: [] };
+}
+
+/** Counts one request and its usage, which may record no count at all. */
+export function addRequest(totals: SummaryTotals, usage: { inputTokens?: number; outputTokens?: number } = {}): void {
+  totals.requests += 1;
+  totals.usage.push(usage);
+}
+
+/** Counts a recorded turn duration. A duration that is not a number was never recorded. */
+export function addTurnDuration(totals: SummaryTotals, durationMs: unknown): void {
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    totals.turnDurations.push(durationMs);
+  }
+}
+
+/** Counts a request's own duration, the fallback `durationMs` uses when no turn names one. */
+export function addRequestDuration(totals: SummaryTotals, durationMs: unknown): void {
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    totals.requestDurations.push(durationMs);
+  }
+}
+
+/** The input tokens of each request in order, for the context shape. */
+function inputPointsOf(totals: SummaryTotals): number[] {
+  const points: number[] = [];
+  for (const usage of totals.usage) {
+    if (usage.inputTokens !== undefined) {
+      points.push(usage.inputTokens);
+    }
+  }
+  return points;
+}
+
+/** Input tokens of each request in order, downsampled to at most 120 points. */
+export function downsampleContextShape(values: readonly number[]): number[] {
+  if (values.length <= CONTEXT_SHAPE_POINTS) {
+    return values.slice();
+  }
+  const last = values.length - 1;
+  return Array.from(
+    { length: CONTEXT_SHAPE_POINTS },
+    (_, index) => values[Math.round((index * last) / (CONTEXT_SHAPE_POINTS - 1))]!
+  );
 }
 
 function knownSum(values: readonly (number | undefined)[]): number | undefined {
@@ -14,28 +83,37 @@ function knownSum(values: readonly (number | undefined)[]): number | undefined {
   return known.length > 0 ? known.reduce((total, value) => total + value, 0) : undefined;
 }
 
-function finite(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function durationSum(events: readonly TranscriptEvent[]): number | undefined {
-  const turns = knownSum(
-    events
-      .filter((event) => event.kind === "system" && event.payload.type === "turn_duration")
-      .map((event) => finite(event.payload.durationMs))
-  );
+function durationOf(totals: SummaryTotals): number | undefined {
+  const known = (values: readonly number[]): number | undefined =>
+    knownSum(values.map((value) => value as number | undefined));
+  const turns = known(totals.turnDurations);
   if (turns !== undefined) {
     return turns;
   }
-  return knownSum(events.filter((event) => event.kind === "request").map((event) => finite(event.payload.durationMs)));
+  return known(totals.requestDurations);
 }
 
-function downsample(values: readonly number[], max: number): number[] {
-  if (values.length <= max) {
-    return values.slice();
-  }
-  const last = values.length - 1;
-  return Array.from({ length: max }, (_, index) => values[Math.round((index * last) / (max - 1))]!);
+function gated(declared: boolean, value: number | undefined): number | undefined {
+  return declared ? value : undefined;
+}
+
+/**
+ * The SessionSummary of filled totals, under the capabilities the source lists: the same rules `foldTranscript`
+ * states, so a fast pass and the folded transcript give the same numbers.
+ */
+export function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: number): SessionSummary {
+  const inputPoints = inputPointsOf(totals);
+  return {
+    turns: totals.turns,
+    requests: gated(gates.requests, totals.requests),
+    inputTokens: gated(gates.usage, knownSum(totals.usage.map((usage) => usage.inputTokens))),
+    outputTokens: gated(gates.usage, knownSum(totals.usage.map((usage) => usage.outputTokens))),
+    durationMs: gated(gates.durations, durationOf(totals)),
+    compactions: gated(gates.compaction, totals.compactions),
+    subagents: gated(gates.subagents, subagents),
+    failedTools: totals.failedTools,
+    contextShape: gates.usage && inputPoints.length > 0 ? downsampleContextShape(inputPoints) : undefined
+  };
 }
 
 /** A copy without the absent numbers, so summaries from different sources compare equal. */
@@ -50,28 +128,31 @@ export function summaryOf(summary: SessionSummary): SessionSummary {
  */
 export function foldTranscript(transcript: Transcript): SessionSummary {
   const capabilities = new Set(transcript.capabilities);
-  const requests = transcript.events.filter((event) => event.kind === "request");
-  const usage = capabilities.has("usage");
-  const inputPoints = requests.flatMap((event) => {
-    const input = requestUsage(event).inputTokens;
-    return input === undefined ? [] : [input];
-  });
-  return summaryOf({
-    turns: promptStarts(transcript, mainAgentId(transcript)).length,
-    requests: gated(capabilities.has("requests"), requests.length),
-    inputTokens: gated(usage, knownSum(requests.map((event) => requestUsage(event).inputTokens))),
-    outputTokens: gated(usage, knownSum(requests.map((event) => requestUsage(event).outputTokens))),
-    durationMs: gated(capabilities.has("durations"), durationSum(transcript.events)),
-    compactions: gated(
-      capabilities.has("compaction"),
-      transcript.events.filter((event) => event.kind === "compaction").length
-    ),
-    subagents: gated(
-      capabilities.has("subagents"),
+  const totals = emptyTotals();
+  for (const event of transcript.events) {
+    if (event.kind === "request") {
+      addRequest(totals, requestUsage(event));
+      addRequestDuration(totals, event.payload.durationMs);
+    } else if (event.kind === "compaction") {
+      totals.compactions += 1;
+    } else if (event.kind === "system" && event.payload.type === "turn_duration") {
+      addTurnDuration(totals, event.payload.durationMs);
+    } else if (event.kind === "tool_result" && event.payload.isError === true) {
+      totals.failedTools += 1;
+    }
+  }
+  totals.turns = promptStarts(transcript, mainAgentId(transcript)).length;
+  return summaryOf(
+    finishTotals(
+      totals,
+      {
+        requests: capabilities.has("requests"),
+        usage: capabilities.has("usage"),
+        durations: capabilities.has("durations"),
+        compaction: capabilities.has("compaction"),
+        subagents: capabilities.has("subagents")
+      },
       transcript.agents.filter((agent) => agent.parentId !== undefined).length
-    ),
-    failedTools: transcript.events.filter((event) => event.kind === "tool_result" && event.payload.isError === true)
-      .length,
-    contextShape: usage && inputPoints.length > 0 ? downsample(inputPoints, CONTEXT_SHAPE_POINTS) : undefined
-  });
+    )
+  );
 }

@@ -3,10 +3,10 @@ import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
 /**
  * Codes of the `AgentKitError`s that the sessions use cases throw for a caller's mistake. `capability-unsupported`:
  * the call names an agent with no adapter in the table, or passes an adapter without a home rule for an agent that
- * catalog has no home rule for either. `invalid-cursor`: a usage cursor of another agent. Reading returns its
- * failures as values instead.
+ * catalog has no home rule for either. `invalid-cursor`: a usage cursor of another agent. `invalid-prompts`: a
+ * `prompts` option whose caps are not whole numbers in range. Reading returns its failures as values instead.
  */
-export type SessionErrorCode = "capability-unsupported" | "invalid-cursor";
+export type SessionErrorCode = "capability-unsupported" | "invalid-cursor" | "invalid-prompts";
 
 export function capabilityUnsupported(
   agent: CodingAgentId,

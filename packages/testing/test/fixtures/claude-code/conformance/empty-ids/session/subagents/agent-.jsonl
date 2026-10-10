@@ -1,0 +1,2 @@
+{"type":"user","uuid":"f1","timestamp":"2026-01-01T00:00:00.500Z","sessionId":"s-empty","version":"2.0.0","message":{"role":"user","content":"From the nameless file"}}
+{"type":"assistant","uuid":"f2","timestamp":"2026-01-01T00:00:00.600Z","sessionId":"s-empty","version":"2.0.0","requestId":"rf","message":{"role":"assistant","model":"claude-test","id":"msg-f2","stop_reason":"end_turn","usage":{"input_tokens":11,"output_tokens":4},"content":[{"type":"text","text":"nameless work"}]}}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { sessionPrompts } from "../policies/turns.js";
 import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 import { foldTranscript } from "./fold-transcript.js";
@@ -68,5 +69,37 @@ describe("foldTranscript", () => {
     expect(summary.contextShape).toHaveLength(120);
     expect(summary.contextShape?.[0]).toBe(0);
     expect(summary.contextShape?.[119]).toBe(120);
+  });
+});
+
+describe("sessionPrompts", () => {
+  it("takes one prompt per record, the first non-empty text of its events", () => {
+    const summary = transcript({
+      capabilities: [],
+      events: [
+        event({ id: "u1", kind: "user", payload: { text: "first" } }),
+        event({ id: "u2", kind: "user", payload: { text: "" }, source: { ...source, line: 2 } }),
+        event({ id: "u2b", kind: "user", payload: { text: "second" }, source: { ...source, line: 2 } }),
+        event({ id: "i", kind: "user", payload: { injected: true, text: "not a prompt" } }),
+        event({ id: "s", kind: "user", agentId: "side", payload: { text: "side lane" } })
+      ]
+    });
+    expect(sessionPrompts(summary, { limit: 10, maxChars: 100 })).toEqual([{ text: "first" }, { text: "second" }]);
+  });
+
+  it("caps the count and each text, and keeps a promptless list empty", () => {
+    const events = Array.from({ length: 5 }, (_, index) =>
+      event({
+        id: `u${index}`,
+        kind: "user",
+        payload: { text: `prompt ${index}` },
+        source: { ...source, line: index + 1 }
+      })
+    );
+    expect(sessionPrompts(transcript({ capabilities: [], events }), { limit: 2, maxChars: 8 })).toEqual([
+      { text: "prompt 0" },
+      { text: "prompt 1" }
+    ]);
+    expect(sessionPrompts(transcript({ capabilities: [], events }), { limit: 0, maxChars: 8 })).toEqual([]);
   });
 });
