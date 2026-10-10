@@ -21,6 +21,60 @@ import type {
   UsageTarget
 } from "../../usage-ports.js";
 
+function readFailed(path: string, cause: unknown): SessionListError {
+  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
+}
+
+/** Takes each record off the queue before yielding it, so a cursor read at the yield holds only the ones left. */
+export function* drain(queue: UsageRecord[]): Generator<UsageRecord, void, undefined> {
+  for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+    yield next;
+  }
+}
+
+/**
+ * Whether the file still continues at a cursor's offset: it is at least that long, and the byte before it ends a
+ * record, a newline or the closing brace of a last line written without one. A cheap check; a file rewritten with
+ * the same byte there is not noticed.
+ */
+async function continuesAt(
+  platform: SessionPlatform,
+  path: string,
+  size: number,
+  offset: number,
+  signal: AbortSignal | undefined
+): Promise<boolean> {
+  if (offset > size) {
+    return false;
+  }
+  if (offset === 0) {
+    return true;
+  }
+  const [byte] = await readBytes(platform, path, { start: offset - 1, end: offset }, signal ? { signal } : {});
+  return byte === 0x0a || byte === 0x7d;
+}
+
+function sourceChanged(path: string, from: UsageCursor): SourceChanged {
+  return { _tag: "SourceChanged", source: { file: path, offset: from.offset, length: 0, line: from.line } };
+}
+
+/** How one agent's JSONL files are decoded. */
+export interface JsonlUsageLayout {
+  readonly agent: CodingAgentId;
+  /** The file to read for a target, with what the decoder needs besides the records; a failure ends the decode. */
+  file(
+    platform: SessionPlatform,
+    target: UsageTarget,
+    signal: AbortSignal | undefined
+  ): Promise<Result<Omit<UsageFile, "mtimeMs">, UsageDecodeError>>;
+  decoder(file: UsageFile, saved: unknown): UsageLineDecoder;
+}
+
+/** A layout's `file` for agents whose target is the file itself. */
+export function sameFile(fallback: (path: string) => Omit<UsageFile, "path" | "mtimeMs">): JsonlUsageLayout["file"] {
+  return async (_platform, target) => ok({ path: target.path, ...fallback(target.path) });
+}
+
 /**
  * The files under `roots` that `spec` and `keep` accept, as usage sources, leaving out those last modified before
  * `since`. A missing root, a directory that cannot be listed and a file that cannot be read are failure items.
@@ -78,27 +132,6 @@ export async function* fileSources(
       }
     }
   }
-}
-
-function readFailed(path: string, cause: unknown): SessionListError {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
-}
-
-/** How one agent's JSONL files are decoded. */
-export interface JsonlUsageLayout {
-  readonly agent: CodingAgentId;
-  /** The file to read for a target, with what the decoder needs besides the records; a failure ends the decode. */
-  file(
-    platform: SessionPlatform,
-    target: UsageTarget,
-    signal: AbortSignal | undefined
-  ): Promise<Result<Omit<UsageFile, "mtimeMs">, UsageDecodeError>>;
-  decoder(file: UsageFile, saved: unknown): UsageLineDecoder;
-}
-
-/** A layout's `file` for agents whose target is the file itself. */
-export function sameFile(fallback: (path: string) => Omit<UsageFile, "path" | "mtimeMs">): JsonlUsageLayout["file"] {
-  return async (_platform, target) => ok({ path: target.path, ...fallback(target.path) });
 }
 
 /**
@@ -205,39 +238,6 @@ export function decodeJsonlUsage(
     },
     [Symbol.asyncIterator]: () => run()
   };
-}
-
-/** Takes each record off the queue before yielding it, so a cursor read at the yield holds only the ones left. */
-export function* drain(queue: UsageRecord[]): Generator<UsageRecord, void, undefined> {
-  for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-    yield next;
-  }
-}
-
-/**
- * Whether the file still continues at a cursor's offset: it is at least that long, and the byte before it ends a
- * record, a newline or the closing brace of a last line written without one. A cheap check; a file rewritten with
- * the same byte there is not noticed.
- */
-async function continuesAt(
-  platform: SessionPlatform,
-  path: string,
-  size: number,
-  offset: number,
-  signal: AbortSignal | undefined
-): Promise<boolean> {
-  if (offset > size) {
-    return false;
-  }
-  if (offset === 0) {
-    return true;
-  }
-  const [byte] = await readBytes(platform, path, { start: offset - 1, end: offset }, signal ? { signal } : {});
-  return byte === 0x0a || byte === 0x7d;
-}
-
-function sourceChanged(path: string, from: UsageCursor): SourceChanged {
-  return { _tag: "SourceChanged", source: { file: path, offset: from.offset, length: 0, line: from.line } };
 }
 
 /** A usage stream over records that one read produces whole, such as a JSON file or a database page. */

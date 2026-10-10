@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Declare functions before their use in the sessions package for the no-use-before-define functions rule.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

@@ -36,68 +36,12 @@ import { walkFiles } from "../files/walk.js";
 import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
 
 const AGENT = "claude-code";
+
 const UTF8_BOM = [0xef, 0xbb, 0xbf];
 
-export const claudeCodeSessionAdapter: SessionAdapter = {
-  specificationVersion: "sessions-v1",
-  agent: AGENT,
-  displayName: "Claude Code",
-  capabilities: CLAUDE_CODE_CAPABILITIES,
-  roots: claudeCodeRoots,
-  discover(platform, root, options = {}) {
-    return discoverSessions(platform, AGENT, root, {
-      ...options,
-      files: CLAUDE_CODE_SESSION_FILES,
-      preview: previewClaudeCodeRecords
-    });
-  },
-  async detect(platform, ref) {
-    if (looksLikeClaudeCodeSession(ref.path, undefined)) {
-      return true;
-    }
-    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
-    return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
-  },
-  load: loadClaudeCode
-};
-
-async function loadClaudeCode(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
-  const progress = readProgress(options.onProgress);
-  const files = await catchIoFailure(platform, ref.path, options.signal, async (guarded) => ({
-    main: await readJsonlRecords(guarded, ref.path, { signal: options.signal, progress }),
-    nested: await readSubagents(guarded, ref.path, options.signal, progress)
-  }));
-  if (!files.ok) {
-    return files;
-  }
-  const { main, nested } = files.value;
-  const translated = translateClaudeCodeRecords(
-    mergeByTime([main.records, ...nested.groups].map((records) => records.map(timedRecord))),
-    {
-      ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
-      path: ref.path,
-      agentForFile: (file) => nested.agentForFile.get(file),
-      agentMeta: nested.metas
-    }
-  );
-  if (!translated.ok) {
-    return translated;
-  }
-  const parsed = translated.value;
-  parsed.skipped.push(...main.skipped, ...nested.skipped);
-  options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, claudeCodeCapabilities(parsed.events), parsed));
-}
-
-interface Subagents {
-  groups: SourcedRecord[][];
-  agentForFile: Map<string, string>;
-  metas: Map<string, ClaudeCodeAgentMeta>;
-  skipped: SkippedRecord[];
+async function wholeFile(platform: SessionPlatform, path: string, reason: string): Promise<SkippedRecord> {
+  const size = (await platform.fs.stat(path))?.size ?? 0;
+  return { reason, source: { file: path, offset: 0, length: size, line: 1 } };
 }
 
 /**
@@ -152,7 +96,64 @@ async function readSubagents(
   return out;
 }
 
-async function wholeFile(platform: SessionPlatform, path: string, reason: string): Promise<SkippedRecord> {
-  const size = (await platform.fs.stat(path))?.size ?? 0;
-  return { reason, source: { file: path, offset: 0, length: size, line: 1 } };
+async function loadClaudeCode(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  options: LoadOptions = {}
+): Promise<Result<Transcript, SessionReadError>> {
+  const progress = readProgress(options.onProgress);
+  const files = await catchIoFailure(platform, ref.path, options.signal, async (guarded) => ({
+    main: await readJsonlRecords(guarded, ref.path, { signal: options.signal, progress }),
+    nested: await readSubagents(guarded, ref.path, options.signal, progress)
+  }));
+  if (!files.ok) {
+    return files;
+  }
+  const { main, nested } = files.value;
+  const translated = translateClaudeCodeRecords(
+    mergeByTime([main.records, ...nested.groups].map((records) => records.map(timedRecord))),
+    {
+      ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+      path: ref.path,
+      agentForFile: (file) => nested.agentForFile.get(file),
+      agentMeta: nested.metas
+    }
+  );
+  if (!translated.ok) {
+    return translated;
+  }
+  const parsed = translated.value;
+  parsed.skipped.push(...main.skipped, ...nested.skipped);
+  options.signal?.throwIfAborted();
+  return ok(createTranscript(AGENT, claudeCodeCapabilities(parsed.events), parsed));
+}
+
+export const claudeCodeSessionAdapter: SessionAdapter = {
+  specificationVersion: "sessions-v1",
+  agent: AGENT,
+  displayName: "Claude Code",
+  capabilities: CLAUDE_CODE_CAPABILITIES,
+  roots: claudeCodeRoots,
+  discover(platform, root, options = {}) {
+    return discoverSessions(platform, AGENT, root, {
+      ...options,
+      files: CLAUDE_CODE_SESSION_FILES,
+      preview: previewClaudeCodeRecords
+    });
+  },
+  async detect(platform, ref) {
+    if (looksLikeClaudeCodeSession(ref.path, undefined)) {
+      return true;
+    }
+    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
+    return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
+  },
+  load: loadClaudeCode
+};
+
+interface Subagents {
+  groups: SourcedRecord[][];
+  agentForFile: Map<string, string>;
+  metas: Map<string, ClaudeCodeAgentMeta>;
+  skipped: SkippedRecord[];
 }

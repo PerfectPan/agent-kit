@@ -66,14 +66,6 @@ const GrokTurnUsage = z.extend(GrokCounts, {
   modelUsage: lenient(z.record(z.string(), lenient(GrokCounts)))
 });
 
-/**
- * Usage of a `turn_completed.usage` object, or of one `modelUsage` entry. Grok's `inputTokens` already includes
- * cached input (`cachedReadTokens` ≤ `inputTokens`), so cache counts stay subsets and are not added again.
- */
-export function grokUsage(value: unknown): Usage | undefined {
-  return grokUsageOf(z.safeParse(GrokCounts, value).data);
-}
-
 /** The Usage of Grok counts this module's schemas parsed; absent when no count is present. */
 export function grokUsageOf(counts: GrokCountsValue | undefined): Usage | undefined {
   if (!counts) {
@@ -87,6 +79,14 @@ export function grokUsageOf(counts: GrokCountsValue | undefined): Usage | undefi
     cacheWriteTokens: counts.cacheCreationTokens,
     reasoningTokens: counts.reasoningTokens
   });
+}
+
+/**
+ * Usage of a `turn_completed.usage` object, or of one `modelUsage` entry. Grok's `inputTokens` already includes
+ * cached input (`cachedReadTokens` ≤ `inputTokens`), so cache counts stay subsets and are not added again.
+ */
+export function grokUsage(value: unknown): Usage | undefined {
+  return grokUsageOf(z.safeParse(GrokCounts, value).data);
 }
 
 /** The parsed `turn_completed.usage` of an update, or `undefined` when it is not a record. */
@@ -224,7 +224,9 @@ const GrokUpdateFields = z.looseObject({
 // field the schema parses without a declaration, and a declaration the schema no longer parses, both fail this
 // assertion and stop the build. The value is read below so the check counts as used.
 type _Shape = keyof typeof GrokUpdateFields.shape;
+
 type _Declared = AcpUpdateField | keyof GrokFieldsValue;
+
 const _schemaFieldsDeclared: [_Shape] extends [_Declared] ? ([_Declared] extends [_Shape] ? true : never) : never =
   true;
 void _schemaFieldsDeclared;
@@ -338,6 +340,39 @@ const GrokUsageRecordedUpdate = z.looseObject({
   update: lenient(GrokUsageUpdateFields)
 });
 
+/** The state a cursor carries back, reading only the fields it understands. */
+const GrokSavedState = z.looseObject({
+  turn: lenient(z.looseObject({ prompt: lenient(z.string()), model: lenient(z.string()) })),
+  lastTime: lenient(z.number())
+});
+
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+function restore(saved: unknown): GrokUsageState {
+  const state = z.safeParse(GrokSavedState, saved).data;
+  const turn = state?.turn;
+  return {
+    turn: {
+      ...(turn?.prompt === undefined ? {} : { prompt: turn.prompt }),
+      ...(turn?.model === undefined ? {} : { model: turn.model })
+    },
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime })
+  };
+}
+
+/** Per-model detail with the cost each model's ticks price; entries with no token counts are left out. */
+function modelUsageWithCost(modelUsage: GrokTurnUsageValue["modelUsage"]): Record<string, ModelUsage> | undefined {
+  const byModel = grokUsageByModel(modelUsage);
+  if (!byModel) {
+    return undefined;
+  }
+  const out: Record<string, ModelUsage> = {};
+  for (const [model, detail] of Object.entries(byModel)) {
+    const costUsd = grokCostUsd(modelUsage?.[model]?.costUsdTicks);
+    out[model] = costUsd === undefined ? detail : { ...detail, costUsd, costSource: "agent" };
+  }
+  return out;
+}
+
 /**
  * Grok's usage over one session's `updates.jsonl`. Grok records usage only per turn (`turn_completed.usage` sums the
  * turn's model calls, including subagents that finished within it), so each record has `granularity: "turn"`,
@@ -404,39 +439,6 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
     save() {
       return structuredClone(state);
     }
-  };
-}
-
-/** Per-model detail with the cost each model's ticks price; entries with no token counts are left out. */
-function modelUsageWithCost(modelUsage: GrokTurnUsageValue["modelUsage"]): Record<string, ModelUsage> | undefined {
-  const byModel = grokUsageByModel(modelUsage);
-  if (!byModel) {
-    return undefined;
-  }
-  const out: Record<string, ModelUsage> = {};
-  for (const [model, detail] of Object.entries(byModel)) {
-    const costUsd = grokCostUsd(modelUsage?.[model]?.costUsdTicks);
-    out[model] = costUsd === undefined ? detail : { ...detail, costUsd, costSource: "agent" };
-  }
-  return out;
-}
-
-/** The state a cursor carries back, reading only the fields it understands. */
-const GrokSavedState = z.looseObject({
-  turn: lenient(z.looseObject({ prompt: lenient(z.string()), model: lenient(z.string()) })),
-  lastTime: lenient(z.number())
-});
-
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
-function restore(saved: unknown): GrokUsageState {
-  const state = z.safeParse(GrokSavedState, saved).data;
-  const turn = state?.turn;
-  return {
-    turn: {
-      ...(turn?.prompt === undefined ? {} : { prompt: turn.prompt }),
-      ...(turn?.model === undefined ? {} : { model: turn.model })
-    },
-    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime })
   };
 }
 

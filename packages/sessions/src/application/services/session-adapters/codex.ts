@@ -23,29 +23,6 @@ import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } f
 
 const AGENT = "codex";
 
-export const codexSessionAdapter: SessionAdapter = {
-  specificationVersion: "sessions-v1",
-  agent: AGENT,
-  displayName: "Codex",
-  capabilities: CODEX_CAPABILITIES,
-  roots: codexRoots,
-  discover(platform, root, options = {}) {
-    return discoverSessions(platform, AGENT, root, {
-      ...options,
-      files: CODEX_SESSION_FILES,
-      preview: previewCodexRecords
-    });
-  },
-  async detect(platform, ref) {
-    if (looksLikeCodexSession(ref.path, undefined)) {
-      return true;
-    }
-    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
-    return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
-  },
-  load: loadCodex
-};
-
 async function loadCodex(
   platform: SessionPlatform,
   ref: SessionRef,
@@ -71,3 +48,26 @@ async function loadCodex(
   options.signal?.throwIfAborted();
   return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
 }
+
+export const codexSessionAdapter: SessionAdapter = {
+  specificationVersion: "sessions-v1",
+  agent: AGENT,
+  displayName: "Codex",
+  capabilities: CODEX_CAPABILITIES,
+  roots: codexRoots,
+  discover(platform, root, options = {}) {
+    return discoverSessions(platform, AGENT, root, {
+      ...options,
+      files: CODEX_SESSION_FILES,
+      preview: previewCodexRecords
+    });
+  },
+  async detect(platform, ref) {
+    if (looksLikeCodexSession(ref.path, undefined)) {
+      return true;
+    }
+    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
+    return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
+  },
+  load: loadCodex
+};

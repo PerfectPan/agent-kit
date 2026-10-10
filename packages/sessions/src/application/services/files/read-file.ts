@@ -21,6 +21,21 @@ export function readProgress(onProgress?: (bytes: number) => void): ReadProgress
   };
 }
 
+/**
+ * Stops a read between chunks once `signal` aborts, rejecting with its reason, so a long line or a large range is
+ * not read to the end after an abort. Closing early closes the platform's iterator.
+ */
+async function* abortable(
+  chunks: AsyncIterable<Uint8Array>,
+  signal: AbortSignal | undefined
+): AsyncGenerator<Uint8Array> {
+  signal?.throwIfAborted();
+  for await (const chunk of chunks) {
+    signal?.throwIfAborted();
+    yield chunk;
+  }
+}
+
 export async function readBytes(
   platform: SessionPlatform,
   path: string,
@@ -84,20 +99,5 @@ export async function* readLines(
     options.progress?.add(lineEnd - read);
     read = lineEnd;
     yield line;
-  }
-}
-
-/**
- * Stops a read between chunks once `signal` aborts, rejecting with its reason, so a long line or a large range is
- * not read to the end after an abort. Closing early closes the platform's iterator.
- */
-async function* abortable(
-  chunks: AsyncIterable<Uint8Array>,
-  signal: AbortSignal | undefined
-): AsyncGenerator<Uint8Array> {
-  signal?.throwIfAborted();
-  for await (const chunk of chunks) {
-    signal?.throwIfAborted();
-    yield chunk;
   }
 }

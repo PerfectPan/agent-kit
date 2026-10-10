@@ -44,6 +44,66 @@ function emitted(event: TranscriptEvent, extra: Omit<EmittedResponseItem, "event
   return { event, ...extra };
 }
 
+/** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */
+function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
+  const role = item.role;
+  const text = textFrom(item.content);
+  const body = text ? { text } : {};
+  if (role === "developer") {
+    return emitted(emit("system", { ...body, injected: true }), text ? { text } : {});
+  }
+  if (role === "user") {
+    return emitted(
+      emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }),
+      text ? { text } : {}
+    );
+  }
+  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text ? { text } : {});
+}
+
+/** Function call arguments are a JSON string; a string that is not JSON stays as it is. */
+function argsOf(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+/** Exit-code headers Codex writes before a shell tool's output. */
+const EXIT_LINE = /^(?:Exit code: |Process exited with code )(-?\d+)$/m;
+
+/** `metadata.exit_code` of a JSON output, read through the schema of that output object. */
+const ExitCodeOutput = z.looseObject({ metadata: lenient(z.looseObject({ exit_code: lenient(z.number()) })) });
+
+/** `metadata.exit_code` of a JSON output, else the `Exit code:` header line in the lines before `Output:`. */
+function exitCodeOf(output: unknown): number | undefined {
+  if (typeof output !== "string") {
+    return undefined;
+  }
+  if (output.startsWith("{")) {
+    try {
+      const code = z.safeParse(ExitCodeOutput, JSON.parse(output)).data?.metadata?.exit_code;
+      if (code !== undefined) {
+        return code;
+      }
+    } catch {
+      // Not JSON; read the text header below.
+    }
+  }
+  const header = output.split("\nOutput:", 1)[0]!.split("\n", 6).join("\n");
+  const match = EXIT_LINE.exec(header);
+  return match ? Number(match[1]) : undefined;
+}
+
+function resultFlags(output: unknown): { isError?: boolean; exitCode?: number } {
+  const exitCode = exitCodeOf(output);
+  return exitCode === undefined ? {} : { exitCode, isError: exitCode !== 0 };
+}
+
 /**
  * Emits the event of one response item (`response_item.payload`, or a bare item of an older rollout). The caller
  * handles `compaction` items; any type not listed here becomes an `unknown` event.
@@ -132,64 +192,4 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
     default:
       return emitted(emit("unknown", { type }));
   }
-}
-
-/** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */
-function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
-  const role = item.role;
-  const text = textFrom(item.content);
-  const body = text ? { text } : {};
-  if (role === "developer") {
-    return emitted(emit("system", { ...body, injected: true }), text ? { text } : {});
-  }
-  if (role === "user") {
-    return emitted(
-      emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }),
-      text ? { text } : {}
-    );
-  }
-  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text ? { text } : {});
-}
-
-/** Function call arguments are a JSON string; a string that is not JSON stays as it is. */
-function argsOf(value: unknown): unknown {
-  if (typeof value !== "string") {
-    return value;
-  }
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return value;
-  }
-}
-
-/** Exit-code headers Codex writes before a shell tool's output. */
-const EXIT_LINE = /^(?:Exit code: |Process exited with code )(-?\d+)$/m;
-
-/** `metadata.exit_code` of a JSON output, read through the schema of that output object. */
-const ExitCodeOutput = z.looseObject({ metadata: lenient(z.looseObject({ exit_code: lenient(z.number()) })) });
-
-function resultFlags(output: unknown): { isError?: boolean; exitCode?: number } {
-  const exitCode = exitCodeOf(output);
-  return exitCode === undefined ? {} : { exitCode, isError: exitCode !== 0 };
-}
-
-/** `metadata.exit_code` of a JSON output, else the `Exit code:` header line in the lines before `Output:`. */
-function exitCodeOf(output: unknown): number | undefined {
-  if (typeof output !== "string") {
-    return undefined;
-  }
-  if (output.startsWith("{")) {
-    try {
-      const code = z.safeParse(ExitCodeOutput, JSON.parse(output)).data?.metadata?.exit_code;
-      if (code !== undefined) {
-        return code;
-      }
-    } catch {
-      // Not JSON; read the text header below.
-    }
-  }
-  const header = output.split("\nOutput:", 1)[0]!.split("\n", 6).join("\n");
-  const match = EXIT_LINE.exec(header);
-  return match ? Number(match[1]) : undefined;
 }

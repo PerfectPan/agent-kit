@@ -75,6 +75,16 @@ const PiSavedState = z.looseObject({
   lastTime: lenient(z.number())
 });
 
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+function restore(saved: unknown): PiUsageState {
+  const state = z.safeParse(PiSavedState, saved).data;
+  return {
+    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+    ...(state?.forkTime === undefined ? {} : { forkTime: state.forkTime }),
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime })
+  };
+}
+
 /**
  * Pi's usage over one session file: one record per assistant message with usage, with the cost Pi logged
  * (`usage.cost.total`, kept even when 0) as the agent's. The copied entries at the start of a forked or branched
@@ -141,16 +151,6 @@ export function piUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder
     save() {
       return structuredClone(state);
     }
-  };
-}
-
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
-function restore(saved: unknown): PiUsageState {
-  const state = z.safeParse(PiSavedState, saved).data;
-  return {
-    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
-    ...(state?.forkTime === undefined ? {} : { forkTime: state.forkTime }),
-    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime })
   };
 }
 

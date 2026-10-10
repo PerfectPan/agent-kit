@@ -220,6 +220,69 @@ interface CodexUsageState {
  */
 const RESPONSE_IDS = 8;
 
+function callRecord(
+  state: CodexUsageState,
+  file: UsageFile,
+  usage: Usage,
+  timestamp: number,
+  source: UsageRecord["source"],
+  responseId: string | undefined
+): UsageRecord {
+  const record: UsageRecord = {
+    agent: AGENT,
+    sessionId: state.sessionId ?? file.sessionId,
+    granularity: "request",
+    timestamp,
+    usage,
+    source
+  };
+  if (responseId) {
+    record.responseId = responseId;
+  }
+  if (state.model) {
+    record.model = state.model;
+  }
+  const multiplier = codexPricingMultiplier(state.serviceTier);
+  if (multiplier !== undefined) {
+    record.pricingMultiplier = multiplier;
+  }
+  return record;
+}
+
+/** The state a cursor carries back, read field by field: a field of an unexpected type counts as absent. */
+const CodexSavedState = z.looseObject({
+  sessionId: lenient(z.string()),
+  model: lenient(z.string()),
+  serviceTier: lenient(z.string()),
+  lastTime: lenient(z.number()),
+  fork: lenient(
+    z.looseObject({
+      phase: lenient(z.string()),
+      forkTime: lenient(z.number()),
+      second: lenient(z.number())
+    })
+  ),
+  tracker: lenient(z.looseObject({ usageRecords: lenient(z.boolean()), totals: z.optional(z.unknown()) })),
+  responses: lenient(z.array(lenient(z.string()))),
+  waiting: z.optional(z.unknown())
+});
+
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. The state
+ * is cloned first, so an emitted record and the caller's cursor never share an object. */
+function restore(saved: unknown): CodexUsageState {
+  const state = z.safeParse(CodexSavedState, structuredClone(saved)).data;
+  return {
+    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+    ...(state?.model === undefined ? {} : { model: state.model }),
+    ...(state?.serviceTier === undefined ? {} : { serviceTier: state.serviceTier }),
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
+    ...(state?.waiting === undefined ? {} : { waiting: state.waiting as UsageRecord }),
+    fork: state?.fork?.phase === undefined ? FORK_REPLAY_START : (state.fork as ForkReplayState),
+    tracker: { ...state?.tracker, usageRecords: state?.tracker?.usageRecords === true },
+    responses: state?.responses?.filter((id): id is string => id !== undefined) ?? []
+  };
+}
+
 /**
  * Codex's usage over one rollout, by the translator's rules (`codexRecordUsage`, `stepForkReplay`): one record per
  * model call, with the model of the turn's `turn_context` and the price factor of the thread's service tier
@@ -299,69 +362,6 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
     save() {
       return structuredClone(state);
     }
-  };
-}
-
-function callRecord(
-  state: CodexUsageState,
-  file: UsageFile,
-  usage: Usage,
-  timestamp: number,
-  source: UsageRecord["source"],
-  responseId: string | undefined
-): UsageRecord {
-  const record: UsageRecord = {
-    agent: AGENT,
-    sessionId: state.sessionId ?? file.sessionId,
-    granularity: "request",
-    timestamp,
-    usage,
-    source
-  };
-  if (responseId) {
-    record.responseId = responseId;
-  }
-  if (state.model) {
-    record.model = state.model;
-  }
-  const multiplier = codexPricingMultiplier(state.serviceTier);
-  if (multiplier !== undefined) {
-    record.pricingMultiplier = multiplier;
-  }
-  return record;
-}
-
-/** The state a cursor carries back, read field by field: a field of an unexpected type counts as absent. */
-const CodexSavedState = z.looseObject({
-  sessionId: lenient(z.string()),
-  model: lenient(z.string()),
-  serviceTier: lenient(z.string()),
-  lastTime: lenient(z.number()),
-  fork: lenient(
-    z.looseObject({
-      phase: lenient(z.string()),
-      forkTime: lenient(z.number()),
-      second: lenient(z.number())
-    })
-  ),
-  tracker: lenient(z.looseObject({ usageRecords: lenient(z.boolean()), totals: z.optional(z.unknown()) })),
-  responses: lenient(z.array(lenient(z.string()))),
-  waiting: z.optional(z.unknown())
-});
-
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. The state
- * is cloned first, so an emitted record and the caller's cursor never share an object. */
-function restore(saved: unknown): CodexUsageState {
-  const state = z.safeParse(CodexSavedState, structuredClone(saved)).data;
-  return {
-    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
-    ...(state?.model === undefined ? {} : { model: state.model }),
-    ...(state?.serviceTier === undefined ? {} : { serviceTier: state.serviceTier }),
-    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
-    ...(state?.waiting === undefined ? {} : { waiting: state.waiting as UsageRecord }),
-    fork: state?.fork?.phase === undefined ? FORK_REPLAY_START : (state.fork as ForkReplayState),
-    tracker: { ...state?.tracker, usageRecords: state?.tracker?.usageRecords === true },
-    responses: state?.responses?.filter((id): id is string => id !== undefined) ?? []
   };
 }
 

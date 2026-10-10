@@ -92,157 +92,6 @@ export interface ClaudeCodeTranslateOptions {
   agentMeta?: ReadonlyMap<string, ClaudeCodeAgentMeta>;
 }
 
-/**
- * Translates Claude Code records, already merged across the session's files in time order (`mergeByTime`), into
- * transcript events. Event ids are record `uuid`s, with `:<part>` for the later content blocks of one record.
- */
-export function translateClaudeCodeRecords(
-  stamped: readonly StampedRecord[],
-  options: ClaudeCodeTranslateOptions = {}
-): Result<ParsedTranscript, UnknownFormatGeneration> {
-  const events: TranscriptEvent[] = [];
-  const skipped: SkippedRecord[] = [];
-  const requests = new Map<string, TranscriptEvent>();
-  const parentOf = new Map<string, string | undefined>();
-  /** Each event's parsed record, so the later passes never parse a record again. */
-  const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
-  let sessionId = options.sessionId;
-  let title: string | undefined;
-  let titleExplicit = false;
-  let cwd: string | undefined;
-  let agentVersion: string | undefined;
-  let startedAt: number | undefined;
-  let endedAt: number | undefined;
-
-  const rememberTitle = (text: string | undefined, explicit = false): void => {
-    if (!text) {
-      return;
-    }
-    if (explicit) {
-      title = text;
-      titleExplicit = true;
-    } else if (!titleExplicit && !title) {
-      title = text.slice(0, 80);
-    }
-  };
-
-  for (const { record, ts } of stamped) {
-    const rec = parseClaudeCodeRecord(record.value);
-    if (!rec) {
-      return err(unknownFormatGeneration(AGENT, record));
-    }
-    const type = rec.type;
-    const uuid = rec.uuid;
-    if (startedAt === undefined || ts < startedAt) {
-      startedAt = ts;
-    }
-    if (endedAt === undefined || ts > endedAt) {
-      endedAt = ts;
-    }
-    sessionId ||= rec.sessionId;
-    cwd ||= rec.cwd;
-    if (!agentVersion && typeof rec.version === "string") {
-      agentVersion = rec.version;
-    }
-    let agentId = rec.agentId ?? options.agentForFile?.(record.file);
-    if (rec.isSidechain) {
-      agentId ??= "sidechain";
-    }
-    const parentId = rec.parentUuid;
-    if (uuid) {
-      parentOf.set(uuid, parentId);
-    }
-
-    const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
-      const event = baseEvent(record, kind, payload, {
-        id: eventId(uuid, record, part),
-        ts,
-        agentId,
-        parentId,
-        requestId
-      });
-      events.push(event);
-      parsed.set(event, rec);
-    };
-
-    if (type === "user" || type === "assistant") {
-      const requestId = claudeCodeRequestKey(rec);
-      if (requestId) {
-        mergeRequest(requests, events, parsed, rec, record, ts, agentId, requestId);
-      }
-      const message = rec.message;
-      const flags: ClaudeCodeUserFlags = type === "user" ? userFlags(rec) : {};
-      const content = message?.content;
-      if (type === "user" && !agentId && isPromptFlags(flags)) {
-        rememberTitle(recordText(rec));
-      }
-      if (typeof content === "string") {
-        emit(type, { ...flags, ...(content ? { text: content } : {}) }, 0, requestId);
-      } else if (!Array.isArray(content) || content.length === 0) {
-        emit(type, { ...flags }, 0, requestId);
-      } else {
-        content.forEach((block, part) => {
-          const [kind, payload] = blockEvent(type, flags, block);
-          emit(kind, payload, part, requestId);
-        });
-      }
-      continue;
-    }
-
-    if (type === "system") {
-      const [kind, payload] = systemEvent(rec);
-      emit(kind, payload, 0);
-      continue;
-    }
-
-    if (type === "attachment") {
-      const attachment = rec.attachment;
-      const attachmentType = attachment?.type ?? "";
-      if (attachment && attachmentType === "prompt_snapshot") {
-        const payload = promptSnapshotPayload(attachment);
-        if (!payload) {
-          return err(unknownFormatGeneration(AGENT, record));
-        }
-        emit("system", payload, 0);
-      } else if (attachmentType.startsWith("hook_")) {
-        emit("hook", hookPayload(attachmentType, attachment), 0);
-      } else {
-        skipRecord(skipped, record, `attachment:${attachmentType || "record"}`);
-      }
-      continue;
-    }
-
-    if (type === "custom-title") {
-      rememberTitle(rec.customTitle, true);
-      skipRecord(skipped, record, "custom-title");
-    } else if (type === "ai-title" || type === "summary") {
-      rememberTitle(rec.aiTitle ?? rec.summary ?? rec.title);
-      skipRecord(skipped, record, type);
-    } else if (BOOKKEEPING.has(type)) {
-      skipRecord(skipped, record, type);
-    } else {
-      emit("unknown", { type }, 0);
-    }
-  }
-
-  resolveParents(events, parentOf);
-  shadowRemoved(events, parsed);
-  markOrphanToolResults(events);
-  assignSeq(events);
-
-  const agents = agentLanes(events, options.agentMeta, parsed);
-  const fallbackId = options.path === undefined ? undefined : claudeCodeSessionStem(options.path) || "unknown";
-  const session: TranscriptSession = {
-    id: sessionId ?? fallbackId ?? "unknown",
-    ...(title ? { title } : {}),
-    ...(cwd ? { cwd } : {}),
-    ...(startedAt === undefined ? {} : { startedAt }),
-    ...(endedAt === undefined ? {} : { endedAt })
-  };
-  applySnapshots(events, agents, session);
-  return ok({ events, skipped, session, agents, ...(agentVersion ? { agentVersion } : {}) });
-}
-
 function eventId(uuid: string | undefined, record: SourcedRecord, part: number): string {
   if (!uuid) {
     return lineId(record, part);
@@ -505,4 +354,155 @@ function agentLanes(
     agents.push(agent);
   }
   return agents;
+}
+
+/**
+ * Translates Claude Code records, already merged across the session's files in time order (`mergeByTime`), into
+ * transcript events. Event ids are record `uuid`s, with `:<part>` for the later content blocks of one record.
+ */
+export function translateClaudeCodeRecords(
+  stamped: readonly StampedRecord[],
+  options: ClaudeCodeTranslateOptions = {}
+): Result<ParsedTranscript, UnknownFormatGeneration> {
+  const events: TranscriptEvent[] = [];
+  const skipped: SkippedRecord[] = [];
+  const requests = new Map<string, TranscriptEvent>();
+  const parentOf = new Map<string, string | undefined>();
+  /** Each event's parsed record, so the later passes never parse a record again. */
+  const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
+  let sessionId = options.sessionId;
+  let title: string | undefined;
+  let titleExplicit = false;
+  let cwd: string | undefined;
+  let agentVersion: string | undefined;
+  let startedAt: number | undefined;
+  let endedAt: number | undefined;
+
+  const rememberTitle = (text: string | undefined, explicit = false): void => {
+    if (!text) {
+      return;
+    }
+    if (explicit) {
+      title = text;
+      titleExplicit = true;
+    } else if (!titleExplicit && !title) {
+      title = text.slice(0, 80);
+    }
+  };
+
+  for (const { record, ts } of stamped) {
+    const rec = parseClaudeCodeRecord(record.value);
+    if (!rec) {
+      return err(unknownFormatGeneration(AGENT, record));
+    }
+    const type = rec.type;
+    const uuid = rec.uuid;
+    if (startedAt === undefined || ts < startedAt) {
+      startedAt = ts;
+    }
+    if (endedAt === undefined || ts > endedAt) {
+      endedAt = ts;
+    }
+    sessionId ||= rec.sessionId;
+    cwd ||= rec.cwd;
+    if (!agentVersion && typeof rec.version === "string") {
+      agentVersion = rec.version;
+    }
+    let agentId = rec.agentId ?? options.agentForFile?.(record.file);
+    if (rec.isSidechain) {
+      agentId ??= "sidechain";
+    }
+    const parentId = rec.parentUuid;
+    if (uuid) {
+      parentOf.set(uuid, parentId);
+    }
+
+    const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
+      const event = baseEvent(record, kind, payload, {
+        id: eventId(uuid, record, part),
+        ts,
+        agentId,
+        parentId,
+        requestId
+      });
+      events.push(event);
+      parsed.set(event, rec);
+    };
+
+    if (type === "user" || type === "assistant") {
+      const requestId = claudeCodeRequestKey(rec);
+      if (requestId) {
+        mergeRequest(requests, events, parsed, rec, record, ts, agentId, requestId);
+      }
+      const message = rec.message;
+      const flags: ClaudeCodeUserFlags = type === "user" ? userFlags(rec) : {};
+      const content = message?.content;
+      if (type === "user" && !agentId && isPromptFlags(flags)) {
+        rememberTitle(recordText(rec));
+      }
+      if (typeof content === "string") {
+        emit(type, { ...flags, ...(content ? { text: content } : {}) }, 0, requestId);
+      } else if (!Array.isArray(content) || content.length === 0) {
+        emit(type, { ...flags }, 0, requestId);
+      } else {
+        content.forEach((block, part) => {
+          const [kind, payload] = blockEvent(type, flags, block);
+          emit(kind, payload, part, requestId);
+        });
+      }
+      continue;
+    }
+
+    if (type === "system") {
+      const [kind, payload] = systemEvent(rec);
+      emit(kind, payload, 0);
+      continue;
+    }
+
+    if (type === "attachment") {
+      const attachment = rec.attachment;
+      const attachmentType = attachment?.type ?? "";
+      if (attachment && attachmentType === "prompt_snapshot") {
+        const payload = promptSnapshotPayload(attachment);
+        if (!payload) {
+          return err(unknownFormatGeneration(AGENT, record));
+        }
+        emit("system", payload, 0);
+      } else if (attachmentType.startsWith("hook_")) {
+        emit("hook", hookPayload(attachmentType, attachment), 0);
+      } else {
+        skipRecord(skipped, record, `attachment:${attachmentType || "record"}`);
+      }
+      continue;
+    }
+
+    if (type === "custom-title") {
+      rememberTitle(rec.customTitle, true);
+      skipRecord(skipped, record, "custom-title");
+    } else if (type === "ai-title" || type === "summary") {
+      rememberTitle(rec.aiTitle ?? rec.summary ?? rec.title);
+      skipRecord(skipped, record, type);
+    } else if (BOOKKEEPING.has(type)) {
+      skipRecord(skipped, record, type);
+    } else {
+      emit("unknown", { type }, 0);
+    }
+  }
+
+  resolveParents(events, parentOf);
+  shadowRemoved(events, parsed);
+  markOrphanToolResults(events);
+  assignSeq(events);
+
+  const agents = agentLanes(events, options.agentMeta, parsed);
+  const fallbackId = options.path === undefined ? undefined : claudeCodeSessionStem(options.path) || "unknown";
+  const session: TranscriptSession = {
+    id: sessionId ?? fallbackId ?? "unknown",
+    ...(title ? { title } : {}),
+    ...(cwd ? { cwd } : {}),
+    ...(startedAt === undefined ? {} : { startedAt }),
+    ...(endedAt === undefined ? {} : { endedAt })
+  };
+  applySnapshots(events, agents, session);
+  return ok({ events, skipped, session, agents, ...(agentVersion ? { agentVersion } : {}) });
 }

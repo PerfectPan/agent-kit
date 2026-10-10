@@ -26,28 +26,6 @@ const layout: JsonlUsageLayout = {
 };
 
 /**
- * Every chat file under `<home>/tmp/<project>/chats/`. An older `.json` chat whose `.jsonl` sibling exists was
- * migrated into it, so only the `.jsonl` file is a source; its records keep their message ids.
- */
-export const geminiCliUsageDecoder: UsageDecoder = {
-  specificationVersion: "usage-v1",
-  agent: AGENT,
-  usageKey: geminiCliUsageKey,
-  sources(platform, home, options = {}) {
-    return fileSources(platform, AGENT, geminiCliUsageRoots(home), GEMINI_CLI_CHAT_FILES, {
-      ...options,
-      keep: isGeminiCliUsageSource,
-      identify: belowRoot
-    });
-  },
-  decode(platform, target, options = {}) {
-    return isGeminiCliLegacyChat(target.path)
-      ? decodeLegacyChat(platform, target, options)
-      : decodeJsonlUsage(platform, target, layout, options);
-  }
-};
-
-/**
  * An older chat is one JSON object, read whole. Its cursor is the file size: the CLI no longer writes such files, and
  * one that changed since is `SourceChanged`.
  */
@@ -100,3 +78,25 @@ function decodeLegacyChat(platform: UsagePlatform, target: UsageTarget, options:
     }
   }, from);
 }
+
+/**
+ * Every chat file under `<home>/tmp/<project>/chats/`. An older `.json` chat whose `.jsonl` sibling exists was
+ * migrated into it, so only the `.jsonl` file is a source; its records keep their message ids.
+ */
+export const geminiCliUsageDecoder: UsageDecoder = {
+  specificationVersion: "usage-v1",
+  agent: AGENT,
+  usageKey: geminiCliUsageKey,
+  sources(platform, home, options = {}) {
+    return fileSources(platform, AGENT, geminiCliUsageRoots(home), GEMINI_CLI_CHAT_FILES, {
+      ...options,
+      keep: isGeminiCliUsageSource,
+      identify: belowRoot
+    });
+  },
+  decode(platform, target, options = {}) {
+    return isGeminiCliLegacyChat(target.path)
+      ? decodeLegacyChat(platform, target, options)
+      : decodeJsonlUsage(platform, target, layout, options);
+  }
+};

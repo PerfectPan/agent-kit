@@ -5,6 +5,10 @@ import { basenamePath, joinPath } from "../../index.js";
 // Codex writes one rollout file per session, `rollout-<time>-<id>.jsonl`, under `<home>/sessions/YYYY/MM/DD/`, and
 // moves older ones into `<home>/archived_sessions/`. A forked or subagent session is a rollout of its own.
 
+function isRolloutName(name: string): boolean {
+  return name.startsWith("rollout-") && name.endsWith(".jsonl");
+}
+
 /** Both directories: listing only `sessions/` misses every archived session. */
 export function codexRoots(home: AgentHome): string[] {
   return [joinPath(home.path, "sessions"), joinPath(home.path, "archived_sessions")];
@@ -32,8 +36,4 @@ export function looksLikeCodexSession(path: string, head: string | undefined): b
     return true;
   }
   return head !== undefined && head.slice(0, 2000).includes('"session_meta"');
-}
-
-function isRolloutName(name: string): boolean {
-  return name.startsWith("rollout-") && name.endsWith(".jsonl");
 }
