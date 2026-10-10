@@ -23,10 +23,6 @@ import { readTree } from "./support.js";
 const tree = await readTree(fileURLToPath(new URL("fixtures/codex", import.meta.url)), "/u/me/.codex/fx");
 const platform = createMemoryPlatform({ files: tree, home: "/u/me" });
 const rollout = (name: string) => `/u/me/.codex/fx/conformance/rollout-${name}.jsonl`;
-const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "codex", path: rollout(name) }));
-const requests = (transcript: Pick<Transcript, "events">) =>
-  transcript.events.filter((event) => event.kind === "request");
 
 function value<T>(result: Result<T, unknown>): T {
   if (!result.ok) {
@@ -34,6 +30,11 @@ function value<T>(result: Result<T, unknown>): T {
   }
   return result.value;
 }
+
+const load = async (name: string): Promise<Transcript> =>
+  value(await loadTranscript(platform, { agent: "codex", path: rollout(name) }));
+const requests = (transcript: Pick<Transcript, "events">) =>
+  transcript.events.filter((event) => event.kind === "request");
 
 // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file
 async function* failing(error: Error): AsyncGenerator<Uint8Array> {

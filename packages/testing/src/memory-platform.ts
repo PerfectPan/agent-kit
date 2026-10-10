@@ -61,6 +61,35 @@ interface StoredFile {
   mtimeMs: number;
 }
 
+function normalize(path: string): string {
+  const parts: string[] = [];
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return `/${parts.join("/")}`;
+}
+
+function parentOf(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash <= 0 ? "/" : path.slice(0, slash);
+}
+
+// A copy that no caller holds: `Buffer#slice` would return a view of the caller's memory.
+function toBytes(data: string | Uint8Array): Uint8Array {
+  return typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
+}
+
+function fsError(code: string, path: string): Error {
+  return Object.assign(new Error(`${code}: ${path}`), { code, path });
+}
+
 /**
  * An in-memory Platform for tests. Paths are normalized (`//`, `.`, `..` and a trailing `/`); there are no special
  * files or symlinks, so `followSymlinks` changes nothing. `list` rejects for a missing path or a file; writing a file
@@ -293,33 +322,4 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
     process: { run },
     clock: { now, monotonic: () => performance.now() }
   };
-}
-
-function normalize(path: string): string {
-  const parts: string[] = [];
-  for (const part of path.split("/")) {
-    if (part === "" || part === ".") {
-      continue;
-    }
-    if (part === "..") {
-      parts.pop();
-    } else {
-      parts.push(part);
-    }
-  }
-  return `/${parts.join("/")}`;
-}
-
-function parentOf(path: string): string {
-  const slash = path.lastIndexOf("/");
-  return slash <= 0 ? "/" : path.slice(0, slash);
-}
-
-// A copy that no caller holds: `Buffer#slice` would return a view of the caller's memory.
-function toBytes(data: string | Uint8Array): Uint8Array {
-  return typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
-}
-
-function fsError(code: string, path: string): Error {
-  return Object.assign(new Error(`${code}: ${path}`), { code, path });
 }

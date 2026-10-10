@@ -32,8 +32,6 @@ const files = {
 };
 const platform = createMemoryPlatform({ files, home: "/u/me" });
 const session = (name: string) => `/u/me/.grok/sessions/${name}/updates.jsonl`;
-const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "grok", path: session(name) }));
 
 function value<T>(result: Result<T, unknown>): T {
   if (!result.ok) {
@@ -41,6 +39,9 @@ function value<T>(result: Result<T, unknown>): T {
   }
   return result.value;
 }
+
+const load = async (name: string): Promise<Transcript> =>
+  value(await loadTranscript(platform, { agent: "grok", path: session(name) }));
 
 function grokRecord(update: Record<string, unknown>, line: number) {
   return {

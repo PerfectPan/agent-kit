@@ -28,8 +28,6 @@ const files = Object.fromEntries(
 );
 const platform = createMemoryPlatform({ files, home: "/u/me" });
 const session = (name: string) => `/u/me/.claude/projects/${name}/session.jsonl`;
-const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "claude-code", path: session(name) }));
 
 function value<T>(result: Result<T, unknown>): T {
   if (!result.ok) {
@@ -37,6 +35,9 @@ function value<T>(result: Result<T, unknown>): T {
   }
   return result.value;
 }
+
+const load = async (name: string): Promise<Transcript> =>
+  value(await loadTranscript(platform, { agent: "claude-code", path: session(name) }));
 
 // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file
 async function* failing(error: Error): AsyncGenerator<Uint8Array> {

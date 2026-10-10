@@ -72,6 +72,135 @@ const DEFAULT_VERSION_OUTPUT: CommandOutput = { code: 0, stdout: "1.0.0\n", stde
 const isAuthProblem = (problem: ProbeProblem): boolean =>
   problem._tag === "CredentialFileFailed" || (problem._tag === "CommandFailed" && problem.purpose === "auth");
 
+function check(condition: boolean, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function checkVersion(version: Version | undefined, output: CommandOutput): void {
+  if (version === undefined) {
+    return;
+  }
+  const what = `version ${JSON.stringify(version).slice(0, 80)} read from ${JSON.stringify(output).slice(0, 80)}`;
+  check(isPlainObject(version) && typeof version.output === "string", `${what} has no output`);
+  check(version.output !== "" && version.output.trim() === version.output, `${what} is blank or not trimmed`);
+  check(
+    version.number === undefined || (/\d/.test(version.number) && version.output.includes(version.number)),
+    `${what} has a number that is not in its output`
+  );
+}
+
+function checkReading(reading: AuthReading | undefined, input: unknown): void {
+  if (reading === undefined) {
+    return;
+  }
+  const what = `login ${JSON.stringify(reading)} read from ${String(JSON.stringify(input)).slice(0, 80)}`;
+  check(isPlainObject(reading) && typeof reading.loggedIn === "boolean", `${what} has no loggedIn flag`);
+  check(reading.method === undefined || (typeof reading.method === "string" && reading.method !== ""), `${what}`);
+}
+
+/**
+ * A machine with every command of the recipe on `PATH` and every path it checks. Each command prints
+ * `versionOutput` for the version arguments and the first login sample for the login arguments; a parsed credential
+ * file holds its sample, or `{}`.
+ */
+function installedMachine(
+  recipe: ProbeRecipe,
+  samples: ProbeRecipeSamples,
+  versionOutput: CommandOutput,
+  sampleFor: (path: ProbePath) => { readonly json: unknown } | undefined
+): MemoryPlatform {
+  const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe);
+  const credentials = new Map(
+    (recipe.auth?.credentialFiles ?? []).map((file) => [
+      expand(file.path),
+      file.parse ? JSON.stringify(sampleFor(file.path)?.json ?? {}) : ""
+    ])
+  );
+  const paths = [
+    ...[...recipe.appPaths, ...recipe.configPaths, ...recipe.mcpConfigPaths].map(expand),
+    ...credentials.keys()
+  ];
+  // A path that another path lies under is a directory; seeding the deeper path creates it.
+  const leaves = paths.filter((path) => !paths.some((other) => other.startsWith(`${path}/`)));
+  const authOutput = samples.auth?.[0]?.output;
+  const answer = (args: readonly string[]): CommandOutput => {
+    if (isEqual(args, recipe.version?.args)) {
+      return versionOutput;
+    }
+    if (authOutput !== undefined && isEqual(args, recipe.auth?.command?.args)) {
+      return authOutput;
+    }
+    return { code: 2, stdout: "", stderr: "unexpected arguments" };
+  };
+  return createMemoryPlatform({
+    home: HOME,
+    env: { PATH: BIN },
+    files: Object.fromEntries([...leaves, `${HOME}/.probe-home`].map((path) => [path, credentials.get(path) ?? ""])),
+    commands: Object.fromEntries(recipe.commands.map((command) => [`${BIN}/${command}`, answer]))
+  });
+}
+
+/** A value no parser should ever pass on, shaped like an API key. */
+const CANARY = "sk-ant-api03-Zq8vW2xK9mPf4LtRcN7bHy3D";
+/** A reading leaks when it holds any part of the canary this long, such as the first characters of a token. */
+const CANARY_PART = 8;
+
+/** `json` with the canary in each string position in turn: every string value and every object key. */
+function jsonVariants(json: unknown): unknown[] {
+  if (typeof json === "string") {
+    return [CANARY];
+  }
+  if (Array.isArray(json)) {
+    return json.flatMap((item, index) =>
+      jsonVariants(item).map((variant) => json.map((other, at) => (at === index ? variant : other)))
+    );
+  }
+  if (isPlainObject(json)) {
+    const entries = Object.entries(json);
+    return entries.flatMap(([key, value], index) => [
+      Object.fromEntries(entries.map((entry, at) => (at === index ? [CANARY, value] : entry))),
+      ...jsonVariants(value).map((variant) =>
+        Object.fromEntries(entries.map((entry, at) => (at === index ? [key, variant] : entry)))
+      )
+    ]);
+  }
+  return [];
+}
+
+/** A command output with the canary in each string position: JSON positions of a JSON output, else each word. */
+function outputVariants(output: CommandOutput): CommandOutput[] {
+  let json: unknown;
+  try {
+    json = JSON.parse(output.stdout);
+  } catch {
+    json = undefined;
+  }
+  if (json !== undefined && typeof json === "object" && json !== null) {
+    return jsonVariants(json).map((variant) => ({ ...output, stdout: JSON.stringify(variant) }));
+  }
+  const words = (text: string): string[] =>
+    [...text.matchAll(/\S+/g)].map(
+      (match) => `${text.slice(0, match.index)}${CANARY}${text.slice(match.index + match[0].length)}`
+    );
+  return [
+    ...words(output.stdout).map((stdout) => ({ ...output, stdout })),
+    ...words(output.stderr).map((stderr) => ({ ...output, stderr }))
+  ];
+}
+
+function checkNoCanary(reading: AuthReading | undefined, input: unknown): void {
+  const text = JSON.stringify(reading ?? null);
+  for (let at = 0; at + CANARY_PART <= CANARY.length; at += 1) {
+    const part = CANARY.slice(at, at + CANARY_PART);
+    check(
+      !text.includes(part),
+      `a login reading passed on ${JSON.stringify(part)} from its input: ${text} from ${JSON.stringify(input).slice(0, 120)}`
+    );
+  }
+}
+
 /**
  * The checks every probe recipe must pass, independent of a test runner: wire each into the runner, for example
  * `for (const { name, run } of probeRecipeConformance(recipe, samples)) it(name, run)`. `samples` adds the recipe's
@@ -280,133 +409,4 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
       }
     }
   ];
-}
-
-/**
- * A machine with every command of the recipe on `PATH` and every path it checks. Each command prints
- * `versionOutput` for the version arguments and the first login sample for the login arguments; a parsed credential
- * file holds its sample, or `{}`.
- */
-function installedMachine(
-  recipe: ProbeRecipe,
-  samples: ProbeRecipeSamples,
-  versionOutput: CommandOutput,
-  sampleFor: (path: ProbePath) => { readonly json: unknown } | undefined
-): MemoryPlatform {
-  const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe);
-  const credentials = new Map(
-    (recipe.auth?.credentialFiles ?? []).map((file) => [
-      expand(file.path),
-      file.parse ? JSON.stringify(sampleFor(file.path)?.json ?? {}) : ""
-    ])
-  );
-  const paths = [
-    ...[...recipe.appPaths, ...recipe.configPaths, ...recipe.mcpConfigPaths].map(expand),
-    ...credentials.keys()
-  ];
-  // A path that another path lies under is a directory; seeding the deeper path creates it.
-  const leaves = paths.filter((path) => !paths.some((other) => other.startsWith(`${path}/`)));
-  const authOutput = samples.auth?.[0]?.output;
-  const answer = (args: readonly string[]): CommandOutput => {
-    if (isEqual(args, recipe.version?.args)) {
-      return versionOutput;
-    }
-    if (authOutput !== undefined && isEqual(args, recipe.auth?.command?.args)) {
-      return authOutput;
-    }
-    return { code: 2, stdout: "", stderr: "unexpected arguments" };
-  };
-  return createMemoryPlatform({
-    home: HOME,
-    env: { PATH: BIN },
-    files: Object.fromEntries([...leaves, `${HOME}/.probe-home`].map((path) => [path, credentials.get(path) ?? ""])),
-    commands: Object.fromEntries(recipe.commands.map((command) => [`${BIN}/${command}`, answer]))
-  });
-}
-
-/** A value no parser should ever pass on, shaped like an API key. */
-const CANARY = "sk-ant-api03-Zq8vW2xK9mPf4LtRcN7bHy3D";
-/** A reading leaks when it holds any part of the canary this long, such as the first characters of a token. */
-const CANARY_PART = 8;
-
-/** `json` with the canary in each string position in turn: every string value and every object key. */
-function jsonVariants(json: unknown): unknown[] {
-  if (typeof json === "string") {
-    return [CANARY];
-  }
-  if (Array.isArray(json)) {
-    return json.flatMap((item, index) =>
-      jsonVariants(item).map((variant) => json.map((other, at) => (at === index ? variant : other)))
-    );
-  }
-  if (isPlainObject(json)) {
-    const entries = Object.entries(json);
-    return entries.flatMap(([key, value], index) => [
-      Object.fromEntries(entries.map((entry, at) => (at === index ? [CANARY, value] : entry))),
-      ...jsonVariants(value).map((variant) =>
-        Object.fromEntries(entries.map((entry, at) => (at === index ? [key, variant] : entry)))
-      )
-    ]);
-  }
-  return [];
-}
-
-/** A command output with the canary in each string position: JSON positions of a JSON output, else each word. */
-function outputVariants(output: CommandOutput): CommandOutput[] {
-  let json: unknown;
-  try {
-    json = JSON.parse(output.stdout);
-  } catch {
-    json = undefined;
-  }
-  if (json !== undefined && typeof json === "object" && json !== null) {
-    return jsonVariants(json).map((variant) => ({ ...output, stdout: JSON.stringify(variant) }));
-  }
-  const words = (text: string): string[] =>
-    [...text.matchAll(/\S+/g)].map(
-      (match) => `${text.slice(0, match.index)}${CANARY}${text.slice(match.index + match[0].length)}`
-    );
-  return [
-    ...words(output.stdout).map((stdout) => ({ ...output, stdout })),
-    ...words(output.stderr).map((stderr) => ({ ...output, stderr }))
-  ];
-}
-
-function checkNoCanary(reading: AuthReading | undefined, input: unknown): void {
-  const text = JSON.stringify(reading ?? null);
-  for (let at = 0; at + CANARY_PART <= CANARY.length; at += 1) {
-    const part = CANARY.slice(at, at + CANARY_PART);
-    check(
-      !text.includes(part),
-      `a login reading passed on ${JSON.stringify(part)} from its input: ${text} from ${JSON.stringify(input).slice(0, 120)}`
-    );
-  }
-}
-
-function checkVersion(version: Version | undefined, output: CommandOutput): void {
-  if (version === undefined) {
-    return;
-  }
-  const what = `version ${JSON.stringify(version).slice(0, 80)} read from ${JSON.stringify(output).slice(0, 80)}`;
-  check(isPlainObject(version) && typeof version.output === "string", `${what} has no output`);
-  check(version.output !== "" && version.output.trim() === version.output, `${what} is blank or not trimmed`);
-  check(
-    version.number === undefined || (/\d/.test(version.number) && version.output.includes(version.number)),
-    `${what} has a number that is not in its output`
-  );
-}
-
-function checkReading(reading: AuthReading | undefined, input: unknown): void {
-  if (reading === undefined) {
-    return;
-  }
-  const what = `login ${JSON.stringify(reading)} read from ${String(JSON.stringify(input)).slice(0, 80)}`;
-  check(isPlainObject(reading) && typeof reading.loggedIn === "boolean", `${what} has no loggedIn flag`);
-  check(reading.method === undefined || (typeof reading.method === "string" && reading.method !== ""), `${what}`);
-}
-
-function check(condition: boolean, message: string): asserts condition {
-  if (!condition) {
-    throw new Error(message);
-  }
 }
