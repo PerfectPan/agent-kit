@@ -108,6 +108,7 @@ export function grokSessions(root: string): ConformanceSession[] {
     },
     { path: at("compaction/updates.jsonl"), records: 4, capabilities: ["compaction", "compactionTokens"] },
     { path: at("subagent/updates.jsonl"), records: 6, capabilities: ["subagents"] },
+    { path: at("tool-title/updates.jsonl"), records: 5, capabilities: ["requests"] },
     { path: at("unknown-type/updates.jsonl"), records: 1, capabilities: [] }
   ];
 }

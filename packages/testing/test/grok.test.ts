@@ -254,6 +254,28 @@ describe("grok translation", () => {
     expect(await adapter.detect(platform, { agent: "grok", path: "/u/me/.grok/sessions/missing" })).toBe(false);
   });
 
+  it("keeps a tool call's name when a later update shows a display title, and merges the update's args", async () => {
+    const transcript = await load("conformance/tool-title");
+    const calls = transcript.events.filter((event) => event.kind === "tool_call");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.payload).toEqual({
+      callId: "call-1",
+      name: "read_file",
+      title: "Read `/u/me/x.md`",
+      args: {
+        path: "/u/me/x.md",
+        background: false,
+        variant: "content",
+        "-i": false,
+        type: "text",
+        multiline: false
+      }
+    });
+    expect(transcript.events.filter((event) => event.kind === "tool_result").map((event) => event.payload)).toEqual([
+      { callId: "call-1", isError: false, output: "file body" }
+    ]);
+  });
+
   it("keeps tool arguments and output when a later update carries only status", () => {
     const parsed = value(
       translateGrokRecords([
@@ -405,7 +427,7 @@ describe("grok translation", () => {
     expect(runs).toEqual([{ name: "lint", status: "success", output }]);
   });
 
-  it("replaces tool arguments and output with empty values and keeps them when the field is null", () => {
+  it("merges an empty-object rawInput into the previous args, replaces outputs with empty values, and keeps them when the field is null", () => {
     const call = (id: string, line: number) =>
       grokRecord(
         { sessionUpdate: "tool_call", toolCallId: id, title: "shell", rawInput: { command: "npm test" } },
@@ -436,7 +458,7 @@ describe("grok translation", () => {
       parsed.events.find((event) => event.kind === "tool_call" && event.payload.callId === id)?.payload.args;
     const outputOf = (id: string) =>
       parsed.events.find((event) => event.kind === "tool_result" && event.payload.callId === id)?.payload.output;
-    expect(argsOf("empty-string")).toEqual({});
+    expect(argsOf("empty-string")).toEqual({ command: "npm test" });
     expect(outputOf("empty-string")).toBe("");
     expect(outputOf("empty-content")).toBe("");
     expect(outputOf("empty-array")).toEqual([]);

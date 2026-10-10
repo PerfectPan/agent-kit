@@ -191,9 +191,11 @@ function recordTool(
   const { state } = mergeAcpToolUpdate(calls.tools, update);
   const seen = calls.events.get(state.callId) ?? {};
   calls.events.set(state.callId, seen);
+  // The payload is replaced whole, not merged field by field: a later update can take `title` away again, and an
+  // Object.assign would leave the earlier title on the event.
   if (kind === "tool_call") {
     if (seen.call) {
-      Object.assign(seen.call.payload, acpToolCallPayload(state));
+      seen.call.payload = acpToolCallPayload(state);
       skipRecord(skipped, record, "tool-progress");
       return;
     }
@@ -201,7 +203,7 @@ function recordTool(
     return;
   }
   if (seen.call) {
-    Object.assign(seen.call.payload, acpToolCallPayload(state));
+    seen.call.payload = acpToolCallPayload(state);
   }
   if (!isAcpToolDone(state)) {
     skipRecord(skipped, record, "tool-progress");
