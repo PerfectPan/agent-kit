@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog";
@@ -511,6 +512,88 @@ describe("grok translation", () => {
       ok: false,
       error: { _tag: "ReadFailed", path: updates, message: denied.message, cause: denied }
     });
+  });
+});
+
+describe("grok translation output pins", () => {
+  const conformance = fileURLToPath(new URL("fixtures/grok/conformance", import.meta.url));
+
+  /**
+   * The records of one fixture's `updates.jsonl`, at their real offsets. The file path is a stable stand-in, so the
+   * pins do not carry this checkout's absolute path; ids come from the file's base name, which is the same.
+   */
+  function fixtureRecords(name: string) {
+    const file = `/grok/conformance/${name}/updates.jsonl`;
+    const text = readFileSync(`${conformance}/${name}/updates.jsonl`, "utf8");
+    const out: { value: unknown; file: string; line: number; offset: number; length: number }[] = [];
+    let offset = 0;
+    for (const [index, row] of text.split("\n").entries()) {
+      const length = Buffer.byteLength(row);
+      if (row.trim()) {
+        out.push({ value: JSON.parse(row), file, line: index + 1, offset, length });
+      }
+      offset += length + 1;
+    }
+    return { records: out, rows: text.split("\n") };
+  }
+
+  /** The subagent meta maps the loader reads from the `subagents` directories, keyed by directory name. */
+  const SUBAGENTS: Record<string, Record<string, { id?: string; title?: string }>> = {
+    subagent: {
+      "child-1": { id: "child-1", title: "Look around" },
+      "only-meta": { id: "meta-only", title: "From meta" }
+    },
+    "subagent-meta-id": { "run-9": { id: "worker-actual", title: "From meta" }, byname: { title: "Named by dir" } }
+  };
+
+  const FIXTURE_NAMES = [
+    "plain",
+    "compaction",
+    "subagent",
+    "tool-title",
+    "unknown-type",
+    "tool-progress",
+    "duplicate-turn",
+    "subagent-meta-id"
+  ];
+
+  it("pins the whole translation of every conformance fixture", () => {
+    for (const name of FIXTURE_NAMES) {
+      const { records } = fixtureRecords(name);
+      const subagents = SUBAGENTS[name];
+      const parsed = value(
+        translateGrokRecords(records, subagents === undefined ? {} : { subagents: new Map(Object.entries(subagents)) })
+      );
+      expect({
+        events: parsed.events,
+        skipped: parsed.skipped,
+        session: parsed.session,
+        agents: parsed.agents
+      }).toMatchSnapshot(`${name}: events, skipped, session and agents`);
+    }
+  });
+
+  it("keeps a skipped record to its source pointer alone, without the record value", () => {
+    const { records, rows } = fixtureRecords("tool-progress");
+    const offsetOf = (line: number): number => {
+      let offset = 0;
+      for (let index = 0; index < line - 1; index++) {
+        offset += Buffer.byteLength(rows[index]!) + 1;
+      }
+      return offset;
+    };
+    const parsed = value(translateGrokRecords(records));
+    expect(parsed.skipped).toEqual(
+      [4, 5, 6].map((line) => ({
+        reason: "tool-progress",
+        source: {
+          file: `/grok/conformance/tool-progress/updates.jsonl`,
+          offset: offsetOf(line),
+          length: Buffer.byteLength(rows[line - 1]!),
+          line
+        }
+      }))
+    );
   });
 });
 

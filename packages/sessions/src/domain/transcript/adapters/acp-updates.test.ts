@@ -7,6 +7,7 @@ import {
   acpToolCallPayload,
   acpUsage,
   createAcpPartTranslator,
+  mergeAcpToolStatus,
   mergeAcpToolUpdate,
   type AcpToolState
 } from "./acp-updates.js";
@@ -451,5 +452,44 @@ describe("tool names and args across updates", () => {
     expect(translator.update({ sessionUpdate: "tool_call_update", toolCallId: "c1", title: "bash" })).toEqual([
       { type: "tool-input-available", toolCallId: "c1", toolName: "bash", input: { command: "ls" } }
     ]);
+  });
+});
+
+describe("mergeAcpToolStatus", () => {
+  const statusOf = (updates: readonly Record<string, unknown>[]): string | undefined => {
+    const full = new Map<string, AcpToolState>();
+    const slim = new Map<string, AcpToolState>();
+    let state: AcpToolState | undefined;
+    for (const update of updates) {
+      state = mergeAcpToolStatus(slim, update);
+      mergeAcpToolUpdate(full, update);
+    }
+    // The slim mirror holds no text a summary pass must not keep, and its status matches the full merge's.
+    expect(state).toEqual({ callId: "c1", name: "", ...(state?.status === undefined ? {} : { status: state.status }) });
+    expect(state?.status).toBe(full.get("c1")?.status);
+    return state?.status;
+  };
+
+  it("keeps the latest non-empty status, like the full merge", () => {
+    expect(
+      statusOf([
+        { sessionUpdate: "tool_call", toolCallId: "c1" },
+        { sessionUpdate: "tool_call_update", toolCallId: "c1", status: "pending" },
+        { sessionUpdate: "tool_call_update", toolCallId: "c1", status: "failed" },
+        { sessionUpdate: "tool_call_update", toolCallId: "c1", status: "completed" }
+      ])
+    ).toBe("completed");
+    expect(statusOf([{ toolCallId: "c1", status: "failed" }, { toolCallId: "c1" }])).toBe("failed");
+    expect(statusOf([{ toolCallId: "c1" }])).toBeUndefined();
+  });
+
+  it("reads a status the done predicates accept, and an empty string as absent", () => {
+    expect(
+      statusOf([
+        { toolCallId: "c1", status: "" },
+        { toolCallId: "c1", status: "in_progress" },
+        { toolCallId: "c1", status: "error" }
+      ])
+    ).toBe("error");
   });
 });
