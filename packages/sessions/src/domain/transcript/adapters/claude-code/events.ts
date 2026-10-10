@@ -24,7 +24,7 @@ import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "./record.js";
 import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "../../../session/adapters/claude-code/layout.js";
 import { applySnapshots, snapshotCapabilities } from "./prompt-snapshot.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../../../usage/adapters/claude-code.js";
-import { classifyClaudeCodeRecord } from "./classify.js";
+import { claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
 import type { Usage } from "../../../usage/index.js";
 
 const AGENT = "claude-code";
@@ -282,10 +282,7 @@ export function translateClaudeCodeRecords(
     if (!agentVersion && typeof rec.version === "string") {
       agentVersion = rec.version;
     }
-    let agentId = rec.agentId ?? options.agentForFile?.(record.file);
-    if (rec.isSidechain) {
-      agentId ??= "sidechain";
-    }
+    const agentId = claudeCodeLaneOf(rec, record.file, options.agentForFile);
     const parentId = rec.parentUuid;
     if (uuid) {
       parentOf.set(uuid, parentId);

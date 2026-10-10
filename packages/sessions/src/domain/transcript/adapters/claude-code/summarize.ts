@@ -11,11 +11,11 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../index.js";
-import { addRequest, addRequestDuration } from "../../services/fold-transcript.js";
+import { addRequest } from "../../services/fold-transcript.js";
 import type { SessionPromptsOptions, SessionPrompt, SessionSummaryWithPrompts } from "../../../session/index.js";
 import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "./record.js";
 import { CLAUDE_CODE_CAPABILITIES } from "./events.js";
-import { type ClaudeCodeEventPart, classifyClaudeCodeRecord } from "./classify.js";
+import { type ClaudeCodeEventPart, claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
 import { isPrompt } from "../../policies/turns.js";
 import type { Usage } from "../../../usage/index.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../../../usage/adapters/claude-code.js";
@@ -85,12 +85,7 @@ export async function summarizeClaudeCodeRecords(
     if (!rec) {
       return err(unknownFormatGeneration(AGENT, record));
     }
-    let agentId = rec.agentId ?? options.agentForFile?.(record.file);
-    if (rec.isSidechain) {
-      agentId ??= "sidechain";
-    }
-    // `baseEvent` drops an empty agentId: the record's events are on the main lane then.
-    const laneId = agentId || undefined;
+    const laneId = claudeCodeLaneOf(rec, record.file, options.agentForFile);
     const classified = classifyClaudeCodeRecord(rec);
     if (classified.generationError) {
       return err(unknownFormatGeneration(AGENT, record));
@@ -114,9 +109,6 @@ export async function summarizeClaudeCodeRecords(
           if (part.payload.type === "turn_duration") {
             addTurnDuration(totals, part.payload.durationMs);
           }
-          break;
-        case "request":
-          addRequestDuration(totals, part.payload.durationMs);
           break;
         case "user":
           if (promptPart === undefined && isPrompt(part)) {

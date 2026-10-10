@@ -106,6 +106,28 @@ describe("mergeByTimeStream", () => {
     expect(closed).toStrictEqual(["main", "sub"]);
   });
 
+  it("returns the other iterators when a group throws on its first pull", async () => {
+    const closed: string[] = [];
+    const healthy = async function* (): AsyncGenerator<TimedRecord> {
+      try {
+        for (const record of records("healthy", [at(0), at(1)])) {
+          yield timedRecord(record);
+        }
+      } finally {
+        closed.push("healthy");
+      }
+    };
+    // An iterator whose first pull rejects — a generator that never yields would not read as one.
+    const failing = (): AsyncIterableIterator<TimedRecord> => ({
+      next: () => Promise.reject(new Error("read failed")),
+      [Symbol.asyncIterator]() {
+        return this;
+      }
+    });
+    await expect(collect([healthy(), failing()])).rejects.toThrow("read failed");
+    expect(closed).toStrictEqual(["healthy"]);
+  });
+
   it("returns the other iterators when one group's read throws", async () => {
     const closed: string[] = [];
     const healthy = async function* (): AsyncGenerator<ReturnType<typeof timedRecord>> {

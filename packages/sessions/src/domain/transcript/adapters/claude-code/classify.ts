@@ -149,6 +149,22 @@ function hookPayload(type: string, attachment: ClaudeCodeAttachment | undefined)
   };
 }
 
+/**
+ * The lane a record's events sit on: its own `agentId`, else the file's, else `sidechain` for a sidechain record.
+ * An empty id is no lane, exactly as `baseEvent` drops it.
+ */
+export function claudeCodeLaneOf(
+  rec: ClaudeCodeRecordValue,
+  file: string,
+  agentForFile: ((file: string) => string | undefined) | undefined
+): string | undefined {
+  let agentId = rec.agentId ?? agentForFile?.(file);
+  if (rec.isSidechain) {
+    agentId ??= "sidechain";
+  }
+  return agentId || undefined;
+}
+
 export function classifyClaudeCodeRecord(rec: ClaudeCodeRecordValue): ClaudeCodeRecordParts {
   const type = rec.type;
   if (type === "user" || type === "assistant") {
