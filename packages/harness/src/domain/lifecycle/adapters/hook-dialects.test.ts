@@ -98,6 +98,31 @@ describe("readHookEvent", () => {
     expect(deep.sessionId).toBeUndefined();
   });
 
+  it("S111: reads opencode's currentSessionId only after every native session path", () => {
+    const remembered = readHookEvent(
+      "opencode",
+      {
+        type: "file.edited",
+        properties: { file: "/u/me/work/a.ts" },
+        directory: "/u/me/work",
+        currentSessionId: "A"
+      },
+      {}
+    );
+    expect(remembered.sessionId).toBe("A");
+    const named = readHookEvent(
+      "opencode",
+      {
+        type: "message.updated",
+        properties: { info: { id: "msg_1", sessionID: "B" } },
+        directory: "/u/me/work",
+        currentSessionId: "A"
+      },
+      {}
+    );
+    expect(named.sessionId).toBe("B");
+  });
+
   it("reads inherited keys as absent", () => {
     const inherited: unknown = Object.create({ hook_event_name: "Stop", session_id: "proto" });
     const event = readHookEvent("claude-code", inherited, {});
