@@ -104,7 +104,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.5.0",
+    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
     "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-cost": "workspace:*",
