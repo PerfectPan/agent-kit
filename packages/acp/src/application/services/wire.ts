@@ -124,6 +124,101 @@ const SessionUpdate = z.object({
   update: z.looseObject({ sessionUpdate: z.string() })
 });
 
+/** Runs a client file call; a refusal or a missing file reaches the agent as a JSON-RPC error it can read. */
+async function fileCall<A>(call: () => Promise<A>): Promise<A> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof ClientFileError) {
+      throw error.kind === "not-found"
+        ? acp.RequestError.resourceNotFound(error.message)
+        : acp.RequestError.invalidParams(undefined, error.message);
+    }
+    throw error;
+  }
+}
+
+function acpMcpServer(server: McpServerConfig): acp.McpServer {
+  if ("url" in server) {
+    return {
+      type: server.type,
+      name: server.name,
+      url: server.url,
+      headers: server.headers.map(({ name, value }) => ({ name, value }))
+    };
+  }
+  return {
+    name: server.name,
+    command: server.command,
+    args: [...server.args],
+    env: server.env.map(({ name, value }) => ({ name, value }))
+  };
+}
+
+function sessionRequest(params: SessionParams): acp.NewSessionRequest {
+  return {
+    cwd: params.cwd,
+    mcpServers: params.mcpServers.map(acpMcpServer),
+    ...(params.meta === undefined ? {} : { _meta: params.meta })
+  };
+}
+
+function acpBlock(block: PromptBlock): acp.ContentBlock {
+  switch (block.type) {
+    case "text":
+      return { type: "text", text: block.text };
+    case "image":
+      return { type: "image", data: block.data, mimeType: block.mimeType, ...(block.uri ? { uri: block.uri } : {}) };
+    case "resource_link":
+      return { ...block };
+    case "resource":
+      return { type: "resource", resource: { ...block.resource } };
+  }
+}
+
+function handshakeOf(response: acp.InitializeResponse): Handshake {
+  const capabilities = response.agentCapabilities;
+  const prompt = capabilities?.promptCapabilities;
+  const sessions = capabilities?.sessionCapabilities;
+  const mcp = capabilities?.mcpCapabilities;
+  const info = response.agentInfo;
+  return {
+    protocolVersion: response.protocolVersion,
+    features: {
+      loadSession: capabilities?.loadSession === true,
+      resumeSession: sessions?.resume != null,
+      closeSession: sessions?.close != null,
+      image: prompt?.image === true,
+      audio: prompt?.audio === true,
+      embeddedContext: prompt?.embeddedContext === true,
+      mcpHttp: mcp?.http === true,
+      mcpSse: mcp?.sse === true
+    },
+    authMethods: (response.authMethods ?? []).map((method) => ({
+      id: method.id,
+      name: method.name,
+      ...(method.description ? { description: method.description } : {})
+    })),
+    ...(info
+      ? { agentInfo: { name: info.name, version: info.version, ...(info.title ? { title: info.title } : {}) } }
+      : {})
+  };
+}
+
+function permissionRequestOf(params: acp.RequestPermissionRequest): PermissionRequest {
+  const { toolCall } = params;
+  return {
+    sessionId: params.sessionId,
+    toolCall: {
+      callId: toolCall.toolCallId,
+      ...(toolCall.title ? { title: toolCall.title } : {}),
+      ...(toolCall.kind ? { kind: toolCall.kind } : {}),
+      ...(toolCall.rawInput === undefined ? {} : { rawInput: toolCall.rawInput })
+    },
+    options: params.options.map(({ optionId, name, kind }) => ({ optionId, name, kind }))
+  };
+}
+
 /**
  * Opens a connection whose `session/update` notifications go to `handlers.onUpdate` as they come off the wire,
  * before the SDK reads the next message. The SDK dispatches notifications and responses on different microtask paths,
@@ -238,100 +333,5 @@ export function openWire(
       Effect.tryPromise(() => connection.agent.notify(acp.methods.agent.session.cancel, { sessionId })).pipe(
         Effect.ignore
       )
-  };
-}
-
-/** Runs a client file call; a refusal or a missing file reaches the agent as a JSON-RPC error it can read. */
-async function fileCall<A>(call: () => Promise<A>): Promise<A> {
-  try {
-    return await call();
-  } catch (error) {
-    if (error instanceof ClientFileError) {
-      throw error.kind === "not-found"
-        ? acp.RequestError.resourceNotFound(error.message)
-        : acp.RequestError.invalidParams(undefined, error.message);
-    }
-    throw error;
-  }
-}
-
-function sessionRequest(params: SessionParams): acp.NewSessionRequest {
-  return {
-    cwd: params.cwd,
-    mcpServers: params.mcpServers.map(acpMcpServer),
-    ...(params.meta === undefined ? {} : { _meta: params.meta })
-  };
-}
-
-function acpMcpServer(server: McpServerConfig): acp.McpServer {
-  if ("url" in server) {
-    return {
-      type: server.type,
-      name: server.name,
-      url: server.url,
-      headers: server.headers.map(({ name, value }) => ({ name, value }))
-    };
-  }
-  return {
-    name: server.name,
-    command: server.command,
-    args: [...server.args],
-    env: server.env.map(({ name, value }) => ({ name, value }))
-  };
-}
-
-function acpBlock(block: PromptBlock): acp.ContentBlock {
-  switch (block.type) {
-    case "text":
-      return { type: "text", text: block.text };
-    case "image":
-      return { type: "image", data: block.data, mimeType: block.mimeType, ...(block.uri ? { uri: block.uri } : {}) };
-    case "resource_link":
-      return { ...block };
-    case "resource":
-      return { type: "resource", resource: { ...block.resource } };
-  }
-}
-
-function handshakeOf(response: acp.InitializeResponse): Handshake {
-  const capabilities = response.agentCapabilities;
-  const prompt = capabilities?.promptCapabilities;
-  const sessions = capabilities?.sessionCapabilities;
-  const mcp = capabilities?.mcpCapabilities;
-  const info = response.agentInfo;
-  return {
-    protocolVersion: response.protocolVersion,
-    features: {
-      loadSession: capabilities?.loadSession === true,
-      resumeSession: sessions?.resume != null,
-      closeSession: sessions?.close != null,
-      image: prompt?.image === true,
-      audio: prompt?.audio === true,
-      embeddedContext: prompt?.embeddedContext === true,
-      mcpHttp: mcp?.http === true,
-      mcpSse: mcp?.sse === true
-    },
-    authMethods: (response.authMethods ?? []).map((method) => ({
-      id: method.id,
-      name: method.name,
-      ...(method.description ? { description: method.description } : {})
-    })),
-    ...(info
-      ? { agentInfo: { name: info.name, version: info.version, ...(info.title ? { title: info.title } : {}) } }
-      : {})
-  };
-}
-
-function permissionRequestOf(params: acp.RequestPermissionRequest): PermissionRequest {
-  const { toolCall } = params;
-  return {
-    sessionId: params.sessionId,
-    toolCall: {
-      callId: toolCall.toolCallId,
-      ...(toolCall.title ? { title: toolCall.title } : {}),
-      ...(toolCall.kind ? { kind: toolCall.kind } : {}),
-      ...(toolCall.rawInput === undefined ? {} : { rawInput: toolCall.rawInput })
-    },
-    options: params.options.map(({ optionId, name, kind }) => ({ optionId, name, kind }))
   };
 }

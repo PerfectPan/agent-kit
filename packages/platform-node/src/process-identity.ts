@@ -42,6 +42,19 @@ const linux: IdentityProbe = {
   }
 };
 
+/** ps exits with 1 and prints nothing when no process matches; it also exits with 1 on other errors, with a message. */
+function isNoMatchingProcess(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "status" in error &&
+    error.status === 1 &&
+    "stdout" in error &&
+    error.stdout === "" &&
+    "stderr" in error &&
+    error.stderr === ""
+  );
+}
+
 const darwin: IdentityProbe = {
   // Unlike kern.boottime, which moves when the wall clock is stepped, the boot session UUID is fixed for a boot.
   bootId: () => execFileSync("/usr/sbin/sysctl", ["-n", "kern.bootsessionuuid"], { encoding: "utf8" }).trim(),
@@ -72,19 +85,6 @@ const darwin: IdentityProbe = {
     return Date.UTC(year, month, day, hours, minutes, seconds);
   }
 };
-
-/** ps exits with 1 and prints nothing when no process matches; it also exits with 1 on other errors, with a message. */
-function isNoMatchingProcess(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    "status" in error &&
-    error.status === 1 &&
-    "stdout" in error &&
-    error.stdout === "" &&
-    "stderr" in error &&
-    error.stderr === ""
-  );
-}
 
 /**
  * Returns `identify(pid)`. Start times are Linux clock ticks after boot or macOS start seconds as epoch milliseconds;

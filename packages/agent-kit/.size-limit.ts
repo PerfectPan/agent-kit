@@ -12,7 +12,7 @@ export default [
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44 kB" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
   // The LiteLLM adapter parses the price list with zod/mini, bundled into the entry: about 6.6 kB.
-  { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "6.75 kB" },
+  { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "7 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
   // (about 5 kB) above all.

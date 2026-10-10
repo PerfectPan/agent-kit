@@ -204,6 +204,10 @@ function entrySpecifiers(packages: readonly ReleasePackage[], effect: boolean): 
   );
 }
 
+function shellOnly(): never {
+  throw new Error("the release set is empty");
+}
+
 /**
  * A consumer module that imports every plain entry of the release set, lists and reads the seeded sessions through
  * Node, detects the fake `codex` in `bin`, and runs the companions' plain checks.
@@ -308,10 +312,6 @@ assert.equal(codex.auth.status, "logged-out");
 console.log(\`discovery: codex \${codex.status} \${codex.version?.output}\`);
 ${companions.map((code) => code.body).join("\n")}
 `;
-}
-
-function shellOnly(): never {
-  throw new Error("the release set is empty");
 }
 
 /**
@@ -535,17 +535,6 @@ function npmInstall(cwd: string, specs: readonly string[]): void {
   );
 }
 
-/** Type-checks `consumer.ts` in `cwd` under node16 and bundler resolution. */
-function typecheck(cwd: string, lib: readonly string[]): void {
-  for (const [name, module, moduleResolution] of [
-    ["node16", "node16", "node16"],
-    ["bundler", "preserve", "bundler"]
-  ] as const) {
-    writeFileSync(join(cwd, `tsconfig.${name}.json`), tsconfig(module, moduleResolution, lib));
-    run(tsc, ["-p", `tsconfig.${name}.json`], cwd);
-  }
-}
-
 function tsconfig(module: string, moduleResolution: string, lib: readonly string[]): string {
   const compilerOptions = {
     module,
@@ -562,6 +551,17 @@ function tsconfig(module: string, moduleResolution: string, lib: readonly string
     types: ["node"]
   };
   return `${JSON.stringify({ compilerOptions, files: ["consumer.ts"] }, null, 2)}\n`;
+}
+
+/** Type-checks `consumer.ts` in `cwd` under node16 and bundler resolution. */
+function typecheck(cwd: string, lib: readonly string[]): void {
+  for (const [name, module, moduleResolution] of [
+    ["node16", "node16", "node16"],
+    ["bundler", "preserve", "bundler"]
+  ] as const) {
+    writeFileSync(join(cwd, `tsconfig.${name}.json`), tsconfig(module, moduleResolution, lib));
+    run(tsc, ["-p", `tsconfig.${name}.json`], cwd);
+  }
 }
 
 /** The shell first, then the other packages of its version policy in rush.json, which are released with it. */

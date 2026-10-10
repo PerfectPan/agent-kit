@@ -62,6 +62,13 @@ export function startWorker(name: string, args: readonly string[], env: Readonly
     exited,
     next(event, timeoutMs = 10_000) {
       return new Promise((resolve, reject) => {
+        function cleanup() {
+          // cleanup and check refer to each other; hoisting orders them at call time.
+          // oxlint-disable-next-line no-use-before-define
+          clearTimeout(timer);
+          // oxlint-disable-next-line no-use-before-define
+          waiters.delete(check);
+        }
         const check = () => {
           const line = lines.find((candidate) => candidate.event === event);
           if (line !== undefined) {
@@ -76,10 +83,6 @@ export function startWorker(name: string, args: readonly string[], env: Readonly
           cleanup();
           reject(new Error(`${name} printed no "${event}" in ${timeoutMs} ms: ${JSON.stringify(lines)}\n${stderr}`));
         }, timeoutMs);
-        function cleanup() {
-          clearTimeout(timer);
-          waiters.delete(check);
-        }
         waiters.add(check);
         check();
       });

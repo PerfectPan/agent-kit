@@ -21,6 +21,16 @@ export interface SplitLinesOptions {
   readonly startLine?: number;
 }
 
+function concat(parts: Uint8Array[], length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.byteLength;
+  }
+  return out;
+}
+
 /**
  * Splits a UTF-8 byte stream into lines. Splitting happens on bytes and each line is decoded whole, so a
  * multi-byte character or a CRLF pair split across chunks is handled. A UTF-8 byte order mark is dropped only at
@@ -78,14 +88,4 @@ export async function* splitLines(
   if (pendingLength > 0) {
     yield toLine(concat(pending, pendingLength), false);
   }
-}
-
-function concat(parts: Uint8Array[], length: number): Uint8Array {
-  const out = new Uint8Array(length);
-  let at = 0;
-  for (const part of parts) {
-    out.set(part, at);
-    at += part.byteLength;
-  }
-  return out;
 }

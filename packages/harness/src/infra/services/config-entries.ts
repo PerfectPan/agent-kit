@@ -116,6 +116,24 @@ function shapeProblem(data: Document | undefined, path: EntryPath): UnexpectedSh
 }
 
 /**
+ * What to remove so that removing `path` leaves no empty container behind: the outermost ancestor below the document
+ * root whose only content is the way to `path`, such as an event's hook list holding only the removed group, and the
+ * `hooks` object holding only that list.
+ */
+function emptiedAncestor(data: Document | undefined, path: EntryPath): EntryPath {
+  let removed = path;
+  while (removed.length > 1) {
+    const parent = at(data, removed.slice(0, -1));
+    const size = Array.isArray(parent) ? parent.length : isDocumentRecord(parent) ? Object.keys(parent).length : 0;
+    if (size !== 1) {
+      break;
+    }
+    removed = removed.slice(0, -1);
+  }
+  return removed;
+}
+
+/**
  * The edits that put `value` at the locator's entry in `data`, or remove the entry when `value` is undefined. A new
  * list element goes at the end of its list; a new hook goes into a group of its own. A removal leaves no empty
  * container: removing a group's last hook removes the group, and every container above it that holds nothing else.
@@ -160,24 +178,6 @@ export function entryEdits(
   const hooks = at(data, [...base, group, "hooks"]);
   const removed = Array.isArray(hooks) && hooks.length > 1 ? hit.path : emptiedAncestor(data, [...base, group]);
   return ok([{ path: removed, value: undefined }]);
-}
-
-/**
- * What to remove so that removing `path` leaves no empty container behind: the outermost ancestor below the document
- * root whose only content is the way to `path`, such as an event's hook list holding only the removed group, and the
- * `hooks` object holding only that list.
- */
-function emptiedAncestor(data: Document | undefined, path: EntryPath): EntryPath {
-  let removed = path;
-  while (removed.length > 1) {
-    const parent = at(data, removed.slice(0, -1));
-    const size = Array.isArray(parent) ? parent.length : isDocumentRecord(parent) ? Object.keys(parent).length : 0;
-    if (size !== 1) {
-      break;
-    }
-    removed = removed.slice(0, -1);
-  }
-  return removed;
 }
 
 /**

@@ -13,6 +13,47 @@ export interface SummarizeOptions {
 }
 
 /**
+ * sessions' `addUsage`, which cost cannot call because it takes only types from sessions: a count absent from both
+ * sides stays absent, one absent from one side counts as 0 there.
+ */
+function addUsage(left: Usage, right: Usage): Usage {
+  const sum: Usage = {};
+  // addUsage sits above `const COUNTS` so `add` can call it; the const is initialized before any call runs.
+  // oxlint-disable-next-line no-use-before-define
+  for (const key of COUNTS) {
+    const a = left[key];
+    const b = right[key];
+    if (a !== undefined || b !== undefined) {
+      sum[key] = (a ?? 0) + (b ?? 0);
+    }
+  }
+  return sum;
+}
+
+function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
+  into.usage = addUsage(into.usage, usage);
+  if (costUsd !== undefined) {
+    into.costUsd = (into.costUsd ?? 0) + costUsd;
+  }
+}
+
+function tally(agent?: CodingAgentId, model?: string): Tally {
+  return {
+    ...(agent === undefined ? {} : { agent }),
+    ...(model === undefined ? {} : { model }),
+    entries: 0,
+    usage: {}
+  };
+}
+
+function totals({ costUsd, ...rest }: Tally): UsageGroup {
+  return {
+    ...rest,
+    ...(costUsd === undefined ? {} : { costUsd })
+  };
+}
+
+/**
  * Totals of `records` in the window, as presence summarizes its sources: tokens, how many records contributed, and
  * the sum of the costs that `costOf`'s rules know, per group. A group's cost is absent when none of its records had a
  * known cost; records without one add their tokens but no dollars. The total adds up the groups, as presence adds up
@@ -68,29 +109,6 @@ interface Tally {
   costUsd?: number;
 }
 
-function tally(agent?: CodingAgentId, model?: string): Tally {
-  return {
-    ...(agent === undefined ? {} : { agent }),
-    ...(model === undefined ? {} : { model }),
-    entries: 0,
-    usage: {}
-  };
-}
-
-function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
-  into.usage = addUsage(into.usage, usage);
-  if (costUsd !== undefined) {
-    into.costUsd = (into.costUsd ?? 0) + costUsd;
-  }
-}
-
-function totals({ costUsd, ...rest }: Tally): UsageGroup {
-  return {
-    ...rest,
-    ...(costUsd === undefined ? {} : { costUsd })
-  };
-}
-
 /** Every count of `Usage`; `satisfies` fails to compile until a count added to `Usage` is listed here. */
 const COUNTS = Object.keys({
   inputTokens: true,
@@ -101,19 +119,3 @@ const COUNTS = Object.keys({
   cacheWrite1hTokens: true,
   reasoningTokens: true
 } satisfies Record<keyof Usage, true>) as (keyof Usage)[];
-
-/**
- * sessions' `addUsage`, which cost cannot call because it takes only types from sessions: a count absent from both
- * sides stays absent, one absent from one side counts as 0 there.
- */
-function addUsage(left: Usage, right: Usage): Usage {
-  const sum: Usage = {};
-  for (const key of COUNTS) {
-    const a = left[key];
-    const b = right[key];
-    if (a !== undefined || b !== undefined) {
-      sum[key] = (a ?? 0) + (b ?? 0);
-    }
-  }
-  return sum;
-}

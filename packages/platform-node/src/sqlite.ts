@@ -4,12 +4,14 @@ type SqliteModule = typeof import("node:sqlite");
 
 let sqliteModule: SqliteModule | undefined;
 
-export const nodeSqlite: PlatformSqlite = {
-  open(path, options) {
-    const { DatabaseSync } = loadSqlite();
-    return new DatabaseSync(path, { readOnly: options?.readonly ?? false });
-  }
-};
+function isSqliteExperimentalWarning(warning: unknown, typeOrOptions: unknown): boolean {
+  const type =
+    typeof typeOrOptions === "object" && typeOrOptions !== null && "type" in typeOrOptions
+      ? typeOrOptions.type
+      : typeOrOptions;
+  const message = warning instanceof Error ? warning.message : warning;
+  return type === "ExperimentalWarning" && typeof message === "string" && message.startsWith("SQLite ");
+}
 
 /**
  * Loads node:sqlite on first use, so importing this package never pulls it in. Node versions that still mark it
@@ -39,11 +41,9 @@ function loadSqlite(): SqliteModule {
   return sqliteModule;
 }
 
-function isSqliteExperimentalWarning(warning: unknown, typeOrOptions: unknown): boolean {
-  const type =
-    typeof typeOrOptions === "object" && typeOrOptions !== null && "type" in typeOrOptions
-      ? typeOrOptions.type
-      : typeOrOptions;
-  const message = warning instanceof Error ? warning.message : warning;
-  return type === "ExperimentalWarning" && typeof message === "string" && message.startsWith("SQLite ");
-}
+export const nodeSqlite: PlatformSqlite = {
+  open(path, options) {
+    const { DatabaseSync } = loadSqlite();
+    return new DatabaseSync(path, { readOnly: options?.readonly ?? false });
+  }
+};

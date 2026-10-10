@@ -33,61 +33,30 @@ interface Statements {
   readonly upsert: SqliteStatement;
 }
 
-/**
- * The lease repository for one machine: one row per key in a SQLite database. `save` runs in a `BEGIN IMMEDIATE`
- * transaction, which takes SQLite's write lock (an fcntl lock) before reading the revision, so processes sharing the
- * file compare and write atomically. The lock is released when its process exits, so neither a crashed writer nor a
- * reused pid can leave the repository stuck. Fails to build with `unavailable` when the platform has no SQLite, and
- * with `unsupported-schema` for a database written by a newer version.
- */
-export function sqliteLeaseRepository(
-  options: SqliteLeaseRepositoryOptions
-): Layer.Layer<LeaseRepository, LeaseRepositoryFailure, PlatformService> {
-  const { path } = options;
-  return Layer.effect(
-    LeaseRepository,
-    Effect.gen(function* () {
-      const platform = yield* PlatformService;
-      const { sqlite } = platform;
-      if (sqlite === undefined) {
-        return yield* Effect.fail(repositoryFailure("", "unavailable", "the platform has no SQLite"));
-      }
-      const db = yield* Effect.acquireRelease(
-        sqliteTry("", `cannot open ${path}`, () => sqlite.open(path)),
-        (opened) => Effect.sync(() => opened.close())
-      );
-      yield* retryBusy(sqliteTry("", `cannot prepare ${path}`, () => migrate(db)));
-      const statements: Statements = {
-        select: db.prepare(
-          "SELECT key, generation, revision, holder, holder_id, renewed_at FROM lease_record WHERE key = ?"
-        ),
-        selectRevision: db.prepare("SELECT revision FROM lease_record WHERE key = ?"),
-        upsert: db.prepare(
-          `INSERT INTO lease_record (key, generation, revision, holder, holder_id, renewed_at) VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT (key) DO UPDATE SET generation = excluded.generation, revision = excluded.revision,
-             holder = excluded.holder, holder_id = excluded.holder_id, renewed_at = excluded.renewed_at`
-        )
-      };
-      return {
-        load: (key) =>
-          retryBusy(sqliteTry(key, `cannot read ${path}`, () => statements.select.get(key))).pipe(
-            Effect.flatMap((row) => decodeRow(key, row))
-          ),
-        save: (key, next, expectedRevision) =>
-          retryBusy(
-            sqliteTry(key, `cannot write ${path}`, () => saveInTransaction(db, statements, key, next, expectedRevision))
-          ).pipe(Effect.flatMap((outcome) => (outcome === undefined ? Effect.void : Effect.fail(outcome)))),
-        fence: (key) =>
-          keyFileName(key).pipe(Effect.flatMap((name) => holdProcessLock(platform, key, `${path}.${name}.fence`)))
-      };
-    })
-  );
-}
-
 class UnsupportedSchema extends Error {}
 
 /** The `RevisionConflict` a write refused with; `undefined` when it wrote. */
 type SaveOutcome = RevisionConflict | undefined;
+
+/** Runs `body` in a `BEGIN IMMEDIATE` transaction, committing when it returns and rolling back when it throws. */
+function transaction<T>(db: SqliteDatabase, body: () => T): T {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = body();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    // A failed COMMIT (busy, IO) can leave the transaction open, and the next BEGIN would fail on this connection.
+    // SQLite may already have rolled back on its own; ROLLBACK then fails with "no transaction is active", which is
+    // the state wanted, so only the original error is reported.
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // Nothing left to roll back.
+    }
+    throw error;
+  }
+}
 
 function migrate(db: SqliteDatabase): void {
   db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
@@ -139,26 +108,6 @@ function saveInTransaction(
   });
 }
 
-/** Runs `body` in a `BEGIN IMMEDIATE` transaction, committing when it returns and rolling back when it throws. */
-function transaction<T>(db: SqliteDatabase, body: () => T): T {
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const result = body();
-    db.exec("COMMIT");
-    return result;
-  } catch (error) {
-    // A failed COMMIT (busy, IO) can leave the transaction open, and the next BEGIN would fail on this connection.
-    // SQLite may already have rolled back on its own; ROLLBACK then fails with "no transaction is active", which is
-    // the state wanted, so only the original error is reported.
-    try {
-      db.exec("ROLLBACK");
-    } catch {
-      // Nothing left to roll back.
-    }
-    throw error;
-  }
-}
-
 function sqliteTry<T>(key: string, message: string, body: () => T): Effect.Effect<T, LeaseRepositoryFailure> {
   return Effect.try({
     try: body,
@@ -203,4 +152,55 @@ function decodeRow(
   return snapshot === undefined
     ? Effect.fail(repositoryFailure(key, "invalid-record", `the stored record for ${key} has an unexpected shape`))
     : Effect.succeed(snapshot);
+}
+
+/**
+ * The lease repository for one machine: one row per key in a SQLite database. `save` runs in a `BEGIN IMMEDIATE`
+ * transaction, which takes SQLite's write lock (an fcntl lock) before reading the revision, so processes sharing the
+ * file compare and write atomically. The lock is released when its process exits, so neither a crashed writer nor a
+ * reused pid can leave the repository stuck. Fails to build with `unavailable` when the platform has no SQLite, and
+ * with `unsupported-schema` for a database written by a newer version.
+ */
+export function sqliteLeaseRepository(
+  options: SqliteLeaseRepositoryOptions
+): Layer.Layer<LeaseRepository, LeaseRepositoryFailure, PlatformService> {
+  const { path } = options;
+  return Layer.effect(
+    LeaseRepository,
+    Effect.gen(function* () {
+      const platform = yield* PlatformService;
+      const { sqlite } = platform;
+      if (sqlite === undefined) {
+        return yield* Effect.fail(repositoryFailure("", "unavailable", "the platform has no SQLite"));
+      }
+      const db = yield* Effect.acquireRelease(
+        sqliteTry("", `cannot open ${path}`, () => sqlite.open(path)),
+        (opened) => Effect.sync(() => opened.close())
+      );
+      yield* retryBusy(sqliteTry("", `cannot prepare ${path}`, () => migrate(db)));
+      const statements: Statements = {
+        select: db.prepare(
+          "SELECT key, generation, revision, holder, holder_id, renewed_at FROM lease_record WHERE key = ?"
+        ),
+        selectRevision: db.prepare("SELECT revision FROM lease_record WHERE key = ?"),
+        upsert: db.prepare(
+          `INSERT INTO lease_record (key, generation, revision, holder, holder_id, renewed_at) VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (key) DO UPDATE SET generation = excluded.generation, revision = excluded.revision,
+             holder = excluded.holder, holder_id = excluded.holder_id, renewed_at = excluded.renewed_at`
+        )
+      };
+      return {
+        load: (key) =>
+          retryBusy(sqliteTry(key, `cannot read ${path}`, () => statements.select.get(key))).pipe(
+            Effect.flatMap((row) => decodeRow(key, row))
+          ),
+        save: (key, next, expectedRevision) =>
+          retryBusy(
+            sqliteTry(key, `cannot write ${path}`, () => saveInTransaction(db, statements, key, next, expectedRevision))
+          ).pipe(Effect.flatMap((outcome) => (outcome === undefined ? Effect.void : Effect.fail(outcome)))),
+        fence: (key) =>
+          keyFileName(key).pipe(Effect.flatMap((name) => holdProcessLock(platform, key, `${path}.${name}.fence`)))
+      };
+    })
+  );
 }

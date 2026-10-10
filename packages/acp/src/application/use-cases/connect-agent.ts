@@ -146,27 +146,6 @@ const EXIT_STATUS_WAIT_MS = 1_000;
 const STDERR_TAIL_CHARS = 8 * 1024;
 const CLIENT_INFO = { name: "@rivus/agent-kit", version: "1" } as const;
 
-/**
- * Starts `agent`'s ACP program with exactly `options.env` and completes the ACP handshake. The connection belongs to
- * the caller's Scope: closing that Scope closes every session and stops the process. Throws an `AgentKitError` (as a
- * defect) for an agent without a profile or an option out of range.
- */
-export function connectAgent(
-  agent: CodingAgentId,
-  options: ConnectAgentOptions
-): Effect.Effect<AcpConnection, ConnectError, PlatformService | Scope.Scope> {
-  return Effect.gen(function* () {
-    const profile = yield* Effect.sync(() => profileOf(agent, options.profiles));
-    const timeouts = yield* Effect.sync(() => timeoutsOf(options));
-    const platform = yield* PlatformService;
-    const bindings = yield* Effect.serviceOption(SessionBindingStore);
-    const scope = yield* Scope.fork(yield* Effect.scope, "sequential");
-    return yield* open(agent, profile, options, timeouts, platform, bindings, scope).pipe(
-      Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : Scope.close(scope, exit)))
-    );
-  });
-}
-
 function profileOf(agent: CodingAgentId, profiles: AcpProfiles | undefined): AcpProfile {
   const profile = profiles?.[agent] ?? builtinAcpProfiles[agent];
   if (profile === undefined) {
@@ -175,10 +154,253 @@ function profileOf(agent: CodingAgentId, profiles: AcpProfiles | undefined): Acp
   return profile;
 }
 
-interface Timeouts {
-  readonly handshakeTimeoutMs: number;
-  readonly requestTimeoutMs: number;
-  readonly cancelTimeoutMs: number;
+/** Reads a stream to its end, keeping its last characters, so a chatty agent never blocks on a full pipe. */
+function drainTail(stream: ReadableStream<Uint8Array>): () => string {
+  let tail = "";
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  const read = (): Promise<void> =>
+    reader.read().then(({ done, value }) => {
+      if (!done) {
+        tail = `${tail}${decoder.decode(value, { stream: true })}`.slice(-STDERR_TAIL_CHARS);
+        return read();
+      }
+      return undefined;
+    });
+  read().catch(() => undefined);
+  return () => tail.trim();
+}
+
+/** MCP servers for one session: its own list, else the connection default, else none. */
+function sessionMcpServers(
+  options: { readonly mcpServers?: readonly McpServerConfig[] },
+  defaults: ConnectAgentOptions
+): readonly McpServerConfig[] {
+  return options.mcpServers ?? defaults.mcpServers ?? [];
+}
+
+function metaOf(profile: AcpProfile, setup: SessionSetup): { meta?: Record<string, unknown> } {
+  const meta = sessionMeta(profile, setup);
+  return meta === undefined ? {} : { meta };
+}
+
+/** A session request bounded by the connection's request timeout. */
+function request<A>(
+  conn: ConnectionState,
+  method: string,
+  effect: Effect.Effect<A, WireFailure>
+): Effect.Effect<A, ConnectionClosed | AuthRequired | AcpRequestFailed | AcpTimeout> {
+  return Effect.suspend(() => (conn.closed === undefined ? effect : Effect.fail<WireFailure>({ kind: "closed" }))).pipe(
+    Effect.mapError((failure) => requestError(conn, method, failure)),
+    Effect.timeoutOrElse({
+      duration: conn.requestTimeoutMs,
+      orElse: () => Effect.fail<AcpTimeout>({ _tag: "AcpTimeout", method, timeoutMs: conn.requestTimeoutMs })
+    })
+  );
+}
+
+function storeFor(
+  conn: ConnectionState,
+  sessionKey: string
+): Effect.Effect<SessionBindingStoreShape, SessionBindingStoreFailure> {
+  if (sessionKey === "") {
+    return Effect.die(invalidOption("sessionKey must not be empty"));
+  }
+  return Option.isSome(conn.bindings)
+    ? Effect.succeed(conn.bindings.value)
+    : Effect.fail({
+        _tag: "SessionBindingStoreFailure",
+        sessionKey,
+        reason: "unavailable",
+        message: "no SessionBindingStore is provided, so a sessionKey cannot be bound or loaded"
+      });
+}
+
+/** Adds an opened session to the connection; its directory is resolved only when client file calls are on. */
+function register(
+  conn: ConnectionState,
+  method: string,
+  sessionId: string,
+  cwd: string,
+  sessionKey: string | undefined,
+  pendingBlocks: readonly PromptBlock[]
+): Effect.Effect<LiveSession, ConnectionClosed | AcpRequestFailed> {
+  return Effect.gen(function* () {
+    const root =
+      conn.fileSystem.read || conn.fileSystem.write
+        ? yield* Effect.promise(() => sessionRoot(conn.platform.fs, cwd).catch(() => undefined))
+        : undefined;
+    if (conn.closed !== undefined) {
+      return yield* Effect.fail(conn.closed);
+    }
+    const created = AcpSession.create({ agent: conn.agent, ...(sessionKey === undefined ? {} : { sessionKey }) });
+    if (!created.ok) {
+      return yield* Effect.die(invalidOption(created.error.message));
+    }
+    const opened = created.value.opened(sessionId);
+    if (!opened.ok) {
+      return yield* Effect.fail<AcpRequestFailed>({
+        _tag: "AcpRequestFailed",
+        method,
+        message: `the agent named an invalid session id "${sessionId}"`
+      });
+    }
+    const live: LiveSession = {
+      sessionId,
+      cwd,
+      keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
+      session: opened.value.state,
+      pendingBlocks,
+      ...(root === undefined ? {} : { root })
+    };
+    conn.sessions.set(sessionId, live);
+    return live;
+  });
+}
+
+/** Drops a session whose binding could not be written; the agent keeps it, the caller never got a handle. */
+function forget(conn: ConnectionState, live: LiveSession): void {
+  step(live, { ok: true, value: live.session.close("closed") });
+  conn.sessions.delete(live.sessionId);
+}
+
+/**
+ * The open session with this id: the one already on the connection, the one a concurrent call is loading, or one
+ * loaded now. The load runs in the connection's Scope, so a caller that stops waiting does not fail the others.
+ */
+function openLoaded(
+  conn: ConnectionState,
+  defaults: ConnectAgentOptions,
+  sessionId: string,
+  sessionKey: string | undefined,
+  options: SessionOptions & { readonly cwd: string }
+): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> {
+  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> => {
+    const existing = conn.sessions.get(sessionId);
+    if (existing !== undefined && existing.session.toSnapshot().state !== "closed") {
+      return Effect.succeed(existing);
+    }
+    const loading = conn.loading.get(sessionId);
+    if (loading !== undefined) {
+      return Deferred.await(loading);
+    }
+    if (conn.closed !== undefined) {
+      return Effect.fail(conn.closed);
+    }
+    const method = conn.features.loadSession
+      ? "session/load"
+      : conn.features.resumeSession
+        ? "session/resume"
+        : undefined;
+    if (method === undefined) {
+      return Effect.fail<LoadUnsupported>({ _tag: "LoadUnsupported", agent: conn.agent, sessionId });
+    }
+    const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
+    conn.loading.set(sessionId, done);
+    const load = request(
+      conn,
+      method,
+      conn.wire.loadSession(method, sessionId, {
+        cwd: options.cwd,
+        mcpServers: sessionMcpServers(options, defaults),
+        ...metaOf(conn.profile, options)
+      })
+    ).pipe(Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, [])));
+    // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
+    // it before it runs.
+    return load.pipe(
+      Effect.forkIn(conn.scope),
+      Effect.flatMap((fiber) =>
+        Effect.sync(() =>
+          fiber.addObserver((exit) => {
+            conn.loading.delete(sessionId);
+            const interrupted = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause);
+            Deferred.doneUnsafe(
+              done,
+              interrupted ? Effect.fail(conn.closed ?? connectionClosed(conn, "closed")) : exit
+            );
+          })
+        )
+      ),
+      Effect.andThen(Deferred.await(done))
+    );
+  });
+}
+
+function newSession(
+  conn: ConnectionState,
+  defaults: ConnectAgentOptions,
+  options: NewSessionOptions
+): Effect.Effect<AcpSessionHandle, NewSessionError> {
+  return Effect.gen(function* () {
+    const { sessionKey } = options;
+    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
+    const cwd = options.cwd ?? conn.cwd;
+    const sessionId = yield* request(
+      conn,
+      "session/new",
+      conn.wire.newSession({
+        cwd,
+        mcpServers: sessionMcpServers(options, defaults),
+        ...metaOf(conn.profile, options)
+      })
+    );
+    const live = yield* register(
+      conn,
+      "session/new",
+      sessionId,
+      cwd,
+      sessionKey,
+      firstPromptBlocks(conn.profile, [], options)
+    );
+    if (store !== undefined && sessionKey !== undefined) {
+      yield* store
+        .set({ sessionKey, agent: conn.agent, sessionId, cwd })
+        .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
+    }
+    return sessionHandle(conn, live);
+  });
+}
+
+function loadSession(
+  conn: ConnectionState,
+  defaults: ConnectAgentOptions,
+  target: LoadSessionTarget,
+  options: SessionOptions
+): Effect.Effect<AcpSessionHandle, LoadSessionError> {
+  return Effect.gen(function* () {
+    const { sessionKey } = target;
+    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
+    let sessionId: string;
+    let boundCwd: string | undefined;
+    if ("sessionId" in target) {
+      sessionId = target.sessionId;
+    } else {
+      const stored = yield* store?.get(target.sessionKey) ?? Effect.succeed(undefined);
+      const binding = bindingFor(conn.agent, stored);
+      if (binding === undefined) {
+        return yield* Effect.fail<BindingNotFound>({
+          _tag: "BindingNotFound",
+          agent: conn.agent,
+          sessionKey: target.sessionKey
+        });
+      }
+      sessionId = binding.sessionId;
+      boundCwd = binding.cwd;
+    }
+    const live = yield* openLoaded(conn, defaults, sessionId, sessionKey, {
+      ...options,
+      cwd: options.cwd ?? boundCwd ?? conn.cwd
+    });
+    if (store !== undefined && sessionKey !== undefined) {
+      // A session that is already open on this connection is shared, so a failed write keeps it open.
+      if ("sessionId" in target) {
+        yield* store.set({ sessionKey, agent: conn.agent, sessionId, cwd: live.cwd });
+      }
+      live.keys.add(sessionKey);
+    }
+    return sessionHandle(conn, live, sessionKey);
+  });
 }
 
 function timeoutsOf(options: ConnectAgentOptions): Timeouts {
@@ -378,251 +600,29 @@ function open(
   });
 }
 
-/** MCP servers for one session: its own list, else the connection default, else none. */
-function sessionMcpServers(
-  options: { readonly mcpServers?: readonly McpServerConfig[] },
-  defaults: ConnectAgentOptions
-): readonly McpServerConfig[] {
-  return options.mcpServers ?? defaults.mcpServers ?? [];
-}
-
-function newSession(
-  conn: ConnectionState,
-  defaults: ConnectAgentOptions,
-  options: NewSessionOptions
-): Effect.Effect<AcpSessionHandle, NewSessionError> {
-  return Effect.gen(function* () {
-    const { sessionKey } = options;
-    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
-    const cwd = options.cwd ?? conn.cwd;
-    const sessionId = yield* request(
-      conn,
-      "session/new",
-      conn.wire.newSession({
-        cwd,
-        mcpServers: sessionMcpServers(options, defaults),
-        ...metaOf(conn.profile, options)
-      })
-    );
-    const live = yield* register(
-      conn,
-      "session/new",
-      sessionId,
-      cwd,
-      sessionKey,
-      firstPromptBlocks(conn.profile, [], options)
-    );
-    if (store !== undefined && sessionKey !== undefined) {
-      yield* store
-        .set({ sessionKey, agent: conn.agent, sessionId, cwd })
-        .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
-    }
-    return sessionHandle(conn, live);
-  });
-}
-
-function loadSession(
-  conn: ConnectionState,
-  defaults: ConnectAgentOptions,
-  target: LoadSessionTarget,
-  options: SessionOptions
-): Effect.Effect<AcpSessionHandle, LoadSessionError> {
-  return Effect.gen(function* () {
-    const { sessionKey } = target;
-    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
-    let sessionId: string;
-    let boundCwd: string | undefined;
-    if ("sessionId" in target) {
-      sessionId = target.sessionId;
-    } else {
-      const stored = yield* store?.get(target.sessionKey) ?? Effect.succeed(undefined);
-      const binding = bindingFor(conn.agent, stored);
-      if (binding === undefined) {
-        return yield* Effect.fail<BindingNotFound>({
-          _tag: "BindingNotFound",
-          agent: conn.agent,
-          sessionKey: target.sessionKey
-        });
-      }
-      sessionId = binding.sessionId;
-      boundCwd = binding.cwd;
-    }
-    const live = yield* openLoaded(conn, defaults, sessionId, sessionKey, {
-      ...options,
-      cwd: options.cwd ?? boundCwd ?? conn.cwd
-    });
-    if (store !== undefined && sessionKey !== undefined) {
-      // A session that is already open on this connection is shared, so a failed write keeps it open.
-      if ("sessionId" in target) {
-        yield* store.set({ sessionKey, agent: conn.agent, sessionId, cwd: live.cwd });
-      }
-      live.keys.add(sessionKey);
-    }
-    return sessionHandle(conn, live, sessionKey);
-  });
-}
-
 /**
- * The open session with this id: the one already on the connection, the one a concurrent call is loading, or one
- * loaded now. The load runs in the connection's Scope, so a caller that stops waiting does not fail the others.
+ * Starts `agent`'s ACP program with exactly `options.env` and completes the ACP handshake. The connection belongs to
+ * the caller's Scope: closing that Scope closes every session and stops the process. Throws an `AgentKitError` (as a
+ * defect) for an agent without a profile or an option out of range.
  */
-function openLoaded(
-  conn: ConnectionState,
-  defaults: ConnectAgentOptions,
-  sessionId: string,
-  sessionKey: string | undefined,
-  options: SessionOptions & { readonly cwd: string }
-): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> {
-  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> => {
-    const existing = conn.sessions.get(sessionId);
-    if (existing !== undefined && existing.session.toSnapshot().state !== "closed") {
-      return Effect.succeed(existing);
-    }
-    const loading = conn.loading.get(sessionId);
-    if (loading !== undefined) {
-      return Deferred.await(loading);
-    }
-    if (conn.closed !== undefined) {
-      return Effect.fail(conn.closed);
-    }
-    const method = conn.features.loadSession
-      ? "session/load"
-      : conn.features.resumeSession
-        ? "session/resume"
-        : undefined;
-    if (method === undefined) {
-      return Effect.fail<LoadUnsupported>({ _tag: "LoadUnsupported", agent: conn.agent, sessionId });
-    }
-    const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
-    conn.loading.set(sessionId, done);
-    const load = request(
-      conn,
-      method,
-      conn.wire.loadSession(method, sessionId, {
-        cwd: options.cwd,
-        mcpServers: sessionMcpServers(options, defaults),
-        ...metaOf(conn.profile, options)
-      })
-    ).pipe(Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, [])));
-    // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
-    // it before it runs.
-    return load.pipe(
-      Effect.forkIn(conn.scope),
-      Effect.flatMap((fiber) =>
-        Effect.sync(() =>
-          fiber.addObserver((exit) => {
-            conn.loading.delete(sessionId);
-            const interrupted = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause);
-            Deferred.doneUnsafe(
-              done,
-              interrupted ? Effect.fail(conn.closed ?? connectionClosed(conn, "closed")) : exit
-            );
-          })
-        )
-      ),
-      Effect.andThen(Deferred.await(done))
+export function connectAgent(
+  agent: CodingAgentId,
+  options: ConnectAgentOptions
+): Effect.Effect<AcpConnection, ConnectError, PlatformService | Scope.Scope> {
+  return Effect.gen(function* () {
+    const profile = yield* Effect.sync(() => profileOf(agent, options.profiles));
+    const timeouts = yield* Effect.sync(() => timeoutsOf(options));
+    const platform = yield* PlatformService;
+    const bindings = yield* Effect.serviceOption(SessionBindingStore);
+    const scope = yield* Scope.fork(yield* Effect.scope, "sequential");
+    return yield* open(agent, profile, options, timeouts, platform, bindings, scope).pipe(
+      Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : Scope.close(scope, exit)))
     );
   });
 }
 
-function metaOf(profile: AcpProfile, setup: SessionSetup): { meta?: Record<string, unknown> } {
-  const meta = sessionMeta(profile, setup);
-  return meta === undefined ? {} : { meta };
-}
-
-/** A session request bounded by the connection's request timeout. */
-function request<A>(
-  conn: ConnectionState,
-  method: string,
-  effect: Effect.Effect<A, WireFailure>
-): Effect.Effect<A, ConnectionClosed | AuthRequired | AcpRequestFailed | AcpTimeout> {
-  return Effect.suspend(() => (conn.closed === undefined ? effect : Effect.fail<WireFailure>({ kind: "closed" }))).pipe(
-    Effect.mapError((failure) => requestError(conn, method, failure)),
-    Effect.timeoutOrElse({
-      duration: conn.requestTimeoutMs,
-      orElse: () => Effect.fail<AcpTimeout>({ _tag: "AcpTimeout", method, timeoutMs: conn.requestTimeoutMs })
-    })
-  );
-}
-
-function storeFor(
-  conn: ConnectionState,
-  sessionKey: string
-): Effect.Effect<SessionBindingStoreShape, SessionBindingStoreFailure> {
-  if (sessionKey === "") {
-    return Effect.die(invalidOption("sessionKey must not be empty"));
-  }
-  return Option.isSome(conn.bindings)
-    ? Effect.succeed(conn.bindings.value)
-    : Effect.fail({
-        _tag: "SessionBindingStoreFailure",
-        sessionKey,
-        reason: "unavailable",
-        message: "no SessionBindingStore is provided, so a sessionKey cannot be bound or loaded"
-      });
-}
-
-/** Adds an opened session to the connection; its directory is resolved only when client file calls are on. */
-function register(
-  conn: ConnectionState,
-  method: string,
-  sessionId: string,
-  cwd: string,
-  sessionKey: string | undefined,
-  pendingBlocks: readonly PromptBlock[]
-): Effect.Effect<LiveSession, ConnectionClosed | AcpRequestFailed> {
-  return Effect.gen(function* () {
-    const root =
-      conn.fileSystem.read || conn.fileSystem.write
-        ? yield* Effect.promise(() => sessionRoot(conn.platform.fs, cwd).catch(() => undefined))
-        : undefined;
-    if (conn.closed !== undefined) {
-      return yield* Effect.fail(conn.closed);
-    }
-    const created = AcpSession.create({ agent: conn.agent, ...(sessionKey === undefined ? {} : { sessionKey }) });
-    if (!created.ok) {
-      return yield* Effect.die(invalidOption(created.error.message));
-    }
-    const opened = created.value.opened(sessionId);
-    if (!opened.ok) {
-      return yield* Effect.fail<AcpRequestFailed>({
-        _tag: "AcpRequestFailed",
-        method,
-        message: `the agent named an invalid session id "${sessionId}"`
-      });
-    }
-    const live: LiveSession = {
-      sessionId,
-      cwd,
-      keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
-      session: opened.value.state,
-      pendingBlocks,
-      ...(root === undefined ? {} : { root })
-    };
-    conn.sessions.set(sessionId, live);
-    return live;
-  });
-}
-
-/** Drops a session whose binding could not be written; the agent keeps it, the caller never got a handle. */
-function forget(conn: ConnectionState, live: LiveSession): void {
-  step(live, { ok: true, value: live.session.close("closed") });
-  conn.sessions.delete(live.sessionId);
-}
-
-/** Reads a stream to its end, keeping its last characters, so a chatty agent never blocks on a full pipe. */
-function drainTail(stream: ReadableStream<Uint8Array>): () => string {
-  let tail = "";
-  const decoder = new TextDecoder();
-  const reader = stream.getReader();
-  const read = (): Promise<void> =>
-    reader.read().then(({ done, value }) => {
-      if (!done) {
-        tail = `${tail}${decoder.decode(value, { stream: true })}`.slice(-STDERR_TAIL_CHARS);
-        return read();
-      }
-      return undefined;
-    });
-  read().catch(() => undefined);
-  return () => tail.trim();
+interface Timeouts {
+  readonly handshakeTimeoutMs: number;
+  readonly requestTimeoutMs: number;
+  readonly cancelTimeoutMs: number;
 }

@@ -16,6 +16,29 @@ export type AcpSessionTransition = { readonly state: AcpSession; readonly events
 
 const RUNNING: ReadonlySet<AcpSessionState> = new Set(["turn", "awaiting-permission", "cancelling"]);
 
+function invalidity(snapshot: AcpSessionSnapshot): string | undefined {
+  const { state, sessionId, sessionKey, turns, pendingPermissions, closeReason } = snapshot;
+  if (sessionKey === "") {
+    return "the session key is empty";
+  }
+  if (sessionId === "" || (sessionId === undefined && state !== "starting" && state !== "closed")) {
+    return `a ${state} session needs a session id`;
+  }
+  if (!Number.isSafeInteger(turns) || turns < 0) {
+    return `turns ${turns} is not a non-negative integer`;
+  }
+  if (RUNNING.has(state) && turns === 0) {
+    return `a ${state} session has started a turn`;
+  }
+  if (!Number.isSafeInteger(pendingPermissions) || pendingPermissions < 0) {
+    return `pendingPermissions ${pendingPermissions} is not a non-negative integer`;
+  }
+  if ((state === "awaiting-permission") !== pendingPermissions > 0 && state !== "cancelling") {
+    return `a ${state} session cannot have ${pendingPermissions} pending permission requests`;
+  }
+  return (state === "closed") === (closeReason !== undefined) ? undefined : "only a closed session has a close reason";
+}
+
 /**
  * A live ACP session. It starts while the agent creates or loads it, then runs at most one turn at a time; a cancel
  * moves the running turn to `cancelling` until the turn ends, and a cancel that does not settle closes the session and
@@ -185,27 +208,4 @@ export class AcpSession {
   private illegal(transition: string): IllegalTransition {
     return { _tag: "IllegalTransition", transition, state: this.snapshot.state };
   }
-}
-
-function invalidity(snapshot: AcpSessionSnapshot): string | undefined {
-  const { state, sessionId, sessionKey, turns, pendingPermissions, closeReason } = snapshot;
-  if (sessionKey === "") {
-    return "the session key is empty";
-  }
-  if (sessionId === "" || (sessionId === undefined && state !== "starting" && state !== "closed")) {
-    return `a ${state} session needs a session id`;
-  }
-  if (!Number.isSafeInteger(turns) || turns < 0) {
-    return `turns ${turns} is not a non-negative integer`;
-  }
-  if (RUNNING.has(state) && turns === 0) {
-    return `a ${state} session has started a turn`;
-  }
-  if (!Number.isSafeInteger(pendingPermissions) || pendingPermissions < 0) {
-    return `pendingPermissions ${pendingPermissions} is not a non-negative integer`;
-  }
-  if ((state === "awaiting-permission") !== pendingPermissions > 0 && state !== "cancelling") {
-    return `a ${state} session cannot have ${pendingPermissions} pending permission requests`;
-  }
-  return (state === "closed") === (closeReason !== undefined) ? undefined : "only a closed session has a close reason";
 }

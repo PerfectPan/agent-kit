@@ -54,72 +54,12 @@ interface HomePatterns {
 
 let cached: HomePatterns | undefined;
 
-/**
- * Replaces every spelling of `options.home` with `~` and every secret-shaped string with `[redacted]`. Matching
- * ignores case, so a mixed-case spelling on a case-insensitive file system is hidden too, at the cost of also hiding
- * a different directory that differs only in case.
- */
-export function redactText(text: string, options: RedactOptions): string {
-  const patterns = homePatterns(options.home);
-  let result = text;
-  for (const pattern of [patterns.encoded, patterns.literal, patterns.tilde]) {
-    if (pattern !== undefined) {
-      result = result.replace(pattern, "~");
-    }
-  }
-  return result.replace(SECRET, REDACTED);
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Returns a copy of a JSON-like value with `redactText` applied to every string, including object keys. Arrays and
- * plain objects are copied; other objects (dates, class instances) are returned as they are, and nothing is mutated.
- */
-export function redact<T>(value: T, options: RedactOptions): T {
-  return redactValue(value, options) as T;
-}
-
-function redactValue(value: unknown, options: RedactOptions): unknown {
-  if (typeof value === "string") {
-    return redactText(value, options);
-  }
-  if (Array.isArray(value)) {
-    return value.map((item: unknown) => redactValue(item, options));
-  }
-  if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [redactText(key, options), redactValue(item, options)])
-    );
-  }
-  return value;
-}
-
-function homePatterns(home: string): HomePatterns {
-  if (cached?.home !== home) {
-    cached = buildPatterns(home);
-  }
-  return cached;
-}
-
-function buildPatterns(home: string): HomePatterns {
-  const root = home.replace(/(?<=.)[\\/]+$/, "");
-  const segments = root.split(/[\\/]/);
-  const user = segments.at(-1) ?? "";
-  if (user === "" || /^[A-Za-z]:$/.test(user)) {
-    return { home, encoded: undefined, literal: undefined, tilde: undefined };
-  }
-  const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
-  const literal =
-    drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
-  const dash = root.replace(/[^A-Za-z0-9]/g, "-");
-  return {
-    home,
-    encoded: new RegExp(
-      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${SEGMENT_START}${escapeRegExp(dash)})(?![${NAME}])`,
-      "giu"
-    ),
-    literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
-    tilde: new RegExp(`${tokenStart(NAME)}~${escapeRegExp(user)}${SEGMENT_END}`, "giu")
-  };
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
 
 /**
@@ -151,10 +91,70 @@ function windowsSpellings(drive: string, rest: string, root: string): string[] {
   ]);
 }
 
-function unique(values: readonly string[]): string[] {
-  return [...new Set(values)];
+function buildPatterns(home: string): HomePatterns {
+  const root = home.replace(/(?<=.)[\\/]+$/, "");
+  const segments = root.split(/[\\/]/);
+  const user = segments.at(-1) ?? "";
+  if (user === "" || /^[A-Za-z]:$/.test(user)) {
+    return { home, encoded: undefined, literal: undefined, tilde: undefined };
+  }
+  const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
+  const literal =
+    drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
+  const dash = root.replace(/[^A-Za-z0-9]/g, "-");
+  return {
+    home,
+    encoded: new RegExp(
+      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${SEGMENT_START}${escapeRegExp(dash)})(?![${NAME}])`,
+      "giu"
+    ),
+    literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
+    tilde: new RegExp(`${tokenStart(NAME)}~${escapeRegExp(user)}${SEGMENT_END}`, "giu")
+  };
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function homePatterns(home: string): HomePatterns {
+  if (cached?.home !== home) {
+    cached = buildPatterns(home);
+  }
+  return cached;
+}
+
+/**
+ * Replaces every spelling of `options.home` with `~` and every secret-shaped string with `[redacted]`. Matching
+ * ignores case, so a mixed-case spelling on a case-insensitive file system is hidden too, at the cost of also hiding
+ * a different directory that differs only in case.
+ */
+export function redactText(text: string, options: RedactOptions): string {
+  const patterns = homePatterns(options.home);
+  let result = text;
+  for (const pattern of [patterns.encoded, patterns.literal, patterns.tilde]) {
+    if (pattern !== undefined) {
+      result = result.replace(pattern, "~");
+    }
+  }
+  return result.replace(SECRET, REDACTED);
+}
+
+function redactValue(value: unknown, options: RedactOptions): unknown {
+  if (typeof value === "string") {
+    return redactText(value, options);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item: unknown) => redactValue(item, options));
+  }
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [redactText(key, options), redactValue(item, options)])
+    );
+  }
+  return value;
+}
+
+/**
+ * Returns a copy of a JSON-like value with `redactText` applied to every string, including object keys. Arrays and
+ * plain objects are copied; other objects (dates, class instances) are returned as they are, and nothing is mutated.
+ */
+export function redact<T>(value: T, options: RedactOptions): T {
+  return redactValue(value, options) as T;
 }

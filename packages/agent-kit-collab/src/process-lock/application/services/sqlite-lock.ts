@@ -12,6 +12,12 @@ export const SETTLE_MS = 10;
 /** SQLITE_BUSY and SQLITE_LOCKED, the primary codes of their extended codes: another connection holds the lock. */
 const BUSY_CODES = new Set([5, 6]);
 
+export function isSqliteBusy(error: unknown): boolean {
+  // isSqliteBusy must sit above its caller trySqliteLock, and SqliteBusy may not move.
+  // oxlint-disable-next-line no-use-before-define
+  return SqliteBusy.safeParse(error).success;
+}
+
 /**
  * Takes an exclusive lock on the SQLite database at `path`, creating the file, or returns `undefined` when another
  * connection holds it. The lock is an fcntl lock on the file: it lasts until `ROLLBACK` and `close`, and the kernel
@@ -49,7 +55,3 @@ const SqliteBusy = z.union([
   z.looseObject({ errcode: z.number().check(z.custom((errcode: number) => BUSY_CODES.has(errcode & 0xff))) }),
   z.looseObject({ message: z.literal("database is locked") })
 ]);
-
-export function isSqliteBusy(error: unknown): boolean {
-  return SqliteBusy.safeParse(error).success;
-}

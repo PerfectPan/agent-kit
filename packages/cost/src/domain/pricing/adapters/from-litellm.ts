@@ -23,6 +23,24 @@ const Entry = z.object({
   cache_creation_input_token_cost_above_1hr: lenient(z.optional(CostField), undefined)
 });
 
+/** USD per million tokens, rounded to remove floating-point noise but keep the precision of cheap cache reads. */
+function perMillion(value: number): number {
+  return Math.round(value * 1_000_000 * 1_000_000) / 1_000_000;
+}
+
+function priceOf(entry: z.output<typeof Entry>): Price {
+  const input = perMillion(entry.input_cost_per_token);
+  const cacheWrite1h = entry.cache_creation_input_token_cost_above_1hr;
+  return {
+    input,
+    output: perMillion(entry.output_cost_per_token),
+    cacheRead: entry.cache_read_input_token_cost === undefined ? input : perMillion(entry.cache_read_input_token_cost),
+    cacheWrite:
+      entry.cache_creation_input_token_cost === undefined ? input : perMillion(entry.cache_creation_input_token_cost),
+    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h: perMillion(cacheWrite1h) })
+  };
+}
+
 /**
  * A `PricingTable` from LiteLLM's model price list (`model_prices_and_context_window.json`), whose prices are USD per
  * token, under LiteLLM's keys. An entry needs `input_cost_per_token` and `output_cost_per_token`; cache writes take
@@ -48,22 +66,4 @@ export function fromLiteLLM(json: unknown): PricingTable {
     }
   }
   return table;
-}
-
-function priceOf(entry: z.output<typeof Entry>): Price {
-  const input = perMillion(entry.input_cost_per_token);
-  const cacheWrite1h = entry.cache_creation_input_token_cost_above_1hr;
-  return {
-    input,
-    output: perMillion(entry.output_cost_per_token),
-    cacheRead: entry.cache_read_input_token_cost === undefined ? input : perMillion(entry.cache_read_input_token_cost),
-    cacheWrite:
-      entry.cache_creation_input_token_cost === undefined ? input : perMillion(entry.cache_creation_input_token_cost),
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h: perMillion(cacheWrite1h) })
-  };
-}
-
-/** USD per million tokens, rounded to remove floating-point noise but keep the precision of cheap cache reads. */
-function perMillion(value: number): number {
-  return Math.round(value * 1_000_000 * 1_000_000) / 1_000_000;
 }

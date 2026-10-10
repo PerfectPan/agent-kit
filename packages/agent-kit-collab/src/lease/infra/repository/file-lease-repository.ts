@@ -29,6 +29,37 @@ const GUARD_TIMEOUT_MS = 1000;
 
 type FilePlatform = Pick<Platform, "fs" | "process" | "clock" | "sqlite">;
 
+function decodeFile(key: string, path: string, text: string): Effect.Effect<LeaseSnapshot, LeaseRepositoryFailure> {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (cause) {
+    return Effect.fail(repositoryFailure(key, "invalid-record", `${path} is not JSON`, cause));
+  }
+  const stored = StoredLease.safeParse(json);
+  const { schemaVersion, record } = stored.success ? stored.data : { schemaVersion: undefined, record: undefined };
+  if (schemaVersion !== SCHEMA_VERSION) {
+    return Effect.fail(
+      repositoryFailure(key, "unsupported-schema", `${path} has schemaVersion ${String(schemaVersion)}; expected 1`)
+    );
+  }
+  const snapshot = decodeSnapshot(record);
+  return snapshot === undefined
+    ? Effect.fail(repositoryFailure(key, "invalid-record", `${path} holds a record of an unexpected shape`))
+    : Effect.succeed(snapshot);
+}
+
+function readRecord(
+  platform: FilePlatform,
+  key: string,
+  path: string
+): Effect.Effect<LeaseSnapshot | undefined, LeaseRepositoryFailure> {
+  return Effect.tryPromise({
+    try: () => readText(platform, path),
+    catch: (cause) => repositoryFailure(key, "io", `cannot read ${path}`, cause)
+  }).pipe(Effect.flatMap((text) => (text === undefined ? Effect.succeed(undefined) : decodeFile(key, path, text))));
+}
+
 /**
  * The fallback repository for platforms without SQLite: one JSON record per key, `<key>.lease.json`, replaced with
  * `writeAtomic`. Every `save` holds the key's guard (`<key>.lease.guard`) while it reads, compares and writes, and
@@ -76,35 +107,4 @@ export function fileLeaseRepository(
       };
     })
   );
-}
-
-function readRecord(
-  platform: FilePlatform,
-  key: string,
-  path: string
-): Effect.Effect<LeaseSnapshot | undefined, LeaseRepositoryFailure> {
-  return Effect.tryPromise({
-    try: () => readText(platform, path),
-    catch: (cause) => repositoryFailure(key, "io", `cannot read ${path}`, cause)
-  }).pipe(Effect.flatMap((text) => (text === undefined ? Effect.succeed(undefined) : decodeFile(key, path, text))));
-}
-
-function decodeFile(key: string, path: string, text: string): Effect.Effect<LeaseSnapshot, LeaseRepositoryFailure> {
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch (cause) {
-    return Effect.fail(repositoryFailure(key, "invalid-record", `${path} is not JSON`, cause));
-  }
-  const stored = StoredLease.safeParse(json);
-  const { schemaVersion, record } = stored.success ? stored.data : { schemaVersion: undefined, record: undefined };
-  if (schemaVersion !== SCHEMA_VERSION) {
-    return Effect.fail(
-      repositoryFailure(key, "unsupported-schema", `${path} has schemaVersion ${String(schemaVersion)}; expected 1`)
-    );
-  }
-  const snapshot = decodeSnapshot(record);
-  return snapshot === undefined
-    ? Effect.fail(repositoryFailure(key, "invalid-record", `${path} holds a record of an unexpected shape`))
-    : Effect.succeed(snapshot);
 }

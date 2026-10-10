@@ -365,87 +365,6 @@ export interface PlanInput {
   readonly compat?: readonly HookCompat[];
 }
 
-/**
- * Observes everything the plan may touch (the desired locators, every locator the owner holds, and where older
- * versions of the owner may have left something) and builds the plan against `loaded`; the view and its record for
- * `registerPlan`.
- */
-export function buildPlan(
-  scope: LedgerScope,
-  loaded: LoadedLedger,
-  input: PlanInput
-): Effect.Effect<
-  InstallPlan,
-  PendingOperations | PlanStale | InvalidPlan | PlanConflict | ArtifactFailure | LedgerReadError,
-  ArtifactFiles | ExternalOwner | LedgerRepository | PlatformService
-> {
-  return Effect.gen(function* () {
-    const { bundle, agents, setup } = input;
-    const { ledger } = loaded;
-    const evidenceScope = planEvidenceScope({
-      bundle,
-      agents,
-      desired: input.desired,
-      ledger,
-      adapters: setup.adapters,
-      dialects: setup.dialects,
-      context: setup.context,
-      ...(input.compat === undefined ? {} : { compat: input.compat })
-    });
-    const locators = new Map<LocatorKey, ArtifactLocator>();
-    for (const locator of evidenceScope.locators) {
-      locators.set(locatorKey(locator), locator);
-    }
-    const observed = new Map<LocatorKey, ObservedArtifact>();
-    for (const [key, locator] of locators) {
-      const found = yield* observe(locator, registrationLookup(setup.adapters, setup.context));
-      if (found !== undefined) {
-        observed.set(key, found);
-      }
-    }
-    const foreignHooks: ForeignHookObservation[] = [];
-    if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
-      for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
-        const found = observation.observed;
-        if (observation.runner !== undefined && observation.event !== undefined) {
-          foreignHooks.push({ observed: found, runner: observation.runner, event: observation.event });
-        }
-        if (!observed.has(locatorKey(found.locator))) {
-          observed.set(locatorKey(found.locator), found);
-        }
-      }
-    }
-    const paths = [
-      ...new Set([...locators.values(), ...[...observed.values()].map((found) => found.locator)].map((l) => l.path))
-    ];
-    const managed = yield* (yield* ExternalOwner).managedPaths(paths);
-    const linked = yield* linkedPaths(paths);
-    const roots: string[] = [];
-    for (const candidate of evidenceScope.rootCandidates) {
-      roots.push(yield* resolvePath(candidate, true));
-    }
-    const aggregate = yield* fromResult(
-      buildInstallPlan(
-        {
-          planId: crypto.randomUUID(),
-          bundle,
-          target: { scope: scope.scope, agents, roots: [...new Set(roots)] },
-          desired: input.desired,
-          ...(input.choices === undefined ? {} : { choices: input.choices }),
-          managedPaths: Object.fromEntries(managed),
-          linkedPaths: linked,
-          foreignHooks,
-          dialects: setup.dialects
-        },
-        ledger,
-        [...observed.values()]
-      )
-    );
-    const view = yield* describePlan(scope, aggregate, ledger, observed, input);
-    return registerPlan(view, { scope, adapters: setup.adapters, context: setup.context, aggregate });
-  });
-}
-
 /** The content a step leaves at its target, or `undefined` when it leaves nothing or does not write there. */
 export function contentAfter(
   scope: LedgerScope,
@@ -558,6 +477,87 @@ function describePlan(
       notes,
       droppedHooks: input.droppedHooks
     };
+  });
+}
+
+/**
+ * Observes everything the plan may touch (the desired locators, every locator the owner holds, and where older
+ * versions of the owner may have left something) and builds the plan against `loaded`; the view and its record for
+ * `registerPlan`.
+ */
+export function buildPlan(
+  scope: LedgerScope,
+  loaded: LoadedLedger,
+  input: PlanInput
+): Effect.Effect<
+  InstallPlan,
+  PendingOperations | PlanStale | InvalidPlan | PlanConflict | ArtifactFailure | LedgerReadError,
+  ArtifactFiles | ExternalOwner | LedgerRepository | PlatformService
+> {
+  return Effect.gen(function* () {
+    const { bundle, agents, setup } = input;
+    const { ledger } = loaded;
+    const evidenceScope = planEvidenceScope({
+      bundle,
+      agents,
+      desired: input.desired,
+      ledger,
+      adapters: setup.adapters,
+      dialects: setup.dialects,
+      context: setup.context,
+      ...(input.compat === undefined ? {} : { compat: input.compat })
+    });
+    const locators = new Map<LocatorKey, ArtifactLocator>();
+    for (const locator of evidenceScope.locators) {
+      locators.set(locatorKey(locator), locator);
+    }
+    const observed = new Map<LocatorKey, ObservedArtifact>();
+    for (const [key, locator] of locators) {
+      const found = yield* observe(locator, registrationLookup(setup.adapters, setup.context));
+      if (found !== undefined) {
+        observed.set(key, found);
+      }
+    }
+    const foreignHooks: ForeignHookObservation[] = [];
+    if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
+      for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
+        const found = observation.observed;
+        if (observation.runner !== undefined && observation.event !== undefined) {
+          foreignHooks.push({ observed: found, runner: observation.runner, event: observation.event });
+        }
+        if (!observed.has(locatorKey(found.locator))) {
+          observed.set(locatorKey(found.locator), found);
+        }
+      }
+    }
+    const paths = [
+      ...new Set([...locators.values(), ...[...observed.values()].map((found) => found.locator)].map((l) => l.path))
+    ];
+    const managed = yield* (yield* ExternalOwner).managedPaths(paths);
+    const linked = yield* linkedPaths(paths);
+    const roots: string[] = [];
+    for (const candidate of evidenceScope.rootCandidates) {
+      roots.push(yield* resolvePath(candidate, true));
+    }
+    const aggregate = yield* fromResult(
+      buildInstallPlan(
+        {
+          planId: crypto.randomUUID(),
+          bundle,
+          target: { scope: scope.scope, agents, roots: [...new Set(roots)] },
+          desired: input.desired,
+          ...(input.choices === undefined ? {} : { choices: input.choices }),
+          managedPaths: Object.fromEntries(managed),
+          linkedPaths: linked,
+          foreignHooks,
+          dialects: setup.dialects
+        },
+        ledger,
+        [...observed.values()]
+      )
+    );
+    const view = yield* describePlan(scope, aggregate, ledger, observed, input);
+    return registerPlan(view, { scope, adapters: setup.adapters, context: setup.context, aggregate });
   });
 }
 

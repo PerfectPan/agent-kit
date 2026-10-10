@@ -25,6 +25,10 @@ const Live = Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive);
 
 const agents = Object.entries(builtinAcpProfiles).filter(([agent]) => selected.has(agent));
 
+function textOf(parts: readonly TranscriptStreamPart[]): string {
+  return parts.map((part) => (part.type === "text-delta" ? part.delta : "")).join("");
+}
+
 describe.each(agents)("%s over ACP", (agent, profile) => {
   const options = () => ({
     cwd: mkdtempSync(join(tmpdir(), `agent-kit-smoke-${agent}-`)),
@@ -67,7 +71,3 @@ describe.each(agents)("%s over ACP", (agent, profile) => {
     300_000
   );
 });
-
-function textOf(parts: readonly TranscriptStreamPart[]): string {
-  return parts.map((part) => (part.type === "text-delta" ? part.delta : "")).join("");
-}

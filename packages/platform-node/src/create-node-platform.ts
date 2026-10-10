@@ -13,6 +13,14 @@ export interface NodePlatformOptions {
   readonly home?: string;
 }
 
+function currentOs(): OperatingSystem {
+  const { platform } = process;
+  if (platform === "darwin" || platform === "linux" || platform === "win32") {
+    return platform;
+  }
+  throw new Error(`@rivus/agent-kit/node supports darwin, linux and win32, not ${platform}`);
+}
+
 /** Creates the Node.js `Platform`. Create it once in the composition root and pass it to use cases. */
 export function createNodePlatform(options: NodePlatformOptions = {}): Platform {
   const env = options.env ?? Object.freeze({ ...process.env });
@@ -26,12 +34,4 @@ export function createNodePlatform(options: NodePlatformOptions = {}): Platform 
     clock: { now: Date.now, monotonic: () => performance.now() },
     sqlite: nodeSqlite
   };
-}
-
-function currentOs(): OperatingSystem {
-  const { platform } = process;
-  if (platform === "darwin" || platform === "linux" || platform === "win32") {
-    return platform;
-  }
-  throw new Error(`@rivus/agent-kit/node supports darwin, linux and win32, not ${platform}`);
 }

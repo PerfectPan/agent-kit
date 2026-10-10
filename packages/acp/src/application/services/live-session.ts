@@ -55,27 +55,86 @@ export interface AcpSessionHandle {
   close(): Effect.Effect<void>;
 }
 
-/** A handle on `live`; `sessionKey` is the key the caller opened it with, else the session's first key. */
-export function sessionHandle(
-  conn: ConnectionState,
-  live: LiveSession,
-  sessionKey: string | undefined = primaryKey(live)
-): AcpSessionHandle {
-  return {
-    sessionId: live.sessionId,
-    ...(sessionKey === undefined ? {} : { sessionKey }),
-    snapshot: Effect.sync(() => live.session.toSnapshot()),
-    prompt: (blocks) => prompt(conn, live, blocks),
-    cancel: () => cancelTurn(conn, live),
-    close: () => closeSession(conn, live)
-  };
+/**
+ * A cancel that did not settle: the session closes, the connection with its process ends, and then the session's
+ * bindings go, each bounded by the request timeout, so a store that hangs cannot keep the process alive.
+ */
+function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effect.Effect<CancelUnsettled> {
+  return Effect.gen(function* () {
+    step(live, live.session.cancelUnsettled());
+    const owned = live.turn === turn;
+    if (owned) {
+      live.turn = undefined;
+      Deferred.doneUnsafe(turn.ended, Effect.void);
+    }
+    shutdown(conn, "cancel-unsettled");
+    const { sessionId } = live;
+    const sessionKey = primaryKey(live);
+    const outcomes = yield* Effect.forEach(
+      live.keys,
+      (key) =>
+        (Option.isSome(conn.bindings)
+          ? Effect.exit(conn.bindings.value.remove(key, sessionId)).pipe(Effect.timeoutOption(conn.requestTimeoutMs))
+          : Effect.succeed(Option.none())
+        ).pipe(
+          Effect.map((removed): CancelUnsettled["binding"] =>
+            Option.isNone(removed) || Exit.isFailure(removed.value)
+              ? "failed"
+              : removed.value.value
+                ? "removed"
+                : "unchanged"
+          )
+        ),
+      { concurrency: "unbounded" }
+    );
+    const binding = outcomes.includes("failed") ? "failed" : outcomes.includes("removed") ? "removed" : outcomes[0];
+    const unsettled: CancelUnsettled = {
+      _tag: "CancelUnsettled",
+      sessionId,
+      ...(sessionKey === undefined ? {} : { sessionKey }),
+      timeoutMs: conn.cancelTimeoutMs,
+      ...(binding === undefined ? {} : { binding })
+    };
+    if (owned) {
+      Queue.failCauseUnsafe(turn.sink, Cause.fail(unsettled));
+    }
+    return unsettled;
+  });
 }
 
-/** Delivers one `session/update` to the running turn; between turns, such as during a load's replay, it is dropped. */
-export function deliverUpdate(conn: ConnectionState, live: LiveSession, update: Record<string, unknown>): void {
-  if (live.turn !== undefined) {
-    emit(conn, live.turn, live.turn.translator.update(update));
-  }
+/**
+ * The cancel protocol: `session/cancel`, then wait for the turn to end. The deadline covers both steps and the wait
+ * cannot be interrupted, so the turn is either settled or invalidated when it returns.
+ */
+function cancelTurn(conn: ConnectionState, live: LiveSession): Effect.Effect<void, CancelUnsettled | SessionClosed> {
+  return Effect.suspend((): Effect.Effect<void, CancelUnsettled | SessionClosed> => {
+    const turn = live.turn;
+    const cancelled = step(live, live.session.cancel());
+    if (!cancelled.ok) {
+      return Effect.fail(cancelled.error);
+    }
+    if (turn === undefined) {
+      return Effect.void;
+    }
+    if (turn.cancelling !== undefined) {
+      return Deferred.await(turn.cancelling);
+    }
+    const outcome = Deferred.makeUnsafe<void, CancelUnsettled>();
+    turn.cancelling = outcome;
+    Deferred.doneUnsafe(turn.cancelRequested, Effect.void);
+    return Effect.gen(function* () {
+      const settled = yield* conn.wire
+        .cancel(live.sessionId)
+        .pipe(Effect.andThen(Deferred.await(turn.ended)), Effect.timeoutOption(conn.cancelTimeoutMs));
+      if (Option.isSome(settled)) {
+        Deferred.doneUnsafe(outcome, Effect.void);
+        return;
+      }
+      const unsettled = yield* invalidate(conn, live, turn);
+      Deferred.doneUnsafe(outcome, Effect.fail(unsettled));
+      return yield* Effect.fail(unsettled);
+    }).pipe(Effect.uninterruptible);
+  });
 }
 
 function prompt(
@@ -129,88 +188,6 @@ function prompt(
   );
 }
 
-/**
- * The cancel protocol: `session/cancel`, then wait for the turn to end. The deadline covers both steps and the wait
- * cannot be interrupted, so the turn is either settled or invalidated when it returns.
- */
-function cancelTurn(conn: ConnectionState, live: LiveSession): Effect.Effect<void, CancelUnsettled | SessionClosed> {
-  return Effect.suspend((): Effect.Effect<void, CancelUnsettled | SessionClosed> => {
-    const turn = live.turn;
-    const cancelled = step(live, live.session.cancel());
-    if (!cancelled.ok) {
-      return Effect.fail(cancelled.error);
-    }
-    if (turn === undefined) {
-      return Effect.void;
-    }
-    if (turn.cancelling !== undefined) {
-      return Deferred.await(turn.cancelling);
-    }
-    const outcome = Deferred.makeUnsafe<void, CancelUnsettled>();
-    turn.cancelling = outcome;
-    Deferred.doneUnsafe(turn.cancelRequested, Effect.void);
-    return Effect.gen(function* () {
-      const settled = yield* conn.wire
-        .cancel(live.sessionId)
-        .pipe(Effect.andThen(Deferred.await(turn.ended)), Effect.timeoutOption(conn.cancelTimeoutMs));
-      if (Option.isSome(settled)) {
-        Deferred.doneUnsafe(outcome, Effect.void);
-        return;
-      }
-      const unsettled = yield* invalidate(conn, live, turn);
-      Deferred.doneUnsafe(outcome, Effect.fail(unsettled));
-      return yield* Effect.fail(unsettled);
-    }).pipe(Effect.uninterruptible);
-  });
-}
-
-/**
- * A cancel that did not settle: the session closes, the connection with its process ends, and then the session's
- * bindings go, each bounded by the request timeout, so a store that hangs cannot keep the process alive.
- */
-function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effect.Effect<CancelUnsettled> {
-  return Effect.gen(function* () {
-    step(live, live.session.cancelUnsettled());
-    const owned = live.turn === turn;
-    if (owned) {
-      live.turn = undefined;
-      Deferred.doneUnsafe(turn.ended, Effect.void);
-    }
-    shutdown(conn, "cancel-unsettled");
-    const { sessionId } = live;
-    const sessionKey = primaryKey(live);
-    const outcomes = yield* Effect.forEach(
-      live.keys,
-      (key) =>
-        (Option.isSome(conn.bindings)
-          ? Effect.exit(conn.bindings.value.remove(key, sessionId)).pipe(Effect.timeoutOption(conn.requestTimeoutMs))
-          : Effect.succeed(Option.none())
-        ).pipe(
-          Effect.map((removed): CancelUnsettled["binding"] =>
-            Option.isNone(removed) || Exit.isFailure(removed.value)
-              ? "failed"
-              : removed.value.value
-                ? "removed"
-                : "unchanged"
-          )
-        ),
-      { concurrency: "unbounded" }
-    );
-    const binding = outcomes.includes("failed") ? "failed" : outcomes.includes("removed") ? "removed" : outcomes[0];
-    const unsettled: CancelUnsettled = {
-      _tag: "CancelUnsettled",
-      sessionId,
-      ...(sessionKey === undefined ? {} : { sessionKey }),
-      timeoutMs: conn.cancelTimeoutMs,
-      ...(binding === undefined ? {} : { binding })
-    };
-    if (owned) {
-      Queue.failCauseUnsafe(turn.sink, Cause.fail(unsettled));
-    }
-    return unsettled;
-  });
-}
-
 /** Runs to the end once started, bounded by the cancel deadline and the request timeout. */
 function closeSession(conn: ConnectionState, live: LiveSession): Effect.Effect<void> {
   return Effect.gen(function* () {
@@ -227,6 +204,29 @@ function closeSession(conn: ConnectionState, live: LiveSession): Effect.Effect<v
       yield* Effect.ignore(conn.wire.closeSession(live.sessionId).pipe(Effect.timeoutOption(conn.requestTimeoutMs)));
     }
   }).pipe(Effect.uninterruptible);
+}
+
+/** A handle on `live`; `sessionKey` is the key the caller opened it with, else the session's first key. */
+export function sessionHandle(
+  conn: ConnectionState,
+  live: LiveSession,
+  sessionKey: string | undefined = primaryKey(live)
+): AcpSessionHandle {
+  return {
+    sessionId: live.sessionId,
+    ...(sessionKey === undefined ? {} : { sessionKey }),
+    snapshot: Effect.sync(() => live.session.toSnapshot()),
+    prompt: (blocks) => prompt(conn, live, blocks),
+    cancel: () => cancelTurn(conn, live),
+    close: () => closeSession(conn, live)
+  };
+}
+
+/** Delivers one `session/update` to the running turn; between turns, such as during a load's replay, it is dropped. */
+export function deliverUpdate(conn: ConnectionState, live: LiveSession, update: Record<string, unknown>): void {
+  if (live.turn !== undefined) {
+    emit(conn, live.turn, live.turn.translator.update(update));
+  }
 }
 
 /**

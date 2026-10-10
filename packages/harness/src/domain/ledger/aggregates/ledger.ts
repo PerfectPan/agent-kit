@@ -111,6 +111,11 @@ function entryProblem(key: string, entry: LedgerEntry, revision: number): string
     : "entry revision is not between 0 and the ledger revision";
 }
 
+/** `kept` as a record. A snapshot that omits it, because it holds none, reads as empty. */
+function keptRecordsOf(snapshot: LedgerSnapshot): Readonly<Record<LocatorKey, KeptArtifact>> {
+  return snapshot.kept ?? {};
+}
+
 function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
   const invalid = (reason: string, key?: LocatorKey): InvalidLedger =>
     key === undefined ? { _tag: "InvalidLedger", reason } : { _tag: "InvalidLedger", reason, key };
@@ -148,11 +153,6 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
   return new Set(pendingKeys).size === pendingKeys.length
     ? undefined
     : invalid("two pending operations on one locator");
-}
-
-/** `kept` as a record. A snapshot that omits it, because it holds none, reads as empty. */
-function keptRecordsOf(snapshot: LedgerSnapshot): Readonly<Record<LocatorKey, KeptArtifact>> {
-  return snapshot.kept ?? {};
 }
 
 function freeze<T>(value: T): T {

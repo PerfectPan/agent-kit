@@ -6,6 +6,10 @@ export interface AgentKitErrorOptions {
   readonly cause?: unknown;
 }
 
+export function isAgentKitError(value: unknown): value is AgentKitError {
+  return typeof value === "object" && value !== null && (value as Record<symbol, unknown>)[BRAND] === true;
+}
+
 /**
  * The only public class of the kit. Expected failures are returned as tagged `Result` values; this error is thrown
  * for caller mistakes such as naming an agent that has no adapter, and `code` names which one.
@@ -23,8 +27,4 @@ export class AgentKitError<Code extends string = string> extends Error {
   static [Symbol.hasInstance](value: unknown): boolean {
     return isAgentKitError(value);
   }
-}
-
-export function isAgentKitError(value: unknown): value is AgentKitError {
-  return typeof value === "object" && value !== null && (value as Record<symbol, unknown>)[BRAND] === true;
 }
