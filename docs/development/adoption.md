@@ -1,6 +1,6 @@
 # Adopting agent-kit
 
-This guide is for maintainers replacing an application's copy of coding-agent knowledge with agent-kit. The kit side of P0–P6 is implemented. Each application owns its migration, behavior checks and rollout. Use one adoption pull request per application and retain its behavior except for corrections explicitly accepted during comparison.
+This guide is for maintainers replacing an application's copy of coding-agent knowledge with agent-kit. The kit side of P0–P6 is implemented. Each application owns its migration, behavior checks and rollout. Split each application's adoption into pull requests by kit area (for example pricing, hook events, setup, locks), each replacing the old code it covers and carrying its own comparison evidence, and retain behavior except for corrections explicitly accepted during comparison.
 
 Before adoption, select a verified npm release whose manifest exports the entries you need. Source implementation can precede publication. Install `@rivus/agent-kit` and `@rivus/agent-kit-collab` from the same lockstep release when using collab, and pin the chosen version in the application's lockfile. Placeholder versions are not usable releases. See the [release runbook](release.md) for publication checks.
 
@@ -92,7 +92,7 @@ Each adoption PR records the chosen package version, the imported entries, exact
 
 Run installation tests with an explicit isolated `HOME` and environment. Confirm target files against the ledger after plan/apply/verify, confirm comments and unrelated settings survive, test failed steps and interruption recovery, and use `doctor` to look for old/new duplicate hooks. Do not run the migration's installer against an actual user home as part of ordinary kit verification.
 
-Rollback one application's adoption PR first for changes that have no machine installation. Preserve a compatible prior dependency lockfile and state. New persistent stores need a reviewed state migration or separate path; do not assume their schemas match the application's old stores.
+Roll back by reverting an application's adoption PRs, latest first; a PR whose changes have no machine installation can be reverted on its own. Preserve a compatible prior dependency lockfile and state. New persistent stores need a reviewed state migration or separate path; do not assume their schemas match the application's old stores.
 
 Harness downgrade order is mandatory: use the new version to `uninstall` its owner, inspect the report and any kept user-edited artifacts, run `verify` and `doctor` to establish that no new/legacy duplicate hook remains, then install the old application and run its old setup. Re-running old setup while the new plugin still exists can fire every event twice. Test `new install → new uninstall → old install/setup` under an isolated home and count one invocation per event. If uninstall reports kept artifacts, resolve them deliberately before enabling old setup. Never downgrade by deleting the ledger or blindly replaying a failed apply.
 
@@ -104,7 +104,6 @@ Harness downgrade order is mandatory: use the new version to `uninstall` its own
 - Multiple agents sharing a skill name are not deduplicated. Review the resulting plan rather than assuming one shared installation.
 - Usage decoding supports Claude Code, Codex, Gemini CLI, Grok, opencode and Pi; full session/transcript adapters cover Claude Code, Codex and Grok. Cursor has hook support but no usage decoder. An installed agent is not evidence of every capability.
 - A running source may keep unfinished usage until it is quiet for 30 minutes; unknown or missing usage stays absent. opencode usage needs SQLite. Login known only to a system credential store such as Keychain can remain `unknown` in file-based discovery.
-- An unidentified subagent block can be kept alive by main-session activity (issue #6). Consumers must not treat this lifecycle edge case as fully resolved.
 - ACP's Gemini flag and Grok system-prompt `_meta` location have unverified profile warnings. The live smoke suite is manual; record its results before accepting an upstream program. Tests against a fake agent establish protocol and cleanup behavior, not every upstream program's compatibility.
 - File session bindings are atomically replaced but are not locked across processes. Lanes are process-local and persist no queue. Process locks and leases require local directories on darwin/linux and all contenders to see the same process table; NFS and containers with incompatible PID namespaces are outside their guarantee. The no-SQLite lock-file fallback has documented empty-stamp crash/stall limits.
 - Releases remain 0.x; a minor version can change the API. A source-ready entry must not be adopted from an older published package that does not export it.
