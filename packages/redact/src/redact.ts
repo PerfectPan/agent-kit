@@ -43,7 +43,9 @@ interface HomePatterns {
   readonly home: string;
   /**
    * Percent-encoding and Claude Code's project slug, as agents spell a directory in their own folder names. The slug
-   * (`/root` becomes `-root`) starts a path segment, so the word in `pre-root` stays.
+   * of a home with more than one segment (`-Users-alice`, `C--Profiles-me`) is hidden after any character that is not
+   * a letter, digit, `_` or `%` — including `*` in a glob and `]` in markdown. A one-segment home (`/root` becomes
+   * `-root`) hides its slug only at a path segment start, so the word in `pre-root` stays.
    */
   readonly encoded: RegExp | undefined;
   /** The literal spellings: native, other separator, JSON-escaped, URL-encoded, without the leading slash. */
@@ -101,11 +103,13 @@ function buildPatterns(home: string): HomePatterns {
   const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
   const literal =
     drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
+  const oneSegment = drive === undefined ? segments.filter(Boolean).length < 2 : segments.length < 3;
+  const slugStart = oneSegment ? SEGMENT_START : `(?<![${NAME}%])`;
   const dash = root.replace(/[^A-Za-z0-9]/g, "-");
   return {
     home,
     encoded: new RegExp(
-      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${SEGMENT_START}${escapeRegExp(dash)})(?![${NAME}])`,
+      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${slugStart}${escapeRegExp(dash)})(?![${NAME}])`,
       "giu"
     ),
     literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
