@@ -137,10 +137,46 @@ export function endForkReplay(state: ForkReplayState): { readonly state: ForkRep
   return state.phase === "second" ? { state: { phase: "own" }, settled: false } : { state };
 }
 
+/** Where the replay's end lands, tracked while a rollout is read: the batch rule's bookkeeping, one step at a time. */
+export interface ForkReplayEndTracker {
+  step(step: ForkReplayStep, index: number): void;
+  /** Whether the end is decided: the records after this one cannot change it, so a reader may stop. */
+  isDecided(): boolean;
+  /**
+   * The end the batch rule reports: decided at the record that settled the rule, or — never decided — the whole
+   * rollout when its last records were still replay, else nothing is replay.
+   */
+  end(total: number, state: ForkReplayState): number;
+}
+
+export function trackForkReplayEnd(): ForkReplayEndTracker {
+  let decided = false;
+  let decidedEnd: number | undefined;
+  return {
+    step(step, index) {
+      if (decided) {
+        return;
+      }
+      if (step.settled === false) {
+        decided = true;
+      } else if (step.replayed === false) {
+        decidedEnd = index;
+        decided = true;
+      }
+    },
+    isDecided: () => decided,
+    end(total, state) {
+      if (decided) {
+        return decidedEnd ?? 0;
+      }
+      return state.phase === "turns" || state.phase === "second-replay" ? total : 0;
+    }
+  };
+}
+
 export function scanForkReplay(stamped: readonly StampedRecord[]): ForkReplayScan {
   let state = FORK_REPLAY_START;
-  let end = 0;
-  let decided = false;
+  const end = trackForkReplayEnd();
   const records: (CodexRecordValue | undefined)[] = [];
   const payloads: (CodexPayloadValue | undefined)[] = [];
   for (const [index, { record, ts }] of stamped.entries()) {
@@ -149,18 +185,8 @@ export function scanForkReplay(stamped: readonly StampedRecord[]): ForkReplaySca
     records.push(rec);
     payloads.push(payload);
     const step = stepForkReplay(state, rec, payload, ts);
-    if (!decided) {
-      if (step.settled === false) {
-        decided = true;
-      } else if (step.replayed === false) {
-        end = index;
-        decided = true;
-      }
-    }
+    end.step(step, index);
     state = step.state;
   }
-  if (!decided && (state.phase === "turns" || state.phase === "second-replay")) {
-    end = stamped.length;
-  }
-  return { end, records, payloads };
+  return { end: end.end(stamped.length, state), records, payloads };
 }

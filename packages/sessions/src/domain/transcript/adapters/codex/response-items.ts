@@ -29,7 +29,7 @@ export function textFrom(content: unknown): string | undefined {
   return parts.length > 0 ? parts.join("") : undefined;
 }
 
-export type EmitEvent = (kind: TranscriptEventKind, payload: Record<string, unknown>) => TranscriptEvent;
+export type EmitEvent = (kind: TranscriptEventKind, payload: Record<string, unknown>) => unknown;
 
 /** The event of one response item, with what its payload carries for the translator's passes: the `text`, and for a
  * tool event the `callId` and the `output` exactly as the event's body holds them. */
@@ -40,8 +40,9 @@ export interface EmittedResponseItem {
   output?: unknown;
 }
 
-function emitted(event: TranscriptEvent, extra: Omit<EmittedResponseItem, "event"> = {}): EmittedResponseItem {
-  return { event, ...extra };
+function emitted(event: unknown, extra: Omit<EmittedResponseItem, "event"> = {}): EmittedResponseItem {
+  // The sink the caller supplies builds its own event shape; the item emitter only hands it through.
+  return { event: event as TranscriptEvent, ...extra };
 }
 
 /** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */

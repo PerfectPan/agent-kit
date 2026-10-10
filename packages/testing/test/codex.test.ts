@@ -598,3 +598,27 @@ describe("sessions use cases over Codex", () => {
     }
   });
 });
+
+describe("codex skipped records", () => {
+  it("reports whole skipped entries whose sources carry no record", async () => {
+    const transcript = await load("duplicate-usage");
+    const path = rollout("duplicate-usage");
+    const text = new TextDecoder().decode(tree[path]!);
+    const lines = text.split("\n").filter((line) => line.trim() !== "");
+    let offset = 0;
+    const sources = lines.map((line, index) => {
+      const source = {
+        file: path,
+        offset,
+        length: Buffer.byteLength(line),
+        line: index + 1
+      };
+      offset += Buffer.byteLength(line) + 1;
+      return source;
+    });
+    expect(transcript.skipped).toEqual([
+      { reason: "session-meta", source: sources[0] },
+      { reason: "duplicate-usage", source: sources[2] }
+    ]);
+  });
+});

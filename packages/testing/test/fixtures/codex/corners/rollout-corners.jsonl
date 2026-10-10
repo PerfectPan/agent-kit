@@ -1,0 +1,8 @@
+{"timestamp":"2026-01-03T00:00:00.000Z","record_type":"bookkeeping","id":"not-a-session"}
+{"timestamp":"2026-01-03T00:00:01.000Z","type":"session_meta","payload":{"id":"s-corners"}}
+{"timestamp":"2026-01-03T00:00:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"collide"}],"id":"request:L9"}}
+{"timestamp":"2026-01-03T00:00:03.000Z","type":"event_msg","payload":{"type":"item_completed","id":"outer-1","item":{"type":"SubAgentActivity","id":"inner-1","agent_thread_id":"agent-1","kind":"log"}}}
+{"timestamp":"2026-01-03T00:00:04.000Z","type":"event_msg","payload":{"type":"task_started"}}
+{"timestamp":"2026-01-03T00:00:05.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"answer"}]}}
+{"timestamp":"2026-01-03T00:00:06.000Z","type":"token_usage_record","payload":{"response_id":"L9","usage":{"input_tokens":21,"output_tokens":3}}}
+{"timestamp":"2026-01-03T00:00:07.000Z","type":"event_msg","payload":{"type":"task_complete","duration_ms":250}}
