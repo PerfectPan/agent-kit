@@ -30,8 +30,8 @@ export interface CodexSummarizeOptions {
  * `scanForkReplay` runs, a record at a time and without holding any of them. The batch rule's
  * `replayed = index < end` needs the end before the fold, so this is the summarize pass's first read. Reading stops
  * once the end is decided — a non-fork rollout decides at its first record — because appended records cannot
- * un-decide it. While the end is undecided it is `total`, which an append moves, so the outcome reports how many
- * records the end was decided on and the fold reads no further than that.
+ * un-decide it. The outcome reports how many records the first read covered, decided or not: while the end is
+ * undecided it is that count, which an append moves, so the fold reads no further than it.
  */
 async function scanForkReplayEndWhileReading(
   stamped: AsyncIterable<StampedRecord>

@@ -3235,5 +3235,204 @@
    "file": "unknown-generation.jsonl",
    "line": 1
   }
+ },
+ "rollout-corners": {
+  "ok": true,
+  "session": {
+   "id": "s-corners",
+   "title": "collide",
+   "startedAt": 1767398401000,
+   "endedAt": 1767398407000
+  },
+  "agents": [
+   {
+    "id": "main"
+   },
+   {
+    "id": "agent-1",
+    "parentId": "main"
+   }
+  ],
+  "skipped": [
+   {
+    "reason": "record-bookkeeping",
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 1
+    }
+   },
+   {
+    "reason": "session-meta",
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 2
+    }
+   },
+   {
+    "reason": "task-marker",
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 5
+    }
+   }
+  ],
+  "events": [
+   {
+    "id": "request:L9",
+    "seq": 0,
+    "ts": 1767398402000,
+    "kind": "user",
+    "requestId": "L9",
+    "payload": {
+     "text": "collide"
+    },
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 3
+    },
+    "original": {
+     "timestamp": "2026-01-03T00:00:02.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "user",
+      "content": [
+       {
+        "type": "input_text",
+        "text": "collide"
+       }
+      ],
+      "id": "request:L9"
+     }
+    }
+   },
+   {
+    "id": "inner-1",
+    "seq": 1,
+    "ts": 1767398403000,
+    "kind": "system",
+    "agentId": "agent-1",
+    "requestId": "L9",
+    "payload": {
+     "type": "subagent",
+     "agentId": "agent-1",
+     "kind": "log"
+    },
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 4
+    },
+    "original": {
+     "timestamp": "2026-01-03T00:00:03.000Z",
+     "type": "event_msg",
+     "payload": {
+      "type": "item_completed",
+      "id": "outer-1",
+      "item": {
+       "type": "SubAgentActivity",
+       "id": "inner-1",
+       "agent_thread_id": "agent-1",
+       "kind": "log"
+      }
+     }
+    }
+   },
+   {
+    "id": "request:L9",
+    "seq": 2,
+    "ts": 1767398405000,
+    "kind": "request",
+    "requestId": "L9",
+    "payload": {
+     "responseId": "L9",
+     "usage": {
+      "inputTokens": 21,
+      "outputTokens": 3,
+      "totalTokens": 24
+     }
+    },
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 7
+    },
+    "original": {
+     "timestamp": "2026-01-03T00:00:06.000Z",
+     "type": "token_usage_record",
+     "payload": {
+      "response_id": "L9",
+      "usage": {
+       "input_tokens": 21,
+       "output_tokens": 3
+      }
+     }
+    }
+   },
+   {
+    "id": "L6",
+    "seq": 3,
+    "ts": 1767398405000,
+    "kind": "assistant",
+    "requestId": "L9",
+    "payload": {
+     "text": "answer"
+    },
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 6
+    },
+    "original": {
+     "timestamp": "2026-01-03T00:00:05.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+       {
+        "type": "output_text",
+        "text": "answer"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "L8",
+    "seq": 4,
+    "ts": 1767398407000,
+    "kind": "system",
+    "payload": {
+     "type": "turn_duration",
+     "durationMs": 250
+    },
+    "source": {
+     "file": "rollout-corners.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 8
+    },
+    "original": {
+     "timestamp": "2026-01-03T00:00:07.000Z",
+     "type": "event_msg",
+     "payload": {
+      "type": "task_complete",
+      "duration_ms": 250
+     }
+    }
+   }
+  ]
  }
 }

@@ -227,7 +227,8 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         recordParts.push(part);
         eventCount += 1;
         if (retain) {
-          // A request keeps `request:<key>` even when it collides with an event id, as the translation always did.
+          // A request's id must match the translation's ids: `request:<key>` even on a collision with an event id,
+          // which only the emit path renames away.
           usedIds.add(part.id);
           segment = placeRequest(parts, segment, part);
         } else {

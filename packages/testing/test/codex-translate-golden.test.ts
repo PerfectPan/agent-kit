@@ -1,15 +1,18 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { mergeByTime, timedRecord, translateCodexRecords } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
-// The translated shape of every conformance fixture, pinned: a refactor of the Codex record dispatch may not change
-// it silently. Regenerate the JSON only deliberately, with the differential harness against the previous algorithm.
+// The translated shape of every conformance fixture and of the corners rollout, pinned: a refactor of the Codex
+// record dispatch may not change it silently. The corners rollout lives outside the conformance directory because it
+// pins an id collision the conformance suite's uniqueness rule would reject. To regenerate deliberately after an
+// accepted shape change, run this file with UPDATE_GOLDEN set — `vp test test/codex-translate-golden.test.ts` with
+// the variable in the environment rewrites the JSON from the current translation — and review the file's diff as
+// part of the change.
 const fixtures = fileURLToPath(new URL("fixtures/codex", import.meta.url));
-const golden = JSON.parse(
-  readFileSync(new URL("fixtures/codex/translate-golden.json", import.meta.url), "utf8")
-) as Record<string, unknown>;
+const goldenPath = new URL("fixtures/codex/translate-golden.json", import.meta.url);
+const golden = JSON.parse(readFileSync(goldenPath, "utf8")) as Record<string, unknown>;
 
 const serialize = (name: string, text: string) => {
   const records = text
@@ -51,15 +54,27 @@ const serialize = (name: string, text: string) => {
   };
 };
 
-describe("codex translation golden", () => {
-  for (const [name, expected] of Object.entries(golden)) {
-    it(`translates ${name} exactly as pinned`, () => {
-      const path =
-        name === "unknown-generation"
-          ? `${fixtures}/unknown-generation/rollout-bad.jsonl`
+const translateAll = (): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const name of Object.keys(golden)) {
+    const path =
+      name === "unknown-generation"
+        ? `${fixtures}/unknown-generation/rollout-bad.jsonl`
+        : name === "rollout-corners"
+          ? `${fixtures}/corners/rollout-corners.jsonl`
           : `${fixtures}/conformance/${name}.jsonl`;
-      const text = readFileSync(path, "utf8");
-      expect(serialize(name, text)).toEqual(expected);
-    });
+    out[name] = serialize(name, readFileSync(path, "utf8"));
   }
+  return out;
+};
+
+describe("codex translation golden", () => {
+  it("translates every pinned fixture exactly as recorded", () => {
+    const actual = translateAll();
+    if (process.env.UPDATE_GOLDEN) {
+      writeFileSync(goldenPath, `${JSON.stringify(actual, null, 1)}\n`);
+      return;
+    }
+    expect(actual).toEqual(golden);
+  });
 });
