@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "An id-less subagent block now carries its raisedAt, is re-timed on every id-less raise, and expires one TTL after it instead of staying blocked while the main agent keeps working; BlockSource (published through /harness/events) gains the optional field, and entries persisted without it keep the old behavior.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

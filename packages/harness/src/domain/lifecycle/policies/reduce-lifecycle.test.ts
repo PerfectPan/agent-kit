@@ -159,6 +159,35 @@ describe("reduceLifecycle", () => {
     expect(lifecycleStatus(after, { ttlMs: TTL, now: 400_100 })).toBe("working");
   });
 
+  it("re-times an id-less block when any id-less subagent raises again", () => {
+    const explore = { type: "explore" };
+    const raised = fold([
+      { phase: "start", scope: "turn", at: 0 },
+      { phase: "blocked", blocker: "permission", subagent: explore, at: 2000 },
+      { phase: "activity", at: 3000 }
+    ]);
+    const raisedAgain = fold([{ phase: "blocked", blocker: "permission", subagent: explore, at: 170_000 }], raised);
+    expect(raisedAgain).toEqual({
+      status: "blocked",
+      endedTurns: [],
+      // The re-raising subagent event is not a sign of life, so updatedAt stays at the last main-agent event.
+      blockedBy: [{ kind: "subagent", raisedAt: 170_000 }],
+      updatedAt: 3000
+    });
+    const withMain = fold(
+      [{ phase: "blocked", blocker: "permission", subagent: { type: "plan" }, at: 175_000 }],
+      raisedAgain
+    );
+    expect(withMain).toMatchObject({
+      status: "blocked",
+      blockedBy: [{ kind: "subagent", raisedAt: 175_000 }],
+      updatedAt: 3000
+    });
+    const moved = fold([{ phase: "activity", at: 180_000 }], withMain);
+    expect(lifecycleStatus(moved, { ttlMs: TTL, now: 355_000 })).toBe("blocked");
+    expect(lifecycleStatus(moved, { ttlMs: TTL, now: 355_001 })).toBe("working");
+  });
+
   it("follows the usual rules once the id-less block has expired", () => {
     const explore = { type: "explore" };
     const raised = fold([

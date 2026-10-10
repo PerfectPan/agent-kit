@@ -181,7 +181,7 @@ One agent's hook facts: event names, timeout unit, permission semantics and resp
 A hook payload translated into orthogonal fields: `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`), optional `scope`, `outcome`, `blocker`, `turnId`, `subagent`, `tool`, and identity fields. `agent` is the real source after sniffing.
 
 **LifecycleState**:
-What `reduceLifecycle` keeps per session: a status (`idle`, `working`, `blocked`, `unknown`), who raised each open block, the current turn, recently ended turns and the time of the last sign of life. A busy status reads as `unknown` after the TTL. Main-agent activity answers only the main agent's own block; a subagent's block closes on that subagent's next event or when the main turn starts or finishes, and one raised by a subagent without an id carries its raise time and simply expires one TTL after it.
+What `reduceLifecycle` keeps per session: a status (`idle`, `working`, `blocked`, `unknown`), who raised each open block, the current turn, recently ended turns and the time of the last sign of life. A busy status reads as `unknown` after the TTL. Main-agent activity answers only the main agent's own block; a subagent's block closes on that subagent's next event or when the main turn starts or finishes, and one raised by a subagent without an id is replaced on every id-less raise and expires one TTL after its `raisedAt`.
 
 **Gate**:
 A hook event whose response decides whether the operation it announces proceeds, such as Cursor's `preToolUse`. An observing hook registered on a gate prints the dialect's pass-through output.

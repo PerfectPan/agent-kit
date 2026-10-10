@@ -2,9 +2,14 @@
 export type LifecycleStatus = "idle" | "working" | "blocked" | "unknown";
 
 /**
- * Who raised an open block: the main agent, or a subagent, by id when the agent reports one. An id-less subagent
- * block cannot be matched to a later event, so it carries the `raisedAt` it was raised at and expires one TTL after
- * that; `reduceLifecycle` owns the rule.
+ * Who raised an open block: the main agent, or a subagent, by id when the agent reports one.
+ *
+ * A subagent without an id cannot be matched to a later event, so its block is judged on its own clock: it carries
+ * the `raisedAt` it was raised at, any id-less raise replaces the entry so the newest unanswered prompt is the one
+ * timed, and it expires one TTL after `raisedAt` — the fold drops it and `lifecycleStatus` ignores it, so a session
+ * blocked on nothing else continues as `working`. While such a block is open, subagent events do not count as signs
+ * of life. An entry without `raisedAt` comes from a state persisted by an older version: it never expires by raise
+ * time and heals on the next id-less raise.
  */
 export type BlockSource =
   | { readonly kind: "main" }

@@ -12,7 +12,7 @@ const answers = (open: BlockSource, source: BlockSource): boolean =>
 const unmatchable = (blockers: readonly BlockSource[]): boolean =>
   blockers.some((blocker) => blocker.kind === "subagent" && blocker.id === undefined);
 
-/** An id-less block nobody can answer expires one TTL after the `raisedAt` it was raised at (see `dropExpired`). */
+/** Whether an id-less block is past its raise-time TTL; the rule lives on `BlockSource`. */
 const expired = (blocker: BlockSource, clock: LifecycleClock): boolean =>
   blocker.kind === "subagent" &&
   blocker.id === undefined &&
@@ -32,11 +32,16 @@ const dropExpired = (state: LifecycleState, clock: LifecycleClock): LifecycleSta
   return open.length > 0 ? { ...state, blockedBy: open } : { ...state, status: "working", blockedBy: undefined };
 };
 
-/** `blockers` with `source` added once. */
+/** `blockers` with `source` raised once; an id-less raise re-times the one id-less entry (see `BlockSource`). */
 function withBlocker(blockers: readonly BlockSource[], source: BlockSource): readonly BlockSource[] {
   const id = (blocker: BlockSource) => (blocker.kind === "subagent" ? blocker.id : undefined);
   const known = blockers.some((blocker) => blocker.kind === source.kind && id(blocker) === id(source));
-  return known ? blockers : [...blockers, source];
+  if (!known) {
+    return [...blockers, source];
+  }
+  return source.kind === "subagent" && source.id === undefined
+    ? blockers.map((blocker) => (blocker.kind === "subagent" && blocker.id === undefined ? source : blocker))
+    : blockers;
 }
 
 /** The status at `now`: expired blocks are dropped first, and `working` and `blocked` fall back to `unknown` once no
@@ -62,9 +67,8 @@ export function lifecycleStatus(state: LifecycleState, clock: LifecycleClock): L
  * session is `blocked`. The state records who raised each open block. Main-agent activity closes only the main
  * agent's own block; a subagent's block closes on a later event of the same subagent (its stop included), or when
  * the main turn starts or finishes. A sibling subagent's activity closes nothing. A subagent without an id (Grok,
- * Cursor) cannot be matched: its block records the `raisedAt` it was raised at and expires one TTL after that —
- * `dropExpired` drops it and `lifecycleStatus` ignores it — and while it is open subagent events do not count as signs
- * of life.
+ * Cursor) cannot be matched: its block follows the `BlockSource` raise-time rule, and while it is open subagent
+ * events do not count as signs of life.
  */
 export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, clock: LifecycleClock): LifecycleState {
   const current: LifecycleState = { ...dropExpired(state, clock), status: lifecycleStatus(state, clock) };
@@ -79,7 +83,7 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
       event.subagent.id === undefined
         ? { kind: "subagent", raisedAt: clock.now }
         : { kind: "subagent", id: event.subagent.id };
-    // A block nobody can answer must expire, so subagent events do not keep it alive.
+    // An open id-less block's events are not signs of life (see `BlockSource`).
     const alive = unmatchable(open) ? {} : { updatedAt: clock.now };
     if (event.phase === "blocked" && event.blocker === "permission" && current.status !== "idle") {
       return { ...current, status: "blocked", blockedBy: withBlocker(open, source), ...alive };
