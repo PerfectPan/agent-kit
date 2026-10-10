@@ -1,6 +1,26 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Fri, 09 Oct 2026 09:29:24 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 05:42:15 GMT and should not be manually modified.
+
+## 0.6.0
+Sat, 10 Oct 2026 05:42:15 GMT
+
+### Minor changes
+
+- An id-less subagent block now carries its raisedAt, is re-timed on every id-less raise, and expires one TTL after it instead of staying blocked while the main agent keeps working; BlockSource (published through /harness/events) gains the optional field, and entries persisted without it keep the old behavior.
+
+### Updates
+
+- Bump @effect/tsgo to 0.50.0.
+- Adopt lint-config v0.5.0 and fix its no-unnecessary-condition findings.
+- Move the toolchain to Vite+: build with `vp pack`, lint/format/test through `vp`. The built output is unchanged.
+- Carry optional collection defaults once inside the domain. No published type or behavior change.
+- Type log record timestamps at the adapter boundary with one shared zod field; parse caught file system errors with a zod object.
+- Read record times through one strip-schema parse; classify file system errors without touching non-fs errors' properties.
+- Internal refactor: declare functions before their use; no behavior change.
+- Adopt lint-config v0.6.0: no-use-before-define checks function declarations.
+- Declare functions before their use in the sessions package for the no-use-before-define functions rule.
+- Declare functions before their use in @rivus/agent-kit-testing for the no-use-before-define rule
 
 ## 0.5.0
 Fri, 09 Oct 2026 09:29:24 GMT

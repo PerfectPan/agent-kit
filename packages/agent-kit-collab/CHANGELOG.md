@@ -1,6 +1,16 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Fri, 09 Oct 2026 09:29:24 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 05:42:15 GMT and should not be manually modified.
+
+## 0.6.0
+Sat, 10 Oct 2026 05:42:15 GMT
+
+### Updates
+
+- Adopt lint-config v0.5.0.
+- Move the toolchain to Vite+: build with `vp pack`, lint/format/test through `vp`. The built output is unchanged.
+- Internal refactor: declare functions before their use; no behavior change.
+- Adopt lint-config v0.6.0: no-use-before-define checks function declarations.
 
 ## 0.5.0
 Fri, 09 Oct 2026 09:29:24 GMT

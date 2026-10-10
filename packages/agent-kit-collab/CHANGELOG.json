@@ -2,6 +2,27 @@
   "name": "@rivus/agent-kit-collab",
   "entries": [
     {
+      "version": "0.6.0",
+      "tag": "@rivus/agent-kit-collab_v0.6.0",
+      "date": "Sat, 10 Oct 2026 05:42:15 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Adopt lint-config v0.5.0."
+          },
+          {
+            "comment": "Move the toolchain to Vite+: build with `vp pack`, lint/format/test through `vp`. The built output is unchanged."
+          },
+          {
+            "comment": "Internal refactor: declare functions before their use; no behavior change."
+          },
+          {
+            "comment": "Adopt lint-config v0.6.0: no-use-before-define checks function declarations."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.5.0",
       "tag": "@rivus/agent-kit-collab_v0.5.0",
       "date": "Fri, 09 Oct 2026 09:29:24 GMT",
