@@ -17,9 +17,15 @@ const entry = Object.fromEntries(
 );
 
 // The zero-dependency entries load on their own where a host cannot install dependencies, so their built code and
-// declarations import nothing. The packer bundles zod/mini into these three; every other entry keeps it as an
-// external import, and check-dist fails if a zero-dependency entry still imports anything.
+// declarations import nothing. The packer bundles zod/mini into these three, and check-dist fails if one of them
+// still imports anything.
 const ZERO_DEPENDENCY_ENTRIES = ["cost", "harness/events", "transcript/usage"];
+
+// `zod/mini` is bundled only when the importing file is the Node platform. That platform is one chunk, loaded by
+// `/node` and `/node/effect` and by nothing else, so the other entries of this pack keep importing zod/mini and zod
+// stays a dependency. Matching the importer, rather than every entry, keeps `/node/effect` on the shared Effect chunk.
+const bundlePlatformZod = (id: string, importer: string | undefined): boolean =>
+  /^zod(\/|$)/.test(id) && importer?.includes("/platform-node/") === true;
 
 const shared = (entryNames: string[]): PackUserConfig => ({
   entry: Object.fromEntries(entryNames.map((name) => [name, `./src/${name}.ts`])),
@@ -47,7 +53,12 @@ export default defineConfig({
     {
       ...shared(Object.keys(entry).filter((name) => !ZERO_DEPENDENCY_ENTRIES.includes(name))),
       // The internal packages are devDependencies, so they are bundled; dependencies, peers and node:* stay external.
-      deps: { neverBundle: [/^node:/] }
+      // zod/mini is the exception for the Node platform chunk (see bundlePlatformZod).
+      deps: {
+        neverBundle: [/^node:/],
+        alwaysBundle: bundlePlatformZod,
+        dts: { alwaysBundle: bundlePlatformZod }
+      }
     }
   ]
 });
