@@ -323,6 +323,8 @@ describe("sessions use cases over Claude Code", () => {
       path: "/cfg/claude"
     });
     expect(sessionAdapterHome(adapter, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.claude" });
+    const overridden = { agent: "claude-code", home: { defaultPath: [".x"] } };
+    expect(sessionAdapterHome(overridden, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.x" });
     const own = { agent: "my-agent", home: { defaultPath: [".my-agent"] } };
     expect(sessionAdapterHome(own, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.my-agent" });
     expect(() => sessionAdapterHome({ agent: "my-agent" }, { env: {}, home: "/u/me" })).toThrow(

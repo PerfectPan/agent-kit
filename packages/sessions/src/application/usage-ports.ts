@@ -113,7 +113,7 @@ export interface DecodeUsageOptions {
 export interface UsageDecoder {
   readonly specificationVersion: "usage-v1";
   readonly agent: CodingAgentId;
-  /** The home rule of an agent that catalog does not know. Built-in agents use catalog's rule. */
+  /** This agent's home rule, used instead of catalog's; required for an agent catalog has no rule for. */
   readonly home?: HomeRule;
   /** The sources under the agent's home. A missing root or an unreadable directory is a failure item. */
   sources(

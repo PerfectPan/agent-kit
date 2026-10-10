@@ -42,7 +42,7 @@ export interface SessionAdapter {
   readonly displayName: string;
   /** Everything this agent's transcripts can list; each transcript lists the subset its files show. */
   readonly capabilities: readonly Capability[];
-  /** The home rule of an agent that catalog has none for. Otherwise catalog's rule applies. */
+  /** This agent's home rule, used instead of catalog's; required for an agent catalog has no rule for. */
   readonly home?: HomeRule;
   /** Directories that hold this agent's sessions, such as `<home>/projects`. */
   roots(home: AgentHome): string[];
