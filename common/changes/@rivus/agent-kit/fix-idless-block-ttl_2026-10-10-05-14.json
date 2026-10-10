@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "An id-less subagent block in the lifecycle state carries its raisedAt and expires one TTL after it; BlockSource gains the optional field.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
