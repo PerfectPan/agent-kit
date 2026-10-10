@@ -42,6 +42,9 @@ export interface StampFile {
   readonly stamp: HolderStamp | undefined;
 }
 
+/** A Node error whose `code` says there is nothing at the path. */
+const Missing = z.looseObject({ code: z.literal("ENOENT") });
+
 /** The text of a small file, `undefined` when it does not exist. */
 export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: string): Promise<string | undefined> {
   const decoder = new TextDecoder();
@@ -51,8 +54,6 @@ export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: 
       text += decoder.decode(chunk, { stream: true });
     }
   } catch (error) {
-    // readText must sit above its caller readStamp, and Missing may not move.
-    // oxlint-disable-next-line no-use-before-define
     if (Missing.safeParse(error).success) {
       return undefined;
     }
@@ -76,5 +77,3 @@ export async function readStamp(platform: ProcessLockPlatform, path: string): Pr
   return { text, stamp: parsed.success ? parsed.data : undefined };
 }
 
-/** A Node error whose `code` says there is nothing at the path. */
-const Missing = z.looseObject({ code: z.literal("ENOENT") });

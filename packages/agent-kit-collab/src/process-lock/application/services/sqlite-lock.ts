@@ -12,9 +12,12 @@ export const SETTLE_MS = 10;
 /** SQLITE_BUSY and SQLITE_LOCKED, the primary codes of their extended codes: another connection holds the lock. */
 const BUSY_CODES = new Set([5, 6]);
 
+const SqliteBusy = z.union([
+  z.looseObject({ errcode: z.number().check(z.custom((errcode: number) => BUSY_CODES.has(errcode & 0xff))) }),
+  z.looseObject({ message: z.literal("database is locked") })
+]);
+
 export function isSqliteBusy(error: unknown): boolean {
-  // isSqliteBusy must sit above its caller trySqliteLock, and SqliteBusy may not move.
-  // oxlint-disable-next-line no-use-before-define
   return SqliteBusy.safeParse(error).success;
 }
 
@@ -51,7 +54,3 @@ export function unlockSqlite(db: SqliteDatabase): void {
   }
 }
 
-const SqliteBusy = z.union([
-  z.looseObject({ errcode: z.number().check(z.custom((errcode: number) => BUSY_CODES.has(errcode & 0xff))) }),
-  z.looseObject({ message: z.literal("database is locked") })
-]);

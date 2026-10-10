@@ -12,14 +12,23 @@ export interface SummarizeOptions {
   readonly groupBy?: readonly UsageGroupKey[];
 }
 
+/** Every count of `Usage`; `satisfies` fails to compile until a count added to `Usage` is listed here. */
+const COUNTS = Object.keys({
+  inputTokens: true,
+  outputTokens: true,
+  totalTokens: true,
+  cacheReadTokens: true,
+  cacheWriteTokens: true,
+  cacheWrite1hTokens: true,
+  reasoningTokens: true
+} satisfies Record<keyof Usage, true>) as (keyof Usage)[];
+
 /**
  * sessions' `addUsage`, which cost cannot call because it takes only types from sessions: a count absent from both
  * sides stays absent, one absent from one side counts as 0 there.
  */
 function addUsage(left: Usage, right: Usage): Usage {
   const sum: Usage = {};
-  // addUsage sits above `const COUNTS` so `add` can call it; the const is initialized before any call runs.
-  // oxlint-disable-next-line no-use-before-define
   for (const key of COUNTS) {
     const a = left[key];
     const b = right[key];
@@ -109,13 +118,3 @@ interface Tally {
   costUsd?: number;
 }
 
-/** Every count of `Usage`; `satisfies` fails to compile until a count added to `Usage` is listed here. */
-const COUNTS = Object.keys({
-  inputTokens: true,
-  outputTokens: true,
-  totalTokens: true,
-  cacheReadTokens: true,
-  cacheWriteTokens: true,
-  cacheWrite1hTokens: true,
-  reasoningTokens: true
-} satisfies Record<keyof Usage, true>) as (keyof Usage)[];
