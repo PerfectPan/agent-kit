@@ -1,6 +1,17 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Sat, 10 Oct 2026 15:55:22 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 17:35:50 GMT and should not be manually modified.
+
+## 0.9.0
+Sat, 10 Oct 2026 17:35:50 GMT
+
+### Minor changes
+
+- summarizeSession gains a prompts option ({ limit, maxChars }) returning the main lane's user prompts, and the claude-code adapter summarizes sessions in one bounded fast pass with the same numbers as folding the loaded transcript.
+
+### Patches
+
+- An ACP tool call keeps the name from its first non-empty `title || toolName`; a later display title is a separate `title` field (cleared when it matches the name again) in Grok session logs and live ACP turns alike, and a plain-object `rawInput` update merges into the call's args instead of replacing them.
 
 ## 0.8.0
 Sat, 10 Oct 2026 15:55:22 GMT
