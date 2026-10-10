@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Export `sessionAdapterHome` from `/sessions`: the home whose roots a session adapter lists, for callers that walk roots themselves.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

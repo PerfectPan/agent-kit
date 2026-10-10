@@ -77,10 +77,11 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 ### `/sessions`
 
-- Exports `listSessions(platform, opts)`, the sessions adapter table `builtinSessionAdapters` and `isSessionHead`, with the types `SessionAdapter`, `SessionAdapters`, `SessionPlatform`, `DiscoverOptions`, `LoadOptions`, `ListSessionsOptions`, `SessionRef`, `SessionHead`, `SessionListFailure`, `SessionListError` and `SessionErrorCode`. A `SessionAdapter` carries `specificationVersion: 'sessions-v1'`. Helpers for writing an adapter stay internal until a consumer outside the kit needs them.
+- Exports `listSessions(platform, opts)`, `sessionAdapterHome(adapter, { env, home })`, the sessions adapter table `builtinSessionAdapters` and `isSessionHead`, with the types `SessionAdapter`, `SessionAdapters`, `SessionPlatform`, `DiscoverOptions`, `LoadOptions`, `ListSessionsOptions`, `SessionRef`, `SessionHead`, `SessionListFailure`, `SessionListError` and `SessionErrorCode`. A `SessionAdapter` carries `specificationVersion: 'sessions-v1'`. Helpers for writing an adapter stay internal until a consumer outside the kit needs them.
 - `listSessions` uses only `fs.list`, `fs.stat`, `fs.read`, `env` and `home`. It accepts `agents`, `adapters`, `signal` and `onTotal`, and yields one item per session: a `SessionHead`, or `{ ref, error }` when a root is missing (`RootMissing`) or a directory or a session cannot be read (`ReadFailed`, the same tag as for reading a session). One unreadable session does not end the listing.
 - A `SessionRef` carries its `CodingAgentId`, so later calls route to the right adapter without the caller naming the agent again.
 - Claude Code sessions are found under the Claude home (honoring `CLAUDE_CONFIG_DIR`). Codex sessions are found under the Codex home (honoring `CODEX_HOME`), including archived sessions.
+- `sessionAdapterHome` returns the home whose `roots` an adapter lists, the same one `listSessions` uses: the adapter's own home rule, else the catalog's rule for a built-in agent; with neither it throws `capability-unsupported`. A caller that walks each root itself (to report progress per root) uses it instead of resolving the home on its own.
 - Listing reads at most 128 KB of each file (a head and tail preview), whatever the file's size.
 - 0.1.0 ships built-in session adapters for `claude-code`, `codex` and `grok`.
 
