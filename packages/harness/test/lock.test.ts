@@ -176,7 +176,10 @@ describe("without SQLite", () => {
   it.effect("accepts an injected LedgerLock instead", () => {
     const home = testHome();
     const platform = { ...home.platform, sqlite: undefined };
-    const injected = Layer.succeed(LedgerLock, { acquire: () => Effect.void, holder: () => Effect.succeed(undefined) });
+    const injected = Layer.succeed(LedgerLock, {
+      acquire: () => Effect.void,
+      holder: () => Effect.succeed(undefined as string | undefined)
+    });
     return Effect.gen(function* () {
       const plan = yield* planInstall(demoBundle(), { agents: ["grok"] });
       yield* applyInstall(plan);

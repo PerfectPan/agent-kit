@@ -118,7 +118,7 @@ function makeLock(platform: LockPlatform): LedgerLockShape {
             db = trySqliteLock(sqlite, lockPath(scope), busyTimeoutMs);
           }
           if (db === undefined) {
-            return Busy;
+            throw Busy;
           }
           try {
             await platform.fs.writeAtomic(holderPath(scope), record);
@@ -128,8 +128,9 @@ function makeLock(platform: LockPlatform): LedgerLockShape {
           }
           return db;
         },
-        catch: (cause) => lockFailure(scope, `cannot lock ${lockPath(scope)}`, cause)
-      }).pipe(Effect.flatMap((db) => (db === Busy ? Effect.fail(Busy) : Effect.succeed(db)))),
+        // The busy sentinel travels the error channel, so the acquire only ever succeeds with a real database.
+        catch: (cause) => (cause === Busy ? Busy : lockFailure(scope, `cannot lock ${lockPath(scope)}`, cause))
+      }),
       (db) =>
         Effect.promise(async () => {
           // The holder file goes while the lock is still held, so it never removes a successor's record.
