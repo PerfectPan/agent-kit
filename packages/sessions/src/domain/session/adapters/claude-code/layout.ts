@@ -55,10 +55,15 @@ export function claudeCodeMetaPath(transcriptPath: string): string {
 /** The `agentId` a subagent transcript's records carry, read one record at a time until one names it. */
 const AgentIdRecord = z.looseObject({ agentId: lenient(z.string()) });
 
+/** The `agentId` one record names, or `undefined`; what `claudeCodeAgentIdFromFile` reads per record. */
+export function claudeCodeAgentIdOfRecord(value: unknown): string | undefined {
+  return z.safeParse(AgentIdRecord, value).data?.agentId;
+}
+
 /** A subagent's lane id: the `agentId` its records carry, else the file name after `agent-`. */
 export function claudeCodeAgentIdFromFile(path: string, records: readonly { value: unknown }[]): string {
   for (const record of records) {
-    const id = z.safeParse(AgentIdRecord, record.value).data?.agentId;
+    const id = claudeCodeAgentIdOfRecord(record.value);
     if (id) {
       return id;
     }

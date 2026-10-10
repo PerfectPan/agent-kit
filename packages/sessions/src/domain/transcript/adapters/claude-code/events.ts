@@ -63,7 +63,7 @@ export function claudeCodeCapabilities(events: readonly TranscriptEvent[]): Capa
 }
 
 /** Record types that only the CLI reads. Each becomes a skipped record with its type as the reason. */
-const BOOKKEEPING = new Set([
+export const BOOKKEEPING: ReadonlySet<string> = new Set([
   "file-history-snapshot",
   "file-history-delta",
   "cost-state",

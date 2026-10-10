@@ -4,6 +4,7 @@ import {
   CLAUDE_CODE_SESSION_FILES,
   CLAUDE_CODE_SUBAGENT_DEPTH,
   claudeCodeAgentIdFromFile,
+  claudeCodeAgentIdOfRecord,
   claudeCodeAgentMeta,
   type ClaudeCodeAgentMeta,
   claudeCodeMetaPath,
@@ -18,19 +19,22 @@ import {
   claudeCodeCapabilities,
   translateClaudeCodeRecords
 } from "../../../domain/transcript/adapters/claude-code/events.js";
-import type { SessionRef } from "../../../domain/session/index.js";
+import { summarizeClaudeCodeRecords } from "../../../domain/transcript/adapters/claude-code/summarize.js";
+import type { SessionPromptsOptions, SessionRef, SessionSummaryWithPrompts } from "../../../domain/session/index.js";
 import {
   createTranscript,
   mergeByTime,
+  mergeByTimeStream,
   type SkippedRecord,
   type SourcedRecord,
+  type TimedRecord,
   type Transcript
 } from "../../../domain/transcript/index.js";
 import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readEdges } from "../files/edges.js";
-import { readJsonlRecords } from "../files/jsonl.js";
+import { readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { readBytes, type ReadProgress, readProgress } from "../files/read-file.js";
 import { walkFiles } from "../files/walk.js";
 import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
@@ -128,6 +132,104 @@ async function loadClaudeCode(
   return ok(createTranscript(AGENT, claudeCodeCapabilities(parsed.events), parsed));
 }
 
+/**
+ * The transcript files of the session's subagent directory. The meta and journal files the summary never reads are
+ * not opened: `load` turns them into skipped records, which no summary number reads.
+ */
+async function subagentTranscriptFiles(
+  platform: SessionPlatform,
+  sessionPath: string,
+  signal: AbortSignal | undefined
+): Promise<string[]> {
+  const dir = claudeCodeSubagentDir(sessionPath);
+  if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
+    return [];
+  }
+  return walkFiles(
+    platform,
+    dir,
+    { match: (name) => claudeCodeSubagentFile(name) === "transcript", maxDepth: CLAUDE_CODE_SUBAGENT_DEPTH },
+    { signal }
+  );
+}
+
+/** The lane state of one subagent transcript file, resolved before the pass reads its first record. */
+interface FileLane {
+  agentId?: string;
+  resolved: boolean;
+}
+
+/**
+ * Streams one transcript file's records. For a subagent file, the records before the first one naming an `agentId`
+ * wait for it — the pass reads their lane through it, and `claudeCodeAgentIdFromFile` applies the same file-name
+ * fallback when the file ends without one. The main file's records (`lanes` undefined) need no lane, because their
+ * records carry their own `agentId`.
+ */
+async function* laneRecords(
+  platform: SessionPlatform,
+  file: string,
+  lanes: Map<string, FileLane> | undefined,
+  signal: AbortSignal | undefined
+): AsyncGenerator<TimedRecord, void, undefined> {
+  const lane = lanes?.get(file) ?? (lanes === undefined ? undefined : { resolved: false });
+  if (lanes !== undefined && lane !== undefined) {
+    lanes.set(file, lane);
+  }
+  const waiting: TimedRecord[] = [];
+  for await (const record of readJsonlStream(platform, file, { signal })) {
+    if (lane === undefined || lane.resolved) {
+      yield timedRecord(record);
+      continue;
+    }
+    const id = claudeCodeAgentIdOfRecord(record.value);
+    if (id === undefined) {
+      waiting.push(timedRecord(record));
+      continue;
+    }
+    lane.agentId = id;
+    lane.resolved = true;
+    yield* waiting;
+    waiting.length = 0;
+    yield timedRecord(record);
+  }
+  if (lane !== undefined && !lane.resolved) {
+    lane.agentId = claudeCodeAgentIdFromFile(file, []);
+    lane.resolved = true;
+    yield* waiting;
+  }
+}
+
+/**
+ * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
+ * `loadClaudeCode` it holds no records: the files stream through `mergeByTimeStream`, and the pass keeps only the
+ * running numbers.
+ */
+async function summarizeClaudeCode(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  signal: AbortSignal | undefined,
+  prompts: SessionPromptsOptions | undefined
+): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
+  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
+    signal?.throwIfAborted();
+    const lanes = new Map<string, FileLane>();
+    const files = await subagentTranscriptFiles(guarded, ref.path, signal);
+    const groups = [ref.path, ...files].map((file) =>
+      laneRecords(guarded, file, file === ref.path ? undefined : lanes, signal)
+    );
+    const summarized = await summarizeClaudeCodeRecords(mergeByTimeStream(groups), {
+      agentForFile: (file) => lanes.get(file)?.agentId,
+      ...(prompts === undefined ? {} : { prompts })
+    });
+    signal?.throwIfAborted();
+    return summarized;
+  });
+  if (!read.ok) {
+    return read;
+  }
+  return read.value;
+}
+
 export const claudeCodeSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: AGENT,
@@ -148,7 +250,8 @@ export const claudeCodeSessionAdapter: SessionAdapter = {
     // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
     return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
   },
-  load: loadClaudeCode
+  load: loadClaudeCode,
+  summarize: (platform, ref, options = {}) => summarizeClaudeCode(platform, ref, options.signal, options.prompts)
 };
 
 interface Subagents {
