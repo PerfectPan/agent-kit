@@ -53,4 +53,3 @@ export function unlockSqlite(db: SqliteDatabase): void {
     db.close();
   }
 }
-

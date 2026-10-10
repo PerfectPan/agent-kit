@@ -117,4 +117,3 @@ interface Tally {
   usage: Usage;
   costUsd?: number;
 }
-

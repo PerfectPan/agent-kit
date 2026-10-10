@@ -76,4 +76,3 @@ export async function readStamp(platform: ProcessLockPlatform, path: string): Pr
   const parsed = stampSchema.safeParse(json);
   return { text, stamp: parsed.success ? parsed.data : undefined };
 }
-
