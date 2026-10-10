@@ -40,6 +40,20 @@ describe("redactText", () => {
     expect(text("x %2Fu%2Fzo%C3%AB%2Fproj", "/u/zoë")).toBe("x ~%2Fproj");
   });
 
+  it("S60: hides a multi-segment home's slug after any character that is not a letter, digit, `_` or `%`", () => {
+    const slug = "-u-alice-proj";
+    const nameChar = /[A-Za-z0-9_%]/;
+    for (let code = 0x20; code <= 0x7e; code++) {
+      const before = String.fromCharCode(code);
+      expect(text(`${before}${slug}`, "/u/alice")).toBe(nameChar.test(before) ? `${before}${slug}` : `${before}~-proj`);
+    }
+    expect(text(slug, "/u/alice")).toBe("~-proj");
+    const leak = (value: string) => text(value, "/u/alice");
+    expect(leak(`find ~/.claude/projects -name "*${slug}*"`)).toBe(`find ~/.claude/projects -name "*~-proj*"`);
+    expect(leak(`**${slug}**`)).toBe("**~-proj**");
+    expect(leak(`[${slug}](x)`)).toBe("[~-proj](x)");
+  });
+
   it("S60: replaces Windows spellings: either separator, JSON-escaped, file URLs and MSYS paths", () => {
     const windows = String.raw`C:\Profiles\me`;
     const at = (value: string) => text(value, windows);
@@ -51,6 +65,7 @@ describe("redactText", () => {
     expect(at("/c/Profiles/me/proj")).toBe("~/proj");
     expect(at(String.raw`C:\Profiles\meg\x`)).toBe(String.raw`C:\Profiles\meg\x`);
     expect(at("C--Profiles-me-proj")).toBe("~-proj");
+    expect(at("*C--Profiles-me-proj")).toBe("*~-proj");
   });
 
   it("S60: replaces ~user, the shell's name for the home directory, also after a JSON escape", () => {
@@ -63,6 +78,10 @@ describe("redactText", () => {
     const root = "/root";
     expect(text("running as root, see /root/x and -root-proj", root)).toBe("running as root, see ~/x and ~-proj");
     expect(text("pre-root and %2Froot%2Fx", root)).toBe("pre-root and ~%2Fx");
+    expect(text("npm --root-dir x *-root-p x.-root a--root", root)).toBe("npm --root-dir x *-root-p x.-root a--root");
+    expect(text("*C--me-p", String.raw`C:\me`)).toBe("*C--me-p");
+    expect(text("*C---me-p", "C:\\\\me")).toBe("*C---me-p");
+    expect(text("x.--root", "//root")).toBe("x.--root");
     expect(text("cd u/me/x")).toBe("cd ~/x");
   });
 

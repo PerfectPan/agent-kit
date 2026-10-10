@@ -43,7 +43,11 @@ interface HomePatterns {
   readonly home: string;
   /**
    * Percent-encoding and Claude Code's project slug, as agents spell a directory in their own folder names. The slug
-   * (`/root` becomes `-root`) starts a path segment, so the word in `pre-root` stays.
+   * of a home with more than one segment (`-Users-alice`, `C--Profiles-me`) is hidden after any character that is not
+   * a letter, digit, `_` or `%` — including `*` in a glob and `]` in markdown. A one-segment home (`/root` becomes
+   * `-root`) hides its slug only at a path segment start: after other punctuation the text is an ordinary word or
+   * flag (`npm --root-dir x`, `*-root-p`, `x.-root`, `a--root`) that this boundary keeps and the wide boundary would
+   * rewrite (`npm -~-dir x`); the word in `pre-root` stays under either.
    */
   readonly encoded: RegExp | undefined;
   /** The literal spellings: native, other separator, JSON-escaped, URL-encoded, without the leading slash. */
@@ -93,7 +97,7 @@ function windowsSpellings(drive: string, rest: string, root: string): string[] {
 
 function buildPatterns(home: string): HomePatterns {
   const root = home.replace(/(?<=.)[\\/]+$/, "");
-  const segments = root.split(/[\\/]/);
+  const segments = root.split(/[\\/]+/);
   const user = segments.at(-1) ?? "";
   if (user === "" || /^[A-Za-z]:$/.test(user)) {
     return { home, encoded: undefined, literal: undefined, tilde: undefined };
@@ -101,11 +105,13 @@ function buildPatterns(home: string): HomePatterns {
   const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
   const literal =
     drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
+  const pathSegments = drive === undefined ? segments.filter(Boolean) : segments.slice(1);
+  const slugStart = pathSegments.length > 1 ? `(?<![${NAME}%])` : SEGMENT_START;
   const dash = root.replace(/[^A-Za-z0-9]/g, "-");
   return {
     home,
     encoded: new RegExp(
-      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${SEGMENT_START}${escapeRegExp(dash)})(?![${NAME}])`,
+      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${slugStart}${escapeRegExp(dash)})(?![${NAME}])`,
       "giu"
     ),
     literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
