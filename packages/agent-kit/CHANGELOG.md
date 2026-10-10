@@ -1,6 +1,14 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Sat, 10 Oct 2026 17:35:50 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 20:10:42 GMT and should not be manually modified.
+
+## 0.10.0
+Sat, 10 Oct 2026 20:10:42 GMT
+
+### Minor changes
+
+- The Codex adapter summarizes sessions in one bounded fast pass, with the same numbers as folding the loaded transcript and the same prompts option as the claude-code adapter.
+- Summarize Grok sessions in one bounded pass: the record dispatch the translation runs also folds the summary, holding per-turn usage, subagent lanes, tool-call statuses and capped prompts, never the session's bytes.
 
 ## 0.9.0
 Sat, 10 Oct 2026 17:35:50 GMT
