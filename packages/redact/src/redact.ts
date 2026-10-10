@@ -105,7 +105,6 @@ function buildPatterns(home: string): HomePatterns {
   const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
   const literal =
     drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
-  // The rationale for the split boundary is in the encoded comment (HomePatterns.encoded).
   const pathSegments = drive === undefined ? segments.filter(Boolean) : segments.slice(1);
   const slugStart = pathSegments.length > 1 ? `(?<![${NAME}%])` : SEGMENT_START;
   const dash = root.replace(/[^A-Za-z0-9]/g, "-");

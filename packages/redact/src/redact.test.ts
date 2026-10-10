@@ -82,7 +82,7 @@ describe("redactText", () => {
     expect(text("pre-root and %2Froot%2Fx", root)).toBe("pre-root and ~%2Fx");
     expect(text("npm --root-dir x *-root-p x.-root a--root", root)).toBe("npm --root-dir x *-root-p x.-root a--root");
     expect(text("*C--me-p", String.raw`C:\me`)).toBe("*C--me-p");
-    expect(text("*C--me-p", "C:\\\\me")).toBe("*C--me-p");
+    expect(text("*C---me-p", "C:\\\\me")).toBe("*C---me-p");
     expect(text("x.--root", "//root")).toBe("x.--root");
     expect(text("cd u/me/x")).toBe("cd ~/x");
   });
