@@ -2,6 +2,50 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.6.0",
+      "tag": "@rivus/agent-kit_v0.6.0",
+      "date": "Sat, 10 Oct 2026 05:42:15 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Bump @effect/tsgo to 0.50.0."
+          },
+          {
+            "comment": "Adopt lint-config v0.5.0 and fix its no-unnecessary-condition findings."
+          },
+          {
+            "comment": "Move the toolchain to Vite+: build with `vp pack`, lint/format/test through `vp`. The built output is unchanged."
+          },
+          {
+            "comment": "Carry optional collection defaults once inside the domain. No published type or behavior change."
+          },
+          {
+            "comment": "Type log record timestamps at the adapter boundary with one shared zod field; parse caught file system errors with a zod object."
+          },
+          {
+            "comment": "Read record times through one strip-schema parse; classify file system errors without touching non-fs errors' properties."
+          },
+          {
+            "comment": "Internal refactor: declare functions before their use; no behavior change."
+          },
+          {
+            "comment": "Adopt lint-config v0.6.0: no-use-before-define checks function declarations."
+          },
+          {
+            "comment": "Declare functions before their use in the sessions package for the no-use-before-define functions rule."
+          },
+          {
+            "comment": "Declare functions before their use in @rivus/agent-kit-testing for the no-use-before-define rule"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "An id-less subagent block now carries its raisedAt, is re-timed on every id-less raise, and expires one TTL after it instead of staying blocked while the main agent keeps working; BlockSource (published through /harness/events) gains the optional field, and entries persisted without it keep the old behavior."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.5.0",
       "tag": "@rivus/agent-kit_v0.5.0",
       "date": "Fri, 09 Oct 2026 09:29:24 GMT",
