@@ -40,11 +40,16 @@ export function lifecycleStatus(state: LifecycleState, clock: LifecycleClock): L
  * session is `blocked`. The state records who raised each open block. Main-agent activity closes only the main
  * agent's own block; a subagent's block closes on a later event of the same subagent (its stop included), or when
  * the main turn starts or finishes. A sibling subagent's activity closes nothing. A subagent without an id (Grok,
- * Cursor) cannot be matched, so its block is left to the TTL, and while it is open subagent events do not count as
- * signs of life.
+ * Cursor) cannot be matched, so its block is left to the TTL: while it is open no event renews the state, which
+ * keeps the time the block was raised and lets `lifecycleStatus` read it as `unknown` one TTL later.
  */
 export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, clock: LifecycleClock): LifecycleState {
-  const current: LifecycleState = { ...state, status: lifecycleStatus(state, clock) };
+  // While an id-less subagent block is open, expiry stays measured from when it was raised, so the fold must not
+  // mark the state stale (which would answer the block) nor refresh `updatedAt` (which would extend it).
+  const current: LifecycleState =
+    state.status === "blocked" && unmatchable(state.blockedBy ?? [MAIN])
+      ? state
+      : { ...state, status: lifecycleStatus(state, clock) };
   const { turnId } = event;
   const busy = current.status === "working" || current.status === "blocked";
   if (turnId !== undefined && current.endedTurns.includes(turnId)) {
@@ -96,7 +101,12 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
         const subagents = newTurn ? [] : open.filter((blocker) => blocker.kind === "subagent");
         const blockedBy = event.phase === "blocked" ? withBlocker(subagents, MAIN) : subagents;
         const turn = next(blockedBy.length > 0 ? "blocked" : "working", turnId ?? current.turnId, [current.turnId]);
-        return blockedBy.length > 0 ? { ...turn, blockedBy } : turn;
+        if (blockedBy.length === 0) {
+          return turn;
+        }
+        // An event that cannot answer an id-less subagent block does not renew it: the block keeps the time it was
+        // raised, so `lifecycleStatus` reads it as `unknown` one TTL after that.
+        return unmatchable(blockedBy) ? { ...turn, blockedBy, updatedAt: current.updatedAt } : { ...turn, blockedBy };
       }
     case "finish":
       return next("idle", undefined, [current.turnId, turnId]);

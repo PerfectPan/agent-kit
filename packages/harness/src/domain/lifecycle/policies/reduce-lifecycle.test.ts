@@ -131,6 +131,33 @@ describe("reduceLifecycle", () => {
     expect(fold([{ phase: "finish", scope: "turn", at: 4000 }], blocked).status).toBe("idle");
   });
 
+  it("expires an id-less subagent block one TTL after it was raised, whatever the main agent does meanwhile", () => {
+    const explore = { type: "explore" };
+    const raised = fold([
+      { phase: "start", scope: "turn", at: 0 },
+      { phase: "blocked", blocker: "permission", subagent: explore, at: 2000 }
+    ]);
+    const meanwhile = fold(
+      [
+        { phase: "activity", at: 100_000 },
+        { phase: "activity", at: 250_000 },
+        { phase: "activity", at: 400_000 }
+      ],
+      raised
+    );
+    expect(meanwhile).toMatchObject({ status: "blocked", blockedBy: [{ kind: "subagent" }], updatedAt: 2000 });
+    expect(lifecycleStatus(meanwhile, { ttlMs: TTL, now: 2000 + TTL + 1 })).toBe("unknown");
+    expect(lifecycleStatus(meanwhile, { ttlMs: TTL, now: 400_100 })).toBe("unknown");
+    expect(fold([{ phase: "finish", scope: "turn", at: 400_100 }], meanwhile).status).toBe("idle");
+
+    const asked = fold([{ phase: "blocked", blocker: "permission", at: 300_000 }], raised);
+    expect(asked).toMatchObject({
+      status: "blocked",
+      blockedBy: [{ kind: "subagent" }, { kind: "main" }],
+      updatedAt: 2000
+    });
+  });
+
   it("lets main-agent activity close only the main agent's own block", () => {
     const a1 = { id: "a1" };
     const subagentWaits = fold([
