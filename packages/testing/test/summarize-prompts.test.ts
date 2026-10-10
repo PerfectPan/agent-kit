@@ -1,5 +1,5 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { summarizeSession } from "@rivus/agent-kit-sessions";
+import { type SessionPromptsOptions, summarizeSession } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
@@ -13,10 +13,12 @@ const rollout =
 describe("summarizeSession prompts option", () => {
   it("rejects caps that are not whole numbers in range", async () => {
     const platform = createMemoryPlatform({ files: { "/codex/rollout.jsonl": rollout } });
+    // `null as unknown` is what a JS caller passes where the type says the option is absent.
     for (const prompts of [
       { limit: -1, maxChars: 5 },
       { limit: 1.5, maxChars: 5 },
-      { limit: 2, maxChars: 0 }
+      { limit: 2, maxChars: 0 },
+      null as unknown as SessionPromptsOptions
     ]) {
       const thrown = await summarizeSession(
         platform,
