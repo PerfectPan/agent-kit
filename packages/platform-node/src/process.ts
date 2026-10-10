@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn as spawnChild } from "node:child_process";
+import { hostname } from "node:os";
 import { Readable, Writable } from "node:stream";
 
 import type {
@@ -160,16 +161,43 @@ function spawn(command: string, args: readonly string[], options: SpawnOptions):
 
 export function createNodeProcess(env: Env, os: OperatingSystem): PlatformProcess {
   const identify = createIdentify(os);
-  let self: ProcessIdentity | undefined;
+  let host: string | undefined;
+  function requiredIdentity(): ProcessIdentity {
+    const identity = identify(process.pid);
+    if (identity === undefined) {
+      throw new Error(`Could not identify the current process ${process.pid}`);
+    }
+    return identity;
+  }
+  // Boot id and start time are read only when those fields are read. Host and pid need no child process, so a caller
+  // that records them alone (a SQLite lock stamp) does not spawn sysctl or ps. win32 has no identity either way.
+  const fields = {
+    get host() {
+      if (os === "win32") {
+        throw new Error("Process identity (boot id and start time) is not supported on win32");
+      }
+      host ??= hostname();
+      return host;
+    },
+    get pid() {
+      return process.pid;
+    },
+    get bootId() {
+      return requiredIdentity().bootId;
+    },
+    get startTime() {
+      return requiredIdentity().startTime;
+    }
+  } satisfies ProcessIdentity;
   return {
     run: (command, args, options) => run(command, args, options, env),
     spawn,
+    // `self` itself throws on win32. Returning the lazy object would defer that until a field is read.
     get self() {
-      self ??= identify(process.pid);
-      if (self === undefined) {
-        throw new Error(`Could not identify the current process ${process.pid}`);
+      if (os === "win32") {
+        throw new Error("Process identity (boot id and start time) is not supported on win32");
       }
-      return self;
+      return fields;
     },
     identify
   };

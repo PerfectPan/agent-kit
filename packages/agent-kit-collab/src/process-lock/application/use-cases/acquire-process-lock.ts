@@ -1,7 +1,14 @@
 import { err, ok, type Result } from "@rivus/agent-kit/catalog";
 
 import { tryFileLock } from "../services/file-lock.js";
-import { holderOf, newStamp, type ProcessLockHolder, readStamp } from "../services/holder.js";
+import {
+  holderOf,
+  holderOfSqlite,
+  newStamp,
+  type ProcessLockHolder,
+  readSqliteStamp,
+  sqliteStamp
+} from "../services/holder.js";
 import type { ProcessLockPlatform } from "../ports.js";
 import { SETTLE_MS, trySqliteLock, unlockSqlite } from "../services/sqlite-lock.js";
 
@@ -72,16 +79,17 @@ export async function tryProcessLock(
   options: { readonly first: boolean }
 ): Promise<Result<ProcessLock, ProcessLockHeld>> {
   // The identity is read before anything is locked: reading it can throw (win32, a failing ps), and a lock taken
-  // before that would stay held for the life of the process.
-  const stamp = newStamp(platform);
+  // before that would stay held for the life of the process. SQLite records host and pid only, which does not spawn.
   const { sqlite } = platform;
   if (sqlite === undefined) {
+    const stamp = newStamp(platform);
     const attempt = await tryFileLock(platform, path, stamp);
     if (!attempt.acquired) {
       return err({ _tag: "ProcessLockHeld", path, holder: attempt.stamp && holderOf(attempt.stamp) });
     }
     return ok({ path, mechanism: "file", holder: holderOf(attempt.stamp), release: once(attempt.release) });
   }
+  const stamp = sqliteStamp(platform);
   const holderFile = `${path}.holder`;
   const busyTimeoutMs = options.first ? SETTLE_MS : 0;
   let db = trySqliteLock(sqlite, path, busyTimeoutMs);
@@ -92,8 +100,8 @@ export async function tryProcessLock(
     db = trySqliteLock(sqlite, path, busyTimeoutMs);
   }
   if (db === undefined) {
-    const recorded = await readStamp(platform, holderFile);
-    return err({ _tag: "ProcessLockHeld", path, holder: recorded?.stamp && holderOf(recorded.stamp) });
+    const recorded = await readSqliteStamp(platform, holderFile);
+    return err({ _tag: "ProcessLockHeld", path, holder: recorded?.stamp && holderOfSqlite(recorded.stamp) });
   }
   try {
     await platform.fs.writeAtomic(holderFile, JSON.stringify(stamp));
@@ -109,14 +117,16 @@ export async function tryProcessLock(
       unlockSqlite(db);
     }
   };
-  return ok({ path, mechanism: "sqlite", holder: holderOf(stamp), release: once(release) });
+  return ok({ path, mechanism: "sqlite", holder: holderOfSqlite(stamp), release: once(release) });
 }
 
 /**
  * A single-instance lock on `path`, which must be in an existing local directory (not NFS). With `platform.sqlite`,
  * `path` is a SQLite database held with `locking_mode=EXCLUSIVE`: the kernel releases it when the process exits or
- * crashes, at once, and nothing is ever reclaimed. The holder's identity goes into `<path>.holder` for diagnostics
- * only. Without SQLite, `path` is a lock file that holds the identity itself; a lock file whose holder died is
+ * crashes, at once, and nothing is ever reclaimed. `<path>.holder` records host, pid and the time of acquisition for
+ * diagnostics only, not the boot id or start time, so taking the lock spawns no process. A stamp from an older
+ * version that still has those fields is read as it was written. Without SQLite, `path` is a lock file that holds
+ * the full identity; a lock file whose holder died is
  * reclaimed on the next attempt, which needs the holder on this host (see `tryFileLock` for the remaining gaps).
  *
  * Supports darwin and linux, where the platform can identify processes.

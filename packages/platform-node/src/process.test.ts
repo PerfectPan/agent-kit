@@ -4,6 +4,7 @@ import type { ChildHandle } from "@rivus/agent-kit-platform";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "./create-node-platform.js";
+import { createNodeProcess } from "./process.js";
 
 const node = process.execPath;
 const PATH = process.env.PATH;
@@ -164,6 +165,10 @@ async function readLine(stream: ReadableStream<Uint8Array>): Promise<string> {
 }
 
 describe("identity", () => {
+  it("throws when win32 self is read", () => {
+    expect(() => createNodeProcess({}, "win32").self).toThrow("not supported on win32");
+  });
+
   it("identifies the current process as self", () => {
     const { self } = platform.process;
     expect(self).toMatchObject({ pid: process.pid, host: expect.any(String), bootId: expect.stringMatching(/\S/) });
