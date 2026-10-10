@@ -156,6 +156,13 @@ describe("spawn", () => {
   });
 });
 
+async function readLine(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader();
+  const { value } = await reader.read();
+  reader.releaseLock();
+  return new TextDecoder().decode(value);
+}
+
 describe("identity", () => {
   it("identifies the current process as self", () => {
     const { self } = platform.process;
@@ -189,10 +196,3 @@ describe("identity", () => {
     expect(platform.process.identify(1.5)).toBeUndefined();
   });
 });
-
-async function readLine(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const reader = stream.getReader();
-  const { value } = await reader.read();
-  reader.releaseLock();
-  return new TextDecoder().decode(value);
-}

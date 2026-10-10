@@ -24,6 +24,9 @@ updates:
       # Runtime types follow the Node LTS major pinned in .node-version.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # lint-config is a git dependency whose upgrades land with their code fixes; Dependabot misreads its tags and
+      # proposes downgrades (v0.5.0 -> v0.3.2).
+      - dependency-name: "@perfectpan/lint-config"
 
   - package-ecosystem: "github-actions"
     directory: "/"

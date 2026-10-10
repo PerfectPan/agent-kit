@@ -26,6 +26,20 @@ const sample = (revision: number): LeaseSnapshot => ({
   renewedAt: 0
 });
 
+/** Replaces the record of `KEY` in the storage with one of a schema version this package does not know. */
+function corruptSchema(storeCase: StoreCase, location: string): void {
+  if (storeCase.name === "sqlite") {
+    const db = new DatabaseSync(location);
+    db.exec(`PRAGMA user_version = ${UNKNOWN_SCHEMA_VERSION}`);
+    db.close();
+    return;
+  }
+  writeFileSync(
+    join(location, "task%3A1.lease.json"),
+    JSON.stringify({ schemaVersion: UNKNOWN_SCHEMA_VERSION, record: {} })
+  );
+}
+
 function fixturesFor(storeCase: StoreCase): AggregateRepositoryFixtures<string, LeaseSnapshot> {
   const { persistent, make } = storeCase;
   return {
@@ -46,20 +60,6 @@ function fixturesFor(storeCase: StoreCase): AggregateRepositoryFixtures<string, 
       );
     }
   };
-}
-
-/** Replaces the record of `KEY` in the storage with one of a schema version this package does not know. */
-function corruptSchema(storeCase: StoreCase, location: string): void {
-  if (storeCase.name === "sqlite") {
-    const db = new DatabaseSync(location);
-    db.exec(`PRAGMA user_version = ${UNKNOWN_SCHEMA_VERSION}`);
-    db.close();
-    return;
-  }
-  writeFileSync(
-    join(location, "task%3A1.lease.json"),
-    JSON.stringify({ schemaVersion: UNKNOWN_SCHEMA_VERSION, record: {} })
-  );
 }
 
 describe.each(storeCases)("lease repository conformance with the $name repository", (storeCase) => {

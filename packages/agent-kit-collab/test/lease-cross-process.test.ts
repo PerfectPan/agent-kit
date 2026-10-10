@@ -24,6 +24,13 @@ const stores = [
   { name: "file-nosqlite", location: () => tempDir() }
 ] as const;
 
+function outcome(worker: Worker): Promise<{ event: string; generation?: unknown }> {
+  return Promise.race([worker.next("acquired"), worker.next("held")]).then(({ event, generation }) => ({
+    event,
+    generation
+  }));
+}
+
 /** Starts contenders, releases them together, and returns what each one got. */
 async function contend(
   store: string,
@@ -38,13 +45,6 @@ async function contend(
     contender.send("go");
   }
   return Promise.all(contenders.map((contender) => outcome(contender)));
-}
-
-function outcome(worker: Worker): Promise<{ event: string; generation?: unknown }> {
-  return Promise.race([worker.next("acquired"), worker.next("held")]).then(({ event, generation }) => ({
-    event,
-    generation
-  }));
 }
 
 describe.each(stores)("lease across processes with the $name store", ({ name, location }) => {

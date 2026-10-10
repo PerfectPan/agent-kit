@@ -20,6 +20,27 @@ export interface LeaseClaim {
 
 export type LeaseTransition = { readonly state: Lease; readonly events: readonly LeaseEvent[] };
 
+function acquired(snapshot: LeaseSnapshot, previousHolderId: string | null): LeaseEvent {
+  const { key, generation, holderId } = snapshot;
+  return { _tag: "LeaseAcquired", key, generation, holderId: holderId ?? "", previousHolderId };
+}
+
+function invalidity(snapshot: LeaseSnapshot): string | undefined {
+  if (snapshot.key === "") {
+    return "the key is empty";
+  }
+  if (!Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1) {
+    return `generation ${snapshot.generation} is not a positive integer`;
+  }
+  if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision < snapshot.generation) {
+    return `revision ${snapshot.revision} is not an integer at least as large as the generation`;
+  }
+  if ((snapshot.holder === null) !== (snapshot.holderId === null)) {
+    return "a holder and a holder id come together";
+  }
+  return Number.isFinite(snapshot.renewedAt) ? undefined : "renewedAt is not a number";
+}
+
 /**
  * One key's lease. It has one holder at a time; its generation never decreases, release included, because release
  * keeps the record as a tombstone; every write increases its revision. Stores persist the snapshot and compare
@@ -124,25 +145,4 @@ export class Lease {
       reason: lossReason(this.snapshot)
     };
   }
-}
-
-function acquired(snapshot: LeaseSnapshot, previousHolderId: string | null): LeaseEvent {
-  const { key, generation, holderId } = snapshot;
-  return { _tag: "LeaseAcquired", key, generation, holderId: holderId ?? "", previousHolderId };
-}
-
-function invalidity(snapshot: LeaseSnapshot): string | undefined {
-  if (snapshot.key === "") {
-    return "the key is empty";
-  }
-  if (!Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1) {
-    return `generation ${snapshot.generation} is not a positive integer`;
-  }
-  if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision < snapshot.generation) {
-    return `revision ${snapshot.revision} is not an integer at least as large as the generation`;
-  }
-  if ((snapshot.holder === null) !== (snapshot.holderId === null)) {
-    return "a holder and a holder id come together";
-  }
-  return Number.isFinite(snapshot.renewedAt) ? undefined : "renewedAt is not a number";
 }

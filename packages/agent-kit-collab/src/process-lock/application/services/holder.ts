@@ -42,21 +42,6 @@ export interface StampFile {
   readonly stamp: HolderStamp | undefined;
 }
 
-export async function readStamp(platform: ProcessLockPlatform, path: string): Promise<StampFile | undefined> {
-  const text = await readText(platform, path);
-  if (text === undefined) {
-    return undefined;
-  }
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    return { text, stamp: undefined };
-  }
-  const parsed = stampSchema.safeParse(json);
-  return { text, stamp: parsed.success ? parsed.data : undefined };
-}
-
 /** A Node error whose `code` says there is nothing at the path. */
 const Missing = z.looseObject({ code: z.literal("ENOENT") });
 
@@ -75,4 +60,19 @@ export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: 
     throw error;
   }
   return text + decoder.decode();
+}
+
+export async function readStamp(platform: ProcessLockPlatform, path: string): Promise<StampFile | undefined> {
+  const text = await readText(platform, path);
+  if (text === undefined) {
+    return undefined;
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return { text, stamp: undefined };
+  }
+  const parsed = stampSchema.safeParse(json);
+  return { text, stamp: parsed.success ? parsed.data : undefined };
 }

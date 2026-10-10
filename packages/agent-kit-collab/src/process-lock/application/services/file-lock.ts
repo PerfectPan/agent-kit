@@ -17,6 +17,49 @@ export type FileLockAttempt =
   | { readonly acquired: true; readonly stamp: HolderStamp; readonly release: () => Promise<void> }
   | { readonly acquired: false; readonly stamp: HolderStamp | undefined };
 
+async function abandoned(platform: ProcessLockPlatform, path: string, observed: StampFile): Promise<boolean> {
+  const { stamp } = observed;
+  if (stamp === undefined) {
+    const stat = await platform.fs.stat(path);
+    return stat !== undefined && platform.clock.now() - stat.mtimeMs > UNSTAMPED_GRACE_MS;
+  }
+  const { self } = platform.process;
+  return holderLiveness(stamp, self, platform.process.identify(stamp.pid)) === "dead";
+}
+
+/** Removes the abandoned lock file while holding `<path>.stale`; `false` when another reclaimer holds that. */
+async function reclaim(
+  platform: ProcessLockPlatform,
+  path: string,
+  observed: StampFile,
+  stamp: HolderStamp,
+  depth: number
+): Promise<boolean> {
+  // Mutual recursion: the guard is the lock file one level up, taken again through tryFileLock.
+  // oxlint-disable-next-line no-use-before-define
+  const guard = await tryFileLock(platform, `${path}.stale`, { ...stamp, nonce: crypto.randomUUID() }, depth + 1);
+  if (!guard.acquired) {
+    return false;
+  }
+  try {
+    // Judged again under the guard: an empty file of a new holder has the same text as an abandoned one.
+    const current = await readStamp(platform, path);
+    if (current !== undefined && current.text === observed.text && (await abandoned(platform, path, current))) {
+      await platform.fs.remove(path);
+    }
+    return true;
+  } finally {
+    await guard.release();
+  }
+}
+
+async function releaseFileLock(platform: ProcessLockPlatform, path: string, nonce: string): Promise<void> {
+  const current = await readStamp(platform, path);
+  if (current?.stamp?.nonce === nonce) {
+    await platform.fs.remove(path);
+  }
+}
+
 /**
  * Tries once to take the lock file at `path`; it never waits for a live holder. The file holds the holder's stamp. A
  * file whose holder is dead (same host, and an earlier boot, no such pid or a reused pid) is reclaimed, as
@@ -66,45 +109,4 @@ export async function tryFileLock(
     }
   }
   return { acquired: false, stamp: (await readStamp(platform, path))?.stamp };
-}
-
-async function abandoned(platform: ProcessLockPlatform, path: string, observed: StampFile): Promise<boolean> {
-  const { stamp } = observed;
-  if (stamp === undefined) {
-    const stat = await platform.fs.stat(path);
-    return stat !== undefined && platform.clock.now() - stat.mtimeMs > UNSTAMPED_GRACE_MS;
-  }
-  const { self } = platform.process;
-  return holderLiveness(stamp, self, platform.process.identify(stamp.pid)) === "dead";
-}
-
-/** Removes the abandoned lock file while holding `<path>.stale`; `false` when another reclaimer holds that. */
-async function reclaim(
-  platform: ProcessLockPlatform,
-  path: string,
-  observed: StampFile,
-  stamp: HolderStamp,
-  depth: number
-): Promise<boolean> {
-  const guard = await tryFileLock(platform, `${path}.stale`, { ...stamp, nonce: crypto.randomUUID() }, depth + 1);
-  if (!guard.acquired) {
-    return false;
-  }
-  try {
-    // Judged again under the guard: an empty file of a new holder has the same text as an abandoned one.
-    const current = await readStamp(platform, path);
-    if (current !== undefined && current.text === observed.text && (await abandoned(platform, path, current))) {
-      await platform.fs.remove(path);
-    }
-    return true;
-  } finally {
-    await guard.release();
-  }
-}
-
-async function releaseFileLock(platform: ProcessLockPlatform, path: string, nonce: string): Promise<void> {
-  const current = await readStamp(platform, path);
-  if (current?.stamp?.nonce === nonce) {
-    await platform.fs.remove(path);
-  }
 }

@@ -26,21 +26,35 @@ const STDIO_DRAIN_MS = 1_000;
 /** Larger `setTimeout` delays overflow and fire at once. */
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
-export function createNodeProcess(env: Env, os: OperatingSystem): PlatformProcess {
-  const identify = createIdentify(os);
-  let self: ProcessIdentity | undefined;
-  return {
-    run: (command, args, options) => run(command, args, options, env),
-    spawn,
-    get self() {
-      self ??= identify(process.pid);
-      if (self === undefined) {
-        throw new Error(`Could not identify the current process ${process.pid}`);
-      }
-      return self;
-    },
-    identify
-  };
+function isRunning(child: ChildProcess): boolean {
+  return child.pid !== undefined && child.exitCode === null && child.signalCode === null;
+}
+
+function terminate(child: ChildProcess): void {
+  if (!isRunning(child)) {
+    return;
+  }
+  child.kill("SIGTERM");
+  const escalation = setTimeout(() => {
+    if (isRunning(child)) {
+      child.kill("SIGKILL");
+    }
+  }, KILL_GRACE_MS);
+  child.once("exit", () => clearTimeout(escalation));
+}
+
+function collect(stream: Readable, onOverflow: () => void): () => string {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  stream.on("data", (chunk: Buffer) => {
+    size += chunk.byteLength;
+    if (size > MAX_RUN_OUTPUT_BYTES) {
+      onOverflow();
+    } else {
+      chunks.push(chunk);
+    }
+  });
+  return () => Buffer.concat(chunks).toString("utf8");
 }
 
 function run(command: string, args: readonly string[], options: RunOptions, defaultEnv: Env): Promise<RunResult> {
@@ -144,33 +158,19 @@ function spawn(command: string, args: readonly string[], options: SpawnOptions):
   };
 }
 
-function isRunning(child: ChildProcess): boolean {
-  return child.pid !== undefined && child.exitCode === null && child.signalCode === null;
-}
-
-function terminate(child: ChildProcess): void {
-  if (!isRunning(child)) {
-    return;
-  }
-  child.kill("SIGTERM");
-  const escalation = setTimeout(() => {
-    if (isRunning(child)) {
-      child.kill("SIGKILL");
-    }
-  }, KILL_GRACE_MS);
-  child.once("exit", () => clearTimeout(escalation));
-}
-
-function collect(stream: Readable, onOverflow: () => void): () => string {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  stream.on("data", (chunk: Buffer) => {
-    size += chunk.byteLength;
-    if (size > MAX_RUN_OUTPUT_BYTES) {
-      onOverflow();
-    } else {
-      chunks.push(chunk);
-    }
-  });
-  return () => Buffer.concat(chunks).toString("utf8");
+export function createNodeProcess(env: Env, os: OperatingSystem): PlatformProcess {
+  const identify = createIdentify(os);
+  let self: ProcessIdentity | undefined;
+  return {
+    run: (command, args, options) => run(command, args, options, env),
+    spawn,
+    get self() {
+      self ??= identify(process.pid);
+      if (self === undefined) {
+        throw new Error(`Could not identify the current process ${process.pid}`);
+      }
+      return self;
+    },
+    identify
+  };
 }

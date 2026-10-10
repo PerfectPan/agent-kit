@@ -123,75 +123,26 @@ function readImports(file: SourceFile): { imports: ImportRef[]; problems: Violat
   return { imports, problems, body: result.program.body };
 }
 
-/** Returns every boundary violation in the workspace; an empty list means the import graph matches the manifest. */
-export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Violation[] {
+function checkShellEntry(file: SourceFile, body: readonly Statement[], internal: ReadonlySet<string>): Violation[] {
   const violations: Violation[] = [];
-  // Packages that keep their own published entries are not internal: no shell bundles or re-exports them.
-  const internal = new Set(
-    Object.entries(rules.packages)
-      .filter(([, rule]) => rule.entries === undefined)
-      .map(([name]) => name)
-  );
-  const workspaceNames = new Set([...internal, ...rules.shells, ...workspace.packages.map((pkg) => pkg.name)]);
-  const paths = new Set(workspace.files.map((file) => file.path));
-
-  for (const pkg of workspace.packages) {
-    const file = `${pkg.folder}/package.json`;
-    const isShell = rules.shells.includes(pkg.name);
-    const rule = rules.packages[pkg.name];
-    if (rule === undefined && !isShell) {
-      violations.push({ file, rule: "undeclared-package", message: `${pkg.name} is not declared in ${MANIFEST}` });
-      continue;
-    }
-    if (rule !== undefined) {
-      const entryFiles = rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"];
-      for (const entry of entryFiles) {
-        if (!paths.has(`${pkg.folder}/${entry}`)) {
-          violations.push({ file, rule: "entry-file", message: `${pkg.name} needs ${entry}` });
-        }
-      }
-    }
-    for (const dependency of pkg.workspaceDependencies) {
-      const allowed = rule === undefined ? false : [...rule.dependsOn, ...(rule.testsOnly ?? [])].includes(dependency);
-      if (isShell ? !internal.has(dependency) : !allowed) {
-        violations.push({
-          file,
-          rule: "package-dependency",
-          message: `${pkg.name} may not depend on ${dependency} (see ${MANIFEST})`
-        });
-      }
-    }
-  }
-
-  const owners = workspace.packages.toSorted((a, b) => b.folder.length - a.folder.length);
-  for (const file of workspace.files) {
-    const pkg = owners.find((candidate) => file.path.startsWith(`${candidate.folder}/`));
-    if (pkg === undefined) {
-      continue;
-    }
-    if (!PLAIN_TS.test(file.path)) {
+  for (const node of body) {
+    if (node.type === "ExportAllDeclaration") {
+      violations.push({ file: file.path, rule: "shell-entry", message: "list re-exported names instead of export *" });
+    } else if (node.type !== "ExportNamedDeclaration" || node.source === null || node.declaration !== null) {
       violations.push({
         file: file.path,
-        rule: "source-file",
-        message: "only .ts sources belong under src/; declaration and JavaScript files bypass the import check"
+        rule: "shell-entry",
+        message: 'shell entries only re-export names: export { … } from "<internal package>/public"'
       });
-      continue;
-    }
-    const { imports, problems, body } = readImports(file);
-    violations.push(...problems);
-    if (rules.shells.includes(pkg.name)) {
-      violations.push(...checkShellEntry(file, body, internal));
-      continue;
-    }
-    const rule = rules.packages[pkg.name];
-    if (rule === undefined) {
-      continue;
-    }
-    const layer = layerOf(pkg, file.path, rule.entries);
-    for (const ref of imports) {
-      const message = checkImport({ rules, rule, pkg, layer, file, ref, workspaceNames });
-      if (message !== undefined) {
-        violations.push({ file: file.path, rule: message.rule, message: `${ref.specifier}: ${message.text}` });
+    } else {
+      const { name, subpath } = splitSpecifier(node.source.value);
+      // "<package>/public/<name>" is a lighter public entry, such as the hook path of harness.
+      if (!internal.has(name) || !/^\/public(?:\/[a-z0-9-]+)?$/.test(subpath)) {
+        violations.push({
+          file: file.path,
+          rule: "shell-entry",
+          message: `${node.source.value}: re-export from an internal package's public entry, "<package>/public[/<name>]"`
+        });
       }
     }
   }
@@ -319,26 +270,75 @@ function checkImport(context: ImportContext): { rule: RuleId; text: string } | u
     : { rule: "external-dependency", text: `only ${onlyIn.join(", ")} of ${pkg.name} may import it (${MANIFEST})` };
 }
 
-function checkShellEntry(file: SourceFile, body: readonly Statement[], internal: ReadonlySet<string>): Violation[] {
+/** Returns every boundary violation in the workspace; an empty list means the import graph matches the manifest. */
+export function checkBoundaries(workspace: Workspace, rules: BoundaryRules): Violation[] {
   const violations: Violation[] = [];
-  for (const node of body) {
-    if (node.type === "ExportAllDeclaration") {
-      violations.push({ file: file.path, rule: "shell-entry", message: "list re-exported names instead of export *" });
-    } else if (node.type !== "ExportNamedDeclaration" || node.source === null || node.declaration !== null) {
+  // Packages that keep their own published entries are not internal: no shell bundles or re-exports them.
+  const internal = new Set(
+    Object.entries(rules.packages)
+      .filter(([, rule]) => rule.entries === undefined)
+      .map(([name]) => name)
+  );
+  const workspaceNames = new Set([...internal, ...rules.shells, ...workspace.packages.map((pkg) => pkg.name)]);
+  const paths = new Set(workspace.files.map((file) => file.path));
+
+  for (const pkg of workspace.packages) {
+    const file = `${pkg.folder}/package.json`;
+    const isShell = rules.shells.includes(pkg.name);
+    const rule = rules.packages[pkg.name];
+    if (rule === undefined && !isShell) {
+      violations.push({ file, rule: "undeclared-package", message: `${pkg.name} is not declared in ${MANIFEST}` });
+      continue;
+    }
+    if (rule !== undefined) {
+      const entryFiles = rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"];
+      for (const entry of entryFiles) {
+        if (!paths.has(`${pkg.folder}/${entry}`)) {
+          violations.push({ file, rule: "entry-file", message: `${pkg.name} needs ${entry}` });
+        }
+      }
+    }
+    for (const dependency of pkg.workspaceDependencies) {
+      const allowed = rule === undefined ? false : [...rule.dependsOn, ...(rule.testsOnly ?? [])].includes(dependency);
+      if (isShell ? !internal.has(dependency) : !allowed) {
+        violations.push({
+          file,
+          rule: "package-dependency",
+          message: `${pkg.name} may not depend on ${dependency} (see ${MANIFEST})`
+        });
+      }
+    }
+  }
+
+  const owners = workspace.packages.toSorted((a, b) => b.folder.length - a.folder.length);
+  for (const file of workspace.files) {
+    const pkg = owners.find((candidate) => file.path.startsWith(`${candidate.folder}/`));
+    if (pkg === undefined) {
+      continue;
+    }
+    if (!PLAIN_TS.test(file.path)) {
       violations.push({
         file: file.path,
-        rule: "shell-entry",
-        message: 'shell entries only re-export names: export { … } from "<internal package>/public"'
+        rule: "source-file",
+        message: "only .ts sources belong under src/; declaration and JavaScript files bypass the import check"
       });
-    } else {
-      const { name, subpath } = splitSpecifier(node.source.value);
-      // "<package>/public/<name>" is a lighter public entry, such as the hook path of harness.
-      if (!internal.has(name) || !/^\/public(?:\/[a-z0-9-]+)?$/.test(subpath)) {
-        violations.push({
-          file: file.path,
-          rule: "shell-entry",
-          message: `${node.source.value}: re-export from an internal package's public entry, "<package>/public[/<name>]"`
-        });
+      continue;
+    }
+    const { imports, problems, body } = readImports(file);
+    violations.push(...problems);
+    if (rules.shells.includes(pkg.name)) {
+      violations.push(...checkShellEntry(file, body, internal));
+      continue;
+    }
+    const rule = rules.packages[pkg.name];
+    if (rule === undefined) {
+      continue;
+    }
+    const layer = layerOf(pkg, file.path, rule.entries);
+    for (const ref of imports) {
+      const message = checkImport({ rules, rule, pkg, layer, file, ref, workspaceNames });
+      if (message !== undefined) {
+        violations.push({ file: file.path, rule: message.rule, message: `${ref.specifier}: ${message.text}` });
       }
     }
   }

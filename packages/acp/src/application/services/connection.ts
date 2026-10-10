@@ -117,6 +117,17 @@ export function step<E>(
   return { ok: true, value: result.value.events };
 }
 
+/** Queues parts for the turn's stream, each followed by the events it completes, stamped with the platform clock. */
+export function emit(conn: ConnectionState, turn: Turn, parts: readonly TranscriptStreamPart[]): void {
+  const ts = conn.platform.clock.now();
+  for (const part of parts) {
+    Queue.offerUnsafe(turn.sink, part);
+    for (const event of turn.folder.push(part, ts)) {
+      Queue.offerUnsafe(turn.sink, { type: "event", event });
+    }
+  }
+}
+
 /** Ends the running turn: a response finishes its stream, a failure fails it. Later calls for that turn do nothing. */
 export function endTurn(
   conn: ConnectionState,
@@ -141,17 +152,6 @@ export function endTurn(
   Deferred.doneUnsafe(turn.ended, Effect.void);
 }
 
-/** Queues parts for the turn's stream, each followed by the events it completes, stamped with the platform clock. */
-export function emit(conn: ConnectionState, turn: Turn, parts: readonly TranscriptStreamPart[]): void {
-  const ts = conn.platform.clock.now();
-  for (const part of parts) {
-    Queue.offerUnsafe(turn.sink, part);
-    for (const event of turn.folder.push(part, ts)) {
-      Queue.offerUnsafe(turn.sink, { type: "event", event });
-    }
-  }
-}
-
 /**
  * Marks the connection ended: every session closes, and every running turn fails with `closed`. Only the first
  * reason counts.
@@ -171,14 +171,6 @@ export function markClosed(conn: ConnectionState, closed: ConnectionClosed): Con
   return closed;
 }
 
-/** Ends the connection now: marks it closed, closes the SDK connection and stops the process. */
-export function shutdown(conn: ConnectionState, reason: ConnectionClosed["reason"]): ConnectionClosed {
-  const closed = markClosed(conn, connectionClosed(conn, reason));
-  conn.wire.close();
-  conn.kill();
-  return closed;
-}
-
 export function connectionClosed(conn: ConnectionState, reason: ConnectionClosed["reason"]): ConnectionClosed {
   const exit = conn.exit();
   const stderr = conn.stderr();
@@ -189,6 +181,14 @@ export function connectionClosed(conn: ConnectionState, reason: ConnectionClosed
     ...(exit === undefined ? {} : { exit }),
     ...(stderr ? { stderr } : {})
   };
+}
+
+/** Ends the connection now: marks it closed, closes the SDK connection and stops the process. */
+export function shutdown(conn: ConnectionState, reason: ConnectionClosed["reason"]): ConnectionClosed {
+  const closed = markClosed(conn, connectionClosed(conn, reason));
+  conn.wire.close();
+  conn.kill();
+  return closed;
 }
 
 /** The error for a failed request: the connection ended, the agent wants a login, or the agent refused it. */

@@ -21,16 +21,6 @@ export interface ForeignHookObservation {
   readonly event: string;
 }
 
-/** A renamed hook cannot be distinguished from a deleted hook followed by a user's hook in the same event. */
-export function protectedLegacy(
-  locator: ArtifactLocator,
-  owner: Owner,
-  ledger: Ledger,
-  observed: readonly ObservedArtifact[]
-): boolean {
-  return ledger.kept(locator) !== undefined || missingOwnedHook(locator, owner, ledger, observed);
-}
-
 function missingOwnedHook(
   locator: ArtifactLocator,
   owner: Owner,
@@ -50,6 +40,16 @@ function missingOwnedHook(
           !observed.some((found) => locatorKey(found.locator) === locatorKey(entry.locator))
       )
   );
+}
+
+/** A renamed hook cannot be distinguished from a deleted hook followed by a user's hook in the same event. */
+export function protectedLegacy(
+  locator: ArtifactLocator,
+  owner: Owner,
+  ledger: Ledger,
+  observed: readonly ObservedArtifact[]
+): boolean {
+  return ledger.kept(locator) !== undefined || missingOwnedHook(locator, owner, ledger, observed);
 }
 
 /** Kept hooks remain protected from every owner's cleanup; only a related replacement is blocked. */

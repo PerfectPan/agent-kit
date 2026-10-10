@@ -16,47 +16,16 @@ interface TypedEntry {
   isSymbolicLink(): boolean;
 }
 
-export const nodeFs: PlatformFs = {
-  async stat(path, options) {
-    const stats = await absentAsUndefined(options?.followSymlinks === true ? stat(path) : lstat(path));
-    if (stats === undefined) {
+async function absentAsUndefined<T>(pending: Promise<T>): Promise<T | undefined> {
+  try {
+    return await pending;
+  } catch (error) {
+    if (hasCode(error, "ENOENT", "ENOTDIR")) {
       return undefined;
     }
-    return { kind: kindOf(stats), size: stats.size, mtimeMs: stats.mtimeMs };
-  },
-  realpath(path) {
-    return absentAsUndefined(realpath(path));
-  },
-  async list(dir) {
-    const entries = await readdir(dir, { withFileTypes: true });
-    return entries.map((entry) => ({ name: entry.name, kind: kindOf(entry) }));
-  },
-  read: readRange,
-  writeAtomic,
-  async createExclusive(path) {
-    try {
-      const handle = await open(path, "wx");
-      await handle.close();
-      return true;
-    } catch (error) {
-      if (hasCode(error, "EEXIST")) {
-        return false;
-      }
-      throw error;
-    }
-  },
-  async mkdir(path) {
-    await mkdir(path, { recursive: true });
-  },
-  rename,
-  async remove(path) {
-    const stats = await absentAsUndefined(lstat(path));
-    if (stats === undefined) {
-      return;
-    }
-    await absentAsUndefined(stats.isDirectory() ? rmdir(path) : unlink(path));
+    throw error;
   }
-};
+}
 
 function kindOf(entry: TypedEntry): FileKind {
   if (entry.isSymbolicLink()) {
@@ -105,13 +74,44 @@ async function writeAtomic(path: string, data: Uint8Array | string, options?: { 
   }
 }
 
-async function absentAsUndefined<T>(pending: Promise<T>): Promise<T | undefined> {
-  try {
-    return await pending;
-  } catch (error) {
-    if (hasCode(error, "ENOENT", "ENOTDIR")) {
+export const nodeFs: PlatformFs = {
+  async stat(path, options) {
+    const stats = await absentAsUndefined(options?.followSymlinks === true ? stat(path) : lstat(path));
+    if (stats === undefined) {
       return undefined;
     }
-    throw error;
+    return { kind: kindOf(stats), size: stats.size, mtimeMs: stats.mtimeMs };
+  },
+  realpath(path) {
+    return absentAsUndefined(realpath(path));
+  },
+  async list(dir) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries.map((entry) => ({ name: entry.name, kind: kindOf(entry) }));
+  },
+  read: readRange,
+  writeAtomic,
+  async createExclusive(path) {
+    try {
+      const handle = await open(path, "wx");
+      await handle.close();
+      return true;
+    } catch (error) {
+      if (hasCode(error, "EEXIST")) {
+        return false;
+      }
+      throw error;
+    }
+  },
+  async mkdir(path) {
+    await mkdir(path, { recursive: true });
+  },
+  rename,
+  async remove(path) {
+    const stats = await absentAsUndefined(lstat(path));
+    if (stats === undefined) {
+      return;
+    }
+    await absentAsUndefined(stats.isDirectory() ? rmdir(path) : unlink(path));
   }
-}
+};

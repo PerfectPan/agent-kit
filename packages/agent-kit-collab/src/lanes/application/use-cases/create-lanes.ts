@@ -248,6 +248,14 @@ export function createLanes<E = never, R = never>(
         });
       });
 
+    function fork(started: readonly Activation[]): Effect.Effect<void> {
+      // Mutual recursion: run, declared below, forks each settled activation through fork.
+      // oxlint-disable-next-line no-use-before-define
+      return Effect.forEach(started, (activation) => Effect.forkDetach(run(activation), { uninterruptible: true }), {
+        discard: true
+      });
+    }
+
     /**
      * One activation's fiber. It is forked uninterruptible and nothing else holds it, so it always reaches the end of
      * the activation, which frees the slot; only the raced work inside can be interrupted.
@@ -268,12 +276,6 @@ export function createLanes<E = never, R = never>(
           return fork(started);
         });
       }).pipe(Effect.provideContext(context));
-
-    function fork(started: readonly Activation[]): Effect.Effect<void> {
-      return Effect.forEach(started, (activation) => Effect.forkDetach(run(activation), { uninterruptible: true }), {
-        discard: true
-      });
-    }
 
     const close: Effect.Effect<void> = Effect.suspend(() => {
       if (!closed) {

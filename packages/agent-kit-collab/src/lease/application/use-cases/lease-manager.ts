@@ -95,16 +95,6 @@ type ManagerPlatform = Pick<Platform, "process" | "clock">;
 /** CAS attempts within one acquisition before the repository counts as busy; each lost race re-reads the record. */
 const MAX_CAS_TURNS = 8;
 
-/** Validates `config` and builds a manager over the `LeaseRepository` and the platform in context. */
-export function createLeaseManager(
-  config: LeaseConfig
-): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseRepository | PlatformService> {
-  return Effect.gen(function* () {
-    const timing = yield* fromResult(leaseTiming(config));
-    return makeManager(timing, yield* LeaseRepository, yield* PlatformService);
-  });
-}
-
 function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform: ManagerPlatform): LeaseManager {
   const observations = new Map<string, LeaseObservation>();
   const now = () => platform.clock.monotonic();
@@ -295,4 +285,14 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
     },
     read: (key) => store.load(key)
   };
+}
+
+/** Validates `config` and builds a manager over the `LeaseRepository` and the platform in context. */
+export function createLeaseManager(
+  config: LeaseConfig
+): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseRepository | PlatformService> {
+  return Effect.gen(function* () {
+    const timing = yield* fromResult(leaseTiming(config));
+    return makeManager(timing, yield* LeaseRepository, yield* PlatformService);
+  });
 }

@@ -28,6 +28,28 @@ export interface Pricing {
   priceOf(model: string): Price | undefined;
 }
 
+/** `id` when it is a key, else the longest key that `id` contains; the first one inserted among equally long keys. */
+function keyOf(id: string, keys: ReadonlyMap<string, unknown>): string | undefined {
+  if (keys.has(id)) {
+    return id;
+  }
+  let best: string | undefined;
+  for (const key of keys.keys()) {
+    if (id.includes(key) && (best === undefined || key.length > best.length)) {
+      best = key;
+    }
+  }
+  return best;
+}
+
+function complete(price: Partial<Price>): Price | undefined {
+  const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
+  if (input === undefined || output === undefined || cacheRead === undefined || cacheWrite === undefined) {
+    return undefined;
+  }
+  return { input, output, cacheRead, cacheWrite, ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }) };
+}
+
 /**
  * The price lookup over `table`, with presence's rules. Keys match regardless of case. A model takes the entry of a
  * matching override key when there is one, else of a table or fallback key; among the keys of each, its own id wins,
@@ -66,26 +88,4 @@ export function createPricing(table: PricingTable, options: PricingOptions = {})
       return price;
     }
   };
-}
-
-/** `id` when it is a key, else the longest key that `id` contains; the first one inserted among equally long keys. */
-function keyOf(id: string, keys: ReadonlyMap<string, unknown>): string | undefined {
-  if (keys.has(id)) {
-    return id;
-  }
-  let best: string | undefined;
-  for (const key of keys.keys()) {
-    if (id.includes(key) && (best === undefined || key.length > best.length)) {
-      best = key;
-    }
-  }
-  return best;
-}
-
-function complete(price: Partial<Price>): Price | undefined {
-  const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
-  if (input === undefined || output === undefined || cacheRead === undefined || cacheWrite === undefined) {
-    return undefined;
-  }
-  return { input, output, cacheRead, cacheWrite, ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }) };
 }

@@ -16,6 +16,10 @@ const hookSpec: HookSpec = {
 };
 
 describe("foreignHookFiles", () => {
+  function files0() {
+    return foreignHookFiles("grok", builtinHookDialects, builtinInstallAdapters, context);
+  }
+
   it("names every other agent's ~/ file the runner actually loads, with its owner, shape and renames", () => {
     const files = foreignHookFiles("grok", builtinHookDialects, builtinInstallAdapters, context);
     const settings = files.find((file) => file.path === "/u/me/.claude/settings.json");
@@ -40,10 +44,6 @@ describe("foreignHookFiles", () => {
     ]);
     expect(files.some((file) => file.owner === "claude-code")).toBe(false);
   });
-
-  function files0() {
-    return foreignHookFiles("grok", builtinHookDialects, builtinInstallAdapters, context);
-  }
 });
 
 describe("droppedHooksOf", () => {

@@ -72,6 +72,13 @@ export interface ClientPathFacts {
   readonly targetIsSymlink: boolean;
 }
 
+function resolved(root: AbsolutePath, path: string): ClientPathVerdict {
+  const inside = parseAbsolutePath(path);
+  return inside !== undefined && isWithin(root, inside)
+    ? { _tag: "resolved", path }
+    : { _tag: "refused", reason: "outside-root" };
+}
+
 /**
  * Where a client file call may act: the target with its links resolved, inside the session directory. A target that
  * does not exist yet is judged by its nearest existing parent; a link whose target does not exist is refused, because
@@ -101,11 +108,4 @@ export function clientPathVerdict(root: AbsolutePath, target: AbsolutePath, fact
     return resolved(root, formatAbsolutePath({ root: real.root, parts: [...real.parts, ...rest] }));
   }
   return { _tag: "refused", reason: "outside-root" };
-}
-
-function resolved(root: AbsolutePath, path: string): ClientPathVerdict {
-  const inside = parseAbsolutePath(path);
-  return inside !== undefined && isWithin(root, inside)
-    ? { _tag: "resolved", path }
-    : { _tag: "refused", reason: "outside-root" };
 }

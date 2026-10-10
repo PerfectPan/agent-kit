@@ -195,6 +195,32 @@ export interface ReleaseInput {
 /** Dependency fields that npm installs for a consumer; devDependencies are not among them. */
 const INSTALLED_FIELDS = ["dependencies", "peerDependencies", "optionalDependencies"] as const;
 
+/**
+ * A package of the release set that a consumer installs with another member must name it with the `workspace:`
+ * protocol, which publishing replaces with a range of the version being released (`workspace:^` becomes
+ * `^<version>`); a fixed range would drift from the lockstep version. A private workspace package is never on the
+ * registry, so a published package bundles it as a devDependency instead of installing it.
+ */
+function installedDependencyErrors(
+  name: string,
+  manifest: PackageManifest,
+  members: ReadonlySet<string>,
+  unpublished: readonly string[]
+): string[] {
+  const errors: string[] = [];
+  for (const field of INSTALLED_FIELDS) {
+    for (const [dependency, spec] of Object.entries(manifest[field] ?? {})) {
+      if (members.has(dependency) && !spec.startsWith("workspace:")) {
+        errors.push(`${name} ${field} must name ${dependency} with the workspace: protocol, got "${spec}"`);
+      }
+      if (unpublished.includes(dependency)) {
+        errors.push(`${name} ${field} names ${dependency}, which is not published; make it a devDependency`);
+      }
+    }
+  }
+  return errors;
+}
+
 /** Returns every reason the release cannot be published; an empty list means the release set is valid. */
 export function releaseErrors({
   tag,
@@ -251,32 +277,6 @@ export function releaseErrors({
 
   if (pendingChangeFiles.length > 0) {
     errors.push(`unreleased change files remain; merge the release PR first: ${pendingChangeFiles.join(", ")}`);
-  }
-  return errors;
-}
-
-/**
- * A package of the release set that a consumer installs with another member must name it with the `workspace:`
- * protocol, which publishing replaces with a range of the version being released (`workspace:^` becomes
- * `^<version>`); a fixed range would drift from the lockstep version. A private workspace package is never on the
- * registry, so a published package bundles it as a devDependency instead of installing it.
- */
-function installedDependencyErrors(
-  name: string,
-  manifest: PackageManifest,
-  members: ReadonlySet<string>,
-  unpublished: readonly string[]
-): string[] {
-  const errors: string[] = [];
-  for (const field of INSTALLED_FIELDS) {
-    for (const [dependency, spec] of Object.entries(manifest[field] ?? {})) {
-      if (members.has(dependency) && !spec.startsWith("workspace:")) {
-        errors.push(`${name} ${field} must name ${dependency} with the workspace: protocol, got "${spec}"`);
-      }
-      if (unpublished.includes(dependency)) {
-        errors.push(`${name} ${field} names ${dependency}, which is not published; make it a devDependency`);
-      }
-    }
   }
   return errors;
 }

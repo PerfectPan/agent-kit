@@ -32,44 +32,35 @@ export interface ProcessLockHeld {
   readonly holder: ProcessLockHolder | undefined;
 }
 
-/**
- * A single-instance lock on `path`, which must be in an existing local directory (not NFS). With `platform.sqlite`,
- * `path` is a SQLite database held with `locking_mode=EXCLUSIVE`: the kernel releases it when the process exits or
- * crashes, at once, and nothing is ever reclaimed. The holder's identity goes into `<path>.holder` for diagnostics
- * only. Without SQLite, `path` is a lock file that holds the identity itself; a lock file whose holder died is
- * reclaimed on the next attempt, which needs the holder on this host (see `tryFileLock` for the remaining gaps).
- *
- * Supports darwin and linux, where the platform can identify processes.
- */
-export async function acquireProcessLock(
-  platform: ProcessLockPlatform,
-  path: string,
-  options: ProcessLockOptions = {}
-): Promise<Result<ProcessLock, ProcessLockHeld>> {
-  const { signal, wait = false, retryMs = 50 } = options;
-  for (let attempt = 0; ; attempt += 1) {
-    signal?.throwIfAborted();
-    const result = await tryProcessLock(platform, path, { first: attempt === 0 });
-    if (result.ok) {
-      if (signal?.aborted === true) {
-        await result.value.release();
-        signal.throwIfAborted();
-      }
-      return result;
-    }
-    if (!wait) {
-      return result;
-    }
-    await delay(backoffMs(retryMs, attempt), signal);
-  }
-}
-
 /** Retries of a waiting caller double from `retryMs` up to 16 times it, with jitter so that waiters drift apart. */
 export function backoffMs(retryMs: number, attempt: number): number {
   return Math.min(retryMs * 2 ** attempt, retryMs * 16) * (0.75 + Math.random() * 0.5);
 }
 
 const SETTLE_RETRIES = 4;
+
+function once(release: () => Promise<void>): () => Promise<void> {
+  let released: Promise<void> | undefined;
+  return () => {
+    released ??= release();
+    return released;
+  };
+}
+
+function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 /**
  * One attempt without waiting for a holder. The `first` attempt of an acquisition settles a race between processes
@@ -121,25 +112,34 @@ export async function tryProcessLock(
   return ok({ path, mechanism: "sqlite", holder: holderOf(stamp), release: once(release) });
 }
 
-function once(release: () => Promise<void>): () => Promise<void> {
-  let released: Promise<void> | undefined;
-  return () => {
-    released ??= release();
-    return released;
-  };
-}
-
-function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout>;
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal?.reason);
-    };
-    timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
+/**
+ * A single-instance lock on `path`, which must be in an existing local directory (not NFS). With `platform.sqlite`,
+ * `path` is a SQLite database held with `locking_mode=EXCLUSIVE`: the kernel releases it when the process exits or
+ * crashes, at once, and nothing is ever reclaimed. The holder's identity goes into `<path>.holder` for diagnostics
+ * only. Without SQLite, `path` is a lock file that holds the identity itself; a lock file whose holder died is
+ * reclaimed on the next attempt, which needs the holder on this host (see `tryFileLock` for the remaining gaps).
+ *
+ * Supports darwin and linux, where the platform can identify processes.
+ */
+export async function acquireProcessLock(
+  platform: ProcessLockPlatform,
+  path: string,
+  options: ProcessLockOptions = {}
+): Promise<Result<ProcessLock, ProcessLockHeld>> {
+  const { signal, wait = false, retryMs = 50 } = options;
+  for (let attempt = 0; ; attempt += 1) {
+    signal?.throwIfAborted();
+    const result = await tryProcessLock(platform, path, { first: attempt === 0 });
+    if (result.ok) {
+      if (signal?.aborted === true) {
+        await result.value.release();
+        signal.throwIfAborted();
+      }
+      return result;
+    }
+    if (!wait) {
+      return result;
+    }
+    await delay(backoffMs(retryMs, attempt), signal);
+  }
 }
