@@ -1,7 +1,12 @@
 import v8 from "node:v8";
 import vm from "node:vm";
 
-import { builtinSessionAdapters, loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
+import {
+  builtinSessionAdapters,
+  loadTranscript,
+  type SessionPlatform,
+  summarizeSession
+} from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
@@ -36,78 +41,72 @@ function sessionContent(turns: number): string {
   return `${lines.join("\n")}\n`;
 }
 
-/**
- * The heap the call's result holds: `heapUsed` after a forced collection before the call, against the largest read
- * over collection rounds while the result is alive. Every transient — the parsed records a materializing reader
- * built, the records a pass dropped — is collected before the base is read, and nothing can collect the result
- * while it is held, so the difference is what the result itself survives as. A reader that materializes the
- * transcript holds it; the summary pass holds only its running numbers.
- *
- * `gc` comes from `v8.setFlagsFromString` because the test runner does not start Node with `--expose-gc`. The
- * result is read on every round so liveness optimizations cannot drop it halfway through.
- */
+/** `gc` comes from `v8.setFlagsFromString` because the test runner does not start Node with `--expose-gc`. */
 const gc = (() => {
   v8.setFlagsFromString("--expose-gc");
   return vm.runInNewContext("gc") as () => void;
 })();
 
-const SETTLE_ROUNDS = 6;
-
-async function retained(run: () => Promise<unknown>): Promise<number> {
-  const settle = async (): Promise<void> => {
-    for (let round = 0; round < SETTLE_ROUNDS; round++) {
-      gc();
-      await new Promise((resolve) => setImmediate(resolve));
+/**
+ * The platform whose reads sample the heap: at every chunk boundary the collection runs first, so transients — the
+ * parsed records a materializing reader built, the records a pass dropped — are gone at each reading, and the peak
+ * is what the call was holding while it ran. A reader that materializes the transcript holds it from mid-read on;
+ * the summary pass holds only its running numbers. The tail after the last chunk is not sampled, which forgoes a
+ * few kilobytes of the peak.
+ */
+function withSampledReads(inner: SessionPlatform, peak: { value: number }): SessionPlatform {
+  return {
+    fs: {
+      stat: (path, options) => inner.fs.stat(path, options),
+      list: (dir) => inner.fs.list(dir),
+      async *read(path, range) {
+        for await (const chunk of inner.fs.read(path, range)) {
+          gc();
+          peak.value = Math.max(peak.value, process.memoryUsage().heapUsed);
+          yield chunk;
+        }
+      }
     }
   };
-  await settle();
-  const before = process.memoryUsage().heapUsed;
-  let keep: unknown = await run();
-  // The base is the floor of the readings: the delta is then the largest the heap grew while the result was held,
-  // never negative when a released transcript of an earlier call is only collected inside this one.
-  let held = before;
-  let nothing = 0;
-  for (let round = 0; round < SETTLE_ROUNDS; round++) {
-    gc();
-    await new Promise((resolve) => setImmediate(resolve));
-    held = Math.max(held, process.memoryUsage().heapUsed);
-    // The count is read after the rounds, so the comparison cannot be hoisted out of the loop and the result stays
-    // alive through it.
-    if (keep === undefined) {
-      nothing += 1;
-    }
-  }
-  if (nothing > 0) {
-    throw new Error("the call resolved to nothing");
-  }
-  return held - before;
 }
 
 describe("summarizeSession memory", () => {
   it("summarizes a growing session without holding its transcript", async () => {
-    const platform = createMemoryPlatform({
+    const files = createMemoryPlatform({
       files: {
         "/claude/small/session.jsonl": sessionContent(SMALL_TURNS),
         "/claude/large/session.jsonl": sessionContent(LARGE_TURNS)
       }
     });
     const adapter = builtinSessionAdapters["claude-code"]!;
+    const peakDuring = async (run: (sampled: SessionPlatform) => Promise<unknown>): Promise<number> => {
+      gc();
+      await new Promise((resolve) => setImmediate(resolve));
+      const before = process.memoryUsage().heapUsed;
+      const peak = { value: before };
+      await run(withSampledReads(files, peak));
+      return peak.value - before;
+    };
     // A warm-up round: the first parse of a session pays for JIT and module warm-up, which would otherwise land in
-    // the first measured round and dwarf the difference the test judges.
-    await retained(() => loadTranscript(platform, { agent: adapter.agent, path: "/claude/small/session.jsonl" }));
-    await retained(() => summarizeSession(platform, { agent: adapter.agent, path: "/claude/small/session.jsonl" }));
+    // the first measured round.
+    await peakDuring((sampled) =>
+      loadTranscript(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+    );
+    await peakDuring((sampled) =>
+      summarizeSession(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+    );
     for (let round = 1; round <= 5; round++) {
-      const loadSmall = await retained(() =>
-        loadTranscript(platform, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+      const loadSmall = await peakDuring((sampled) =>
+        loadTranscript(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
       );
-      const passSmall = await retained(() =>
-        summarizeSession(platform, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+      const passSmall = await peakDuring((sampled) =>
+        summarizeSession(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
       );
-      const loadLarge = await retained(() =>
-        loadTranscript(platform, { agent: adapter.agent, path: "/claude/large/session.jsonl" })
+      const loadLarge = await peakDuring((sampled) =>
+        loadTranscript(sampled, { agent: adapter.agent, path: "/claude/large/session.jsonl" })
       );
-      const passLarge = await retained(() =>
-        summarizeSession(platform, { agent: adapter.agent, path: "/claude/large/session.jsonl" })
+      const passLarge = await peakDuring((sampled) =>
+        summarizeSession(sampled, { agent: adapter.agent, path: "/claude/large/session.jsonl" })
       );
       const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       console.log(
