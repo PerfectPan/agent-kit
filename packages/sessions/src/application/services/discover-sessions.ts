@@ -20,6 +20,33 @@ export interface DiscoverSessionsOptions extends DiscoverOptions {
   readonly decorate?: (platform: SessionPlatform, path: string, head: SessionHead) => Promise<void>;
 }
 
+function failure(agent: CodingAgentId, path: string, error: SessionListError): SessionListFailure {
+  return { ref: { agent, path }, error };
+}
+
+function readFailed(path: string, cause: unknown): SessionListError {
+  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
+}
+
+async function readHead(
+  platform: SessionPlatform,
+  agent: CodingAgentId,
+  path: string,
+  options: DiscoverSessionsOptions
+): Promise<SessionHead | undefined> {
+  const edges = await readEdges(platform, path, { signal: options.signal });
+  if (!edges) {
+    return undefined;
+  }
+  const preview = options.preview(edgeRecords(edges));
+  const head = sessionHead({ agent, path, ...(preview.sessionId ? { sessionId: preview.sessionId } : {}) }, preview, {
+    sizeBytes: edges.size,
+    mtimeMs: edges.mtimeMs
+  });
+  await options.decorate?.(platform, path, head);
+  return head;
+}
+
 /**
  * The common `discover` of a file-per-session agent: walk the root, read both ends of each session file, and build
  * its head from the agent's preview. A missing root, an unreadable directory or an unreadable file becomes a failure
@@ -64,31 +91,4 @@ export async function* discoverSessions(
       yield head;
     }
   }
-}
-
-async function readHead(
-  platform: SessionPlatform,
-  agent: CodingAgentId,
-  path: string,
-  options: DiscoverSessionsOptions
-): Promise<SessionHead | undefined> {
-  const edges = await readEdges(platform, path, { signal: options.signal });
-  if (!edges) {
-    return undefined;
-  }
-  const preview = options.preview(edgeRecords(edges));
-  const head = sessionHead({ agent, path, ...(preview.sessionId ? { sessionId: preview.sessionId } : {}) }, preview, {
-    sizeBytes: edges.size,
-    mtimeMs: edges.mtimeMs
-  });
-  await options.decorate?.(platform, path, head);
-  return head;
-}
-
-function failure(agent: CodingAgentId, path: string, error: SessionListError): SessionListFailure {
-  return { ref: { agent, path }, error };
-}
-
-function readFailed(path: string, cause: unknown): SessionListError {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
 }

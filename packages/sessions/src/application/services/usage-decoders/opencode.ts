@@ -40,36 +40,12 @@ const PAGE_ROWS = 500;
 /** A `message` page row; only `session_id` is read by type, the other columns are coerced in `toRows`. */
 const messageRow = z.looseObject({ session_id: lenient(z.string()) });
 
-/**
- * opencode's database `<home>/opencode.db` when it exists, which needs `platform.sqlite`; otherwise each session
- * directory of the older JSON layout.
- */
-export const opencodeUsageDecoder: UsageDecoder = {
-  specificationVersion: "usage-v1",
-  agent: AGENT,
-  usageKey: opencodeUsageKey,
-  async *sources(platform, home, options = {}) {
-    const { since, signal } = options;
-    signal?.throwIfAborted();
-    let found: (UsageSource | UsageSourceFailure)[];
-    try {
-      found = await listSources(platform, home, signal);
-    } catch (error) {
-      signal?.throwIfAborted();
-      found = [{ agent: AGENT, path: home.path, error: readFailed(home.path, error) }];
-    }
-    for (const item of found) {
-      if ("error" in item || since === undefined || item.mtimeMs >= since) {
-        yield item;
-      }
-    }
-  },
-  decode(platform, target, options = {}) {
-    return target.path.endsWith(".db")
-      ? decodeDatabase(platform, target.path, options)
-      : decodeLegacySession(platform, target.path, options);
-  }
-};
+/** The cursor state of a legacy session directory: the last file name read. */
+const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
+
+function readFailed(path: string, cause: unknown): ReadFailed {
+  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
+}
 
 async function listSources(
   platform: UsagePlatform,
@@ -216,9 +192,6 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
   }, from);
 }
 
-/** The cursor state of a legacy session directory: the last file name read. */
-const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
-
 /**
  * The assistant messages of one session directory of the older JSON layout, one file each, in name order (opencode's
  * message ids grow with time). The cursor keeps the last file name read.
@@ -281,6 +254,33 @@ function decodeLegacySession(platform: UsagePlatform, dir: string, options: Deco
   }, from);
 }
 
-function readFailed(path: string, cause: unknown): ReadFailed {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
-}
+/**
+ * opencode's database `<home>/opencode.db` when it exists, which needs `platform.sqlite`; otherwise each session
+ * directory of the older JSON layout.
+ */
+export const opencodeUsageDecoder: UsageDecoder = {
+  specificationVersion: "usage-v1",
+  agent: AGENT,
+  usageKey: opencodeUsageKey,
+  async *sources(platform, home, options = {}) {
+    const { since, signal } = options;
+    signal?.throwIfAborted();
+    let found: (UsageSource | UsageSourceFailure)[];
+    try {
+      found = await listSources(platform, home, signal);
+    } catch (error) {
+      signal?.throwIfAborted();
+      found = [{ agent: AGENT, path: home.path, error: readFailed(home.path, error) }];
+    }
+    for (const item of found) {
+      if ("error" in item || since === undefined || item.mtimeMs >= since) {
+        yield item;
+      }
+    }
+  },
+  decode(platform, target, options = {}) {
+    return target.path.endsWith(".db")
+      ? decodeDatabase(platform, target.path, options)
+      : decodeLegacySession(platform, target.path, options);
+  }
+};

@@ -29,53 +29,6 @@ export interface LoadTranscriptOptions {
 /** The expected failures of `loadTranscript` and `summarizeSession`. */
 export type LoadTranscriptError = SessionReadError | NoAdapterAccepted | CapabilityUnsupported;
 
-/**
- * Reads every file of a session into one Transcript. Expected failures are values: `SessionNotFound`,
- * `CapabilityUnsupported` (the named agent has no adapter), `NoAdapterAccepted` (detection found none),
- * `UnknownFormatGeneration` and `ReadFailed`. An abort rejects with `signal.reason`; only defects throw.
- */
-export async function loadTranscript(
-  platform: SessionPlatform,
-  target: SessionTarget,
-  options: LoadTranscriptOptions = {}
-): Promise<Result<Transcript, LoadTranscriptError>> {
-  const resolved = await resolveTarget(platform, target, options);
-  if (!resolved.ok) {
-    options.signal?.throwIfAborted();
-    return resolved;
-  }
-  const { adapter, ref } = resolved.value;
-  const transcript = await adapter.load(platform, ref, {
-    ...(options.signal ? { signal: options.signal } : {}),
-    ...(options.onProgress ? { onProgress: options.onProgress } : {})
-  });
-  options.signal?.throwIfAborted();
-  return transcript;
-}
-
-/** The adapter's own summary pass when it has one, else `foldTranscript` of the loaded transcript. */
-export async function summarizeSession(
-  platform: SessionPlatform,
-  target: SessionTarget,
-  options: Omit<LoadTranscriptOptions, "onProgress"> = {}
-): Promise<Result<SessionSummary, LoadTranscriptError>> {
-  const resolved = await resolveTarget(platform, target, options);
-  if (!resolved.ok) {
-    options.signal?.throwIfAborted();
-    return resolved;
-  }
-  const { adapter, ref } = resolved.value;
-  const signal = options.signal ? { signal: options.signal } : {};
-  if (adapter.summarize) {
-    const summary = await adapter.summarize(platform, ref, signal);
-    options.signal?.throwIfAborted();
-    return summary.ok ? ok(summaryOf(summary.value)) : summary;
-  }
-  const transcript = await adapter.load(platform, ref, signal);
-  options.signal?.throwIfAborted();
-  return transcript.ok ? ok(foldTranscript(transcript.value)) : transcript;
-}
-
 async function resolveTarget(
   platform: SessionPlatform,
   target: SessionTarget,
@@ -121,4 +74,51 @@ async function resolveTarget(
     }
   }
   return err({ _tag: "NoAdapterAccepted", path: target.path });
+}
+
+/**
+ * Reads every file of a session into one Transcript. Expected failures are values: `SessionNotFound`,
+ * `CapabilityUnsupported` (the named agent has no adapter), `NoAdapterAccepted` (detection found none),
+ * `UnknownFormatGeneration` and `ReadFailed`. An abort rejects with `signal.reason`; only defects throw.
+ */
+export async function loadTranscript(
+  platform: SessionPlatform,
+  target: SessionTarget,
+  options: LoadTranscriptOptions = {}
+): Promise<Result<Transcript, LoadTranscriptError>> {
+  const resolved = await resolveTarget(platform, target, options);
+  if (!resolved.ok) {
+    options.signal?.throwIfAborted();
+    return resolved;
+  }
+  const { adapter, ref } = resolved.value;
+  const transcript = await adapter.load(platform, ref, {
+    ...(options.signal ? { signal: options.signal } : {}),
+    ...(options.onProgress ? { onProgress: options.onProgress } : {})
+  });
+  options.signal?.throwIfAborted();
+  return transcript;
+}
+
+/** The adapter's own summary pass when it has one, else `foldTranscript` of the loaded transcript. */
+export async function summarizeSession(
+  platform: SessionPlatform,
+  target: SessionTarget,
+  options: Omit<LoadTranscriptOptions, "onProgress"> = {}
+): Promise<Result<SessionSummary, LoadTranscriptError>> {
+  const resolved = await resolveTarget(platform, target, options);
+  if (!resolved.ok) {
+    options.signal?.throwIfAborted();
+    return resolved;
+  }
+  const { adapter, ref } = resolved.value;
+  const signal = options.signal ? { signal: options.signal } : {};
+  if (adapter.summarize) {
+    const summary = await adapter.summarize(platform, ref, signal);
+    options.signal?.throwIfAborted();
+    return summary.ok ? ok(summaryOf(summary.value)) : summary;
+  }
+  const transcript = await adapter.load(platform, ref, signal);
+  options.signal?.throwIfAborted();
+  return transcript.ok ? ok(foldTranscript(transcript.value)) : transcript;
 }

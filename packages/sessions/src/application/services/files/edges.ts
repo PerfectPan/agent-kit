@@ -21,6 +21,14 @@ export interface FileEdges {
 
 const NEWLINE = 0x0a;
 
+function textLines(bytes: Uint8Array): string[] {
+  return new TextDecoder()
+    .decode(bytes)
+    .split("\n")
+    .map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line))
+    .filter((line) => line.trim().length > 0);
+}
+
 /**
  * The first and last 64 KB of a file, `undefined` when `path` is not a file. A file between 64 KB and 128 KB is read
  * as two overlapping ranges.
@@ -82,12 +90,4 @@ export function edgeRecords(edges: FileEdges): Record<string, unknown>[] {
     }
   }
   return records;
-}
-
-function textLines(bytes: Uint8Array): string[] {
-  return new TextDecoder()
-    .decode(bytes)
-    .split("\n")
-    .map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line))
-    .filter((line) => line.trim().length > 0);
 }

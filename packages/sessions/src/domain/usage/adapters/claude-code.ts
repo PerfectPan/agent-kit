@@ -155,6 +155,59 @@ const OPEN_PER_LANE = 4;
  */
 const REPORTED_PER_LANE = 8;
 
+function requestRecord(
+  open: OpenRequest,
+  where: { readonly sessionId: string; readonly file: string; readonly agentLaneId?: string }
+): UsageRecord {
+  const record: UsageRecord = {
+    agent: AGENT,
+    sessionId: where.sessionId,
+    granularity: "request",
+    timestamp: open.timestamp,
+    usage: open.usage,
+    source: { file: where.file, offset: open.offset, length: open.length, line: open.line }
+  };
+  if (where.agentLaneId) {
+    record.agentLaneId = where.agentLaneId;
+  }
+  if (!open.byMessage) {
+    record.requestId = open.key;
+  }
+  const responseId = open.byMessage ? open.key : open.responseId;
+  if (responseId) {
+    record.responseId = responseId;
+  }
+  if (open.model) {
+    record.model = open.model;
+  }
+  return record;
+}
+
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+function restore(saved: unknown): ClaudeCodeUsageState {
+  const state = z.safeParse(SavedClaudeCodeUsageState, saved).data;
+  const lanes: Record<string, LaneState> = {};
+  for (const [id, lane] of Object.entries(state?.lanes ?? {})) {
+    if (!lane) {
+      continue;
+    }
+    const open: OpenRequest[] = [];
+    for (const request of lane.open ?? []) {
+      if (request) {
+        open.push(request);
+      }
+    }
+    lanes[id] = { open, reported: (lane.reported ?? []).filter((key) => key !== undefined) };
+  }
+  const sessionId = state?.sessionId;
+  const lastTime = state?.lastTime;
+  return {
+    lanes,
+    ...(sessionId ? { sessionId } : {}),
+    ...(lastTime === undefined ? {} : { lastTime })
+  };
+}
+
 /**
  * Claude Code's usage over one session file, by the translator's rules: one record per request key, with the model and
  * message id of the request's last record and the usage that `claudeCodeRequestUsage` keeps. A request stays open,
@@ -239,59 +292,6 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
     save() {
       return structuredClone(state);
     }
-  };
-}
-
-function requestRecord(
-  open: OpenRequest,
-  where: { readonly sessionId: string; readonly file: string; readonly agentLaneId?: string }
-): UsageRecord {
-  const record: UsageRecord = {
-    agent: AGENT,
-    sessionId: where.sessionId,
-    granularity: "request",
-    timestamp: open.timestamp,
-    usage: open.usage,
-    source: { file: where.file, offset: open.offset, length: open.length, line: open.line }
-  };
-  if (where.agentLaneId) {
-    record.agentLaneId = where.agentLaneId;
-  }
-  if (!open.byMessage) {
-    record.requestId = open.key;
-  }
-  const responseId = open.byMessage ? open.key : open.responseId;
-  if (responseId) {
-    record.responseId = responseId;
-  }
-  if (open.model) {
-    record.model = open.model;
-  }
-  return record;
-}
-
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
-function restore(saved: unknown): ClaudeCodeUsageState {
-  const state = z.safeParse(SavedClaudeCodeUsageState, saved).data;
-  const lanes: Record<string, LaneState> = {};
-  for (const [id, lane] of Object.entries(state?.lanes ?? {})) {
-    if (!lane) {
-      continue;
-    }
-    const open: OpenRequest[] = [];
-    for (const request of lane.open ?? []) {
-      if (request) {
-        open.push(request);
-      }
-    }
-    lanes[id] = { open, reported: (lane.reported ?? []).filter((key) => key !== undefined) };
-  }
-  const sessionId = state?.sessionId;
-  const lastTime = state?.lastTime;
-  return {
-    lanes,
-    ...(sessionId ? { sessionId } : {}),
-    ...(lastTime === undefined ? {} : { lastTime })
   };
 }
 

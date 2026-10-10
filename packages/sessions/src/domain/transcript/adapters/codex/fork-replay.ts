@@ -46,6 +46,42 @@ export interface ForkReplayPayload {
 
 export const FORK_REPLAY_START: ForkReplayState = { phase: "start" };
 
+/** The replay rule over one rollout: where the replay ends, and each record parsed once for the reader that follows. */
+export interface ForkReplayScan {
+  /** The number of records at the start of the rollout that replay a parent session's history. */
+  readonly end: number;
+  readonly records: readonly (CodexRecordValue | undefined)[];
+  readonly payloads: readonly (CodexPayloadValue | undefined)[];
+}
+
+function isFork(meta: ForkReplayPayload | undefined): boolean {
+  return meta?.forked_from_id !== undefined || meta?.source?.subagent?.thread_spawn !== undefined;
+}
+
+/** The turn id of a record that starts a turn: `event_msg` `task_started`, or `turn_context`. */
+function turnStartId(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): string | undefined {
+  const starts = rec?.type === "turn_context" || (rec?.type === "event_msg" && payload?.type === "task_started");
+  return starts ? payload?.turn_id : undefined;
+}
+
+const UUID_V7 = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
+
+/** The creation time in epoch milliseconds that a UUIDv7 carries in its first 48 bits. */
+function uuidV7Time(id: string | undefined): number | undefined {
+  return id !== undefined && UUID_V7.test(id) ? Number.parseInt(id.slice(0, 8) + id.slice(9, 13), 16) : undefined;
+}
+
+function isUsageRecord(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): boolean {
+  return (
+    rec?.type === "token_usage_record" ||
+    (rec?.type === "event_msg" && payload?.type === "token_count" && payload.info !== undefined)
+  );
+}
+
+function secondOf(ts: number): number {
+  return Math.floor(ts / 1000);
+}
+
 /**
  * Advances the replay rule by one parsed record, with its parsed payload and time in epoch milliseconds. The caller
  * parses both once; the rule reads the payload through the parameters instead of parsing it again per helper.
@@ -101,14 +137,6 @@ export function endForkReplay(state: ForkReplayState): { readonly state: ForkRep
   return state.phase === "second" ? { state: { phase: "own" }, settled: false } : { state };
 }
 
-/** The replay rule over one rollout: where the replay ends, and each record parsed once for the reader that follows. */
-export interface ForkReplayScan {
-  /** The number of records at the start of the rollout that replay a parent session's history. */
-  readonly end: number;
-  readonly records: readonly (CodexRecordValue | undefined)[];
-  readonly payloads: readonly (CodexPayloadValue | undefined)[];
-}
-
 export function scanForkReplay(stamped: readonly StampedRecord[]): ForkReplayScan {
   let state = FORK_REPLAY_START;
   let end = 0;
@@ -135,32 +163,4 @@ export function scanForkReplay(stamped: readonly StampedRecord[]): ForkReplaySca
     end = stamped.length;
   }
   return { end, records, payloads };
-}
-
-function isFork(meta: ForkReplayPayload | undefined): boolean {
-  return meta?.forked_from_id !== undefined || meta?.source?.subagent?.thread_spawn !== undefined;
-}
-
-/** The turn id of a record that starts a turn: `event_msg` `task_started`, or `turn_context`. */
-function turnStartId(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): string | undefined {
-  const starts = rec?.type === "turn_context" || (rec?.type === "event_msg" && payload?.type === "task_started");
-  return starts ? payload?.turn_id : undefined;
-}
-
-const UUID_V7 = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
-
-/** The creation time in epoch milliseconds that a UUIDv7 carries in its first 48 bits. */
-function uuidV7Time(id: string | undefined): number | undefined {
-  return id !== undefined && UUID_V7.test(id) ? Number.parseInt(id.slice(0, 8) + id.slice(9, 13), 16) : undefined;
-}
-
-function isUsageRecord(rec: CodexRecordValue | undefined, payload: ForkReplayPayload | undefined): boolean {
-  return (
-    rec?.type === "token_usage_record" ||
-    (rec?.type === "event_msg" && payload?.type === "token_count" && payload.info !== undefined)
-  );
-}
-
-function secondOf(ts: number): number {
-  return Math.floor(ts / 1000);
 }

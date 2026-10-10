@@ -103,6 +103,119 @@ export interface GrokTranslateOptions {
   subagents?: ReadonlyMap<string, GrokSubagentMeta>;
 }
 
+function applySubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubagentMeta> | undefined): void {
+  if (!subagents) {
+    return;
+  }
+  for (const [dirName, meta] of subagents) {
+    const id = meta.id ?? dirName;
+    const existing = agents.find((agent) => agent.id === id);
+    if (existing) {
+      if (!existing.title && meta.title) {
+        existing.title = meta.title;
+      }
+      continue;
+    }
+    const lane: Lane = { id, parentId: MAIN_LANE_ID };
+    if (meta.title) {
+      lane.title = meta.title;
+    }
+    agents.push(lane);
+  }
+}
+
+/** The fields of one hook run the event keeps; a field the run does not record stays absent. */
+function hookRunBody(run: GrokHookRunValue): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (run.name) {
+    body.name = run.name;
+  }
+  const state = run.status?.status;
+  if (state) {
+    body.status = state;
+  }
+  const elapsedMs = run.status?.elapsed_ms;
+  if (elapsedMs !== undefined) {
+    body.elapsedMs = elapsedMs;
+  }
+  const exitCode = run.exit_code ?? run.status?.exit_code;
+  if (exitCode !== undefined) {
+    body.exitCode = exitCode;
+  }
+  const output = run.output ?? run.status?.output;
+  if (output) {
+    body.output = output;
+  }
+  return body;
+}
+
+function hookRuns(runs: readonly (GrokHookRunValue | undefined)[] | undefined): Record<string, unknown>[] {
+  return (runs ?? []).flatMap((run) => (run ? [hookRunBody(run)] : []));
+}
+
+/** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
+function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): Record<string, unknown> {
+  const raw = grokTurnUsage(update);
+  const usage = grokUsageOf(raw);
+  const model = grokTurnModel(raw?.modelUsage, turnModel);
+  const byModel = grokUsageByModel(raw?.modelUsage);
+  // `baseEvent` stores a record. `satisfies` keeps the fields on `RequestPayload`.
+  return {
+    granularity: "turn",
+    ...(model ? { model } : {}),
+    ...(usage ? { usage } : {}),
+    ...(update.stop_reason ? { finishReason: update.stop_reason } : {}),
+    ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
+    ...(byModel ? { usageByModel: byModel } : {})
+  } satisfies RequestPayload;
+}
+
+/** The events a tool call produced so far; its merged state is the shared ACP tool state. */
+interface ToolEvents {
+  call?: TranscriptEvent;
+  result?: TranscriptEvent;
+}
+
+/**
+ * Merges `tool_call` and `tool_call_update` rows that share a `toolCallId` with the ACP rules, emitting the call at
+ * its first `tool_call` and the result at its first final status, and rewriting both as later rows change them.
+ */
+function recordTool(
+  kind: string,
+  update: GrokUpdateValue,
+  record: SourcedRecord,
+  calls: { readonly tools: Map<string, AcpToolState>; readonly events: Map<string, ToolEvents> },
+  skipped: SkippedRecord[],
+  emit: (eventKind: TranscriptEventKind, payload: Record<string, unknown>, id?: string) => TranscriptEvent
+): void {
+  const { state } = mergeAcpToolUpdate(calls.tools, update);
+  const seen = calls.events.get(state.callId) ?? {};
+  calls.events.set(state.callId, seen);
+  if (kind === "tool_call") {
+    if (seen.call) {
+      Object.assign(seen.call.payload, acpToolCallPayload(state));
+      skipRecord(skipped, record, "tool-progress");
+      return;
+    }
+    seen.call = emit("tool_call", acpToolCallPayload(state));
+    return;
+  }
+  if (seen.call) {
+    Object.assign(seen.call.payload, acpToolCallPayload(state));
+  }
+  if (!isAcpToolDone(state)) {
+    skipRecord(skipped, record, "tool-progress");
+    return;
+  }
+  // A result with no earlier call stays an orphan. Inventing the call would hide that.
+  if (!seen.result) {
+    seen.result = emit("tool_result", acpToolResultPayload(state));
+    return;
+  }
+  Object.assign(seen.result.payload, acpToolResultPayload(state));
+  skipRecord(skipped, record, "tool-progress");
+}
+
 /**
  * Translates one session's `updates.jsonl` records into transcript events. Grok records usage only per turn
  * (`turn_completed.usage` sums that turn's model calls), so each `request` is one turn: `granularity` is `turn`,
@@ -300,117 +413,4 @@ export function translateGrokRecords(
     ...(meta.tools === undefined ? {} : { tools: meta.tools })
   };
   return ok({ events, skipped, session, agents });
-}
-
-function applySubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubagentMeta> | undefined): void {
-  if (!subagents) {
-    return;
-  }
-  for (const [dirName, meta] of subagents) {
-    const id = meta.id ?? dirName;
-    const existing = agents.find((agent) => agent.id === id);
-    if (existing) {
-      if (!existing.title && meta.title) {
-        existing.title = meta.title;
-      }
-      continue;
-    }
-    const lane: Lane = { id, parentId: MAIN_LANE_ID };
-    if (meta.title) {
-      lane.title = meta.title;
-    }
-    agents.push(lane);
-  }
-}
-
-/** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
-function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): Record<string, unknown> {
-  const raw = grokTurnUsage(update);
-  const usage = grokUsageOf(raw);
-  const model = grokTurnModel(raw?.modelUsage, turnModel);
-  const byModel = grokUsageByModel(raw?.modelUsage);
-  // `baseEvent` stores a record. `satisfies` keeps the fields on `RequestPayload`.
-  return {
-    granularity: "turn",
-    ...(model ? { model } : {}),
-    ...(usage ? { usage } : {}),
-    ...(update.stop_reason ? { finishReason: update.stop_reason } : {}),
-    ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
-    ...(byModel ? { usageByModel: byModel } : {})
-  } satisfies RequestPayload;
-}
-
-function hookRuns(runs: readonly (GrokHookRunValue | undefined)[] | undefined): Record<string, unknown>[] {
-  return (runs ?? []).flatMap((run) => (run ? [hookRunBody(run)] : []));
-}
-
-/** The fields of one hook run the event keeps; a field the run does not record stays absent. */
-function hookRunBody(run: GrokHookRunValue): Record<string, unknown> {
-  const body: Record<string, unknown> = {};
-  if (run.name) {
-    body.name = run.name;
-  }
-  const state = run.status?.status;
-  if (state) {
-    body.status = state;
-  }
-  const elapsedMs = run.status?.elapsed_ms;
-  if (elapsedMs !== undefined) {
-    body.elapsedMs = elapsedMs;
-  }
-  const exitCode = run.exit_code ?? run.status?.exit_code;
-  if (exitCode !== undefined) {
-    body.exitCode = exitCode;
-  }
-  const output = run.output ?? run.status?.output;
-  if (output) {
-    body.output = output;
-  }
-  return body;
-}
-
-/** The events a tool call produced so far; its merged state is the shared ACP tool state. */
-interface ToolEvents {
-  call?: TranscriptEvent;
-  result?: TranscriptEvent;
-}
-
-/**
- * Merges `tool_call` and `tool_call_update` rows that share a `toolCallId` with the ACP rules, emitting the call at
- * its first `tool_call` and the result at its first final status, and rewriting both as later rows change them.
- */
-function recordTool(
-  kind: string,
-  update: GrokUpdateValue,
-  record: SourcedRecord,
-  calls: { readonly tools: Map<string, AcpToolState>; readonly events: Map<string, ToolEvents> },
-  skipped: SkippedRecord[],
-  emit: (eventKind: TranscriptEventKind, payload: Record<string, unknown>, id?: string) => TranscriptEvent
-): void {
-  const { state } = mergeAcpToolUpdate(calls.tools, update);
-  const seen = calls.events.get(state.callId) ?? {};
-  calls.events.set(state.callId, seen);
-  if (kind === "tool_call") {
-    if (seen.call) {
-      Object.assign(seen.call.payload, acpToolCallPayload(state));
-      skipRecord(skipped, record, "tool-progress");
-      return;
-    }
-    seen.call = emit("tool_call", acpToolCallPayload(state));
-    return;
-  }
-  if (seen.call) {
-    Object.assign(seen.call.payload, acpToolCallPayload(state));
-  }
-  if (!isAcpToolDone(state)) {
-    skipRecord(skipped, record, "tool-progress");
-    return;
-  }
-  // A result with no earlier call stays an orphan. Inventing the call would hide that.
-  if (!seen.result) {
-    seen.result = emit("tool_result", acpToolResultPayload(state));
-    return;
-  }
-  Object.assign(seen.result.payload, acpToolResultPayload(state));
-  skipRecord(skipped, record, "tool-progress");
 }

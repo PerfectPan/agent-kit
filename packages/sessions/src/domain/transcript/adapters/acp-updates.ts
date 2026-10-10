@@ -118,6 +118,11 @@ export interface AcpToolState {
 
 const TOOL_DONE = new Set(["completed", "failed", "error"]);
 
+/** `undefined` and `null` are omissions. Every other value, including `""`, `[]` and `{}`, replaces the field. */
+function supplied(value: unknown): boolean {
+  return value !== undefined && value !== null;
+}
+
 /**
  * Merges one `tool_call` or `tool_call_update` into the state of its call, creating the state on first sight. An
  * update may carry only the fields that changed: only an omitted or `null` `rawInput`, `content` or `rawOutput` leaves
@@ -149,11 +154,6 @@ export function mergeAcpToolUpdate(
     state.status = status;
   }
   return { state, first: existing === undefined };
-}
-
-/** `undefined` and `null` are omissions. Every other value, including `""`, `[]` and `{}`, replaces the field. */
-function supplied(value: unknown): boolean {
-  return value !== undefined && value !== null;
 }
 
 /** A call has ended once its status is `completed`, `failed` or `error`. */

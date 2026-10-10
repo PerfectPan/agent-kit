@@ -63,6 +63,40 @@ const GeminiCliSavedState = z.looseObject({
   lastReported: lenient(z.boolean())
 });
 
+/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
+function restore(saved: unknown): GeminiCliUsageState {
+  const state = z.safeParse(GeminiCliSavedState, saved).data;
+  return {
+    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
+    ...(state?.lastId === undefined ? {} : { lastId: state.lastId, lastReported: state.lastReported === true })
+  };
+}
+
+/**
+ * A `gemini` message as a record. Its `id` is the request id: the CLI keeps it when it migrates an older chat into a
+ * `.jsonl` file, so a total over both files counts the message once.
+ */
+function messageRecord(
+  message: GeminiCliRecordValue,
+  usage: Usage,
+  timestamp: number,
+  sessionId: string,
+  source: SourcePointer
+): UsageRecord {
+  const { id, model } = message;
+  return {
+    agent: AGENT,
+    sessionId,
+    granularity: "request",
+    ...(id ? { requestId: id } : {}),
+    timestamp,
+    ...(model ? { model } : {}),
+    usage,
+    source
+  };
+}
+
 /**
  * Gemini CLI's usage over one `.jsonl` chat: one record per `gemini` message that has `tokens`. The CLI appends a
  * message again each time it changes (tokens attached, tool calls added), only while it is the chat's last message,
@@ -107,16 +141,6 @@ export function geminiCliUsageLines(file: UsageFile, saved?: unknown): UsageLine
   };
 }
 
-/** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. */
-function restore(saved: unknown): GeminiCliUsageState {
-  const state = z.safeParse(GeminiCliSavedState, saved).data;
-  return {
-    ...(state?.sessionId === undefined ? {} : { sessionId: state.sessionId }),
-    ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
-    ...(state?.lastId === undefined ? {} : { lastId: state.lastId, lastReported: state.lastReported === true })
-  };
-}
-
 /** An older chat: one JSON object, with the session id and the `messages` array. */
 const GeminiCliLegacyChat = z.looseObject({
   sessionId: lenient(z.string()),
@@ -146,30 +170,6 @@ export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: So
     out.push(messageRecord(message, usage, timeOf(message.timestamp) ?? file.mtimeMs, sessionId, source));
   }
   return out;
-}
-
-/**
- * A `gemini` message as a record. Its `id` is the request id: the CLI keeps it when it migrates an older chat into a
- * `.jsonl` file, so a total over both files counts the message once.
- */
-function messageRecord(
-  message: GeminiCliRecordValue,
-  usage: Usage,
-  timestamp: number,
-  sessionId: string,
-  source: SourcePointer
-): UsageRecord {
-  const { id, model } = message;
-  return {
-    agent: AGENT,
-    sessionId,
-    granularity: "request",
-    ...(id ? { requestId: id } : {}),
-    timestamp,
-    ...(model ? { model } : {}),
-    usage,
-    source
-  };
 }
 
 /** The key under which a scan counts a record once in its window: the session and the message id, which a migrated chat keeps. */

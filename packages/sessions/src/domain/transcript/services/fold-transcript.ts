@@ -5,6 +5,44 @@ import type { Transcript } from "../value-objects/transcript.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
 
+function gated(declared: boolean, value: number | undefined): number | undefined {
+  return declared ? value : undefined;
+}
+
+function knownSum(values: readonly (number | undefined)[]): number | undefined {
+  const known = values.filter((value): value is number => value !== undefined);
+  return known.length > 0 ? known.reduce((total, value) => total + value, 0) : undefined;
+}
+
+function finite(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function durationSum(events: readonly TranscriptEvent[]): number | undefined {
+  const turns = knownSum(
+    events
+      .filter((event) => event.kind === "system" && event.payload.type === "turn_duration")
+      .map((event) => finite(event.payload.durationMs))
+  );
+  if (turns !== undefined) {
+    return turns;
+  }
+  return knownSum(events.filter((event) => event.kind === "request").map((event) => finite(event.payload.durationMs)));
+}
+
+function downsample(values: readonly number[], max: number): number[] {
+  if (values.length <= max) {
+    return values.slice();
+  }
+  const last = values.length - 1;
+  return Array.from({ length: max }, (_, index) => values[Math.round((index * last) / (max - 1))]!);
+}
+
+/** A copy without the absent numbers, so summaries from different sources compare equal. */
+export function summaryOf(summary: SessionSummary): SessionSummary {
+  return Object.fromEntries(Object.entries(summary).filter(([, value]) => value !== undefined)) as SessionSummary;
+}
+
 /**
  * The SessionSummary of a transcript. A turn is one real prompt record on the main lane. Durations are the
  * recorded turn durations (`system` events with `type: 'turn_duration'`) when the agent records them, otherwise the
@@ -36,42 +74,4 @@ export function foldTranscript(transcript: Transcript): SessionSummary {
       .length,
     contextShape: usage && inputPoints.length > 0 ? downsample(inputPoints, CONTEXT_SHAPE_POINTS) : undefined
   });
-}
-
-/** A copy without the absent numbers, so summaries from different sources compare equal. */
-export function summaryOf(summary: SessionSummary): SessionSummary {
-  return Object.fromEntries(Object.entries(summary).filter(([, value]) => value !== undefined)) as SessionSummary;
-}
-
-function gated(declared: boolean, value: number | undefined): number | undefined {
-  return declared ? value : undefined;
-}
-
-function knownSum(values: readonly (number | undefined)[]): number | undefined {
-  const known = values.filter((value): value is number => value !== undefined);
-  return known.length > 0 ? known.reduce((total, value) => total + value, 0) : undefined;
-}
-
-function durationSum(events: readonly TranscriptEvent[]): number | undefined {
-  const turns = knownSum(
-    events
-      .filter((event) => event.kind === "system" && event.payload.type === "turn_duration")
-      .map((event) => finite(event.payload.durationMs))
-  );
-  if (turns !== undefined) {
-    return turns;
-  }
-  return knownSum(events.filter((event) => event.kind === "request").map((event) => finite(event.payload.durationMs)));
-}
-
-function finite(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function downsample(values: readonly number[], max: number): number[] {
-  if (values.length <= max) {
-    return values.slice();
-  }
-  const last = values.length - 1;
-  return Array.from({ length: max }, (_, index) => values[Math.round((index * last) / (max - 1))]!);
 }

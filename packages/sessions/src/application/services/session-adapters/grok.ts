@@ -33,83 +33,28 @@ import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } f
 
 const AGENT = "grok";
 
-export const grokSessionAdapter: SessionAdapter = {
-  specificationVersion: "sessions-v1",
-  agent: AGENT,
-  displayName: "Grok",
-  capabilities: GROK_CAPABILITIES,
-  roots: grokRoots,
-  discover(platform, root, options = {}) {
-    return discoverSessions(platform, AGENT, root, {
-      ...options,
-      files: GROK_SESSION_FILES,
-      preview: previewGrokRecords,
-      decorate: (filePlatform, path, head) => decorateGrokHead(filePlatform, path, head, options.signal)
-    });
-  },
-  detect: detectGrok,
-  load: loadGrok
-};
-
-async function detectGrok(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {
-  const dir = grokSessionDir(ref.path);
-  // A missing file is not this agent's session. An IO error must reach the caller's `catchIoFailure`.
-  const summary = await platform.fs.stat(grokSummaryPath(dir), { followSymlinks: true });
-  const updates = await platform.fs.stat(grokUpdatesPath(ref.path), { followSymlinks: true });
-  return summary?.kind === "file" && updates?.kind === "file";
+/** `undefined` when `text` is not JSON. The caller records an `invalid-json` skip. */
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return undefined;
+  }
 }
 
-interface GrokSessionFiles {
-  meta: GrokSessionMeta;
-  skipped: SkippedRecord[];
-  /** Set when `summary.json` names a generation this adapter does not read. */
-  generation?: UnknownFormatGeneration;
-  main: JsonlRecords;
-  subagents: Map<string, GrokSubagentMeta>;
+function textSource(path: string, text: string): SkippedRecord["source"] {
+  return { file: path, offset: 0, length: new TextEncoder().encode(text).byteLength, line: 1 };
 }
 
-async function loadGrok(
+async function readIfFile(
   platform: SessionPlatform,
-  ref: SessionRef,
-  options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
-  const progress = readProgress(options.onProgress);
-  const files = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readSession(guarded, ref, options.signal, progress)
-  );
-  if (!files.ok) {
-    return files;
+  path: string,
+  options: { signal?: AbortSignal; progress: ReadProgress }
+): Promise<string | undefined> {
+  if ((await platform.fs.stat(path, { followSymlinks: true }))?.kind !== "file") {
+    return undefined;
   }
-  const { meta, skipped, generation, main, subagents } = files.value;
-  if (generation) {
-    return err(generation);
-  }
-  const translated = translateGrokRecords(main.records, {
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
-    meta,
-    subagents
-  });
-  if (!translated.ok) {
-    return translated;
-  }
-  const parsed = translated.value;
-  parsed.skipped.push(...skipped, ...main.skipped);
-  options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, grokCapabilities(parsed.session, parsed.agents), parsed));
-}
-
-async function readSession(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  signal: AbortSignal | undefined,
-  progress: ReadProgress
-): Promise<GrokSessionFiles> {
-  const options = { signal, progress };
-  const dir = grokSessionDir(ref.path);
-  const meta = await loadMeta(platform, dir, options);
-  const main = await readJsonlRecords(platform, grokUpdatesPath(ref.path), options);
-  const subagents = await readSubagentMetas(platform, dir, options, meta.skipped);
-  return { ...meta, main, subagents };
+  return readText(platform, path, options);
 }
 
 /**
@@ -153,6 +98,80 @@ async function loadMeta(
     }
   }
   return { meta, skipped };
+}
+
+async function readSubagentMetas(
+  platform: SessionPlatform,
+  sessionDir: string,
+  options: { signal?: AbortSignal; progress: ReadProgress },
+  skipped: SkippedRecord[]
+): Promise<Map<string, GrokSubagentMeta>> {
+  const out = new Map<string, GrokSubagentMeta>();
+  const dir = joinPath(sessionDir, "subagents");
+  if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
+    return out;
+  }
+  for (const entry of await platform.fs.list(dir)) {
+    if (entry.kind !== "dir") {
+      continue;
+    }
+    const metaPath = joinPath(joinPath(dir, entry.name), "meta.json");
+    const text = await readIfFile(platform, metaPath, options);
+    if (!text) {
+      continue;
+    }
+    const value = parseJson(text);
+    if (value === undefined) {
+      skipped.push({ reason: "invalid-json", source: textSource(metaPath, text) });
+      continue;
+    }
+    out.set(entry.name, grokSubagentMeta(value));
+  }
+  return out;
+}
+
+async function readSession(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  signal: AbortSignal | undefined,
+  progress: ReadProgress
+): Promise<GrokSessionFiles> {
+  const options = { signal, progress };
+  const dir = grokSessionDir(ref.path);
+  const meta = await loadMeta(platform, dir, options);
+  const main = await readJsonlRecords(platform, grokUpdatesPath(ref.path), options);
+  const subagents = await readSubagentMetas(platform, dir, options, meta.skipped);
+  return { ...meta, main, subagents };
+}
+
+async function loadGrok(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  options: LoadOptions = {}
+): Promise<Result<Transcript, SessionReadError>> {
+  const progress = readProgress(options.onProgress);
+  const files = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
+    readSession(guarded, ref, options.signal, progress)
+  );
+  if (!files.ok) {
+    return files;
+  }
+  const { meta, skipped, generation, main, subagents } = files.value;
+  if (generation) {
+    return err(generation);
+  }
+  const translated = translateGrokRecords(main.records, {
+    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+    meta,
+    subagents
+  });
+  if (!translated.ok) {
+    return translated;
+  }
+  const parsed = translated.value;
+  parsed.skipped.push(...skipped, ...main.skipped);
+  options.signal?.throwIfAborted();
+  return ok(createTranscript(AGENT, grokCapabilities(parsed.session, parsed.agents), parsed));
 }
 
 /**
@@ -202,56 +221,37 @@ async function decorateGrokHead(
   applyGrokSummary(head, parsed.value);
 }
 
-async function readSubagentMetas(
-  platform: SessionPlatform,
-  sessionDir: string,
-  options: { signal?: AbortSignal; progress: ReadProgress },
-  skipped: SkippedRecord[]
-): Promise<Map<string, GrokSubagentMeta>> {
-  const out = new Map<string, GrokSubagentMeta>();
-  const dir = joinPath(sessionDir, "subagents");
-  if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
-    return out;
-  }
-  for (const entry of await platform.fs.list(dir)) {
-    if (entry.kind !== "dir") {
-      continue;
-    }
-    const metaPath = joinPath(joinPath(dir, entry.name), "meta.json");
-    const text = await readIfFile(platform, metaPath, options);
-    if (!text) {
-      continue;
-    }
-    const value = parseJson(text);
-    if (value === undefined) {
-      skipped.push({ reason: "invalid-json", source: textSource(metaPath, text) });
-      continue;
-    }
-    out.set(entry.name, grokSubagentMeta(value));
-  }
-  return out;
+async function detectGrok(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {
+  const dir = grokSessionDir(ref.path);
+  // A missing file is not this agent's session. An IO error must reach the caller's `catchIoFailure`.
+  const summary = await platform.fs.stat(grokSummaryPath(dir), { followSymlinks: true });
+  const updates = await platform.fs.stat(grokUpdatesPath(ref.path), { followSymlinks: true });
+  return summary?.kind === "file" && updates?.kind === "file";
 }
 
-async function readIfFile(
-  platform: SessionPlatform,
-  path: string,
-  options: { signal?: AbortSignal; progress: ReadProgress }
-): Promise<string | undefined> {
-  if ((await platform.fs.stat(path, { followSymlinks: true }))?.kind !== "file") {
-    return undefined;
-  }
-  return readText(platform, path, options);
-}
+export const grokSessionAdapter: SessionAdapter = {
+  specificationVersion: "sessions-v1",
+  agent: AGENT,
+  displayName: "Grok",
+  capabilities: GROK_CAPABILITIES,
+  roots: grokRoots,
+  discover(platform, root, options = {}) {
+    return discoverSessions(platform, AGENT, root, {
+      ...options,
+      files: GROK_SESSION_FILES,
+      preview: previewGrokRecords,
+      decorate: (filePlatform, path, head) => decorateGrokHead(filePlatform, path, head, options.signal)
+    });
+  },
+  detect: detectGrok,
+  load: loadGrok
+};
 
-/** `undefined` when `text` is not JSON. The caller records an `invalid-json` skip. */
-function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
-function textSource(path: string, text: string): SkippedRecord["source"] {
-  return { file: path, offset: 0, length: new TextEncoder().encode(text).byteLength, line: 1 };
+interface GrokSessionFiles {
+  meta: GrokSessionMeta;
+  skipped: SkippedRecord[];
+  /** Set when `summary.json` names a generation this adapter does not read. */
+  generation?: UnknownFormatGeneration;
+  main: JsonlRecords;
+  subagents: Map<string, GrokSubagentMeta>;
 }
