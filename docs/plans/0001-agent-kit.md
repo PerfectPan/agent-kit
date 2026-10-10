@@ -2,7 +2,7 @@
 
 agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each implement their own code for working with third-party coding agents. This plan moves that code into two npm packages: `@rivus/agent-kit` (connect to external coding agents) and `@rivus/agent-kit-collab` (agent collaboration primitives). The Effect-based host application that runs agents stays independent.
 
-- Status: accepted (all decisions confirmed, see section 7); the kit side of P0–P6 is implemented. Application adoption and the real-agent checks in 6.3 remain open. `@rivus/agent-kit` 0.1.0 and 0.2.0 are published
+- Status: accepted (all decisions confirmed, see section 7); the kit side of P0–P6 is implemented. Application adoption and the real-agent checks in 6.3 remain open. `@rivus/agent-kit` 0.5.0 is published
 - Owner: PerfectPan
 - Reviewer: codex (review rounds in [A.5](#a5-review-record))
 - Last updated: 2026-10-09
