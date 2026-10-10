@@ -21,7 +21,7 @@
     "format:check": "vp fmt --check ."
   },
   "devDependencies": {
-    "@effect/tsgo": "0.49.0",
+    "@effect/tsgo": "0.50.0",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
     "effect": "4.0.1",
     "typescript": "7.0.2",
