@@ -2,6 +2,12 @@
   "name": "@rivus/agent-kit-collab",
   "entries": [
     {
+      "version": "0.7.0",
+      "tag": "@rivus/agent-kit-collab_v0.7.0",
+      "date": "Sat, 10 Oct 2026 13:27:57 GMT",
+      "comments": {}
+    },
+    {
       "version": "0.6.0",
       "tag": "@rivus/agent-kit-collab_v0.6.0",
       "date": "Sat, 10 Oct 2026 05:42:15 GMT",
