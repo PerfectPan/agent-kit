@@ -9,6 +9,7 @@ import {
   loadTranscript,
   promptSnapshot,
   readOriginal,
+  sessionAdapterHome,
   type SessionHead,
   type SessionListFailure,
   type SessionPlatform,
@@ -313,6 +314,20 @@ describe("sessions use cases over Claude Code", () => {
         error: { _tag: "RootMissing", path: "/u/me/.claude/projects" }
       }
     ]);
+  });
+
+  it("resolves the home a session adapter lists: its own rule, else the catalog's, else it throws", () => {
+    const adapter = builtinSessionAdapters["claude-code"];
+    expect(sessionAdapterHome(adapter, { env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }, home: "/u/me" })).toMatchObject({
+      agent: "claude-code",
+      path: "/cfg/claude"
+    });
+    expect(sessionAdapterHome(adapter, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.claude" });
+    const own = { agent: "my-agent", home: { defaultPath: [".my-agent"] } };
+    expect(sessionAdapterHome(own, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.my-agent" });
+    expect(() => sessionAdapterHome({ agent: "my-agent" }, { env: {}, home: "/u/me" })).toThrow(
+      expect.objectContaining({ code: "capability-unsupported" })
+    );
   });
 
   it("throws capability-unsupported for an agent without a session adapter", async () => {

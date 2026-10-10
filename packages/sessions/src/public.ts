@@ -1,5 +1,5 @@
 // Use cases
-export { listSessions, type ListSessionsOptions } from "./application/use-cases/list-sessions.js";
+export { listSessions, type ListSessionsOptions, sessionAdapterHome } from "./application/use-cases/list-sessions.js";
 export {
   loadTranscript,
   type LoadTranscriptError,

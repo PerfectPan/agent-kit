@@ -1,9 +1,9 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { AgentHome, CodingAgentId, HomeContext } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
-import type { SessionAdapters, SessionPlatform } from "../ports.js";
+import type { SessionAdapter, SessionAdapters, SessionPlatform } from "../ports.js";
 import { builtinSessionAdapters } from "../services/session-adapters/index.js";
 
 export interface ListSessionsOptions {
@@ -14,6 +14,15 @@ export interface ListSessionsOptions {
   readonly signal?: AbortSignal;
   /** Called with the running total of session files each time another root has been listed. */
   readonly onTotal?: (files: number) => void;
+}
+
+/**
+ * The home whose `roots` an adapter lists: the adapter's own home rule, else the catalog's rule for a built-in agent.
+ * Throws `capability-unsupported` when there is neither. For a caller that walks an adapter's roots itself, for
+ * example to report progress per root, instead of through `listSessions`.
+ */
+export function sessionAdapterHome(adapter: Pick<SessionAdapter, "agent" | "home">, context: HomeContext): AgentHome {
+  return adapterHome(adapter, context, "session adapter");
 }
 
 /**
@@ -33,7 +42,7 @@ export async function* listSessions(
     options.onTotal?.(total);
   };
   for (const adapter of adapters) {
-    for (const root of adapter.roots(adapterHome(adapter, platform, "session adapter"))) {
+    for (const root of adapter.roots(sessionAdapterHome(adapter, platform))) {
       options.signal?.throwIfAborted();
       yield* adapter.discover(platform, root, { ...(options.signal ? { signal: options.signal } : {}), onTotal });
     }

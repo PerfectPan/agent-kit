@@ -1,4 +1,9 @@
-export { builtinSessionAdapters, isSessionHead, listSessions } from "@rivus/agent-kit-sessions/public";
+export {
+  builtinSessionAdapters,
+  isSessionHead,
+  listSessions,
+  sessionAdapterHome
+} from "@rivus/agent-kit-sessions/public";
 export type {
   DiscoverOptions,
   ListSessionsOptions,
