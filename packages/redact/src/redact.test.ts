@@ -41,16 +41,14 @@ describe("redactText", () => {
   });
 
   it("S60: hides a multi-segment home's slug after any character that is not a letter, digit, `_` or `%`", () => {
-    const slug = "-Users-alice-proj";
+    const slug = "-u-alice-proj";
     const nameChar = /[A-Za-z0-9_%]/;
     for (let code = 0x20; code <= 0x7e; code++) {
       const before = String.fromCharCode(code);
-      expect(text(`${before}${slug}`, "/Users/alice")).toBe(
-        nameChar.test(before) ? `${before}${slug}` : `${before}~-proj`
-      );
+      expect(text(`${before}${slug}`, "/u/alice")).toBe(nameChar.test(before) ? `${before}${slug}` : `${before}~-proj`);
     }
-    expect(text(slug, "/Users/alice")).toBe("~-proj");
-    const leak = (value: string) => text(value, "/Users/alice");
+    expect(text(slug, "/u/alice")).toBe("~-proj");
+    const leak = (value: string) => text(value, "/u/alice");
     expect(leak(`find ~/.claude/projects -name "*${slug}*"`)).toBe(`find ~/.claude/projects -name "*~-proj*"`);
     expect(leak(`**${slug}**`)).toBe("**~-proj**");
     expect(leak(`[${slug}](x)`)).toBe("[~-proj](x)");
