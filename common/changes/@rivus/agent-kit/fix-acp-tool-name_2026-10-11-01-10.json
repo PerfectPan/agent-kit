@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Keep a Grok tool call's name across its updates: the first `title ?? toolName` names it, a later display title moves to the payload's `title`, and plain-object `rawInput` merges into the previous args.",
+      "comment": "An ACP tool call keeps the name from its first non-empty `title || toolName`; a later display title is a separate `title` field (cleared when it matches the name again) in Grok session logs and live ACP turns alike, and a plain-object `rawInput` update merges into the call's args instead of replacing them.",
       "type": "patch"
     }
   ],
