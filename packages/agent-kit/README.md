@@ -140,9 +140,15 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
-and Pi a bridge that forwards their events to the command. An event fires once even in agents that also run Claude
-Code's settings hooks. Shared files keep their comments and formatting; nothing is written through a symlink or into
-a file chezmoi manages. Concurrent edits by tools that do not take the ledger lock can be lost without a trace.
+and Pi a bridge that forwards their events to the command. The opencode bridge forwards each bus event as opencode
+sent it, plus the plugin's `directory`, and a tool hook as `{ type, properties }`. It remembers, for that plugin
+instance only, the session id of the latest event that named one, including an event or tool input it does not
+forward, and adds it as `currentSessionId` when an event such as `file.edited` names none. A payload that throws while
+that id is read does not reject the plugin callback. `readHookEvent` reads `currentSessionId` after opencode's own
+session paths, so an event that names a session keeps that id. An event fires once even in agents that also run
+Claude Code's settings hooks.
+Shared files keep their comments and formatting; nothing is written through a symlink or into a file chezmoi manages.
+Concurrent edits by tools that do not take the ledger lock can be lost without a trace.
 
 ### Usage records
 

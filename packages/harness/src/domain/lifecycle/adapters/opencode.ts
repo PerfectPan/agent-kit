@@ -5,8 +5,17 @@ import type { HookDialect } from "../index.js";
 // the v2 SDK types (permission.asked, question.*).
 //
 // opencode calls an in-process plugin, so a bridge plugin forwards the payload. It forwards each bus event as is
-// (`{ type, properties }`) with the plugin input's `directory` added at the top level, and the inputs of the
-// tool.execute.before / tool.execute.after hooks as `{ type: "<hook name>", properties: input }`.
+// (`{ id, type, properties }`, where `id` is the event id) with the plugin input's `directory` added at the top
+// level, and the inputs of the tool.execute.before / tool.execute.after hooks as
+// `{ type: "<hook name>", properties: input, directory }`. One call of the plugin function is one directory. The
+// bridge remembers the session id of the latest event that names one, including an event or tool input it does not
+// forward, and, on an event that names none, adds it as `currentSessionId`. That key is not one opencode sends
+// (`id`, `type`, `properties`, `sessionID`) and not `directory`, so adding it never overwrites the event. It is not
+// persisted. The path is last, so an event that names a session keeps that id. Reading the id shares the callback's
+// fail-open boundary with forwarding: a throw does not reject the callback into opencode.
+
+/** Top-level field the bridge adds beside `directory` when an event names no session. */
+export const opencodeCurrentSessionField = "currentSessionId" as const;
 
 export const opencodeHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
@@ -16,11 +25,13 @@ export const opencodeHookDialect: HookDialect = {
     event: { paths: [["type"]] },
     sessionId: {
       // session.* events with a Session carry it as info.id; message events carry the message's sessionID.
+      // currentSessionId is the bridge's memory of the latest named session, used only when every path above missed.
       paths: [
         ["properties", "sessionID"],
         ["properties", "info", "sessionID"],
         ["properties", "part", "sessionID"],
-        ["properties", "info", "id"]
+        ["properties", "info", "id"],
+        [opencodeCurrentSessionField]
       ]
     },
     cwd: { paths: [["directory"], ["properties", "info", "directory"]] },
