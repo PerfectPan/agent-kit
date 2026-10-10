@@ -40,6 +40,9 @@ const PAGE_ROWS = 500;
 /** A `message` page row; only `session_id` is read by type, the other columns are coerced in `toRows`. */
 const messageRow = z.looseObject({ session_id: lenient(z.string()) });
 
+/** The cursor state of a legacy session directory: the last file name read. */
+const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
+
 function readFailed(path: string, cause: unknown): ReadFailed {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
 }
@@ -197,9 +200,6 @@ function decodeLegacySession(platform: UsagePlatform, dir: string, options: Deco
   const { from, signal } = options;
   return usageStreamOf(async function* (position) {
     const io = guardIo(platform);
-    // `legacyCursorState` stays beside the legacy decode it serves, below the decoder object whose `decode`
-    // dispatches here; the two const declarations cannot both precede this function.
-    // oxlint-disable-next-line no-use-before-define
     let after = z.safeParse(legacyCursorState, from?.state).data?.after;
     const queue: UsageRecord[] = [...(from?.queue ?? [])];
     position.cursor = () => ({
@@ -284,6 +284,3 @@ export const opencodeUsageDecoder: UsageDecoder = {
       : decodeLegacySession(platform, target.path, options);
   }
 };
-
-/** The cursor state of a legacy session directory: the last file name read. */
-const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
