@@ -2,7 +2,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { dirname, join, relative } from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { registerHooks } from "node:module";
 
 import { parseSync, Visitor } from "oxc-parser";
 import { rolldown } from "rolldown";
@@ -12,6 +14,9 @@ const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
 // Entries whose code and declarations import nothing outside the package, not even its dependencies: a host that
 // cannot install dependencies bundles or loads them on their own.
 const ZERO_DEPENDENCY_ENTRIES = new Set(["./cost", "./harness/events", "./transcript/usage"]);
+// These entries bundle zod/mini instead of importing it. `/node` and `/node/effect` share the platform chunk, so the
+// files reachable from either may inline zod; every other entry keeps the import.
+const ZOD_BUNDLE_ENTRIES = new Set([...ZERO_DEPENDENCY_ENTRIES, "./node", "./node/effect"]);
 // Entries that import the optional `effect` peer, which must stay an external import. Every other entry is plain:
 // neither its code nor its declarations may reach `effect`, so a consumer without Effect can load and type-check it.
 const EFFECT_ENTRIES = new Set(["./acp", "./harness", "./node/effect", "./platform/effect", "./testing/effect"]);
@@ -81,22 +86,47 @@ function externalImports(entryFile: string): Map<string, string> {
   return external;
 }
 
+/** Dist-relative files reachable from a built file through relative imports, including itself. */
+function reachableDistFiles(entryFile: string): Set<string> {
+  const dist = join(packageRoot, "dist");
+  const declarations = entryFile.endsWith(".d.ts");
+  const reached = new Set<string>();
+  const queue = [entryFile];
+  for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+    if (reached.has(file)) {
+      continue;
+    }
+    reached.add(file);
+    for (const specifier of specifiers(file)) {
+      if (!specifier.startsWith(".")) {
+        continue;
+      }
+      const target = join(dirname(file), specifier);
+      queue.push(declarations ? target.replace(/\.js$/, ".d.ts") : target);
+    }
+  }
+  return new Set([...reached].map((file) => relative(dist, file)));
+}
+
 /**
  * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a `//#region <source>`
  * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders. The
- * zero-dependency entries bundle `zod/mini` into their own files instead of importing it; no other dist file may
- * inline a dependency, so the built entries keep importing `zod/mini` and the optional `effect` peer stays external.
+ * zero-dependency entries and the Node platform chunk bundle `zod/mini` instead of importing it. No other dist file
+ * may inline a dependency, so the other built entries keep importing `zod/mini` and the optional `effect` peer stays
+ * external.
  */
 function inlinedDependencies(): string[] {
   const problems: string[] = [];
   const zodBundleAllowed = new Set<string>();
   for (const [subpath, target] of Object.entries(manifest.exports)) {
-    if (subpath === "./package.json" || typeof target !== "object" || !ZERO_DEPENDENCY_ENTRIES.has(subpath)) {
+    if (subpath === "./package.json" || typeof target !== "object" || !ZOD_BUNDLE_ENTRIES.has(subpath)) {
       continue;
     }
     for (const file of [target.default, target.types]) {
       if (typeof file === "string") {
-        zodBundleAllowed.add(file.replace(/^\.\//, "").replace(/^dist\//, ""));
+        for (const reached of reachableDistFiles(join(packageRoot, file))) {
+          zodBundleAllowed.add(reached);
+        }
       }
     }
   }
@@ -118,6 +148,25 @@ function inlinedDependencies(): string[] {
     }
   }
   return regions > 0 ? problems : ["dist has no //#region comments, so inlined dependencies cannot be detected"];
+}
+
+/** Specifiers of the `zod` package resolved while `load` runs. */
+async function zodResolvedBy(load: () => Promise<void>): Promise<string[]> {
+  const found: string[] = [];
+  const hooks = registerHooks({
+    resolve(specifier, context, next) {
+      if (specifier === "zod" || specifier.startsWith("zod/")) {
+        found.push(`${specifier} from ${context.parentURL ?? "the entry"}`);
+      }
+      return next(specifier, context);
+    }
+  });
+  try {
+    await load();
+  } finally {
+    hooks.deregister();
+  }
+  return found;
 }
 
 async function browserBundleProblems(entryFile: string): Promise<string[]> {
@@ -177,6 +226,8 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
         if (browserSafe) {
           errors.push(`${subpath}: ${show(importer)} imports Node built-in ${specifier}`);
         }
+      } else if (ZOD_BUNDLE_ENTRIES.has(subpath) && packageName(specifier) === "zod") {
+        errors.push(`${subpath}: ${show(importer)} imports ${specifier}; this entry bundles zod instead of loading it`);
       } else if (!declared.has(packageName(specifier))) {
         errors.push(`${subpath}: ${show(importer)} imports ${specifier}, which is not a dependency or peer`);
       } else if (file === target.types && INTERNAL_DEPENDENCIES.has(packageName(specifier))) {
@@ -194,6 +245,10 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
   checked.push(
     `${subpath}${browserSafe ? " (browser)" : ""}${zeroDependency ? " (no imports)" : ""}${effectEntry ? " (effect)" : ""}`
   );
+}
+
+for (const hit of await zodResolvedBy(() => import(pathToFileURL(join(packageRoot, "dist/node.js")).href))) {
+  errors.push(`loading /node resolved ${hit}`);
 }
 
 if (errors.length > 0) {
