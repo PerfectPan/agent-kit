@@ -16,7 +16,7 @@ export function laneOf(event: TranscriptEvent, mainId: string): string {
 }
 
 /** A real user prompt: a `user` event without any of the flags of `MessagePayload`. */
-export function isPrompt(event: TranscriptEvent): boolean {
+export function isPrompt(event: Pick<TranscriptEvent, "kind" | "payload">): boolean {
   if (event.kind !== "user") {
     return false;
   }

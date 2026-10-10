@@ -38,14 +38,10 @@ export {
 } from "./policies/turns.js";
 export { createStreamFolder, foldStreamParts, type StreamFolder } from "./services/fold-stream-parts.js";
 export {
-  addRequest,
-  addRequestDuration,
   addTurnDuration,
-  downsampleContextShape,
   emptyTotals,
   finishTotals,
   foldTranscript,
-  type SummaryGates,
   summaryOf,
   type SummaryTotals
 } from "./services/fold-transcript.js";

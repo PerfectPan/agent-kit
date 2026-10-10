@@ -182,7 +182,8 @@ async function* laneRecords(
       continue;
     }
     const id = claudeCodeAgentIdOfRecord(record.value);
-    if (id === undefined) {
+    if (!id) {
+      // An empty `agentId` names no lane, exactly as `claudeCodeAgentIdFromFile` skips it.
       waiting.push(timedRecord(record));
       continue;
     }

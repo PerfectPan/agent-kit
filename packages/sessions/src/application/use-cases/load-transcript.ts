@@ -103,20 +103,24 @@ export async function loadTranscript(
 
 /** The user prompts a caller asked a summary pass to collect, with the caps they carry. */
 function promptsOption(options: { readonly prompts?: SessionPromptsOptions }): SessionPromptsOptions | undefined {
+  const rejected = (): AgentKitError =>
+    new AgentKitError(
+      "invalid-prompts",
+      `prompts.limit must be a non-negative integer and prompts.maxChars a positive integer, got ${JSON.stringify(options.prompts)}`
+    );
   const prompts = options.prompts;
+  // A JS caller can pass `null` where the type says the option is absent.
   if (prompts === undefined) {
     return undefined;
   }
   if (
+    prompts === null ||
     !Number.isInteger(prompts.limit) ||
     prompts.limit < 0 ||
     !Number.isInteger(prompts.maxChars) ||
     prompts.maxChars < 1
   ) {
-    throw new AgentKitError(
-      "invalid-prompts",
-      `prompts.limit must be a non-negative integer and prompts.maxChars a positive integer, got ${JSON.stringify(prompts)}`
-    );
+    throw rejected();
   }
   return prompts;
 }

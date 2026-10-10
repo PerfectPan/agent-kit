@@ -24,7 +24,6 @@ export {
   shadowedIn,
   snapshotHasSystemPrompt,
   snapshotHasTools,
-  summarizeClaudeCodeRecords,
   summarizeSession,
   TRANSCRIPT_EVENT_KINDS,
   translateClaudeCodeRecords,
@@ -34,7 +33,6 @@ export {
 export type {
   CapabilityUnsupported,
   Capability,
-  ClaudeCodeSummarizeOptions,
   ClaudeCodeTranslateOptions,
   CodexTranslateOptions,
   GrokTranslateOptions,

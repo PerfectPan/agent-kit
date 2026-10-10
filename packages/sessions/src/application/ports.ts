@@ -66,10 +66,11 @@ export interface SessionAdapter {
     options?: LoadOptions
   ): Promise<Result<Transcript, SessionReadError>>;
   /**
-   * A faster pass than folding the loaded transcript, with the same result: bounded memory, no transcript or event
-   * payloads kept. With `prompts`, the summary also carries the main lane's user prompts under the given caps, by
-   * the same rule `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails
-   * the conformance suite.
+   * A faster pass than folding the loaded transcript, with the same result: no transcript or event payload is kept,
+   * and the state it holds grows with the session's requests, lanes and tool calls, never with its bytes. With
+   * `prompts`, the summary also carries the main lane's user prompts under the given caps, by the same rule
+   * `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails the conformance
+   * suite.
    */
   summarize?(
     platform: SessionPlatform,

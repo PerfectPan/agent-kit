@@ -289,9 +289,11 @@ describe("sessions use cases over Claude Code", () => {
     const heads = items.filter(isSessionHead);
     expect(heads).toHaveLength(items.length);
     expect(heads.map((head) => head.ref.path).toSorted()).toEqual(
-      ["compaction", "plain", "prompt-snapshot", "regroup", "subagent", "summarize", "unknown-type"].map(session)
+      ["compaction", "empty-ids", "plain", "prompt-snapshot", "regroup", "subagent", "summarize", "unknown-type"].map(
+        session
+      )
     );
-    expect(totals).toEqual([7]);
+    expect(totals).toEqual([8]);
     expect(heads.find((head) => head.ref.path === session("unknown-type"))).toMatchObject({
       ref: { agent: "claude-code", sessionId: "s-unknown" },
       title: "Hello",

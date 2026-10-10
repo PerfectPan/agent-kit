@@ -16,26 +16,16 @@ import {
   type SourcedRecord,
   type StampedRecord,
   type TranscriptEvent,
-  type TranscriptEventKind,
   type TranscriptSession,
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "../../index.js";
-import type { Usage } from "../../../usage/index.js";
-import {
-  type ClaudeCodeAttachment,
-  type ClaudeCodeContentBlockValue,
-  type ClaudeCodeRecordValue,
-  parseClaudeCodeRecord
-} from "./record.js";
+import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "./record.js";
 import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "../../../session/adapters/claude-code/layout.js";
-import { applySnapshots, promptSnapshotPayload, snapshotCapabilities } from "./prompt-snapshot.js";
-import {
-  claudeCodeRequestKey,
-  claudeCodeRequestUsage,
-  claudeCodeUsageOf
-} from "../../../usage/adapters/claude-code.js";
-import { type ClaudeCodeUserFlags, isPromptFlags, recordText, userFlags } from "./user-flags.js";
+import { applySnapshots, snapshotCapabilities } from "./prompt-snapshot.js";
+import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../../../usage/adapters/claude-code.js";
+import { classifyClaudeCodeRecord } from "./classify.js";
+import type { Usage } from "../../../usage/index.js";
 
 const AGENT = "claude-code";
 
@@ -61,23 +51,6 @@ export const CLAUDE_CODE_CAPABILITIES: readonly Capability[] = [...BASE_CAPABILI
 export function claudeCodeCapabilities(events: readonly TranscriptEvent[]): Capability[] {
   return [...BASE_CAPABILITIES, ...snapshotCapabilities(events)];
 }
-
-/** Record types that only the CLI reads. Each becomes a skipped record with its type as the reason. */
-export const BOOKKEEPING: ReadonlySet<string> = new Set([
-  "file-history-snapshot",
-  "file-history-delta",
-  "cost-state",
-  "last-prompt",
-  "atis-latch",
-  "mode",
-  "permission-mode",
-  "queue-operation",
-  "relocated",
-  "worktree-state",
-  "fork-context-ref",
-  "pr-link",
-  "frame-link"
-]);
 
 export interface ClaudeCodeTranslateOptions {
   /** Wins over the `sessionId` the records carry. */
@@ -138,104 +111,6 @@ function mergeRequest(
   if (finishReason) {
     event.payload.finishReason = finishReason;
   }
-}
-
-function blockEvent(
-  role: "user" | "assistant",
-  flags: ClaudeCodeUserFlags,
-  item: ClaudeCodeContentBlockValue | undefined
-): [TranscriptEventKind, Record<string, unknown>] {
-  const blockType = item?.type;
-  if (!item || !blockType) {
-    return ["unknown", { type: "block" }];
-  }
-  switch (blockType) {
-    case "text": {
-      const text = item.text ?? "";
-      return [role, { ...flags, ...(text ? { text } : {}) }];
-    }
-    case "image": {
-      const mediaType = item.source?.media_type;
-      return [role, { ...flags, image: true, ...(mediaType ? { mediaType } : {}) }];
-    }
-    case "fallback": {
-      // The response switched models mid-stream (`from.model` → `to.model`).
-      const from = item.from?.model;
-      const to = item.to?.model;
-      return ["system", { type: "fallback", ...(from ? { fromModel: from } : {}), ...(to ? { toModel: to } : {}) }];
-    }
-    case "thinking":
-    case "redacted_thinking": {
-      const text = item.thinking;
-      return ["reasoning", text ? { text } : { redacted: true }];
-    }
-    case "tool_use":
-      return [
-        "tool_call",
-        {
-          callId: item.id ?? "",
-          name: item.name ?? "",
-          ...(item.input === undefined ? {} : { args: item.input })
-        }
-      ];
-    case "tool_result":
-      return [
-        "tool_result",
-        {
-          callId: item.tool_use_id ?? "",
-          ...(item.content === undefined ? {} : { output: item.content }),
-          ...(item.is_error === undefined ? {} : { isError: item.is_error })
-        }
-      ];
-    default:
-      return ["unknown", { type: blockType }];
-  }
-}
-
-function systemEvent(rec: ClaudeCodeRecordValue): [TranscriptEventKind, Record<string, unknown>] {
-  const subtype = rec.subtype ?? "system";
-  if (subtype === "compact_boundary") {
-    const trigger = rec.compactMetadata?.trigger;
-    const preTokens = rec.compactMetadata?.preTokens;
-    const postTokens = rec.compactMetadata?.postTokens;
-    return [
-      "compaction",
-      {
-        ...(trigger === "auto" || trigger === "manual" ? { trigger } : {}),
-        ...(preTokens === undefined ? {} : { preTokens }),
-        ...(postTokens === undefined ? {} : { postTokens })
-      }
-    ];
-  }
-  if (subtype === "turn_duration") {
-    const durationMs = rec.durationMs;
-    return ["system", { type: "turn_duration", ...(durationMs === undefined ? {} : { durationMs }) }];
-  }
-  if (subtype.includes("hook")) {
-    return ["hook", { type: subtype }];
-  }
-  const text = rec.content;
-  const payload: Record<string, unknown> = { type: subtype, ...(text ? { text } : {}) };
-  // `model_refusal_fallback` / `model_refusal_no_fallback`: the API refused and the CLI retried on another model, or did not.
-  for (const key of ["originalModel", "fallbackModel", "apiRefusalCategory"] as const) {
-    const value = rec[key];
-    if (value) {
-      payload[key] = value;
-    }
-  }
-  return ["system", payload];
-}
-
-function hookPayload(type: string, attachment: ClaudeCodeAttachment | undefined): Record<string, unknown> {
-  const name = attachment?.hookName;
-  const event = attachment?.hookEvent;
-  const exitCode = attachment?.exitCode;
-  return {
-    type,
-    ...(name ? { name } : {}),
-    ...(event ? { event } : {}),
-    ...(exitCode === undefined ? {} : { exitCode })
-  };
 }
 
 /**
@@ -395,7 +270,6 @@ export function translateClaudeCodeRecords(
     if (!rec) {
       return err(unknownFormatGeneration(AGENT, record));
     }
-    const type = rec.type;
     const uuid = rec.uuid;
     if (startedAt === undefined || ts < startedAt) {
       startedAt = ts;
@@ -417,76 +291,34 @@ export function translateClaudeCodeRecords(
       parentOf.set(uuid, parentId);
     }
 
-    const emit = (kind: TranscriptEventKind, payload: Record<string, unknown>, part: number, requestId?: string) => {
-      const event = baseEvent(record, kind, payload, {
+    const classified = classifyClaudeCodeRecord(rec);
+    if (classified.generationError) {
+      return err(unknownFormatGeneration(AGENT, record));
+    }
+    if (classified.requestKey !== undefined) {
+      mergeRequest(requests, events, parsed, rec, record, ts, agentId, classified.requestKey);
+    }
+    // A prompt titles the session only from the main lane; explicit titles do so from anywhere.
+    if (classified.promptTitle !== undefined && !agentId) {
+      rememberTitle(classified.promptTitle);
+    }
+    if (classified.title !== undefined) {
+      rememberTitle(classified.title.text, classified.title.explicit);
+    }
+    if (classified.skip !== undefined) {
+      skipRecord(skipped, record, classified.skip);
+    }
+    classified.events.forEach((eventPart, part) => {
+      const event = baseEvent(record, eventPart.kind, eventPart.payload, {
         id: eventId(uuid, record, part),
         ts,
         agentId,
         parentId,
-        requestId
+        requestId: classified.requestKey
       });
       events.push(event);
       parsed.set(event, rec);
-    };
-
-    if (type === "user" || type === "assistant") {
-      const requestId = claudeCodeRequestKey(rec);
-      if (requestId) {
-        mergeRequest(requests, events, parsed, rec, record, ts, agentId, requestId);
-      }
-      const message = rec.message;
-      const flags: ClaudeCodeUserFlags = type === "user" ? userFlags(rec) : {};
-      const content = message?.content;
-      if (type === "user" && !agentId && isPromptFlags(flags)) {
-        rememberTitle(recordText(rec));
-      }
-      if (typeof content === "string") {
-        emit(type, { ...flags, ...(content ? { text: content } : {}) }, 0, requestId);
-      } else if (!Array.isArray(content) || content.length === 0) {
-        emit(type, { ...flags }, 0, requestId);
-      } else {
-        content.forEach((block, part) => {
-          const [kind, payload] = blockEvent(type, flags, block);
-          emit(kind, payload, part, requestId);
-        });
-      }
-      continue;
-    }
-
-    if (type === "system") {
-      const [kind, payload] = systemEvent(rec);
-      emit(kind, payload, 0);
-      continue;
-    }
-
-    if (type === "attachment") {
-      const attachment = rec.attachment;
-      const attachmentType = attachment?.type ?? "";
-      if (attachment && attachmentType === "prompt_snapshot") {
-        const payload = promptSnapshotPayload(attachment);
-        if (!payload) {
-          return err(unknownFormatGeneration(AGENT, record));
-        }
-        emit("system", payload, 0);
-      } else if (attachmentType.startsWith("hook_")) {
-        emit("hook", hookPayload(attachmentType, attachment), 0);
-      } else {
-        skipRecord(skipped, record, `attachment:${attachmentType || "record"}`);
-      }
-      continue;
-    }
-
-    if (type === "custom-title") {
-      rememberTitle(rec.customTitle, true);
-      skipRecord(skipped, record, "custom-title");
-    } else if (type === "ai-title" || type === "summary") {
-      rememberTitle(rec.aiTitle ?? rec.summary ?? rec.title);
-      skipRecord(skipped, record, type);
-    } else if (BOOKKEEPING.has(type)) {
-      skipRecord(skipped, record, type);
-    } else {
-      emit("unknown", { type }, 0);
-    }
+    });
   }
 
   resolveParents(events, parentOf);
