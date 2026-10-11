@@ -132,6 +132,7 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
         db ??= sqlite.open(path, { readonly: true });
         return db.prepare(sql).all(...params);
       } catch (error) {
+        // WeakSet bookkeeping only; the thrown value is not parsed or changed.
         if (typeof error === "object" && error !== null) {
           sqliteErrors.add(error);
         }

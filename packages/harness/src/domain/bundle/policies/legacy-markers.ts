@@ -15,6 +15,7 @@ export function hasLegacyMarker(markers: readonly string[], text: string): boole
  * hold the user's hooks.
  */
 export function isLegacyArtifact(markers: readonly string[], content: ArtifactContent | undefined): boolean {
+  // Known-union narrowing of ArtifactContent, already typed by the caller.
   const text =
     typeof content === "string"
       ? content

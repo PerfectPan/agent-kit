@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Replace the ACP tool-call args shape guard with zod/mini without changing merge behavior, and document the no-hand-written-shape-guards rule.",
+      "comment": "Replace hand-written shape guards with zod/mini, existing library predicates or typed union narrowing, document permitted exceptions, and preserve ACP merges, hook payload reads, warning filtering and probe variants.",
       "type": "none"
     }
   ],

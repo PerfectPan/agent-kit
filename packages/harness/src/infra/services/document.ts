@@ -50,7 +50,7 @@ export function parseDocument(value: unknown): Document | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-/** The record branch of a document: lists and dates are not records. */
+/** Known-union narrowing of Document: its record branch excludes lists and dates. */
 export function isDocumentRecord(
   value: Document | undefined
 ): value is Extract<Document, { readonly [key: string]: Document }> {

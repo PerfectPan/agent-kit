@@ -155,6 +155,7 @@ function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
     : invalid("two pending operations on one locator");
 }
 
+/** Deep-freeze helper: snapshots retain no mutable descendants. */
 function freeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
     Object.freeze(value);
