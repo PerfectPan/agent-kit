@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Sat, 10 Oct 2026 20:10:42 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 03:31:41 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 11 Oct 2026 03:31:41 GMT
+
+### Patches
+
+- Bundle zod/mini into /process-lock so loading it does not load the zod package.
 
 ## 0.10.0
 Sat, 10 Oct 2026 20:10:42 GMT

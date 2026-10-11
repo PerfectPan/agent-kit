@@ -2,6 +2,26 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.11.0",
+      "tag": "@rivus/agent-kit_v0.11.0",
+      "date": "Sun, 11 Oct 2026 03:31:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Keep collected summary prompts from retaining their full source text."
+          },
+          {
+            "comment": "Bundle zod/mini into /node and /node/effect, and read the current process identity once per process."
+          }
+        ],
+        "none": [
+          {
+            "comment": "Tidy the shared summary assembly: file-local summary gates, the Grok retain step requires the record time again."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.10.0",
       "tag": "@rivus/agent-kit_v0.10.0",
       "date": "Sat, 10 Oct 2026 20:10:42 GMT",
