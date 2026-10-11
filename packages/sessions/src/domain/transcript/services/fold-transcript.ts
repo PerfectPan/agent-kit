@@ -4,7 +4,7 @@ import type {
   SessionSummary,
   SessionSummaryWithPrompts
 } from "../../session/index.js";
-import { mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
+import { capPromptText, mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
 import type { Capability, Transcript } from "../value-objects/transcript.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
@@ -134,7 +134,7 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
     list,
     add(text) {
       if (list !== undefined && list.length < limit && typeof text === "string" && text !== "") {
-        list.push({ text: text.slice(0, maxChars) });
+        list.push({ text: capPromptText(text, maxChars) });
       }
     }
   };

@@ -74,6 +74,14 @@ export function requestUsage(event: Pick<TranscriptEvent, "payload">): { inputTo
 }
 
 /**
+ * Cap a prompt without keeping its source alive: in V8, split/join builds a flat string instead of retaining
+ * slice's parent. UTF-16 code units, including a lone surrogate at the cut, stay unchanged.
+ */
+export function capPromptText(text: string, maxChars: number): string {
+  return text.slice(0, maxChars).split("").join("");
+}
+
+/**
  * The main lane's user prompts, by the kit's prompt rule: one per prompt record, its text the record's first
  * non-empty `payload.text`, the first `limit` in transcript order, each capped at `maxChars`. A prompt record
  * without text, such as an image-only one, is a turn but yields no prompt.
@@ -103,7 +111,7 @@ export function sessionPrompts(
     if (text === "") {
       continue;
     }
-    prompts.push({ text: text.slice(0, options.maxChars) });
+    prompts.push({ text: capPromptText(text, options.maxChars) });
   }
   return prompts;
 }
