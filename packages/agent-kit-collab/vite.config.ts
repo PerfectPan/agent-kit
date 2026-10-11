@@ -14,6 +14,12 @@ const entry = Object.fromEntries(
     .map((subpath) => [subpath.slice(2), `./src/${subpath.slice(2)}/public.ts`])
 );
 
+// `/lease` loads the same chunk as `/process-lock`. Bundling every zod import would pull `/lease`'s own schemas in
+// too. Matching the importer inlines zod/mini only for the process-lock sources, which is what that chunk contains;
+// `/lease` keeps importing zod/mini, so zod stays a dependency.
+const bundleProcessLockZod = (id: string, importer: string | undefined): boolean =>
+  /^zod(\/|$)/.test(id) && importer?.includes("/process-lock/") === true;
+
 export default defineConfig({
   // The generated changelogs are release output, not repository sources.
   fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
@@ -31,8 +37,8 @@ export default defineConfig({
     format: "esm",
     platform: "neutral",
     // Dependencies and peers stay external: @rivus/agent-kit and effect are peers, so the host's single copy of each
-    // serves this package too.
-    deps: { neverBundle: [/^node:/] },
+    // serves this package too. zod/mini is bundled only into the process-lock chunk (see bundleProcessLockZod).
+    deps: { neverBundle: [/^node:/], alwaysBundle: bundleProcessLockZod, dts: { alwaysBundle: bundleProcessLockZod } },
     dts: { generator: "oxc" }
   }
 });

@@ -86,9 +86,35 @@ const darwin: IdentityProbe = {
   }
 };
 
+interface ProbedMachine {
+  readonly host: string;
+  readonly bootId: string;
+}
+
+interface ProbeCache {
+  machine?: ProbedMachine;
+  self?: ProcessIdentity;
+}
+
+// One cache per operating system: linux and darwin tests share a process and must not reuse each other's reads.
+const probeCache = new Map<OperatingSystem, ProbeCache>();
+
+function cacheFor(os: OperatingSystem): ProbeCache {
+  const existing = probeCache.get(os);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const created: ProbeCache = {};
+  probeCache.set(os, created);
+  return created;
+}
+
 /**
  * Returns `identify(pid)`. Start times are Linux clock ticks after boot or macOS start seconds as epoch milliseconds;
  * either way the same probe serves every pid, so equal identities mean the same process.
+ *
+ * The boot id and this process's start time are read at most once per process. A second platform reuses them. Another
+ * pid is read again, because that process can exit and its pid can be reused. A failed or missing read is not cached.
  */
 export function createIdentify(os: OperatingSystem): (pid: number) => ProcessIdentity | undefined {
   if (os === "win32") {
@@ -97,16 +123,23 @@ export function createIdentify(os: OperatingSystem): (pid: number) => ProcessIde
     };
   }
   const probe = os === "linux" ? linux : darwin;
-  let machine: { readonly host: string; readonly bootId: string } | undefined;
   return (pid) => {
     if (!Number.isSafeInteger(pid) || pid <= 0) {
       return undefined;
+    }
+    const cache = cacheFor(os);
+    if (pid === process.pid && cache.self !== undefined) {
+      return cache.self;
     }
     const startTime = probe.startTime(pid);
     if (startTime === undefined) {
       return undefined;
     }
-    machine ??= { host: hostname(), bootId: probe.bootId() };
-    return { ...machine, pid, startTime };
+    cache.machine ??= { host: hostname(), bootId: probe.bootId() };
+    const identity: ProcessIdentity = { ...cache.machine, pid, startTime };
+    if (pid === process.pid) {
+      cache.self = identity;
+    }
+    return identity;
   };
 }
