@@ -420,6 +420,18 @@ describe("tool names and args across updates", () => {
       value: Object.assign(Object.create({ inherited: true }), { a: 1 }),
       ownFields: { a: 1 }
     },
+    {
+      name: "object with an inherited enumerable throwing getter",
+      value: Object.assign(
+        Object.create({
+          get inherited(): never {
+            throw new Error("inherited getter must not run");
+          }
+        }),
+        { a: 1 }
+      ),
+      ownFields: { a: 1 }
+    },
     { name: "class instance", value: new ToolArgs(), ownFields: { a: 1 } },
     { name: "Date", value: new Date(0), ownFields: {} },
     { name: "Map", value: new Map([["a", 1]]), ownFields: {} },
@@ -437,7 +449,7 @@ describe("tool names and args across updates", () => {
     { name: "function", value: () => undefined }
   ];
 
-  it.each(recordCases)("preserves plainRecord acceptance with zod/mini for $name", ({ value, ownFields }) => {
+  it.each(recordCases)("merges object args and replaces other supplied values for $name", ({ value, ownFields }) => {
     const next = { updated: true };
     const previousArgs = merged([
       { toolCallId: "c1", rawInput: value },

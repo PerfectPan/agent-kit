@@ -127,7 +127,7 @@ function supplied(value: unknown): boolean {
 }
 
 /** Mergeable args include custom prototypes and built-in objects, but not arrays, null or primitives. */
-const ToolArgsRecord = z.looseObject({});
+const ToolArgsRecord = z.custom<Record<string, unknown>, unknown>(z.util.isObject);
 
 /**
  * Merges one `tool_call` or `tool_call_update` into the state of its call, creating the state on first sight. An
@@ -157,12 +157,10 @@ export function mergeAcpToolUpdate(
     }
   }
   if (supplied(update.rawInput)) {
-    // Parsed records include inherited keys and omit symbol keys. Spread the validated original inputs to retain
-    // only their own enumerable string and symbol keys.
-    state.args =
-      z.safeParse(ToolArgsRecord, state.args).success && z.safeParse(ToolArgsRecord, update.rawInput).success
-        ? { ...(state.args as object), ...(update.rawInput as object) }
-        : update.rawInput;
+    // Container probes must not copy inputs or read inherited getters before the own-key merge.
+    const previous = z.safeParse(ToolArgsRecord, state.args);
+    const next = z.safeParse(ToolArgsRecord, update.rawInput);
+    state.args = previous.success && next.success ? { ...previous.data, ...next.data } : update.rawInput;
   }
   if (supplied(update.content)) {
     const text = acpChunkText(update.content);

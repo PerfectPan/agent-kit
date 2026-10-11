@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Replace hand-written shape guards with zod/mini, existing library predicates or typed union narrowing, document permitted exceptions, and preserve ACP merges, hook payload reads, warning filtering and probe variants.",
+      "comment": "Replace hand-written shape guards with schema or library checks, preserve ACP merges, configuration records, hook payload reads and probe variants, validate package manifests, and document permitted exceptions.",
       "type": "none"
     }
   ],

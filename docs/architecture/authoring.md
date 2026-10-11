@@ -201,9 +201,9 @@ These rules apply to every domain layer and to the contexts that do not use Effe
 
 ## Do Not Hand-Write Shape Guards
 
-- No hand-written readers or guards for the shape of unknown data: no `asRecord`/`asString`/`isRecord`-style helpers and no inline `typeof x === "object"` checks that decide what an unknown value is. Parse unknown input with a `zod/mini` schema at the boundary, including plain-object tests. Match the schema to the accepted input: `z.looseObject({})` checked with `safeParse` accepts non-null, non-array objects, including custom prototypes, class instances and built-in objects.
-- Use es-toolkit's `isPlainObject` only where the package already depends on es-toolkit and the boundary requires its stricter prototype check.
-- The only allowed exceptions are narrow, and each carries its reason in a comment at the site: brand guards that test a brand symbol, deep-freeze helpers, narrowing a value whose static type is already a known union (not `unknown`), and object checks needed only to use a `WeakSet`/`WeakMap`. The rule is enforced by review for now.
+- Validate unknown data with a `zod/mini` schema at the boundary instead of hand-written shape readers or guards. For a non-null, non-array object check that must preserve the value without copying it or reading getters, use `z.custom(z.util.isObject)`; it accepts custom prototypes, class instances and built-in objects.
+- Use es-toolkit's `isPlainObject` where the package already depends on es-toolkit and the decision needs its prototype check, including container decisions on `JSON.parse` output.
+- The allowed exceptions each carry their reason in a comment at the site: brand-symbol guards, deep-freeze helpers, narrowing a known union, and object checks used only for `WeakSet`/`WeakMap` bookkeeping. Review enforces this rule.
 
 ## Effect Rules
 
