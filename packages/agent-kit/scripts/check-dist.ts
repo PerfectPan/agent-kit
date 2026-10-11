@@ -8,6 +8,7 @@ import { registerHooks } from "node:module";
 
 import { parseSync, Visitor } from "oxc-parser";
 import { rolldown } from "rolldown";
+import * as z from "zod/mini";
 
 // Entries that only run on Node; every other entry must bundle for a browser without Node built-ins.
 const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
@@ -25,14 +26,17 @@ const EFFECT_ENTRIES = new Set(["./acp", "./harness", "./node/effect", "./platfo
 const INTERNAL_DEPENDENCIES = new Set(["@agentclientprotocol/sdk"]);
 const EFFECT = /^(?:effect|@effect\/[^/]+)(?:\/|$)/;
 
-interface Manifest {
-  exports: Record<string, string | { types?: string; default?: string }>;
-  dependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-}
+const Manifest = z.object({
+  exports: z.record(
+    z.string(),
+    z.union([z.string(), z.object({ types: z.optional(z.string()), default: z.optional(z.string()) })])
+  ),
+  dependencies: z.optional(z.record(z.string(), z.string())),
+  peerDependencies: z.optional(z.record(z.string(), z.string()))
+});
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
-const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as Manifest;
+const manifest = Manifest.parse(JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")));
 const declared = new Set([
   ...Object.keys(manifest.dependencies ?? {}),
   ...Object.keys(manifest.peerDependencies ?? {})
@@ -119,7 +123,7 @@ function inlinedDependencies(): string[] {
   const problems: string[] = [];
   const zodBundleAllowed = new Set<string>();
   for (const [subpath, target] of Object.entries(manifest.exports)) {
-    if (subpath === "./package.json" || typeof target !== "object" || !ZOD_BUNDLE_ENTRIES.has(subpath)) {
+    if (subpath === "./package.json" || typeof target === "string" || !ZOD_BUNDLE_ENTRIES.has(subpath)) {
       continue;
     }
     for (const file of [target.default, target.types]) {
@@ -205,7 +209,7 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
   if (subpath === "./package.json") {
     continue;
   }
-  if (typeof target !== "object" || target.types === undefined || target.default === undefined) {
+  if (typeof target === "string" || target.types === undefined || target.default === undefined) {
     errors.push(`${subpath}: export must name "types" and "default" files`);
     continue;
   }

@@ -126,18 +126,16 @@ function supplied(value: unknown): boolean {
   return value !== undefined && value !== null;
 }
 
-/** A value a shallow merge treats as a record of fields: a non-null object that is not an array. */
-function plainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+/** Mergeable args include custom prototypes and built-in objects, but not arrays, null or primitives. */
+const ToolArgsRecord = z.custom<Record<string, unknown>, unknown>(z.util.isObject);
 
 /**
  * Merges one `tool_call` or `tool_call_update` into the state of its call, creating the state on first sight. An
  * update may carry only the fields that changed: only an omitted or `null` `rawInput`, `content` or `rawOutput` leaves
  * the previous value. Text content wins over `rawOutput` as the output. The call is named by its first non-empty
  * `title || toolName`; a later value only moves into `title` while it differs from the name, and a value equal to the
- * name clears `title` again. A plain-object
- * `rawInput` merges shallowly into plain-object previous args, update keys winning; any other supplied `rawInput`
+ * name clears `title` again. A non-array object
+ * `rawInput` merges shallowly into non-array object previous args, update keys winning; any other supplied `rawInput`
  * replaces the args, because Grok's `tool_call_update` repeats the whole args object with its normalized keys.
  */
 export function mergeAcpToolUpdate(
@@ -159,8 +157,10 @@ export function mergeAcpToolUpdate(
     }
   }
   if (supplied(update.rawInput)) {
-    state.args =
-      plainRecord(state.args) && plainRecord(update.rawInput) ? { ...state.args, ...update.rawInput } : update.rawInput;
+    // Container probes must not copy inputs or read inherited getters before the own-key merge.
+    const previous = z.safeParse(ToolArgsRecord, state.args);
+    const next = z.safeParse(ToolArgsRecord, update.rawInput);
+    state.args = previous.success && next.success ? { ...previous.data, ...next.data } : update.rawInput;
   }
   if (supplied(update.content)) {
     const text = acpChunkText(update.content);

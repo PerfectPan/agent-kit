@@ -113,8 +113,8 @@ For non-trivial changes:
 ## Repository Architecture
 
 - `docs/architecture/authoring.md` is the authority for how a context package is laid out (`domain/` with one
-  `adapters/` folder per concept, `application/`, `infra/`, `public.ts`, `index.ts`) and for the plain
-  TypeScript and Effect rules;
+  `adapters/` folder per concept, `application/`, `infra/`, `public.ts`, `index.ts`), for the plain
+  TypeScript and Effect rules, and for the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
 - Organize code by domain boundaries, layer boundaries, and test boundaries before mechanical one-file-per-export preferences.

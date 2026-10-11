@@ -2,13 +2,18 @@ import type { PlatformSqlite } from "@rivus/agent-kit-platform";
 
 type SqliteModule = typeof import("node:sqlite");
 
+type WarningArgs = [
+  warning: string | Error,
+  typeOrOptions?: string | NodeJS.EmitWarningOptions | NodeJS.EmitWarningOptions["ctor"],
+  ...rest: unknown[]
+];
+
 let sqliteModule: SqliteModule | undefined;
 
-function isSqliteExperimentalWarning(warning: unknown, typeOrOptions: unknown): boolean {
+function isSqliteExperimentalWarning(warning: WarningArgs[0], typeOrOptions: WarningArgs[1]): boolean {
+  // Known-union narrowing for Node's warning options overload.
   const type =
-    typeof typeOrOptions === "object" && typeOrOptions !== null && "type" in typeOrOptions
-      ? typeOrOptions.type
-      : typeOrOptions;
+    typeOrOptions && typeof typeOrOptions === "object" && "type" in typeOrOptions ? typeOrOptions.type : typeOrOptions;
   const message = warning instanceof Error ? warning.message : warning;
   return type === "ExperimentalWarning" && typeof message === "string" && message.startsWith("SQLite ");
 }
@@ -24,11 +29,11 @@ function loadSqlite(): SqliteModule {
   // Kept to be restored unchanged; it is only called through Reflect.apply with the original `this`.
   // oxlint-disable-next-line typescript/unbound-method
   const emitWarning = process.emitWarning;
-  process.emitWarning = function filteredEmitWarning(this: NodeJS.Process, ...args: unknown[]) {
+  process.emitWarning = function filteredEmitWarning(this: NodeJS.Process, ...args: WarningArgs) {
     if (!isSqliteExperimentalWarning(args[0], args[1])) {
       Reflect.apply(emitWarning, this, args);
     }
-  } as typeof emitWarning;
+  };
   try {
     // @types/node types the known-id overload as always present, but Node without node:sqlite returns undefined.
     sqliteModule = process.getBuiltinModule("node:sqlite") as SqliteModule | undefined;

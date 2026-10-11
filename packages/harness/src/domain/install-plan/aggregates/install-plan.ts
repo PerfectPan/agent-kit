@@ -34,6 +34,7 @@ export type InstallPlanDraft = Omit<InstallPlanSnapshot, "status" | "notes">;
 
 export type InstallPlanTransition = { readonly state: InstallPlan; readonly events: readonly [] };
 
+/** Deep-freeze helper: snapshots retain no mutable descendants. */
 function freeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
     Object.freeze(value);

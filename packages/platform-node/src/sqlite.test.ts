@@ -63,4 +63,35 @@ describe("nodeSqlite", () => {
     process.emitWarning("SQLite is an experimental feature and might change at any time", "ExperimentalWarning");
     expect(emitted).toHaveLength(3);
   });
+
+  it("preserves every warning overload and its receiver when the warning is not filtered", async () => {
+    const real = process.getBuiltinModule("node:sqlite");
+    const emit = vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
+    const other = new Error("Other warning");
+    const sqlite = new Error("SQLite is experimental");
+    const options = { type: "DeprecationWarning", code: "OTHER", ctor: Error };
+    vi.spyOn(process, "getBuiltinModule").mockImplementation(() => {
+      process.emitWarning("SQLite is experimental", { type: "ExperimentalWarning" });
+      process.emitWarning(sqlite, "ExperimentalWarning");
+      process.emitWarning("message", Error);
+      process.emitWarning("message", "DeprecationWarning", Error);
+      process.emitWarning("message", "DeprecationWarning", "OTHER", Error);
+      process.emitWarning("message", options);
+      process.emitWarning(other);
+      process.emitWarning(sqlite);
+      return real;
+    });
+    const { nodeSqlite } = await import("./sqlite.js");
+
+    nodeSqlite.open(":memory:").close();
+    expect(emit.mock.calls).toEqual([
+      ["message", Error],
+      ["message", "DeprecationWarning", Error],
+      ["message", "DeprecationWarning", "OTHER", Error],
+      ["message", options],
+      [other],
+      [sqlite]
+    ]);
+    expect(emit.mock.contexts).toEqual(Array.from({ length: 6 }, () => process));
+  });
 });

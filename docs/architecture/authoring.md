@@ -199,6 +199,12 @@ These rules apply to every domain layer and to the contexts that do not use Effe
 - A plain TS context must not import `effect`, and the module graph and published `.d.ts` graph of a plain entry must not reach it. The boundary test checks each file's imports; the shell's dist check follows the graph of every built entry.
 - A plain context moves its reading layer to Effect only when it gains live following, file watching, background index refresh or concurrent scanning with backpressure. Its translation functions stay plain.
 
+## Do Not Hand-Write Shape Guards
+
+- Validate unknown data with a `zod/mini` schema at the boundary instead of hand-written shape readers or guards. For a non-null, non-array object check that must preserve the value without copying it or reading getters, use `z.custom(z.util.isObject)`; it accepts custom prototypes, class instances and built-in objects.
+- Use es-toolkit's `isPlainObject` where the package already depends on es-toolkit and the decision needs its prototype check, including container decisions on `JSON.parse` output.
+- The allowed exceptions each carry their reason in a comment at the site: brand-symbol guards, deep-freeze helpers, narrowing a known union, and object checks used only for `WeakSet`/`WeakMap` bookkeeping. Review enforces this rule.
+
 ## Effect Rules
 
 These rules apply to the use cases and port adapters of harness execution (apply, verify, uninstall, the LedgerLock), acp, collab's lease and lanes, and to the Platform service.

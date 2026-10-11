@@ -6,6 +6,7 @@ import { registerHooks } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { parseSync, Visitor } from "oxc-parser";
+import * as z from "zod/mini";
 
 // Checks the built entries the way the shell's check-dist.ts does, with the rules of this package: it bundles only
 // its own src/, reaches @rivus/agent-kit through that package's public entries (a peer, so one copy serves the
@@ -14,14 +15,17 @@ const EFFECT_ENTRIES = new Set(["./lanes", "./lease"]);
 const EFFECT = /^(?:effect|@effect\/[^/]+)(?:\/|$)/;
 const KIT = "@rivus/agent-kit";
 
-interface Manifest {
-  exports: Record<string, string | { types?: string; default?: string }>;
-  dependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-}
+const Manifest = z.object({
+  exports: z.record(
+    z.string(),
+    z.union([z.string(), z.object({ types: z.optional(z.string()), default: z.optional(z.string()) })])
+  ),
+  dependencies: z.optional(z.record(z.string(), z.string())),
+  peerDependencies: z.optional(z.record(z.string(), z.string()))
+});
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
-const readManifest = (path: string) => JSON.parse(readFileSync(path, "utf8")) as Manifest;
+const readManifest = (path: string) => Manifest.parse(JSON.parse(readFileSync(path, "utf8")));
 const manifest = readManifest(join(packageRoot, "package.json"));
 const kitEntries = new Set(
   Object.keys(readManifest(join(packageRoot, "node_modules", KIT, "package.json")).exports).map(
@@ -152,7 +156,7 @@ for (const [subpath, target] of Object.entries(manifest.exports)) {
   if (subpath === "./package.json") {
     continue;
   }
-  if (typeof target !== "object" || target.types === undefined || target.default === undefined) {
+  if (typeof target === "string" || target.types === undefined || target.default === undefined) {
     errors.push(`${subpath}: export must name "types" and "default" files`);
     continue;
   }

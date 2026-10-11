@@ -23,6 +23,7 @@ function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
+  // Known-union narrowing of JsonValue, already typed by the caller.
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     const fields = Object.entries(value)
       .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -48,6 +49,7 @@ export function canonicalContent(kind: ArtifactKind, content: ArtifactContent): 
   if (typeof content === "string" && kind === "symlink") {
     return content;
   }
+  // Known-union narrowing of ArtifactContent for the directory branch.
   if (kind === "dir" && content !== null && typeof content === "object" && !Array.isArray(content)) {
     return canonicalJson(
       Object.fromEntries(

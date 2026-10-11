@@ -10,6 +10,10 @@ import { lenient } from "./lenient.js";
  */
 const Leaf = lenient(z.optional(z.string()), undefined);
 
+// These predicates preserve the input without enumerating keys or reading unrelated getters.
+const ObjectContainer = z.custom<Record<string, unknown>, unknown>(z.util.isObject);
+const ArrayContainer = z.custom<readonly unknown[], unknown>(Array.isArray);
+
 /**
  * One level of a path, as the child value it leads to: a record or list holds the key's value only if the key is an
  * own property (an array index is a key too, so Cursor's `workspace_roots.0` reads), and anything else, or an
@@ -21,11 +25,12 @@ const levels = new Map<string, z.ZodMiniType<unknown>>();
 function level(key: string): z.ZodMiniType<unknown> {
   let schema = levels.get(key);
   if (schema === undefined) {
-    schema = z.transform((value: unknown) =>
-      value !== null && typeof value === "object" && Object.hasOwn(value, key)
-        ? (value as Readonly<Record<string, unknown>>)[key]
-        : undefined
-    );
+    schema = z.transform((value: unknown) => {
+      const container = ObjectContainer.safeParse(value).data ?? ArrayContainer.safeParse(value).data;
+      return container !== undefined && Object.hasOwn(container, key)
+        ? (container as Readonly<Record<string, unknown>>)[key]
+        : undefined;
+    });
     levels.set(key, schema);
   }
   return schema;
@@ -42,8 +47,7 @@ const pathKey = (path: FieldPath): string => path.join("\u0000");
  */
 function readPath(path: FieldPath, payload: unknown): string | undefined {
   try {
-    // The level schemas are total transforms: a parse either returns the child value or throws, and only zod's
-    // refusal to read a value synchronously is an expected outcome here.
+    // Invalid containers read as absent; only zod's refusal to read a value synchronously is an expected throw.
     let value: unknown = payload;
     for (const key of path) {
       value = level(key).safeParse(value).data;
