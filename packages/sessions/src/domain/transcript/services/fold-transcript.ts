@@ -134,7 +134,9 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
     list,
     add(text) {
       if (list !== undefined && list.length < limit && typeof text === "string" && text !== "") {
-        list.push({ text: text.slice(0, maxChars) });
+        // In V8, split/join builds a flat string instead of retaining slice's parent; UTF-16 code units (including
+        // a lone surrogate at the cut) stay unchanged.
+        list.push({ text: text.slice(0, maxChars).split("").join("") });
       }
     }
   };
