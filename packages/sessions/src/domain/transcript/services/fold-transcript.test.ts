@@ -72,7 +72,7 @@ describe("foldTranscript", () => {
   });
 });
 
-describe("emptyPrompts", () => {
+describe("prompt text caps", () => {
   it.each([
     { text: "plain text", maxChars: 5, expected: "plain" },
     { text: "你好世界", maxChars: 2, expected: "你好" },
@@ -83,9 +83,16 @@ describe("emptyPrompts", () => {
     { text: "😀", maxChars: 1, expected: "\ud83d" },
     { text: "short", maxChars: 100, expected: "short" }
   ])("preserves UTF-16 when capping $text at $maxChars", ({ text, maxChars, expected }) => {
-    const prompts = emptyPrompts({ limit: 1, maxChars });
+    const options = { limit: 1, maxChars };
+    const prompts = emptyPrompts(options);
     prompts.add(text);
     expect(prompts.list).toEqual([{ text: expected }]);
+    expect(
+      sessionPrompts(
+        transcript({ capabilities: [], events: [event({ id: "u", kind: "user", payload: { text } })] }),
+        options
+      )
+    ).toEqual([{ text: expected }]);
   });
 });
 

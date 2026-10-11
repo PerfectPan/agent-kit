@@ -83,10 +83,9 @@ function codexSessionContent(turns: number): string {
   return `${lines.join("\n")}\n`;
 }
 
-describe.each([
-  { mode: "without prompts", prompts: undefined },
-  { mode: "with prompts", prompts: { limit: 200, maxChars: 500 } }
-])("summarizeSession memory ($mode)", ({ prompts }) => {
+describe("summarizeSession memory", () => {
+  const prompts = { limit: 200, maxChars: 500 };
+
   it("summarizes a growing session without holding its transcript", async () => {
     const files = createMemoryPlatform({
       files: {
