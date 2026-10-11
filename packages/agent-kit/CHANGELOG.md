@@ -1,6 +1,18 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Sat, 10 Oct 2026 20:10:42 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 03:31:41 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 11 Oct 2026 03:31:41 GMT
+
+### Patches
+
+- Keep collected summary prompts from retaining their full source text.
+- Bundle zod/mini into /node and /node/effect, and read the current process identity once per process.
+
+### Updates
+
+- Tidy the shared summary assembly: file-local summary gates, the Grok retain step requires the record time again.
 
 ## 0.10.0
 Sat, 10 Oct 2026 20:10:42 GMT
