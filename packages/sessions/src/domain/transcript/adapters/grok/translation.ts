@@ -172,6 +172,21 @@ export interface GrokTranslation {
   step(record: SourcedRecord, ts?: number): GrokStep;
 }
 
+/** The translation the retain path steps: every record carries the time `inheritTimes` gave it. */
+export interface RetainGrokTranslation extends GrokTranslation {
+  /** Steps one record, stamping its events with the record's inherited time. */
+  step(record: SourcedRecord, ts: number): GrokStep;
+}
+
+/** The translation the bounded pass steps: it reads no times, so its steps take none. */
+export interface BoundedGrokTranslation extends GrokTranslation {
+  /** Steps one record; the bounded pass emits no timed events. */
+  step(record: SourcedRecord): GrokStep;
+}
+
+export function createGrokTranslation(options: { readonly retain: true }): RetainGrokTranslation;
+export function createGrokTranslation(options: { readonly retain: false }): BoundedGrokTranslation;
+export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation;
 export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation {
   const retain = options.retain;
   const events: TranscriptEvent[] = [];
