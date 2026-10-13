@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { baseEvent } from "../factories/transcript-event.js";
 import { timedRecord } from "../adapters/record-time.js";
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
+import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 import { inheritTimes, mergeByTime, mergeByTimeStream, type TimedRecord } from "./event-ordering.js";
 import { placeRequest } from "./request-placement.js";
 
@@ -151,7 +152,7 @@ describe("mergeByTimeStream", () => {
 describe("placeRequest", () => {
   it("puts a request logged after its output before that output and gives it the output's time", () => {
     const [user, reasoning, assistant, usage] = records("r", [at(0), at(1), at(2), at(3)]);
-    const events = [
+    const events: TranscriptEvent[] = [
       baseEvent(user!, "user", {}, { ts: 1 }),
       baseEvent(reasoning!, "reasoning", {}, { ts: 2 }),
       baseEvent(assistant!, "assistant", {}, { ts: 3 })
@@ -165,7 +166,7 @@ describe("placeRequest", () => {
 
   it("appends a request with no output after `from`", () => {
     const [user, usage] = records("r", [at(0), at(1)]);
-    const events = [baseEvent(user!, "user", {}, { ts: 1 })];
+    const events: TranscriptEvent[] = [baseEvent(user!, "user", {}, { ts: 1 })];
     placeRequest(events, 1, baseEvent(usage!, "request", {}, { ts: 5 }));
     expect(events.map((event) => [event.kind, event.ts])).toEqual([
       ["user", 1],

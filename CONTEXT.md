@@ -57,7 +57,7 @@ The summary of a Session that listing produces from the head and tail of its fil
 The ordered TranscriptEvents of a Session, merged from all its files, with the records that were skipped.
 
 **TranscriptEvent**:
-One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`. Events form a flat list and reference each other by id.
+One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`, and it determines the type of its `payload` (`TranscriptEventPayloads` maps each kind to that type); a payload may carry fields of the agent's own beyond that type. Events form a flat list and reference each other by id.
 _Avoid_: thinking (use reasoning), message as the general word for an event
 
 **Turn**:
@@ -300,6 +300,7 @@ A test suite, exported from `/testing` (the aggregate-repository suite from `/te
 | Word | In agent-kit | Elsewhere |
 | --- | --- | --- |
 | Agent | CodingAgent: a third-party coding agent product | An Effect-based host application's Agent: the product that host runs |
+| Host | The machine a process runs on (a Holder's `host`, `platform.process.self.host`); as `TerminalHost`, the terminal an agent runs in; the runtime or application that embeds the kit. The coding agent whose sessions are read is the agent (CodingAgent), and its command-line program is its CLI | Some session readers call that coding agent the host |
 | Harness | The extensible part of an agent's runtime, and the context that injects into it | A host application's AgentHarness (the execution model of one run); AI SDK's HarnessV1 (an adapter that drives an agent's runtime); agent-orchestration's Harness (the configuration passed to the agent on every turn, the closest to this meaning). A consumer that uses two of them aliases the import |
 | Session | In sessions, a recorded conversation read from the agent's files; in acp, AcpSession, a live session the kit drives | A host application's Session Key |
 | Turn | In sessions, a recorded turn in a Transcript; in acp, a live Turn in an AcpSession | A host application's Agent Run |

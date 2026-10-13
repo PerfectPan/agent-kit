@@ -33,7 +33,7 @@ All of these projects publish under the `@rivus/*` scope:
 | Host application (private, GPL) | Runs agents through Pi/ACP and connects them to a chat platform; Effect v4 | The "run" half: the run event model, the Pi/ACP loop, harness, side-effect guards. No detection, no reading of other agents' logs, no usage, no hooks |
 | agent-task-loop (public, GPL) | Task dispatch → execution → review → pull request | agent-finder (MoonBit, detects 26 agents), agent-sessions (Claude/Codex session discovery and preview), agent-orchestration (lease, inbox, ACP connector, ToolServer) |
 | agent-presence (public, MIT) | Syncs the number of running agents and their token usage to a chat profile signature | Usage scanners for 6 agents, hook installation and event parsing, a price table, a source plugin mechanism |
-| Trace viewer (private, GPL) | Shows Claude/Codex/Grok sessions in the browser and reconstructs the context the model actually saw | A reading kernel plus per-agent host parsers (Claude, Codex, Grok) and a 13-check conformance suite; browser-safe |
+| Trace viewer (private, GPL) | Shows Claude/Codex/Grok sessions in the browser and reconstructs the context the model actually saw | A reading kernel plus per-agent parsers (Claude, Codex, Grok) and a 13-check conformance suite; browser-safe |
 | Editor plugin (closed source) | Feeds its editor's agent into presence as a source | Because presence has no importable library, it copied presence's file-reading code and a Codex-style usage calculation |
 
 ### 1.2 Problem
@@ -662,7 +662,7 @@ interface LedgerEntry {
 - Each kit change is additive for existing use cases; when an application adopts the kit it deletes its own code without changing its external behavior.
 - The usage convention is unified on the community convention (confirmed 2026-10-06, see 3.11): input includes cached tokens, output includes reasoning, and the breakdowns are subsets. presence converts when pricing, and the signature numbers stay the same.
 - The new injection logic must recognize hooks installed by old versions of presence (identified today by the `isAgentSignatureCommand` fingerprint) and replace them on upgrade instead of installing a duplicate.
-- The trace viewer's host packages, agent-orchestration's lease, and any parts moved from the host application are GPL in their original repositories. The author of all of them is treated as PerfectPan; when moved into the kit they are published under MIT, the original repositories keep their licenses, and the commit message of each moved file records its source commit.
+- The trace viewer's per-agent packages, agent-orchestration's lease, and any parts moved from the host application are GPL in their original repositories. The author of all of them is treated as PerfectPan; when moved into the kit they are published under MIT, the original repositories keep their licenses, and the commit message of each moved file records its source commit.
 - After agent-finder is rewritten in TS: `@rivus/agent-finder-cli` switches to calling the kit's `/discovery`; `@rivus/agent-finder-core` is marked deprecated on npm and points to the kit; `PerfectPan/agent-finder` on mooncakes stops receiving updates. The deprecation and the end of updates are confirmed with the owner again before they happen.
 
 ### 3.11 Published Language: event and usage model
@@ -781,8 +781,8 @@ The order follows "the application whose code is moved adopts first", which has 
 
 | Item | Content |
 | --- | --- |
-| Sources | The reading part of the trace viewer's kernel (session discovery, head/tail preview, directory walking, JSONL reading, usage, session assembly), its per-agent host parsers and its conformance suite; presence's path rules (adding `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and archived sessions) |
-| Adoption | The trace viewer adopts first and deletes its own host packages and reading code (reconstruction and view projection stay in the trace viewer) |
+| Sources | The reading part of the trace viewer's kernel (session discovery, head/tail preview, directory walking, JSONL reading, usage, session assembly), its per-agent parsers and its conformance suite; presence's path rules (adding `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and archived sessions) |
+| Adoption | The trace viewer adopts first and deletes its own per-agent packages and reading code (reconstruction and view projection stay in the trace viewer) |
 | Exit condition | The trace viewer's tests and the conformance tests pass; the session list matches main |
 | Status | Kit side implemented: `/catalog` (six agent identities and home rules), `/platform`, `/node` (`createNodePlatform`), `/sessions` and `/transcript` with built-in adapters for Claude Code, Codex and Grok, and `/testing` (`createMemoryPlatform`, `sessionAdapterConformance`). Met: every built-in adapter passes the conformance suite on the memory platform and in a real temporary directory, and `npm run check` passes. Open until adoption, which follows the release: the trace viewer's tests on the kit and the comparison of its session list with main |
 

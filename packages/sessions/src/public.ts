@@ -128,6 +128,8 @@ export {
   TRANSCRIPT_EVENT_KINDS,
   type TranscriptEvent,
   type TranscriptEventKind,
+  type TranscriptEventOf,
+  type TranscriptEventPayloads,
   type TranscriptSession,
   type TranscriptStreamPart,
   type UnknownFormatGeneration,

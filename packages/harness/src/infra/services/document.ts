@@ -33,10 +33,10 @@ const doc: z.ZodMiniType<Document> = z.lazy(() =>
     // The record branch: a record whose values are document values, kept as the parser returned it.
     // `unknown` because the check runs on unvalidated parser output; the inferred parameter type only claims a record.
     z.custom<{ readonly [key: string]: Document }>((value: unknown) => {
-      if (value === null || typeof value !== "object" || Array.isArray(value) || value instanceof Date) {
+      if (!z.util.isObject(value) || value instanceof Date) {
         return false;
       }
-      return Object.keys(value).every((key) => doc.safeParse((value as Record<string, unknown>)[key]).success);
+      return Object.keys(value).every((key) => doc.safeParse(value[key]).success);
     })
   ])
 );
@@ -50,7 +50,7 @@ export function parseDocument(value: unknown): Document | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-/** The record branch of a document: lists and dates are not records. */
+/** Known-union narrowing of Document: its record branch excludes lists and dates. */
 export function isDocumentRecord(
   value: Document | undefined
 ): value is Extract<Document, { readonly [key: string]: Document }> {

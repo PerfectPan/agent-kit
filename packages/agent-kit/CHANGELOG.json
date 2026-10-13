@@ -2,6 +2,46 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.12.0",
+      "tag": "@rivus/agent-kit_v0.12.0",
+      "date": "Tue, 13 Oct 2026 07:15:51 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Call the coding agent the agent, not the host, in sessions adapter comments."
+          },
+          {
+            "comment": "Replace hand-written shape guards with schema or library checks, preserve ACP merges, configuration records, hook payload reads and probe variants, validate package manifests, and document permitted exceptions."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "TranscriptEvent, LiveTranscriptEvent and the update stream part are now unions discriminated by kind, so narrowing on event.kind types event.payload as that kind's payload type, fields an agent adds read as unknown, TranscriptEventOf<K> names the events of some kinds, and TranscriptEventPayloads maps each kind to its payload type, so a third-party adapter can type a builder generic over the kind. SystemPayload declares the prompt snapshot fields, ToolCallPayload the ACP title, and requestUsage takes a request event. Code that builds an event from a kind typed TranscriptEventKind and a Record payload no longer compiles; build that kind's payload type instead, or TranscriptEventPayloads[K] in a builder generic over the kind. Runtime output is unchanged."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.11.0",
+      "tag": "@rivus/agent-kit_v0.11.0",
+      "date": "Sun, 11 Oct 2026 03:31:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Keep collected summary prompts from retaining their full source text."
+          },
+          {
+            "comment": "Bundle zod/mini into /node and /node/effect, and read the current process identity once per process."
+          }
+        ],
+        "none": [
+          {
+            "comment": "Tidy the shared summary assembly: file-local summary gates, the Grok retain step requires the record time again."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.10.0",
       "tag": "@rivus/agent-kit_v0.10.0",
       "date": "Sat, 10 Oct 2026 20:10:42 GMT",

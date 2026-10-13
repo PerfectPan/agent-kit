@@ -408,6 +408,85 @@ describe("tool names and args across updates", () => {
     });
   });
 
+  class ToolArgs {
+    a = 1;
+  }
+
+  const recordCases: { name: string; value: unknown; ownFields?: Record<string, unknown> }[] = [
+    { name: "plain object", value: { a: 1 }, ownFields: { a: 1 } },
+    { name: "null-prototype object", value: Object.assign(Object.create(null), { a: 1 }), ownFields: { a: 1 } },
+    {
+      name: "custom-prototype object",
+      value: Object.assign(Object.create({ inherited: true }), { a: 1 }),
+      ownFields: { a: 1 }
+    },
+    {
+      name: "object with an inherited enumerable throwing getter",
+      value: Object.assign(
+        Object.create({
+          get inherited(): never {
+            throw new Error("inherited getter must not run");
+          }
+        }),
+        { a: 1 }
+      ),
+      ownFields: { a: 1 }
+    },
+    { name: "class instance", value: new ToolArgs(), ownFields: { a: 1 } },
+    { name: "Date", value: new Date(0), ownFields: {} },
+    { name: "Map", value: new Map([["a", 1]]), ownFields: {} },
+    { name: "Set", value: new Set([1]), ownFields: {} },
+    { name: "RegExp", value: /a/, ownFields: {} },
+    { name: "array", value: [1] },
+    { name: "null", value: null },
+    { name: "undefined", value: undefined },
+    { name: "string", value: "a" },
+    { name: "number", value: 1 },
+    { name: "NaN", value: NaN },
+    { name: "boolean", value: false },
+    { name: "bigint", value: 1n },
+    { name: "symbol", value: Symbol("arg") },
+    { name: "function", value: () => undefined }
+  ];
+
+  it.each(recordCases)("merges object args and replaces other supplied values for $name", ({ value, ownFields }) => {
+    const next = { updated: true };
+    const previousArgs = merged([
+      { toolCallId: "c1", rawInput: value },
+      { toolCallId: "c1", rawInput: next }
+    ])?.args;
+    const previous = { kept: true };
+    const updatedArgs = merged([
+      { toolCallId: "c1", rawInput: previous },
+      { toolCallId: "c1", rawInput: value }
+    ])?.args;
+
+    if (ownFields === undefined) {
+      expect(previousArgs).toBe(next);
+      expect(updatedArgs).toBe(value ?? previous);
+    } else {
+      expect(previousArgs).toStrictEqual({ ...ownFields, ...next });
+      expect(previousArgs).not.toBe(next);
+      expect(updatedArgs).toStrictEqual({ ...previous, ...ownFields });
+      expect(updatedArgs).not.toBe(value);
+    }
+  });
+
+  it("merges original own keys, keeping symbols and __proto__ while update keys win", () => {
+    const key = Symbol("arg");
+    const previous = { kept: true, shared: "before", [key]: "before" };
+    const next = Object.defineProperty({ shared: "after", [key]: "after" }, "__proto__", {
+      value: { safe: true },
+      enumerable: true
+    });
+    expect(
+      merged([
+        { toolCallId: "c1", rawInput: previous },
+        { toolCallId: "c1", rawInput: next }
+      ])?.args
+    ).toStrictEqual({ kept: true, shared: "after", [key]: "after", ["__proto__"]: { safe: true } });
+  });
+
   it("carries the name and the merged args through the live fold, with the display title on the parts", () => {
     const parts = translate(GROK_TITLE_UPDATES);
     expect(parts).toEqual([

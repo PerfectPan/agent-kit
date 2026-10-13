@@ -63,7 +63,10 @@ export {
   type ToolResultPayload,
   TRANSCRIPT_EVENT_KINDS,
   type TranscriptEvent,
+  type TranscriptEventBody,
   type TranscriptEventKind,
+  type TranscriptEventOf,
+  type TranscriptEventPayloads,
   type UnknownPayload
 } from "./value-objects/transcript-event.js";
 export {

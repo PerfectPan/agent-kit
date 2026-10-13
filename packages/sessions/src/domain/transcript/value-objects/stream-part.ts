@@ -1,11 +1,27 @@
 import type { Usage } from "../../usage/index.js";
-import type { TranscriptEvent, TranscriptEventKind } from "./transcript-event.js";
+import type { TranscriptEventBase, TranscriptEventKind, TranscriptEventOf } from "./transcript-event.js";
+
+/** The live events of the kinds in `K`: a union over the kinds, like `TranscriptEventOf`. */
+export type LiveTranscriptEventOf<K extends TranscriptEventKind> = {
+  [Kind in K]: Omit<TranscriptEventBase<Kind>, "source">;
+}[K];
 
 /**
  * A TranscriptEvent of a live turn. It has no `source`: a live update is not stored in a file the kit can point back
  * to. `original` holds the update when the event comes from one update.
  */
-export type LiveTranscriptEvent = Omit<TranscriptEvent, "source">;
+export type LiveTranscriptEvent = LiveTranscriptEventOf<TranscriptEventKind>;
+
+/** An `update` part, its payload typed by its kind. */
+type UpdatePart = {
+  [Kind in TranscriptEventKind]: {
+    readonly type: "update";
+    readonly id: string;
+    readonly kind: Kind;
+    readonly payload: Readonly<TranscriptEventOf<Kind>["payload"]>;
+    readonly original?: unknown;
+  };
+}[TranscriptEventKind];
 
 /**
  * One part of a live turn's stream. The deltas are named after AI SDK's UI message stream parts: text and reasoning
@@ -47,12 +63,6 @@ export type TranscriptStreamPart =
       readonly errorText: string;
       readonly output?: unknown;
     }
-  | {
-      readonly type: "update";
-      readonly id: string;
-      readonly kind: TranscriptEventKind;
-      readonly payload: Readonly<Record<string, unknown>>;
-      readonly original?: unknown;
-    }
+  | UpdatePart
   | { readonly type: "finish"; readonly id: string; readonly finishReason: string; readonly usage?: Usage }
   | { readonly type: "event"; readonly event: LiveTranscriptEvent };

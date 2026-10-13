@@ -208,6 +208,93 @@ describe("probe recipe conformance catches", () => {
     expect(await failure(recipe as ProbeRecipe, check)).toBeInstanceOf(Error);
   });
 
+  it.each([
+    {
+      stdout: '{"token":"value"}',
+      variants: [
+        ['{"CANARY":"value"}', "notice"],
+        ['{"token":"CANARY"}', "notice"]
+      ]
+    },
+    {
+      stdout: '["value",{"nested":"other"}]',
+      variants: [
+        ['["CANARY",{"nested":"other"}]', "notice"],
+        ['["value",{"CANARY":"other"}]', "notice"],
+        ['["value",{"nested":"CANARY"}]', "notice"]
+      ]
+    },
+    {
+      stdout: '{"__proto__":"value"}',
+      variants: [
+        ['{"CANARY":"value"}', "notice"],
+        ['{"__proto__":"CANARY"}', "notice"]
+      ]
+    },
+    { stdout: "{}", variants: [] },
+    { stdout: "[]", variants: [] },
+    {
+      stdout: "null",
+      variants: [
+        ["CANARY", "notice"],
+        ["null", "CANARY"]
+      ]
+    },
+    {
+      stdout: "42",
+      variants: [
+        ["CANARY", "notice"],
+        ["42", "CANARY"]
+      ]
+    },
+    {
+      stdout: "true",
+      variants: [
+        ["CANARY", "notice"],
+        ["true", "CANARY"]
+      ]
+    },
+    {
+      stdout: '"value"',
+      variants: [
+        ["CANARY", "notice"],
+        ['"value"', "CANARY"]
+      ]
+    },
+    {
+      stdout: "not json",
+      variants: [
+        ["CANARY json", "notice"],
+        ["not CANARY", "notice"],
+        ["not json", "CANARY"]
+      ]
+    }
+  ])("preserves the credential leak variants for $stdout", async ({ stdout, variants }) => {
+    const outputs: { code: number | null; stdout: string; stderr: string }[] = [];
+    const recipe: ProbeRecipe = {
+      ...good,
+      auth: {
+        command: {
+          args: ["status"],
+          sideEffects: [],
+          parse(output) {
+            outputs.push({
+              ...output,
+              stdout: output.stdout.replaceAll(/sk-ant-api03-[A-Za-z0-9]+/g, "CANARY"),
+              stderr: output.stderr.replaceAll(/sk-ant-api03-[A-Za-z0-9]+/g, "CANARY")
+            });
+            return { loggedIn: true };
+          }
+        }
+      }
+    };
+    const samples: ProbeRecipeSamples = {
+      auth: [{ output: { code: 7, stdout, stderr: "notice" }, reading: { loggedIn: true } }]
+    };
+    expect(await failure(recipe, "never returns a credential value", samples)).toBeUndefined();
+    expect(outputs).toEqual(variants.map(([stdout, stderr]) => ({ code: 7, stdout, stderr })));
+  });
+
   it("rejects a login parser that passes on a value from its input", async () => {
     const leaky: ProbeRecipe = {
       ...good,

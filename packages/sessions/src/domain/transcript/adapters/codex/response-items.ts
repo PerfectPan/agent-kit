@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { TranscriptEvent, TranscriptEventKind } from "../../index.js";
+import type { TranscriptEventBody } from "../../index.js";
 import { lenient } from "../lenient.js";
 import type { CodexPayloadValue } from "./records.js";
 
@@ -29,37 +29,40 @@ export function textFrom(content: unknown): string | undefined {
   return parts.length > 0 ? parts.join("") : undefined;
 }
 
-export type EmitEvent = (kind: TranscriptEventKind, payload: Record<string, unknown>) => unknown;
+/** The caller's sink for one event's kind and payload; it returns the event it built, of its own shape `E`. */
+export type EmitEvent<E> = (body: TranscriptEventBody) => E;
 
 /** The event of one response item, with what its payload carries for the translator's passes: the `text`, and for a
  * tool event the `callId` and the `output` exactly as the event's body holds them. */
-export interface EmittedResponseItem {
-  event: TranscriptEvent;
+export interface EmittedResponseItem<E> {
+  event: E;
   text?: string;
   callId?: string;
   output?: unknown;
 }
 
-function emitted(event: unknown, extra: Omit<EmittedResponseItem, "event"> = {}): EmittedResponseItem {
-  // The sink the caller supplies builds its own event shape; the item emitter only hands it through.
-  return { event: event as TranscriptEvent, ...extra };
+function emitted<E>(event: E, extra: Omit<EmittedResponseItem<E>, "event"> = {}): EmittedResponseItem<E> {
+  return { event, ...extra };
 }
 
-/** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */
-function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
+/** A `developer` message is instructions the Codex CLI sent, so it is a `system` event, not a user prompt. */
+function emitMessage<E>(item: CodexPayloadValue, emit: EmitEvent<E>): EmittedResponseItem<E> {
   const role = item.role;
   const text = textFrom(item.content);
   const body = text ? { text } : {};
   if (role === "developer") {
-    return emitted(emit("system", { ...body, injected: true }), text ? { text } : {});
+    return emitted(emit({ kind: "system", payload: { ...body, injected: true } }), text ? { text } : {});
   }
   if (role === "user") {
     return emitted(
-      emit("user", { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }),
+      emit({
+        kind: "user",
+        payload: { ...body, ...(text !== undefined && INJECTED_USER.test(text) ? { injected: true } : {}) }
+      }),
       text ? { text } : {}
     );
   }
-  return emitted(emit(role === "assistant" ? "assistant" : "system", body), text ? { text } : {});
+  return emitted(emit({ kind: role === "assistant" ? "assistant" : "system", payload: body }), text ? { text } : {});
 }
 
 /** Function call arguments are a JSON string; a string that is not JSON stays as it is. */
@@ -109,7 +112,7 @@ function resultFlags(output: unknown): { isError?: boolean; exitCode?: number } 
  * Emits the event of one response item (`response_item.payload`, or a bare item of an older rollout). The caller
  * handles `compaction` items; any type not listed here becomes an `unknown` event.
  */
-export function emitResponseItem(type: string, item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
+export function emitResponseItem<E>(type: string, item: CodexPayloadValue, emit: EmitEvent<E>): EmittedResponseItem<E> {
   switch (type) {
     case "message":
       return emitMessage(item, emit);
@@ -117,26 +120,28 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
       // A message between agents (`author` → `recipient`), not this model's own reply.
       const text = textFrom(item.content);
       return emitted(
-        emit("system", {
-          type: "agent_message",
-          ...(item.author ? { author: item.author } : {}),
-          ...(item.recipient ? { recipient: item.recipient } : {}),
-          ...(text ? { text } : {})
+        emit({
+          kind: "system",
+          payload: {
+            type: "agent_message",
+            ...(item.author ? { author: item.author } : {}),
+            ...(item.recipient ? { recipient: item.recipient } : {}),
+            ...(text ? { text } : {})
+          }
         }),
         text ? { text } : {}
       );
     }
     case "reasoning": {
       const text = textFrom(item.summary);
-      return emitted(emit("reasoning", text ? { text } : { redacted: true }), text ? { text } : {});
+      return emitted(emit({ kind: "reasoning", payload: text ? { text } : { redacted: true } }), text ? { text } : {});
     }
     case "web_search_call": {
       const callId = item.call_id ?? item.id ?? "";
       return emitted(
-        emit("tool_call", {
-          callId,
-          name: "web_search",
-          ...(item.action === undefined ? {} : { args: item.action })
+        emit({
+          kind: "tool_call",
+          payload: { callId, name: "web_search", ...(item.action === undefined ? {} : { args: item.action }) }
         }),
         { callId }
       );
@@ -144,10 +149,9 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
     case "tool_search_call": {
       const callId = item.call_id ?? "";
       return emitted(
-        emit("tool_call", {
-          callId,
-          name: "tool_search",
-          ...(item.arguments === undefined ? {} : { args: item.arguments })
+        emit({
+          kind: "tool_call",
+          payload: { callId, name: "tool_search", ...(item.arguments === undefined ? {} : { args: item.arguments }) }
         }),
         { callId }
       );
@@ -160,7 +164,7 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
         ...(item.tools === undefined ? {} : { output: item.tools }),
         ...(status === "failed" || status === "error" ? { isError: true } : {})
       };
-      return emitted(emit("tool_result", body), {
+      return emitted(emit({ kind: "tool_result", payload: body }), {
         callId: body.callId,
         ...(body.output === undefined ? {} : { output: body.output })
       });
@@ -170,10 +174,9 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
       const callId = item.call_id ?? "";
       const args = item.arguments ?? item.input;
       return emitted(
-        emit("tool_call", {
-          callId,
-          name: item.name ?? "",
-          ...(args === undefined ? {} : { args: argsOf(args) })
+        emit({
+          kind: "tool_call",
+          payload: { callId, name: item.name ?? "", ...(args === undefined ? {} : { args: argsOf(args) }) }
         }),
         { callId }
       );
@@ -185,12 +188,12 @@ export function emitResponseItem(type: string, item: CodexPayloadValue, emit: Em
         ...resultFlags(item.output),
         ...(item.output === undefined ? {} : { output: item.output })
       };
-      return emitted(emit("tool_result", body), {
+      return emitted(emit({ kind: "tool_result", payload: body }), {
         callId: body.callId,
         ...(item.output === undefined ? {} : { output: item.output })
       });
     }
     default:
-      return emitted(emit("unknown", { type }));
+      return emitted(emit({ kind: "unknown", payload: { type } }));
   }
 }

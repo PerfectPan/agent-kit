@@ -227,7 +227,13 @@ import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
 import { detectAgents } from "${manifest.name}/discovery";
 import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
-import { loadTranscript, type RequestPayload } from "${manifest.name}/transcript";
+import {
+  loadTranscript,
+  type SourcePointer,
+  type TranscriptEventKind,
+  type TranscriptEventOf,
+  type TranscriptEventPayloads
+} from "${manifest.name}/transcript";
 import {
   addUsage,
   isUsageRecord,
@@ -244,6 +250,17 @@ ${entries.join("\n")}
 for (const [specifier, namespace] of Object.entries(entries)) {
   assert.ok(Object.keys(namespace).length > 0, \`\${specifier} exports nothing at runtime\`);
 }
+
+// A third-party SessionAdapter builds its events with a function generic over the kind, as the kit's adapters do.
+function eventOf<K extends TranscriptEventKind>(
+  kind: K,
+  payload: TranscriptEventPayloads[K],
+  source: SourcePointer
+): TranscriptEventOf<K> {
+  return { id: \`\${source.file}:\${source.line}\`, seq: 0, ts: 1, kind, payload, source };
+}
+const built = eventOf("tool_call", { callId: "c1", name: "Read" }, { file: "s.jsonl", offset: 0, length: 2, line: 1 });
+assert.equal(built.payload.name, "Read");
 
 const seeded: readonly string[] = ${JSON.stringify(SEEDS.map((seed) => seed.agent))};
 assert.deepEqual(
@@ -277,7 +294,7 @@ for (const agent of seeded) {
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
   const requests = transcript.value.events.filter((event) => event.kind === "request");
-  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, (event.payload as RequestPayload).usage ?? {}), {});
+  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, event.payload.usage ?? {}), {});
 
   // The zero-dependency usage entry agrees with the transcript on the same session. The seeded files were last
   // written an hour ago, so the scan treats them as complete.

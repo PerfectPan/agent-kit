@@ -1,12 +1,11 @@
-import type { Capability } from "../index.js";
 import type {
   SessionPromptsOptions,
   SessionPrompt,
   SessionSummary,
   SessionSummaryWithPrompts
 } from "../../session/index.js";
-import { mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
-import type { Transcript } from "../value-objects/transcript.js";
+import { capPromptText, mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
+import type { Capability, Transcript } from "../value-objects/transcript.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
 
@@ -104,8 +103,8 @@ function gated(declared: boolean, value: number | undefined): number | undefined
 }
 
 /** The gates a summary's numbers sit behind, from the capabilities the source declares. */
-export function summaryGates(capabilities: Iterable<Capability>): SummaryGates {
-  const declared = capabilities instanceof Set ? capabilities : new Set(capabilities);
+function summaryGates(capabilities: readonly Capability[]): SummaryGates {
+  const declared = new Set(capabilities);
   return {
     requests: declared.has("requests"),
     usage: declared.has("usage"),
@@ -135,7 +134,7 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
     list,
     add(text) {
       if (list !== undefined && list.length < limit && typeof text === "string" && text !== "") {
-        list.push({ text: text.slice(0, maxChars) });
+        list.push({ text: capPromptText(text, maxChars) });
       }
     }
   };
@@ -143,8 +142,7 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
 
 /**
  * The SessionSummary of filled totals, under the gates the source declares: the same rules `foldTranscript`
- * states, so a fast pass and the folded transcript give the same numbers. `finishPass` and `foldTranscript` are
- * its only callers.
+ * states, so a fast pass and the folded transcript give the same numbers.
  */
 function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: number): SessionSummary {
   const inputPoints = inputPointsOf(totals);
@@ -173,7 +171,7 @@ export function summaryOf(summary: SessionSummary): SessionSummary {
  */
 export function finishPass(
   totals: SummaryTotals,
-  capabilities: Iterable<Capability>,
+  capabilities: readonly Capability[],
   subagents: number,
   prompts: SessionPrompt[] | undefined
 ): SessionSummaryWithPrompts {

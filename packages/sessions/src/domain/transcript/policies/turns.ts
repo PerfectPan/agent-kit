@@ -1,5 +1,5 @@
 import type { SessionPrompt, SessionPromptsOptions } from "../../session/index.js";
-import type { RequestPayload, TranscriptEvent } from "../value-objects/transcript-event.js";
+import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 
 /** The lane id of the root agent when `agents` names none. */
@@ -61,8 +61,11 @@ export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, 
 }
 
 /** The recorded input and output tokens of a `request` event; a count is absent when not recorded. */
-export function requestUsage(event: Pick<TranscriptEvent, "payload">): { inputTokens?: number; outputTokens?: number } {
-  const usage = (event.payload as RequestPayload).usage;
+export function requestUsage(event: Pick<TranscriptEventOf<"request">, "payload">): {
+  inputTokens?: number;
+  outputTokens?: number;
+} {
+  const usage = event.payload.usage;
   const out: { inputTokens?: number; outputTokens?: number } = {};
   if (typeof usage?.inputTokens === "number") {
     out.inputTokens = usage.inputTokens;
@@ -71,6 +74,14 @@ export function requestUsage(event: Pick<TranscriptEvent, "payload">): { inputTo
     out.outputTokens = usage.outputTokens;
   }
   return out;
+}
+
+/**
+ * Cap a prompt without keeping its source alive: in V8, split/join builds a flat string instead of retaining
+ * slice's parent. UTF-16 code units, including a lone surrogate at the cut, stay unchanged.
+ */
+export function capPromptText(text: string, maxChars: number): string {
+  return text.slice(0, maxChars).split("").join("");
 }
 
 /**
@@ -103,7 +114,7 @@ export function sessionPrompts(
     if (text === "") {
       continue;
     }
-    prompts.push({ text: text.slice(0, options.maxChars) });
+    prompts.push({ text: capPromptText(text, options.maxChars) });
   }
   return prompts;
 }

@@ -3,11 +3,13 @@ import {
   type Lane,
   lineId,
   MAIN_LANE_ID,
+  type MessagePayload,
   placeRequest,
   type RequestPayload,
   type SourcedRecord,
   type TranscriptEvent,
-  type TranscriptEventKind
+  type TranscriptEventBody,
+  type TranscriptEventOf
 } from "../../index.js";
 import {
   acpChunkText,
@@ -34,7 +36,7 @@ import {
   knownGrokUpdate
 } from "../../../usage/adapters/grok.js";
 
-/** Record types that only the host reads. Each becomes a skipped record with its type as the reason. */
+/** Record types that only the Grok CLI reads. Each becomes a skipped record with its type as the reason. */
 const BOOKKEEPING = new Set([
   "background_tasks",
   "task_backgrounded",
@@ -45,16 +47,15 @@ const BOOKKEEPING = new Set([
   "image_compressed"
 ]);
 
-/** Host status updates kept as `system` events with their `type`. */
+/** Status updates of the Grok CLI, kept as `system` events with their `type`. */
 const STATUS = new Set(["goal_updated", "memory_dream_queued", "memory_dream_started", "memory_dream_completed"]);
 
 /** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */
-function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): Record<string, unknown> {
+function requestPayload(update: GrokUpdateValue, turnModel: string | undefined): RequestPayload {
   const raw = grokTurnUsage(update);
   const usage = grokUsageOf(raw);
   const model = grokTurnModel(raw?.modelUsage, turnModel);
   const byModel = grokUsageByModel(raw?.modelUsage);
-  // `baseEvent` stores a record. `satisfies` keeps the fields on the request payload shape.
   return {
     granularity: "turn",
     ...(model ? { model } : {}),
@@ -62,7 +63,7 @@ function requestPayload(update: GrokUpdateValue, turnModel: string | undefined):
     ...(update.stop_reason ? { finishReason: update.stop_reason } : {}),
     ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
     ...(byModel ? { usageByModel: byModel } : {})
-  } satisfies RequestPayload;
+  };
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -116,13 +117,11 @@ export function applyGrokSubagents(agents: Lane[], subagents: ReadonlyMap<string
   }
 }
 
-/** One event a record emitted. With retain these are the emitted `TranscriptEvent`s themselves. */
-export interface GrokPart {
-  kind: TranscriptEventKind;
-  payload: Record<string, unknown>;
-  /** The event id; present with retain, absent in the bounded pass, which reads no ids. */
-  id?: string;
-}
+/**
+ * One event a record emitted, with its event id: present with retain, where the parts are the emitted
+ * `TranscriptEvent`s themselves, and absent in the bounded pass, which reads no ids.
+ */
+export type GrokPart = TranscriptEventBody & { id?: string };
 
 /** Why a record became no event, as the translation's skipped records report it. */
 export interface GrokSkip {
@@ -140,8 +139,8 @@ export interface GrokStep {
 
 /** One call's events, for the rewrites later rows apply to them. */
 interface ToolEvents {
-  call?: TranscriptEvent;
-  result?: TranscriptEvent;
+  call?: TranscriptEventOf<"tool_call">;
+  result?: TranscriptEventOf<"tool_result">;
 }
 
 /**
@@ -172,6 +171,21 @@ export interface GrokTranslation {
   step(record: SourcedRecord, ts?: number): GrokStep;
 }
 
+/** The translation the retain path steps: every record carries the time `inheritTimes` gave it. */
+export interface RetainGrokTranslation extends GrokTranslation {
+  /** Steps one record, stamping its events with the record's inherited time. */
+  step(record: SourcedRecord, ts: number): GrokStep;
+}
+
+/** The translation the bounded pass steps: it reads no times, so its steps take none. */
+export interface BoundedGrokTranslation extends GrokTranslation {
+  /** Steps one record; the bounded pass emits no timed events. */
+  step(record: SourcedRecord): GrokStep;
+}
+
+export function createGrokTranslation(options: { readonly retain: true }): RetainGrokTranslation;
+export function createGrokTranslation(options: { readonly retain: false }): BoundedGrokTranslation;
+export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation;
 export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation {
   const retain = options.retain;
   const events: TranscriptEvent[] = [];
@@ -232,20 +246,18 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         }
       };
       /** The retain emit: the `TranscriptEvent` itself, pushed to the sequence and to this record's parts. */
-      const emitEvent = (eventKind: TranscriptEventKind, payload: Record<string, unknown>): TranscriptEvent => {
-        const event = baseEvent(record, eventKind, payload, { id: lineId(record), ts });
+      const pushEvent = <E extends TranscriptEvent>(event: E): E => {
         events.push(event);
         parts.push(event);
         return event;
       };
       /** The mode's emit: the event with retain, a light part without. */
-      const emit = (eventKind: TranscriptEventKind, payload: Record<string, unknown>): GrokPart => {
+      const emit = (body: TranscriptEventBody): GrokPart => {
         if (!retain) {
-          const part: GrokPart = { kind: eventKind, payload };
-          parts.push(part);
-          return part;
+          parts.push(body);
+          return body;
         }
-        return emitEvent(eventKind, payload);
+        return pushEvent(baseEvent(record, body.kind, body.payload, { id: lineId(record), ts }));
       };
 
       followGrokTurn(turn, update);
@@ -255,10 +267,10 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
       if (messageKind !== undefined) {
         const text = acpChunkText(update.content);
         if (messageKind !== "user") {
-          emit(messageKind, text ? { text } : {});
+          emit({ kind: messageKind, payload: text ? { text } : {} });
           return { ok: true, parts };
         }
-        const flags: Record<string, unknown> = {};
+        const flags: Pick<MessagePayload, "injected" | "continued"> = {};
         if (isInjectedChunk(update._meta, text)) {
           flags.injected = true;
         }
@@ -269,7 +281,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         if (!flags.injected) {
           lastUserPrompt = prompt;
         }
-        emit("user", { ...flags, ...(text ? { text } : {}) });
+        emit({ kind: "user", payload: { ...flags, ...(text ? { text } : {}) } });
         return { ok: true, parts };
       }
 
@@ -294,7 +306,9 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
               noteSkip("tool-progress");
               return { ok: true, parts };
             }
-            seen.call = emitEvent("tool_call", acpToolCallPayload(state));
+            seen.call = pushEvent(
+              baseEvent(record, "tool_call", acpToolCallPayload(state), { id: lineId(record), ts })
+            );
             return { ok: true, parts };
           }
           if (seen.call) {
@@ -306,7 +320,9 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
           }
           // A result with no earlier call stays an orphan. Inventing the call would hide that.
           if (!seen.result) {
-            seen.result = emitEvent("tool_result", acpToolResultPayload(state));
+            seen.result = pushEvent(
+              baseEvent(record, "tool_result", acpToolResultPayload(state), { id: lineId(record), ts })
+            );
             return { ok: true, parts };
           }
           Object.assign(seen.result.payload, acpToolResultPayload(state));
@@ -334,7 +350,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
             })
           );
           if (durationMs !== undefined) {
-            emit("system", { type: "turn_duration", durationMs });
+            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
           }
           // The window closes past the duration marker, so a later turn's request never reaches back before it.
           segment = events.length;
@@ -342,18 +358,21 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
           // Requests are placed in processing order, so the streaming pass sees the context shape for free.
           parts.push({ kind: "request", payload });
           if (durationMs !== undefined) {
-            emit("system", { type: "turn_duration", durationMs });
+            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
           }
         }
         return { ok: true, parts };
       }
 
       if (kind === "hook_execution") {
-        emit("hook", {
-          type: "hook_execution",
-          ...(update.event_name ? { event_name: update.event_name } : {}),
-          ...(update.tool_name ? { tool_name: update.tool_name } : {}),
-          runs: hookRuns(update.runs)
+        emit({
+          kind: "hook",
+          payload: {
+            type: "hook_execution",
+            ...(update.event_name ? { event_name: update.event_name } : {}),
+            ...(update.tool_name ? { tool_name: update.tool_name } : {}),
+            runs: hookRuns(update.runs)
+          }
         });
         return { ok: true, parts };
       }
@@ -366,10 +385,13 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
       if (kind === "auto_compact_completed") {
         const pre = update.tokens_before ?? update.tokens_used;
         const post = update.tokens_after;
-        emit("compaction", {
-          trigger: "auto",
-          ...(pre === undefined ? {} : { preTokens: pre }),
-          ...(post === undefined ? {} : { postTokens: post })
+        emit({
+          kind: "compaction",
+          payload: {
+            trigger: "auto",
+            ...(pre === undefined ? {} : { preTokens: pre }),
+            ...(post === undefined ? {} : { postTokens: post })
+          }
         });
         return { ok: true, parts };
       }
@@ -383,11 +405,14 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         const agentId = update.subagent_id ?? update.child_session_id;
         const status = update.status;
         const durationMs = update.duration_ms;
-        const part = emit("system", {
-          type: kind,
-          ...(agentId ? { agentId } : {}),
-          ...(status ? { status } : {}),
-          ...(durationMs === undefined ? {} : { durationMs })
+        const part = emit({
+          kind: "system",
+          payload: {
+            type: kind,
+            ...(agentId ? { agentId } : {}),
+            ...(status ? { status } : {}),
+            ...(durationMs === undefined ? {} : { durationMs })
+          }
         });
         // The log records the launch as `subagent_spawned`, not as a tool call.
         if (agentId) {
@@ -397,10 +422,13 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
       }
 
       if (STATUS.has(kind)) {
-        emit("system", {
-          type: kind,
-          ...(update.status ? { status: update.status } : {}),
-          ...(update.phase ? { phase: update.phase } : {})
+        emit({
+          kind: "system",
+          payload: {
+            type: kind,
+            ...(update.status ? { status: update.status } : {}),
+            ...(update.phase ? { phase: update.phase } : {})
+          }
         });
         return { ok: true, parts };
       }
@@ -410,7 +438,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         return { ok: true, parts };
       }
 
-      emit("unknown", { type: kind });
+      emit({ kind: "unknown", payload: { type: kind } });
       return { ok: true, parts };
     }
   };

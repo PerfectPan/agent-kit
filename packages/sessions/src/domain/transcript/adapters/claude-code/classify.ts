@@ -1,4 +1,4 @@
-import { type TranscriptEventKind } from "../../index.js";
+import { type HookPayload, type SystemPayload, type TranscriptEventBody } from "../../index.js";
 import { type ClaudeCodeAttachment, type ClaudeCodeContentBlockValue, type ClaudeCodeRecordValue } from "./record.js";
 import { promptSnapshotPayload } from "./prompt-snapshot.js";
 import { type ClaudeCodeUserFlags, isPromptFlags, recordText, userFlags } from "./user-flags.js";
@@ -22,10 +22,7 @@ const BOOKKEEPING = new Set([
 ]);
 
 /** One event a record becomes: the kind and the payload `baseEvent` stores. */
-export interface ClaudeCodeEventPart {
-  kind: TranscriptEventKind;
-  payload: Record<string, unknown>;
-}
+export type ClaudeCodeEventPart = TranscriptEventBody;
 
 /**
  * What one parsed record becomes, shared by the translation and the summarize pass so a record type changes both:
@@ -126,7 +123,7 @@ function systemEvent(rec: ClaudeCodeRecordValue): ClaudeCodeEventPart {
     return { kind: "hook", payload: { type: subtype } };
   }
   const text = rec.content;
-  const payload: Record<string, unknown> = { type: subtype, ...(text ? { text } : {}) };
+  const payload: SystemPayload = { type: subtype, ...(text ? { text } : {}) };
   // `model_refusal_fallback` / `model_refusal_no_fallback`: the API refused and the CLI retried on another model, or did not.
   for (const key of ["originalModel", "fallbackModel", "apiRefusalCategory"] as const) {
     const value = rec[key];
@@ -137,7 +134,7 @@ function systemEvent(rec: ClaudeCodeRecordValue): ClaudeCodeEventPart {
   return { kind: "system", payload };
 }
 
-function hookPayload(type: string, attachment: ClaudeCodeAttachment | undefined): Record<string, unknown> {
+function hookPayload(type: string, attachment: ClaudeCodeAttachment | undefined): HookPayload {
   const name = attachment?.hookName;
   const event = attachment?.hookEvent;
   const exitCode = attachment?.exitCode;

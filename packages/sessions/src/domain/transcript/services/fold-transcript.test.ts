@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { sessionPrompts } from "../policies/turns.js";
-import type { TranscriptEvent } from "../value-objects/transcript-event.js";
+import type { TranscriptEvent, TranscriptEventKind, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
-import { foldTranscript } from "./fold-transcript.js";
+import { emptyPrompts, foldTranscript } from "./fold-transcript.js";
 
 const source = { file: "fixture.jsonl", offset: 0, length: 1, line: 1 };
 
-function event(partial: Partial<TranscriptEvent> & Pick<TranscriptEvent, "id" | "kind">): TranscriptEvent {
+/** An event's fields; the payload may be left out, as `{}`, for the kinds whose payload fields are all optional. */
+type EventInput = {
+  [K in TranscriptEventKind]: Partial<TranscriptEventOf<K>> &
+    Pick<TranscriptEventOf<K>, "id" | "kind" | ({} extends TranscriptEventOf<K>["payload"] ? never : "payload")>;
+}[TranscriptEventKind];
+
+function event(partial: EventInput): TranscriptEvent {
   return { seq: 0, ts: 1, payload: {}, source, ...partial };
 }
 
@@ -69,6 +75,30 @@ describe("foldTranscript", () => {
     expect(summary.contextShape).toHaveLength(120);
     expect(summary.contextShape?.[0]).toBe(0);
     expect(summary.contextShape?.[119]).toBe(120);
+  });
+});
+
+describe("prompt text caps", () => {
+  it.each([
+    { text: "plain text", maxChars: 5, expected: "plain" },
+    { text: "你好世界", maxChars: 2, expected: "你好" },
+    { text: "a😀b", maxChars: 2, expected: "a\ud83d" },
+    { text: "a😀b", maxChars: 3, expected: "a😀" },
+    { text: "a\ud83db", maxChars: 3, expected: "a\ud83db" },
+    { text: "a\ude00b", maxChars: 3, expected: "a\ude00b" },
+    { text: "😀", maxChars: 1, expected: "\ud83d" },
+    { text: "short", maxChars: 100, expected: "short" }
+  ])("preserves UTF-16 when capping $text at $maxChars", ({ text, maxChars, expected }) => {
+    const options = { limit: 1, maxChars };
+    const prompts = emptyPrompts(options);
+    prompts.add(text);
+    expect(prompts.list).toEqual([{ text: expected }]);
+    expect(
+      sessionPrompts(
+        transcript({ capabilities: [], events: [event({ id: "u", kind: "user", payload: { text } })] }),
+        options
+      )
+    ).toEqual([{ text: expected }]);
   });
 });
 

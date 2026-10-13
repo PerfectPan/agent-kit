@@ -177,7 +177,7 @@ function outputVariants(output: CommandOutput): CommandOutput[] {
   } catch {
     json = undefined;
   }
-  if (json !== undefined && typeof json === "object" && json !== null) {
+  if (Array.isArray(json) || isPlainObject(json)) {
     return jsonVariants(json).map((variant) => ({ ...output, stdout: JSON.stringify(variant) }));
   }
   const words = (text: string): string[] =>
