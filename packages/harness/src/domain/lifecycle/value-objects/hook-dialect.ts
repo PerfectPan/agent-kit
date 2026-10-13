@@ -67,6 +67,11 @@ export interface HookEventSpec {
   readonly lifecycle: LifecycleMapping | LifecycleSwitch;
   /** Other spellings of this event in payloads, such as Grok's snake_case wire names. */
   readonly aliases?: readonly string[];
+  /**
+   * Sources that replace the dialect's `fields` of the same name for this event, for a path that holds the value only
+   * on some events. The event name itself always comes from the dialect's `fields.event`.
+   */
+  readonly fields?: Omit<PayloadFields, "event">;
   /** The event is a subagent's own start or stop. */
   readonly subagent?: true;
   /** A permission gate: the hook's response decides whether the operation proceeds. */

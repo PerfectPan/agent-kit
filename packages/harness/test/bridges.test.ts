@@ -128,14 +128,6 @@ interface PayloadLog {
   readonly payloads: unknown[];
 }
 
-function isOpencodePlugin(value: unknown): value is OpencodePlugin {
-  return typeof value === "object" && value !== null && typeof Reflect.get(value, "AgentKitHooks") === "function";
-}
-
-function isPayloadLog(value: unknown): value is PayloadLog {
-  return typeof value === "object" && value !== null && Array.isArray(Reflect.get(value, "payloads"));
-}
-
 interface ForwardedBridge {
   readonly hooksFor: (directory: string) => Promise<OpencodeHooks>;
   readonly log: PayloadLog;
@@ -168,9 +160,11 @@ async function forwardedBridge(
     { owner: "demo-app", version: "1", digest: "d" },
     { home: home.home, env: home.env }
   );
-  if (artifact === undefined || typeof artifact.content !== "string" || !artifact.content.includes(SPAWN_IMPORT)) {
-    throw new Error("opencode bridge did not render a plugin that imports spawn");
+  // ArtifactContent is a union; the bridge renders as one file's text.
+  if (typeof artifact?.content !== "string") {
+    throw new Error("opencode bridge did not render a file");
   }
+  expect(artifact.content).toContain(SPAWN_IMPORT);
   const fake = home.path("fake-spawn.mjs");
   home.write(
     "fake-spawn.mjs",
@@ -187,11 +181,9 @@ export function spawn() {
     "bridge.mjs",
     artifact.content.replace(SPAWN_IMPORT, `import { spawn } from ${JSON.stringify(pathToFileURL(fake).href)}`)
   );
-  const log = await import(pathToFileURL(fake).href);
-  const plugin = await import(pathToFileURL(home.path("bridge.mjs")).href);
-  if (!isPayloadLog(log) || !isOpencodePlugin(plugin)) {
-    throw new Error("could not evaluate the generated opencode bridge");
-  }
+  const log = (await import(pathToFileURL(fake).href)) as PayloadLog;
+  const plugin = (await import(pathToFileURL(home.path("bridge.mjs")).href)) as OpencodePlugin;
+  expect(typeof plugin.AgentKitHooks).toBe("function");
   return { hooksFor: (directory) => plugin.AgentKitHooks({ directory }), log };
 }
 
@@ -317,5 +309,71 @@ describe("S111: the opencode bridge carries the current session id", () => {
     const [edited] = log.payloads;
     expect(readHookEvent("opencode", edited, {}).sessionId).toBe("C");
     expect(edited).toMatchObject({ currentSessionId: "C" });
+  });
+});
+
+describe("S113: the opencode bridge remembers only session ids and forgets a deleted session", () => {
+  it("never takes a terminal's info.id from pty events as the session", async () => {
+    const home = testHome();
+    const { hooksFor, log } = await forwardedBridge(home, ["file.edited", "session.error"]);
+    const work = await hooksFor("/u/me/work");
+
+    await work["tool.execute.before"]({ tool: "bash", sessionID: "ses_A", callID: "c1" });
+    await work.event({ event: { type: "pty.created", properties: { info: { id: "pty_456", cwd: "/u/me/work" } } } });
+    await work.event({ event: { type: "pty.updated", properties: { info: { id: "pty_123" } } } });
+    await work.event({ event: { type: "file.edited", properties: { file: "/u/me/work/a.ts" } } });
+    await work.event({ event: { type: "session.error", properties: { error: { name: "APIError", data: {} } } } });
+
+    expect(log.payloads).toHaveLength(2);
+    const [edited, errored] = log.payloads;
+    expect(edited).toMatchObject({ type: "file.edited", currentSessionId: "ses_A" });
+    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("ses_A");
+    expect(readHookEvent("opencode", errored, {})).toEqual(
+      expect.objectContaining({ phase: "finish", outcome: "failed", sessionId: "ses_A" })
+    );
+  });
+
+  it("takes the session from the Session info of session events", async () => {
+    const home = testHome();
+    const { hooksFor, log } = await forwardedBridge(home, ["file.edited"]);
+    const work = await hooksFor("/u/me/work");
+
+    await work["tool.execute.before"]({ tool: "bash", sessionID: "ses_A", callID: "c1" });
+    await work.event({
+      event: { type: "session.updated", properties: { info: { id: "ses_B", directory: "/u/me/work" } } }
+    });
+    await work.event({ event: { type: "file.edited", properties: { file: "/u/me/work/a.ts" } } });
+
+    const [edited] = log.payloads;
+    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("ses_B");
+  });
+
+  it("forgets the remembered session when it is deleted, and keeps it when another one is", async () => {
+    const home = testHome();
+    const { hooksFor, log } = await forwardedBridge(home, ["file.edited", "session.deleted"]);
+    const work = await hooksFor("/u/me/work");
+    const created = (id: string) =>
+      work.event({ event: { type: "session.created", properties: { sessionID: id, info: { id } } } });
+    const deleted = (id: string) =>
+      work.event({ event: { type: "session.deleted", properties: { sessionID: id, info: { id } } } });
+    const edit = () => work.event({ event: { type: "file.edited", properties: { file: "/u/me/work/a.ts" } } });
+
+    await created("A");
+    await created("B");
+    await deleted("A");
+    await edit();
+    await deleted("B");
+    await edit();
+
+    const [deletedA, editedB, deletedB, editedNone] = log.payloads;
+    expect(readHookEvent("opencode", deletedA, {})).toEqual(
+      expect.objectContaining({ phase: "finish", scope: "session", sessionId: "A" })
+    );
+    expect(readHookEvent("opencode", editedB, {}).sessionId).toBe("B");
+    expect(readHookEvent("opencode", deletedB, {})).toEqual(
+      expect.objectContaining({ phase: "finish", scope: "session", sessionId: "B" })
+    );
+    expect(editedNone).not.toHaveProperty("currentSessionId");
+    expect(readHookEvent("opencode", editedNone, {}).sessionId).toBeUndefined();
   });
 });

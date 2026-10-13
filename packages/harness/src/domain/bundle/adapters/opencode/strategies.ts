@@ -1,6 +1,6 @@
 import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../index.js";
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
-import { aliasesOf, type HookDialect } from "../../../lifecycle/index.js";
+import { aliasesOf, type FieldPath, type HookDialect, type HookEventSpec } from "../../../lifecycle/index.js";
 
 import { opencodeCurrentSessionField, opencodeHookDialect } from "../../../lifecycle/adapters/opencode.js";
 import { opencodeConfigDir, opencodePluginFile, opencodePluginsDir } from "./config-files.js";
@@ -10,47 +10,60 @@ export function bridgedEvents(dialect: HookDialect, registrations: readonly Hook
   return [...new Set(registrations.flatMap(({ event }) => [event, ...aliasesOf(dialect.events, event)]))].toSorted();
 }
 
+const spellings = (name: string): readonly string[] => [name, ...aliasesOf(opencodeHookDialect.events, name)];
+
 /**
- * Session paths opencode itself sends. The bridge remembers a session from these, not from the fallback field it
- * adds, so its own field cannot become the memory.
+ * The paths the dialect reads an event's session id from, without the field the bridge adds: the bridge remembers
+ * only an id the dialect would read as that event's own session, so neither another object's `id` nor its own field
+ * becomes the memory.
  */
-function nativeSessionPaths(): readonly (readonly string[])[] {
-  return (opencodeHookDialect.fields.sessionId?.paths ?? []).filter(
-    (path) => path.length !== 1 || path[0] !== opencodeCurrentSessionField
+function namedSessionPaths(spec: HookEventSpec | undefined): readonly FieldPath[] {
+  const source = spec?.fields?.sessionId ?? opencodeHookDialect.fields.sessionId;
+  return (source?.paths ?? []).filter((path) => path.length !== 1 || path[0] !== opencodeCurrentSessionField);
+}
+
+/** Each spelling of an event whose session id paths replace the dialect's, with those paths. */
+function eventSessionPaths(): Readonly<Record<string, readonly FieldPath[]>> {
+  return Object.fromEntries(
+    Object.entries(opencodeHookDialect.events).flatMap(([name, spec]) =>
+      spec.fields?.sessionId === undefined
+        ? []
+        : spellings(name).map((event): [string, readonly FieldPath[]] => [event, namedSessionPaths(spec)])
+    )
+  );
+}
+
+/** Each spelling of an event that ends the session it names. */
+function sessionEndEvents(): readonly string[] {
+  return Object.entries(opencodeHookDialect.events).flatMap(([name, { lifecycle }]) =>
+    // A switch picks its mapping per payload, so only a fixed mapping ends the session on every payload.
+    !("cases" in lifecycle) && lifecycle.phase === "finish" && lifecycle.scope === "session" ? spellings(name) : []
   );
 }
 
 /**
- * The plugin that forwards opencode's events to the hook command, in the payload shape the opencode HookDialect
- * reads: each bus event as it is, with the plugin input's `directory` added, and the inputs of the tool hooks as
- * `{ type, properties }`. Every call is observed for a session id before the registration filter decides what to
- * forward, including a tool input the bridge does not send. An event that names no session also gets
- * `currentSessionId`, the latest session id this plugin instance (one directory) has seen. Reading that id, adding
- * the field, and starting the command share one try/catch, so a throw never rejects the callback into opencode. The
- * session walk is inlined because the plugin cannot import the kit.
+ * The plugin that forwards opencode's events to the hook command, in the payload shape, `currentSessionId`
+ * included, that the opencode HookDialect describes. Each callback runs inside one try/catch, so a payload that throws
+ * while it is read or forwarded never rejects the callback into opencode. The plugin cannot import the kit, so the
+ * path walk is inlined.
  */
 function bridgeSource(owner: string, command: string, events: readonly string[]): string {
   return `// Generated for ${owner} by @rivus/agent-kit: forwards opencode events to its hook command.
 // Reinstalling overwrites this file; uninstalling removes it.
-// An event that names no session gets currentSessionId, the latest session this instance has seen.
-// Every call is observed before the registration filter. A throw while reading or sending stays here.
 import { spawn } from "node:child_process"
 
 const COMMAND = ${JSON.stringify(command)}
 const EVENTS = new Set(${JSON.stringify(events)})
-const SESSION_PATHS = ${JSON.stringify(nativeSessionPaths())}
+const SESSION_PATHS = ${JSON.stringify(namedSessionPaths(undefined))}
+const EVENT_SESSION_PATHS = ${JSON.stringify(eventSessionPaths())}
+const SESSION_ENDS = new Set(${JSON.stringify(sessionEndEvents())})
 const CURRENT_SESSION = ${JSON.stringify(opencodeCurrentSessionField)}
 
-function namedSessionId(payload) {
-  for (const path of SESSION_PATHS) {
+function namedSessionId(payload, type) {
+  const paths = Object.hasOwn(EVENT_SESSION_PATHS, type) ? EVENT_SESSION_PATHS[type] : SESSION_PATHS
+  for (const path of paths) {
     let value = payload
-    for (const key of path) {
-      if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) {
-        value = undefined
-        break
-      }
-      value = value[key]
-    }
+    for (const key of path) value = value != null && Object.hasOwn(value, key) ? value[key] : undefined
     if (typeof value === "string" && value !== "") return value
   }
   return undefined
@@ -65,22 +78,21 @@ function send(payload) {
 
 export const AgentKitHooks = async ({ directory }) => {
   let currentSessionId
-  // Remember first, then forward only a registered event. One try covers the walk, the added field, and send.
   function accept(payload, type) {
-    const named = namedSessionId(payload)
-    if (named !== undefined) currentSessionId = named
-    if (!EVENTS.has(type)) return
-    if (named === undefined && currentSessionId !== undefined) {
-      payload = { ...payload, [CURRENT_SESSION]: currentSessionId }
+    const named = namedSessionId(payload, type)
+    if (SESSION_ENDS.has(type)) {
+      if (named === currentSessionId) currentSessionId = undefined
+    } else if (named !== undefined) {
+      currentSessionId = named
     }
-    send(payload)
+    if (!EVENTS.has(type)) return
+    send(named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload)
   }
   return {
     event: async (input) => {
       try {
-        const event = input !== null && typeof input === "object" ? input.event : undefined
-        const record = event !== null && typeof event === "object" ? event : {}
-        accept({ ...record, directory }, record.type)
+        const event = input?.event
+        accept({ ...event, directory }, event?.type)
       } catch {}
     },
     "tool.execute.before": async (input) => {

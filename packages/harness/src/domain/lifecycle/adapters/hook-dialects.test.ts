@@ -90,7 +90,7 @@ describe("readHookEvent", () => {
     const numberSession = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: 7 }, {});
     expect(numberSession.phase).toBe("finish");
     expect(numberSession.sessionId).toBeUndefined();
-    const nested = readHookEvent("opencode", { type: "session.idle", properties: { info: { id: 9 } } }, {});
+    const nested = readHookEvent("opencode", { type: "session.idle", properties: { info: { sessionID: 9 } } }, {});
     expect(nested.phase).toBe("finish");
     expect(nested.sessionId).toBeUndefined();
     const deep = readHookEvent("opencode", { type: "session.idle", properties: "not a record" }, {});
@@ -121,6 +121,36 @@ describe("readHookEvent", () => {
       {}
     );
     expect(named.sessionId).toBe("B");
+  });
+
+  it("S113: reads opencode's info.id as the session id only where info is a Session", () => {
+    const sessionOf = (payload: object) => readHookEvent("opencode", payload, {}).sessionId;
+    expect(sessionOf({ type: "message.updated", properties: { info: { id: "msg_1" } } })).toBeUndefined();
+    expect(sessionOf({ type: "pty.created", properties: { info: { id: "pty_1" } } })).toBeUndefined();
+    expect(sessionOf({ type: "pty.updated", properties: { info: { id: "pty_1" } }, currentSessionId: "A" })).toBe("A");
+    for (const type of ["session.created", "session.updated", "session.deleted"]) {
+      expect(sessionOf({ type, properties: { info: { id: "ses_1" } } })).toBe("ses_1");
+      expect(sessionOf({ type, properties: { info: { id: "ses_1" } }, currentSessionId: "A" })).toBe("ses_1");
+    }
+  });
+
+  it("reads an event's own field source in place of the dialect's, under its aliases too", () => {
+    const mine: HookDialect = {
+      specificationVersion: "harness-v1",
+      agent: "my-agent",
+      delivery: "plugin",
+      fields: { event: { paths: [["kind"]] }, sessionId: { paths: [["sid"]] } },
+      events: {
+        plain: { lifecycle: { phase: "activity" } },
+        own: { lifecycle: { phase: "activity" }, aliases: ["own_alias"], fields: { sessionId: { paths: [["other"]] } } }
+      }
+    };
+    const options = { adapters: { "my-agent": mine } };
+    const sessionOf = (payload: object) => readHookEvent("my-agent", payload, {}, options).sessionId;
+    expect(sessionOf({ kind: "plain", sid: "s", other: "o" })).toBe("s");
+    expect(sessionOf({ kind: "own", sid: "s", other: "o" })).toBe("o");
+    expect(sessionOf({ kind: "own_alias", sid: "s", other: "o" })).toBe("o");
+    expect(sessionOf({ kind: "own", sid: "s" })).toBeUndefined();
   });
 
   it("reads inherited keys as absent", () => {
