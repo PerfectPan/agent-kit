@@ -3,7 +3,8 @@ import type { LifecycleEvent } from "@rivus/agent-kit-harness";
 import type { HookDialectSample } from "../../../src/hook-dialect-conformance.js";
 
 // Scrubbed opencode plugin events (https://opencode.ai/docs/plugins), as a bridge plugin forwards them: the bus
-// event with the plugin's `directory`, and tool hook inputs as `{ type, properties: input }`.
+// event with the plugin's `directory`, and tool hook inputs as `{ type, properties: input, directory }`. Each sample
+// is a single payload without the bridge's `currentSessionId`, so `file.edited` here carries no session id.
 
 const sessionID = "ses_4f2a-opencode";
 const directory = "/u/me/work";

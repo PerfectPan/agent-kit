@@ -53,10 +53,10 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 /** Reads one payload with one dialect. Unknown shapes and events read as phase `unknown`; nothing throws. */
 export function readWithDialect(dialect: HookDialect, payload: PayloadView, env: Env): LifecycleEvent {
-  const { fields } = dialect;
-  const read = (key: keyof PayloadFields) => readField(payload, env, fields[key]);
-  const nativeEvent = read("event") ?? "";
+  const nativeEvent = readField(payload, env, dialect.fields.event) ?? "";
   const spec = eventSpec(dialect, nativeEvent);
+  const source = (key: Exclude<keyof PayloadFields, "event">) => spec?.fields?.[key] ?? dialect.fields[key];
+  const read = (key: Exclude<keyof PayloadFields, "event">) => readField(payload, env, source(key));
   const event: Mutable<LifecycleEvent> = {
     agent: dialect.agent,
     ...(spec === undefined ? { phase: "unknown" } : resolveMapping(spec, payload)),
@@ -69,7 +69,7 @@ export function readWithDialect(dialect: HookDialect, payload: PayloadView, env:
       event[key] = value;
     }
   }
-  const marker = readField(payload, env, fields.subagentMarker ?? fields.subagentId);
+  const marker = readField(payload, env, source("subagentMarker") ?? source("subagentId"));
   if (spec?.subagent === true || marker !== undefined) {
     const id = read("subagentId");
     const type = read("subagentType");
