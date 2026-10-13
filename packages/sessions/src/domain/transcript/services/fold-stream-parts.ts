@@ -1,5 +1,9 @@
 import type { LiveTranscriptEvent, LiveTranscriptEventOf, TranscriptStreamPart } from "../value-objects/stream-part.js";
-import type { RequestPayload, TranscriptEventBase, TranscriptEventKind } from "../value-objects/transcript-event.js";
+import type {
+  RequestPayload,
+  TranscriptEventKind,
+  TranscriptEventPayloads
+} from "../value-objects/transcript-event.js";
 
 /** Turns stream parts into completed events as they arrive. */
 export interface StreamFolder {
@@ -28,7 +32,7 @@ export function createStreamFolder(): StreamFolder {
   const event = <K extends TranscriptEventKind>(
     kind: K,
     id: string,
-    payload: TranscriptEventBase<K>["payload"],
+    payload: TranscriptEventPayloads[K],
     ts: number,
     original?: unknown
   ): LiveTranscriptEventOf<K> => ({

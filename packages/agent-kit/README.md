@@ -314,6 +314,8 @@ Cursor (added after 0.1.0).
 
 To read another agent, pass your own `SessionAdapter` through the `adapters` option
 (`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
+An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
+(exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
 `detectAgents(platform)` from `/discovery` reports, for each of the seven agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default

@@ -1,8 +1,13 @@
 import type { Usage } from "../../usage/index.js";
 import type { SourcePointer } from "./source-pointer.js";
 
-/** The payload type of each event kind. */
-interface TranscriptEventPayloads {
+/**
+ * The payload type of each event kind. Code generic over the kind, such as a function that builds a
+ * `TranscriptEventOf<K>`, types its payload as `TranscriptEventPayloads[K]`: while `K` is a type parameter, TypeScript
+ * does not resolve `TranscriptEventOf<K>['payload']`, so an event built from such a payload does not check as a
+ * `TranscriptEventOf<K>`.
+ */
+export interface TranscriptEventPayloads {
   user: MessagePayload;
   assistant: MessagePayload;
   reasoning: ReasoningPayload;
@@ -162,9 +167,10 @@ export interface CompactionPayload {
 
 /**
  * `system` events carry a `type`, such as `turn_duration` (with `durationMs`) or `prompt_snapshot` (with
- * `systemPrompt` and `tools`, see `PromptSnapshotPayload`); instructions an agent sent without one, such as Codex's
- * developer messages, carry only `text`. The snapshot fields are declared here rather than on a member of a union:
- * the other `type`s are open strings, which could not narrow such a union on `type: 'prompt_snapshot'`.
+ * `systemPrompt` and `tools`, see `PromptSnapshotPayload`); instructions an agent sent without one carry `text`, and
+ * Codex's developer messages also carry `injected: true`. The snapshot fields are declared here rather than on a
+ * member of a union: the other `type`s are open strings, which could not narrow such a union on
+ * `type: 'prompt_snapshot'`.
  */
 export interface SystemPayload {
   type?: string;

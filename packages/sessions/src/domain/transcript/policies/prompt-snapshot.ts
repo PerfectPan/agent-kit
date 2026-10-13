@@ -1,8 +1,9 @@
 import type { PromptSnapshotPayload, SystemPayload, TranscriptEvent } from "../value-objects/transcript-event.js";
 
 /**
- * Narrowing a known type: a `PromptSnapshotPayload` is exactly a `SystemPayload` whose `type` is `prompt_snapshot`,
- * and TypeScript narrows a field's value only on a union, which `SystemPayload` is not.
+ * A literal comparison on a payload already typed `SystemPayload`, not a check on unknown data, so the shape-guard
+ * rule of authoring.md does not apply. A `PromptSnapshotPayload` is exactly a `SystemPayload` whose `type` is
+ * `prompt_snapshot`, and TypeScript narrows on a field's value only within a union, which `SystemPayload` is not.
  */
 function isPromptSnapshot(payload: SystemPayload): payload is PromptSnapshotPayload {
   return payload.type === "prompt_snapshot";

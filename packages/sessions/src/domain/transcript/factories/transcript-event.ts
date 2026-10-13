@@ -4,9 +4,9 @@ import { basenamePath } from "../../session/index.js";
 import { type SkippedRecord, type SourcedRecord, sourceOf } from "../value-objects/source-pointer.js";
 import type {
   TranscriptEvent,
-  TranscriptEventBase,
   TranscriptEventKind,
-  TranscriptEventOf
+  TranscriptEventOf,
+  TranscriptEventPayloads
 } from "../value-objects/transcript-event.js";
 import type { Capability, Lane, Transcript, TranscriptSession } from "../value-objects/transcript.js";
 
@@ -53,7 +53,7 @@ export interface EventFields {
 export function baseEvent<K extends TranscriptEventKind>(
   record: SourcedRecord,
   kind: K,
-  payload: TranscriptEventBase<K>["payload"],
+  payload: TranscriptEventPayloads[K],
   fields: EventFields = {}
 ): TranscriptEventOf<K> {
   const event: TranscriptEventOf<K> = {

@@ -129,6 +129,7 @@ export {
   type TranscriptEvent,
   type TranscriptEventKind,
   type TranscriptEventOf,
+  type TranscriptEventPayloads,
   type TranscriptSession,
   type TranscriptStreamPart,
   type UnknownFormatGeneration,

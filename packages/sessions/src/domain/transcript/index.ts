@@ -66,6 +66,7 @@ export {
   type TranscriptEventBody,
   type TranscriptEventKind,
   type TranscriptEventOf,
+  type TranscriptEventPayloads,
   type UnknownPayload
 } from "./value-objects/transcript-event.js";
 export {
