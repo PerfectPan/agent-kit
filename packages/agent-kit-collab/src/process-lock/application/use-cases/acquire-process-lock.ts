@@ -4,11 +4,15 @@ import { tryFileLock } from "../services/file-lock.js";
 import { holderOf, newStamp, type ProcessLockHolder, readStamp } from "../services/holder.js";
 import type { ProcessLockPlatform } from "../ports.js";
 import { SETTLE_MS, trySqliteLock, unlockSqlite } from "../services/sqlite-lock.js";
+import { takeTurn } from "../services/turns.js";
 
 export interface ProcessLockOptions {
-  /** Keep trying while another process holds the lock, instead of returning `ProcessLockHeld` at once. */
+  /**
+   * Wait while another process holds the lock, or another acquisition in this one holds or is attempting it, instead
+   * of returning `ProcessLockHeld` at once.
+   */
   readonly wait?: boolean;
-  /** How often a waiting call tries again, in milliseconds; 50 by default. */
+  /** How often a call waiting for another process tries again, in milliseconds; 50 by default. */
   readonly retryMs?: number;
   /** Aborting stops waiting and rejects with `signal.reason`; a lock taken after the abort is released first. */
   readonly signal?: AbortSignal;
@@ -24,7 +28,7 @@ export interface ProcessLock {
   release(): Promise<void>;
 }
 
-/** Another process, or another acquisition in this one, holds the lock. */
+/** Another process holds the lock, or another acquisition in this one holds or is attempting it. */
 export interface ProcessLockHeld {
   readonly _tag: "ProcessLockHeld";
   readonly path: string;
@@ -45,6 +49,16 @@ function once(release: () => Promise<void>): () => Promise<void> {
     released ??= release();
     return released;
   };
+}
+
+function holderFileOf(path: string): string {
+  return `${path}.holder`;
+}
+
+/** What the holder recorded, as a refused attempt reads it: `<path>.holder` beside a SQLite lock, or the lock file. */
+async function recordedHolder(platform: ProcessLockPlatform, path: string): Promise<ProcessLockHolder | undefined> {
+  const recorded = await readStamp(platform, platform.sqlite === undefined ? path : holderFileOf(path));
+  return recorded?.stamp && holderOf(recorded.stamp);
 }
 
 function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
@@ -82,7 +96,7 @@ export async function tryProcessLock(
     }
     return ok({ path, mechanism: "file", holder: holderOf(attempt.stamp), release: once(attempt.release) });
   }
-  const holderFile = `${path}.holder`;
+  const holderFile = holderFileOf(path);
   const busyTimeoutMs = options.first ? SETTLE_MS : 0;
   let db = trySqliteLock(sqlite, path, busyTimeoutMs);
   // Processes that try at the same moment can all lose to each other's shared locks, though none holds the lock.
@@ -92,8 +106,7 @@ export async function tryProcessLock(
     db = trySqliteLock(sqlite, path, busyTimeoutMs);
   }
   if (db === undefined) {
-    const recorded = await readStamp(platform, holderFile);
-    return err({ _tag: "ProcessLockHeld", path, holder: recorded?.stamp && holderOf(recorded.stamp) });
+    return err({ _tag: "ProcessLockHeld", path, holder: await recordedHolder(platform, path) });
   }
   try {
     await platform.fs.writeAtomic(holderFile, JSON.stringify(stamp));
@@ -119,6 +132,11 @@ export async function tryProcessLock(
  * only. Without SQLite, `path` is a lock file that holds the identity itself; a lock file whose holder died is
  * reclaimed on the next attempt, which needs the holder on this host (see `tryFileLock` for the remaining gaps).
  *
+ * Acquisitions of one lock in this process take turns in memory (see `takeTurn`): while one holds the lock or is
+ * attempting it, the next waits for it to release the lock or give up, then makes its own attempt, so none of them
+ * blocks the thread in a SQLite busy wait on a holder in this process. Without `wait`, a call that finds the turn taken
+ * resolves to `ProcessLockHeld` at once, without attempting, with the holder read from the lock's record.
+ *
  * Supports darwin and linux, where the platform can identify processes.
  */
 export async function acquireProcessLock(
@@ -127,19 +145,41 @@ export async function acquireProcessLock(
   options: ProcessLockOptions = {}
 ): Promise<Result<ProcessLock, ProcessLockHeld>> {
   const { signal, wait = false, retryMs = 50 } = options;
-  for (let attempt = 0; ; attempt += 1) {
-    signal?.throwIfAborted();
-    const result = await tryProcessLock(platform, path, { first: attempt === 0 });
-    if (result.ok) {
-      if (signal?.aborted === true) {
-        await result.value.release();
-        signal.throwIfAborted();
+  signal?.throwIfAborted();
+  const endTurn = await takeTurn(platform, path, { wait, signal });
+  if (endTurn === undefined) {
+    return err({ _tag: "ProcessLockHeld", path, holder: await recordedHolder(platform, path) });
+  }
+  let held = false;
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      signal?.throwIfAborted();
+      const result = await tryProcessLock(platform, path, { first: attempt === 0 });
+      if (result.ok) {
+        if (signal?.aborted === true) {
+          await result.value.release();
+          signal.throwIfAborted();
+        }
+        held = true;
+        const lock = result.value;
+        const release = async () => {
+          try {
+            await lock.release();
+          } finally {
+            endTurn();
+          }
+        };
+        return ok({ ...lock, release: once(release) });
       }
-      return result;
+      if (!wait) {
+        return result;
+      }
+      await delay(backoffMs(retryMs, attempt), signal);
     }
-    if (!wait) {
-      return result;
+  } finally {
+    // The turn ends with the call unless it returns the lock, whose release ends it.
+    if (!held) {
+      endTurn();
     }
-    await delay(backoffMs(retryMs, attempt), signal);
   }
 }

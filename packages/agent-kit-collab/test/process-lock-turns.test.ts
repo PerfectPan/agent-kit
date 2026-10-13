@@ -1,0 +1,248 @@
+import { symlinkSync } from "node:fs";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+import type { Platform } from "@rivus/agent-kit/platform";
+
+import { acquireProcessLock, type ProcessLock, type ProcessLockHeld } from "../src/process-lock/public.js";
+import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
+
+type Mechanism = "sqlite" | "file";
+
+interface Spied {
+  readonly platform: Platform;
+  /** Attempts on the lock itself: SQLite databases opened for writing, or lock files created. */
+  readonly attempts: () => number;
+  /** Resolves once every acquisition started so far has joined the queue or started its attempt. */
+  readonly settled: () => Promise<void>;
+  /** Stops the next file writes, which every attempt makes once it has the lock, until `open` is called. */
+  readonly pauseWrites: () => { readonly reached: Promise<void>; readonly open: () => void };
+}
+
+/** The Node platform, counting attempts and lookups, with writes that a test can pause. */
+function spied(mechanism: Mechanism): Spied {
+  const node = testPlatform({ sqlite: mechanism === "sqlite" });
+  const { fs, sqlite } = node;
+  let attempts = 0;
+  const lookups: Promise<unknown>[] = [];
+  let paused: { readonly reach: () => void; readonly opened: Promise<void> } | undefined;
+  const platform: Platform = {
+    ...node,
+    fs: {
+      ...fs,
+      realpath(path) {
+        const found = fs.realpath(path);
+        lookups.push(found);
+        return found;
+      },
+      createExclusive(path) {
+        attempts += 1;
+        return fs.createExclusive(path);
+      },
+      async writeAtomic(path, data, options) {
+        if (paused !== undefined) {
+          paused.reach();
+          await paused.opened;
+        }
+        await fs.writeAtomic(path, data, options);
+      }
+    },
+    sqlite: sqlite && {
+      open(path, options) {
+        if (options?.readonly !== true) {
+          attempts += 1;
+        }
+        return sqlite.open(path, options);
+      }
+    }
+  };
+  return {
+    platform,
+    attempts: () => attempts,
+    settled: async () => {
+      await Promise.all(lookups);
+      // Every acquisition continues from its lookup in microtasks, which all run before the next macrotask.
+      await new Promise((resolve) => setImmediate(resolve));
+    },
+    pauseWrites: () => {
+      const reached = Promise.withResolvers<void>();
+      const opened = Promise.withResolvers<void>();
+      paused = { reach: reached.resolve, opened: opened.promise };
+      return {
+        reached: reached.promise,
+        open: () => {
+          paused = undefined;
+          opened.resolve();
+        }
+      };
+    }
+  };
+}
+
+function held(result: { readonly ok: true; readonly value: ProcessLock } | { readonly ok: false }): ProcessLock {
+  if (!result.ok) {
+    throw new Error("not acquired");
+  }
+  return result.value;
+}
+
+beforeEach(() => {
+  // No acquisition here should ever back off or settle a race: those waits run on timers, which never fire now.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  removeTempDirs();
+});
+
+describe.each(["sqlite", "file"] as const)("acquireProcessLock in one process with %s", (mechanism) => {
+  it("S69: gives concurrent acquisitions the lock one at a time, each with a single attempt", async () => {
+    const { platform, attempts } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    let holding = 0;
+    let most = 0;
+    const work = async () => {
+      const lock = held(await acquireProcessLock(platform, path, { wait: true }));
+      holding += 1;
+      most = Math.max(most, holding);
+      // Holds across a turn of the event loop, so the others run while it holds the lock.
+      await new Promise((resolve) => setImmediate(resolve));
+      holding -= 1;
+      await lock.release();
+    };
+    await Promise.all(Array.from({ length: 8 }, work));
+    expect(most).toBe(1);
+    // An acquisition that met a held lock would have attempted again after a timer.
+    expect(attempts()).toBe(8);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("S69: queues acquisitions with no attempt while one here holds the lock, and hands it on in order", async () => {
+    const { platform, attempts, settled } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    const first = held(await acquireProcessLock(platform, path));
+    const second = acquireProcessLock(platform, path, { wait: true });
+    await settled();
+    const third = acquireProcessLock(platform, path, { wait: true });
+    await settled();
+    expect(attempts()).toBe(1);
+
+    await first.release();
+    const secondLock = held(await second);
+    expect(attempts()).toBe(2);
+    await settled();
+    expect(attempts()).toBe(2);
+
+    await secondLock.release();
+    const thirdLock = held(await third);
+    expect(attempts()).toBe(3);
+    await thirdLock.release();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("S69: refuses a call without wait at once, with no attempt, while one here holds or attempts it", async () => {
+    const { platform, attempts, pauseWrites } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    const first = held(await acquireProcessLock(platform, path));
+    const refusal: ProcessLockHeld = { _tag: "ProcessLockHeld", path, holder: first.holder };
+    expect(await acquireProcessLock(platform, path)).toEqual({ ok: false, error: refusal });
+    expect(attempts()).toBe(1);
+    await first.release();
+
+    // The next acquisition stops in its attempt before it records itself, so the refusal finds no holder recorded.
+    const writes = pauseWrites();
+    const attempting = acquireProcessLock(platform, path);
+    await writes.reached;
+    expect(await acquireProcessLock(platform, path)).toEqual({ ok: false, error: { ...refusal, holder: undefined } });
+    expect(attempts()).toBe(2);
+    writes.open();
+    await held(await attempting).release();
+  });
+
+  it("S69: rejects a queued acquisition when its signal aborts, and keeps the turns of the others", async () => {
+    const { platform, attempts, settled } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    const first = held(await acquireProcessLock(platform, path));
+    const stop = new AbortController();
+    const reason = new Error("stop");
+    const aborted = acquireProcessLock(platform, path, { wait: true, signal: stop.signal });
+    await settled();
+    const last = acquireProcessLock(platform, path, { wait: true });
+    await settled();
+
+    stop.abort(reason);
+    await expect(aborted).rejects.toBe(reason);
+    await settled();
+    // The last one still waits for the holder: the abort handed it no turn.
+    expect(attempts()).toBe(1);
+    await first.release();
+    await held(await last).release();
+    expect(attempts()).toBe(2);
+  });
+
+  it("S69: releases a lock taken after an abort, and hands the turn on", async () => {
+    const { platform, attempts, settled, pauseWrites } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    const first = held(await acquireProcessLock(platform, path));
+    const stop = new AbortController();
+    const reason = new Error("stop");
+    const aborted = acquireProcessLock(platform, path, { wait: true, signal: stop.signal });
+    await settled();
+    const last = acquireProcessLock(platform, path, { wait: true });
+    await settled();
+
+    const writes = pauseWrites();
+    await first.release();
+    // The aborted acquisition has the lock and is recording itself when the signal aborts.
+    await writes.reached;
+    stop.abort(reason);
+    writes.open();
+    await expect(aborted).rejects.toBe(reason);
+    await held(await last).release();
+    expect(attempts()).toBe(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("S69: shares turns across platforms with one SQLite and file system, and spellings of one directory", async () => {
+    const { platform, attempts } = spied(mechanism);
+    const dir = tempDir();
+    const link = join(tempDir(), "link");
+    symlinkSync(dir, link);
+    const first = held(await acquireProcessLock(platform, join(dir, "daemon.lock")));
+    const other: Platform = { ...platform };
+    expect(await acquireProcessLock(other, `${link}/./daemon.lock`)).toMatchObject({
+      ok: false,
+      error: { _tag: "ProcessLockHeld", holder: first.holder }
+    });
+    expect(attempts()).toBe(1);
+    await first.release();
+  });
+
+  it("S69: keeps platforms over different file systems apart, even for one path", async () => {
+    // Each platform sees its own directory as its whole file system, so one path names a different file in each.
+    const within = (root: string): Platform => {
+      const { fs, sqlite, ...node } = testPlatform({ sqlite: mechanism === "sqlite" });
+      const real = (path: string) => join(root, path);
+      return {
+        ...node,
+        fs: {
+          ...fs,
+          realpath: async (path) => ((await fs.realpath(real(path))) === undefined ? undefined : path),
+          read: (path, range) => fs.read(real(path), range),
+          writeAtomic: (path, data, options) => fs.writeAtomic(real(path), data, options),
+          createExclusive: (path) => fs.createExclusive(real(path)),
+          remove: (path) => fs.remove(real(path)),
+          stat: (path, options) => fs.stat(real(path), options)
+        },
+        sqlite: sqlite && { open: (path, options) => sqlite.open(real(path), options) }
+      };
+    };
+    const one = await acquireProcessLock(within(tempDir()), "/daemon.lock");
+    const another = await acquireProcessLock(within(tempDir()), "/daemon.lock");
+    expect([one.ok, another.ok]).toEqual([true, true]);
+    await held(another).release();
+    await held(one).release();
+  });
+});

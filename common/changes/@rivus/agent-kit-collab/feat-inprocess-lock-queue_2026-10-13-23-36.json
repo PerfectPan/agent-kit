@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "acquireProcessLock serializes the acquisitions of one lock inside a process in memory: while one holds the lock or is attempting it, a later one with wait waits for it to release the lock or give up, then makes its own attempt, so no acquisition blocks the thread in a SQLite busy wait on a holder in its own process; without wait it resolves to ProcessLockHeld at once, without an attempt, with the holder the lock recorded. Aborting signal during that wait rejects with signal.reason and leaves the other turns as they were. Acquisitions share turns when they name the same file (its directory resolved through symlinks) through platforms with the same sqlite object (without SQLite, the same fs), as every createNodePlatform result has; other processes are still kept out by SQLite or the lock file, and isProcessLockHeld is unchanged.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
