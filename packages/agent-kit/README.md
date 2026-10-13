@@ -165,7 +165,7 @@ import { addUsage, isUsageRecord, scanUsage, type Usage, type UsageScanState } f
 const platform = createNodePlatform();
 const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
 let state: UsageScanState | undefined; // keep it between runs, as JSON
-const totals = new Map<string, Usage>();
+const totals = new Map<string, Usage>(); // a continued scan yields only new records: keep totals with the state
 
 const scan = scanUsage(platform, { since, ...(state ? { state } : {}) });
 for await (const item of scan) {
