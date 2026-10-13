@@ -139,6 +139,8 @@ describe("acquireProcessLock while waiting with SQLite", () => {
     const stop = new AbortController();
     const reason = new Error("stop");
     const timeouts: string[] = [];
+    // Its own sqlite object keeps this platform out of the holder's queue in this process, so it meets the held lock
+    // in SQLite, as another process would.
     const counting: Platform = {
       ...platform,
       sqlite: {
