@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Sun, 11 Oct 2026 03:31:41 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 07:15:51 GMT and should not be manually modified.
+
+## 0.12.0
+Tue, 13 Oct 2026 07:15:51 GMT
+
+### Updates
+
+- Validate package manifests with zod/mini in distribution checks.
 
 ## 0.11.0
 Sun, 11 Oct 2026 03:31:41 GMT

@@ -1,6 +1,18 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Sun, 11 Oct 2026 03:31:41 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 07:15:51 GMT and should not be manually modified.
+
+## 0.12.0
+Tue, 13 Oct 2026 07:15:51 GMT
+
+### Minor changes
+
+- TranscriptEvent, LiveTranscriptEvent and the update stream part are now unions discriminated by kind, so narrowing on event.kind types event.payload as that kind's payload type, fields an agent adds read as unknown, TranscriptEventOf<K> names the events of some kinds, and TranscriptEventPayloads maps each kind to its payload type, so a third-party adapter can type a builder generic over the kind. SystemPayload declares the prompt snapshot fields, ToolCallPayload the ACP title, and requestUsage takes a request event. Code that builds an event from a kind typed TranscriptEventKind and a Record payload no longer compiles; build that kind's payload type instead, or TranscriptEventPayloads[K] in a builder generic over the kind. Runtime output is unchanged.
+
+### Updates
+
+- Call the coding agent the agent, not the host, in sessions adapter comments.
+- Replace hand-written shape guards with schema or library checks, preserve ACP merges, configuration records, hook payload reads and probe variants, validate package manifests, and document permitted exceptions.
 
 ## 0.11.0
 Sun, 11 Oct 2026 03:31:41 GMT
