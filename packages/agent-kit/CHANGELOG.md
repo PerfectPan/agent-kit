@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Tue, 13 Oct 2026 08:20:24 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:09:20 GMT and should not be manually modified.
+
+## 0.14.0
+Tue, 13 Oct 2026 11:09:20 GMT
+
+### Updates
+
+- Document that PlatformSqlite.open with readonly throws on a missing database file instead of creating it.
 
 ## 0.13.0
 Tue, 13 Oct 2026 08:20:24 GMT
