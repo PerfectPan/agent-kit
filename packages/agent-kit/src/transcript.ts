@@ -68,6 +68,7 @@ export type {
   Transcript,
   TranscriptEvent,
   TranscriptEventKind,
+  TranscriptEventOf,
   TranscriptSession,
   TranscriptStreamPart,
   UnknownFormatGeneration,

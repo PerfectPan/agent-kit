@@ -227,7 +227,7 @@ import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
 import { detectAgents } from "${manifest.name}/discovery";
 import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
-import { loadTranscript, type RequestPayload } from "${manifest.name}/transcript";
+import { loadTranscript } from "${manifest.name}/transcript";
 import {
   addUsage,
   isUsageRecord,
@@ -277,7 +277,7 @@ for (const agent of seeded) {
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
   const requests = transcript.value.events.filter((event) => event.kind === "request");
-  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, (event.payload as RequestPayload).usage ?? {}), {});
+  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, event.payload.usage ?? {}), {});
 
   // The zero-dependency usage entry agrees with the transcript on the same session. The seeded files were last
   // written an hour ago, so the scan treats them as complete.

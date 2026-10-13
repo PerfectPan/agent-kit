@@ -6,6 +6,7 @@ import {
   latestSnapshot,
   MAIN_LANE_ID,
   promptSnapshot,
+  type PromptSnapshotPayload,
   snapshotHasSystemPrompt,
   snapshotHasTools,
   type TranscriptEvent,
@@ -33,12 +34,12 @@ const PromptSnapshotAttachment = z.object({
  * the CLI sent, as a string array, and on some snapshots the tool list and `cliPrefix`. `undefined` when a strict
  * field has another shape, which is an unknown format generation.
  */
-export function promptSnapshotPayload(attachment: ClaudeCodeAttachment): Record<string, unknown> | undefined {
+export function promptSnapshotPayload(attachment: ClaudeCodeAttachment): PromptSnapshotPayload | undefined {
   const snapshot = z.safeParse(PromptSnapshotAttachment, attachment).data;
   if (!snapshot) {
     return undefined;
   }
-  const payload: Record<string, unknown> = { type: "prompt_snapshot" };
+  const payload: PromptSnapshotPayload = { type: "prompt_snapshot" };
   const prompt = snapshot.systemPrompt;
   if (typeof prompt === "string") {
     if (prompt) {

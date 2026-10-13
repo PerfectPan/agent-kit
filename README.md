@@ -82,8 +82,10 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 ```
 
 `listSessions` reads only the head and tail of each file. `loadTranscript` reads every file of one session and
-returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. Events reference each other
-through `agentId`, `parentId`, `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
+returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. An event's `kind` types its
+`payload`: after `event.kind === "tool_call"`, `event.payload` is a `ToolCallPayload`, and a field an agent adds
+beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
+`requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
 record is absent, not 0.
 

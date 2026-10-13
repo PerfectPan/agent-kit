@@ -2,7 +2,12 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { basenamePath } from "../../session/index.js";
 import { type SkippedRecord, type SourcedRecord, sourceOf } from "../value-objects/source-pointer.js";
-import type { TranscriptEvent, TranscriptEventKind } from "../value-objects/transcript-event.js";
+import type {
+  TranscriptEvent,
+  TranscriptEventBase,
+  TranscriptEventKind,
+  TranscriptEventOf
+} from "../value-objects/transcript-event.js";
 import type { Capability, Lane, Transcript, TranscriptSession } from "../value-objects/transcript.js";
 
 /** What a translation produces before the adapter adds the agent id and the capabilities its files show. */
@@ -45,13 +50,13 @@ export interface EventFields {
 }
 
 /** An event for `record` with `seq` 0; `assignSeq` numbers the finished list. */
-export function baseEvent(
+export function baseEvent<K extends TranscriptEventKind>(
   record: SourcedRecord,
-  kind: TranscriptEventKind,
-  payload: Record<string, unknown>,
+  kind: K,
+  payload: TranscriptEventBase<K>["payload"],
   fields: EventFields = {}
-): TranscriptEvent {
-  const event: TranscriptEvent = {
+): TranscriptEventOf<K> {
+  const event: TranscriptEventOf<K> = {
     id: fields.id ?? lineId(record),
     seq: 0,
     ts: fields.ts ?? 0,

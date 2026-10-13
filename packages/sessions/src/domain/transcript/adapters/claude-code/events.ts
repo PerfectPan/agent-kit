@@ -16,6 +16,7 @@ import {
   type SourcedRecord,
   type StampedRecord,
   type TranscriptEvent,
+  type TranscriptEventOf,
   type TranscriptSession,
   type UnknownFormatGeneration,
   unknownFormatGeneration
@@ -25,7 +26,6 @@ import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "../../../sessio
 import { applySnapshots, snapshotCapabilities } from "./prompt-snapshot.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../../../usage/adapters/claude-code.js";
 import { claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
-import type { Usage } from "../../../usage/index.js";
 
 const AGENT = "claude-code";
 
@@ -78,7 +78,7 @@ function eventId(uuid: string | undefined, record: SourcedRecord, part: number):
  * reason, and its usage by `claudeCodeRequestUsage`.
  */
 function mergeRequest(
-  requests: Map<string, TranscriptEvent>,
+  requests: Map<string, TranscriptEventOf<"request">>,
   events: TranscriptEvent[],
   parsed: Map<TranscriptEvent, ClaudeCodeRecordValue>,
   rec: ClaudeCodeRecordValue,
@@ -95,7 +95,7 @@ function mergeRequest(
     parsed.set(event, rec);
   }
   const message = rec.message;
-  const usage = claudeCodeRequestUsage(event.payload.usage as Usage | undefined, claudeCodeUsageOf(message?.usage));
+  const usage = claudeCodeRequestUsage(event.payload.usage, claudeCodeUsageOf(message?.usage));
   if (usage) {
     event.payload.usage = usage;
   }
@@ -199,14 +199,12 @@ function agentLanes(
   const calls = new Map<string, TranscriptEvent>();
   const spawnCall = new Map<string, string>();
   for (const event of events) {
-    // `callId` is this translation's own payload field, a string for every tool call and result it emits.
-    const callId = event.payload.callId;
-    if (event.kind === "tool_call" && typeof callId === "string" && callId) {
-      calls.set(callId, event);
+    if (event.kind === "tool_call" && event.payload.callId) {
+      calls.set(event.payload.callId, event);
     }
     const spawned = parsed.get(event)?.toolUseResult?.agentId;
-    if (event.kind === "tool_result" && typeof callId === "string" && callId && spawned && !spawnCall.has(spawned)) {
-      spawnCall.set(spawned, callId);
+    if (event.kind === "tool_result" && event.payload.callId && spawned && !spawnCall.has(spawned)) {
+      spawnCall.set(spawned, event.payload.callId);
     }
   }
   const agents: Lane[] = [{ id: MAIN_LANE_ID }];
@@ -241,7 +239,7 @@ export function translateClaudeCodeRecords(
 ): Result<ParsedTranscript, UnknownFormatGeneration> {
   const events: TranscriptEvent[] = [];
   const skipped: SkippedRecord[] = [];
-  const requests = new Map<string, TranscriptEvent>();
+  const requests = new Map<string, TranscriptEventOf<"request">>();
   const parentOf = new Map<string, string | undefined>();
   /** Each event's parsed record, so the later passes never parse a record again. */
   const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
