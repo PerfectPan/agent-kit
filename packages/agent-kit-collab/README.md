@@ -33,7 +33,7 @@ until removed).
 
 | Entry                                  | Main exports                                                                                                                                                                                        | Kind     |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `ProcessLock`, `ProcessLockHeld`                                                                                                                                              | plain TS |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`, `ProcessLock`, `ProcessLockHeld`                                                                                                                         | plain TS |
 | `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository`; rules `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness` | Effect   |
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                                                                                       | Effect   |
 
@@ -57,6 +57,24 @@ moment the holder exits or crashes, and nothing is reclaimed. The holder's ident
 diagnostics only. Without SQLite the lock is a file that holds the identity; a lock file whose holder died on this
 host is reclaimed on the next attempt, one reclaimer at a time. Pass `{ wait: true, signal }` to wait for the holder
 instead of getting `ProcessLockHeld` at once.
+
+`isProcessLockHeld` tells whether another process, or an acquisition in this one, holds the lock, without taking it.
+A short-lived process can use it to hand work to a running holder and start one only when there is none:
+
+```ts
+import { isProcessLockHeld } from "@rivus/agent-kit-collab/process-lock";
+
+if (!(await isProcessLockHeld(platform, "/var/run/my-daemon/daemon.lock"))) {
+  startWorker(); // the worker takes the lock with acquireProcessLock, and exits if another one got it first
+}
+```
+
+The check writes nothing: no `<path>.holder`, and a missing lock file reads as free and stays missing. With SQLite it
+makes one attempt at a shared lock, with no busy timeout and no retries, reads no process identity, and answers in
+well under a millisecond; checks that run at once all see a free lock as free, and an `acquireProcessLock` running at
+the same moment still gets it. Without SQLite it judges the lock file's holder as an acquisition does and leaves a
+dead holder's file for the next acquisition to reclaim. The answer can be stale by the time it arrives, so only
+`acquireProcessLock` decides who holds the lock.
 
 ### Lease
 
