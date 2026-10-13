@@ -148,10 +148,6 @@ describe("acquireProcessLock while waiting with SQLite", () => {
             exec(sql) {
               if (sql.startsWith("PRAGMA busy_timeout")) {
                 timeouts.push(sql);
-                // The settling attempt opens the database five times; the sixth attempt after it is the last one.
-                if (timeouts.length === 11) {
-                  stop.abort(reason);
-                }
               }
               db.exec(sql);
             },
@@ -179,19 +175,26 @@ describe("acquireProcessLock while waiting with SQLite", () => {
         outcome = error;
       }
     );
-    // Each attempt reads files for real; a timer runs only once the attempt before it has set it.
+    // Each attempt reads files for real, so the clock moves only to a timer that the attempt before it has set. The
+    // signal aborts while the tenth wait, the first one that the 160 ms cap shortens, is pending.
     while (outcome === undefined) {
-      await vi.advanceTimersToNextTimerAsync();
-      await new Promise((resolve) => setImmediate(resolve));
+      if (vi.getTimerCount() === 0) {
+        await new Promise((resolve) => setImmediate(resolve));
+      } else if (timers.mock.calls.length < 10) {
+        await vi.advanceTimersToNextTimerAsync();
+      } else {
+        stop.abort(reason);
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
     expect(outcome).toBe(reason);
     // One settling attempt with its four retries 15 ms apart, then waits doubling from 10 ms up to 160 ms between
     // attempts that never block the thread.
     expect(timeouts).toEqual([
       ...Array.from({ length: 5 }, () => "PRAGMA busy_timeout = 10"),
-      ...Array.from({ length: 6 }, () => "PRAGMA busy_timeout = 0")
+      ...Array.from({ length: 5 }, () => "PRAGMA busy_timeout = 0")
     ]);
-    expect(timers.mock.calls.map(([, ms]) => ms)).toEqual([15, 15, 15, 15, 10, 20, 40, 80, 160, 160, 160]);
+    expect(timers.mock.calls.map(([, ms]) => ms)).toEqual([15, 15, 15, 15, 10, 20, 40, 80, 160, 160]);
     await (held.ok ? held.value.release() : undefined);
   });
 });
