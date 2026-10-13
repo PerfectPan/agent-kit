@@ -7,6 +7,7 @@ import { isAgentKitError } from "@rivus/agent-kit/catalog";
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Cause from "effect/Cause";
+import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -79,6 +80,25 @@ const takeOver = (holder: Holder, holderId = "other") =>
 const failureOf = <A, E>(exit: Exit.Exit<A, E>): unknown =>
   Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
 
+/**
+ * Runs `request`, which asks for a fence, so that `onRefused` runs at each of its attempts that found the fence held.
+ * A persistent store's fence (`holdProcessLock`) pauses on the Effect clock before it tries again, and only after such
+ * an attempt; the memory store's fence waits on a semaphore instead and never runs `onRefused`. The live clock keeps
+ * its methods on a class prototype, so they are delegated one by one instead of spread.
+ */
+const reportingRefusals = <A, E, R>(request: Effect.Effect<A, E, R>, onRefused: Effect.Effect<unknown>) =>
+  Clock.clockWith((clock) =>
+    Effect.provideService(request, Clock.Clock, {
+      currentTimeMillisUnsafe: () => clock.currentTimeMillisUnsafe(),
+      currentTimeMillis: clock.currentTimeMillis,
+      currentTimeNanosUnsafe: () => clock.currentTimeNanosUnsafe(),
+      currentTimeNanos: clock.currentTimeNanos,
+      monotonicTimeNanosUnsafe: () => clock.monotonicTimeNanosUnsafe(),
+      monotonicTimeNanos: clock.monotonicTimeNanos,
+      sleep: (duration) => Effect.andThen(onRefused, clock.sleep(duration))
+    })
+  );
+
 /** What the code under test did to the store, for a test to wait on instead of sleeping. */
 interface StoreEvents {
   /** Every record a save wrote, in order. */
@@ -121,6 +141,14 @@ const withTestClock = <A, E, R>(platform: Platform, body: (events: StoreEvents) 
  * memory store has every fiber surely reached its wait afterwards.
  */
 const flush = Effect.forEach(Array.from({ length: 50 }), () => Effect.yieldNow, { discard: true });
+
+/**
+ * Waits until `request`, a forked fence request, has been refused the fence that another holder keeps, or has ended,
+ * which means the fence let it in. A persistent store's request reports its refused attempts through `refused` (see
+ * `reportingRefusals`); the memory store's request parks on a semaphore without a trace, and `flush` gets it there.
+ */
+const refusedOrEnded = (persistent: boolean, refused: Effect.Effect<unknown>, request: Fiber.Fiber<unknown, unknown>) =>
+  Effect.raceFirst(persistent ? Effect.asVoid(refused) : flush, Effect.asVoid(Fiber.await(request)));
 
 /** Waits until a save has written `revision`, or a later one, of the record. */
 const savedRevision = (events: StoreEvents, revision: number) =>
@@ -178,13 +206,17 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
         );
       const holding = yield* Deferred.make<void>();
       const release = yield* Deferred.make<void>();
+      const refused = yield* Deferred.make<void>();
       const first = yield* Effect.forkChild(
         hold("a", KEY, Effect.andThen(Deferred.succeed(holding, undefined), Deferred.await(release)))
       );
       yield* Deferred.await(holding);
-      const second = yield* Effect.forkChild(hold("b", KEY));
+      const second = yield* Effect.forkChild(reportingRefusals(hold("b", KEY), Deferred.succeed(refused, undefined)));
       // Another key's fence is free while `a` keeps this key's fence; a shared fence would never let `c` start.
       yield* hold("c", "task:2");
+      // `b` has asked for the fence that `a` keeps; a fence that let it in would have run it by now.
+      yield* refusedOrEnded(persistent, Deferred.await(refused), second);
+      expect(order).toEqual(["a:start", "c:start", "c:end"]);
       yield* Deferred.succeed(release, undefined);
       yield* Fiber.join(first);
       yield* Fiber.join(second);
