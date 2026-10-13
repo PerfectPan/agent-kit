@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Tue, 13 Oct 2026 07:15:51 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 08:20:24 GMT and should not be manually modified.
+
+## 0.13.0
+Tue, 13 Oct 2026 08:20:24 GMT
+
+### Minor changes
+
+- The opencode bridge adds the current session id to events that name none and forgets a session once it is deleted. A HookEventSpec can replace a payload field source for its own event; the opencode dialect reads info.id as the session id only on session.created, session.updated and session.deleted (#99).
 
 ## 0.12.0
 Tue, 13 Oct 2026 07:15:51 GMT

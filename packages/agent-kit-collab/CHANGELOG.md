@@ -1,6 +1,11 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Tue, 13 Oct 2026 07:15:51 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 08:20:24 GMT and should not be manually modified.
+
+## 0.13.0
+Tue, 13 Oct 2026 08:20:24 GMT
+
+_Version update only_
 
 ## 0.12.0
 Tue, 13 Oct 2026 07:15:51 GMT
