@@ -7,10 +7,13 @@ import { isAgentKitError } from "@rivus/agent-kit/catalog";
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Cause from "effect/Cause";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
+import * as Queue from "effect/Queue";
+import { TestClock } from "effect/testing";
 import { afterEach } from "vite-plus/test";
 
 import {
@@ -20,12 +23,13 @@ import {
   type FencingToken,
   type Holder,
   LeaseRepository,
+  type LeaseRepositoryShape,
   type LeaseSnapshot,
   memoryLeaseRepository,
   sqliteLeaseRepository
 } from "../src/lease/public.js";
 import { revisionConflict } from "../src/lease/application/services/repository-failure.js";
-import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
+import { manualClock, removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases } from "./support/stores.js";
 
 const KEY = "task:1";
@@ -75,6 +79,58 @@ const takeOver = (holder: Holder, holderId = "other") =>
 const failureOf = <A, E>(exit: Exit.Exit<A, E>): unknown =>
   Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
 
+/** What the code under test did to the store, for a test to wait on instead of sleeping. */
+interface StoreEvents {
+  /** Every record a save wrote, in order. */
+  readonly saved: Queue.Queue<LeaseSnapshot>;
+  /** The key of every fence request, offered before the request starts waiting. */
+  readonly fenced: Queue.Queue<string>;
+}
+
+/**
+ * Runs `body` with the manager's time on the TestClock: heartbeats sleep and TTLs elapse only when the test adjusts
+ * it, through `Effect.sleep` and a platform clock that reads the TestClock. The store keeps the live clock, because
+ * its guards and fences retry against locks that other fibers and processes hold, and on the TestClock those retries
+ * would wait for the next adjustment; nothing asserts on how long they take.
+ */
+const withTestClock = <A, E, R>(platform: Platform, body: (events: StoreEvents) => Effect.Effect<A, E, R>) =>
+  Effect.gen(function* () {
+    const store = yield* LeaseRepository;
+    const saved = yield* Queue.unbounded<LeaseSnapshot>();
+    const fenced = yield* Queue.unbounded<string>();
+    const observed: LeaseRepositoryShape = {
+      load: (key) => TestClock.withLive(store.load(key)),
+      save: (key, next, expectedRevision) =>
+        TestClock.withLive(store.save(key, next, expectedRevision)).pipe(Effect.tap(() => Queue.offer(saved, next))),
+      fence: (key) => Effect.andThen(Queue.offer(fenced, key), TestClock.withLive(store.fence(key)))
+    };
+    const clock = yield* TestClock.testClockWith((testClock) =>
+      Effect.succeed({
+        now: () => testClock.currentTimeMillisUnsafe(),
+        monotonic: () => testClock.currentTimeMillisUnsafe()
+      })
+    );
+    return yield* body({ saved, fenced }).pipe(
+      Effect.provideService(LeaseRepository, observed),
+      Effect.provideService(PlatformService, { ...platform, clock })
+    );
+  });
+
+/**
+ * Lets forked fibers run until each waits on something the test controls. It does not wait for I/O, so only with the
+ * memory store has every fiber surely reached its wait afterwards.
+ */
+const flush = Effect.forEach(Array.from({ length: 50 }), () => Effect.yieldNow, { discard: true });
+
+/** Waits until a save has written `revision`, or a later one, of the record. */
+const savedRevision = (events: StoreEvents, revision: number) =>
+  Effect.gen(function* () {
+    let saved = yield* Queue.take(events.saved);
+    while (saved.revision < revision) {
+      saved = yield* Queue.take(events.saved);
+    }
+  });
+
 describe.each(storeCases)("lease with the $name repository", ({ make, persistent, platform }) => {
   it.live("writes records only over the revision it is shown, and conflicts otherwise", () => {
     const { layer } = make();
@@ -111,21 +167,28 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
     return Effect.gen(function* () {
       const store = yield* LeaseRepository;
       const order: string[] = [];
-      const hold = (name: string, key: string, ms: number) =>
+      const hold = (name: string, key: string, work: Effect.Effect<void> = Effect.void) =>
         Effect.scoped(
           Effect.gen(function* () {
             yield* store.fence(key);
             order.push(`${name}:start`);
-            yield* Effect.sleep(ms);
+            yield* work;
             order.push(`${name}:end`);
           })
         );
-      yield* Effect.all([hold("a", KEY, 150), hold("b", KEY, 10), hold("c", "task:2", 10)], {
-        concurrency: "unbounded"
-      });
-      const [first, second] = ["a", "b"].toSorted((x, y) => order.indexOf(`${x}:start`) - order.indexOf(`${y}:start`));
-      expect(order.indexOf(`${first}:end`)).toBeLessThan(order.indexOf(`${second}:start`));
-      expect(order.indexOf("c:end")).toBeLessThan(order.indexOf("a:end"));
+      const holding = yield* Deferred.make<void>();
+      const release = yield* Deferred.make<void>();
+      const first = yield* Effect.forkChild(
+        hold("a", KEY, Effect.andThen(Deferred.succeed(holding, undefined), Deferred.await(release)))
+      );
+      yield* Deferred.await(holding);
+      const second = yield* Effect.forkChild(hold("b", KEY));
+      // Another key's fence is free while `a` keeps this key's fence; a shared fence would never let `c` start.
+      yield* hold("c", "task:2");
+      yield* Deferred.succeed(release, undefined);
+      yield* Fiber.join(first);
+      yield* Fiber.join(second);
+      expect(order).toEqual(["a:start", "c:start", "c:end", "a:end", "b:start", "b:end"]);
     }).pipe(Effect.provide(layer));
   });
 
@@ -148,34 +211,44 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
     }).pipe(Effect.provide(layer));
   });
 
-  it.live("refuses a second acquisition while the holder keeps renewing", () => {
+  it.effect("refuses a second acquisition while the holder keeps renewing", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      const first = yield* createLeaseManager(config);
-      const second = yield* createLeaseManager(config);
-      const lease = yield* first.acquire(KEY);
-      // The second manager starts its observation here; without renewals it would take over after the TTL.
-      expect(failureOf(yield* Effect.exit(second.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
-      yield* Effect.sleep(TTL_MS * 2);
-      expect(failureOf(yield* Effect.exit(second.acquire(KEY)))).toMatchObject({
-        _tag: "LeaseHeld",
-        key: KEY,
-        generation: lease.token.generation,
-        holder: identity(platform)
-      });
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(platform, (events) =>
+      Effect.gen(function* () {
+        const first = yield* createLeaseManager(config);
+        const second = yield* createLeaseManager(config);
+        const lease = yield* first.acquire(KEY);
+        // The second manager starts its observation here; without renewals it would take over after the TTL.
+        expect(failureOf(yield* Effect.exit(second.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
+        // Two TTLs of heartbeats; each renewal lands before the clock moves on.
+        for (let beat = 1; beat <= (TTL_MS * 2) / HEARTBEAT_MS; beat += 1) {
+          yield* TestClock.adjust(HEARTBEAT_MS);
+          yield* savedRevision(events, 1 + beat);
+        }
+        expect(failureOf(yield* Effect.exit(second.acquire(KEY)))).toMatchObject({
+          _tag: "LeaseHeld",
+          key: KEY,
+          generation: lease.token.generation,
+          holder: identity(platform)
+        });
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  it.live("takes over a live but silent holder once this observer has seen no renewal for the TTL", () => {
+  it.effect("takes over a live but silent holder once this observer has seen no renewal for the TTL", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      yield* takeOver(identity(platform), "silent");
-      const leases = yield* createLeaseManager(config);
-      expect(failureOf(yield* Effect.exit(leases.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
-      yield* Effect.sleep(TTL_MS + 50);
-      const lease = yield* leases.acquire(KEY);
-      expect(lease.token).toEqual({ key: KEY, generation: 2 });
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(platform, () =>
+      Effect.gen(function* () {
+        yield* takeOver(identity(platform), "silent");
+        const leases = yield* createLeaseManager(config);
+        expect(failureOf(yield* Effect.exit(leases.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
+        yield* TestClock.adjust(TTL_MS - 1);
+        expect(failureOf(yield* Effect.exit(leases.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
+        yield* TestClock.adjust(1);
+        const lease = yield* leases.acquire(KEY);
+        expect(lease.token).toEqual({ key: KEY, generation: 2 });
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
   it.live("S63: takes over at once from a holder whose pid now belongs to another process", () => {
@@ -188,179 +261,228 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
     }).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  it.live("S62: losing and regaining the lease moves to a new generation, and the old token is refused", () => {
+  it.effect("S62: losing and regaining the lease moves to a new generation, and the old token is refused", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      let lastSeen: FencingToken | undefined;
-      const write = (token: FencingToken) =>
-        Effect.sync(() => {
-          const checked = checkFence(lastSeen, token);
-          lastSeen = checked.ok ? checked.value : lastSeen;
-          return checked.ok;
-        });
-      const leases = yield* createLeaseManager(config);
-      const old = yield* leases.acquire(KEY);
-      expect(yield* old.runFenced(write)).toBe(true);
-
-      yield* takeOver(reusedPid(platform));
-      expect(failureOf(yield* Effect.exit(old.lost))).toEqual({
-        _tag: "LeaseLost",
-        key: KEY,
-        generation: 1,
-        reason: "taken-over"
-      });
-
-      const again = yield* leases.acquire(KEY);
-      expect(again.token.generation).toBe(3);
-      expect(yield* again.runFenced(write)).toBe(true);
-      expect(failureOf(yield* Effect.exit(old.runFenced(write)))).toMatchObject({ _tag: "LeaseLost", generation: 1 });
-      expect(checkFence(lastSeen, old.token)).toEqual({
-        ok: false,
-        error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
-      });
-    }).pipe(Effect.scoped, Effect.provide(layer));
-  });
-
-  it.live("S64: interrupts fenced work when the lease is lost, and leaves the successor's record alone", () => {
-    const { layer } = make();
-    return Effect.gen(function* () {
-      let interrupted = false;
-      let finished = false;
-      const successor = yield* Effect.scoped(
-        Effect.gen(function* () {
-          const leases = yield* createLeaseManager(config);
-          const lease = yield* leases.acquire(KEY);
-          const fenced = yield* Effect.forkChild(
-            lease.runFenced(() =>
-              Effect.sleep(5000).pipe(
-                Effect.andThen(Effect.sync(() => (finished = true))),
-                Effect.onInterrupt(() => Effect.sync(() => (interrupted = true)))
-              )
-            )
-          );
-          yield* Effect.sleep(50);
-          const next = yield* takeOver(identity(platform));
-          expect(failureOf(yield* Fiber.await(fenced))).toMatchObject({ _tag: "LeaseLost", reason: "taken-over" });
-          return next;
-        })
-      );
-      expect({ interrupted, finished }).toEqual({ interrupted: true, finished: false });
-      const store = yield* LeaseRepository;
-      expect(yield* store.load(KEY)).toEqual(successor);
-    }).pipe(Effect.provide(layer));
-  });
-
-  it.live("refuses fenced work over a record that breaks the lease invariants, instead of trusting its fields", () => {
-    const { layer } = make();
-    // The first heartbeat of this config is 30 s away, so no renewal can move the record while the test runs.
-    const slow = { ttlMs: 60_000, heartbeatMs: 30_000 };
-    return Effect.gen(function* () {
-      const store = yield* LeaseRepository;
-      let ran = false;
-      yield* Effect.scoped(
-        Effect.gen(function* () {
-          const leases = yield* createLeaseManager(slow);
-          const lease = yield* leases.acquire(KEY);
-          const current = yield* store.load(KEY);
-          if (current === undefined) {
-            return yield* Effect.die(new Error("the record the lease wrote vanished"));
-          }
-          yield* store.save(KEY, { ...current, holder: null, revision: current.revision + 1 }, current.revision);
-          // The holder id and generation still match, so the old raw-field check ran such work; the restored
-          // record breaks the "a holder and a holder id come together" invariant, and none may run over it.
-          expect(failureOf(yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true)))))).toMatchObject({
-            _tag: "LeaseRepositoryFailure",
-            reason: "invalid-record"
+    return withTestClock(platform, () =>
+      Effect.gen(function* () {
+        let lastSeen: FencingToken | undefined;
+        const write = (token: FencingToken) =>
+          Effect.sync(() => {
+            const checked = checkFence(lastSeen, token);
+            lastSeen = checked.ok ? checked.value : lastSeen;
+            return checked.ok;
           });
-          expect(ran).toBe(false);
-        })
-      );
-    }).pipe(Effect.provide(layer));
+        const leases = yield* createLeaseManager(config);
+        const old = yield* leases.acquire(KEY);
+        expect(yield* old.runFenced(write)).toBe(true);
+
+        yield* takeOver(reusedPid(platform));
+        // The next heartbeat finds the takeover.
+        yield* TestClock.adjust(HEARTBEAT_MS);
+        expect(failureOf(yield* Effect.exit(old.lost))).toEqual({
+          _tag: "LeaseLost",
+          key: KEY,
+          generation: 1,
+          reason: "taken-over"
+        });
+
+        const again = yield* leases.acquire(KEY);
+        expect(again.token.generation).toBe(3);
+        expect(yield* again.runFenced(write)).toBe(true);
+        expect(failureOf(yield* Effect.exit(old.runFenced(write)))).toMatchObject({ _tag: "LeaseLost", generation: 1 });
+        expect(checkFence(lastSeen, old.token)).toEqual({
+          ok: false,
+          error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
+        });
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  it.live(
-    "S67: keeps the fence until an uninterruptible write of a lost holder settles, then runs the successor's work",
+  it.effect("S64: interrupts fenced work when the lease is lost, and leaves the successor's record alone", () => {
+    const { layer } = make();
+    return withTestClock(platform, () =>
+      Effect.gen(function* () {
+        let interrupted = false;
+        let finished = false;
+        const successor = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const leases = yield* createLeaseManager(config);
+            const lease = yield* leases.acquire(KEY);
+            const started = yield* Deferred.make<void>();
+            const fenced = yield* Effect.forkChild(
+              lease.runFenced(() =>
+                Deferred.succeed(started, undefined).pipe(
+                  Effect.andThen(Effect.sleep(5000)),
+                  Effect.andThen(Effect.sync(() => (finished = true))),
+                  Effect.onInterrupt(() => Effect.sync(() => (interrupted = true)))
+                )
+              )
+            );
+            yield* Deferred.await(started);
+            const next = yield* takeOver(identity(platform));
+            // The next heartbeat finds the takeover; the work's 5 s on the TestClock never pass.
+            yield* TestClock.adjust(HEARTBEAT_MS);
+            expect(failureOf(yield* Fiber.await(fenced))).toMatchObject({ _tag: "LeaseLost", reason: "taken-over" });
+            return next;
+          })
+        );
+        expect({ interrupted, finished }).toEqual({ interrupted: true, finished: false });
+        const store = yield* LeaseRepository;
+        expect(yield* store.load(KEY)).toEqual(successor);
+      })
+    ).pipe(Effect.provide(layer));
+  });
+
+  it.effect(
+    "refuses fenced work over a record that breaks the lease invariants, instead of trusting its fields",
     () => {
       const { layer } = make();
-      return Effect.gen(function* () {
-        const order: string[] = [];
-        const old = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
-        const write = old.runFenced(() =>
-          Effect.uninterruptible(
-            Effect.tryPromise(async () => {
-              order.push("old:start");
-              await new Promise((resolve) => setTimeout(resolve, 600));
-              order.push("old:end");
+      return withTestClock(platform, () =>
+        Effect.gen(function* () {
+          const store = yield* LeaseRepository;
+          let ran = false;
+          yield* Effect.scoped(
+            Effect.gen(function* () {
+              // The TestClock stands still, so no heartbeat moves the record while the test runs.
+              const leases = yield* createLeaseManager(config);
+              const lease = yield* leases.acquire(KEY);
+              const current = yield* store.load(KEY);
+              if (current === undefined) {
+                return yield* Effect.die(new Error("the record the lease wrote vanished"));
+              }
+              yield* store.save(KEY, { ...current, holder: null, revision: current.revision + 1 }, current.revision);
+              // The holder id and generation still match, so the old raw-field check ran such work; the restored
+              // record breaks the "a holder and a holder id come together" invariant, and none may run over it.
+              expect(
+                failureOf(yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true)))))
+              ).toMatchObject({
+                _tag: "LeaseRepositoryFailure",
+                reason: "invalid-record"
+              });
+              expect(ran).toBe(false);
             })
-          )
-        );
-        const oldFiber = yield* Effect.forkChild(write);
-        yield* Effect.sleep(50);
-        yield* takeOver(reusedPid(platform));
-        const successor = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
-        yield* successor.runFenced(() => Effect.sync(() => order.push("new")));
-        expect(order).toEqual(["old:start", "old:end", "new"]);
-        expect(failureOf(yield* Fiber.await(oldFiber))).toMatchObject({ _tag: "LeaseLost" });
-      }).pipe(Effect.scoped, Effect.provide(layer));
+          );
+        })
+      ).pipe(Effect.provide(layer));
     }
   );
 
-  it.live("S67: stops waiting for the fence when the lease is lost", () => {
+  it.effect(
+    "S67: keeps the fence until an uninterruptible write of a lost holder settles, then runs the successor's work",
+    () => {
+      const { layer } = make();
+      return withTestClock(platform, (events) =>
+        Effect.gen(function* () {
+          const order: string[] = [];
+          const started = Promise.withResolvers<void>();
+          const settle = Promise.withResolvers<void>();
+          const old = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
+          const write = old.runFenced(() =>
+            Effect.uninterruptible(
+              Effect.tryPromise(async () => {
+                order.push("old:start");
+                started.resolve();
+                await settle.promise;
+                order.push("old:end");
+              })
+            )
+          );
+          const oldFiber = yield* Effect.forkChild(write);
+          yield* Effect.promise(() => started.promise);
+          // The old write's fence request; the next one is the successor's.
+          yield* Queue.take(events.fenced);
+          yield* takeOver(reusedPid(platform));
+          // The next heartbeat finds the takeover, so the old holder has lost the lease while its write still runs.
+          yield* TestClock.adjust(HEARTBEAT_MS);
+          expect(failureOf(yield* Effect.exit(old.lost))).toMatchObject({ _tag: "LeaseLost" });
+          const successor = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
+          const next = yield* Effect.forkChild(successor.runFenced(() => Effect.sync(() => order.push("new"))));
+          // The successor asks for the fence the old write keeps, and gets the chance to run its work if the fence
+          // were free; only then does the write settle.
+          yield* Queue.take(events.fenced);
+          yield* flush;
+          settle.resolve();
+          yield* Fiber.join(next);
+          expect(order).toEqual(["old:start", "old:end", "new"]);
+          expect(failureOf(yield* Fiber.await(oldFiber))).toMatchObject({ _tag: "LeaseLost" });
+        })
+      ).pipe(Effect.scoped, Effect.provide(layer));
+    }
+  );
+
+  it.effect("S67: stops waiting for the fence when the lease is lost", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      const store = yield* LeaseRepository;
-      const lease = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
-      // Another holder's fenced work keeps the fence for a long time.
-      yield* Effect.forkChild(Effect.scoped(Effect.andThen(store.fence(KEY), Effect.sleep(5000))));
-      yield* Effect.sleep(50);
-      let ran = false;
-      const waiting = yield* Effect.forkChild(lease.runFenced(() => Effect.sync(() => (ran = true))));
-      yield* Effect.sleep(50);
-      const lostAt = performance.now();
-      yield* takeOver(reusedPid(platform));
-      expect(failureOf(yield* Fiber.await(waiting))).toMatchObject({ _tag: "LeaseLost" });
-      expect(performance.now() - lostAt).toBeLessThan(HEARTBEAT_MS * 3);
-      expect(ran).toBe(false);
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(platform, (events) =>
+      Effect.gen(function* () {
+        const store = yield* LeaseRepository;
+        const lease = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
+        // Another holder's fenced work keeps the fence until the test ends.
+        const holding = yield* Deferred.make<void>();
+        yield* Effect.forkChild(
+          Effect.scoped(
+            store.fence(KEY).pipe(Effect.andThen(Deferred.succeed(holding, undefined)), Effect.andThen(Effect.never))
+          )
+        );
+        yield* Deferred.await(holding);
+        // The holder's fence request; the next one is the waiting fiber's.
+        yield* Queue.take(events.fenced);
+        let ran = false;
+        const waiting = yield* Effect.forkChild(lease.runFenced(() => Effect.sync(() => (ran = true))));
+        yield* Queue.take(events.fenced);
+        yield* takeOver(reusedPid(platform));
+        // One heartbeat finds the takeover. The fence is never released, so only the loss can end the wait.
+        yield* TestClock.adjust(HEARTBEAT_MS);
+        expect(failureOf(yield* Fiber.await(waiting))).toMatchObject({ _tag: "LeaseLost" });
+        expect(ran).toBe(false);
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  it.live("keeps the fence while heartbeats renew the lease under it", () => {
+  it.effect("keeps the fence while heartbeats renew the lease under it", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      const leases = yield* createLeaseManager(config);
-      const lease = yield* leases.acquire(KEY);
-      const before = yield* leases.read(KEY);
-      const result = yield* lease.runFenced((token) => Effect.as(Effect.sleep(HEARTBEAT_MS * 3), token.generation));
-      expect(result).toBe(1);
-      const after = yield* leases.read(KEY);
-      expect((after?.revision ?? 0) - (before?.revision ?? 0)).toBeGreaterThanOrEqual(2);
-      expect(after?.generation).toBe(1);
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(platform, (events) =>
+      Effect.gen(function* () {
+        const leases = yield* createLeaseManager(config);
+        const lease = yield* leases.acquire(KEY);
+        const started = yield* Deferred.make<void>();
+        const done = yield* Deferred.make<void>();
+        const work = yield* Effect.forkChild(
+          lease.runFenced((token) =>
+            Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(done)), Effect.as(token.generation))
+          )
+        );
+        yield* Deferred.await(started);
+        // Two heartbeats renew the lease while the work keeps the fence.
+        yield* TestClock.adjust(HEARTBEAT_MS);
+        yield* savedRevision(events, 2);
+        yield* TestClock.adjust(HEARTBEAT_MS);
+        yield* savedRevision(events, 3);
+        yield* Deferred.succeed(done, undefined);
+        expect(yield* Fiber.join(work)).toBe(1);
+        expect(yield* leases.read(KEY)).toMatchObject({ generation: 1, revision: 3 });
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
-  it.live("refuses fenced work of a holder that was taken over before the heartbeat noticed", () => {
+  it.effect("refuses fenced work of a holder that was taken over before the heartbeat noticed", () => {
     const { layer } = make();
-    return Effect.gen(function* () {
-      const leases = yield* createLeaseManager(config);
-      const lease = yield* leases.acquire(KEY);
-      yield* takeOver(identity(platform));
-      let ran = false;
-      const exit = yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true))));
-      // The live heartbeat may notice the takeover before runFenced checks the fence (slow CI runners), so either
-      // refusal is correct; what matters is that the old holder's work never runs.
-      const failure = failureOf(exit) as { readonly _tag?: string } | undefined;
-      if (failure?._tag === "FenceRejected") {
-        expect(failure).toEqual({ _tag: "FenceRejected", key: KEY, generation: 1, current: 2 });
-      } else {
-        expect(failure).toMatchObject({ _tag: "LeaseLost" });
-      }
-      expect(ran).toBe(false);
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(platform, () =>
+      Effect.gen(function* () {
+        const leases = yield* createLeaseManager(config);
+        const lease = yield* leases.acquire(KEY);
+        yield* takeOver(identity(platform));
+        let ran = false;
+        // The TestClock stands still, so no heartbeat has noticed the takeover; the fence check refuses the work.
+        const exit = yield* Effect.exit(lease.runFenced(() => Effect.sync(() => (ran = true))));
+        expect(failureOf(exit)).toEqual({ _tag: "FenceRejected", key: KEY, generation: 1, current: 2 });
+        expect(ran).toBe(false);
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 });
 
 describe("createLeaseManager", () => {
-  it.live("judges a holder the platform cannot identify by its TTL instead of failing", () => {
+  it.effect("judges a holder the platform cannot identify by its TTL instead of failing", () => {
     const platform = testPlatform();
     const failing: Platform = {
       ...platform,
@@ -374,13 +496,15 @@ describe("createLeaseManager", () => {
       }) as Platform["process"]
     };
     const layer = Layer.provideMerge(memoryLeaseRepository(), Layer.succeed(PlatformService, failing));
-    return Effect.gen(function* () {
-      yield* takeOver(reusedPid(platform));
-      const leases = yield* createLeaseManager(config);
-      expect(failureOf(yield* Effect.exit(leases.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
-      yield* Effect.sleep(TTL_MS + 50);
-      expect((yield* leases.acquire(KEY)).token.generation).toBe(2);
-    }).pipe(Effect.scoped, Effect.provide(layer));
+    return withTestClock(failing, () =>
+      Effect.gen(function* () {
+        yield* takeOver(reusedPid(platform));
+        const leases = yield* createLeaseManager(config);
+        expect(failureOf(yield* Effect.exit(leases.acquire(KEY)))).toMatchObject({ _tag: "LeaseHeld" });
+        yield* TestClock.adjust(TTL_MS);
+        expect((yield* leases.acquire(KEY)).token.generation).toBe(2);
+      })
+    ).pipe(Effect.scoped, Effect.provide(layer));
   });
 
   const layer = Layer.provideMerge(memoryLeaseRepository(), Layer.succeed(PlatformService, testPlatform()));
@@ -473,8 +597,10 @@ describe("take loop", () => {
 
 describe("fileLeaseRepository", () => {
   const platform = testPlatform({ sqlite: false });
-  const layerFor = (dir: string) =>
-    Layer.provideMerge(fileLeaseRepository({ dir }), Layer.succeed(PlatformService, platform));
+  /** How long a save waits for a busy guard; the repository measures it with the platform's monotonic clock. */
+  const GUARD_TIMEOUT_MS = 1000;
+  const layerFor = (dir: string, on: Platform = platform) =>
+    Layer.provideMerge(fileLeaseRepository({ dir }), Layer.succeed(PlatformService, on));
   const acquireOnce = Effect.scoped(
     createLeaseManager(config).pipe(
       Effect.flatMap((leases) => leases.acquire(KEY)),
@@ -500,46 +626,59 @@ describe("fileLeaseRepository", () => {
     }).pipe(Effect.provide(layerFor(dir)));
   });
 
+  // The guard tests move the platform clock by hand; the pauses between attempts on a busy guard keep the live clock
+  // and only pace the retries.
   it.live("reports busy instead of waiting without end for a guard that a live, stalled process holds", () => {
     const dir = tempDir();
     const stamp = { ...identity(platform), acquiredAt: 0, nonce: "stalled" };
     writeFileSync(join(dir, "task%3A1.lease.guard"), JSON.stringify(stamp));
+    const time = manualClock();
     return Effect.gen(function* () {
       const store = yield* LeaseRepository;
-      const started = performance.now();
-      const exit = yield* Effect.exit(
-        store.save(
-          KEY,
-          {
-            key: KEY,
-            generation: 1,
-            revision: 1,
-            holder: identity(platform),
-            holderId: "a",
-            renewedAt: 0
-          },
-          undefined
+      const waitStarted = time.nextRead();
+      const saving = yield* Effect.forkChild(
+        Effect.exit(
+          store.save(
+            KEY,
+            {
+              key: KEY,
+              generation: 1,
+              revision: 1,
+              holder: identity(platform),
+              holderId: "a",
+              renewedAt: 0
+            },
+            undefined
+          )
         )
       );
-      expect(failureOf(exit)).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "busy" });
-      expect(performance.now() - started).toBeLessThan(3000);
-    }).pipe(Effect.provide(layerFor(dir)));
+      yield* Effect.promise(() => waitStarted);
+      // The guard stays held past the bound, so the save gives up at its next look at the clock.
+      time.advance(GUARD_TIMEOUT_MS);
+      expect(failureOf(yield* Fiber.join(saving))).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "busy" });
+    }).pipe(Effect.provide(layerFor(dir, { ...platform, clock: time.clock })));
   });
 
   it.live("keeps waiting through a busy guard when asked to wait, and acquires once the guard is free", () => {
     const dir = tempDir();
     const guard = join(dir, "task%3A1.lease.guard");
     writeFileSync(guard, JSON.stringify({ ...identity(platform), acquiredAt: 0, nonce: "stalled" }));
+    const time = manualClock();
     return Effect.gen(function* () {
       const leases = yield* createLeaseManager(config);
+      const waitStarted = time.nextRead();
       const waiting = yield* Effect.forkChild(
         Effect.scoped(Effect.map(leases.acquire(KEY, { wait: true }), (lease) => lease.token.generation))
       );
-      // Longer than the guard's 1 s bound, so the first attempts end as busy.
-      yield* Effect.sleep(1500);
+      yield* Effect.promise(() => waitStarted);
+      time.advance(GUARD_TIMEOUT_MS);
+      // Without a record, only the guard reads the monotonic clock: the first read after the advance ends that wait
+      // as busy, and the next one starts the guard wait of the acquisition's retry.
+      yield* Effect.promise(() => time.nextRead());
+      yield* Effect.promise(() => time.nextRead());
       rmSync(guard);
       expect(yield* Fiber.join(waiting)).toBe(1);
-    }).pipe(Effect.provide(layerFor(dir)));
+    }).pipe(Effect.provide(layerFor(dir, { ...platform, clock: time.clock })));
   });
 
   it.live("reclaims a guard file that a dead process left behind", () => {
