@@ -45,7 +45,7 @@ function emitted(event: unknown, extra: Omit<EmittedResponseItem, "event"> = {})
   return { event: event as TranscriptEvent, ...extra };
 }
 
-/** A `developer` message is instructions the host sent, so it is a `system` event, not a user prompt. */
+/** A `developer` message is instructions the Codex CLI sent, so it is a `system` event, not a user prompt. */
 function emitMessage(item: CodexPayloadValue, emit: EmitEvent): EmittedResponseItem {
   const role = item.role;
   const text = textFrom(item.content);

@@ -10,7 +10,7 @@ import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
 
 const AGENT = "grok";
 
-/** Grok's per-update metadata: the turn's prompt index, its model, and whether the host hides the chunk. */
+/** Grok's per-update metadata: the turn's prompt index, its model, and whether the CLI hides the chunk. */
 export interface GrokMetaValue {
   promptIndex?: number;
   modelId?: string;
