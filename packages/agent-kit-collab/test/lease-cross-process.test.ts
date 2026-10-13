@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
+import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -10,7 +11,7 @@ import { afterEach } from "vite-plus/test";
 
 import { createLeaseManager, sqliteLeaseRepository } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
-import { startWorker, stopWorkers, type Worker } from "./support/workers.js";
+import { startWorker, stopWorkers, type Worker, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
 
 const KEY = "task:1";
 
@@ -48,24 +49,28 @@ async function contend(
 }
 
 describe.each(stores)("lease across processes with the $name store", ({ name, location }) => {
-  it("lets exactly one of several processes acquire a new key", async () => {
+  it("lets exactly one of several processes acquire a new key", { timeout: WORKER_TEST_TIMEOUT_MS }, async () => {
     const results = await contend(name, location(), 4);
     expect(results.filter(({ event }) => event === "acquired")).toEqual([{ event: "acquired", generation: 1 }]);
   });
 
-  it("S61: lets exactly one of several reclaimers take over from a holder that was killed", async () => {
-    for (let round = 0; round < 3; round += 1) {
-      const where = location();
-      const holder = startWorker("lease-worker", [name, where, KEY, "hold"]);
-      expect(await holder.next("acquired")).toMatchObject({ generation: 1 });
-      holder.signal("SIGKILL");
-      await holder.exited;
-      const results = await contend(name, where, 4);
-      expect(results.filter(({ event }) => event === "acquired")).toEqual([{ event: "acquired", generation: 2 }]);
-      expect(results.filter(({ event }) => event === "held")).toHaveLength(3);
-      await stopWorkers();
+  it(
+    "S61: lets exactly one of several reclaimers take over from a holder that was killed",
+    { timeout: WORKER_TEST_TIMEOUT_MS },
+    async () => {
+      for (let round = 0; round < 3; round += 1) {
+        const where = location();
+        const holder = startWorker("lease-worker", [name, where, KEY, "hold"]);
+        expect(await holder.next("acquired")).toMatchObject({ generation: 1 });
+        holder.signal("SIGKILL");
+        await holder.exited;
+        const results = await contend(name, where, 4);
+        expect(results.filter(({ event }) => event === "acquired")).toEqual([{ event: "acquired", generation: 2 }]);
+        expect(results.filter(({ event }) => event === "held")).toHaveLength(3);
+        await stopWorkers();
+      }
     }
-  });
+  );
 });
 
 describe("lease lost across processes", () => {
@@ -75,7 +80,26 @@ describe("lease lost across processes", () => {
       const path = join(tempDir(), "leases.db");
       const log = join(tempDir(), "writes.log");
       writeFileSync(log, "");
-      const layer = Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, testPlatform()));
+      const platform = testPlatform();
+      const sqlite = platform.sqlite as PlatformSqlite;
+      // Each try at the fence opens its lock database, so a second open means that an earlier try found it held.
+      const fenceRetried = Promise.withResolvers<void>();
+      let fenceOpens = 0;
+      const watched: Platform = {
+        ...platform,
+        sqlite: {
+          open(file, options) {
+            if (file.endsWith(".fence")) {
+              fenceOpens += 1;
+              if (fenceOpens === 2) {
+                fenceRetried.resolve();
+              }
+            }
+            return sqlite.open(file, options);
+          }
+        }
+      };
+      const layer = Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, watched));
       return Effect.gen(function* () {
         const stalled = startWorker("lease-worker", ["sqlite", path, KEY, "fenced", log]);
         yield* Effect.promise(() => stalled.next("fenced-start"));
@@ -90,7 +114,7 @@ describe("lease lost across processes", () => {
         const successor = yield* Effect.forkChild(
           lease.runFenced(() => Effect.sync(() => appendFileSync(log, "P:start\n")))
         );
-        yield* Effect.sleep(300);
+        yield* Effect.promise(() => fenceRetried.promise);
         expect(readFileSync(log, "utf8")).toBe("F:start\n");
 
         stalled.signal("SIGCONT");
@@ -99,6 +123,6 @@ describe("lease lost across processes", () => {
         expect(readFileSync(log, "utf8")).toBe("F:start\nF:interrupted\nP:start\n");
       }).pipe(Effect.scoped, Effect.provide(layer));
     },
-    20_000
+    WORKER_TEST_TIMEOUT_MS
   );
 });

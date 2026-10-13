@@ -3,12 +3,44 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createNodePlatform } from "@rivus/agent-kit/node";
-import type { Platform } from "@rivus/agent-kit/platform";
+import type { Platform, PlatformClock } from "@rivus/agent-kit/platform";
 
 /** The Node platform with an empty environment and a home that does not exist, so no test reads a real agent home. */
 export function testPlatform(options: { readonly sqlite?: boolean } = {}): Platform {
   const platform = createNodePlatform({ env: {}, home: "/nonexistent-home" });
   return options.sqlite === false ? { ...platform, sqlite: undefined } : platform;
+}
+
+export interface ManualClock {
+  /** Both readings start at 0 and move only with `advance`. */
+  readonly clock: PlatformClock;
+  advance(ms: number): void;
+  /** Resolves at the next read of the monotonic clock: the code under test has started or checked a deadline. */
+  nextRead(): Promise<void>;
+}
+
+/** A platform clock that stands still until the test moves it. */
+export function manualClock(): ManualClock {
+  let now = 0;
+  const readers: (() => void)[] = [];
+  return {
+    clock: {
+      now: () => now,
+      monotonic: () => {
+        for (const resolve of readers.splice(0)) {
+          resolve();
+        }
+        return now;
+      }
+    },
+    advance(ms) {
+      now += ms;
+    },
+    nextRead: () =>
+      new Promise((resolve) => {
+        readers.push(resolve);
+      })
+  };
 }
 
 const dirs: string[] = [];

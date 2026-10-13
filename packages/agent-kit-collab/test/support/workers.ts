@@ -2,14 +2,20 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
+import * as z from "zod/mini";
+
 const hook = fileURLToPath(new URL("resolve-ts.ts", import.meta.url));
 
+/**
+ * The timeout of a test that starts workers. A loaded machine can take seconds to start each Node worker, and the
+ * timeout must exceed the default wait of `next`, so a line that never comes fails with what the worker printed.
+ */
+export const WORKER_TEST_TIMEOUT_MS = 30_000;
+
+const workerLine = z.looseObject({ event: z.string() });
+
 /** One JSON line a worker printed. */
-export interface WorkerLine {
-  readonly event: string;
-  readonly at: number;
-  readonly [field: string]: unknown;
-}
+export type WorkerLine = Readonly<z.infer<typeof workerLine>>;
 
 export interface Worker {
   readonly pid: number;
@@ -38,7 +44,7 @@ export function startWorker(name: string, args: readonly string[]): Worker {
     stderr += chunk;
   });
   createInterface({ input: child.stdout }).on("line", (text) => {
-    lines.push({ ...(JSON.parse(text) as { event: string }), at: performance.now() });
+    lines.push(workerLine.parse(JSON.parse(text)));
     for (const waiter of waiters) {
       waiter();
     }

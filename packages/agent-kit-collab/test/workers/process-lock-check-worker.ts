@@ -4,7 +4,8 @@ import { print, stdinLine } from "../support/workers.js";
 
 // Usage: process-lock-check-worker <path> <sqlite|file> <burst|loop|share> [checks]
 //   burst: prints "ready", waits for "go", runs [checks] checks back to back, prints "checked".
-//   loop: checks until stdin says "stop", then prints "checked".
+//   loop: checks until stdin says "stop", then prints "checked"; prints "checking" after the first check and
+//     "saw-held" after the first one that found the lock held.
 //   share: holds a shared lock on the database, as a check does for one statement, until killed.
 const [path = "", mechanism, mode, checks = "1"] = process.argv.slice(2);
 const platform = testPlatform({ sqlite: mechanism === "sqlite" });
@@ -26,11 +27,16 @@ if (mode === "loop") {
     stop = true;
   });
   let count = 0;
+  let sawHeld = false;
   while (!stop) {
-    await isProcessLockHeld(platform, path);
+    const held = await isProcessLockHeld(platform, path);
     count += 1;
     if (count === 1) {
       print("checking");
+    }
+    if (held && !sawHeld) {
+      sawHeld = true;
+      print("saw-held");
     }
     // Lets the stdin line in between checks.
     await new Promise((resolve) => setImmediate(resolve));
