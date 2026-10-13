@@ -58,6 +58,15 @@ diagnostics only. Without SQLite the lock is a file that holds the identity; a l
 host is reclaimed on the next attempt, one reclaimer at a time. Pass `{ wait: true, signal }` to wait for the holder
 instead of getting `ProcessLockHeld` at once.
 
+Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks
+without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the
+lock or give up, and only then makes its own attempt; it never opens SQLite against a holder in its own process, whose
+busy wait would block the thread the holder needs to finish and release. Without `wait` such a call gets
+`ProcessLockHeld` at once. Aborting `signal` takes a task out of the queue and leaves the others' turns as they were.
+Tasks share the turns when they name the same file (its directory resolved through symlinks) through platforms with
+the same `sqlite` object (without SQLite, the same `fs`), as every platform from `createNodePlatform` has; other
+processes are still kept out by SQLite or the lock file.
+
 `isProcessLockHeld` tells whether another process, or an acquisition in this one, holds the lock, without taking it.
 A short-lived process can use it to hand work to a running holder and start one only when there is none:
 
