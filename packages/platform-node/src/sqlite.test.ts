@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -37,6 +37,14 @@ describe("nodeSqlite", () => {
     expect(readonly.prepare("SELECT count(*) AS n FROM items").get()).toEqual({ n: 2 });
     expect(() => readonly.exec("DELETE FROM items")).toThrow(/readonly/);
     readonly.close();
+  });
+
+  it("creates a missing database file, except when opening it read-only", async () => {
+    const { nodeSqlite } = await import("./sqlite.js");
+    expect(() => nodeSqlite.open(join(dir, "missing.db"), { readonly: true })).toThrow(/unable to open/);
+    expect(await readdir(dir)).toEqual([]);
+    nodeSqlite.open(join(dir, "created.db")).close();
+    expect(await readdir(dir)).toEqual(["created.db"]);
   });
 
   it("drops only the SQLite ExperimentalWarning while loading node:sqlite, and loads it once", async () => {

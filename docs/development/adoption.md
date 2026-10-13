@@ -26,7 +26,7 @@ The source exports 16 agent-kit entries and three collab entries (19 in total). 
 | `@rivus/agent-kit/redact`              | `redact`, `redactText`                                                                                                                | Plain, pure                                     |
 | `@rivus/agent-kit/testing`             | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`                               | Test helpers, Node                              |
 | `@rivus/agent-kit/testing/effect`      | `aggregateRepositoryConformance`                                                                                                      | Test helpers, Effect                            |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`                                                                                                                  | Plain, platform argument                        |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`                                                                                             | Plain, platform argument                        |
 | `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository`, fencing rules       | Effect                                          |
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                         | Effect, process-local                           |
 

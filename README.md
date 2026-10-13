@@ -45,7 +45,7 @@ Collab's entries use agent-kit's public platform and are installed from the same
 
 | Entry                                  | Main exports                                | Calling style           |
 | -------------------------------------- | ------------------------------------------- | ----------------------- |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`                        | Plain, with a platform  |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`   | Plain, with a platform  |
 | `@rivus/agent-kit-collab/lease`        | `createLeaseManager` and lease repository Layers | Effect, with a platform |
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                               | Effect, process-local   |
 

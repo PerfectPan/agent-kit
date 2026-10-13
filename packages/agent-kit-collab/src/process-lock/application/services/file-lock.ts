@@ -53,6 +53,15 @@ async function reclaim(
   }
 }
 
+/**
+ * Whether the lock file at `path` is held: it exists and its holder is not abandoned, judged as `tryFileLock` judges
+ * it. It only reads; an abandoned file stays for the next acquisition to reclaim.
+ */
+export async function isFileLockHeld(platform: ProcessLockPlatform, path: string): Promise<boolean> {
+  const observed = await readStamp(platform, path);
+  return observed !== undefined && !(await abandoned(platform, path, observed));
+}
+
 async function releaseFileLock(platform: ProcessLockPlatform, path: string, nonce: string): Promise<void> {
   const current = await readStamp(platform, path);
   if (current?.stamp?.nonce === nonce) {

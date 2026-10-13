@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "Add isProcessLockHeld(platform, path, { signal }) to /process-lock: it tells whether another process, or an acquisition in this one, holds a process lock, without taking it. It writes nothing (no <path>.holder; a missing lock file reads as free and is not created), and never waits, so an aborted signal rejects with its reason before the check starts. With SQLite it makes one attempt at a shared lock, with no busy timeout, no retries and no process identity read, and answers in well under a millisecond; checks that run at once see a free lock as free. The first attempt of an acquireProcessLock running at the same moment (a 10 ms busy timeout, then a few short retries) still gets a free lock; the later retries of wait: true have no busy timeout and can find a free lock busy while a check reads it, and the call gets it after another backoff. Without SQLite it judges the lock file's holder as an acquisition does and reclaims nothing.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
