@@ -57,7 +57,7 @@ The summary of a Session that listing produces from the head and tail of its fil
 The ordered TranscriptEvents of a Session, merged from all its files, with the records that were skipped.
 
 **TranscriptEvent**:
-One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`. Events form a flat list and reference each other by id.
+One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`, and it determines the type of its `payload` (`TranscriptEventPayloads` maps each kind to that type); a payload may carry fields of the agent's own beyond that type. Events form a flat list and reference each other by id.
 _Avoid_: thinking (use reasoning), message as the general word for an event
 
 **Turn**:

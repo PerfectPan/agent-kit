@@ -1,4 +1,10 @@
-import { MAIN_LANE_ID, type Lane, type SourcedRecord, type TranscriptEventKind } from "../../index.js";
+import {
+  MAIN_LANE_ID,
+  type Lane,
+  type SourcedRecord,
+  type TranscriptEventBody,
+  type TranscriptEventKind
+} from "../../index.js";
 import { OUTPUT_KINDS, placeRequest } from "../../policies/request-placement.js";
 import type { Usage } from "../../../usage/index.js";
 import {
@@ -46,9 +52,10 @@ const lineKey = (record: SourcedRecord): string => `L${record.line}`;
  * `replacement_history` of a compacted record. `id` is the event id the translation gives it, `ts` the record's time
  * or, for a placed request, the output's, and `requestId` the window tag `placeRequest` writes.
  */
-export interface CodexPart {
-  kind: TranscriptEventKind;
-  payload: Record<string, unknown>;
+export type CodexPart<K extends TranscriptEventKind = TranscriptEventKind> = TranscriptEventBody<K> & CodexPartFields;
+
+/** What a `CodexPart` carries beside its kind and payload. */
+interface CodexPartFields {
   id: string;
   ts: number;
   requestId?: string;
@@ -185,7 +192,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         part.itemIds = itemIds;
       };
 
-      const emit = (kind: TranscriptEventKind, body: Record<string, unknown>, id?: string): CodexPart => {
+      const emit = (body: TranscriptEventBody, id?: string): CodexPart => {
         let eventId = id ?? payload.id ?? lineKey(record);
         if (retain) {
           if (usedIds.has(eventId)) {
@@ -193,8 +200,8 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           }
           usedIds.add(eventId);
         }
-        const part: CodexPart = { kind, payload: body, id: eventId, ts, record, itemIds: [] };
-        if (OUTPUT_KINDS.has(kind)) {
+        const part: CodexPart = { ...body, id: eventId, ts, record, itemIds: [] };
+        if (OUTPUT_KINDS.has(body.kind)) {
           lastOutputIndex = eventCount;
         }
         eventCount += 1;
@@ -214,7 +221,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           ...(usage ? { usage } : {}),
           ...(finishReason ? { finishReason } : {})
         };
-        const part: CodexPart = {
+        const part: CodexPart<"request"> = {
           kind: "request",
           payload: body,
           id: `request:${key}`,
@@ -271,7 +278,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         (bare && envelope === "compaction") ||
         (envelope === "response_item" && payload.type === "compaction")
       ) {
-        const part = emit("compaction", {});
+        const part = emit({ kind: "compaction", payload: {} });
         // A bare record carries no payload, and the history of one is nobody's.
         if (!bare) {
           part.history = payload.replacement_history;
@@ -295,7 +302,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
             agentByPath.set(innerItem.agent_path, agentId);
           }
           const kind = innerItem.kind;
-          const part = emit("system", { type: "subagent", agentId, ...(kind ? { kind } : {}) }, innerItem.id);
+          const part = emit(
+            { kind: "system", payload: { type: "subagent", agentId, ...(kind ? { kind } : {}) } },
+            innerItem.id
+          );
           part.agentId = agentId;
           return { ok: true, rec, payload, envelope, parts: recordParts };
         }
@@ -323,8 +333,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           }
           // The turn's duration stays on the turn marker, never on a request.
           emit(
-            "system",
-            { type: "turn_duration", durationMs, ...(inner === "turn_aborted" ? { aborted: true } : {}) },
+            {
+              kind: "system",
+              payload: { type: "turn_duration", durationMs, ...(inner === "turn_aborted" ? { aborted: true } : {}) }
+            },
             lineKey(record)
           );
           return { ok: true, rec, payload, envelope, parts: recordParts };
@@ -333,19 +345,19 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         if (marker) {
           noteSkip(marker);
         } else {
-          emit("unknown", { type: inner }, lineKey(record));
+          emit({ kind: "unknown", payload: { type: inner } }, lineKey(record));
         }
         return { ok: true, rec, payload, envelope, parts: recordParts };
       }
 
       if (envelope !== "response_item" && !bare) {
-        emit("unknown", { type: envelope }, lineKey(record));
+        emit({ kind: "unknown", payload: { type: envelope } }, lineKey(record));
         return { ok: true, rec, payload, envelope, parts: recordParts };
       }
       const { text, callId, output } = emitResponseItem(
         bare ? envelope : (payload.type ?? "response_item"),
         payload,
-        (kind, body) => emit(kind, body)
+        (body) => emit(body)
       );
       const last = recordParts[recordParts.length - 1]!;
       if (text !== undefined) {

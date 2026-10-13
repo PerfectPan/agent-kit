@@ -5,7 +5,13 @@
 
 import * as z from "zod/mini";
 
-import { timeOf, type TranscriptEventKind, type TranscriptStreamPart } from "../index.js";
+import {
+  timeOf,
+  type ToolCallPayload,
+  type ToolResultPayload,
+  type TranscriptEventBody,
+  type TranscriptStreamPart
+} from "../index.js";
 import { compactUsage, type Usage } from "../../usage/index.js";
 import { lenient } from "./lenient.js";
 import { logTimestamp } from "./timestamp.js";
@@ -200,7 +206,7 @@ export function isAcpToolError(state: AcpToolState): boolean {
   return state.status !== "completed";
 }
 
-export function acpToolCallPayload(state: AcpToolState): Record<string, unknown> {
+export function acpToolCallPayload(state: AcpToolState): ToolCallPayload {
   return {
     callId: state.callId,
     name: state.name,
@@ -209,7 +215,7 @@ export function acpToolCallPayload(state: AcpToolState): Record<string, unknown>
   };
 }
 
-export function acpToolResultPayload(state: AcpToolState): Record<string, unknown> {
+export function acpToolResultPayload(state: AcpToolState): ToolResultPayload {
   return {
     callId: state.callId,
     isError: isAcpToolError(state),
@@ -339,9 +345,9 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
     return parts;
   };
 
-  const other = (kind: TranscriptEventKind, payload: Record<string, unknown>, original: unknown) => [
+  const other = (body: TranscriptEventBody, original: unknown): TranscriptStreamPart[] => [
     ...close(),
-    { type: "update", id: nextId(), kind, payload, original } satisfies TranscriptStreamPart
+    { type: "update", id: nextId(), ...body, original }
   ];
 
   // An empty record parses to an all-absent update; it stands in when the body is not a record at all.
@@ -359,14 +365,15 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
         }
         const messageId = body.messageId;
         if (messageKind === "user") {
-          return other("user", { text }, update);
+          return other({ kind: "user", payload: { text } }, update);
         }
         return chunk(messageKind === "assistant" ? "text" : "reasoning", text, messageId);
       }
       if (sessionUpdate === "tool_call" || sessionUpdate === "tool_call_update") {
         return tool(body);
       }
-      return other(SESSION_UPDATES.has(sessionUpdate) ? "system" : "unknown", { type: sessionUpdate }, update);
+      const kind = SESSION_UPDATES.has(sessionUpdate) ? "system" : "unknown";
+      return other({ kind, payload: { type: sessionUpdate } }, update);
     },
     finish(response) {
       const usage = acpUsage(response.usage);

@@ -1,5 +1,9 @@
-import type { LiveTranscriptEvent, TranscriptStreamPart } from "../value-objects/stream-part.js";
-import type { TranscriptEventKind } from "../value-objects/transcript-event.js";
+import type { LiveTranscriptEvent, LiveTranscriptEventOf, TranscriptStreamPart } from "../value-objects/stream-part.js";
+import type {
+  RequestPayload,
+  TranscriptEventKind,
+  TranscriptEventPayloads
+} from "../value-objects/transcript-event.js";
 
 /** Turns stream parts into completed events as they arrive. */
 export interface StreamFolder {
@@ -25,13 +29,20 @@ export function createStreamFolder(): StreamFolder {
   const texts = new Map<string, { kind: "assistant" | "reasoning"; text: string }>();
   const tools = new Map<string, ToolFold>();
 
-  const event = (
-    kind: TranscriptEventKind,
+  const event = <K extends TranscriptEventKind>(
+    kind: K,
     id: string,
-    payload: Record<string, unknown>,
+    payload: TranscriptEventPayloads[K],
     ts: number,
     original?: unknown
-  ): LiveTranscriptEvent => ({ id, seq: seq++, ts, kind, payload, ...(original === undefined ? {} : { original }) });
+  ): LiveTranscriptEventOf<K> => ({
+    id,
+    seq: seq++,
+    ts,
+    kind,
+    payload,
+    ...(original === undefined ? {} : { original })
+  });
 
   const closeText = (id: string, ts: number): LiveTranscriptEvent[] => {
     const open = texts.get(id);
@@ -120,7 +131,7 @@ export function createStreamFolder(): StreamFolder {
         case "finish": {
           const closed = [...texts.keys()].flatMap((id) => closeText(id, ts));
           const calls = [...tools].flatMap(([callId, tool]) => call(callId, tool, ts));
-          const payload = {
+          const payload: RequestPayload = {
             granularity: "turn",
             finishReason: part.finishReason,
             ...(part.usage === undefined ? {} : { usage: part.usage })

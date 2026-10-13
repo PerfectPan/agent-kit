@@ -96,7 +96,8 @@ describe("sessionAdapterConformance", () => {
     [
       "null usage",
       "shows each claimed capability and no undeclared one",
-      (t) => requests(t).forEach((event) => void (event.payload.usage = null))
+      // A broken adapter writes what the payload type forbids.
+      (t) => requests(t).forEach((event) => void Object.assign(event.payload, { usage: null }))
     ],
     [
       "no shadowing after a compaction",

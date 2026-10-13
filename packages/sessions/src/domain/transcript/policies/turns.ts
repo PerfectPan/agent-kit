@@ -1,5 +1,5 @@
 import type { SessionPrompt, SessionPromptsOptions } from "../../session/index.js";
-import type { RequestPayload, TranscriptEvent } from "../value-objects/transcript-event.js";
+import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 
 /** The lane id of the root agent when `agents` names none. */
@@ -61,8 +61,11 @@ export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, 
 }
 
 /** The recorded input and output tokens of a `request` event; a count is absent when not recorded. */
-export function requestUsage(event: Pick<TranscriptEvent, "payload">): { inputTokens?: number; outputTokens?: number } {
-  const usage = (event.payload as RequestPayload).usage;
+export function requestUsage(event: Pick<TranscriptEventOf<"request">, "payload">): {
+  inputTokens?: number;
+  outputTokens?: number;
+} {
+  const usage = event.payload.usage;
   const out: { inputTokens?: number; outputTokens?: number } = {};
   if (typeof usage?.inputTokens === "number") {
     out.inputTokens = usage.inputTokens;

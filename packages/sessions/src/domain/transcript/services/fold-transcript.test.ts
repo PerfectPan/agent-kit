@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { sessionPrompts } from "../policies/turns.js";
-import type { TranscriptEvent } from "../value-objects/transcript-event.js";
+import type { TranscriptEvent, TranscriptEventKind, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 import { emptyPrompts, foldTranscript } from "./fold-transcript.js";
 
 const source = { file: "fixture.jsonl", offset: 0, length: 1, line: 1 };
 
-function event(partial: Partial<TranscriptEvent> & Pick<TranscriptEvent, "id" | "kind">): TranscriptEvent {
+/** An event's fields; the payload may be left out, as `{}`, for the kinds whose payload fields are all optional. */
+type EventInput = {
+  [K in TranscriptEventKind]: Partial<TranscriptEventOf<K>> &
+    Pick<TranscriptEventOf<K>, "id" | "kind" | ({} extends TranscriptEventOf<K>["payload"] ? never : "payload")>;
+}[TranscriptEventKind];
+
+function event(partial: EventInput): TranscriptEvent {
   return { seq: 0, ts: 1, payload: {}, source, ...partial };
 }
 
