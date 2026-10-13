@@ -85,13 +85,16 @@ const COMPANIONS: Readonly<Record<string, Companion>> = {
   "@rivus/agent-kit-collab": {
     effectEntries: new Set(["./lanes", "./lease"]),
     plain: () => ({
-      imports: `import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";`,
+      imports: `import { acquireProcessLock, isProcessLockHeld } from "@rivus/agent-kit-collab/process-lock";`,
       body: `const lockPath = join(work, "smoke.lock");
+assert.equal(await isProcessLockHeld(platform, lockPath), false, "isProcessLockHeld found a missing lock held");
 const lock = await acquireProcessLock(platform, lockPath);
 assert.ok(lock.ok, "acquireProcessLock refused a free lock");
+assert.equal(await isProcessLockHeld(platform, lockPath), true, "isProcessLockHeld missed a held lock");
 const again = await acquireProcessLock(platform, lockPath);
 assert.equal(again.ok ? "acquired twice" : again.error._tag, "ProcessLockHeld");
 await lock.value.release();
+assert.equal(await isProcessLockHeld(platform, lockPath), false, "isProcessLockHeld found a released lock held");
 console.log(\`process lock: \${lock.value.mechanism}\`);`
     }),
     effect: () => ({

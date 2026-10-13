@@ -46,6 +46,31 @@ export function trySqliteLock(sqlite: PlatformSqlite, path: string, busyTimeoutM
   }
 }
 
+/**
+ * Whether another connection holds the exclusive lock on the SQLite database at `path`, found by taking a shared lock
+ * once, without waiting. Shared locks never conflict with each other, so checks that run at once all find a free
+ * lock free. The shared lock lasts one statement, far less than the busy timeout of an acquisition's first attempt
+ * (`SETTLE_MS`), so an acquisition that meets it waits it out instead of missing a free lock. The database is opened
+ * read-only and never created: opening a missing file throws, like any other failure to open.
+ */
+export function isSqliteLockHeld(sqlite: PlatformSqlite, path: string): boolean {
+  const db = sqlite.open(path, { readonly: true });
+  try {
+    // A driver may default to waiting for a lock; the check must answer at once.
+    db.exec("PRAGMA busy_timeout = 0");
+    // Outside a transaction, reading the header takes the shared lock and drops it when the statement ends.
+    db.exec("PRAGMA schema_version");
+    return false;
+  } catch (error) {
+    if (isSqliteBusy(error)) {
+      return true;
+    }
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
 export function unlockSqlite(db: SqliteDatabase): void {
   try {
     db.exec("ROLLBACK");
