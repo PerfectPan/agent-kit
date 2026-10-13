@@ -2,6 +2,18 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.14.0",
+      "tag": "@rivus/agent-kit_v0.14.0",
+      "date": "Tue, 13 Oct 2026 11:09:20 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Document that PlatformSqlite.open with readonly throws on a missing database file instead of creating it."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.13.0",
       "tag": "@rivus/agent-kit_v0.13.0",
       "date": "Tue, 13 Oct 2026 08:20:24 GMT",
