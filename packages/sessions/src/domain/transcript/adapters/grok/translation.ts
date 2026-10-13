@@ -34,7 +34,7 @@ import {
   knownGrokUpdate
 } from "../../../usage/adapters/grok.js";
 
-/** Record types that only the host reads. Each becomes a skipped record with its type as the reason. */
+/** Record types that only the Grok CLI reads. Each becomes a skipped record with its type as the reason. */
 const BOOKKEEPING = new Set([
   "background_tasks",
   "task_backgrounded",
@@ -45,7 +45,7 @@ const BOOKKEEPING = new Set([
   "image_compressed"
 ]);
 
-/** Host status updates kept as `system` events with their `type`. */
+/** Status updates of the Grok CLI, kept as `system` events with their `type`. */
 const STATUS = new Set(["goal_updated", "memory_dream_queued", "memory_dream_started", "memory_dream_completed"]);
 
 /** A `request` for one turn. Grok's cost (`costUsdTicks`) stays on the original record; `decodeUsage` reports it. */

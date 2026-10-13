@@ -300,6 +300,7 @@ A test suite, exported from `/testing` (the aggregate-repository suite from `/te
 | Word | In agent-kit | Elsewhere |
 | --- | --- | --- |
 | Agent | CodingAgent: a third-party coding agent product | An Effect-based host application's Agent: the product that host runs |
+| Host | The machine a process runs on (a Holder's `host`, `platform.process.self.host`); as `TerminalHost`, the terminal an agent runs in; the runtime or application that embeds the kit. The coding agent whose sessions are read is the agent (CodingAgent), and its command-line program is its CLI | Some session readers call that coding agent the host |
 | Harness | The extensible part of an agent's runtime, and the context that injects into it | A host application's AgentHarness (the execution model of one run); AI SDK's HarnessV1 (an adapter that drives an agent's runtime); agent-orchestration's Harness (the configuration passed to the agent on every turn, the closest to this meaning). A consumer that uses two of them aliases the import |
 | Session | In sessions, a recorded conversation read from the agent's files; in acp, AcpSession, a live session the kit drives | A host application's Session Key |
 | Turn | In sessions, a recorded turn in a Transcript; in acp, a live Turn in an AcpSession | A host application's Agent Run |
