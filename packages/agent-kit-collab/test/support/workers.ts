@@ -4,10 +4,15 @@ import { fileURLToPath } from "node:url";
 
 const hook = fileURLToPath(new URL("resolve-ts.ts", import.meta.url));
 
+/**
+ * The timeout of a test that starts workers. A loaded machine can take seconds to start each Node worker, and the
+ * timeout must exceed the default wait of `next`, so a line that never comes fails with what the worker printed.
+ */
+export const WORKER_TEST_TIMEOUT_MS = 30_000;
+
 /** One JSON line a worker printed. */
 export interface WorkerLine {
   readonly event: string;
-  readonly at: number;
   readonly [field: string]: unknown;
 }
 
@@ -38,7 +43,7 @@ export function startWorker(name: string, args: readonly string[]): Worker {
     stderr += chunk;
   });
   createInterface({ input: child.stdout }).on("line", (text) => {
-    lines.push({ ...(JSON.parse(text) as { event: string }), at: performance.now() });
+    lines.push(JSON.parse(text) as WorkerLine);
     for (const waiter of waiters) {
       waiter();
     }

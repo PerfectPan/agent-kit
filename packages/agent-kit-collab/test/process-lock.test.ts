@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 
 import { acquireProcessLock } from "../src/process-lock/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
-import { startWorker, stopWorkers } from "./support/workers.js";
+import { startWorker, stopWorkers, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
 
 afterEach(async () => {
   await stopWorkers();
@@ -17,49 +17,62 @@ afterEach(async () => {
 describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechanism) => {
   const platform = testPlatform({ sqlite: mechanism === "sqlite" });
 
-  it("S38: refuses a second process, or makes it wait, until the holder is killed, which frees the lock at once", async () => {
-    const path = join(tempDir(), "daemon.lock");
-    const holder = startWorker("process-lock-worker", [path, mechanism, "hold"]);
-    expect(await holder.next("acquired")).toMatchObject({ mechanism });
-
-    const refused = startWorker("process-lock-worker", [path, mechanism, "hold"]);
-    expect(await refused.next("held")).toMatchObject({ holderPid: holder.pid });
-
-    const waiting = startWorker("process-lock-worker", [path, mechanism, "wait"]);
-    await waiting.next("waiting");
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(waiting.lines.map((line) => line.event)).toEqual(["waiting"]);
-
-    const killedAt = performance.now();
-    holder.signal("SIGKILL");
-    const acquired = await waiting.next("acquired");
-    expect(acquired.at - killedAt).toBeLessThan(1500);
-  });
-
-  it("S61: lets exactly one of several processes reclaim a lock whose holder died", async () => {
-    for (let round = 0; round < 3; round += 1) {
+  it(
+    "S38: refuses a second process, or makes it wait, until the holder is killed, which frees the lock at once",
+    { timeout: WORKER_TEST_TIMEOUT_MS },
+    async () => {
       const path = join(tempDir(), "daemon.lock");
       const holder = startWorker("process-lock-worker", [path, mechanism, "hold"]);
-      await holder.next("acquired");
-      holder.signal("SIGKILL");
-      await holder.exited;
+      expect(await holder.next("acquired")).toMatchObject({ mechanism });
 
-      const contenders = Array.from({ length: 4 }, () =>
-        startWorker("process-lock-worker", [path, mechanism, "contend"])
-      );
-      await Promise.all(contenders.map((contender) => contender.next("ready")));
-      for (const contender of contenders) {
-        contender.send("go");
-      }
-      const outcomes = await Promise.all(
-        contenders.map((contender) =>
-          Promise.race([contender.next("acquired"), contender.next("held")]).then((line) => line.event)
-        )
-      );
-      expect(outcomes.filter((event) => event === "acquired")).toHaveLength(1);
-      await stopWorkers();
+      const refused = startWorker("process-lock-worker", [path, mechanism, "hold"]);
+      expect(await refused.next("held")).toMatchObject({ holderPid: holder.pid });
+
+      const waiting = startWorker("process-lock-worker", [path, mechanism, "wait"]);
+      // Printed once two attempts have found the lock held; a wait that took the held lock would print "acquired".
+      await waiting.next("waiting");
+      expect(waiting.lines.map((line) => line.event)).toEqual(["waiting"]);
+
+      holder.signal("SIGKILL");
+      expect(await waiting.next("acquired")).toMatchObject({ pid: waiting.pid });
+
+      // The lock of a killed holder is free at once: a single attempt right after the exit takes it.
+      waiting.signal("SIGKILL");
+      await waiting.exited;
+      const lock = await acquireProcessLock(platform, path);
+      expect(lock.ok).toBe(true);
+      await (lock.ok ? lock.value.release() : undefined);
     }
-  });
+  );
+
+  it(
+    "S61: lets exactly one of several processes reclaim a lock whose holder died",
+    { timeout: WORKER_TEST_TIMEOUT_MS },
+    async () => {
+      for (let round = 0; round < 3; round += 1) {
+        const path = join(tempDir(), "daemon.lock");
+        const holder = startWorker("process-lock-worker", [path, mechanism, "hold"]);
+        await holder.next("acquired");
+        holder.signal("SIGKILL");
+        await holder.exited;
+
+        const contenders = Array.from({ length: 4 }, () =>
+          startWorker("process-lock-worker", [path, mechanism, "contend"])
+        );
+        await Promise.all(contenders.map((contender) => contender.next("ready")));
+        for (const contender of contenders) {
+          contender.send("go");
+        }
+        const outcomes = await Promise.all(
+          contenders.map((contender) =>
+            Promise.race([contender.next("acquired"), contender.next("held")]).then((line) => line.event)
+          )
+        );
+        expect(outcomes.filter((event) => event === "acquired")).toHaveLength(1);
+        await stopWorkers();
+      }
+    }
+  );
 
   it("refuses a second acquisition in the same process, and is free again once released", async () => {
     const path = join(tempDir(), "daemon.lock");
@@ -123,6 +136,8 @@ describe("acquireProcessLock while waiting with SQLite", () => {
     const path = join(tempDir(), "daemon.lock");
     const held = await acquireProcessLock(platform, path);
     const sqlite = platform.sqlite as PlatformSqlite;
+    const stop = new AbortController();
+    const reason = new Error("stop");
     const timeouts: string[] = [];
     const counting: Platform = {
       ...platform,
@@ -133,6 +148,10 @@ describe("acquireProcessLock while waiting with SQLite", () => {
             exec(sql) {
               if (sql.startsWith("PRAGMA busy_timeout")) {
                 timeouts.push(sql);
+                // The settling attempt opens the database five times; the sixth attempt after it is the last one.
+                if (timeouts.length === 11) {
+                  stop.abort(reason);
+                }
               }
               db.exec(sql);
             },
@@ -142,12 +161,37 @@ describe("acquireProcessLock while waiting with SQLite", () => {
         }
       }
     };
-    const waiting = acquireProcessLock(counting, path, { wait: true, retryMs: 10, signal: AbortSignal.timeout(600) });
-    await expect(waiting).rejects.toMatchObject({ name: "TimeoutError" });
-    // One settling attempt (with its retries), then waits of 10, 20, 40, … ms instead of one attempt every 10 ms.
-    const blocking = timeouts.filter((pragma) => !pragma.endsWith("= 0"));
-    expect(blocking.length).toBeLessThanOrEqual(5);
-    expect(timeouts.length - blocking.length).toBeLessThan(12);
+    // The waits run on fake timers, so the test reads the delays the code asks for instead of timing them; a fixed
+    // Math.random makes the jitter factor 1.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const timers = vi.spyOn(globalThis, "setTimeout");
+    let outcome: unknown;
+    void acquireProcessLock(counting, path, { wait: true, retryMs: 10, signal: stop.signal }).then(
+      () => {
+        outcome = "acquired";
+      },
+      (error: unknown) => {
+        outcome = error;
+      }
+    );
+    // Each attempt reads files for real; a timer runs only once the attempt before it has set it.
+    while (outcome === undefined) {
+      await vi.advanceTimersToNextTimerAsync();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    expect(outcome).toBe(reason);
+    // One settling attempt with its four retries 15 ms apart, then waits doubling from 10 ms up to 160 ms between
+    // attempts that never block the thread.
+    expect(timeouts).toEqual([
+      ...Array.from({ length: 5 }, () => "PRAGMA busy_timeout = 10"),
+      ...Array.from({ length: 6 }, () => "PRAGMA busy_timeout = 0")
+    ]);
+    expect(timers.mock.calls.map(([, ms]) => ms)).toEqual([15, 15, 15, 15, 10, 20, 40, 80, 160, 160, 160]);
     await (held.ok ? held.value.release() : undefined);
   });
 });
