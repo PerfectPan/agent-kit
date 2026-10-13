@@ -50,8 +50,15 @@ export function trySqliteLock(sqlite: PlatformSqlite, path: string, busyTimeoutM
  * Whether another connection holds the exclusive lock on the SQLite database at `path`, found by taking a shared lock
  * once, without waiting. Shared locks never conflict with each other, so checks that run at once all find a free
  * lock free. The shared lock lasts one statement, far less than the busy timeout of an acquisition's first attempt
- * (`SETTLE_MS`), so an acquisition that meets it waits it out instead of missing a free lock. The database is opened
- * read-only and never created: opening a missing file throws, like any other failure to open.
+ * (`SETTLE_MS`), so a first attempt that meets it waits it out instead of missing a free lock. The retries of a
+ * waiting acquisition have no busy timeout: one that meets the shared lock finds the free lock busy and gets it on a
+ * later retry. The database is opened read-only and never created: opening a missing file throws, like any other
+ * failure to open.
+ *
+ * In the process that holds the lock, the check must open the database through the same SQLite library instance as
+ * the holder. The holder's lock is a POSIX lock, which belongs to the process, and closing any descriptor on the file
+ * drops it; SQLite keeps the check's descriptor open while another of its connections holds a lock on the same inode,
+ * but a different SQLite build loaded in the same process has its own inode table, so its close would drop the lock.
  */
 export function isSqliteLockHeld(sqlite: PlatformSqlite, path: string): boolean {
   const db = sqlite.open(path, { readonly: true });

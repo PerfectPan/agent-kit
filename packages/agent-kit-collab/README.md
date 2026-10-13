@@ -71,10 +71,13 @@ if (!(await isProcessLockHeld(platform, "/var/run/my-daemon/daemon.lock"))) {
 
 The check writes nothing: no `<path>.holder`, and a missing lock file reads as free and stays missing. With SQLite it
 makes one attempt at a shared lock, with no busy timeout and no retries, reads no process identity, and answers in
-well under a millisecond; checks that run at once all see a free lock as free, and an `acquireProcessLock` running at
-the same moment still gets it. Without SQLite it judges the lock file's holder as an acquisition does and leaves a
-dead holder's file for the next acquisition to reclaim. The answer can be stale by the time it arrives, so only
-`acquireProcessLock` decides who holds the lock.
+well under a millisecond; checks that run at once all see a free lock as free. The first attempt of an
+`acquireProcessLock` running at the same moment waits out a check (a 10 ms busy timeout, then a few short retries)
+and still gets a free lock. The later retries of `wait: true` have no busy timeout, so one that meets a check can find
+the free lock busy; the call then gets it after another backoff. Without SQLite it judges the lock file's holder as an
+acquisition does and leaves a dead holder's file for the next acquisition to reclaim. The answer can be stale by the
+time it arrives, so only `acquireProcessLock` decides who holds the lock. It takes `{ signal }`; since the check never
+waits, it looks at the signal once, before it starts, and rejects with `signal.reason` if it is aborted.
 
 ### Lease
 

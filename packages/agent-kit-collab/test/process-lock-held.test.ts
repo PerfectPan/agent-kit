@@ -124,6 +124,16 @@ describe.each(["sqlite", "file"] as const)("isProcessLockHeld with %s", (mechani
     expect(await isProcessLockHeld(checking(platform, mechanism), path)).toBe(false);
   });
 
+  it("S68: rejects with an aborted signal's reason without touching the lock file", async () => {
+    const reason = new Error("stop");
+    const refuse = (): never => {
+      throw new Error("the check touched the lock file");
+    };
+    const untouchable = Object.defineProperties({ ...platform }, { fs: { get: refuse }, sqlite: { get: refuse } });
+    const path = join(tempDir(), "daemon.lock");
+    await expect(isProcessLockHeld(untouchable, path, { signal: AbortSignal.abort(reason) })).rejects.toBe(reason);
+  });
+
   it("S68: lets processes that check at once, with no holder, all find the lock free", async () => {
     const path = await usedLock(platform);
     const checkers = Array.from({ length: 6 }, () =>
