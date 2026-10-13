@@ -105,6 +105,8 @@ interface StoreEvents {
   readonly saved: Queue.Queue<LeaseSnapshot>;
   /** The key of every fence request, offered before the request starts waiting. */
   readonly fenced: Queue.Queue<string>;
+  /** The key of every attempt at a fence that found it held; only persistent stores report these. */
+  readonly refused: Queue.Queue<string>;
 }
 
 /**
@@ -118,11 +120,16 @@ const withTestClock = <A, E, R>(platform: Platform, body: (events: StoreEvents) 
     const store = yield* LeaseRepository;
     const saved = yield* Queue.unbounded<LeaseSnapshot>();
     const fenced = yield* Queue.unbounded<string>();
+    const refused = yield* Queue.unbounded<string>();
     const observed: LeaseRepositoryShape = {
       load: (key) => TestClock.withLive(store.load(key)),
       save: (key, next, expectedRevision) =>
         TestClock.withLive(store.save(key, next, expectedRevision)).pipe(Effect.tap(() => Queue.offer(saved, next))),
-      fence: (key) => Effect.andThen(Queue.offer(fenced, key), TestClock.withLive(store.fence(key)))
+      fence: (key) =>
+        Effect.andThen(
+          Queue.offer(fenced, key),
+          TestClock.withLive(reportingRefusals(store.fence(key), Queue.offer(refused, key)))
+        )
     };
     const clock = yield* TestClock.testClockWith((testClock) =>
       Effect.succeed({
@@ -130,7 +137,7 @@ const withTestClock = <A, E, R>(platform: Platform, body: (events: StoreEvents) 
         monotonic: () => testClock.currentTimeMillisUnsafe()
       })
     );
-    return yield* body({ saved, fenced }).pipe(
+    return yield* body({ saved, fenced, refused }).pipe(
       Effect.provideService(LeaseRepository, observed),
       Effect.provideService(PlatformService, { ...platform, clock })
     );
@@ -429,10 +436,11 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
           expect(failureOf(yield* Effect.exit(old.lost))).toMatchObject({ _tag: "LeaseLost" });
           const successor = yield* createLeaseManager(config).pipe(Effect.flatMap((leases) => leases.acquire(KEY)));
           const next = yield* Effect.forkChild(successor.runFenced(() => Effect.sync(() => order.push("new"))));
-          // The successor asks for the fence the old write keeps, and gets the chance to run its work if the fence
-          // were free; only then does the write settle.
+          // The successor asks for the fence the old write keeps; a fence let go with the lost lease would have run
+          // its work by now. Only then does the write settle.
           yield* Queue.take(events.fenced);
-          yield* flush;
+          yield* refusedOrEnded(persistent, Queue.take(events.refused), next);
+          expect(order).toEqual(["old:start"]);
           settle.resolve();
           yield* Fiber.join(next);
           expect(order).toEqual(["old:start", "old:end", "new"]);
