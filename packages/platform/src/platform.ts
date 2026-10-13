@@ -139,6 +139,7 @@ export interface SqliteDatabase {
 }
 
 export interface PlatformSqlite {
+  /** Creates a missing database file, except with `readonly`, where opening a missing file throws. */
   open(path: string, options?: { readonly readonly?: boolean }): SqliteDatabase;
 }
 
