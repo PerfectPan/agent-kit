@@ -10,29 +10,63 @@ import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 
 type Mechanism = "sqlite" | "file";
 
+interface Pause {
+  /** Resolves once a call has reached the paused step. */
+  readonly reached: Promise<void>;
+  readonly open: () => void;
+}
+
 interface Spied {
   readonly platform: Platform;
   /** Attempts on the lock itself: SQLite databases opened for writing, or lock files created. */
   readonly attempts: () => number;
   /** Resolves once every acquisition started so far has joined the queue or started its attempt. */
   readonly settled: () => Promise<void>;
+  /** Stops the next path lookups, which every acquisition makes before it takes its turn, until `open` is called. */
+  readonly pauseLookups: () => Pause;
   /** Stops the next file writes, which every attempt makes once it has the lock, until `open` is called. */
-  readonly pauseWrites: () => { readonly reached: Promise<void>; readonly open: () => void };
+  readonly pauseWrites: () => Pause;
 }
 
-/** The Node platform, counting attempts and lookups, with writes that a test can pause. */
+/** A step that calls pass straight through; after `pause`, they stop there until the pause is opened. */
+function pausable(): { readonly pass: () => Promise<void>; readonly pause: () => Pause } {
+  let paused: { readonly reach: () => void; readonly opened: Promise<void> } | undefined;
+  return {
+    async pass() {
+      if (paused !== undefined) {
+        paused.reach();
+        await paused.opened;
+      }
+    },
+    pause() {
+      const reached = Promise.withResolvers<void>();
+      const opened = Promise.withResolvers<void>();
+      paused = { reach: reached.resolve, opened: opened.promise };
+      return {
+        reached: reached.promise,
+        open: () => {
+          paused = undefined;
+          opened.resolve();
+        }
+      };
+    }
+  };
+}
+
+/** The Node platform, counting attempts and lookups, with lookups and writes that a test can pause. */
 function spied(mechanism: Mechanism): Spied {
   const node = testPlatform({ sqlite: mechanism === "sqlite" });
   const { fs, sqlite } = node;
   let attempts = 0;
   const lookups: Promise<unknown>[] = [];
-  let paused: { readonly reach: () => void; readonly opened: Promise<void> } | undefined;
+  const lookup = pausable();
+  const write = pausable();
   const platform: Platform = {
     ...node,
     fs: {
       ...fs,
       realpath(path) {
-        const found = fs.realpath(path);
+        const found = lookup.pass().then(() => fs.realpath(path));
         lookups.push(found);
         return found;
       },
@@ -41,10 +75,7 @@ function spied(mechanism: Mechanism): Spied {
         return fs.createExclusive(path);
       },
       async writeAtomic(path, data, options) {
-        if (paused !== undefined) {
-          paused.reach();
-          await paused.opened;
-        }
+        await write.pass();
         await fs.writeAtomic(path, data, options);
       }
     },
@@ -65,18 +96,8 @@ function spied(mechanism: Mechanism): Spied {
       // Every acquisition continues from its lookup in microtasks, which all run before the next macrotask.
       await new Promise((resolve) => setImmediate(resolve));
     },
-    pauseWrites: () => {
-      const reached = Promise.withResolvers<void>();
-      const opened = Promise.withResolvers<void>();
-      paused = { reach: reached.resolve, opened: opened.promise };
-      return {
-        reached: reached.promise,
-        open: () => {
-          paused = undefined;
-          opened.resolve();
-        }
-      };
-    }
+    pauseLookups: lookup.pause,
+    pauseWrites: write.pause
   };
 }
 
@@ -182,6 +203,36 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock in one process wi
     expect(attempts()).toBe(2);
   });
 
+  it("S69: rejects at once an acquisition aborted while it resolves the path, without joining the queue", async () => {
+    const { platform, attempts, settled, pauseLookups } = spied(mechanism);
+    const path = join(tempDir(), "daemon.lock");
+    const first = held(await acquireProcessLock(platform, path));
+    const stop = new AbortController();
+    const reason = new Error("stop");
+    const lookups = pauseLookups();
+    let outcome: unknown;
+    void acquireProcessLock(platform, path, { wait: true, signal: stop.signal }).then(
+      () => {
+        outcome = "acquired";
+      },
+      (error: unknown) => {
+        outcome = error;
+      }
+    );
+    await lookups.reached;
+    stop.abort(reason);
+    lookups.open();
+    await settled();
+    // Rejected while the holder still holds the lock: a waiter queued on the aborted signal would hear no abort, and
+    // would reject only once the holder handed it the turn.
+    expect(outcome).toBe(reason);
+    expect(attempts()).toBe(1);
+    await first.release();
+    // No waiter was left in the queue, so a call without wait finds the turn free.
+    await held(await acquireProcessLock(platform, path)).release();
+    expect(attempts()).toBe(2);
+  });
+
   it("S69: releases a lock taken after an abort, and hands the turn on", async () => {
     const { platform, attempts, settled, pauseWrites } = spied(mechanism);
     const path = join(tempDir(), "daemon.lock");
@@ -244,5 +295,32 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock in one process wi
     expect([one.ok, another.ok]).toEqual([true, true]);
     await held(another).release();
     await held(one).release();
+  });
+});
+
+describe("acquireProcessLock in one process with sqlite when a release fails", () => {
+  it("S69: hands the turn on when removing the holder record throws, with the lock released", async () => {
+    const { platform, attempts, settled } = spied("sqlite");
+    const path = join(tempDir(), "daemon.lock");
+    const failure = new Error("cannot remove");
+    // The same sqlite object, so it shares the turns of the spied platform.
+    const failing: Platform = {
+      ...platform,
+      fs: {
+        ...platform.fs,
+        remove: (target) => (target === `${path}.holder` ? Promise.reject(failure) : platform.fs.remove(target))
+      }
+    };
+    const first = held(await acquireProcessLock(failing, path));
+    const next = acquireProcessLock(platform, path, { wait: true });
+    await settled();
+    expect(attempts()).toBe(1);
+
+    await expect(first.release()).rejects.toBe(failure);
+    await settled();
+    // The waiter has its turn and takes the lock, which the failed release still unlocked, in a single attempt.
+    expect(attempts()).toBe(2);
+    await held(await next).release();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

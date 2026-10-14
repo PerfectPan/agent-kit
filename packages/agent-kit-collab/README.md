@@ -69,7 +69,9 @@ busy wait would block the thread the holder needs to finish and release. Without
 `ProcessLockHeld` at once. Aborting `signal` takes a task out of the queue and leaves the others' turns as they were.
 Tasks share the turns when they name the same file (its directory resolved through symlinks) through platforms with
 the same `sqlite` object (without SQLite, the same `fs`), as every platform from `createNodePlatform` has; other
-processes are still kept out by SQLite or the lock file.
+processes are still kept out by SQLite or the lock file. The turns live in this package's module state, so a second
+copy of it in the process (another version, or one bundled into a dependency) does not share them and meets the first
+in SQLite, as another process does.
 
 `isProcessLockHeld` tells whether another process, or an acquisition in this one, holds the lock, without taking it.
 A short-lived process can use it to hand work to a running holder and start one only when there is none:
