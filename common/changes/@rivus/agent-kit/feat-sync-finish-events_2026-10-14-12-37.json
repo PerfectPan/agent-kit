@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Finish events from the opencode and Pi bridges are delivered before the next event: each bridge derives its synchronous set from the dialect's finish-phase lifecycle mappings (a switch counts when a mapping it can pick is one) with every alias spelling, and hands those payloads to the hook command with spawnSync, whose exit or 5 s timeout releases the bridge. A failed or timed-out synchronous send stays fail-open, other events keep the asynchronous spawn, and the opencode bridge still updates its currentSessionId memory for every event before the send. Pi's synchronous set gains agent_end and agent_settled next to session_shutdown.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

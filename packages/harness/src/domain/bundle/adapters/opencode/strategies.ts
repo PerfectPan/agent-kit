@@ -1,6 +1,12 @@
 import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../index.js";
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
-import { aliasesOf, type FieldPath, type HookDialect, type HookEventSpec } from "../../../lifecycle/index.js";
+import {
+  aliasesOf,
+  finishEventsOf,
+  type FieldPath,
+  type HookDialect,
+  type HookEventSpec
+} from "../../../lifecycle/index.js";
 
 import { opencodeCurrentSessionField, opencodeHookDialect } from "../../../lifecycle/adapters/opencode.js";
 import { opencodeConfigDir, opencodePluginFile, opencodePluginsDir } from "./config-files.js";
@@ -44,16 +50,22 @@ function sessionEndEvents(): readonly string[] {
 /**
  * The plugin that forwards opencode's events to the hook command, in the payload shape, `currentSessionId`
  * included, that the opencode HookDialect describes. Each callback runs inside one try/catch, so a payload that throws
- * while it is read or forwarded never rejects the callback into opencode. The plugin cannot import the kit, so the
- * path walk is inlined.
+ * while it is read, waited on or forwarded never rejects the callback into opencode. The plugin cannot import the
+ * kit, so the path walk is inlined.
  */
-function bridgeSource(owner: string, command: string, events: readonly string[]): string {
+function bridgeSource(
+  owner: string,
+  command: string,
+  events: readonly string[],
+  syncEvents: readonly string[]
+): string {
   return `// Generated for ${owner} by @rivus/agent-kit: forwards opencode events to its hook command.
 // Reinstalling overwrites this file; uninstalling removes it.
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 
 const COMMAND = ${JSON.stringify(command)}
 const EVENTS = new Set(${JSON.stringify(events)})
+const SYNC = new Set(${JSON.stringify(syncEvents)})
 const SESSION_PATHS = ${JSON.stringify(namedSessionPaths(undefined))}
 const EVENT_SESSION_PATHS = ${JSON.stringify(eventSessionPaths())}
 const SESSION_ENDS = new Set(${JSON.stringify(sessionEndEvents())})
@@ -69,7 +81,12 @@ function namedSessionId(payload, type) {
   return undefined
 }
 
-function send(payload) {
+// A finish event waits for the command (at most 5 s), so opencode cannot forward the next event before it.
+function send(payload, sync) {
+  if (sync) {
+    spawnSync(COMMAND, { shell: true, input: JSON.stringify(payload), stdio: ["pipe", "ignore", "ignore"], timeout: 5000 })
+    return
+  }
   const child = spawn(COMMAND, { shell: true, stdio: ["pipe", "ignore", "ignore"] })
   child.on("error", () => {})
   child.stdin.on("error", () => {})
@@ -86,7 +103,10 @@ export const AgentKitHooks = async ({ directory }) => {
       currentSessionId = named
     }
     if (!EVENTS.has(type)) return
-    send(named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload)
+    send(
+      named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload,
+      SYNC.has(type)
+    )
   }
   return {
     event: async (input) => {
@@ -125,7 +145,12 @@ export const opencodeInstallAdapter: InstallAdapter = {
       : [
           {
             locator: { kind: "file", path: opencodePluginFile(context, bundle) },
-            content: bridgeSource(bundle.owner, first.command, bridgedEvents(opencodeHookDialect, registrations)),
+            content: bridgeSource(
+              bundle.owner,
+              first.command,
+              bridgedEvents(opencodeHookDialect, registrations),
+              finishEventsOf(opencodeHookDialect.events)
+            ),
             strategy,
             agents: agentsOf(registrations)
           }

@@ -1,26 +1,32 @@
 import { type InstallAdapter, ownerSlug } from "../../index.js";
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
+import { finishEventsOf } from "../../../lifecycle/index.js";
+import { piHookDialect } from "../../../lifecycle/adapters/pi.js";
 import { piExtensionFile, piExtensionsDir, piHome } from "./config-files.js";
-
-/** Events after which Pi may exit at once, so the bridge waits for the hook command (at most 5 s). */
-const SYNC_EVENTS = ["session_shutdown"];
 
 /**
  * The extension that forwards Pi's events to the hook command, in the payload shape the Pi HookDialect reads: the
- * event with its name as `type`, plus `sessionId` and `cwd` from the handler's context. The command runs through the
- * shell with the payload on stdin; a failure never reaches Pi.
+ * event with its name as `type`, plus `sessionId` and `cwd` from the handler's context. The `syncEvents` (the
+ * dialect's finish-phase events) wait for the command to exit, at most 5 s, so Pi cannot forward the next event
+ * before them; the command runs through the shell with the payload on stdin, and a failure never reaches Pi.
  */
-function bridgeSource(owner: string, command: string, events: readonly string[]): string {
+function bridgeSource(
+  owner: string,
+  command: string,
+  events: readonly string[],
+  syncEvents: readonly string[]
+): string {
   return `// Generated for ${owner} by @rivus/agent-kit: forwards Pi events to its hook command.
 // Reinstalling overwrites this file; uninstalling removes it.
 import { spawn, spawnSync } from "node:child_process"
 
 const COMMAND = ${JSON.stringify(command)}
 const EVENTS: string[] = ${JSON.stringify(events)}
-const SYNC = new Set(${JSON.stringify(SYNC_EVENTS)})
+const SYNC = new Set(${JSON.stringify(syncEvents)})
 
 function forward(type: string, payload: string): void {
   try {
+    // A finish event waits for the command (at most 5 s), so Pi cannot forward the next event before it.
     if (SYNC.has(type)) {
       spawnSync(COMMAND, { shell: true, input: payload, stdio: ["pipe", "ignore", "ignore"], timeout: 5000 })
       return
@@ -64,7 +70,8 @@ export const piInstallAdapter: InstallAdapter = {
             content: bridgeSource(
               bundle.owner,
               first.command,
-              [...new Set(registrations.map(({ event }) => event))].toSorted()
+              [...new Set(registrations.map(({ event }) => event))].toSorted(),
+              finishEventsOf(piHookDialect.events)
             ),
             strategy,
             agents: agentsOf(registrations)

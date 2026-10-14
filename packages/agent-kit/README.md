@@ -142,7 +142,12 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
-and Pi a bridge that forwards their events to the command. The opencode bridge forwards each bus event as opencode
+and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
+`finish`: opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle; Pi `agent_end`,
+`agent_settled` and `session_shutdown`) are delivered synchronously: the bridge hands them to the command and waits
+for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded. A send that fails or
+times out still does not throw into the agent, and the other events are forwarded without waiting. The opencode
+bridge forwards each bus event as opencode
 sent it, plus the plugin's `directory`, and a tool hook as `{ type, properties, directory }`. When an event such as
 `file.edited` names no session, it adds `currentSessionId`: the session of the latest event that plugin instance saw
 name one, forwarded or not, until that session is deleted. With several sessions in one directory, that is the latest

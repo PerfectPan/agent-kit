@@ -5,9 +5,14 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 
 import { readHookEvent } from "../src/domain/lifecycle/adapters/hook-dialects.js";
+import { opencodeHookDialect } from "../src/domain/lifecycle/adapters/opencode.js";
+import { piHookDialect } from "../src/domain/lifecycle/adapters/pi.js";
+import { finishEventsOf } from "../src/domain/lifecycle/index.js";
+import type { HookEventSpec } from "../src/domain/lifecycle/index.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { opencodeInstallAdapter } from "../src/domain/bundle/adapters/opencode/strategies.js";
+import { piInstallAdapter } from "../src/domain/bundle/adapters/pi/strategies.js";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
@@ -112,7 +117,7 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
   });
 });
 
-const SPAWN_IMPORT = 'import { spawn } from "node:child_process"';
+const SPAWN_IMPORT = 'import { spawn, spawnSync } from "node:child_process"';
 
 interface OpencodePlugin {
   AgentKitHooks(input: { readonly directory: string }): Promise<OpencodeHooks>;
@@ -175,11 +180,17 @@ export function spawn() {
     stdin: { on() {}, end(data) { payloads.push(JSON.parse(String(data))) } }
   }
 }
+export function spawnSync(_command, options) {
+  payloads.push(JSON.parse(String(options.input)))
+}
 `
   );
   home.write(
     "bridge.mjs",
-    artifact.content.replace(SPAWN_IMPORT, `import { spawn } from ${JSON.stringify(pathToFileURL(fake).href)}`)
+    artifact.content.replace(
+      SPAWN_IMPORT,
+      `import { spawn, spawnSync } from ${JSON.stringify(pathToFileURL(fake).href)}`
+    )
   );
   const log = (await import(pathToFileURL(fake).href)) as PayloadLog;
   const plugin = (await import(pathToFileURL(home.path("bridge.mjs")).href)) as OpencodePlugin;
@@ -376,4 +387,224 @@ describe("S113: the opencode bridge remembers only session ids and forgets a del
     expect(editedNone).not.toHaveProperty("currentSessionId");
     expect(readHookEvent("opencode", editedNone, {}).sessionId).toBeUndefined();
   });
+});
+
+describe("S115: bridges deliver the dialect's finish events before the next event", () => {
+  /**
+   * A hook command that appends each payload it gets on stdin to `payloads.log`; the finish event's payload is
+   * appended only after a delay, before the command exits, so an asynchronous send loses the ordering.
+   */
+  function orderCommand(home: TestHome, finish: string): string {
+    home.command(
+      "order",
+      `const chunks = [];
+process.stdin.on("data", (chunk) => chunks.push(chunk));
+process.stdin.on("end", () => {
+  const payload = Buffer.concat(chunks).toString();
+  const record = () => require("node:fs").appendFileSync(${JSON.stringify(home.path("payloads.log"))}, payload + "\\n");
+  if (JSON.parse(payload).type === ${JSON.stringify(finish)}) {
+    setTimeout(record, 400);
+  } else {
+    record();
+  }
+});`
+    );
+    return `${home.bin}/order --agent {agent}`;
+  }
+
+  it("opencode: a finish event reaches the command before a start event that follows it", async () => {
+    const home = testHome();
+    await install(
+      home,
+      {
+        owner: "demo-app",
+        version: "1",
+        digest: "d",
+        artifacts: [
+          {
+            type: "hooks",
+            command: orderCommand(home, "session.idle"),
+            events: { opencode: ["session.idle", "session.created"] }
+          }
+        ]
+      },
+      "opencode"
+    );
+    const file = home.path(".config/opencode/plugins/demo-app.js");
+    const module = (await import(pathToFileURL(file).href)) as Record<
+      string,
+      (input: object) => Promise<Record<string, (arg: object) => Promise<void>>>
+    >;
+    const hooks = await module.AgentKitHooks!({ directory: "/u/me/work" });
+    await hooks.event!({ event: { type: "session.idle", properties: {} } });
+    await hooks.event!({ event: { type: "session.created", properties: { info: { id: "ses_1" } } } });
+    const events = await payloads(home, 2);
+    expect(events.map((payload) => readHookEvent("opencode", payload, {}).nativeEvent)).toEqual([
+      "session.idle",
+      "session.created"
+    ]);
+  });
+
+  it("Pi: agent_end reaches the command before a session_start that follows it", async () => {
+    const home = testHome();
+    await install(
+      home,
+      {
+        owner: "demo-app",
+        version: "1",
+        digest: "d",
+        artifacts: [
+          {
+            type: "hooks",
+            command: orderCommand(home, "agent_end"),
+            events: { pi: ["agent_end", "session_start"] }
+          }
+        ]
+      },
+      "pi"
+    );
+    const file = home.path(".pi/agent/extensions/demo-app.ts");
+    const module = (await import(pathToFileURL(file).href)) as { default: (pi: object) => void };
+    const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
+    module.default({
+      on: (name: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(name, handler)
+    });
+    const ctx = { cwd: "/u/me/work", sessionManager: { getSessionId: () => "pi-1" } };
+    await handlers.get("agent_end")!({ type: "agent_end" }, ctx);
+    await handlers.get("session_start")!({ type: "session_start" }, ctx);
+    const events = await payloads(home, 2);
+    expect(events.map((payload) => readHookEvent("pi", payload, {}).nativeEvent)).toEqual([
+      "agent_end",
+      "session_start"
+    ]);
+  });
+
+  it("derives the synchronous set from each dialect's finish phases, every spelling included", () => {
+    expect(finishEventsOf(piHookDialect.events)).toEqual(["agent_end", "agent_settled", "session_shutdown"]);
+    expect(finishEventsOf(opencodeHookDialect.events)).toEqual([
+      "session.deleted",
+      "session.error",
+      "session.idle",
+      "session.status"
+    ]);
+  });
+
+  it("follows the dialect: a finish event, an alias of one and a finish case join, a demoted one leaves", () => {
+    const events: Record<string, HookEventSpec> = structuredClone(piHookDialect.events);
+    events.turn_end = { lifecycle: { phase: "finish", scope: "turn" } };
+    events.session_shutdown = { ...events.session_shutdown!, aliases: ["shutdown"] };
+    events.agent_end = { lifecycle: { phase: "activity" } };
+    // A switch counts too, here through its `otherwise`; session.status's finish case covers the `cases` side.
+    events.agent_settled = {
+      lifecycle: {
+        field: ["reason"],
+        cases: { busy: { phase: "start" } },
+        otherwise: { phase: "finish", scope: "turn" }
+      }
+    };
+    expect(finishEventsOf(events)).toEqual(["agent_settled", "session_shutdown", "shutdown", "turn_end"]);
+  });
+
+  it("hands the derived set to both generated bridges as their synchronous events", () => {
+    const home = testHome();
+    const context = { home: home.home, env: home.env };
+    const registrations = (agent: "opencode" | "pi", events: readonly string[]) =>
+      events.map((event) => ({ event, command: "hook", agents: [agent] }));
+    const syncOf = (content: string): readonly string[] => {
+      const match = /const SYNC = new Set\((\[[^\]]*\])\)/.exec(content);
+      if (match === null) {
+        throw new Error("the generated bridge has no SYNC set");
+      }
+      return JSON.parse(match[1]!) as readonly string[];
+    };
+    const [opencode] = opencodeInstallAdapter.renderHooks(
+      "native-plugin",
+      registrations("opencode", ["session.idle", "file.edited"]),
+      { owner: "demo-app", version: "1", digest: "d" },
+      context
+    );
+    const [pi] = piInstallAdapter.renderHooks(
+      "native-plugin",
+      registrations("pi", ["agent_end", "turn_start"]),
+      { owner: "demo-app", version: "1", digest: "d" },
+      context
+    );
+    if (typeof opencode?.content !== "string" || typeof pi?.content !== "string") {
+      throw new Error("the bridges did not render files");
+    }
+    expect(syncOf(opencode.content)).toEqual(finishEventsOf(opencodeHookDialect.events));
+    expect(syncOf(pi.content)).toEqual(finishEventsOf(piHookDialect.events));
+  });
+
+  it("opencode: a synchronous send that cannot start, fails or times out still resolves the callback", async () => {
+    const home = testHome();
+    home.command("exit3", 'process.stdin.resume(); process.stdin.on("end", () => process.exit(3));');
+    home.command("slow", "process.stdin.resume(); setTimeout(() => process.exit(0), 6000);");
+    const commands: readonly string[] = [
+      `${home.bin}/missing-command --agent {agent}`,
+      `${home.bin}/exit3 --agent {agent}`,
+      `${home.bin}/slow --agent {agent}`
+    ];
+    let owner = 0;
+    for (const command of commands) {
+      const name = `demo-${(owner += 1)}`;
+      await install(
+        home,
+        {
+          owner: name,
+          version: "1",
+          digest: "d",
+          artifacts: [{ type: "hooks", command, events: { opencode: ["session.idle"] } }]
+        },
+        "opencode"
+      );
+      const module = (await import(pathToFileURL(home.path(`.config/opencode/plugins/${name}.js`)).href)) as Record<
+        string,
+        (input: object) => Promise<Record<string, (arg: object) => Promise<void>>>
+      >;
+      const hooks = await module.AgentKitHooks!({ directory: "/u/me/work" });
+      const outcome = await hooks.event!({ event: { type: "session.idle", properties: {} } }).then(
+        () => "resolved",
+        (error: unknown) => `rejected: ${String(error)}`
+      );
+      expect(outcome).toBe("resolved");
+    }
+  }, 20000);
+
+  it("Pi: a synchronous send that cannot start, fails or times out still resolves the callback", async () => {
+    const home = testHome();
+    home.command("exit3", 'process.stdin.resume(); process.stdin.on("end", () => process.exit(3));');
+    home.command("slow", "process.stdin.resume(); setTimeout(() => process.exit(0), 6000);");
+    const commands: readonly string[] = [
+      `${home.bin}/missing-command --agent {agent}`,
+      `${home.bin}/exit3 --agent {agent}`,
+      `${home.bin}/slow --agent {agent}`
+    ];
+    let owner = 0;
+    for (const command of commands) {
+      const name = `demo-${(owner += 1)}`;
+      await install(
+        home,
+        {
+          owner: name,
+          version: "1",
+          digest: "d",
+          artifacts: [{ type: "hooks", command, events: { pi: ["agent_end"] } }]
+        },
+        "pi"
+      );
+      const module = (await import(pathToFileURL(home.path(`.pi/agent/extensions/${name}.ts`)).href)) as {
+        default: (pi: object) => void;
+      };
+      const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
+      module.default({
+        on: (type: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(type, handler)
+      });
+      const outcome = await handlers.get("agent_end")!({ type: "agent_end" }, { cwd: "/u/me/work" }).then(
+        () => "resolved",
+        (error: unknown) => `rejected: ${String(error)}`
+      );
+      expect(outcome).toBe("resolved");
+    }
+  }, 20000);
 });

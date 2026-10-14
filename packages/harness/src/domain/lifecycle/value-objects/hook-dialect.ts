@@ -146,3 +146,23 @@ export function aliasesOf(
 ): readonly string[] {
   return events?.[name]?.aliases ?? [];
 }
+
+/** Whether an event's lifecycle can be phase `finish`: a switch can, when any mapping it can pick can be one. */
+function canFinish(lifecycle: LifecycleMapping | LifecycleSwitch): boolean {
+  const mappings = "cases" in lifecycle ? [...Object.values(lifecycle.cases), lifecycle.otherwise] : [lifecycle];
+  return mappings.some(({ phase }) => phase === "finish");
+}
+
+/**
+ * Every spelling of an event whose lifecycle can be phase `finish`, sorted. Callers that must not let one of these
+ * events arrive late derive the set from this, never from a hand-kept name list.
+ */
+export function finishEventsOf(events: Readonly<Record<string, HookEventSpec>>): readonly string[] {
+  return [
+    ...new Set(
+      Object.entries(events).flatMap(([name, spec]) =>
+        canFinish(spec.lifecycle) ? [name, ...aliasesOf(events, name)] : []
+      )
+    )
+  ].toSorted();
+}
