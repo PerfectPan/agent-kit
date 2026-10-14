@@ -1,6 +1,11 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Tue, 13 Oct 2026 11:09:20 GMT and should not be manually modified.
+This log was last generated on Wed, 14 Oct 2026 00:33:31 GMT and should not be manually modified.
+
+## 0.15.0
+Wed, 14 Oct 2026 00:33:31 GMT
+
+_Version update only_
 
 ## 0.14.0
 Tue, 13 Oct 2026 11:09:20 GMT

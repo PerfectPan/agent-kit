@@ -2,6 +2,21 @@
   "name": "@rivus/agent-kit-collab",
   "entries": [
     {
+      "version": "0.15.0",
+      "tag": "@rivus/agent-kit-collab_v0.15.0",
+      "date": "Wed, 14 Oct 2026 00:33:31 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "acquireProcessLock serializes the acquisitions of one lock inside a process in memory: while one holds the lock or is attempting it, a later one with wait waits for it to release the lock or give up, then makes its own attempt, so no acquisition blocks the thread in a SQLite busy wait on a holder in its own process; without wait it resolves to ProcessLockHeld at once, without an attempt, with the holder the lock recorded. Aborting signal during that wait rejects with signal.reason and leaves the other turns as they were. Acquisitions share turns when they name the same file (its directory resolved through symlinks) through platforms with the same sqlite object (without SQLite, the same fs), as every createNodePlatform result has; other processes are still kept out by SQLite or the lock file, and isProcessLockHeld is unchanged."
+          },
+          {
+            "comment": "With SQLite, acquireProcessLock no longer needs the process identity, which only feeds the <path>.holder diagnostics: a process whose platform.process.self throws (on macOS, one in a sandbox that denies running ps or sysctl) takes the lock with holder undefined, writes no <path>.holder, and removes one that a holder which died left. ProcessLock.holder is now typed ProcessLockHolder | undefined; it is undefined only in that case. Without SQLite the lock file still needs the identity to judge its holder, and the acquisition rejects with the error reading it, as before. The fences of sqliteLeaseRepository follow the same rule; isProcessLockHeld is unchanged. On win32, which stays unsupported, process.self always throws, so a SQLite lock there is now taken the same way instead of rejecting; lock files and leases still need the identity."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.14.0",
       "tag": "@rivus/agent-kit-collab_v0.14.0",
       "date": "Tue, 13 Oct 2026 11:09:20 GMT",
