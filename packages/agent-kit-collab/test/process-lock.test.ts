@@ -291,4 +291,33 @@ describe("acquireProcessLock with SQLite", () => {
     await (lock.ok ? lock.value.release() : undefined);
     expect(() => readFileSync(`${path}.holder`)).toThrow(/ENOENT/);
   });
+
+  it.each([
+    {
+      step: "writing the holder record",
+      blind: false,
+      failOn: (fs: Platform["fs"], holder: string, failure: Error): Partial<Platform["fs"]> => ({
+        writeAtomic: (target, data, options) =>
+          target === holder ? Promise.reject(failure) : fs.writeAtomic(target, data, options)
+      })
+    },
+    {
+      step: "removing the record without an identity",
+      blind: true,
+      failOn: (fs: Platform["fs"], holder: string, failure: Error): Partial<Platform["fs"]> => ({
+        remove: (target) => (target === holder ? Promise.reject(failure) : fs.remove(target))
+      })
+    }
+  ])("rejects and unlocks the database when $step fails", async ({ blind, failOn }) => {
+    const platform = testPlatform();
+    const path = join(tempDir(), "daemon.lock");
+    const failure = new Error("cannot record");
+    const failing: Platform = { ...platform, fs: { ...platform.fs, ...failOn(platform.fs, `${path}.holder`, failure) } };
+    await expect(acquireProcessLock(blind ? withoutIdentity(failing) : failing, path)).rejects.toBe(failure);
+    // A database left locked would answer this check, which makes one attempt and never waits, as held.
+    expect(await isProcessLockHeld(platform, path)).toBe(false);
+    const next = await acquireProcessLock(platform, path);
+    expect(next.ok).toBe(true);
+    await (next.ok ? next.value.release() : undefined);
+  });
 });
