@@ -162,10 +162,14 @@ describe("acquireProcessLock while waiting with SQLite", () => {
     const stop = new AbortController();
     const reason = new Error("stop");
     const timeouts: string[] = [];
+    let identityReads = 0;
     // Its own sqlite object keeps this platform out of the holder's queue in this process, so it meets the held lock
-    // in SQLite, as another process would.
+    // in SQLite, as another process would. It cannot read its identity, and each failed read would run `ps` again on
+    // the thread.
     const counting: Platform = {
-      ...platform,
+      ...withoutIdentity(platform, () => {
+        identityReads += 1;
+      }),
       sqlite: {
         open(file, options) {
           const db = sqlite.open(file, options);
@@ -220,6 +224,7 @@ describe("acquireProcessLock while waiting with SQLite", () => {
       ...Array.from({ length: 5 }, () => "PRAGMA busy_timeout = 0")
     ]);
     expect(timers.mock.calls.map(([, ms]) => ms)).toEqual([15, 15, 15, 15, 10, 20, 40, 80, 160, 160]);
+    expect(identityReads).toBe(1);
     await (held.ok ? held.value.release() : undefined);
   });
 });

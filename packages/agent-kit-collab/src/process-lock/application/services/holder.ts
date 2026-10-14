@@ -1,3 +1,4 @@
+import { err, ok, type Result } from "@rivus/agent-kit/catalog";
 import type { ProcessIdentity } from "@rivus/agent-kit/platform";
 import * as z from "zod/mini";
 
@@ -32,15 +33,12 @@ export function newStamp(platform: ProcessLockPlatform, self: ProcessIdentity): 
   return { host, bootId, pid, startTime, acquiredAt: platform.clock.now(), nonce: crypto.randomUUID() };
 }
 
-/**
- * This process's identity, or `undefined` when the platform cannot read it: `process.self` throws on win32, and on
- * darwin where the process may not run `/bin/ps` or `/usr/sbin/sysctl` (a sandbox that denies process exec).
- */
-export function ownIdentity(platform: ProcessLockPlatform): ProcessIdentity | undefined {
+/** This process's identity, or the error that reading `process.self` threw. */
+export function ownIdentity(platform: ProcessLockPlatform): Result<ProcessIdentity, unknown> {
   try {
-    return platform.process.self;
-  } catch {
-    return undefined;
+    return ok(platform.process.self);
+  } catch (error) {
+    return err(error);
   }
 }
 

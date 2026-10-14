@@ -13,11 +13,12 @@ export function testPlatform(options: { readonly sqlite?: boolean } = {}): Platf
 
 /**
  * The platform as a process that may not identify itself or others sees it, such as one on darwin in a sandbox that
- * denies running `ps` and `sysctl`: `process.self` and `process.identify` throw.
+ * denies running `ps` and `sysctl`: `process.self` and `process.identify` throw, each after calling `onRead`.
  */
-export function withoutIdentity(platform: Platform): Platform {
+export function withoutIdentity(platform: Platform, onRead: () => void = () => undefined): Platform {
   const { process: node } = platform;
   const fail = (): never => {
+    onRead();
     throw new Error("cannot identify processes here");
   };
   return {
