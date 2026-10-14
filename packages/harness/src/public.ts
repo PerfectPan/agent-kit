@@ -9,6 +9,12 @@ export {
   type ApplyReport
 } from "./application/use-cases/apply-install.js";
 export { type Check, doctor, type DoctorOptions } from "./application/use-cases/doctor.js";
+export {
+  type FindLegacyError,
+  type FindLegacyOptions,
+  findLegacy,
+  type LegacyEntry
+} from "./application/use-cases/find-legacy.js";
 export type { ApplyFailed, StrategyUnavailable, TargetChanged } from "./application/errors.js";
 export type {
   DroppedHook,
@@ -104,6 +110,7 @@ export {
   type ConflictChoice,
   type InstallScope,
   type InvalidPlan,
+  type LegacyTreatment,
   type LocatorKey,
   locatorKey,
   type PlanAction,

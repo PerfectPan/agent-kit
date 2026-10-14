@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "/harness gains findLegacy(bundle, { agents, compat?, adapters?, dialects? }), a read-only query that lists every untracked entry an older release of the owner installed without a ledger: it scans the selected agents' declared legacy sources (and the other agents' hook files those agents execute) and reads the owner's tracked locators, judging each find by the plan's own rule. Each LegacyEntry names the agent it is effective in, the locator and its kind, a hook entry's event and command, and whether planning would replace it or protect it — kept as the user's, or indistinguishable from the user's own because an owned hook is missing from its event. Nothing is written and the LedgerLock is never taken: the entry needs only ArtifactFiles, LedgerRepository and PlatformService, and an entry the ledger records is never listed, so the replace entries are exactly the legacy steps planInstall produces for the same input. Planning's behavior is unchanged; buildInstallPlan now judges locators through the shared legacyTreatment instead of an inline copy of the same rule.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

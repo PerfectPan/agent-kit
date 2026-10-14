@@ -12,9 +12,14 @@ import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
 /** A place older versions may have left hooks, optionally one a selected runner executes under renamed events. */
 export interface LegacyHookSource {
   readonly source: ArtifactSource;
+  /**
+   * The agent a find in this source is effective in: the selected agent whose own `legacySources` declared it, or the
+   * selected runner that executes another agent's file.
+   */
+  readonly agent: CodingAgentId;
   /** When set, only hooks for these runner events are taken from the source. */
   readonly events?: ReadonlySet<string>;
-  /** The selected agent that also executes this other agent's file. */
+  /** The selected agent that also executes this other agent's file; set exactly for a foreign source, where it equals `agent`. */
   readonly runner?: CodingAgentId;
   /** Owner event name → the runner's name, recorded back onto the observation. */
   readonly runAs?: Readonly<Record<string, string>>;
@@ -33,6 +38,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
     return [
       {
         source: { kind: "entries", path, format, pointer: "/hooks", memberIn: "hook-group" },
+        agent: runner,
         events,
         runner,
         runAs: file.rename
@@ -41,6 +47,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
   }
   return [...events].map((event) => ({
     source: { kind: "entries" as const, path, format, pointer: escapePointer(event), memberIn: "element" },
+    agent: runner,
     runner,
     runAs: file.rename
   }));
@@ -59,7 +66,7 @@ export function legacyHookSources(
   compat: readonly HookCompat[] = []
 ): readonly LegacyHookSource[] {
   const own: LegacyHookSource[] = agents.flatMap((agent) =>
-    (adapters[agent]?.legacySources?.(context) ?? []).map((source) => ({ source }))
+    (adapters[agent]?.legacySources?.(context) ?? []).map((source) => ({ source, agent }))
   );
   const foreign: LegacyHookSource[] = agents.flatMap((runner) =>
     foreignHookFiles(runner, dialects, adapters, context, compat).flatMap((file) => foreignSource(file, runner))
