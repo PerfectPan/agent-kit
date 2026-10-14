@@ -2,8 +2,9 @@ import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../ind
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
 import {
   aliasesOf,
-  finishEventsOf,
+  finishSelectorsOf,
   type FieldPath,
+  type FinishSelector,
   type HookDialect,
   type HookEventSpec
 } from "../../../lifecycle/index.js";
@@ -57,7 +58,7 @@ function bridgeSource(
   owner: string,
   command: string,
   events: readonly string[],
-  syncEvents: readonly string[]
+  finish: Readonly<Record<string, FinishSelector>>
 ): string {
   return `// Generated for ${owner} by @rivus/agent-kit: forwards opencode events to its hook command.
 // Reinstalling overwrites this file; uninstalling removes it.
@@ -65,7 +66,7 @@ import { spawn, spawnSync } from "node:child_process"
 
 const COMMAND = ${JSON.stringify(command)}
 const EVENTS = new Set(${JSON.stringify(events)})
-const SYNC = new Set(${JSON.stringify(syncEvents)})
+const FINISH = ${JSON.stringify(finish)}
 const SESSION_PATHS = ${JSON.stringify(namedSessionPaths(undefined))}
 const EVENT_SESSION_PATHS = ${JSON.stringify(eventSessionPaths())}
 const SESSION_ENDS = new Set(${JSON.stringify(sessionEndEvents())})
@@ -81,9 +82,19 @@ function namedSessionId(payload, type) {
   return undefined
 }
 
-// A finish event waits for the command (at most 5 s), so opencode cannot forward the next event before it.
-function send(payload, sync) {
-  if (sync) {
+// A finish event waits for the command (at most 5 s), so opencode cannot forward the next event before it. A
+// switch event is finish only for the field values its dialect maps to finish.
+function isFinish(payload, type) {
+  const selector = Object.hasOwn(FINISH, type) ? FINISH[type] : undefined
+  if (selector === undefined) return false
+  if (selector === null) return true
+  let value = payload
+  for (const key of selector.path) value = value != null && Object.hasOwn(value, key) ? value[key] : undefined
+  return selector.values.includes(value) || (selector.otherwise === true && !selector.others.includes(value))
+}
+
+function send(payload, finish) {
+  if (finish) {
     spawnSync(COMMAND, { shell: true, input: JSON.stringify(payload), stdio: ["pipe", "ignore", "ignore"], timeout: 5000 })
     return
   }
@@ -105,7 +116,7 @@ export const AgentKitHooks = async ({ directory }) => {
     if (!EVENTS.has(type)) return
     send(
       named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload,
-      SYNC.has(type)
+      isFinish(payload, type)
     )
   }
   return {
@@ -149,7 +160,7 @@ export const opencodeInstallAdapter: InstallAdapter = {
               bundle.owner,
               first.command,
               bridgedEvents(opencodeHookDialect, registrations),
-              finishEventsOf(opencodeHookDialect.events)
+              finishSelectorsOf(opencodeHookDialect.events)
             ),
             strategy,
             agents: agentsOf(registrations)

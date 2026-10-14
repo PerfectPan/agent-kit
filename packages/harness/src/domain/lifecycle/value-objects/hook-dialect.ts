@@ -147,22 +147,58 @@ export function aliasesOf(
   return events?.[name]?.aliases ?? [];
 }
 
-/** Whether an event's lifecycle can be phase `finish`: a switch can, when any mapping it can pick can be one. */
-function canFinish(lifecycle: LifecycleMapping | LifecycleSwitch): boolean {
-  const mappings = "cases" in lifecycle ? [...Object.values(lifecycle.cases), lifecycle.otherwise] : [lifecycle];
-  return mappings.some(({ phase }) => phase === "finish");
+/**
+ * When one event's payload is phase `finish`, for a generated bridge: `null` — always; or the switch field whose
+ * value decides, with the case values whose mapping is finish and, when the switch's `otherwise` is finish too, the
+ * case values that are not, so a missing field or a value outside the cases stays with `otherwise`.
+ */
+export type FinishSelector = null | {
+  readonly path: FieldPath;
+  readonly values: readonly string[];
+  readonly others?: readonly string[];
+  readonly otherwise?: true;
+};
+
+/** The selector of one lifecycle: `undefined` when no payload of the event can be finish. */
+function finishSelectorOf(lifecycle: LifecycleMapping | LifecycleSwitch): FinishSelector | undefined {
+  if (!("cases" in lifecycle)) {
+    return lifecycle.phase === "finish" ? null : undefined;
+  }
+  const entries = Object.entries(lifecycle.cases);
+  if (entries.every(([, mapping]) => mapping.phase === "finish") && lifecycle.otherwise.phase === "finish") {
+    return null;
+  }
+  const values = entries.filter(([, mapping]) => mapping.phase === "finish").map(([value]) => value);
+  const otherwise = lifecycle.otherwise.phase === "finish";
+  if (values.length === 0 && !otherwise) {
+    return undefined;
+  }
+  return {
+    path: lifecycle.field,
+    values,
+    ...(otherwise
+      ? { others: entries.filter(([, mapping]) => mapping.phase !== "finish").map(([value]) => value), otherwise: true }
+      : {})
+  };
 }
 
 /**
- * Every spelling of an event whose lifecycle can be phase `finish`, sorted. Callers that must not let one of these
- * events arrive late derive the set from this, never from a hand-kept name list.
+ * When each event's payload is phase `finish`, keyed by every spelling the dialect accepts for it. Callers that
+ * must not let a finish event arrive late derive this from it, never from a hand-kept name list. An event missing
+ * here is never finish.
  */
-export function finishEventsOf(events: Readonly<Record<string, HookEventSpec>>): readonly string[] {
-  return [
-    ...new Set(
-      Object.entries(events).flatMap(([name, spec]) =>
-        canFinish(spec.lifecycle) ? [name, ...aliasesOf(events, name)] : []
-      )
-    )
-  ].toSorted();
+export function finishSelectorsOf(
+  events: Readonly<Record<string, HookEventSpec>>
+): Readonly<Record<string, FinishSelector>> {
+  const selectors: Record<string, FinishSelector> = {};
+  for (const [name, spec] of Object.entries(events)) {
+    const selector = finishSelectorOf(spec.lifecycle);
+    if (selector === undefined) {
+      continue;
+    }
+    for (const spelling of [name, ...aliasesOf(events, name)]) {
+      selectors[spelling] = selector;
+    }
+  }
+  return selectors;
 }
