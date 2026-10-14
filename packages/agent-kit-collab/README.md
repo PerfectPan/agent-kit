@@ -22,7 +22,8 @@ version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/m
 
 `@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. `effect` 4.0.1 is an
 optional peer that only `/lease` and `/lanes` need. ESM only, no side effects, Node.js 22.13 or later on darwin or
-linux (the locks identify processes by boot id, pid and start time, which the platform does not support on win32).
+linux. win32 is not supported: the platform cannot identify processes there (boot id, pid and start time), which
+leases and lock files need; a SQLite process lock is still taken, with `holder` undefined, as described below.
 Every lock supports local directories only; neither SQLite's locks nor lock files are reliable on NFS. Holders are
 judged by host name, boot id, pid and start time, so all processes that share a lock must see one process table:
 containers that share the host's name and kernel but not its PID namespace are not supported, and a host renamed
