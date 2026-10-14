@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 
@@ -13,6 +13,24 @@ afterEach(async () => {
   await stopWorkers();
   removeTempDirs();
 });
+
+/**
+ * Waits for `promise` while the timers are fake, moving the clock to each timer the code under test sets. That code
+ * reads files for real between its timers, so while none is set the event loop gets a turn instead.
+ */
+async function onFakeTimers<T>(promise: Promise<T>): Promise<T> {
+  let settled = false;
+  const settle = () => {
+    settled = true;
+  };
+  void promise.then(settle, settle);
+  while (!settled) {
+    await (vi.getTimerCount() === 0
+      ? new Promise((resolve) => setImmediate(resolve))
+      : vi.advanceTimersToNextTimerAsync());
+  }
+  return promise;
+}
 
 describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechanism) => {
   const platform = testPlatform({ sqlite: mechanism === "sqlite" });
@@ -106,6 +124,14 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechan
 });
 
 describe("acquireProcessLock when the process cannot read its identity", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("S114: takes a SQLite lock with no holder recorded, and releases it", async () => {
     const platform = testPlatform();
     const path = join(tempDir(), "daemon.lock");
@@ -121,10 +147,10 @@ describe("acquireProcessLock when the process cannot read its identity", () => {
     expect(lock.value).toMatchObject({ path, mechanism: "sqlite", holder: undefined });
     expect(existsSync(`${path}.holder`)).toBe(false);
     // Its own sqlite object keeps this platform out of the holder's queue, so it meets the lock in SQLite, as another
-    // process would, and finds no holder named.
+    // process would, and finds no holder named. Its first attempt pauses between its settling retries on the timers.
     const sqlite = platform.sqlite as PlatformSqlite;
     const elsewhere: Platform = { ...platform, sqlite: { open: (file, options) => sqlite.open(file, options) } };
-    expect(await acquireProcessLock(elsewhere, path)).toEqual({
+    expect(await onFakeTimers(acquireProcessLock(elsewhere, path))).toEqual({
       ok: false,
       error: { _tag: "ProcessLockHeld", path, holder: undefined }
     });
@@ -312,7 +338,10 @@ describe("acquireProcessLock with SQLite", () => {
     const platform = testPlatform();
     const path = join(tempDir(), "daemon.lock");
     const failure = new Error("cannot record");
-    const failing: Platform = { ...platform, fs: { ...platform.fs, ...failOn(platform.fs, `${path}.holder`, failure) } };
+    const failing: Platform = {
+      ...platform,
+      fs: { ...platform.fs, ...failOn(platform.fs, `${path}.holder`, failure) }
+    };
     await expect(acquireProcessLock(blind ? withoutIdentity(failing) : failing, path)).rejects.toBe(failure);
     // A database left locked would answer this check, which makes one attempt and never waits, as held.
     expect(await isProcessLockHeld(platform, path)).toBe(false);
