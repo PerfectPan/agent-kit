@@ -165,6 +165,9 @@ A PlanStep recorded in the Ledger before its target is touched and cleared once 
 **Legacy marker**:
 A substring by which an Owner recognizes what its older versions installed without a Ledger, such as their hook command lines, so that a plan replaces or removes those Artifacts instead of installing them a second time.
 
+**Legacy entry**:
+One untracked Artifact an older version of the Owner left without a Ledger, recognized by its Legacy markers. `findLegacy` lists them without writing: agent, locator, kind, a hook entry's event and command, and whether planning would replace the entry or protect it — kept as the user's, or indistinguishable from the user's own because an owned hook is missing from its event.
+
 **LedgerLock**:
 The lock held for the whole of each Ledger modification. By default it is an SQLite exclusive lock that the kernel releases when the holding process exits.
 
