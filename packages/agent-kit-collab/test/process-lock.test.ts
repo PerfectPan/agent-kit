@@ -1,18 +1,36 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 
-import { acquireProcessLock } from "../src/process-lock/public.js";
-import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
+import { acquireProcessLock, isProcessLockHeld } from "../src/process-lock/public.js";
+import { removeTempDirs, tempDir, testPlatform, withoutIdentity } from "./support/platform.js";
 import { startWorker, stopWorkers, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
 
 afterEach(async () => {
   await stopWorkers();
   removeTempDirs();
 });
+
+/**
+ * Waits for `promise` while the timers are fake, moving the clock to each timer the code under test sets. That code
+ * reads files for real between its timers, so while none is set the event loop gets a turn instead.
+ */
+async function onFakeTimers<T>(promise: Promise<T>): Promise<T> {
+  let settled = false;
+  const settle = () => {
+    settled = true;
+  };
+  void promise.then(settle, settle);
+  while (!settled) {
+    await (vi.getTimerCount() === 0
+      ? new Promise((resolve) => setImmediate(resolve))
+      : vi.advanceTimersToNextTimerAsync());
+  }
+  return promise;
+}
 
 describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechanism) => {
   const platform = testPlatform({ sqlite: mechanism === "sqlite" });
@@ -105,30 +123,61 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechan
   });
 });
 
-describe.each(["sqlite", "file"] as const)(
-  "acquireProcessLock with %s when the identity cannot be read",
-  (mechanism) => {
-    it("rejects without taking the lock, so the path stays free", async () => {
-      const platform = testPlatform({ sqlite: mechanism === "sqlite" });
-      const broken: Platform = {
-        ...platform,
-        // The rest of the port is inherited; only reading the own identity fails.
-        process: Object.create(platform.process, {
-          self: {
-            get(): never {
-              throw new Error("no identity on this platform");
-            }
-          }
-        }) as Platform["process"]
-      };
-      const path = join(tempDir(), "daemon.lock");
-      await expect(acquireProcessLock(broken, path)).rejects.toThrow("no identity");
-      const lock = await acquireProcessLock(platform, path);
-      expect(lock.ok).toBe(true);
-      await (lock.ok ? lock.value.release() : undefined);
+describe("acquireProcessLock when the process cannot read its identity", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("S114: takes a SQLite lock with no holder recorded, and releases it", async () => {
+    const platform = testPlatform();
+    const path = join(tempDir(), "daemon.lock");
+    // A holder that died without releasing left its record behind.
+    const dead = { host: "gone", bootId: "gone", pid: 1, startTime: 0, acquiredAt: 0, nonce: "dead" };
+    writeFileSync(`${path}.holder`, JSON.stringify(dead));
+    const blind = withoutIdentity(platform);
+
+    const lock = await acquireProcessLock(blind, path);
+    if (!lock.ok) {
+      throw new Error("not acquired");
+    }
+    expect(lock.value).toMatchObject({ path, mechanism: "sqlite", holder: undefined });
+    expect(existsSync(`${path}.holder`)).toBe(false);
+    // Its own sqlite object keeps this platform out of the holder's queue, so it meets the lock in SQLite, as another
+    // process would, and finds no holder named. Its first attempt pauses between its settling retries on the timers.
+    const sqlite = platform.sqlite as PlatformSqlite;
+    const elsewhere: Platform = { ...platform, sqlite: { open: (file, options) => sqlite.open(file, options) } };
+    expect(await onFakeTimers(acquireProcessLock(elsewhere, path))).toEqual({
+      ok: false,
+      error: { _tag: "ProcessLockHeld", path, holder: undefined }
     });
-  }
-);
+    expect(await isProcessLockHeld(blind, path)).toBe(true);
+
+    await lock.value.release();
+    expect(await isProcessLockHeld(blind, path)).toBe(false);
+    // The same sqlite object, so this also shows that the release ended the turn.
+    const next = await acquireProcessLock(platform, path);
+    expect(next).toMatchObject({ ok: true, value: { holder: { pid: process.pid } } });
+    await (next.ok ? next.value.release() : undefined);
+  });
+
+  it("S114: rejects for a lock file without taking it, so the path stays free", async () => {
+    const platform = testPlatform({ sqlite: false });
+    const path = join(tempDir(), "daemon.lock");
+    await expect(acquireProcessLock(withoutIdentity(platform), path)).rejects.toThrow("cannot identify");
+    await expect(acquireProcessLock(withoutIdentity(platform), path, { wait: true })).rejects.toThrow(
+      "cannot identify"
+    );
+    expect(existsSync(path)).toBe(false);
+    // The same fs object, so this also shows that the rejections ended their turns.
+    const lock = await acquireProcessLock(platform, path);
+    expect(lock.ok).toBe(true);
+    await (lock.ok ? lock.value.release() : undefined);
+  });
+});
 
 describe("acquireProcessLock while waiting with SQLite", () => {
   it("backs off between attempts, and only the first one may block the thread", async () => {
@@ -139,10 +188,14 @@ describe("acquireProcessLock while waiting with SQLite", () => {
     const stop = new AbortController();
     const reason = new Error("stop");
     const timeouts: string[] = [];
+    let identityReads = 0;
     // Its own sqlite object keeps this platform out of the holder's queue in this process, so it meets the held lock
-    // in SQLite, as another process would.
+    // in SQLite, as another process would. It cannot read its identity, and each failed read would run `ps` again on
+    // the thread.
     const counting: Platform = {
-      ...platform,
+      ...withoutIdentity(platform, () => {
+        identityReads += 1;
+      }),
       sqlite: {
         open(file, options) {
           const db = sqlite.open(file, options);
@@ -197,6 +250,7 @@ describe("acquireProcessLock while waiting with SQLite", () => {
       ...Array.from({ length: 5 }, () => "PRAGMA busy_timeout = 0")
     ]);
     expect(timers.mock.calls.map(([, ms]) => ms)).toEqual([15, 15, 15, 15, 10, 20, 40, 80, 160, 160]);
+    expect(identityReads).toBe(1);
     await (held.ok ? held.value.release() : undefined);
   });
 });
@@ -262,5 +316,37 @@ describe("acquireProcessLock with SQLite", () => {
     expect(JSON.parse(readFileSync(`${path}.holder`, "utf8"))).toMatchObject({ pid: process.pid });
     await (lock.ok ? lock.value.release() : undefined);
     expect(() => readFileSync(`${path}.holder`)).toThrow(/ENOENT/);
+  });
+
+  it.each([
+    {
+      step: "writing the holder record",
+      blind: false,
+      failOn: (fs: Platform["fs"], holder: string, failure: Error): Partial<Platform["fs"]> => ({
+        writeAtomic: (target, data, options) =>
+          target === holder ? Promise.reject(failure) : fs.writeAtomic(target, data, options)
+      })
+    },
+    {
+      step: "removing the record without an identity",
+      blind: true,
+      failOn: (fs: Platform["fs"], holder: string, failure: Error): Partial<Platform["fs"]> => ({
+        remove: (target) => (target === holder ? Promise.reject(failure) : fs.remove(target))
+      })
+    }
+  ])("rejects and unlocks the database when $step fails", async ({ blind, failOn }) => {
+    const platform = testPlatform();
+    const path = join(tempDir(), "daemon.lock");
+    const failure = new Error("cannot record");
+    const failing: Platform = {
+      ...platform,
+      fs: { ...platform.fs, ...failOn(platform.fs, `${path}.holder`, failure) }
+    };
+    await expect(acquireProcessLock(blind ? withoutIdentity(failing) : failing, path)).rejects.toBe(failure);
+    // A database left locked would answer this check, which makes one attempt and never waits, as held.
+    expect(await isProcessLockHeld(platform, path)).toBe(false);
+    const next = await acquireProcessLock(platform, path);
+    expect(next.ok).toBe(true);
+    await (next.ok ? next.value.release() : undefined);
   });
 });

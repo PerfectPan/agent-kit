@@ -1,7 +1,9 @@
-import type { Platform } from "@rivus/agent-kit/platform";
+import type { Result } from "@rivus/agent-kit/catalog";
+import type { Platform, ProcessIdentity } from "@rivus/agent-kit/platform";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
+import { ownIdentity } from "../../../process-lock/application/services/holder.js";
 import { backoffMs, tryProcessLock } from "../../../process-lock/application/use-cases/acquire-process-lock.js";
 import type { LeaseRepositoryFailure } from "../../application/ports.js";
 import { repositoryFailure } from "../../application/services/repository-failure.js";
@@ -25,10 +27,10 @@ export function holdProcessLock(
   path: string,
   options: HoldOptions = {}
 ): Effect.Effect<void, LeaseRepositoryFailure, Scope.Scope> {
-  const attempt = (first: boolean) =>
+  const attempt = (first: boolean, self: Result<ProcessIdentity, unknown>) =>
     Effect.acquireRelease(
       Effect.tryPromise({
-        try: () => tryProcessLock(platform, path, { first }),
+        try: () => tryProcessLock(platform, path, { first, self }),
         catch: (cause) => repositoryFailure(key, "io", `cannot lock ${path}`, cause)
       }).pipe(
         Effect.flatMap((result) =>
@@ -38,9 +40,10 @@ export function holdProcessLock(
       (lock) => Effect.promise(() => lock.release())
     );
   return Effect.gen(function* () {
+    const self = ownIdentity(platform);
     const started = platform.clock.monotonic();
     for (let turn = 0; ; turn += 1) {
-      const acquired = yield* attempt(turn === 0).pipe(
+      const acquired = yield* attempt(turn === 0, self).pipe(
         Effect.as(true),
         Effect.catchIf(
           (failure) => failure.reason === "busy",

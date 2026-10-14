@@ -1,3 +1,5 @@
+import { err, ok, type Result } from "@rivus/agent-kit/catalog";
+import type { ProcessIdentity } from "@rivus/agent-kit/platform";
 import * as z from "zod/mini";
 
 import type { ProcessLockPlatform } from "../ports.js";
@@ -26,9 +28,18 @@ const stampSchema = z.object({
   nonce: z.string()
 });
 
-export function newStamp(platform: ProcessLockPlatform): HolderStamp {
-  const { host, bootId, pid, startTime } = platform.process.self;
+export function newStamp(platform: ProcessLockPlatform, self: ProcessIdentity): HolderStamp {
+  const { host, bootId, pid, startTime } = self;
   return { host, bootId, pid, startTime, acquiredAt: platform.clock.now(), nonce: crypto.randomUUID() };
+}
+
+/** This process's identity, or the error that reading `process.self` threw. */
+export function ownIdentity(platform: ProcessLockPlatform): Result<ProcessIdentity, unknown> {
+  try {
+    return ok(platform.process.self);
+  } catch (error) {
+    return err(error);
+  }
 }
 
 export function holderOf(stamp: HolderStamp): ProcessLockHolder {

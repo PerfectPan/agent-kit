@@ -22,7 +22,8 @@ version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/m
 
 `@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. `effect` 4.0.1 is an
 optional peer that only `/lease` and `/lanes` need. ESM only, no side effects, Node.js 22.13 or later on darwin or
-linux (the locks identify processes by boot id, pid and start time, which the platform does not support on win32).
+linux. win32 is not supported: the platform cannot identify processes there (boot id, pid and start time), which
+leases and lock files need; a SQLite process lock is still taken, with `holder` undefined, as described below.
 Every lock supports local directories only; neither SQLite's locks nor lock files are reliable on NFS. Holders are
 judged by host name, boot id, pid and start time, so all processes that share a lock must see one process table:
 containers that share the host's name and kernel but not its PID namespace are not supported, and a host renamed
@@ -54,9 +55,13 @@ await lock.value.release();
 
 With `platform.sqlite` the lock is a SQLite database held with `locking_mode=EXCLUSIVE`; the kernel drops it the
 moment the holder exits or crashes, and nothing is reclaimed. The holder's identity goes into `<path>.holder` for
-diagnostics only. Without SQLite the lock is a file that holds the identity; a lock file whose holder died on this
-host is reclaimed on the next attempt, one reclaimer at a time. Pass `{ wait: true, signal }` to wait for the holder
-instead of getting `ProcessLockHeld` at once.
+diagnostics only, so a process that cannot read its own identity (`platform.process.self` throws, as on macOS in a
+sandbox that denies running `ps` or `sysctl`) still takes the lock: `lock.value.holder` is then `undefined`, no
+`<path>.holder` is written, and one left by a holder that died is removed. Without SQLite the lock is a file that
+holds the identity; a lock file whose holder died on this host is reclaimed on the next attempt, one reclaimer at a
+time. The lock file needs the identity to judge its holder, so there `acquireProcessLock` rejects with the error
+reading it and creates nothing. Pass `{ wait: true, signal }` to wait for the holder instead of getting
+`ProcessLockHeld` at once.
 
 Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks
 without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the
@@ -65,7 +70,9 @@ busy wait would block the thread the holder needs to finish and release. Without
 `ProcessLockHeld` at once. Aborting `signal` takes a task out of the queue and leaves the others' turns as they were.
 Tasks share the turns when they name the same file (its directory resolved through symlinks) through platforms with
 the same `sqlite` object (without SQLite, the same `fs`), as every platform from `createNodePlatform` has; other
-processes are still kept out by SQLite or the lock file.
+processes are still kept out by SQLite or the lock file. The turns live in this package's module state, so a second
+copy of it in the process (another version, or one bundled into a dependency) does not share them and meets the first
+in SQLite, as another process does.
 
 `isProcessLockHeld` tells whether another process, or an acquisition in this one, holds the lock, without taking it.
 A short-lived process can use it to hand work to a running holder and start one only when there is none:
