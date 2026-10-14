@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit-collab",
+      "comment": "With SQLite, acquireProcessLock no longer needs the process identity, which only feeds the <path>.holder diagnostics: a process whose platform.process.self throws (on macOS, one in a sandbox that denies running ps or sysctl) takes the lock with holder undefined, writes no <path>.holder, and removes one that a holder which died left. ProcessLock.holder is now typed ProcessLockHolder | undefined; it is undefined only in that case. Without SQLite the lock file still needs the identity to judge its holder, and the acquisition rejects with the error reading it, as before. The fences of sqliteLeaseRepository follow the same rule; isProcessLockHeld is unchanged.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit-collab",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

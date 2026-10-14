@@ -247,7 +247,7 @@ The per-key guard a LeaseRepository holds across processes while one fenced oper
 When an observer first saw the current Revision of a lease record, by its own monotonic clock; a held lease expires for that observer once the Revision has not changed for the TTL.
 
 **ProcessLock**:
-A single-instance lock for a path, released by the kernel when the process exits. Without SQLite it falls back to a lock file whose dead holder is reclaimed, one reclaimer at a time. Acquisitions of one lock inside a process take turns in memory, so none attempts it while another one in the process holds or attempts it. `isProcessLockHeld` checks whether it is held without taking it or writing anything. Another check never takes a check for a holder, nor does an acquisition's first attempt; with SQLite, a retry of a waiting acquisition can, and the acquisition gets the lock after another backoff.
+A single-instance lock for a path, released by the kernel when the process exits. It records its holder's identity for diagnostics only, so a process that cannot read its own identity still takes it, with the holder unknown. Without SQLite it falls back to a lock file whose dead holder is reclaimed, one reclaimer at a time; the lock file needs the identity to judge its holder, so it cannot be taken without it. Acquisitions of one lock inside a process take turns in memory, so none attempts it while another one in the process holds or attempts it. `isProcessLockHeld` checks whether it is held without taking it or writing anything. Another check never takes a check for a holder, nor does an acquisition's first attempt; with SQLite, a retry of a waiting acquisition can, and the acquisition gets the lock after another backoff.
 
 ## lanes (collab)
 

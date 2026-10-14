@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -8,8 +8,14 @@ import { aggregateRepositoryConformance, type AggregateRepositoryFixtures } from
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { fileLeaseRepository, LeaseRepository, type LeaseSnapshot } from "../src/lease/public.js";
-import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
+import {
+  fileLeaseRepository,
+  LeaseRepository,
+  type LeaseSnapshot,
+  sqliteLeaseRepository
+} from "../src/lease/public.js";
+import { isProcessLockHeld } from "../src/process-lock/public.js";
+import { removeTempDirs, tempDir, testPlatform, withoutIdentity } from "./support/platform.js";
 import { storeCases, type StoreCase } from "./support/stores.js";
 
 const KEY = "task:1";
@@ -80,6 +86,47 @@ describe("file lease record storage", () => {
         Layer.provideMerge(
           fileLeaseRepository({ dir }),
           Layer.succeed(PlatformService, testPlatform({ sqlite: false }))
+        )
+      )
+    );
+  });
+});
+
+describe("lease fences when the process cannot read its identity", () => {
+  it.live("S114: holds the SQLite repository's fence, a SQLite process lock, without a holder record", () => {
+    const platform = testPlatform();
+    const path = join(tempDir(), "leases.db");
+    const fence = `${path}.${encodeURIComponent(KEY)}.fence`;
+    const held = Effect.promise(() => isProcessLockHeld(platform, fence));
+    return Effect.gen(function* () {
+      const store = yield* LeaseRepository;
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          yield* store.fence(KEY);
+          expect(yield* held).toBe(true);
+          expect(existsSync(`${fence}.holder`)).toBe(false);
+        })
+      );
+      expect(yield* held).toBe(false);
+    }).pipe(
+      Effect.provide(
+        Layer.provideMerge(sqliteLeaseRepository({ path }), Layer.succeed(PlatformService, withoutIdentity(platform)))
+      )
+    );
+  });
+
+  it.live("S114: fails the file repository's fence, a lock file, as io and leaves no file", () => {
+    const dir = tempDir();
+    return Effect.gen(function* () {
+      const store = yield* LeaseRepository;
+      const failure = yield* Effect.flip(Effect.scoped(store.fence(KEY)));
+      expect(failure).toMatchObject({ _tag: "LeaseRepositoryFailure", reason: "io" });
+      expect(readdirSync(dir)).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        Layer.provideMerge(
+          fileLeaseRepository({ dir }),
+          Layer.succeed(PlatformService, withoutIdentity(testPlatform({ sqlite: false })))
         )
       )
     );

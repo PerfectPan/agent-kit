@@ -54,9 +54,13 @@ await lock.value.release();
 
 With `platform.sqlite` the lock is a SQLite database held with `locking_mode=EXCLUSIVE`; the kernel drops it the
 moment the holder exits or crashes, and nothing is reclaimed. The holder's identity goes into `<path>.holder` for
-diagnostics only. Without SQLite the lock is a file that holds the identity; a lock file whose holder died on this
-host is reclaimed on the next attempt, one reclaimer at a time. Pass `{ wait: true, signal }` to wait for the holder
-instead of getting `ProcessLockHeld` at once.
+diagnostics only, so a process that cannot read its own identity (`platform.process.self` throws, as on macOS in a
+sandbox that denies running `ps` or `sysctl`) still takes the lock: `lock.value.holder` is then `undefined`, no
+`<path>.holder` is written, and one left by a holder that died is removed. Without SQLite the lock is a file that
+holds the identity; a lock file whose holder died on this host is reclaimed on the next attempt, one reclaimer at a
+time. The lock file needs the identity to judge its holder, so there `acquireProcessLock` rejects with the error
+reading it and creates nothing. Pass `{ wait: true, signal }` to wait for the holder instead of getting
+`ProcessLockHeld` at once.
 
 Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks
 without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the

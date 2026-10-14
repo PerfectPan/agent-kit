@@ -1,12 +1,12 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
 
-import { acquireProcessLock } from "../src/process-lock/public.js";
-import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
+import { acquireProcessLock, isProcessLockHeld } from "../src/process-lock/public.js";
+import { removeTempDirs, tempDir, testPlatform, withoutIdentity } from "./support/platform.js";
 import { startWorker, stopWorkers, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
 
 afterEach(async () => {
@@ -105,30 +105,53 @@ describe.each(["sqlite", "file"] as const)("acquireProcessLock with %s", (mechan
   });
 });
 
-describe.each(["sqlite", "file"] as const)(
-  "acquireProcessLock with %s when the identity cannot be read",
-  (mechanism) => {
-    it("rejects without taking the lock, so the path stays free", async () => {
-      const platform = testPlatform({ sqlite: mechanism === "sqlite" });
-      const broken: Platform = {
-        ...platform,
-        // The rest of the port is inherited; only reading the own identity fails.
-        process: Object.create(platform.process, {
-          self: {
-            get(): never {
-              throw new Error("no identity on this platform");
-            }
-          }
-        }) as Platform["process"]
-      };
-      const path = join(tempDir(), "daemon.lock");
-      await expect(acquireProcessLock(broken, path)).rejects.toThrow("no identity");
-      const lock = await acquireProcessLock(platform, path);
-      expect(lock.ok).toBe(true);
-      await (lock.ok ? lock.value.release() : undefined);
+describe("acquireProcessLock when the process cannot read its identity", () => {
+  it("S114: takes a SQLite lock with no holder recorded, and releases it", async () => {
+    const platform = testPlatform();
+    const path = join(tempDir(), "daemon.lock");
+    // A holder that died without releasing left its record behind.
+    const dead = { host: "gone", bootId: "gone", pid: 1, startTime: 0, acquiredAt: 0, nonce: "dead" };
+    writeFileSync(`${path}.holder`, JSON.stringify(dead));
+    const blind = withoutIdentity(platform);
+
+    const lock = await acquireProcessLock(blind, path);
+    if (!lock.ok) {
+      throw new Error("not acquired");
+    }
+    expect(lock.value).toMatchObject({ path, mechanism: "sqlite", holder: undefined });
+    expect(existsSync(`${path}.holder`)).toBe(false);
+    // Its own sqlite object keeps this platform out of the holder's queue, so it meets the lock in SQLite, as another
+    // process would, and finds no holder named.
+    const sqlite = platform.sqlite as PlatformSqlite;
+    const elsewhere: Platform = { ...platform, sqlite: { open: (file, options) => sqlite.open(file, options) } };
+    expect(await acquireProcessLock(elsewhere, path)).toEqual({
+      ok: false,
+      error: { _tag: "ProcessLockHeld", path, holder: undefined }
     });
-  }
-);
+    expect(await isProcessLockHeld(blind, path)).toBe(true);
+
+    await lock.value.release();
+    expect(await isProcessLockHeld(blind, path)).toBe(false);
+    // The same sqlite object, so this also shows that the release ended the turn.
+    const next = await acquireProcessLock(platform, path);
+    expect(next).toMatchObject({ ok: true, value: { holder: { pid: process.pid } } });
+    await (next.ok ? next.value.release() : undefined);
+  });
+
+  it("S114: rejects for a lock file without taking it, so the path stays free", async () => {
+    const platform = testPlatform({ sqlite: false });
+    const path = join(tempDir(), "daemon.lock");
+    await expect(acquireProcessLock(withoutIdentity(platform), path)).rejects.toThrow("cannot identify");
+    await expect(acquireProcessLock(withoutIdentity(platform), path, { wait: true })).rejects.toThrow(
+      "cannot identify"
+    );
+    expect(existsSync(path)).toBe(false);
+    // The same fs object, so this also shows that the rejections ended their turns.
+    const lock = await acquireProcessLock(platform, path);
+    expect(lock.ok).toBe(true);
+    await (lock.ok ? lock.value.release() : undefined);
+  });
+});
 
 describe("acquireProcessLock while waiting with SQLite", () => {
   it("backs off between attempts, and only the first one may block the thread", async () => {
