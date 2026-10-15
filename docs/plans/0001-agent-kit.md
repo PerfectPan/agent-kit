@@ -590,6 +590,45 @@ interface LifecycleEvent {
 
 Lifecycle: plan (diff, commands, expected trust prompts, dropped events, dotfiles conflicts) → apply (atomic writes, ledger records, agent command line calls) → verify (compare with the ledger, use each agent's introspection commands, trigger one synthetic hook) → uninstall (delete only what the ledger records) → doctor (wrong units, unknown events, duplicate firing, stale absolute paths, broken symlinks).
 
+#### Owner-scoped hook-file legacy coverage
+
+An agent's grouped hooks JSON file can contain several owners' hooks. Treating every file in Grok's hooks
+directory as one whole-file legacy Artifact would allow one matching command to remove a user's other hooks.
+Grok therefore uses the existing single-file `ArtifactSource`: only
+`${grokHome(context)}/hooks/${ownerSlug(owner)}.json`, the canonical owner path its hook strategy renders, is a
+legacy source. Other filenames remain outside legacy cleanup even when their content carries a matching marker.
+`grokHome` keeps `GROK_HOME` and the default home rule authoritative.
+
+Extend `InstallAdapter.legacySources` to receive `(context, owner)`. `planEvidenceScope` already receives the owner
+for both listing and planning; pass it through `legacyHookSources` to each adapter rather than rendering a bundle
+or deriving ownership from file content. Existing adapters that need only the context can ignore the second
+argument. This adds no source kind, parser, persisted-data format or dependency.
+
+The existing `files` source remains for opencode's plugins and Pi's extensions. Add an optional
+`extensions: readonly string[]` filter to that source shape, and apply it to each immediate regular filename
+before reading its content. Each built-in directory source supplies the extensions accepted by its agent's
+loader, using the adapter's config-file and hook-source references as evidence. Disabled copies such as
+`demo-app.json.disabled` and `NOTES.md` are ignored. Omitting the filter keeps a custom source's existing behavior.
+
+`scanLegacy` feeds the observations to the shared `legacyTreatment` rule in both `findLegacy` and planning.
+With a matching marker and no ledger record, Grok's canonical owner file is listed and adopted with
+`legacy: true`. A file without a matching marker, or one recorded for another owner, is neither listed nor removed
+as legacy. A kept file is listed as `protect` and cannot be removed or overwritten by legacy cleanup. Existing
+conflicts for symlinked or externally managed paths remain unchanged. All built-in adapters' rendered
+`kind: "file"` Artifacts are covered by legacy sources; custom adapters must declare sources for their rendered
+paths to obtain the same coverage.
+
+Acceptance for the paired Spec's S116 is covered by the harness legacy listing, planning and source-safety tests:
+canonical-file adoption (including scoped owners and `GROK_HOME`), mixed user-named JSON preservation through
+install and uninstall without an `agents` filter, loaded-extension selection before content reads, and retained
+marker, ledger and kept-file protection. Use temporary homes with explicit environments, and demonstrate each
+behavior regression with a reverted fix before restoring it. Required gates are `npm run check`,
+`npm run change:verify` and `gh repo-checks repository`; the release intent remains a patch.
+
+Application adoption and real-agent acceptance remain open. A rollback disables Grok legacy scanning while
+retaining the filename filters that protect files the agents do not load; no ledger schema or persisted-data
+migration is involved.
+
 ### 3.9 Aggregate shapes (drawing on community implementations)
 
 No existing library can be used directly. The mainstream local option, proper-lockfile, only offers a single-process lock with mtime expiry; it has no CAS, fencing or pid check, and it has a known unfixed reclaim race (proper-lockfile #121). redlock, pg-boss and graphile-worker are bound to Redis or Postgres. The closest thing to plan/ledger is microsoft/apm's DeploymentLedger. The shapes below combine these implementations.

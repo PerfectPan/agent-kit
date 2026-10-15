@@ -87,8 +87,8 @@ function hookOf(locator: ArtifactLocator, observation: LegacyObservation): { rea
  * pending, which this read-only call cannot settle — and one the user kept on an earlier removal, or that cannot be
  * told apart from a deleted owned hook in its event, is listed as protected instead of replaced. The scan covers the selected agents' declared legacy sources and the other agents' hook files they
  * execute, and reads the owner's tracked locators the way the plan does, because they decide that protection. It
- * does not render a bundle, so the listing is not the plan's whole legacy set: an Artifact at a path the next
- * install itself writes is listed only when a legacy source covers that path, and an entry in a symlinked or
+ * does not render a bundle: built-in adapters cover their file Artifacts, while a custom adapter's rendered path
+ * is listed only when a legacy source covers it. An entry in a symlinked or
  * externally managed file is listed as `replace` although the plan refuses the path as an unresolvable conflict
  * (see the `/harness` spec for the boundary).
  */

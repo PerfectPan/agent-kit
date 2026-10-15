@@ -311,6 +311,12 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
         }
         const files = [];
         for (const entry of yield* attempt(dir, "read", () => fs.list(dir))) {
+          if (
+            source.extensions !== undefined &&
+            !source.extensions.some((extension) => entry.name.endsWith(extension))
+          ) {
+            continue;
+          }
           if (entry.kind === "file" || entry.kind === "symlink") {
             const locator: ArtifactLocator = { kind: "file", path: `${dir}/${entry.name}` };
             const found = yield* read(locator);

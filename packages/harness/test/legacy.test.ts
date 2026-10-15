@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import { parse } from "jsonc-parser";
 
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
+import { findLegacy } from "../src/application/use-cases/find-legacy.js";
 import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
@@ -162,6 +163,46 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
         plugin: ["some-other-plugin"]
       });
       expect(home.read(".config/opencode/plugins/demo-app.js")).toContain("demo-hook --agent opencode");
+    }).pipe(Effect.provide(home.layer()));
+  });
+
+  it.effect("Grok: planning refuses an unrecorded canonical hook file without the owner's marker", () => {
+    const home = testHome();
+    const path = ".grok/hooks/demo-app.json";
+    const content = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "notify-done" }] }] } });
+    home.write(path, content);
+    return Effect.gen(function* () {
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] })
+      );
+      expect(failure._tag).toBe("PlanConflict");
+      if (failure._tag === "PlanConflict") {
+        expect(failure.conflicts.map(({ step }) => [step.locator.path, step.conflict])).toEqual([
+          [home.path(path), "unmanaged-exists"]
+        ]);
+      }
+      expect(home.read(path)).toBe(content);
+    }).pipe(Effect.provide(home.layer()));
+  });
+
+  it.effect("Grok: listing and planning leave another owner's marker-carrying hook file untouched", () => {
+    const home = testHome();
+    const path = ".grok/hooks/other-app.json";
+    return Effect.gen(function* () {
+      const other = demoBundle("1.0.0", {
+        owner: "other-app",
+        artifacts: [{ type: "hooks", command: "legacy-demo hook", events: { grok: ["Stop"] } }]
+      });
+      yield* applyInstall(yield* planInstall(other, { agents: ["grok"] }));
+      const content = home.read(path);
+      expect(content).toContain("legacy-demo hook");
+      const before = (yield* inventory()).entries;
+      expect(yield* findLegacy("demo-app", { agents: ["grok"], legacyMarkers: MARKERS })).toEqual([]);
+      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] });
+      expect(plan.steps.filter((step) => step.locator.path === home.path(path))).toEqual([]);
+      yield* applyInstall(plan);
+      expect(home.read(path)).toBe(content);
+      expect((yield* inventory()).entries.filter((entry) => entry.owners.includes("other-app"))).toEqual(before);
     }).pipe(Effect.provide(home.layer()));
   });
 
