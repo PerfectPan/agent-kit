@@ -1,6 +1,11 @@
 import { fileURLToPath } from "node:url";
 
-import { builtinSessionAdapters, readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions";
+import {
+  builtinSessionAdapters,
+  readText,
+  type SessionAdapter,
+  type TranscriptSnapshot
+} from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
@@ -23,7 +28,7 @@ const fixtures = {
   oversized: { root: "/big", file: "/big/session.jsonl" }
 };
 
-function withLoad(change: (transcript: Transcript) => void): SessionAdapter {
+function withLoad(change: (transcript: TranscriptSnapshot) => void): SessionAdapter {
   return {
     ...claude,
     async load(on, ref, options) {
@@ -63,8 +68,8 @@ describe("sessionAdapterConformance", () => {
     expect(await failure(greedy, name)).toMatch(/read \d+ bytes/);
   });
 
-  const requests = (t: Transcript) => t.events.filter((event) => event.kind === "request");
-  it.each<[string, string, (transcript: Transcript) => void]>([
+  const requests = (t: TranscriptSnapshot) => t.events.filter((event) => event.kind === "request");
+  it.each<[string, string, (transcript: TranscriptSnapshot) => void]>([
     ["a dropped record", "accounts for every input record", (t) => void t.events.splice(0, 1)],
     ["a wrong seq", "seq matches the event index", (t) => void (t.events[1]!.seq = 0)],
     [

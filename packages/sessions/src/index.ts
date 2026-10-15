@@ -19,7 +19,7 @@ export {
   assignSeq,
   baseEvent,
   createStreamFolder,
-  createTranscript,
+  createTranscriptSnapshot,
   type EventFields,
   inheritTimes,
   lineId,

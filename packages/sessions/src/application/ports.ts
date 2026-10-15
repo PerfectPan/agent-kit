@@ -10,7 +10,7 @@ import type {
   SessionRef,
   SessionSummaryWithPrompts
 } from "../domain/session/index.js";
-import type { Capability, Transcript, UnknownFormatGeneration } from "../domain/transcript/index.js";
+import type { Capability, TranscriptSnapshot, UnknownFormatGeneration } from "../domain/transcript/index.js";
 
 /**
  * The part of Platform that reading sessions uses: listing, stat and reads, never writes. A whole Platform
@@ -64,7 +64,7 @@ export interface SessionAdapter {
     platform: SessionPlatform,
     ref: SessionRef,
     options?: LoadOptions
-  ): Promise<Result<Transcript, SessionReadError>>;
+  ): Promise<Result<TranscriptSnapshot, SessionReadError>>;
   /**
    * A faster pass than folding the loaded transcript, with the same result: no transcript or event payload is kept,
    * and the state it holds grows with the session's requests, lanes and tool calls, never with its bytes. With

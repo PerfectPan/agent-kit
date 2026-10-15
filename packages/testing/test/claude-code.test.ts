@@ -15,7 +15,7 @@ import {
   type SessionPlatform,
   summarizeSession,
   translateClaudeCodeRecords,
-  type Transcript
+  type TranscriptSnapshot
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -37,7 +37,7 @@ function value<T>(result: Result<T, unknown>): T {
   return result.value;
 }
 
-const load = async (name: string): Promise<Transcript> =>
+const load = async (name: string): Promise<TranscriptSnapshot> =>
   value(await loadTranscript(platform, { agent: "claude-code", path: session(name) }));
 
 // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file

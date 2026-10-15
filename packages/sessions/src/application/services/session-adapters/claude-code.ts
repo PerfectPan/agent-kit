@@ -22,13 +22,13 @@ import {
 import { summarizeClaudeCodeRecords } from "../../../domain/transcript/adapters/claude-code/summarize.js";
 import type { SessionPromptsOptions, SessionRef, SessionSummaryWithPrompts } from "../../../domain/session/index.js";
 import {
-  createTranscript,
+  createTranscriptSnapshot,
   mergeByTime,
   mergeByTimeStream,
   type SkippedRecord,
   type SourcedRecord,
   type TimedRecord,
-  type Transcript
+  type TranscriptSnapshot
 } from "../../../domain/transcript/index.js";
 import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
@@ -104,7 +104,7 @@ async function loadClaudeCode(
   platform: SessionPlatform,
   ref: SessionRef,
   options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
+): Promise<Result<TranscriptSnapshot, SessionReadError>> {
   const progress = readProgress(options.onProgress);
   const files = await catchIoFailure(platform, ref.path, options.signal, async (guarded) => ({
     main: await readJsonlRecords(guarded, ref.path, { signal: options.signal, progress }),
@@ -129,7 +129,7 @@ async function loadClaudeCode(
   const parsed = translated.value;
   parsed.skipped.push(...main.skipped, ...nested.skipped);
   options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, claudeCodeCapabilities(parsed.events), parsed));
+  return ok(createTranscriptSnapshot(AGENT, claudeCodeCapabilities(parsed.events), parsed));
 }
 
 /**

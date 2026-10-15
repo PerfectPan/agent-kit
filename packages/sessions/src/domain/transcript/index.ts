@@ -2,7 +2,7 @@ export type { SourceChanged } from "./errors/source-changed.js";
 export { type UnknownFormatGeneration, unknownFormatGeneration } from "./errors/unknown-format-generation.js";
 export {
   baseEvent,
-  createTranscript,
+  createTranscriptSnapshot,
   type EventFields,
   lineId,
   type ParsedTranscript,
@@ -74,5 +74,6 @@ export {
   type Capability,
   type Lane,
   type Transcript,
-  type TranscriptSession
-} from "./value-objects/transcript.js";
+  type TranscriptSession,
+  type TranscriptSnapshot
+} from "./value-objects/transcript-snapshot.js";

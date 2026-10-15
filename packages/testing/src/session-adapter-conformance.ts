@@ -18,7 +18,7 @@ import {
   snapshotHasSystemPrompt,
   snapshotHasTools,
   summarizeSession,
-  type Transcript
+  type TranscriptSnapshot
 } from "@rivus/agent-kit-sessions";
 import { isEqual, isPlainObject } from "es-toolkit";
 
@@ -75,7 +75,7 @@ export function check(condition: boolean, message: string): asserts condition {
   }
 }
 
-function capabilitySeen(transcript: Transcript, capability: Capability): boolean {
+function capabilitySeen(transcript: TranscriptSnapshot, capability: Capability): boolean {
   const { events } = transcript;
   const finite = (value: unknown): boolean => typeof value === "number" && Number.isFinite(value);
   switch (capability) {
@@ -159,10 +159,10 @@ export function sessionAdapterConformance(
 ): ConformanceCheck[] {
   const { platform } = fixtures;
   const refOf = (session: ConformanceSession): SessionRef => ({ agent: adapter.agent, path: session.path });
-  const load = async (session: ConformanceSession): Promise<Transcript> =>
+  const load = async (session: ConformanceSession): Promise<TranscriptSnapshot> =>
     value(await adapter.load(platform, refOf(session)), `load ${session.path}`);
   const eachTranscript = async (
-    test: (transcript: Transcript, session: ConformanceSession) => void | Promise<void>
+    test: (transcript: TranscriptSnapshot, session: ConformanceSession) => void | Promise<void>
   ) => {
     for (const session of fixtures.sessions) {
       await test(await load(session), session);

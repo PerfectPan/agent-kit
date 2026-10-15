@@ -52,8 +52,8 @@ export interface TranscriptSession {
   tools?: unknown;
 }
 
-/** The ordered events of a Session, merged from all its files, with the records that became no event. */
-export interface Transcript {
+/** The ordered events of a Session, merged from all its files, with the records that became no event, as plain data. */
+export interface TranscriptSnapshot {
   agent: CodingAgentId;
   /** The agent version the log records. */
   agentVersion?: string;
@@ -64,3 +64,6 @@ export interface Transcript {
   events: TranscriptEvent[];
   skipped: SkippedRecord[];
 }
+
+/** @deprecated Use `TranscriptSnapshot`. */
+export type Transcript = TranscriptSnapshot;

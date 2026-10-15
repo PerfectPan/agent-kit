@@ -14,11 +14,11 @@ import {
 import { summarizeCodexRecords } from "../../../domain/transcript/adapters/codex/summarize.js";
 import type { SessionPromptsOptions, SessionRef, SessionSummaryWithPrompts } from "../../../domain/session/index.js";
 import {
-  createTranscript,
+  createTranscriptSnapshot,
   mergeByTime,
   mergeByTimeStream,
   type StampedRecord,
-  type Transcript
+  type TranscriptSnapshot
 } from "../../../domain/transcript/index.js";
 import { timedRecord } from "../../../domain/transcript/adapters/record-time.js";
 import { discoverSessions } from "../discover-sessions.js";
@@ -34,7 +34,7 @@ async function loadCodex(
   platform: SessionPlatform,
   ref: SessionRef,
   options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
+): Promise<Result<TranscriptSnapshot, SessionReadError>> {
   const progress = readProgress(options.onProgress);
   const read = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
     readJsonlRecords(guarded, ref.path, { signal: options.signal, progress })
@@ -53,7 +53,7 @@ async function loadCodex(
   const parsed = translated.value;
   parsed.skipped.push(...skipped);
   options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
+  return ok(createTranscriptSnapshot(AGENT, codexCapabilities(parsed.session), parsed));
 }
 
 /** The rollout's records, stamped with their inherited times, one at a time; a read stops when the loop leaves. */
