@@ -345,6 +345,7 @@ The plan ships in two PRs. Batch A is this document. Batch B holds Tasks 1–7 a
   - `packages/sessions/src/domain/transcript/value-objects/transcript.ts` → moved to `value-objects/transcript-snapshot.ts`, interface renamed, plus a temporary `@deprecated` alias `export type Transcript = TranscriptSnapshot`;
   - `domain/transcript/index.ts`, `factories/transcript-event.ts` (`createTranscript` → `createTranscriptSnapshot`), `policies/turns.ts`, `services/fold-transcript.ts`, `services/fold-transcript.test.ts`;
   - `application/ports.ts`, `application/use-cases/load-transcript.ts`, `application/services/session-adapters/{claude-code,codex,grok}.ts`;
+  - `packages/sessions/src/index.ts` (the sibling export of `createTranscript`);
   - `packages/sessions/src/public.ts`, `packages/agent-kit/src/transcript.ts` (export `TranscriptSnapshot`; `Transcript` stays exported as the alias until Task 4 gives the name to the model);
   - `packages/testing/src/session-adapter-conformance.ts`;
   - `packages/testing/test/{claude-code,codex,grok,conformance-catches}.test.ts`.
