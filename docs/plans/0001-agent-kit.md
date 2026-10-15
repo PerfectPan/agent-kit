@@ -590,6 +590,45 @@ interface LifecycleEvent {
 
 Lifecycle: plan (diff, commands, expected trust prompts, dropped events, dotfiles conflicts) → apply (atomic writes, ledger records, agent command line calls) → verify (compare with the ledger, use each agent's introspection commands, trigger one synthetic hook) → uninstall (delete only what the ledger records) → doctor (wrong units, unknown events, duplicate firing, stale absolute paths, broken symlinks).
 
+#### Grok hook-file legacy coverage
+
+Grok uses the existing `files` legacy source, as opencode and Pi do for their bridge files. Its install adapter
+declares a `files` source over `${grokHome(context)}/hooks`; `grokHome` keeps `GROK_HOME` and the default home
+rule authoritative. No new source kind, parser, ownership rule, public interface or dependency is needed. A hook
+file is observed and judged as one whole-file Artifact, regardless of its filename.
+
+`scanLegacy` feeds those observations to the shared `legacyTreatment` rule in both `findLegacy` and planning.
+With a matching marker and no ledger record, the canonical owner file is adopted with `legacy: true`; a marked
+file under another name is removed as legacy before the replacement is installed. A file without a matching
+marker, or one recorded for another owner, is neither listed nor removed as legacy. A kept file is listed as
+`protect` and cannot be removed or overwritten by legacy cleanup. Existing conflicts for symlinked or externally
+managed paths remain unchanged. All built-in adapters' rendered file Artifacts are covered by legacy sources;
+custom adapters must declare sources for their rendered paths to obtain the same coverage.
+
+Implemented within this active Plan and paired Spec's S116; the overall application adoption and real-agent
+acceptance work remain open. The source in `packages/harness/src/domain/bundle/adapters/grok/strategies.ts` reuses
+`grokHome`. Tests in `packages/harness/test/legacy-listing.test.ts` and `legacy.test.ts` cover canonical-file
+adoption, differently named file removal, kept-file protection, non-marker preservation and another owner's
+ledger record. They use temporary homes with explicit environment values, and listing preserves the files and
+ledger without taking the lock. The Spec, `README.md`, `CONTEXT.md` and `docs/development/adoption.md` carry the
+current boundary. A patch Rush change file records the corrected adapter path coverage for `@rivus/agent-kit`.
+
+Validation record:
+
+- In `packages/harness`, `npm test -- --run test/legacy-listing.test.ts test/legacy.test.ts`: 29 tests passed,
+  exit 0.
+- Removing the source made the canonical-file listing, differently named file planning and kept-file listing
+  tests fail, exit 1. Temporarily bypassing marker matching made non-marker preservation fail; bypassing the
+  ledger ownership checks made the other-owner listing and planning checks fail; bypassing kept-file protection
+  made the expected `protect` treatment become `replace`. Every temporary mutation was restored.
+- `npm run check`: exit 0 across format, build, lint, typecheck, test and package gates. `gh repo-checks repository`:
+  exit 0.
+- The patch Rush change file is recorded. A pre-commit `npm run change:verify` exited 0 but compared committed
+  `HEAD`, so it did not validate the uncommitted package change. The delivery record owns the post-commit result.
+
+Rollback before delivery is to remove the source and its tests and restore the paired boundary documentation;
+no ledger schema or persisted-data migration is involved.
+
 ### 3.9 Aggregate shapes (drawing on community implementations)
 
 No existing library can be used directly. The mainstream local option, proper-lockfile, only offers a single-process lock with mtime expiry; it has no CAS, fencing or pid check, and it has a known unfixed reclaim race (proper-lockfile #121). redlock, pg-boss and graphile-worker are bound to Redis or Postgres. The closest thing to plan/ledger is microsoft/apm's DeploymentLedger. The shapes below combine these implementations.

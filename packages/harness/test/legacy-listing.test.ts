@@ -142,8 +142,8 @@ const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: Bundle 
         );
         return;
       }
-      // Cursor and Grok have no legacy source of their own; the scan reads Claude Code's settings file, which each
-      // of them runs under its own event names. The recorded hook is an older version's PostToolUse hook, which the
+      // Cursor and Grok also scan Claude Code's settings file, which each runs under its own event names.
+      // The recorded hook is an older version's PostToolUse hook, which the
       // scanned bundle does not fire in the runner, so the plan is free to install beside it.
       case "cursor":
       case "grok": {
@@ -479,18 +479,54 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
     })
   );
 
-  it.effect("grok: the documented boundary — the runner's own hook file is not listed, and the plan adopts it", () =>
+  it.effect.each([
+    ["demo-app.json", "adopt"],
+    ["legacy-demo.json", "remove"]
+  ] as const)("grok: lists %s with the same legacy treatment as planning (%s)", ([name, action]) =>
     Effect.gen(function* () {
       const home = testHome();
       const run = Effect.gen(function* () {
-        // Grok declares no legacySources and its own hooks file is no other agent's, so the scan never reaches it;
-        // planning, which also observes what it installs, adopts the marked file at the same path.
-        home.write(".grok/hooks/demo-app.json", claudeGrouped({ Stop: legacyGroup("Stop") }));
-        expect(yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS })).toEqual([]);
+        const path = `.grok/hooks/${name}`;
+        home.write(path, claudeGrouped({ Stop: legacyGroup("Stop") }));
+        const entries = yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS });
         const plan = yield* planInstall(bundle(), { agents: ["grok"] });
         expect(
           plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, rel(home, step.locator.path)])
-        ).toEqual([["adopt", "/.grok/hooks/demo-app.json"]]);
+        ).toEqual([[action, `/${path}`]]);
+        expect(asView(home, entries)).toEqual([{ file: `/${path}`, kind: "file", treatment: "replace" }]);
+        expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
+        yield* applyInstall(plan);
+        expect(home.read(".grok/hooks/demo-app.json")).toContain("demo-hook --agent grok");
+        expect(home.read(".grok/hooks/demo-app.json")).not.toContain(LEGACY);
+        if (action === "remove") {
+          expect(home.read(path)).toBeUndefined();
+        }
+      });
+      yield* run.pipe(Effect.provide(home.layer()));
+    })
+  );
+
+  it.effect("grok: a kept hook file is listed as protected and planning refuses to overwrite it", () =>
+    Effect.gen(function* () {
+      const home = testHome();
+      const run = Effect.gen(function* () {
+        yield* recordFor("grok");
+        const path = ".grok/hooks/demo-app.json";
+        const edited = claudeGrouped({ Stop: [...legacyGroup("Stop"), ...otherGroup()] });
+        home.write(path, edited);
+        const removed = yield* uninstall(OWNER, { agents: ["grok"] });
+        expect(removed.kept.map((locator) => locator.path)).toEqual([home.path(path)]);
+        const entries = yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS });
+        expect(asView(home, entries)).toEqual([{ file: `/${path}`, kind: "file", treatment: "protect" }]);
+        const failure = yield* Effect.flip(planInstall(bundle(), { agents: ["grok"] }));
+        expect(conflictKeys(failure)).toEqual(protectKeys(entries));
+        expect(failure._tag).toBe("PlanConflict");
+        if (failure._tag === "PlanConflict") {
+          expect(failure.conflicts.map(({ step }) => [step.conflict, step.legacy === true])).toEqual([
+            ["unmanaged-exists", false]
+          ]);
+        }
+        expect(home.read(path)).toBe(edited);
       });
       yield* run.pipe(Effect.provide(home.layer()));
     })
