@@ -1,6 +1,14 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Wed, 14 Oct 2026 00:33:31 GMT and should not be manually modified.
+This log was last generated on Thu, 15 Oct 2026 04:05:26 GMT and should not be manually modified.
+
+## 0.16.0
+Thu, 15 Oct 2026 04:05:26 GMT
+
+### Minor changes
+
+- /harness gains findLegacy(owner, { agents, legacyMarkers, compat?, adapters?, dialects? }), a read-only query that lists what a release before the ledger left behind: it scans the selected agents' declared legacy sources (and the other agents' hook files those agents execute) and reads the owner's tracked locators, judging each find by the plan's own rule with the markers the caller supplies — an install bundle may carry none. Each LegacyEntry names the agent it is effective in, the locator and its kind, a hook entry's event and command, and whether planning would replace it or protect it — kept as the user's, or indistinguishable from the user's own because an owned hook is missing from its event. Nothing is written and the LedgerLock is never taken: the entry needs only ArtifactFiles, LedgerRepository and PlatformService, and an entry the ledger records is never listed. The listing does not render a bundle, so it is not the plan's whole legacy set: an Artifact at a path the next install itself writes is listed only when a legacy source covers that path (Grok's own hook file is one no source covers today), and an entry in a symlinked or externally managed file is listed as replace although the plan refuses the path as an unresolvable conflict; the /harness spec states the boundary. Planning's behavior is unchanged; buildInstallPlan now judges locators through the shared legacyTreatment instead of an inline copy of the same rule. A target an interrupted apply left pending is not listed either, since the read-only call cannot settle it, and the owner and the markers are validated the way uninstall's are.
+- Finish events from the opencode and Pi bridges are delivered before the next event: each bridge derives when an event is finish from the dialect's lifecycle mappings — a fixed finish mapping always, a switch only for the field values whose case mapping is finish (or any value outside the cases when its otherwise is finish) — with every alias spelling, and hands those payloads to the hook command with spawnSync, whose exit or 5 s timeout releases the bridge (the timeout kills the shell, so a longer finish hook is cut off). A failed or timed-out synchronous send stays fail-open, other events keep the asynchronous spawn, and the opencode bridge still updates its currentSessionId memory for every event before the send. Pi's synchronous set gains agent_end and agent_settled next to session_shutdown.
 
 ## 0.15.0
 Wed, 14 Oct 2026 00:33:31 GMT
