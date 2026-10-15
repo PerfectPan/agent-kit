@@ -1,6 +1,13 @@
 import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../index.js";
 import { agentsOf, sharedSkillsDir } from "../install-files.js";
-import { aliasesOf, type FieldPath, type HookDialect, type HookEventSpec } from "../../../lifecycle/index.js";
+import {
+  aliasesOf,
+  finishSelectorsOf,
+  type FieldPath,
+  type FinishSelector,
+  type HookDialect,
+  type HookEventSpec
+} from "../../../lifecycle/index.js";
 
 import { opencodeCurrentSessionField, opencodeHookDialect } from "../../../lifecycle/adapters/opencode.js";
 import { opencodeConfigDir, opencodePluginFile, opencodePluginsDir } from "./config-files.js";
@@ -44,16 +51,23 @@ function sessionEndEvents(): readonly string[] {
 /**
  * The plugin that forwards opencode's events to the hook command, in the payload shape, `currentSessionId`
  * included, that the opencode HookDialect describes. Each callback runs inside one try/catch, so a payload that throws
- * while it is read or forwarded never rejects the callback into opencode. The plugin cannot import the kit, so the
- * path walk is inlined.
+ * while it is read, waited on or forwarded never rejects the callback into opencode. The plugin cannot import the
+ * kit, so the path walk is inlined. Exported for the bridge tests, which render sources with selector records the
+ * built-in dialect has none of.
  */
-function bridgeSource(owner: string, command: string, events: readonly string[]): string {
+export function bridgeSource(
+  owner: string,
+  command: string,
+  events: readonly string[],
+  finish: Readonly<Record<string, FinishSelector>>
+): string {
   return `// Generated for ${owner} by @rivus/agent-kit: forwards opencode events to its hook command.
 // Reinstalling overwrites this file; uninstalling removes it.
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 
 const COMMAND = ${JSON.stringify(command)}
 const EVENTS = new Set(${JSON.stringify(events)})
+const FINISH = ${JSON.stringify(finish)}
 const SESSION_PATHS = ${JSON.stringify(namedSessionPaths(undefined))}
 const EVENT_SESSION_PATHS = ${JSON.stringify(eventSessionPaths())}
 const SESSION_ENDS = new Set(${JSON.stringify(sessionEndEvents())})
@@ -69,7 +83,22 @@ function namedSessionId(payload, type) {
   return undefined
 }
 
-function send(payload) {
+// A finish event waits for the command (at most 5 s), so opencode cannot forward the next event before it. A
+// switch event is finish only for the field values its dialect maps to finish.
+function isFinish(payload, type) {
+  const selector = Object.hasOwn(FINISH, type) ? FINISH[type] : undefined
+  if (selector === undefined) return false
+  if (selector === null) return true
+  let value = payload
+  for (const key of selector.path) value = value != null && Object.hasOwn(value, key) ? value[key] : undefined
+  return selector.values.includes(value) || (selector.otherwise === true && !selector.others.includes(value))
+}
+
+function send(payload, finish) {
+  if (finish) {
+    spawnSync(COMMAND, { shell: true, input: JSON.stringify(payload), stdio: ["pipe", "ignore", "ignore"], timeout: 5000 })
+    return
+  }
   const child = spawn(COMMAND, { shell: true, stdio: ["pipe", "ignore", "ignore"] })
   child.on("error", () => {})
   child.stdin.on("error", () => {})
@@ -86,7 +115,10 @@ export const AgentKitHooks = async ({ directory }) => {
       currentSessionId = named
     }
     if (!EVENTS.has(type)) return
-    send(named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload)
+    send(
+      named === undefined && currentSessionId !== undefined ? { ...payload, [CURRENT_SESSION]: currentSessionId } : payload,
+      isFinish(payload, type)
+    )
   }
   return {
     event: async (input) => {
@@ -125,7 +157,12 @@ export const opencodeInstallAdapter: InstallAdapter = {
       : [
           {
             locator: { kind: "file", path: opencodePluginFile(context, bundle) },
-            content: bridgeSource(bundle.owner, first.command, bridgedEvents(opencodeHookDialect, registrations)),
+            content: bridgeSource(
+              bundle.owner,
+              first.command,
+              bridgedEvents(opencodeHookDialect, registrations),
+              finishSelectorsOf(opencodeHookDialect.events)
+            ),
             strategy,
             agents: agentsOf(registrations)
           }

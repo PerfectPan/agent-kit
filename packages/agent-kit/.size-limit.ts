@@ -15,8 +15,8 @@ export default [
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "7 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
-  // (about 5 kB) above all.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78 kB" },
+  // (about 5 kB) above all. The bridges carry the per-event finish selectors and their payload check.
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78.5 kB" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8.25 kB" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
