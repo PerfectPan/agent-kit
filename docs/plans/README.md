@@ -11,3 +11,4 @@ Shared decisions follow [CONTRIBUTING](../../CONTRIBUTING.md#change-design-gate)
 ## Active Plans
 
 - [0001: agent-kit](0001-agent-kit.md): the shared foundation for agent projects, from the package layout to the phased execution plan (P0–P6). Paired with [Spec 0001](../specs/0001-agent-kit.md).
+- [0002: Transcript model](0002-transcript-model.md): an in-memory `Transcript` model over the plain `TranscriptSnapshot`, with the operations over a whole transcript as methods and unchanged runtime output. Revises [Spec 0001](../specs/0001-agent-kit.md)'s `/transcript` section.
