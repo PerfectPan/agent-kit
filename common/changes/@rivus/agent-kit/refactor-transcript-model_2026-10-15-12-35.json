@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Add restoreTranscript(snapshot) to /transcript: it gives a Transcript model with summarize(), prompts(options), mainAgentId(), promptStarts(lane?), shadowed() and toSnapshot(). The plain transcript type is now TranscriptSnapshot: loadTranscript and SessionAdapter.load resolve to it, and code that annotates their values as Transcript must rename the annotation to TranscriptSnapshot or restore the model. Runtime output is unchanged.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}
