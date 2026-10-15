@@ -4,7 +4,16 @@
     "declaration": false,
     "isolatedDeclarations": false,
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": ["node"],
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // @effect/vitest is tagged @stability unstable; see the API-stability rule in docs/architecture/authoring.md.
+        "diagnosticSeverity": {
+          "unstableApiUsage": "off"
+        }
+      }
+    ]
   },
   "include": ["**/*.ts"]
 }

@@ -13,8 +13,8 @@
   },
   "scripts": {
     "build": "",
-    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict",
-    "typecheck": "tsc -p tsconfig.json",
+    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vp test 2>&1",
     "format": "vp fmt .",
     "format:check": "vp fmt --check ."
@@ -25,16 +25,16 @@
   },
   "devDependencies": {
     "@effect/tsgo": "0.50.0",
-    "@effect/vitest": "4.0.1",
+    "@effect/vitest": "4.0.3",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
-    "@types/node": "24.19.1",
-    "effect": "4.0.1",
+    "@types/node": "24.19.2",
+    "effect": "4.0.3",
     "typescript": "7.0.2",
     "vite-plus": "1.1.0",
     "vitest": "5.0.3"
   },
   "peerDependencies": {
-    "effect": "4.0.1"
+    "effect": "4.0.3"
   },
   "peerDependenciesMeta": {
     "effect": {
