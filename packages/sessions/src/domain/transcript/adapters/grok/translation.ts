@@ -95,6 +95,19 @@ function hookRuns(runs: readonly (GrokHookRunValue | undefined)[] | undefined): 
   return (runs ?? []).flatMap((run) => (run ? [hookRunBody(run)] : []));
 }
 
+function hookExitCode(runs: readonly (GrokHookRunValue | undefined)[] | undefined): number | undefined {
+  let allSucceeded = runs !== undefined && runs.length > 0;
+  for (const run of runs ?? []) {
+    const exitCode = run?.exit_code ?? run?.status?.exit_code;
+    if (exitCode === undefined) {
+      allSucceeded = false;
+    } else if (exitCode !== 0) {
+      return exitCode;
+    }
+  }
+  return allSucceeded ? 0 : undefined;
+}
+
 /** Adds what each subagent directory's `meta.json` names: one lane per directory, under the id its meta names. */
 export function applyGrokSubagents(agents: Lane[], subagents: ReadonlyMap<string, GrokSubagentMeta> | undefined): void {
   if (!subagents) {
@@ -365,12 +378,14 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
       }
 
       if (kind === "hook_execution") {
+        const exitCode = hookExitCode(update.runs);
         emit({
           kind: "hook",
           payload: {
             type: "hook_execution",
-            ...(update.event_name ? { event_name: update.event_name } : {}),
-            ...(update.tool_name ? { tool_name: update.tool_name } : {}),
+            ...(update.event_name ? { event: update.event_name } : {}),
+            ...(update.tool_name ? { name: update.tool_name } : {}),
+            ...(exitCode === undefined ? {} : { exitCode }),
             runs: hookRuns(update.runs)
           }
         });
