@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Populate Grok hook event, name and exitCode fields while preserving per-run details.",
+      "comment": "Populate Grok hook event, name and exitCode fields while preserving per-run details. Grok hook payloads no longer carry event_name and tool_name; readers should use event and name instead.",
       "type": "patch"
     }
   ],

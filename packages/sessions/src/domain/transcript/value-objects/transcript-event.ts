@@ -192,6 +192,7 @@ export interface PromptSnapshotPayload extends SystemPayload {
 
 export interface HookPayload {
   type: string;
+  /** The hook name as the agent records it; for Grok, this is the name of the tool that triggered the hook. */
   name?: string;
   event?: string;
   exitCode?: number;
