@@ -19,7 +19,7 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "1.7.0",
+    "@agentclientprotocol/sdk": "1.8.0",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
