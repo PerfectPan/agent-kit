@@ -519,6 +519,28 @@ describe("sessions use cases over Claude Code", () => {
     });
   });
 
+  it("summarizes through the loaded transcript when the adapter has no pass", async () => {
+    const options = {
+      adapters: { "claude-code": { ...builtinSessionAdapters["claude-code"], summarize: undefined } },
+      prompts: { limit: 5, maxChars: 3 }
+    };
+    expect(await summarizeSession(platform, { agent: "claude-code", path: session("plain") }, options)).toEqual({
+      ok: true,
+      value: {
+        turns: 1,
+        requests: 2,
+        inputTokens: 40,
+        outputTokens: 9,
+        durationMs: 1500,
+        compactions: 0,
+        subagents: 0,
+        failedTools: 1,
+        contextShape: [13, 27],
+        prompts: [{ text: "Run" }]
+      }
+    });
+  });
+
   it("returns ReadFailed when automatic detection cannot read an exported session", async () => {
     const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     const exported = createMemoryPlatform({ files: { "/export/session.jsonl": "{}\n" } });
