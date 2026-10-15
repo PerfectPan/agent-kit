@@ -1,6 +1,18 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Thu, 15 Oct 2026 04:05:26 GMT and should not be manually modified.
+This log was last generated on Thu, 15 Oct 2026 06:07:53 GMT and should not be manually modified.
+
+## 0.17.0
+Thu, 15 Oct 2026 06:07:53 GMT
+
+### Minor changes
+
+- The exact optional effect peer moves to 4.0.3, so hosts that install effect must move to 4.0.3: an install pinned to 4.0.1 fails with ERESOLVE under npm and warns under pnpm. The /acp entry's @agentclientprotocol/sdk dependency moves to 1.8.0 (schema v1.25.0), which validates fs/read_text_file's line and limit strictly, so a non-integer value now returns an invalid-params error to the agent instead of reading the whole file.
+- Add optional extensions to ArtifactSource files sources and pass owner to InstallAdapter.legacySources(context, owner). List a previous release's own Grok hook file with findLegacy and replace it during installation. Built-in directory legacy sources skip files the agent does not load; custom files sources without extensions continue to read every file.
+
+### Patches
+
+- Populate Grok hook event, name and exitCode fields while preserving per-run details. Grok hook payloads no longer carry event_name and tool_name; readers should use event and name instead.
 
 ## 0.16.0
 Thu, 15 Oct 2026 04:05:26 GMT
