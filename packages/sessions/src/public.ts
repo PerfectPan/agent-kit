@@ -112,6 +112,7 @@ export {
   recordKey,
   type RequestPayload,
   requestUsage,
+  restoreTranscript,
   sessionPrompts,
   shadowedIn,
   type SkippedRecord,

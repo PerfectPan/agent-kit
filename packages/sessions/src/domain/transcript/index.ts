@@ -73,7 +73,7 @@ export {
   CAPABILITIES,
   type Capability,
   type Lane,
-  type Transcript,
   type TranscriptSession,
   type TranscriptSnapshot
 } from "./value-objects/transcript-snapshot.js";
+export { restoreTranscript, type Transcript } from "./value-objects/transcript.js";

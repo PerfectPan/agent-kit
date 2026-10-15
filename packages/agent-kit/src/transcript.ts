@@ -19,6 +19,7 @@ export {
   readOriginal,
   recordKey,
   requestUsage,
+  restoreTranscript,
   SESSION_SUMMARY_VERSION,
   sessionPrompts,
   shadowedIn,

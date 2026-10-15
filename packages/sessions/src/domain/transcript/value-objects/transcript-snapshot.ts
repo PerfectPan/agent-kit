@@ -64,6 +64,3 @@ export interface TranscriptSnapshot {
   events: TranscriptEvent[];
   skipped: SkippedRecord[];
 }
-
-/** @deprecated Use `TranscriptSnapshot`. */
-export type Transcript = TranscriptSnapshot;

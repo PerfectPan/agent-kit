@@ -9,6 +9,7 @@ import {
   loadTranscript,
   promptSnapshot,
   readOriginal,
+  restoreTranscript,
   sessionAdapterHome,
   type SessionHead,
   type SessionListFailure,
@@ -539,6 +540,24 @@ describe("sessions use cases over Claude Code", () => {
         prompts: [{ text: "Run" }]
       }
     });
+  });
+
+  it("restores a loaded transcript into a model with the same numbers", async () => {
+    const loaded = await load("plain");
+    const model = restoreTranscript(loaded);
+    expect(model.summarize()).toEqual({
+      turns: 1,
+      requests: 2,
+      inputTokens: 40,
+      outputTokens: 9,
+      durationMs: 1500,
+      compactions: 0,
+      subagents: 0,
+      failedTools: 1,
+      contextShape: [13, 27]
+    });
+    expect(model.prompts({ limit: 5, maxChars: 3 })).toEqual([{ text: "Run" }]);
+    expect(model.toSnapshot()).toBe(loaded);
   });
 
   it("returns ReadFailed when automatic detection cannot read an exported session", async () => {
