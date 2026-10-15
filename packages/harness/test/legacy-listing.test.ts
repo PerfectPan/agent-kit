@@ -15,8 +15,10 @@ import {
   planInstall
 } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
+import { LedgerRepository } from "../src/application/ports.js";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { locatorKey, type PlanStep } from "../src/domain/install-plan/index.js";
+import type { LedgerSnapshot } from "../src/domain/ledger/index.js";
 import { PlatformArtifactFilesLive } from "../src/infra/adapters/platform-artifact-files.js";
 import { FileLedgerRepositoryLive } from "../src/infra/repository/file-ledger-repository.js";
 import { demoBundle, SHIM } from "./support/bundles.js";
@@ -505,6 +507,71 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
         // The plan agrees when it is given the same markers.
         const plan = yield* planInstall(bundle(), { agents: ["claude-code"], strategies: SHARED_CLAUDE });
         expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
+      });
+      yield* run.pipe(Effect.provide(home.layer()));
+    })
+  );
+
+  it.effect("a target an interrupted apply left pending is not listed, like a recorded entry", () =>
+    Effect.gen(function* () {
+      const home = testHome();
+      const run = Effect.gen(function* () {
+        const pending = legacyCommand("Stop");
+        const shim = hook(SHIM.replaceAll("{agent}", "claude-code"), 5);
+        home.write(
+          ".claude/settings.json",
+          claudeGrouped({
+            SessionStart: [shim],
+            UserPromptSubmit: [shim],
+            Stop: [...otherGroup(), ...legacyGroup("Stop")]
+          })
+        );
+        // The owner's own crashed apply recorded its target as pending: the marker-carrying hook it just wrote sits
+        // in a legacy source location, and the listing, which cannot settle the operation, must stay silent on it.
+        const snapshot: LedgerSnapshot = {
+          schemaVersion: 1,
+          lineage: "lineage-1",
+          revision: 1,
+          entries: {},
+          pending: [
+            {
+              planId: "plan-crashed",
+              owner: OWNER,
+              bundleVersion: "2.0.0",
+              toolVersion: "0.15.0",
+              locator: {
+                kind: "json-entry",
+                path: home.path(".claude/settings.json"),
+                pointer: "/hooks/Stop",
+                member: pending,
+                memberIn: "hook-group"
+              },
+              action: "adopt",
+              agents: ["claude-code"],
+              precondition: { hash: `sha256:${"0".repeat(64)}` },
+              legacy: true,
+              startedAt: "2026-10-15T00:00:00.000Z"
+            }
+          ]
+        };
+        yield* (yield* LedgerRepository).save({ key: "user", scope: "user" }, snapshot, undefined);
+        // Only the pending hook carries a marker here ("demo-hook" would also match the recorded-looking commands).
+        expect(yield* findLegacy(OWNER, { agents: ["claude-code"], legacyMarkers: ["legacy-demo hook"] })).toEqual([]);
+      });
+      yield* run.pipe(Effect.provide(home.layer()));
+    })
+  );
+
+  it.effect("validates the owner and the markers the way uninstall does", () =>
+    Effect.gen(function* () {
+      const home = testHome();
+      const run = Effect.gen(function* () {
+        const badOwner = yield* Effect.flip(
+          findLegacy("Demo App", { agents: ["claude-code"], legacyMarkers: MARKERS })
+        );
+        expect(badOwner._tag).toBe("InvalidBundle");
+        const blankMarker = yield* Effect.flip(findLegacy(OWNER, { agents: ["claude-code"], legacyMarkers: [" "] }));
+        expect(blankMarker._tag).toBe("InvalidBundle");
       });
       yield* run.pipe(Effect.provide(home.layer()));
     })

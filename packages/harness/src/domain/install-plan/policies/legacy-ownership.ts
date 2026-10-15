@@ -57,11 +57,14 @@ export type LegacyTreatment = "replace" | "protect";
 
 /**
  * What planning does with one observed Artifact, or `undefined` when it treats it as somebody else's: the ledger
- * records it, or its content carries none of the owner's legacy markers. `replace`: it is what an older version of
- * the owner left without a ledger, and the plan takes it or puts its own content in its place. `protect`: it stays,
- * because the user kept it on an earlier removal or an owned hook is missing from its event, so a legacy hook there
- * cannot be told apart from the user's own (see `protectedLegacy`). This is the one judge of legacy ownership; the
- * plan factory and the read-only legacy listing both call it.
+ * records it, a target an interrupted apply left pending belongs to it, or its content carries none of the owner's
+ * legacy markers. `replace`: it is what an older version of the owner left without a ledger, and the plan takes it
+ * or puts its own content in its place. `protect`: it stays, because the user kept it on an earlier removal or an
+ * owned hook is missing from its event, so a legacy hook there cannot be told apart from the user's own (see
+ * `protectedLegacy`). This is the one judge of legacy ownership; the plan factory and the read-only legacy listing
+ * both call it. A plan always meets the ledger with its pending operations settled under the LedgerLock, so the
+ * pending check is for a reader that cannot settle them: without it, the listing would offer the owner its own
+ * crashed apply's freshly written target for replacement.
  */
 export function legacyTreatment(
   seen: ObservedArtifact,
@@ -70,7 +73,12 @@ export function legacyTreatment(
   ledger: Ledger,
   observed: readonly ObservedArtifact[]
 ): LegacyTreatment | undefined {
-  if (ledger.entry(seen.locator) !== undefined || !isLegacyArtifact(markers, seen.content)) {
+  const key = locatorKey(seen.locator);
+  if (
+    ledger.entry(seen.locator) !== undefined ||
+    ledger.pending.some((op) => locatorKey(op.locator) === key) ||
+    !isLegacyArtifact(markers, seen.content)
+  ) {
     return undefined;
   }
   return protectedLegacy(seen.locator, owner, ledger, observed) ? "protect" : "replace";
