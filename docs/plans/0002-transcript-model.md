@@ -423,7 +423,7 @@ The plan ships in two PRs. Batch A is this document. Batch B holds Tasks 1–7 a
 
 | Item | Type | Impact | Owner | Next step or deadline |
 | --- | --- | --- | --- | --- |
-| `/transcript` keeps about 0.33 kB of headroom after the model | risk | The next feature in `/transcript` will need a budget raise with its reason in `.size-limit.ts` | PerfectPan | Decide with that feature |
+| `/transcript` keeps about 0.27 kB of headroom after the model (25.23 kB measured after Task 4) | risk | The next feature in `/transcript` will need a budget raise with its reason in `.size-limit.ts` | PerfectPan | Decide with that feature |
 | Consumers that annotate `Transcript` stop compiling | risk | Type-only; all known consumers belong to the owner | PerfectPan | Migration note in the change file (3.7) |
 | A later edit replaces `declare` with plain fields | risk | Snapshots without `agentVersion` gain the key in clones | PerfectPan | The S118 unit test asserts the keys |
 | Reviewer | open question | Review not yet assigned | unconfirmed | Assign before Status `accepted` |
