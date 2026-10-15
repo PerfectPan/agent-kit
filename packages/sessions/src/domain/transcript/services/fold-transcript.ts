@@ -5,7 +5,7 @@ import type {
   SessionSummaryWithPrompts
 } from "../../session/index.js";
 import { capPromptText, mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
-import type { Capability, Transcript } from "../value-objects/transcript.js";
+import type { Capability, TranscriptSnapshot } from "../value-objects/transcript-snapshot.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
 
@@ -184,7 +184,7 @@ export function finishPass(
  * recorded turn durations (`system` events with `type: 'turn_duration'`) when the agent records them, otherwise the
  * sum of request durations.
  */
-export function foldTranscript(transcript: Transcript): SessionSummary {
+export function foldTranscript(transcript: TranscriptSnapshot): SessionSummary {
   const totals = emptyTotals();
   for (const event of transcript.events) {
     if (event.kind === "request") {

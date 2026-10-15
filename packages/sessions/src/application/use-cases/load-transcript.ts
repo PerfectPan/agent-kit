@@ -7,7 +7,7 @@ import type {
   SessionRef,
   SessionSummaryWithPrompts
 } from "../../domain/session/index.js";
-import { foldTranscript, sessionPrompts, summaryOf, type Transcript } from "../../domain/transcript/index.js";
+import { restoreTranscript, summaryOf, type TranscriptSnapshot } from "../../domain/transcript/index.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import type { SessionAdapter, SessionAdapters, SessionPlatform, SessionReadError } from "../ports.js";
 import { builtinSessionAdapters } from "../services/session-adapters/index.js";
@@ -86,7 +86,7 @@ export async function loadTranscript(
   platform: SessionPlatform,
   target: SessionTarget,
   options: LoadTranscriptOptions = {}
-): Promise<Result<Transcript, LoadTranscriptError>> {
+): Promise<Result<TranscriptSnapshot, LoadTranscriptError>> {
   const resolved = await resolveTarget(platform, target, options);
   if (!resolved.ok) {
     options.signal?.throwIfAborted();
@@ -153,6 +153,7 @@ export async function summarizeSession(
   if (!transcript.ok) {
     return transcript;
   }
-  const summary = foldTranscript(transcript.value);
-  return ok(prompts === undefined ? summary : { ...summary, prompts: sessionPrompts(transcript.value, prompts) });
+  const model = restoreTranscript(transcript.value);
+  const summary = model.summarize();
+  return ok(prompts === undefined ? summary : { ...summary, prompts: model.prompts(prompts) });
 }

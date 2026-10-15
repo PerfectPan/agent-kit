@@ -98,6 +98,8 @@ Use the lifecycle as the criterion. A concept is an aggregate when it keeps one 
 
 Read-only contexts have no aggregates. sessions, discovery, cost and catalog only project data that agents wrote; their models are value objects, policies and domain services such as `foldTranscript`. Do not invent an aggregate to make a read-only context look like the others.
 
+A value object may have an in-memory model when callers want its operations on the value. The model is a frozen class over the snapshot that is not exported; callers get an interface that extends the snapshot type, from a `restore<Concept>(snapshot)` function. Each method calls one exported policy or domain service of the concept, which stays the only implementation and stays public. The model has no transitions, no repository and no caches, does not validate its snapshot, and copies none of its values. Use cases and agent adapters keep returning the snapshot. `Transcript` (sessions) is such a model over `TranscriptSnapshot`.
+
 ## Aggregate Shape
 
 - An aggregate is a frozen class with a private constructor. The only ways to obtain one are `create` (new identity from validated input) and `restore` (a validated snapshot entering the model). Files under `factories/` prepare their input, for example `buildInstallPlan` turns a Bundle, a Ledger snapshot and the observed files into a plan.
@@ -181,7 +183,7 @@ kept, and reopening for persistent implementations) live in the testing package'
 ## Expose A Small Public Surface
 
 - Stateless operations are functions over plain data. Stateful parts are created by factory functions. The only public class is `AgentKitError` (`code` + `cause`), recognized through a `Symbol.for` brand.
-- Aggregates are exposed as handle interfaces plus read-only snapshot types, obtained only through use cases. Their classes never appear in `public.ts`.
+- Aggregates are exposed as handle interfaces plus read-only snapshot types, obtained only through use cases. Their classes never appear in `public.ts`. A value-object model is exposed the same way: its interface and its restore function.
 - `public.ts` lists every exported name. The shell package's entry files re-export those names one by one, with no `export *`, so every change to the public surface shows up in review. `index.ts` serves sibling packages and may export more than `public.ts`.
 - An entry whose runtime profile differs from the rest of its context, such as the hook path `/harness/events`, gets its own file next to `public.ts` (harness's `src/events.ts`), exported as `<package>/public/<name>`. It imports only the layers that path needs, so its module graph does not depend on tree-shaking, and the shell entry re-exports from it.
 - Adapter interfaces carry a version literal (`specificationVersion: 'sessions-v1'`, `'harness-v1'`), so a later version can coexist with the current one.

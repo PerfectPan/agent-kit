@@ -1,66 +1,84 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
+import type { SessionPrompt, SessionPromptsOptions, SessionSummary } from "../../session/index.js";
+import { shadowedIn } from "../policies/compaction-shadowing.js";
+import { mainAgentId, promptStarts, sessionPrompts } from "../policies/turns.js";
+import { foldTranscript } from "../services/fold-transcript.js";
 import type { SkippedRecord } from "./source-pointer.js";
 import type { TranscriptEvent } from "./transcript-event.js";
+import type { Capability, Lane, TranscriptSession, TranscriptSnapshot } from "./transcript-snapshot.js";
 
-/** What an agent's logs can record. A count whose capability a transcript does not list is absent, never 0. */
-export type Capability =
-  | "requests"
-  | "usage"
-  | "durations"
-  | "reasoning"
-  | "compaction"
-  | "compactionTokens"
-  | "subagents"
-  | "systemPrompt"
-  | "toolSchemas"
-  | "hooks";
-
-export const CAPABILITIES: readonly Capability[] = [
-  "requests",
-  "usage",
-  "durations",
-  "reasoning",
-  "compaction",
-  "compactionTokens",
-  "subagents",
-  "systemPrompt",
-  "toolSchemas",
-  "hooks"
-];
-
-/** One agent's execution line in a Session. The main agent has no `parentId`; a subagent names its parent lane. */
-export interface Lane {
-  id: string;
-  parentId?: string;
-  /** The `tool_call` or `system` event on the parent lane that started this subagent, when the log records it. */
-  spawnEventId?: string;
-  title?: string;
-  /** This lane's own system prompt, when the agent records one per lane. */
-  systemPrompt?: string;
+/**
+ * A transcript in memory: the snapshot's fields plus the operations over the whole transcript. Each method gives what
+ * the function of its rule gives for the snapshot. The model shares the snapshot's arrays and keeps no state of its
+ * own; a top-level field reassigned on the snapshot after `restoreTranscript` is not seen.
+ */
+export interface Transcript extends Readonly<TranscriptSnapshot> {
+  /** `foldTranscript` of this transcript. */
+  summarize(): SessionSummary;
+  /** `sessionPrompts` of this transcript under the given caps. */
+  prompts(options: SessionPromptsOptions): SessionPrompt[];
+  /** `mainAgentId` of this transcript. */
+  mainAgentId(): string;
+  /** `promptStarts` of this transcript, on one lane or on all. */
+  promptStarts(lane?: string): TranscriptEvent[];
+  /** `shadowedIn` of this transcript's events. */
+  shadowed(): Set<string>;
+  /** The snapshot this model was restored from, the same object. */
+  toSnapshot(): TranscriptSnapshot;
 }
 
-export interface TranscriptSession {
-  id: string;
-  title?: string;
-  cwd?: string;
-  startedAt?: number;
-  endedAt?: number;
-  /** The main lane's latest recorded system prompt. */
-  systemPrompt?: string;
-  /** The main lane's latest recorded tool definitions. */
-  tools?: unknown;
+class TranscriptValue implements Transcript {
+  // `declare`: under ES2022 class fields a plain declaration creates an own `undefined` property, and a snapshot
+  // without `agentVersion` would gain that key when it is cloned or serialized.
+  declare readonly agent: CodingAgentId;
+  declare readonly agentVersion?: string;
+  declare readonly session: TranscriptSession;
+  declare readonly capabilities: Capability[];
+  declare readonly agents: Lane[];
+  declare readonly events: TranscriptEvent[];
+  declare readonly skipped: SkippedRecord[];
+  readonly #snapshot: TranscriptSnapshot;
+
+  private constructor(snapshot: TranscriptSnapshot) {
+    Object.assign(this, snapshot);
+    this.#snapshot = snapshot;
+    Object.freeze(this);
+  }
+
+  static restore(snapshot: TranscriptSnapshot): Transcript {
+    return new TranscriptValue(snapshot);
+  }
+
+  summarize(): SessionSummary {
+    return foldTranscript(this);
+  }
+
+  prompts(options: SessionPromptsOptions): SessionPrompt[] {
+    return sessionPrompts(this, options);
+  }
+
+  mainAgentId(): string {
+    return mainAgentId(this);
+  }
+
+  promptStarts(lane?: string): TranscriptEvent[] {
+    return promptStarts(this, lane);
+  }
+
+  shadowed(): Set<string> {
+    return shadowedIn(this.events);
+  }
+
+  toSnapshot(): TranscriptSnapshot {
+    return this.#snapshot;
+  }
 }
 
-/** The ordered events of a Session, merged from all its files, with the records that became no event. */
-export interface Transcript {
-  agent: CodingAgentId;
-  /** The agent version the log records. */
-  agentVersion?: string;
-  session: TranscriptSession;
-  /** What these files record: a subset of the adapter's capabilities. */
-  capabilities: Capability[];
-  agents: Lane[];
-  events: TranscriptEvent[];
-  skipped: SkippedRecord[];
+/**
+ * The model of a snapshot from `loadTranscript`, a translator, or a copy of one. The snapshot is not validated or
+ * copied: the adapters guarantee its invariants, and the model shares its arrays.
+ */
+export function restoreTranscript(snapshot: TranscriptSnapshot): Transcript {
+  return TranscriptValue.restore(snapshot);
 }
