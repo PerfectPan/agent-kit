@@ -168,13 +168,16 @@ and changes nothing.
 ## Bot Pull Requests
 
 - **Release PR**: see step 4 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
-- **Dependabot npm PR**: one weekly PR carries every npm update. It edits `package.json` files but not the Rush
-  lockfile, so `rush install` fails in CI. Check out the branch, run `node common/scripts/install-run-rush.js update`,
-  commit the lockfile, add a change file (`node scripts/release-intent.ts add --type patch --message "Update
-  dependencies."`) when the update affects a published package's runtime dependencies, and push. Dependabot does not
-  change `peerDependencies`: move the exact `effect` peer by hand in the same branch (a peer move is a `minor` change
-  file, since hosts pinning the old version fail to install), and bump any package it left behind there too if
-  `ensureConsistentVersions` fails.
+- **Dependabot npm PRs**: one weekly PR carries every minor and patch npm update, and a second one every major. They
+  edit `package.json` files but not the Rush lockfile, so `rush install` fails in CI. Check out the branch, run
+  `node common/scripts/install-run-rush.js update`, commit the lockfile, and push. Add a change file when the update
+  affects a published package's dependencies:
+  `node scripts/release-intent.ts add --type patch --message "Update dependencies."` for runtime dependencies, and
+  `--type minor` when the PR moves the exact optional `effect` peer (Dependabot moves the peer together with the
+  devDependency; hosts pinning the old version then fail to install). A moved `effect` peer also needs the version
+  written in `README.md`, `packages/agent-kit/README.md`, `packages/agent-kit-collab/README.md`,
+  `docs/development/adoption.md` and `docs/specs/0001-agent-kit.md` (`git grep` the old version). Bump any package
+  the PR left behind in the same branch if `ensureConsistentVersions` fails.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
   repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`). Close PRs that touch `review.yml` or another file
