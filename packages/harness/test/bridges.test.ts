@@ -1,3 +1,4 @@
+import type { SpawnSyncReturns } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
@@ -456,13 +457,35 @@ process.stdin.on("end", () => {
     return `${home.bin}/order --agent {agent}`;
   }
 
-  /**
-   * A hook command that records it ran and then never exits by itself: the marker is a shell builtin, so it is
-   * written at once, and the sleep outlasts the send's shortened timeout. System binaries only, so macOS's scan of
-   * freshly written executables cannot delay the first run past the timeout.
-   */
-  function hangCommand(home: TestHome): string {
-    return `printf '1' > '${home.path("started")}'; sleep 9`;
+  /** Records native spawn results: a PID and ETIMEDOUT prove a child was killed without racing its first instruction. */
+  async function timeoutBridgeModule<T>(
+    home: TestHome,
+    source: string,
+    name: string
+  ): Promise<{ module: T; results: SpawnSyncReturns<Buffer>[] }> {
+    expect(source).toContain(SPAWN_IMPORT);
+    home.write(
+      "record-spawn.mjs",
+      `import { spawnSync as nativeSpawnSync } from "node:child_process"
+export { spawn } from "node:child_process"
+export const results = []
+export function spawnSync(command, options) {
+  const result = nativeSpawnSync(command, options)
+  results.push(result)
+  return result
+}
+`
+    );
+    const recorder = pathToFileURL(home.path("record-spawn.mjs")).href;
+    home.write(
+      name,
+      source
+        .replace("timeout: 5000", "timeout: 300")
+        .replace(SPAWN_IMPORT, `import { spawn, spawnSync } from ${JSON.stringify(recorder)}`)
+    );
+    const { results } = (await import(recorder)) as { results: SpawnSyncReturns<Buffer>[] };
+    const module = (await import(pathToFileURL(home.path(name)).href)) as T;
+    return { module, results };
   }
 
   it("opencode: a finish event reaches the command before a start event that follows it", async () => {
@@ -725,15 +748,13 @@ process.stdin.on("end", () => {
 
   it("opencode: the send's timeout cuts off a finish command that never exits", async () => {
     const home = testHome();
-    // A shell script records that it ran at once and then never exits by itself (the sleep outlasts the send).
-    const command = hangCommand(home);
     await install(
       home,
       {
         owner: "demo-app",
         version: "1",
         digest: "d",
-        artifacts: [{ type: "hooks", command: command, events: { opencode: ["session.idle"] } }]
+        artifacts: [{ type: "hooks", command: "sleep 9", events: { opencode: ["session.idle"] } }]
       },
       "opencode"
     );
@@ -741,18 +762,25 @@ process.stdin.on("end", () => {
     if (source === undefined) {
       throw new Error("the opencode bridge was not installed");
     }
-    home.write(".config/opencode/plugins/demo-app-short.js", source.replace("timeout: 5000", "timeout: 300"));
-    const module = (await import(
-      pathToFileURL(home.path(".config/opencode/plugins/demo-app-short.js")).href
-    )) as Record<string, (input: object) => Promise<Record<string, (arg: object) => Promise<void>>>>;
+    const { module, results } = await timeoutBridgeModule<OpencodePlugin>(
+      home,
+      source,
+      ".config/opencode/plugins/demo-app-short.js"
+    );
     const hooks = await module.AgentKitHooks!({ directory: "/u/me/work" });
     const outcome = await hooks.event!({ event: { type: "session.idle", properties: {} } }).then(
       () => "resolved",
       (error: unknown) => `rejected: ${String(error)}`
     );
     expect(outcome).toBe("resolved");
-    // The command ran and does not exit by itself within the test, so the send can only have returned by killing it.
-    expect(home.read("started")).toBe("1");
+    expect(results).toEqual([
+      expect.objectContaining({
+        error: expect.objectContaining({ code: "ETIMEDOUT" }),
+        status: null,
+        signal: "SIGTERM"
+      })
+    ]);
+    expect(results[0]!.pid).toBeGreaterThan(0);
   }, 3000);
 
   it("Pi: a synchronous send whose command exits non-zero still resolves the callback", async () => {
@@ -785,14 +813,13 @@ process.stdin.on("end", () => {
 
   it("Pi: the send's timeout cuts off a finish command that never exits", async () => {
     const home = testHome();
-    const command = hangCommand(home);
     await install(
       home,
       {
         owner: "demo-app",
         version: "1",
         digest: "d",
-        artifacts: [{ type: "hooks", command: command, events: { pi: ["agent_end"] } }]
+        artifacts: [{ type: "hooks", command: "sleep 9", events: { pi: ["agent_end"] } }]
       },
       "pi"
     );
@@ -800,10 +827,9 @@ process.stdin.on("end", () => {
     if (source === undefined) {
       throw new Error("the Pi bridge was not installed");
     }
-    home.write(".pi/agent/extensions/demo-app-short.ts", source.replace("timeout: 5000", "timeout: 300"));
-    const module = (await import(pathToFileURL(home.path(".pi/agent/extensions/demo-app-short.ts")).href)) as {
+    const { module, results } = await timeoutBridgeModule<{
       default: (pi: object) => void;
-    };
+    }>(home, source, ".pi/agent/extensions/demo-app-short.ts");
     const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
     module.default({
       on: (type: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(type, handler)
@@ -813,7 +839,13 @@ process.stdin.on("end", () => {
       (error: unknown) => `rejected: ${String(error)}`
     );
     expect(outcome).toBe("resolved");
-    // The command ran and does not exit by itself within the test, so the send can only have returned by killing it.
-    expect(home.read("started")).toBe("1");
+    expect(results).toEqual([
+      expect.objectContaining({
+        error: expect.objectContaining({ code: "ETIMEDOUT" }),
+        status: null,
+        signal: "SIGTERM"
+      })
+    ]);
+    expect(results[0]!.pid).toBeGreaterThan(0);
   }, 3000);
 });
