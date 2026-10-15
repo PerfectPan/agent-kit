@@ -1,6 +1,13 @@
 # Change Log - @rivus/agent-kit-collab
 
-This log was last generated on Thu, 15 Oct 2026 04:05:26 GMT and should not be manually modified.
+This log was last generated on Thu, 15 Oct 2026 06:07:53 GMT and should not be manually modified.
+
+## 0.17.0
+Thu, 15 Oct 2026 06:07:53 GMT
+
+### Minor changes
+
+- The exact optional effect peer moves to 4.0.3, so hosts that install effect must move to 4.0.3: an install pinned to 4.0.1 fails with ERESOLVE under npm and warns under pnpm.
 
 ## 0.16.0
 Thu, 15 Oct 2026 04:05:26 GMT
