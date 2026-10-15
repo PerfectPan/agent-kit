@@ -12,6 +12,7 @@ export { type Check, doctor, type DoctorOptions } from "./application/use-cases/
 export {
   type FindLegacyError,
   type FindLegacyOptions,
+  type FindLegacyServices,
   findLegacy,
   type LegacyEntry
 } from "./application/use-cases/find-legacy.js";

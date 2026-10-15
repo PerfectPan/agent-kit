@@ -55,6 +55,7 @@ export type {
   DocumentInvalid,
   FindLegacyError,
   FindLegacyOptions,
+  FindLegacyServices,
   Drift,
   DroppedHook,
   EntryChange,

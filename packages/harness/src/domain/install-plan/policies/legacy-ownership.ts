@@ -57,7 +57,7 @@ export type LegacyTreatment = "replace" | "protect";
 
 /**
  * What planning does with one observed Artifact, or `undefined` when it treats it as somebody else's: the ledger
- * records it, or its content carries none of the bundle's legacy markers. `replace`: it is what an older version of
+ * records it, or its content carries none of the owner's legacy markers. `replace`: it is what an older version of
  * the owner left without a ledger, and the plan takes it or puts its own content in its place. `protect`: it stays,
  * because the user kept it on an earlier removal or an owned hook is missing from its event, so a legacy hook there
  * cannot be told apart from the user's own (see `protectedLegacy`). This is the one judge of legacy ownership; the
@@ -65,14 +65,15 @@ export type LegacyTreatment = "replace" | "protect";
  */
 export function legacyTreatment(
   seen: ObservedArtifact,
-  bundle: Bundle,
+  owner: Owner,
+  markers: readonly string[],
   ledger: Ledger,
   observed: readonly ObservedArtifact[]
 ): LegacyTreatment | undefined {
-  if (ledger.entry(seen.locator) !== undefined || !isLegacyArtifact(legacyMarkersOf(bundle), seen.content)) {
+  if (ledger.entry(seen.locator) !== undefined || !isLegacyArtifact(markers, seen.content)) {
     return undefined;
   }
-  return protectedLegacy(seen.locator, bundle.owner, ledger, observed) ? "protect" : "replace";
+  return protectedLegacy(seen.locator, owner, ledger, observed) ? "protect" : "replace";
 }
 
 /** Kept hooks remain protected from every owner's cleanup; only a related replacement is blocked. */

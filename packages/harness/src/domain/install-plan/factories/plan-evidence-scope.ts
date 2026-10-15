@@ -2,7 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
 import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/value-objects/install-adapter.js";
-import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
+import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
@@ -94,10 +94,13 @@ export interface PlanEvidenceScope {
  * The evidence a plan's correctness depends on, without IO: what to observe, whether to scan legacy sources, and
  * which roots a planned write may land in. Roots cover the adapter homes of every agent the owner's entries touch
  * (a removal can update a settings file another of its agents shares) and the directory holding each foreign hook
- * file a selected runner executes.
+ * file a selected runner executes. The legacy judgment needs only the owner and its markers, so the read-only
+ * listing calls this with the markers its caller supplies, without a bundle.
  */
 export function planEvidenceScope(input: {
-  readonly bundle: Bundle;
+  readonly owner: Owner;
+  /** The owner's legacy markers; often empty for planning, whose markers ride in on the bundle. */
+  readonly legacyMarkers: readonly string[];
   readonly agents: readonly CodingAgentId[];
   readonly desired: readonly DesiredArtifact[];
   readonly ledger: Ledger;
@@ -106,22 +109,22 @@ export function planEvidenceScope(input: {
   readonly context: InstallContext;
   readonly compat?: readonly HookCompat[];
 }): PlanEvidenceScope {
-  const { bundle, agents, desired, ledger, adapters, dialects, context } = input;
+  const { owner, legacyMarkers, agents, desired, ledger, adapters, dialects, context } = input;
   const locators: ArtifactLocator[] = desired.map((artifact) => artifact.locator);
   for (const entry of ledger.entries()) {
-    if (holds(entry, bundle.owner)) {
+    if (holds(entry, owner)) {
       locators.push(entry.locator);
     }
   }
   const ownerHoldsHookGroup = ledger
     .entries()
-    .some((entry) => holds(entry, bundle.owner) && entry.locator.memberIn === "hook-group");
+    .some((entry) => holds(entry, owner) && entry.locator.memberIn === "hook-group");
   const keptHookGroup = Object.values(ledger.keptRecords()).some((kept) => kept.locator.memberIn === "hook-group");
-  const scanLegacy = legacyMarkersOf(bundle).length > 0 || ownerHoldsHookGroup || keptHookGroup;
+  const scanLegacy = legacyMarkers.length > 0 || ownerHoldsHookGroup || keptHookGroup;
   const sources = scanLegacy ? legacyHookSources(agents, adapters, dialects, context, input.compat ?? []) : [];
   const rootedAgents = new Set([
     ...agents,
-    ...ledger.entries().flatMap((entry) => (holds(entry, bundle.owner) ? entry.agents : []))
+    ...ledger.entries().flatMap((entry) => (holds(entry, owner) ? entry.agents : []))
   ]);
   const rootCandidates: string[] = [];
   for (const agent of rootedAgents) {

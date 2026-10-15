@@ -2,13 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import {
-  checkBundle,
-  type HookCompat,
-  type InstallAdapters,
-  type InvalidBundle,
-  type Bundle
-} from "../../domain/bundle/index.js";
+import type { HookCompat, InstallAdapters, Owner } from "../../domain/bundle/index.js";
 import {
   type ArtifactKind,
   type ArtifactLocator,
@@ -20,7 +14,6 @@ import {
   planEvidenceScope
 } from "../../domain/install-plan/index.js";
 import type { HookDialects } from "../../domain/lifecycle/index.js";
-import { fromResult } from "../services/from-result.js";
 import { type LegacyObservation, scanLegacy } from "../services/legacy-scan.js";
 import { type LedgerReadError, loadLedger } from "../services/ledger-session.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
@@ -31,6 +24,12 @@ import { adapterOf, planSetup, requireUserScope } from "./plan-install.js";
 export interface FindLegacyOptions extends ScopeOptions {
   /** The agents to scan: their own legacy sources, and the other agents' hook files they execute. */
   readonly agents: readonly CodingAgentId[];
+  /**
+   * The substrings by which the owner recognizes what its older versions installed without a ledger, such as their
+   * hook command lines. Required: an install bundle may carry no markers, so they come from the caller. Blank
+   * markers never match, by the shared rule.
+   */
+  readonly legacyMarkers: readonly string[];
   /** Install adapters for this call, merged over `builtinInstallAdapters`. */
   readonly adapters?: InstallAdapters;
   /** Hook dialects for this call, merged over `builtinHookDialects`. */
@@ -51,11 +50,11 @@ export interface LegacyEntry {
   readonly event?: string;
   /** For a hook entry, the command the agent runs. */
   readonly command?: string;
-  /** What planning does with the entry: replace it with the bundle's Artifacts, or protect it for the user. */
+  /** What planning does with the entry: replace it with the owner's next Artifacts, or protect it for the user. */
   readonly treatment: LegacyTreatment;
 }
 
-export type FindLegacyError = InvalidBundle | ArtifactFailure | LedgerReadError;
+export type FindLegacyError = ArtifactFailure | LedgerReadError;
 
 /** The services the read-only listing needs: it never takes the LedgerLock and never asks an agent's command line. */
 export type FindLegacyServices = ArtifactFiles | LedgerRepository | PlatformService;
@@ -75,22 +74,23 @@ function hookOf(locator: ArtifactLocator, observation: LegacyObservation): { rea
 }
 
 /**
- * Lists, without changing anything: every untracked entry that planning would treat as this owner's legacy artifact —
- * what an older version installed without a ledger, recognized by the bundle's `legacyMarkers`. The rules are the
- * plan's own (`legacyTreatment`): an entry the ledger records is not listed, and one the user kept on an earlier
+ * Lists, without changing anything: every untracked entry the scan reaches that the plan's own rule
+ * (`legacyTreatment`) judges this owner's legacy artifact — what an older version installed without a ledger,
+ * recognized by `legacyMarkers`. An entry the ledger records is not listed, and one the user kept on an earlier
  * removal, or that cannot be told apart from a deleted owned hook in its event, is listed as protected instead of
  * replaced. The scan covers the selected agents' declared legacy sources and the other agents' hook files they
- * execute, and reads the owner's tracked locators the way the plan does, because they decide that protection. A
- * marker-carrying leftover at a path the bundle itself would write is found by planning when it installs, not here,
- * unless one of the declared legacy sources covers that path.
+ * execute, and reads the owner's tracked locators the way the plan does, because they decide that protection. It
+ * does not render a bundle, so the listing is not the plan's whole legacy set: an Artifact at a path the next
+ * install itself writes is listed only when a legacy source covers that path, and an entry in a symlinked or
+ * externally managed file is listed as `replace` although the plan refuses the path as an unresolvable conflict
+ * (see the `/harness` spec for the boundary).
  */
 export function findLegacy(
-  bundle: Bundle,
+  owner: Owner,
   options: FindLegacyOptions
 ): Effect.Effect<readonly LegacyEntry[], FindLegacyError, FindLegacyServices> {
   return Effect.gen(function* () {
     requireUserScope(options);
-    const checked = yield* fromResult(checkBundle(bundle));
     const setup = yield* planSetup(options);
     for (const agent of options.agents) {
       adapterOf(setup, agent);
@@ -98,7 +98,8 @@ export function findLegacy(
     const scope = yield* ledgerScope(options);
     const { ledger } = yield* loadLedger(scope);
     const evidence = planEvidenceScope({
-      bundle: checked,
+      owner,
+      legacyMarkers: options.legacyMarkers,
       agents: options.agents,
       desired: [],
       ledger,
@@ -127,7 +128,9 @@ export function findLegacy(
         }
         listed.add(key);
         observed.set(key, observation.observed);
-        const treatment = legacyTreatment(observation.observed, checked, ledger, [...observed.values()]);
+        const treatment = legacyTreatment(observation.observed, owner, options.legacyMarkers, ledger, [
+          ...observed.values()
+        ]);
         if (treatment === undefined) {
           continue;
         }

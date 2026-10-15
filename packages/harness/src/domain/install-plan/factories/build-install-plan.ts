@@ -102,7 +102,7 @@ export function buildInstallPlan(
   // reads it as protected, so only a replaceable legacy Artifact names the step legacy.
   const isLegacy = (key: LocatorKey): boolean => {
     const seen = found.get(key);
-    return seen !== undefined && legacyTreatment(seen, bundle, ledger, observed) === "replace";
+    return seen !== undefined && legacyTreatment(seen, bundle.owner, markers, ledger, observed) === "replace";
   };
   const preservedHooks = observed.filter(
     (seen) =>

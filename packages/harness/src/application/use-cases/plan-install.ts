@@ -20,6 +20,7 @@ import {
   type InstallContext,
   type InvalidBundle,
   type InvalidHookPlacement,
+  legacyMarkersOf,
   placeHooks,
   type RenderedArtifact,
   type Strategy
@@ -464,7 +465,8 @@ export function buildPlan(
     const { bundle, agents, setup } = input;
     const { ledger } = loaded;
     const evidenceScope = planEvidenceScope({
-      bundle,
+      owner: bundle.owner,
+      legacyMarkers: legacyMarkersOf(bundle),
       agents,
       desired: input.desired,
       ledger,

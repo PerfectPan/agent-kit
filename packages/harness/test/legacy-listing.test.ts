@@ -31,6 +31,7 @@ const legacyCommand = (event: string): string => `${LEGACY} --event ${event}`;
 // ledger keeps them off the listing. The path markers match the old plugin and extension references.
 const MARKERS = ["legacy-demo hook", "demo-hook", "plugins/legacy-demo.js", "extensions/legacy-demo.ts"];
 
+const OWNER = "demo-app";
 const bundle = (): Bundle => demoBundle("2.0.0", { legacyMarkers: MARKERS });
 
 const SHARED_CLAUDE: PlanInstallOptions["strategies"] = { "claude-code": { hooks: "shared-config" } };
@@ -87,11 +88,11 @@ const recordFor = (
  * the home holds a legacy hook entry (where the adapter scans for one), a legacy plugin or extension file and
  * configuration reference (where it has those), another owner's entry, and the owner's own recorded entries.
  */
-const replaceFixture = (home: TestHome, agent: CodingAgentId) =>
+const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: Bundle = bundle()) =>
   Effect.gen(function* () {
     switch (agent) {
       case "claude-code": {
-        yield* recordFor("claude-code", SHARED_CLAUDE);
+        yield* recordFor("claude-code", SHARED_CLAUDE, installed);
         const shim = hook(SHIM.replaceAll("{agent}", "claude-code"), 5);
         home.write(
           ".claude/settings.json",
@@ -321,7 +322,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
         const home = testHome();
         const run = Effect.gen(function* () {
           yield* replaceFixture(home, agent);
-          const entries = yield* findLegacy(bundle(), { agents: [agent] });
+          const entries = yield* findLegacy(OWNER, { agents: [agent], legacyMarkers: MARKERS });
           const expected = expectedReplace[agent] ?? [];
           expect(asView(home, entries).toSorted((a, b) => a.file.localeCompare(b.file))).toEqual(
             [...expected].toSorted((a, b) => a.file.localeCompare(b.file))
@@ -348,7 +349,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           // The recorded Stop hook disappears from the file and a marked hook takes the event: a renamed hook cannot
           // be told apart from the deleted one, so the listing says protected and the plan keeps it, unresolvable.
           home.write(".claude/settings.json", claudeGrouped({ Stop: legacyGroup("Stop") }));
-          const entries = yield* findLegacy(bundle(), { agents: ["claude-code"] });
+          const entries = yield* findLegacy(OWNER, { agents: ["claude-code"], legacyMarkers: MARKERS });
           expect(asView(home, entries)).toEqual([
             {
               file: "/.claude/settings.json",
@@ -390,7 +391,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
             yield* recordFor("claude-code", SHARED_CLAUDE);
             home.write(".claude/settings.json", claudeGrouped({ Stop: legacyGroup("Stop") }));
           }
-          const entries = yield* findLegacy(bundle(), { agents: [agent] });
+          const entries = yield* findLegacy(OWNER, { agents: [agent], legacyMarkers: MARKERS });
           expect(entries.map((entry) => [rel(home, entry.locator.path), entry.event, entry.treatment])).toEqual([
             [
               agent === "codex"
@@ -423,7 +424,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           home.write(bridge, `${home.read(bridge) ?? ""}\n// the user's edit, still carrying the demo-hook command\n`);
           const removed = yield* uninstall("demo-app", { agents: [agent] });
           expect(removed.kept.map((locator) => locator.path)).toEqual([home.path(bridge)]);
-          const entries = yield* findLegacy(bundle(), { agents: [agent] });
+          const entries = yield* findLegacy(OWNER, { agents: [agent], legacyMarkers: MARKERS });
           expect(entries.map((entry) => [rel(home, entry.locator.path), entry.kind, entry.treatment])).toEqual([
             [`/${bridge}`, "file", "protect"]
           ]);
@@ -467,10 +468,45 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
         Layer.provideMerge(Layer.succeed(PlatformService, home.platform))
       );
       const revision = (yield* inventory().pipe(Effect.provide(minimal))).revision;
-      const listing = yield* findLegacy(bundle(), { agents: ["claude-code"] }).pipe(Effect.provide(minimal));
+      const listing = yield* findLegacy(OWNER, { agents: ["claude-code"], legacyMarkers: MARKERS }).pipe(
+        Effect.provide(minimal)
+      );
       expect(listing.map(({ treatment }) => treatment)).toEqual(["replace"]);
       expect(snapshot()).toEqual(before);
       expect((yield* inventory().pipe(Effect.provide(minimal))).revision).toBe(revision);
+    })
+  );
+
+  it.effect("grok: the documented boundary — the runner's own hook file is not listed, and the plan adopts it", () =>
+    Effect.gen(function* () {
+      const home = testHome();
+      const run = Effect.gen(function* () {
+        // Grok declares no legacySources and its own hooks file is no other agent's, so the scan never reaches it;
+        // planning, which also observes what it installs, adopts the marked file at the same path.
+        home.write(".grok/hooks/demo-app.json", claudeGrouped({ Stop: legacyGroup("Stop") }));
+        expect(yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS })).toEqual([]);
+        const plan = yield* planInstall(bundle(), { agents: ["grok"] });
+        expect(
+          plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, rel(home, step.locator.path)])
+        ).toEqual([["adopt", "/.grok/hooks/demo-app.json"]]);
+      });
+      yield* run.pipe(Effect.provide(home.layer()));
+    })
+  );
+
+  it.effect("markers come from the options: an install bundle without markers still lists what the options mark", () =>
+    Effect.gen(function* () {
+      const home = testHome();
+      const run = Effect.gen(function* () {
+        // The installed bundle carries no legacyMarkers, as an upgrading application's may not.
+        yield* replaceFixture(home, "claude-code", demoBundle("2.0.0", { legacyMarkers: undefined }));
+        const entries = yield* findLegacy(OWNER, { agents: ["claude-code"], legacyMarkers: MARKERS });
+        expect(asView(home, entries)).toEqual([...expectedReplace["claude-code"]]);
+        // The plan agrees when it is given the same markers.
+        const plan = yield* planInstall(bundle(), { agents: ["claude-code"], strategies: SHARED_CLAUDE });
+        expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
+      });
+      yield* run.pipe(Effect.provide(home.layer()));
     })
   );
 });
