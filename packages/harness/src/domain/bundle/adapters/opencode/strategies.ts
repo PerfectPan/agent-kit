@@ -52,9 +52,10 @@ function sessionEndEvents(): readonly string[] {
  * The plugin that forwards opencode's events to the hook command, in the payload shape, `currentSessionId`
  * included, that the opencode HookDialect describes. Each callback runs inside one try/catch, so a payload that throws
  * while it is read, waited on or forwarded never rejects the callback into opencode. The plugin cannot import the
- * kit, so the path walk is inlined.
+ * kit, so the path walk is inlined. Exported for the bridge tests, which render sources with selector records the
+ * built-in dialect has none of.
  */
-function bridgeSource(
+export function bridgeSource(
   owner: string,
   command: string,
   events: readonly string[],

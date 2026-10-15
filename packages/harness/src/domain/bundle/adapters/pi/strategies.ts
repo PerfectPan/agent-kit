@@ -9,9 +9,10 @@ import { piExtensionFile, piExtensionsDir, piHome } from "./config-files.js";
  * event with its name as `type`, plus `sessionId` and `cwd` from the handler's context. The payloads `finish` marks
  * (the dialect's finish-phase events, a switch only for its finish field values) wait for the command to exit, at
  * most 5 s, so Pi cannot forward the next event before them; the command runs through the shell with the payload on
- * stdin, and a failure never reaches Pi.
+ * stdin, and a failure never reaches Pi. Exported for the bridge tests, which render sources with selector records
+ * the built-in dialect has none of.
  */
-function bridgeSource(
+export function bridgeSource(
   owner: string,
   command: string,
   events: readonly string[],
@@ -56,8 +57,11 @@ export default function (pi: any) {
       try {
         sessionId = ctx?.sessionManager?.getSessionId?.()
       } catch {}
-      const payload = { ...event, type, sessionId, cwd: ctx?.cwd }
-      forward(type, JSON.stringify(payload), isFinish(payload, type))
+      // The payload read, its stringify and the finish check share forward's fail-open boundary.
+      try {
+        const payload = { ...event, type, sessionId, cwd: ctx?.cwd }
+        forward(type, JSON.stringify(payload), isFinish(payload, type))
+      } catch {}
     })
   }
 }

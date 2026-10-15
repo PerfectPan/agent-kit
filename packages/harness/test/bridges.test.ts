@@ -11,8 +11,11 @@ import { finishSelectorsOf } from "../src/domain/lifecycle/index.js";
 import type { HookEventSpec } from "../src/domain/lifecycle/index.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
-import { opencodeInstallAdapter } from "../src/domain/bundle/adapters/opencode/strategies.js";
-import { piInstallAdapter } from "../src/domain/bundle/adapters/pi/strategies.js";
+import {
+  bridgeSource as opencodeBridgeSource,
+  opencodeInstallAdapter
+} from "../src/domain/bundle/adapters/opencode/strategies.js";
+import { bridgeSource as piBridgeSource, piInstallAdapter } from "../src/domain/bundle/adapters/pi/strategies.js";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
@@ -166,6 +169,23 @@ function throwingSession(): object {
   return payload;
 }
 
+/**
+ * A generated bridge source written with the child_process import replaced by the fake, so each forwarded payload is
+ * kept in order with the call that delivered it.
+ */
+async function bridgeModule<T>(home: TestHome, source: string, name: string): Promise<{ log: PayloadLog; module: T }> {
+  expect(source).toContain(SPAWN_IMPORT);
+  const fake = home.path("fake-spawn.mjs");
+  home.write("fake-spawn.mjs", FAKE_SPAWN);
+  home.write(
+    name,
+    source.replace(SPAWN_IMPORT, `import { spawn, spawnSync } from ${JSON.stringify(pathToFileURL(fake).href)}`)
+  );
+  const log = (await import(pathToFileURL(fake).href)) as PayloadLog;
+  const module = (await import(pathToFileURL(home.path(name)).href)) as T;
+  return { log, module };
+}
+
 /** The generated plugin, with spawn replaced so each forwarded payload is kept in order. */
 async function forwardedBridge(
   home: TestHome,
@@ -185,20 +205,9 @@ async function forwardedBridge(
   if (typeof artifact?.content !== "string") {
     throw new Error("opencode bridge did not render a file");
   }
-  expect(artifact.content).toContain(SPAWN_IMPORT);
-  const fake = home.path("fake-spawn.mjs");
-  home.write("fake-spawn.mjs", FAKE_SPAWN);
-  home.write(
-    "bridge.mjs",
-    artifact.content.replace(
-      SPAWN_IMPORT,
-      `import { spawn, spawnSync } from ${JSON.stringify(pathToFileURL(fake).href)}`
-    )
-  );
-  const log = (await import(pathToFileURL(fake).href)) as PayloadLog;
-  const plugin = (await import(pathToFileURL(home.path("bridge.mjs")).href)) as OpencodePlugin;
-  expect(typeof plugin.AgentKitHooks).toBe("function");
-  return { hooksFor: (directory) => plugin.AgentKitHooks({ directory }), log };
+  const { log, module } = await bridgeModule<OpencodePlugin>(home, artifact.content, "bridge.mjs");
+  expect(typeof module.AgentKitHooks).toBe("function");
+  return { hooksFor: (directory) => module.AgentKitHooks({ directory }), log };
 }
 
 /** The generated Pi extension, with the child_process import replaced like the opencode plugin's. */
@@ -215,23 +224,22 @@ async function forwardedPi(
   if (typeof artifact?.content !== "string") {
     throw new Error("Pi bridge did not render a file");
   }
-  expect(artifact.content).toContain(SPAWN_IMPORT);
-  const fake = home.path("fake-spawn.mjs");
-  home.write("fake-spawn.mjs", FAKE_SPAWN);
-  home.write(
-    "extension.ts",
-    artifact.content.replace(
-      SPAWN_IMPORT,
-      `import { spawn, spawnSync } from ${JSON.stringify(pathToFileURL(fake).href)}`
-    )
-  );
-  const log = (await import(pathToFileURL(fake).href)) as PayloadLog;
-  const module = (await import(pathToFileURL(home.path("extension.ts")).href)) as { default: (pi: object) => void };
+  const { log, module } = await bridgeModule<{ default: (pi: object) => void }>(home, artifact.content, "extension.ts");
   const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
   module.default({
     on: (name: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(name, handler)
   });
   return { handlers, log };
+}
+
+/** A Pi handler's outcome: the bridge is fail-open, so a payload that throws while it is read still resolves. */
+async function outcomeOf(callback: Promise<void>): Promise<string> {
+  try {
+    await callback;
+    return "resolved";
+  } catch (error) {
+    return error instanceof Error ? `rejected: ${error.message}` : "rejected";
+  }
 }
 
 describe("S111: the opencode bridge carries the current session id", () => {
@@ -629,6 +637,62 @@ process.stdin.on("end", () => {
     await handlers.get("session_start")!({ type: "session_start" }, ctx);
     await handlers.get("agent_end")!({ type: "agent_end" }, ctx);
     expect(log.vias).toEqual(["spawn", "spawnSync"]);
+  });
+
+  it("Pi: a payload that throws while the handler builds it still resolves the handler", async () => {
+    const home = testHome();
+    // A synthetic switch selector, as the built-in Pi dialect has none: any field read must stay fail-open too.
+    const source = piBridgeSource("demo-app", "hook", ["poll_end"], {
+      poll_end: { path: ["result"], values: [], others: ["ok"], otherwise: true }
+    });
+    const { log, module } = await bridgeModule<{ default: (pi: object) => void }>(home, source, "extension.ts");
+    const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
+    module.default({
+      on: (name: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(name, handler)
+    });
+    const throwingResult = {};
+    Object.defineProperty(throwingResult, "result", {
+      enumerable: true,
+      get() {
+        throw new Error("result");
+      }
+    });
+    const outcome = await outcomeOf(handlers.get("poll_end")!(throwingResult, { cwd: "/u/me/work" }));
+    expect(outcome).toBe("resolved");
+    expect(log.payloads).toEqual([]);
+  });
+
+  it("opencode: an otherwise-finish switch is synchronous off its listed values, async on them", async () => {
+    const home = testHome();
+    const source = opencodeBridgeSource("demo-app", "hook", ["poll_end"], {
+      poll_end: { path: ["properties", "result"], values: ["done"], others: ["ok"], otherwise: true }
+    });
+    const { log, module } = await bridgeModule<OpencodePlugin>(home, source, "bridge.mjs");
+    const work = await module.AgentKitHooks({ directory: "/u/me/work" });
+    // A listed non-finish case value keeps the asynchronous spawn; anything else reads as the finish `otherwise`.
+    await work.event({ event: { type: "poll_end", properties: { result: "ok" } } });
+    await work.event({ event: { type: "poll_end", properties: { result: "done" } } });
+    await work.event({ event: { type: "poll_end", properties: { result: "weird" } } });
+    await work.event({ event: { type: "poll_end", properties: {} } });
+    expect(log.vias).toEqual(["spawn", "spawnSync", "spawnSync", "spawnSync"]);
+  });
+
+  it("Pi: an otherwise-finish switch is synchronous off its listed values, async on them", async () => {
+    const home = testHome();
+    const source = piBridgeSource("demo-app", "hook", ["poll_end"], {
+      poll_end: { path: ["result"], values: ["done"], others: ["ok"], otherwise: true }
+    });
+    const { log, module } = await bridgeModule<{ default: (pi: object) => void }>(home, source, "extension.ts");
+    const handlers = new Map<string, (event: object, ctx: object) => Promise<void>>();
+    module.default({
+      on: (name: string, handler: (event: object, ctx: object) => Promise<void>) => handlers.set(name, handler)
+    });
+    const ctx = { cwd: "/u/me/work", sessionManager: { getSessionId: () => "pi-1" } };
+    await handlers.get("poll_end")!({ type: "poll_end", result: "ok" }, ctx);
+    await handlers.get("poll_end")!({ type: "poll_end", result: "done" }, ctx);
+    await handlers.get("poll_end")!({ type: "poll_end", result: "weird" }, ctx);
+    await handlers.get("poll_end")!({ type: "poll_end" }, ctx);
+    expect(log.vias).toEqual(["spawn", "spawnSync", "spawnSync", "spawnSync"]);
   });
 
   it("opencode: a synchronous send whose command exits non-zero still resolves the callback", async () => {
