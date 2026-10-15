@@ -2,8 +2,8 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "List a previous release's own Grok hook file with findLegacy and replace it during installation. Built-in directory legacy sources skip files the agent does not load.",
-      "type": "patch"
+      "comment": "Add optional extensions to ArtifactSource files sources and pass owner to InstallAdapter.legacySources(context, owner). List a previous release's own Grok hook file with findLegacy and replace it during installation. Built-in directory legacy sources skip files the agent does not load; custom files sources without extensions continue to read every file.",
+      "type": "minor"
     }
   ],
   "packageName": "@rivus/agent-kit",

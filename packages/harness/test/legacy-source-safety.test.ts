@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
+import { ArtifactFiles } from "../src/application/ports.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { findLegacy } from "../src/application/use-cases/find-legacy.js";
 import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
+import type { ArtifactSource } from "../src/domain/bundle/index.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
@@ -112,6 +114,56 @@ describe("legacy source file safety", () => {
       expect(home.read(USER_FILE)).toBe(userHooks);
       expect((yield* inventory()).entries).toEqual([]);
     }).pipe(Effect.provide(home.layer()));
+  });
+
+  it.effect("grok: agent-filtered marker-only uninstall preserves a mixed user hook file before any install", () => {
+    const home = testHome();
+    home.write(USER_FILE, userHooks);
+    return Effect.gen(function* () {
+      expect((yield* inventory()).entries).toEqual([]);
+      const removed = yield* uninstall(OWNER, { agents: ["grok"], legacyMarkers: MARKERS });
+      expect(removed.plan.steps).toEqual([]);
+      expect(removed.steps).toEqual([]);
+      expect(removed.kept).toEqual([]);
+      expect(home.read(USER_FILE)).toBe(userHooks);
+      expect((yield* inventory()).entries).toEqual([]);
+    }).pipe(Effect.provide(home.layer()));
+  });
+
+  it.effect("custom files source without extensions reads every file", () => {
+    const home = testHome();
+    const paths = ["custom-hooks/legacy-demo.js", "custom-hooks/legacy-demo.custom", "custom-hooks/NOTES"];
+    const content = `// ${LEGACY}\n`;
+    for (const path of paths) {
+      home.write(path, content);
+    }
+    const source: ArtifactSource = { kind: "files", dir: home.path("custom-hooks") };
+    const reads: string[] = [];
+    const platform = {
+      ...home.platform,
+      fs: {
+        ...home.platform.fs,
+        read(path, range) {
+          reads.push(path);
+          return home.platform.fs.read(path, range);
+        }
+      }
+    } satisfies typeof home.platform;
+    return Effect.gen(function* () {
+      const files = yield* ArtifactFiles;
+      expect(
+        (yield* files.scan(source))
+          .map(({ locator, read }) => ({ path: locator.path, kind: read.kind, content: read.content }))
+          .toSorted((a, b) => a.path.localeCompare(b.path))
+      ).toEqual(
+        paths
+          .map((path) => ({ path: home.path(path), kind: "file", content }))
+          .toSorted((a, b) => a.path.localeCompare(b.path))
+      );
+      for (const path of paths) {
+        expect(reads).toContain(home.path(path));
+      }
+    }).pipe(Effect.provide(home.layer(platform)));
   });
 
   for (const source of sources) {
