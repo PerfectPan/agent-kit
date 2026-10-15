@@ -590,44 +590,44 @@ interface LifecycleEvent {
 
 Lifecycle: plan (diff, commands, expected trust prompts, dropped events, dotfiles conflicts) → apply (atomic writes, ledger records, agent command line calls) → verify (compare with the ledger, use each agent's introspection commands, trigger one synthetic hook) → uninstall (delete only what the ledger records) → doctor (wrong units, unknown events, duplicate firing, stale absolute paths, broken symlinks).
 
-#### Grok hook-file legacy coverage
+#### Owner-scoped hook-file legacy coverage
 
-Grok uses the existing `files` legacy source, as opencode and Pi do for their bridge files. Its install adapter
-declares a `files` source over `${grokHome(context)}/hooks`; `grokHome` keeps `GROK_HOME` and the default home
-rule authoritative. No new source kind, parser, ownership rule, public interface or dependency is needed. A hook
-file is observed and judged as one whole-file Artifact, regardless of its filename.
+An agent's grouped hooks JSON file can contain several owners' hooks. Treating every file in Grok's hooks
+directory as one whole-file legacy Artifact would allow one matching command to remove a user's other hooks.
+Grok therefore uses the existing single-file `ArtifactSource`: only
+`${grokHome(context)}/hooks/${ownerSlug(owner)}.json`, the canonical owner path its hook strategy renders, is a
+legacy source. Other filenames remain outside legacy cleanup even when their content carries a matching marker.
+`grokHome` keeps `GROK_HOME` and the default home rule authoritative.
 
-`scanLegacy` feeds those observations to the shared `legacyTreatment` rule in both `findLegacy` and planning.
-With a matching marker and no ledger record, the canonical owner file is adopted with `legacy: true`; a marked
-file under another name is removed as legacy before the replacement is installed. A file without a matching
-marker, or one recorded for another owner, is neither listed nor removed as legacy. A kept file is listed as
-`protect` and cannot be removed or overwritten by legacy cleanup. Existing conflicts for symlinked or externally
-managed paths remain unchanged. All built-in adapters' rendered file Artifacts are covered by legacy sources;
-custom adapters must declare sources for their rendered paths to obtain the same coverage.
+Extend `InstallAdapter.legacySources` to receive `(context, owner)`. `planEvidenceScope` already receives the owner
+for both listing and planning; pass it through `legacyHookSources` to each adapter rather than rendering a bundle
+or deriving ownership from file content. Existing adapters that need only the context can ignore the second
+argument. This adds no source kind, parser, persisted-data format or dependency.
 
-Implemented within this active Plan and paired Spec's S116; the overall application adoption and real-agent
-acceptance work remain open. The source in `packages/harness/src/domain/bundle/adapters/grok/strategies.ts` reuses
-`grokHome`. Tests in `packages/harness/test/legacy-listing.test.ts` and `legacy.test.ts` cover canonical-file
-adoption, differently named file removal, kept-file protection, non-marker preservation and another owner's
-ledger record. They use temporary homes with explicit environment values, and listing preserves the files and
-ledger without taking the lock. The Spec, `README.md`, `CONTEXT.md` and `docs/development/adoption.md` carry the
-current boundary. A patch Rush change file records the corrected adapter path coverage for `@rivus/agent-kit`.
+The existing `files` source remains for opencode's plugins and Pi's extensions. Add an optional
+`extensions: readonly string[]` filter to that source shape, and apply it to each immediate regular filename
+before reading its content. Each built-in directory source supplies the extensions accepted by its agent's
+loader, using the adapter's config-file and hook-source references as evidence. Disabled copies such as
+`demo-app.json.disabled` and `NOTES.md` are ignored. Omitting the filter keeps a custom source's existing behavior.
 
-Validation record:
+`scanLegacy` feeds the observations to the shared `legacyTreatment` rule in both `findLegacy` and planning.
+With a matching marker and no ledger record, Grok's canonical owner file is listed and adopted with
+`legacy: true`. A file without a matching marker, or one recorded for another owner, is neither listed nor removed
+as legacy. A kept file is listed as `protect` and cannot be removed or overwritten by legacy cleanup. Existing
+conflicts for symlinked or externally managed paths remain unchanged. All built-in adapters' rendered
+`kind: "file"` Artifacts are covered by legacy sources; custom adapters must declare sources for their rendered
+paths to obtain the same coverage.
 
-- In `packages/harness`, `npm test -- --run test/legacy-listing.test.ts test/legacy.test.ts`: 29 tests passed,
-  exit 0.
-- Removing the source made the canonical-file listing, differently named file planning and kept-file listing
-  tests fail, exit 1. Temporarily bypassing marker matching made non-marker preservation fail; bypassing the
-  ledger ownership checks made the other-owner listing and planning checks fail; bypassing kept-file protection
-  made the expected `protect` treatment become `replace`. Every temporary mutation was restored.
-- `npm run check`: exit 0 across format, build, lint, typecheck, test and package gates. `gh repo-checks repository`:
-  exit 0.
-- The patch Rush change file is recorded. A pre-commit `npm run change:verify` exited 0 but compared committed
-  `HEAD`, so it did not validate the uncommitted package change. The delivery record owns the post-commit result.
+Acceptance for the paired Spec's S116 is covered by the harness legacy listing, planning and source-safety tests:
+canonical-file adoption (including scoped owners and `GROK_HOME`), mixed user-named JSON preservation through
+install and uninstall without an `agents` filter, loaded-extension selection before content reads, and retained
+marker, ledger and kept-file protection. Use temporary homes with explicit environments, and demonstrate each
+behavior regression with a reverted fix before restoring it. Required gates are `npm run check`,
+`npm run change:verify` and `gh repo-checks repository`; the release intent remains a patch.
 
-Rollback before delivery is to remove the source and its tests and restore the paired boundary documentation;
-no ledger schema or persisted-data migration is involved.
+Application adoption and real-agent acceptance remain open. A rollback disables Grok legacy scanning while
+retaining the filename filters that protect files the agents do not load; no ledger schema or persisted-data
+migration is involved.
 
 ### 3.9 Aggregate shapes (drawing on community implementations)
 

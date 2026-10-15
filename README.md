@@ -233,8 +233,10 @@ implemented in `/acp`.
 
 `/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of
 what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection). Its read-only
-`findLegacy` listing covers every built-in adapter's file artifacts, including Grok's own hooks directory, and
-uses planning's marker and protection rules. Custom adapters must declare legacy sources for their file paths;
+`findLegacy` listing covers every built-in adapter's `kind: "file"` artifacts and uses planning's marker and
+protection rules. Grok covers only its canonical `hooks/<owner-slug>.json`; other filenames, including a user's
+file with both their own and marked hooks, stay outside legacy cleanup. Built-in directory sources ignore files whose
+extensions the agent does not load. Custom adapters must declare legacy sources for their file paths;
 symlinked or externally managed paths can be listed as replaceable while planning refuses them, as the
 [/harness spec](docs/specs/0001-agent-kit.md#harness) explains. The kit side of P0–P6 is implemented. Application
 adoption and real-agent acceptance remain open; see

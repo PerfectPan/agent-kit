@@ -29,5 +29,5 @@ export const grokInstallAdapter: InstallAdapter = {
   renderSkill: (strategy, skill, context) => [
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
-  legacySources: (context) => [{ kind: "files", dir: `${grokHome(context)}/hooks` }]
+  legacySources: (context, owner) => [{ kind: "file", path: grokHooksFile(context, { owner }) }]
 };

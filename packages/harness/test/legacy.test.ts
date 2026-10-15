@@ -166,17 +166,22 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     }).pipe(Effect.provide(home.layer()));
   });
 
-  it.effect("Grok: planning leaves an unrecorded hook file without the owner's marker untouched", () => {
+  it.effect("Grok: planning refuses an unrecorded canonical hook file without the owner's marker", () => {
     const home = testHome();
-    const path = ".grok/hooks/user-hook.json";
+    const path = ".grok/hooks/demo-app.json";
     const content = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "notify-done" }] }] } });
     home.write(path, content);
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] });
-      expect(plan.steps.filter((step) => step.locator.path === home.path(path))).toEqual([]);
-      yield* applyInstall(plan);
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] })
+      );
+      expect(failure._tag).toBe("PlanConflict");
+      if (failure._tag === "PlanConflict") {
+        expect(failure.conflicts.map(({ step }) => [step.locator.path, step.conflict])).toEqual([
+          [home.path(path), "unmanaged-exists"]
+        ]);
+      }
       expect(home.read(path)).toBe(content);
-      expect(home.read(".grok/hooks/demo-app.json")).toContain("demo-hook --agent grok");
     }).pipe(Effect.provide(home.layer()));
   });
 

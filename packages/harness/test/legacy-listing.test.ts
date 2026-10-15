@@ -142,9 +142,9 @@ const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: Bundle 
         );
         return;
       }
-      // Cursor and Grok also scan Claude Code's settings file, which each runs under its own event names.
-      // The recorded hook is an older version's PostToolUse hook, which the
-      // scanned bundle does not fire in the runner, so the plan is free to install beside it.
+      // Cursor declares no own legacy source; both runners scan Claude Code's settings file under their own event
+      // names. The recorded PostToolUse hook does not fire in the scanned bundle's runner, so the plan may install
+      // beside it. Grok's own hook file is covered separately.
       case "cursor":
       case "grok": {
         yield* recordFor("claude-code", SHARED_CLAUDE, olderClaudeBundle());
@@ -480,30 +480,31 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
   );
 
   it.effect.each([
-    ["demo-app.json", "adopt"],
-    ["legacy-demo.json", "remove"]
-  ] as const)("grok: lists %s with the same legacy treatment as planning (%s)", ([name, action]) =>
-    Effect.gen(function* () {
-      const home = testHome();
-      const run = Effect.gen(function* () {
-        const path = `.grok/hooks/${name}`;
-        home.write(path, claudeGrouped({ Stop: legacyGroup("Stop") }));
-        const entries = yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS });
-        const plan = yield* planInstall(bundle(), { agents: ["grok"] });
-        expect(
-          plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, rel(home, step.locator.path)])
-        ).toEqual([[action, `/${path}`]]);
-        expect(asView(home, entries)).toEqual([{ file: `/${path}`, kind: "file", treatment: "replace" }]);
-        expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
-        yield* applyInstall(plan);
-        expect(home.read(".grok/hooks/demo-app.json")).toContain("demo-hook --agent grok");
-        expect(home.read(".grok/hooks/demo-app.json")).not.toContain(LEGACY);
-        if (action === "remove") {
-          expect(home.read(path)).toBeUndefined();
-        }
-      });
-      yield* run.pipe(Effect.provide(home.layer()));
-    })
+    ["demo-app", ".grok"],
+    ["@demo/app", ".custom-grok"]
+  ] as const)(
+    "grok: lists the canonical file for %s under %s with the same legacy treatment as planning",
+    ([owner, dir]) =>
+      Effect.gen(function* () {
+        const home = testHome();
+        const platform =
+          dir === ".grok" ? home.platform : { ...home.platform, env: { ...home.env, GROK_HOME: home.path(dir) } };
+        const run = Effect.gen(function* () {
+          const path = `${dir}/hooks/demo-app.json`;
+          home.write(path, claudeGrouped({ Stop: legacyGroup("Stop") }));
+          const entries = yield* findLegacy(owner, { agents: ["grok"], legacyMarkers: MARKERS });
+          const plan = yield* planInstall(demoBundle("2.0.0", { owner, legacyMarkers: MARKERS }), { agents: ["grok"] });
+          expect(
+            plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, rel(home, step.locator.path)])
+          ).toEqual([["adopt", `/${path}`]]);
+          expect(asView(home, entries)).toEqual([{ file: `/${path}`, kind: "file", treatment: "replace" }]);
+          expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
+          yield* applyInstall(plan);
+          expect(home.read(path)).toContain("demo-hook --agent grok");
+          expect(home.read(path)).not.toContain(LEGACY);
+        });
+        yield* run.pipe(Effect.provide(home.layer(platform)));
+      })
   );
 
   it.effect("grok: a kept hook file is listed as protected and planning refuses to overwrite it", () =>
