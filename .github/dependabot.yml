@@ -5,8 +5,7 @@ updates:
   # ensureConsistentVersions needs a dependency moved in every package at once. One group collects every minor and
   # patch npm update into one weekly PR, and majors go into a second one so a failing major does not hold back the
   # rest; push `rush update` output to each branch before merging (see docs/development/release.md). The cooldown
-  # gives a new release a week before it is proposed; it must not be shorter than minimumReleaseAgeMinutes in
-  # common/config/rush/pnpm-config.json.
+  # must not be shorter than minimumReleaseAgeMinutes in common/config/rush/pnpm-config.json.
   - package-ecosystem: "npm"
     directories:
       - "/packages/*"
