@@ -1,25 +1,27 @@
 version: 2
 
 updates:
-  # Dependabot does not understand Rush: it edits package.json but not common/config/rush/pnpm-lock.yaml.
-  # Before merging, push `rush update` output to the PR branch (see docs/development/release.md).
+  # Dependabot does not understand Rush: it edits package.json but not common/config/rush/pnpm-lock.yaml, and
+  # ensureConsistentVersions needs a dependency moved in every package at once. One group collects every npm update
+  # into a single weekly PR; push `rush update` output to its branch before merging (see docs/development/release.md).
+  # The cooldown keeps proposals past the minimum release age in common/config/rush/pnpm-config.json.
   - package-ecosystem: "npm"
     directories:
       - "/packages/*"
       - "/infra/architecture"
+      - "/tests/smoke"
       - "/scripts"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
     groups:
-      toolchain:
+      npm:
         patterns:
-          - "vite-plus"
-          - "typescript"
-          - "vitest"
-          - "@types/node"
+          - "*"
     ignore:
       # Runtime types follow the Node LTS major pinned in .node-version.
       - dependency-name: "@types/node"
