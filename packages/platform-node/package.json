@@ -13,8 +13,8 @@
   },
   "scripts": {
     "build": "",
-    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict",
-    "typecheck": "tsc -p tsconfig.json",
+    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vp test 2>&1",
     "format": "vp fmt .",
     "format:check": "vp fmt --check ."

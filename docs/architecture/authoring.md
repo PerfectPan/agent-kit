@@ -236,6 +236,7 @@ These rules apply to the use cases and port adapters of harness execution (apply
 - There is no Promise facade: kit code never calls `Effect.runPromise`, `Effect.runSync`, `Effect.runFork` or builds a `ManagedRuntime` outside tests. Consumers run Effects at their assembly root.
 - Child processes go through `Platform.spawn`, not `effect/process`.
 - `effect` is an optional peer of the published packages, pinned to an exact version, and a devDependency; it stays external and is never bundled. The dist check fails when a built file inlines a module from `node_modules` (it reads the bundler's `//#region` source comments), when an Effect entry imports no effect module, or when a plain entry reaches effect, and the consumer smoke test runs the Effect entries on the host's single copy.
+- Production code must not use Effect APIs tagged `@stability unstable`: the lint runs `effect-tsgo diagnostics --strict`, which fails on the `unstableApiUsage` warning. Test code may use `@effect/vitest`, which Effect tags unstable as a whole, so each package's `test/tsconfig.json` sets `unstableApiUsage` to `off` in its `@effect/language-service` plugin; production tsconfigs keep the default.
 
 Execution rules for locks, writes and retries. Wrapping an async function in `tryPromise` and moving its parameters into a service is not enough: a `tryPromise` around a write that cannot be cancelled lets a timeout release the lock before the write finishes.
 
