@@ -12,6 +12,6 @@ export function grokHome(context: InstallContext): string {
   return resolveHome("grok", context).path;
 }
 
-export function grokHooksFile(context: InstallContext, bundle: BundleRef): string {
+export function grokHooksFile(context: InstallContext, bundle: Pick<BundleRef, "owner">): string {
   return `${grokHome(context)}/hooks/${ownerSlug(bundle.owner)}.json`;
 }

@@ -98,7 +98,7 @@ export const piInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   legacySources: (context) => [
-    { kind: "files", dir: piExtensionsDir(context) },
+    { kind: "files", dir: piExtensionsDir(context), extensions: [".js", ".ts"] },
     {
       kind: "entries",
       format: "json",

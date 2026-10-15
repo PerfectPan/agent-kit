@@ -172,7 +172,7 @@ export const opencodeInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   legacySources: (context) => [
-    { kind: "files", dir: opencodePluginsDir(context) },
+    { kind: "files", dir: opencodePluginsDir(context), extensions: [".js", ".ts"] },
     {
       kind: "entries",
       format: "json",

@@ -6,6 +6,7 @@ import type { ArtifactContent } from "../../ledger/value-objects/content-hash.js
 import type { PlacedRegistration } from "../services/hook-placement.js";
 import type { SkillSpec } from "./artifact-spec.js";
 import type { BundleRef } from "./bundle.js";
+import type { Owner } from "./owner.js";
 import type { Strategy } from "./strategy.js";
 
 /** What an install adapter renders against: the user's home and environment, as the application's platform has them. */
@@ -30,12 +31,17 @@ export interface RenderedArtifact {
 
 /**
  * Where an older version of an owner may have left Artifacts without a ledger: a file, each regular file directly in
- * a directory, or the entries of a configuration file under `pointer` (each hook of the event lists under it for
- * `hook-group`, each element of the list at it for `element`).
+ * a directory matching its optional extensions, or the entries of a configuration file under `pointer` (each hook
+ * of the event lists under it for `hook-group`, each element of the list at it for `element`).
  */
 export type ArtifactSource =
   | { readonly kind: "file"; readonly path: string }
-  | { readonly kind: "files"; readonly dir: string }
+  | {
+      readonly kind: "files";
+      readonly dir: string;
+      /** Loaded filename suffixes including the dot, such as `.js`; absent accepts every file, empty accepts none. */
+      readonly extensions?: readonly string[];
+    }
   | {
       readonly kind: "entries";
       readonly format: "json" | "toml";
@@ -118,8 +124,8 @@ export interface InstallAdapter {
   renderSkill(strategy: Strategy, skill: SkillSpec, context: InstallContext): readonly RenderedArtifact[];
   /** Every file this agent loads command hooks from, any owner's, so that `doctor` can find an event firing twice. */
   hookSources?(context: InstallContext): readonly HookSource[];
-  /** Where older versions of an owner may have installed things for this agent without a ledger. */
-  legacySources?(context: InstallContext): readonly ArtifactSource[];
+  /** Where older versions of this owner may have installed things for this agent without a ledger. */
+  legacySources?(context: InstallContext, owner: Owner): readonly ArtifactSource[];
   /** The command lines behind a `cli-registration` locator this adapter renders, `undefined` for any other. */
   cliRegistration?(locator: ArtifactLocator, context: InstallContext): CliRegistration | undefined;
 }

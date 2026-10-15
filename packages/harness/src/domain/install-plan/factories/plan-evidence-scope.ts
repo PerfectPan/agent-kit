@@ -59,6 +59,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
  * file is one source per runner event, its pointer naming the JSON-escaped event.
  */
 export function legacyHookSources(
+  owner: Owner,
   agents: readonly CodingAgentId[],
   adapters: InstallAdapters,
   dialects: HookDialects,
@@ -66,7 +67,7 @@ export function legacyHookSources(
   compat: readonly HookCompat[] = []
 ): readonly LegacyHookSource[] {
   const own: LegacyHookSource[] = agents.flatMap((agent) =>
-    (adapters[agent]?.legacySources?.(context) ?? []).map((source) => ({ source, agent }))
+    (adapters[agent]?.legacySources?.(context, owner) ?? []).map((source) => ({ source, agent }))
   );
   const foreign: LegacyHookSource[] = agents.flatMap((runner) =>
     foreignHookFiles(runner, dialects, adapters, context, compat).flatMap((file) => foreignSource(file, runner))
@@ -121,7 +122,7 @@ export function planEvidenceScope(input: {
     .some((entry) => holds(entry, owner) && entry.locator.memberIn === "hook-group");
   const keptHookGroup = Object.values(ledger.keptRecords()).some((kept) => kept.locator.memberIn === "hook-group");
   const scanLegacy = legacyMarkers.length > 0 || ownerHoldsHookGroup || keptHookGroup;
-  const sources = scanLegacy ? legacyHookSources(agents, adapters, dialects, context, input.compat ?? []) : [];
+  const sources = scanLegacy ? legacyHookSources(owner, agents, adapters, dialects, context, input.compat ?? []) : [];
   const rootedAgents = new Set([
     ...agents,
     ...ledger.entries().flatMap((entry) => (holds(entry, owner) ? entry.agents : []))
