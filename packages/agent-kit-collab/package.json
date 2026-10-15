@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
-    "@effect/vitest": "4.0.1",
+    "@effect/vitest": "4.0.3",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
     "@rivus/agent-kit": "workspace:*",
     "@size-limit/preset-small-lib": "14.1.0",
