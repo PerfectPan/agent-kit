@@ -35,7 +35,30 @@ describe("hookProgram", () => {
     ["npx demo-hook --event Stop", "npx"],
     ["  '/opt/hook' --flag ", "/opt/hook"],
     ['"~/bin/hook.sh"', "~/bin/hook.sh"],
-    ["", ""]
+    ["", ""],
+    ["'/a b/hook' --x", "/a b/hook"],
+    ['"/a b/hook"', "/a b/hook"],
+    [String.raw`/a\ b/hook --x`, "/a b/hook"],
+    ["'/a b'/hook", "/a b/hook"],
+    [String.raw`"/a \"b\"/hook"`, '/a "b"/hook'],
+    [String.raw`'it'\''s/hook'`, "it's/hook"],
+    [" \t '/a b/hook' --x", "/a b/hook"],
+    ["'/a b/hook", "/a b/hook"],
+    ['"/a b/hook', "/a b/hook"],
+    [String.raw`'/a\ b/hook'`, String.raw`/a\ b/hook`],
+    ['"/a\\\\b/\\$VAR/\\`hook\\`"', "/a\\b/$VAR/`hook`"],
+    [String.raw`"/a\q\ b/hook"`, String.raw`/a\q\ b/hook`],
+    ["/a\\\nb/hook --x", "/ab/hook"],
+    ['"/a\\\nb/hook"', "/ab/hook"],
+    ["\\\n \t /hook", "/hook"],
+    ["/a$VAR/*/hook --x", "/a$VAR/*/hook"],
+    ["~/bin/hook", "~/bin/hook"],
+    ["'' --x", ""],
+    ['"" --x', ""],
+    [" \t\n", ""],
+    ["/hook>/dev/null", "/hook"],
+    [String.raw`/a\;b/hook`, "/a;b/hook"],
+    ["'/a;b/hook'", "/a;b/hook"]
   ])("%s → %s", (command, program) => {
     expect(hookProgram(command)).toBe(program);
   });

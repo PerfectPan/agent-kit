@@ -75,6 +75,57 @@ describe("verify", () => {
 });
 
 describe("doctor", () => {
+  it.effect.each(["existing", "removed"] as const)(
+    "checks the full quoted hook program path when the file is %s",
+    (state) => {
+      const home = testHome();
+      const program = home.path("bin/demo hook");
+      const command = `'${program}' --agent {agent}`;
+      home.write("bin/demo hook", "hook fixture\n");
+      const bundle = demoBundle("1.0.0", {
+        artifacts: [{ type: "hooks", command, timeoutSeconds: 5, events: { grok: ["Stop"] } }],
+        legacyMarkers: []
+      });
+      const platform = {
+        ...home.platform,
+        clock: { now: () => 0, monotonic: () => 0 },
+        process: {
+          run: () => Promise.reject(new Error("Unexpected external command")),
+          spawn: () => {
+            throw new Error("Unexpected external command");
+          },
+          self: { host: "test", bootId: "test", pid: 1, startTime: 0 },
+          identify: () => undefined
+        }
+      } satisfies typeof home.platform;
+      return Effect.gen(function* () {
+        yield* applyInstall(yield* planInstall(bundle, { agents: ["grok"] }));
+        if (state === "removed") {
+          yield* Effect.promise(() => home.platform.fs.remove(program));
+        }
+        const checks = yield* doctor({ agents: ["grok"] });
+        expect(checks.filter((check) => check.name === "stale-path")).toEqual(
+          state === "existing"
+            ? []
+            : [
+                {
+                  name: "stale-path",
+                  status: "warn",
+                  message: `${program} does not exist`,
+                  locator: {
+                    kind: "json-entry",
+                    path: home.path(".grok/hooks/demo-app.json"),
+                    pointer: "/hooks/Stop",
+                    member: command.replace("{agent}", "grok"),
+                    memberIn: "hook-group"
+                  }
+                }
+              ]
+        );
+      }).pipe(Effect.provide(home.layer(platform)));
+    }
+  );
+
   it.effect(
     "reports hooks that never run, wrong timeout units, missing programs and duplicates; never changes them",
     () => {

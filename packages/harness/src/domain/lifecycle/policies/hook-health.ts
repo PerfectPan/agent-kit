@@ -41,11 +41,56 @@ export interface CommandHook {
   readonly locator: ArtifactLocator;
 }
 
-const unquote = (token: string): string => token.replace(/^["']|["']$/g, "");
-
-/** The program a command line runs: its first word, unquoted. */
+/**
+ * The first POSIX shell word, with quoting removed but no expansions. This small parser has no dependency because
+ * domain policies may not import Node or npm packages. An unfinished quote returns the text read so far: a diagnostic
+ * can check that literal path without executing malformed input or guessing how the user intended to close it.
+ */
 export function hookProgram(command: string): string {
-  return command.trim().split(/\s+/).map(unquote)[0] ?? "";
+  let program = "";
+  let quote: "'" | '"' | undefined;
+  let started = false;
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command.charAt(index);
+    if (character === quote) {
+      quote = undefined;
+      continue;
+    }
+    if (quote === "'") {
+      program += character;
+      continue;
+    }
+    if (character === "\\") {
+      const next = command[index + 1];
+      if (next !== undefined && (quote === undefined || '\\"$`\n'.includes(next))) {
+        if (next !== "\n") {
+          program += next;
+          started = true;
+        }
+        index += 1;
+        continue;
+      }
+    }
+    if (quote === undefined) {
+      if (character === "'" || character === '"') {
+        quote = character;
+        started = true;
+        continue;
+      }
+      if (character === " " || character === "\t" || character === "\n") {
+        if (started) {
+          break;
+        }
+        continue;
+      }
+      if ("|&;()<>".includes(character)) {
+        break;
+      }
+    }
+    program += character;
+    started = true;
+  }
+  return program;
 }
 
 /** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
