@@ -23,12 +23,12 @@
   "devDependencies": {
     "@effect/tsgo": "0.50.0",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
-    "effect": "4.0.1",
+    "effect": "4.0.3",
     "typescript": "7.0.2",
     "vite-plus": "1.1.0"
   },
   "peerDependencies": {
-    "effect": "4.0.1"
+    "effect": "4.0.3"
   },
   "peerDependenciesMeta": {
     "effect": {
