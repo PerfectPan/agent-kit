@@ -8,7 +8,7 @@ import type {
   TranscriptEventOf,
   TranscriptEventPayloads
 } from "../value-objects/transcript-event.js";
-import type { Capability, Lane, TranscriptSnapshot, TranscriptSession } from "../value-objects/transcript-snapshot.js";
+import type { Capability, Lane, Transcript, TranscriptSession } from "../value-objects/transcript.js";
 
 /** What a translation produces before the adapter adds the agent id and the capabilities its files show. */
 export interface ParsedTranscript {
@@ -19,11 +19,11 @@ export interface ParsedTranscript {
   agents: Lane[];
 }
 
-export function createTranscriptSnapshot(
+export function createTranscript(
   agent: CodingAgentId,
   capabilities: readonly Capability[],
   parsed: ParsedTranscript
-): TranscriptSnapshot {
+): Transcript {
   return {
     agent,
     ...(parsed.agentVersion === undefined ? {} : { agentVersion: parsed.agentVersion }),

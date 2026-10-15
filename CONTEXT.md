@@ -54,10 +54,7 @@ The reference to a Session. It carries the CodingAgentId, so later calls reach t
 The summary of a Session that listing produces from the head and tail of its files, without reading it fully.
 
 **Transcript**:
-The ordered TranscriptEvents of a Session, merged from all its files, with the records that were skipped. In code, `Transcript` is the in-memory model: a TranscriptSnapshot plus the operations over the whole transcript (its summary, prompts, prompt starts and shadowed events).
-
-**TranscriptSnapshot**:
-A Transcript as plain data: what `loadTranscript` and session adapters return, and what crosses process, worker and storage boundaries. `restoreTranscript` gives its model.
+The ordered TranscriptEvents of a Session, merged from all its files, with the records that were skipped.
 
 **TranscriptEvent**:
 One event in a Transcript. Its `kind` is one of `user`, `assistant`, `reasoning`, `tool_call`, `tool_result`, `request`, `system`, `compaction`, `hook`, `unknown`, and it determines the type of its `payload` (`TranscriptEventPayloads` maps each kind to that type); a payload may carry fields of the agent's own beyond that type. Events form a flat list and reference each other by id.

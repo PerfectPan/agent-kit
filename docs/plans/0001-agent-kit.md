@@ -170,8 +170,8 @@ through the public interfaces (conformist)
 
 | Aspect | Content |
 | --- | --- |
-| Ubiquitous language | Session (one conversation of one agent, not the host application's session), SessionRef, SessionHead, Transcript, TranscriptSnapshot, TranscriptEvent, Turn, Request, Lane (a subagent's execution line), Compaction, UsageRecord |
-| Model | Value objects plus model consistency rules (ordered `seq`, tool results paired or marked orphan, compaction shadowing marks; guaranteed by the conformance tests) plus the domain service `foldTranscript`; no aggregate (read-only projection). The in-memory `Transcript` model over the plain `TranscriptSnapshot` carries the whole-transcript rules as methods (authoring.md, "Aggregate Or Value Object") |
+| Ubiquitous language | Session (one conversation of one agent, not the host application's session), SessionRef, SessionHead, Transcript, TranscriptEvent, Turn, Request, Lane (a subagent's execution line), Compaction, UsageRecord |
+| Model | Value objects plus model consistency rules (ordered `seq`, tool results paired or marked orphan, compaction shadowing marks; guaranteed by the conformance tests) plus the domain service `foldTranscript`; no aggregate (read-only projection) |
 | Use cases | `listSessions`, `loadTranscript`, `summarizeSession`, `readOriginal` (0.1.0), `decodeUsage` (P2), all queries; `streamEvents` is deferred (2.3) |
 | Ports and anti-corruption layer | Platform `fs`; an optional index cache port; one anti-corruption layer per agent covering directory layout, head/tail preview, event translation and usage decoding (the four change together for the same reason) |
 | Exposure and relationships | Exposes SessionHead, TranscriptEvent, UsageRecord; `cost` and `acp` are downstream of it |
@@ -471,7 +471,7 @@ const ev = readHookEvent('codex', payload, process.env)      // { phase: 'finish
 // Sessions, translation, usage, cost
 for await (const s of listSessions(platform, { agents: ['claude-code', 'codex'], signal })) { /* SessionHead | { ref, error } */ }
 // Add a third-party agent: listSessions(platform, { adapters: { ...builtinSessionAdapters, 'my-agent': mySessionAdapter } })
-const t = await loadTranscript(platform, ref, { signal })   // Result<TranscriptSnapshot>; ref carries the CodingAgentId; in t.value.events, kind is 'unknown' when not recognized
+const t = await loadTranscript(platform, ref, { signal })   // Result<Transcript>; ref carries the CodingAgentId; in t.value.events, kind is 'unknown' when not recognized
 const pricing = createPricing(presencePricingSnapshot, { overrides })
 for await (const item of decodeUsage(platform, 'claude-code', source, { since, from: cursor })) {
   if (isUsageRecord(item)) {

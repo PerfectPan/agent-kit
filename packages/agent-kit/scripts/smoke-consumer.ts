@@ -232,10 +232,7 @@ import { detectAgents } from "${manifest.name}/discovery";
 import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
 import {
   loadTranscript,
-  restoreTranscript,
-  summarizeSession,
   type SourcePointer,
-  type Transcript,
   type TranscriptEventKind,
   type TranscriptEventOf,
   type TranscriptEventPayloads
@@ -299,14 +296,6 @@ for (const agent of seeded) {
     assert.fail(\`\${agent}: loadTranscript failed with \${transcript.error._tag}\`);
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
-  // The model over the loaded snapshot gives the numbers summarizeSession gives, and hands back the same snapshot.
-  const model: Transcript = restoreTranscript(transcript.value);
-  assert.equal(model.toSnapshot(), transcript.value, \`\${agent}: toSnapshot is not the loaded transcript\`);
-  const summarized = await summarizeSession(platform, head.ref);
-  if (!summarized.ok) {
-    assert.fail(\`\${agent}: summarizeSession failed with \${summarized.error._tag}\`);
-  }
-  assert.deepEqual(model.summarize(), summarized.value, \`\${agent}: the model and summarizeSession disagree\`);
   const requests = transcript.value.events.filter((event) => event.kind === "request");
   const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, event.payload.usage ?? {}), {});
 

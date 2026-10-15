@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { sessionPrompts } from "../policies/turns.js";
 import type { TranscriptEvent, TranscriptEventKind, TranscriptEventOf } from "../value-objects/transcript-event.js";
-import type { TranscriptSnapshot } from "../value-objects/transcript-snapshot.js";
+import type { Transcript } from "../value-objects/transcript.js";
 import { emptyPrompts, foldTranscript } from "./fold-transcript.js";
 
 const source = { file: "fixture.jsonl", offset: 0, length: 1, line: 1 };
@@ -17,9 +17,7 @@ function event(partial: EventInput): TranscriptEvent {
   return { seq: 0, ts: 1, payload: {}, source, ...partial };
 }
 
-function transcript(
-  partial: Partial<TranscriptSnapshot> & Pick<TranscriptSnapshot, "events" | "capabilities">
-): TranscriptSnapshot {
+function transcript(partial: Partial<Transcript> & Pick<Transcript, "events" | "capabilities">): Transcript {
   return { agent: "demo", session: { id: "s" }, agents: [{ id: "main" }], skipped: [], ...partial };
 }
 

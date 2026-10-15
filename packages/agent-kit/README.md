@@ -21,24 +21,24 @@ The entry table describes the source API. Verify the exports of the npm version 
 
 ## Entries
 
-| Entry                               | Main exports                                                                                                                             | Runs in                                  |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                                     | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                                    | anywhere                                 |
-| `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                                                  | anywhere, no imports                     |
-| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                                             | anywhere, with a platform                |
-| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports                         | anywhere, with `effect` and a platform   |
-| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                                          | anywhere, no imports                     |
-| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                                              | anywhere                                 |
-| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                                               | anywhere, no imports                     |
-| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                                     | Node                                     |
-| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                                                   | anywhere, with `effect`                  |
-| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                                                  | Node, with `effect`                      |
-| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                                              | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `restoreTranscript`, `foldTranscript`, `foldStreamParts`, translators, event rules | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes`                     | anywhere, with a platform; no imports    |
-| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`                                  | Node                                     |
-| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                                                | anywhere, with `effect`                  |
+| Entry                               | Main exports                                                                                                         | Runs in                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                 | with `effect` and a platform that spawns |
+| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                                 |
+| `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
+| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
+| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports     | anywhere, with `effect` and a platform   |
+| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                     |
+| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                                 |
+| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                     |
+| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                     |
+| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`                  |
+| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                      |
+| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, `foldStreamParts`, translators, event rules  | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports    |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                     |
+| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                            | anywhere, with `effect`                  |
 
 Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
 `translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
@@ -79,12 +79,6 @@ beyond its kind's payload type reads as `unknown`. Events reference each other t
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
 record is absent, not 0.
-
-`loadTranscript` resolves to a `TranscriptSnapshot`: plain data that `postMessage`, `structuredClone` and JSON carry
-unchanged. `restoreTranscript(snapshot)` gives the `Transcript` model, whose `summarize()`, `prompts({ limit, maxChars })`,
-`mainAgentId()`, `promptStarts(lane?)` and `shadowed()` give what `foldTranscript`, `sessionPrompts`, `mainAgentId`,
-`promptStarts` and `shadowedIn` give for the snapshot; the model shares the snapshot's arrays, and `toSnapshot()`
-returns the snapshot itself.
 
 ### Hook events
 

@@ -26,9 +26,9 @@ import {
   type SessionSummaryWithPrompts
 } from "../../../domain/session/index.js";
 import {
-  createTranscriptSnapshot,
+  createTranscript,
   type SkippedRecord,
-  type TranscriptSnapshot,
+  type Transcript,
   type UnknownFormatGeneration
 } from "../../../domain/transcript/index.js";
 import { discoverSessions } from "../discover-sessions.js";
@@ -155,7 +155,7 @@ async function loadGrok(
   platform: SessionPlatform,
   ref: SessionRef,
   options: LoadOptions = {}
-): Promise<Result<TranscriptSnapshot, SessionReadError>> {
+): Promise<Result<Transcript, SessionReadError>> {
   const progress = readProgress(options.onProgress);
   const files = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
     readSession(guarded, ref, options.signal, progress)
@@ -178,7 +178,7 @@ async function loadGrok(
   const parsed = translated.value;
   parsed.skipped.push(...skipped, ...main.skipped);
   options.signal?.throwIfAborted();
-  return ok(createTranscriptSnapshot(AGENT, grokCapabilities(parsed.session, parsed.agents), parsed));
+  return ok(createTranscript(AGENT, grokCapabilities(parsed.session, parsed.agents), parsed));
 }
 
 /**
