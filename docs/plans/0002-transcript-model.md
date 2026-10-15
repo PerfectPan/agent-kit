@@ -2,9 +2,9 @@
 
 Give `Transcript` an in-memory model that carries the operations over a whole transcript as methods, and name its plain data `TranscriptSnapshot`. Use cases and session adapters keep returning the plain data, boundaries keep carrying it, and the runtime output of every existing export stays the same.
 
-- Status: in review
+- Status: accepted
 - Owner: PerfectPan
-- Reviewer: unconfirmed
+- Reviewer: PerfectPan
 - Last updated: 2026-10-15
 - Paired Spec: [docs/specs/0001-agent-kit.md](../specs/0001-agent-kit.md): the `/transcript` section, the domain invariant on public classes and the new scenarios S117 and S118. Task 2 applies the text in [A.1](#a1-spec-0001-changes)
 
@@ -426,7 +426,6 @@ The plan ships in two PRs. Batch A is this document. Batch B holds Tasks 1–7 a
 | `/transcript` keeps about 0.27 kB of headroom after the model (25.23 kB measured after Task 4) | risk | The next feature in `/transcript` will need a budget raise with its reason in `.size-limit.ts` | PerfectPan | Decide with that feature |
 | Consumers that annotate `Transcript` stop compiling | risk | Type-only; all known consumers belong to the owner | PerfectPan | Migration note in the change file (3.7) |
 | A later edit replaces `declare` with plain fields | risk | Snapshots without `agentVersion` gain the key in clones | PerfectPan | The S118 unit test asserts the keys |
-| Reviewer | open question | Review not yet assigned | unconfirmed | Assign before Status `accepted` |
 | Usage scan state rules in `scanUsage`; SourcePointer types and SessionSummary placement | follow-up | Domain cohesion, outside this plan | PerfectPan | Separate plan or issue |
 
 ## Appendix
