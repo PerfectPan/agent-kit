@@ -689,7 +689,8 @@ exports[`grok translation output pins > pins the whole translation of every conf
         "timestamp": 1767225603.5,
       },
       "payload": {
-        "event_name": "PostToolUse",
+        "event": "PostToolUse",
+        "name": "shell",
         "runs": [
           {
             "elapsedMs": 5,
@@ -697,7 +698,6 @@ exports[`grok translation output pins > pins the whole translation of every conf
             "status": "success",
           },
         ],
-        "tool_name": "shell",
         "type": "hook_execution",
       },
       "requestId": "0",

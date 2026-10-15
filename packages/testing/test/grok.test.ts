@@ -105,8 +105,8 @@ describe("grok translation", () => {
     expect(transcript.events.find((event) => event.kind === "tool_result")?.payload.isError).toBe(true);
     expect(transcript.events.find((event) => event.kind === "hook")?.payload).toEqual({
       type: "hook_execution",
-      event_name: "PostToolUse",
-      tool_name: "shell",
+      event: "PostToolUse",
+      name: "shell",
       runs: [{ name: "lint", status: "success", elapsedMs: 5 }]
     });
     expect(transcript.events.find((event) => event.kind === "reasoning")?.payload).toEqual({
@@ -407,6 +407,85 @@ describe("grok translation", () => {
       })()
     ).rejects.toBe(reason);
     expect(seen).toEqual([]);
+  });
+
+  it("maps hook fields and takes the first failing run's exit code", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            event_name: "PostToolUse",
+            tool_name: "shell",
+            runs: [
+              { name: "prepare", status: { status: "success" } },
+              { name: "format", exit_code: 0, status: { status: "success", exit_code: 9 } },
+              { name: "lint", status: { status: "error", exit_code: 3 } },
+              { name: "test", exit_code: 7, status: { status: "error", exit_code: 11 } }
+            ]
+          },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "hook")?.payload).toEqual({
+      type: "hook_execution",
+      event: "PostToolUse",
+      name: "shell",
+      exitCode: 3,
+      runs: [
+        { name: "prepare", status: "success" },
+        { name: "format", status: "success", exitCode: 0 },
+        { name: "lint", status: "error", exitCode: 3 },
+        { name: "test", status: "error", exitCode: 7 }
+      ]
+    });
+  });
+
+  it("sets a hook's exit code to zero when every run reports zero", () => {
+    const parsed = value(
+      translateGrokRecords([
+        grokRecord(
+          {
+            sessionUpdate: "hook_execution",
+            event_name: "PostToolUse",
+            tool_name: "shell",
+            runs: [
+              { name: "format", exit_code: 0 },
+              { name: "lint", status: { exit_code: 0 } }
+            ]
+          },
+          1
+        )
+      ])
+    );
+    expect(parsed.events.find((event) => event.kind === "hook")?.payload).toEqual({
+      type: "hook_execution",
+      event: "PostToolUse",
+      name: "shell",
+      exitCode: 0,
+      runs: [
+        { name: "format", exitCode: 0 },
+        { name: "lint", exitCode: 0 }
+      ]
+    });
+  });
+
+  it.each([
+    {
+      scenario: "one run has no numeric code",
+      update: { runs: [{ exit_code: 0 }, { status: { status: "success" } }] }
+    },
+    { scenario: "a code is a string", update: { runs: [{ exit_code: "0", status: { status: "success" } }] } },
+    { scenario: "the runs are empty", update: { runs: [] } },
+    { scenario: "one run is malformed", update: { runs: [{ exit_code: 0 }, null] } },
+    { scenario: "the runs field is malformed", update: { runs: "invalid" } },
+    { scenario: "the runs field is absent", update: {} }
+  ])("omits a hook's exit code when $scenario", ({ update }) => {
+    const parsed = value(translateGrokRecords([grokRecord({ sessionUpdate: "hook_execution", ...update }, 1)]));
+    const payload = parsed.events.find((event) => event.kind === "hook")?.payload;
+    expect(payload).toBeDefined();
+    expect(payload).not.toHaveProperty("exitCode");
   });
 
   it("keeps the full hook output in the normalized payload", () => {
