@@ -112,7 +112,6 @@ export {
   recordKey,
   type RequestPayload,
   requestUsage,
-  restoreTranscript,
   sessionPrompts,
   shadowedIn,
   type SkippedRecord,
@@ -132,7 +131,6 @@ export {
   type TranscriptEventOf,
   type TranscriptEventPayloads,
   type TranscriptSession,
-  type TranscriptSnapshot,
   type TranscriptStreamPart,
   type UnknownFormatGeneration,
   type UnknownPayload

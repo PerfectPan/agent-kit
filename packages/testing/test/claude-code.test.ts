@@ -9,14 +9,13 @@ import {
   loadTranscript,
   promptSnapshot,
   readOriginal,
-  restoreTranscript,
   sessionAdapterHome,
   type SessionHead,
   type SessionListFailure,
   type SessionPlatform,
   summarizeSession,
   translateClaudeCodeRecords,
-  type TranscriptSnapshot
+  type Transcript
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -38,7 +37,7 @@ function value<T>(result: Result<T, unknown>): T {
   return result.value;
 }
 
-const load = async (name: string): Promise<TranscriptSnapshot> =>
+const load = async (name: string): Promise<Transcript> =>
   value(await loadTranscript(platform, { agent: "claude-code", path: session(name) }));
 
 // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file
@@ -518,46 +517,6 @@ describe("sessions use cases over Claude Code", () => {
       failedTools: 1,
       contextShape: [13, 27]
     });
-  });
-
-  it("summarizes through the loaded transcript when the adapter has no pass", async () => {
-    const options = {
-      adapters: { "claude-code": { ...builtinSessionAdapters["claude-code"], summarize: undefined } },
-      prompts: { limit: 5, maxChars: 3 }
-    };
-    expect(await summarizeSession(platform, { agent: "claude-code", path: session("plain") }, options)).toEqual({
-      ok: true,
-      value: {
-        turns: 1,
-        requests: 2,
-        inputTokens: 40,
-        outputTokens: 9,
-        durationMs: 1500,
-        compactions: 0,
-        subagents: 0,
-        failedTools: 1,
-        contextShape: [13, 27],
-        prompts: [{ text: "Run" }]
-      }
-    });
-  });
-
-  it("restores a loaded transcript into a model with the same numbers", async () => {
-    const loaded = await load("plain");
-    const model = restoreTranscript(loaded);
-    expect(model.summarize()).toEqual({
-      turns: 1,
-      requests: 2,
-      inputTokens: 40,
-      outputTokens: 9,
-      durationMs: 1500,
-      compactions: 0,
-      subagents: 0,
-      failedTools: 1,
-      contextShape: [13, 27]
-    });
-    expect(model.prompts({ limit: 5, maxChars: 3 })).toEqual([{ text: "Run" }]);
-    expect(model.toSnapshot()).toBe(loaded);
   });
 
   it("returns ReadFailed when automatic detection cannot read an exported session", async () => {

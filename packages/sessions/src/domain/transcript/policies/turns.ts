@@ -1,12 +1,12 @@
 import type { SessionPrompt, SessionPromptsOptions } from "../../session/index.js";
 import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
-import type { TranscriptSnapshot } from "../value-objects/transcript-snapshot.js";
+import type { Transcript } from "../value-objects/transcript.js";
 
 /** The lane id of the root agent when `agents` names none. */
 export const MAIN_LANE_ID = "main";
 
 /** The root lane: the first `agents` entry without a parent, else `main`. */
-export function mainAgentId(transcript: Pick<TranscriptSnapshot, "agents">): string {
+export function mainAgentId(transcript: Pick<Transcript, "agents">): string {
   return transcript.agents.find((agent) => agent.parentId === undefined)?.id ?? MAIN_LANE_ID;
 }
 
@@ -39,10 +39,7 @@ export function recordKey(event: TranscriptEvent): string {
  * The events that start a turn, on one lane or on all: the first event of each prompt record, because several
  * content blocks of one record start one turn.
  */
-export function promptStarts(
-  transcript: Pick<TranscriptSnapshot, "agents" | "events">,
-  lane?: string
-): TranscriptEvent[] {
+export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, lane?: string): TranscriptEvent[] {
   const mainId = mainAgentId(transcript);
   const seen = new Set<string>();
   const out: TranscriptEvent[] = [];
@@ -93,7 +90,7 @@ export function capPromptText(text: string, maxChars: number): string {
  * without text, such as an image-only one, is a turn but yields no prompt.
  */
 export function sessionPrompts(
-  transcript: Pick<TranscriptSnapshot, "events" | "agents">,
+  transcript: Pick<Transcript, "events" | "agents">,
   options: SessionPromptsOptions
 ): SessionPrompt[] {
   const mainId = mainAgentId(transcript);

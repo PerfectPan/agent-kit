@@ -15,7 +15,7 @@ import {
   type SessionHead,
   summarizeSession,
   translateGrokRecords,
-  type TranscriptSnapshot,
+  type Transcript,
   type UsageCursor,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
@@ -41,7 +41,7 @@ function value<T>(result: Result<T, unknown>): T {
   return result.value;
 }
 
-const load = async (name: string): Promise<TranscriptSnapshot> =>
+const load = async (name: string): Promise<Transcript> =>
   value(await loadTranscript(platform, { agent: "grok", path: session(name) }));
 
 function grokRecord(update: Record<string, unknown>, line: number) {
