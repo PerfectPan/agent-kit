@@ -4,7 +4,7 @@
 
 Accepted (the kit side of P0–P6 is implemented, including `/transcript/usage`, `/harness`, `/acp` and the three `@rivus/agent-kit-collab` entries. Implementation and npm publication are separate states; application adoption and real-agent acceptance remain open)
 
-Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md). [docs/plans/0002-transcript-model.md](../plans/0002-transcript-model.md) revises `/transcript` with the Transcript model (S117, S118), not yet implemented
+Paired Plan: [docs/plans/0001-agent-kit.md](../plans/0001-agent-kit.md). [docs/plans/0002-transcript-model.md](../plans/0002-transcript-model.md) revises `/transcript` with the Transcript model (S117, S118)
 
 ## Problem And Scope
 
