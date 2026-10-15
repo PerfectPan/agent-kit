@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "The exact optional effect peer moves to 4.0.3, so hosts that install effect must move to 4.0.3: an install pinned to 4.0.1 fails with ERESOLVE under npm and warns under pnpm. The /acp entry's @agentclientprotocol/sdk dependency moves to 1.8.0 (schema v1.25.0), which validates fs/read_text_file's line and limit strictly, so a non-integer value now returns an invalid-params error to the agent instead of reading the whole file.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

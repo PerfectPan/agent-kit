@@ -14,8 +14,8 @@ npm install @rivus/agent-kit
 ```
 
 ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
-bundles for browsers. The Effect entries `/acp`, `/harness`, `/platform/effect` and `/node/effect` need `effect` 4.0.1, an
-optional peer that you install yourself (`npm install effect@4.0.1`); no other entry loads it.
+bundles for browsers. The Effect entries `/acp`, `/harness`, `/platform/effect` and `/node/effect` need `effect` 4.0.3, an
+optional peer that you install yourself (`npm install effect@4.0.3`); no other entry loads it.
 The entry table describes the source API. Verify the exports of the npm version you select before adoption; see
 [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
 

@@ -4,7 +4,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import { NodePlatformLive } from "./effect.js";
+import { NodePlatformLive } from "../src/effect.js";
 
 describe("NodePlatformLive", () => {
   it.effect("creates the platform when the Layer is built, not when the module loads", () => {
