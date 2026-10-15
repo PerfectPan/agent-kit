@@ -14,13 +14,13 @@
     "format:check": "vp fmt --check ."
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.1",
+    "@effect/vitest": "4.0.3",
     "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
     "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
-    "@types/node": "24.19.1",
-    "effect": "4.0.1",
+    "@types/node": "24.19.2",
+    "effect": "4.0.3",
     "typescript": "7.0.2",
     "vite-plus": "1.1.0",
     "vitest": "5.0.3"

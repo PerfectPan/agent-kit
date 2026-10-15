@@ -96,7 +96,7 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "1.7.0",
+    "@agentclientprotocol/sdk": "1.8.0",
     "@decimalturn/toml-patch": "^3.3.0",
     "es-toolkit": "^1.52.0",
     "jsonc-parser": "^3.3.1",
@@ -116,8 +116,8 @@
     "@rivus/agent-kit-sessions": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",
     "@size-limit/preset-small-lib": "14.1.0",
-    "@types/node": "24.19.1",
-    "effect": "4.0.1",
+    "@types/node": "24.19.2",
+    "effect": "4.0.3",
     "oxc-parser": "0.153.0",
     "publint": "0.3.25",
     "rolldown": "1.2.12",
@@ -126,7 +126,7 @@
     "vite-plus": "1.1.0"
   },
   "peerDependencies": {
-    "effect": "4.0.1"
+    "effect": "4.0.3"
   },
   "peerDependenciesMeta": {
     "effect": {
