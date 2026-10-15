@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "/harness gains findLegacy(owner, { agents, legacyMarkers, compat?, adapters?, dialects? }), a read-only query that lists what a release before the ledger left behind: it scans the selected agents' declared legacy sources (and the other agents' hook files those agents execute) and reads the owner's tracked locators, judging each find by the plan's own rule with the markers the caller supplies — an install bundle may carry none. Each LegacyEntry names the agent it is effective in, the locator and its kind, a hook entry's event and command, and whether planning would replace it or protect it — kept as the user's, or indistinguishable from the user's own because an owned hook is missing from its event. Nothing is written and the LedgerLock is never taken: the entry needs only ArtifactFiles, LedgerRepository and PlatformService, and an entry the ledger records is never listed. The listing does not render a bundle, so it is not the plan's whole legacy set: an Artifact at a path the next install itself writes is listed only when a legacy source covers that path (Grok's own hook file is one no source covers today), and an entry in a symlinked or externally managed file is listed as replace although the plan refuses the path as an unresolvable conflict; the /harness spec states the boundary. Planning's behavior is unchanged; buildInstallPlan now judges locators through the shared legacyTreatment instead of an inline copy of the same rule. A target an interrupted apply left pending is not listed either, since the read-only call cannot settle it, and the owner and the markers are validated the way uninstall's are.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

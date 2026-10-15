@@ -32,6 +32,7 @@ export {
   type Bundle,
   type BundleRef,
   checkBundle,
+  checkOwnerMarkers,
   type InvalidBundle,
   legacyMarkersOf
 } from "./value-objects/bundle.js";

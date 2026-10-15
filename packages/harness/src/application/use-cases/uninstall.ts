@@ -2,7 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import * as Effect from "effect/Effect";
 
 import {
-  checkBundle,
+  checkOwnerMarkers,
   type InstallAdapters,
   type InvalidBundle,
   legacyMarkersOf,
@@ -65,15 +65,7 @@ export function uninstall(
   return Effect.scoped(
     Effect.gen(function* () {
       requireUserScope(options);
-      const bundle = yield* fromResult(
-        checkBundle({
-          owner,
-          version: "uninstall",
-          digest: "uninstall",
-          artifacts: [],
-          ...(options.legacyMarkers === undefined ? {} : { legacyMarkers: options.legacyMarkers })
-        })
-      );
+      const bundle = yield* fromResult(checkOwnerMarkers(owner, options.legacyMarkers ?? []));
       const setup = yield* planSetup(options);
       const scope = yield* ledgerScope(options);
       const { loaded } = yield* lockLedger(scope, {

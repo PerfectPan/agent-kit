@@ -1,6 +1,5 @@
 import { err, type Result } from "@rivus/agent-kit-catalog";
 
-import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
@@ -14,6 +13,7 @@ import { type DesiredState, planStep } from "../policies/conflict-detection.js";
 import { orderSteps } from "../policies/step-ordering.js";
 import {
   type ForeignHookObservation,
+  legacyTreatment,
   protectedLegacy,
   protectedReplacement,
   retainedForeignConflict
@@ -98,15 +98,11 @@ export function buildInstallPlan(
   const markers = legacyMarkersOf(bundle);
   const found = new Map(observed.map((artifact) => [locatorKey(artifact.locator), artifact]));
   const entries = new Map(ledger.entries().map((entry) => [locatorKey(entry.locator), entry]));
-  // What the user kept on an earlier removal is theirs, even when it still carries a legacy marker.
+  // What the user kept on an earlier removal is theirs, even when it still carries a legacy marker: `legacyTreatment`
+  // reads it as protected, so only a replaceable legacy Artifact names the step legacy.
   const isLegacy = (key: LocatorKey): boolean => {
     const seen = found.get(key);
-    return (
-      !entries.has(key) &&
-      seen !== undefined &&
-      !protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
-      isLegacyArtifact(markers, seen.content)
-    );
+    return seen !== undefined && legacyTreatment(seen, bundle.owner, markers, ledger, observed) === "replace";
   };
   const preservedHooks = observed.filter(
     (seen) =>

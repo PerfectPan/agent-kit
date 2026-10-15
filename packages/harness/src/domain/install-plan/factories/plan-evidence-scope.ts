@@ -2,7 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
 import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/value-objects/install-adapter.js";
-import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
+import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
@@ -12,9 +12,14 @@ import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
 /** A place older versions may have left hooks, optionally one a selected runner executes under renamed events. */
 export interface LegacyHookSource {
   readonly source: ArtifactSource;
+  /**
+   * The agent a find in this source is effective in: the selected agent whose own `legacySources` declared it, or the
+   * selected runner that executes another agent's file.
+   */
+  readonly agent: CodingAgentId;
   /** When set, only hooks for these runner events are taken from the source. */
   readonly events?: ReadonlySet<string>;
-  /** The selected agent that also executes this other agent's file. */
+  /** The selected agent that also executes this other agent's file; set exactly for a foreign source, where it equals `agent`. */
   readonly runner?: CodingAgentId;
   /** Owner event name → the runner's name, recorded back onto the observation. */
   readonly runAs?: Readonly<Record<string, string>>;
@@ -33,6 +38,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
     return [
       {
         source: { kind: "entries", path, format, pointer: "/hooks", memberIn: "hook-group" },
+        agent: runner,
         events,
         runner,
         runAs: file.rename
@@ -41,6 +47,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
   }
   return [...events].map((event) => ({
     source: { kind: "entries" as const, path, format, pointer: escapePointer(event), memberIn: "element" },
+    agent: runner,
     runner,
     runAs: file.rename
   }));
@@ -59,7 +66,7 @@ export function legacyHookSources(
   compat: readonly HookCompat[] = []
 ): readonly LegacyHookSource[] {
   const own: LegacyHookSource[] = agents.flatMap((agent) =>
-    (adapters[agent]?.legacySources?.(context) ?? []).map((source) => ({ source }))
+    (adapters[agent]?.legacySources?.(context) ?? []).map((source) => ({ source, agent }))
   );
   const foreign: LegacyHookSource[] = agents.flatMap((runner) =>
     foreignHookFiles(runner, dialects, adapters, context, compat).flatMap((file) => foreignSource(file, runner))
@@ -87,10 +94,13 @@ export interface PlanEvidenceScope {
  * The evidence a plan's correctness depends on, without IO: what to observe, whether to scan legacy sources, and
  * which roots a planned write may land in. Roots cover the adapter homes of every agent the owner's entries touch
  * (a removal can update a settings file another of its agents shares) and the directory holding each foreign hook
- * file a selected runner executes.
+ * file a selected runner executes. The legacy judgment needs only the owner and its markers, so the read-only
+ * listing calls this with the markers its caller supplies, without a bundle.
  */
 export function planEvidenceScope(input: {
-  readonly bundle: Bundle;
+  readonly owner: Owner;
+  /** The owner's legacy markers; often empty for planning, whose markers ride in on the bundle. */
+  readonly legacyMarkers: readonly string[];
   readonly agents: readonly CodingAgentId[];
   readonly desired: readonly DesiredArtifact[];
   readonly ledger: Ledger;
@@ -99,22 +109,22 @@ export function planEvidenceScope(input: {
   readonly context: InstallContext;
   readonly compat?: readonly HookCompat[];
 }): PlanEvidenceScope {
-  const { bundle, agents, desired, ledger, adapters, dialects, context } = input;
+  const { owner, legacyMarkers, agents, desired, ledger, adapters, dialects, context } = input;
   const locators: ArtifactLocator[] = desired.map((artifact) => artifact.locator);
   for (const entry of ledger.entries()) {
-    if (holds(entry, bundle.owner)) {
+    if (holds(entry, owner)) {
       locators.push(entry.locator);
     }
   }
   const ownerHoldsHookGroup = ledger
     .entries()
-    .some((entry) => holds(entry, bundle.owner) && entry.locator.memberIn === "hook-group");
+    .some((entry) => holds(entry, owner) && entry.locator.memberIn === "hook-group");
   const keptHookGroup = Object.values(ledger.keptRecords()).some((kept) => kept.locator.memberIn === "hook-group");
-  const scanLegacy = legacyMarkersOf(bundle).length > 0 || ownerHoldsHookGroup || keptHookGroup;
+  const scanLegacy = legacyMarkers.length > 0 || ownerHoldsHookGroup || keptHookGroup;
   const sources = scanLegacy ? legacyHookSources(agents, adapters, dialects, context, input.compat ?? []) : [];
   const rootedAgents = new Set([
     ...agents,
-    ...ledger.entries().flatMap((entry) => (holds(entry, bundle.owner) ? entry.agents : []))
+    ...ledger.entries().flatMap((entry) => (holds(entry, owner) ? entry.agents : []))
   ]);
   const rootCandidates: string[] = [];
   for (const agent of rootedAgents) {

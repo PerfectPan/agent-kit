@@ -12,7 +12,7 @@ export type { StrategyUnavailable } from "./errors/strategy-unavailable.js";
 export { buildInstallPlan, type PlanRequest } from "./factories/build-install-plan.js";
 export { type LegacyHookSource, planEvidenceScope, type PlanEvidenceScope } from "./factories/plan-evidence-scope.js";
 export type { PlanEvidence } from "./policies/plan-invariants.js";
-export { type ForeignHookObservation } from "./policies/legacy-ownership.js";
+export { type ForeignHookObservation, legacyTreatment, type LegacyTreatment } from "./policies/legacy-ownership.js";
 export {
   type RegistrationCommands,
   registrationCommands,

@@ -91,7 +91,8 @@ describe("planEvidenceScope", () => {
   it("observes desired and owner-held locators and scans markers, including foreign files runners load", () => {
     const ledger = ledgerWithEntry(claudeStop("agent-presence hook"));
     const scope = planEvidenceScope({
-      bundle: hookBundle(),
+      owner: OWNER,
+      legacyMarkers: ["agent-presence hook"],
       agents: ["grok"],
       desired: [wanted(grokHookFile)],
       ledger,
@@ -110,7 +111,8 @@ describe("planEvidenceScope", () => {
 
   it("skips the whole legacy scan without markers, owner-held hook groups or kept groups", () => {
     const scope = planEvidenceScope({
-      bundle: hookBundle({ legacyMarkers: undefined }),
+      owner: OWNER,
+      legacyMarkers: [],
       agents: ["grok"],
       desired: [wanted(grokHookFile)],
       ledger: emptyLedger(),
@@ -124,7 +126,8 @@ describe("planEvidenceScope", () => {
 
   it("drops foreign sources for an owner the runner turned off in compat readings", () => {
     const scope = planEvidenceScope({
-      bundle: hookBundle(),
+      owner: OWNER,
+      legacyMarkers: ["agent-presence hook"],
       agents: ["grok"],
       desired: [wanted(grokHookFile)],
       ledger: emptyLedger(),
@@ -140,7 +143,8 @@ describe("planEvidenceScope", () => {
 
   it("reads an agent named like a prototype key as adapterless instead of calling down the prototype chain", () => {
     const scope = planEvidenceScope({
-      bundle: hookBundle({ legacyMarkers: undefined }),
+      owner: OWNER,
+      legacyMarkers: [],
       agents: ["constructor"] as unknown as readonly CodingAgentId[],
       desired: [wanted(grokHookFile)],
       ledger: emptyLedger(),

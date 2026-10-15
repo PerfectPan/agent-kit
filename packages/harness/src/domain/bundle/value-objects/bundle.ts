@@ -103,3 +103,12 @@ export function checkBundle(bundle: Bundle): Result<Bundle, InvalidBundle> {
   }
   return ok(bundle);
 }
+
+/**
+ * The inputs of an operation that works for one owner without a bundle (`uninstall`, the read-only legacy listing),
+ * checked through `checkBundle` with an artifact-less bundle: the owner is a package-style name and no marker is
+ * blank, which would match everything. The returned bundle carries nothing else an operation needs.
+ */
+export function checkOwnerMarkers(owner: Owner, legacyMarkers: readonly string[]): Result<Bundle, InvalidBundle> {
+  return checkBundle({ owner, version: "uninstall", digest: "uninstall", artifacts: [], legacyMarkers });
+}

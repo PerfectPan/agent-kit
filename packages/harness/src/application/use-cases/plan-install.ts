@@ -7,7 +7,6 @@ import * as Effect from "effect/Effect";
 import { builtinHookDialects } from "../../domain/lifecycle/adapters/hook-dialects.js";
 import { builtinInstallAdapters } from "../../domain/bundle/adapters/install-adapters.js";
 import {
-  type ArtifactSource,
   type Bundle,
   type BundleRef,
   checkBundle,
@@ -21,6 +20,7 @@ import {
   type InstallContext,
   type InvalidBundle,
   type InvalidHookPlacement,
+  legacyMarkersOf,
   placeHooks,
   type RenderedArtifact,
   type Strategy
@@ -35,10 +35,8 @@ import {
   type ForeignHookObservation,
   type InstallPlan as PlanAggregate,
   type InvalidPlan,
-  type LegacyHookSource,
   type LocatorKey,
   locatorKey,
-  pointerTail,
   type ObservedArtifact,
   planEvidenceScope,
   type PlanConflict,
@@ -53,7 +51,8 @@ import {
 import type { ArtifactContent, Ledger, PendingOperations } from "../../domain/ledger/index.js";
 import type { HookDialects } from "../../domain/lifecycle/index.js";
 import { hashContent } from "../services/content-hash.js";
-import { observation, observe, registrationLookup } from "../services/observe.js";
+import { scanLegacy } from "../services/legacy-scan.js";
+import { observe, registrationLookup } from "../services/observe.js";
 import { resolveIo, resolvePath } from "../services/resolve-path.js";
 import type { StrategyUnavailable } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
@@ -303,38 +302,6 @@ export function desiredArtifacts(
   });
 }
 
-interface LegacyObservation {
-  readonly observed: ObservedArtifact;
-  readonly runner?: CodingAgentId;
-  readonly event?: string;
-}
-
-function scanLegacy(
-  sources: readonly LegacyHookSource[]
-): Effect.Effect<readonly LegacyObservation[], ArtifactFailure, ArtifactFiles | PlatformService> {
-  return Effect.gen(function* () {
-    const files = yield* ArtifactFiles;
-    const found: LegacyObservation[] = [];
-    for (const { source, events, runner, runAs } of sources) {
-      const resolved: ArtifactSource =
-        source.kind === "files"
-          ? { ...source, dir: yield* resolvePath(source.dir, true) }
-          : { ...source, path: yield* resolvePath(source.path) };
-      for (const { locator, read } of yield* files.scan(resolved)) {
-        const event = pointerTail(locator.pointer);
-        if (events === undefined || (event !== undefined && events.has(event))) {
-          found.push({
-            observed: yield* observation(locator, read),
-            ...(runner === undefined ? {} : { runner }),
-            ...(event === undefined || runAs?.[event] === undefined ? {} : { event: runAs[event] })
-          });
-        }
-      }
-    }
-    return found;
-  });
-}
-
 /** The paths that are symlinks themselves, with what they point to, found without following them. */
 function linkedPaths(
   paths: readonly string[]
@@ -498,7 +465,8 @@ export function buildPlan(
     const { bundle, agents, setup } = input;
     const { ledger } = loaded;
     const evidenceScope = planEvidenceScope({
-      bundle,
+      owner: bundle.owner,
+      legacyMarkers: legacyMarkersOf(bundle),
       agents,
       desired: input.desired,
       ledger,

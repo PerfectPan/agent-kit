@@ -140,6 +140,16 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 // Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
 ```
 
+Before planning an upgrade from a release that predates the ledger, `findLegacy(owner, { agents, legacyMarkers })`
+lists what that release left behind: every untracked entry the scan reaches whose content carries one of
+`legacyMarkers`, read without writing and without taking the ledger lock. Each `LegacyEntry` names the agent it is
+effective in, its locator and kind, the event and command of a hook entry, and whether planning would `replace` it or
+`protect` it — the user kept it on an earlier removal, or an owned hook is missing from its event, so it cannot be
+told apart from the user's own. The judgment is the plan's own rule, and an entry the ledger records is never listed,
+so an application can refuse setup while older-release entries remain and let `uninstall(owner, { legacyMarkers })`
+clear them. The scan covers the adapters' declared legacy sources and does not render the bundle, so it is not the
+plan's whole legacy set; the `/harness` spec states the exact boundary.
+
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
 and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
