@@ -1,6 +1,17 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Thu, 15 Oct 2026 06:07:53 GMT and should not be manually modified.
+This log was last generated on Fri, 16 Oct 2026 06:29:41 GMT and should not be manually modified.
+
+## 0.18.0
+Fri, 16 Oct 2026 06:29:41 GMT
+
+### Patches
+
+- A shell-quoted hook program path with spaces is no longer cut at the space and reported missing. Only a plain absolute path is checked; a program that needs shell expansion is not.
+
+### Updates
+
+- Revert PR 142
 
 ## 0.17.0
 Thu, 15 Oct 2026 06:07:53 GMT

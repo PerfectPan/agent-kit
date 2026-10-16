@@ -2,6 +2,23 @@
   "name": "@rivus/agent-kit",
   "entries": [
     {
+      "version": "0.18.0",
+      "tag": "@rivus/agent-kit_v0.18.0",
+      "date": "Fri, 16 Oct 2026 06:29:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "A shell-quoted hook program path with spaces is no longer cut at the space and reported missing. Only a plain absolute path is checked; a program that needs shell expansion is not."
+          }
+        ],
+        "none": [
+          {
+            "comment": "Revert PR 142"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.17.0",
       "tag": "@rivus/agent-kit_v0.17.0",
       "date": "Thu, 15 Oct 2026 06:07:53 GMT",
