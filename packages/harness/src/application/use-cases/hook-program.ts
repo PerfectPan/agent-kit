@@ -6,30 +6,10 @@ import { parse, type ParseEntry } from "shell-quote";
  */
 const PARAMETER_LOOKUP = "\u0000";
 
-/**
- * `shell-quote` does not run command substitution in backticks; it leaves an unescaped backtick in the word. A
- * backslash before one is an escape it already applied, so that backtick is part of the literal path.
- */
-function hasRawBacktick(word: string): boolean {
-  let escaped = false;
-  for (const character of word) {
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (character === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (character === "`") {
-      return true;
-    }
-  }
-  return false;
-}
-
 function certainWord(word: string): boolean {
-  return word.startsWith("/") && !word.includes(PARAMETER_LOOKUP) && !hasRawBacktick(word);
+  // `shell-quote` has already applied the escapes it understands, so a backtick here is a literal character. It does
+  // not run command substitution, and a hook path that contains a backtick is not worth a stale-path check.
+  return word.startsWith("/") && !word.includes(PARAMETER_LOOKUP) && !word.includes("`");
 }
 
 function opensSubstitution(entry: ParseEntry | undefined): boolean {
@@ -40,8 +20,8 @@ function opensSubstitution(entry: ParseEntry | undefined): boolean {
 /**
  * The absolute program a hook command runs, when that program is certain. `shell-quote` reads the first word,
  * applying quotes and backslash escapes. The word is checked only when it is a plain string, no named parameter was
- * expanded in it, it does not end in `$` followed by a `(` operator, it holds no unescaped backtick, and it starts
- * with `/`. A program that needs shell expansion is not checked: the path would depend on the shell.
+ * expanded in it, it does not end in `$` followed by a `(` operator, it contains no backtick, and it starts with
+ * `/`. A program that needs shell expansion is not checked: the path would depend on the shell.
  */
 export function hookProgram(command: string): string | undefined {
   let entries: readonly ParseEntry[];

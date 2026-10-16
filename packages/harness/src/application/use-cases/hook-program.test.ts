@@ -20,7 +20,6 @@ describe("hookProgram", () => {
     ["'/opt/$USER/hook'", "/opt/$USER/hook"],
     [String.raw`'/a\ b/hook'`, String.raw`/a\ b/hook`],
     [String.raw`"/a\q\ b/hook"`, String.raw`/a\q\ b/hook`],
-    ['"/a\\\\b/\\$VAR/\\`hook\\`"', String.raw`/a\b/$VAR/\`hook\``],
     ["/hook$", "/hook$"],
     ["/gone/bin/old-hook", "/gone/bin/old-hook"],
     ["/hook # comment", "/hook"]
@@ -39,6 +38,7 @@ describe("hookProgram", () => {
     ["/opt/hook$(echo)", "a command substitution at the end of the word"],
     ["/a/`echo b`/hook", "a backquoted part"],
     ["/opt/`whoami`/hook", "a backquoted part with no space"],
+    ['"/a\\\\b/\\$VAR/\\`hook\\`"', "a quoted literal backtick"],
     ["npx demo-hook --event Stop", "a relative command"],
     ["~/bin/hook", "a tilde, which is not expanded"],
     ["", "an empty command"],
