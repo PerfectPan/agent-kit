@@ -41,27 +41,22 @@ export interface CommandHook {
   readonly locator: ArtifactLocator;
 }
 
-const unquote = (token: string): string => token.replace(/^["']|["']$/g, "");
-
-/** The program a command line runs: its first word, unquoted. */
-export function hookProgram(command: string): string {
-  return command.trim().split(/\s+/).map(unquote)[0] ?? "";
-}
-
 /** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
 const eventOf = (locator: ArtifactLocator): string => pointerTail(locator.pointer) ?? "";
 
 /**
  * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,
  * means the hook never runs; a timeout below one second where the dialect reads milliseconds looks like seconds
- * written in the wrong unit; a program given by absolute path that `exists` says is missing is a stale path. The
+ * written in the wrong unit; an absolute `program` the caller supplies that `exists` says is missing is a stale
+ * path. The caller decides whether the command's program is certain; this function does not parse the command. The
  * registration arrives parsed, so no shape is checked here.
  */
 export function hookHealth(
   dialect: HookDialect | undefined,
   locator: ArtifactLocator,
   hook: { readonly timeout?: number },
-  exists: (path: string) => boolean
+  exists: (path: string) => boolean,
+  program?: string
 ): readonly HookFinding[] {
   const findings: HookFinding[] = [];
   const event = eventOf(locator);
@@ -76,8 +71,7 @@ export function hookHealth(
   if (dialect?.timeout?.unit === "milliseconds" && timeout !== undefined && timeout < 1000) {
     findings.push({ problem: "timeout-unit", locator, agent: dialect.agent, timeout });
   }
-  const program = hookProgram(locator.member ?? "");
-  if (program.startsWith("/") && !exists(program)) {
+  if (program !== undefined && program.startsWith("/") && !exists(program)) {
     findings.push({ problem: "stale-path", locator, program });
   }
   return findings;

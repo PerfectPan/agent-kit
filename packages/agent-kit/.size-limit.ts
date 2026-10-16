@@ -16,8 +16,9 @@ export default [
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
   // (about 5 kB) above all. The bridges carry the per-event finish selectors and their payload check, and the
-  // read-only legacy listing adds the shared legacyTreatment rule and its use case.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "78.75 kB" },
+  // read-only legacy listing adds the shared legacyTreatment rule and its use case. shell-quote, which reads a hook
+  // command's first word for doctor, is counted with the entry.
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "81 kB" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8.25 kB" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.

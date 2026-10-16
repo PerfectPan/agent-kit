@@ -99,10 +99,12 @@ export const boundaries: BoundaryRules = {
     [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
-    // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform.
+    // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform. shell-quote
+    // reads the first word of a hook command for doctor and stays behind that one module.
     [HARNESS]: {
       dependsOn: [CATALOG, PLATFORM],
-      external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch"],
+      external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
+      externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
       testsOnly: [PLATFORM_NODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
