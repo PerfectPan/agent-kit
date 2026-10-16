@@ -14,7 +14,7 @@ import {
   hookHealth,
   type HookProblem
 } from "../../domain/lifecycle/index.js";
-import { hookProgram } from "./hook-program.js";
+import { hookProgram } from "../services/hook-program.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";
 import { observe, registrationLookup } from "../services/observe.js";

@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Doctor checks a hook program only when shell-quote reads the first word as a plain absolute path; a program that needs shell expansion, or whose first word contains a backtick, is not checked.",
+      "comment": "A shell-quoted hook program path with spaces is no longer cut at the space and reported missing. Only a plain absolute path is checked; a program that needs shell expansion is not.",
       "type": "patch"
     }
   ],

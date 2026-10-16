@@ -104,7 +104,7 @@ export const boundaries: BoundaryRules = {
     [HARNESS]: {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
-      externalOnlyIn: { "shell-quote": ["src/application/use-cases/hook-program.ts"] },
+      externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
       testsOnly: [PLATFORM_NODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps

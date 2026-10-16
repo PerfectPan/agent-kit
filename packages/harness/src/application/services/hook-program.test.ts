@@ -20,7 +20,6 @@ describe("hookProgram", () => {
     ["'/opt/$USER/hook'", "/opt/$USER/hook"],
     [String.raw`'/a\ b/hook'`, String.raw`/a\ b/hook`],
     [String.raw`"/a\q\ b/hook"`, String.raw`/a\q\ b/hook`],
-    ["/hook$", "/hook$"],
     ["/gone/bin/old-hook", "/gone/bin/old-hook"],
     ["/hook # comment", "/hook"]
   ])("%s → %s", (command, program) => {
@@ -36,6 +35,14 @@ describe("hookProgram", () => {
     ["/a$VAR/*/hook --x", "a parameter inside a glob"],
     ["/a/$(echo b)/hook", "a command substitution"],
     ["/opt/hook$(echo)", "a command substitution at the end of the word"],
+    ["/hook$", "a literal trailing $"],
+    ['"/a/$(echo b)/hook"', "a double-quoted $(…)"],
+    ['"/opt/hook$(id -u)"', "a double-quoted $(…) at the end of the word"],
+    ['"/opt/$((1+1))/hook"', "a double-quoted $((…))"],
+    ["/opt/$[1+1]/hook", "an unquoted $[…]"],
+    ['/opt/hook$"x"', 'an unquoted $"…"'],
+    ["/opt/{a,b}/hook", "a brace expansion"],
+    ["/opt/hook[12]", "a bracket expansion"],
     ["/a/`echo b`/hook", "a backquoted part"],
     ["/opt/`whoami`/hook", "a backquoted part with no space"],
     ['"/a\\\\b/\\$VAR/\\`hook\\`"', "a quoted literal backtick"],
