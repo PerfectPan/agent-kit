@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Fix doctor diagnostics for shell-quoted hook program paths containing spaces.",
+      "comment": "Doctor checks a hook program only when shell-quote reads the first word as a plain absolute path; a program that needs shell expansion is not checked.",
       "type": "patch"
     }
   ],

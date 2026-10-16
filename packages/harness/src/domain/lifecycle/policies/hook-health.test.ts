@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 import type { HookDialect } from "../value-objects/hook-dialect.js";
-import { duplicateHooks, hookHealth, hookProgram, type HookProblem } from "./hook-health.js";
+import { duplicateHooks, hookHealth, type HookProblem } from "./hook-health.js";
 
 const at = (pointer: string, member = "~/bin/hook.sh"): ArtifactLocator => ({
   kind: "json-entry",
@@ -28,40 +28,6 @@ const dialect = (
       { lifecycle: { phase: "start" as const }, ...(aliases.length === 0 ? {} : { aliases }) }
     ])
   )
-});
-
-describe("hookProgram", () => {
-  it.each([
-    ["npx demo-hook --event Stop", "npx"],
-    ["  '/opt/hook' --flag ", "/opt/hook"],
-    ['"~/bin/hook.sh"', "~/bin/hook.sh"],
-    ["", ""],
-    ["'/a b/hook' --x", "/a b/hook"],
-    ['"/a b/hook"', "/a b/hook"],
-    [String.raw`/a\ b/hook --x`, "/a b/hook"],
-    ["'/a b'/hook", "/a b/hook"],
-    [String.raw`"/a \"b\"/hook"`, '/a "b"/hook'],
-    [String.raw`'it'\''s/hook'`, "it's/hook"],
-    [" \t '/a b/hook' --x", "/a b/hook"],
-    ["'/a b/hook", "/a b/hook"],
-    ['"/a b/hook', "/a b/hook"],
-    [String.raw`'/a\ b/hook'`, String.raw`/a\ b/hook`],
-    ['"/a\\\\b/\\$VAR/\\`hook\\`"', "/a\\b/$VAR/`hook`"],
-    [String.raw`"/a\q\ b/hook"`, String.raw`/a\q\ b/hook`],
-    ["/a\\\nb/hook --x", "/ab/hook"],
-    ['"/a\\\nb/hook"', "/ab/hook"],
-    ["\\\n \t /hook", "/hook"],
-    ["/a$VAR/*/hook --x", "/a$VAR/*/hook"],
-    ["~/bin/hook", "~/bin/hook"],
-    ["'' --x", ""],
-    ['"" --x', ""],
-    [" \t\n", ""],
-    ["/hook>/dev/null", "/hook"],
-    [String.raw`/a\;b/hook`, "/a;b/hook"],
-    ["'/a;b/hook'", "/a;b/hook"]
-  ])("%s → %s", (command, program) => {
-    expect(hookProgram(command)).toBe(program);
-  });
 });
 
 describe("hookHealth", () => {
@@ -89,12 +55,14 @@ describe("hookHealth", () => {
     ).toEqual([]);
   });
 
-  it("flags a program by absolute path that does not exist, and nothing relative or present", () => {
-    expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => false)).toEqual([
-      { problem: "stale-path", locator: at("/hooks/Stop", "/gone/bin/old-hook"), program: "/gone/bin/old-hook" }
+  it("flags an absolute program the caller supplies when it does not exist, and nothing relative, present, or omitted", () => {
+    const missing = "/gone/bin/old-hook";
+    expect(hookHealth(gemini, at("/hooks/Stop", missing), {}, () => false, missing)).toEqual([
+      { problem: "stale-path", locator: at("/hooks/Stop", missing), program: missing }
     ]);
-    expect(hookHealth(gemini, at("/hooks/Stop", "/gone/bin/old-hook"), {}, () => true)).toEqual([]);
-    expect(hookHealth(gemini, at("/hooks/Stop", "npx demo-hook"), {}, () => false)).toEqual([]);
+    expect(hookHealth(gemini, at("/hooks/Stop", missing), {}, () => true, missing)).toEqual([]);
+    expect(hookHealth(gemini, at("/hooks/Stop", "npx demo-hook"), {}, () => false, "npx demo-hook")).toEqual([]);
+    expect(hookHealth(gemini, at("/hooks/Stop", missing), {}, () => false)).toEqual([]);
   });
 });
 

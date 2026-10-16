@@ -41,72 +41,22 @@ export interface CommandHook {
   readonly locator: ArtifactLocator;
 }
 
-/**
- * The first POSIX shell word, with quoting removed but no expansions. This small parser has no dependency because
- * domain policies may not import Node or npm packages. An unfinished quote returns the text read so far: a diagnostic
- * can check that literal path without executing malformed input or guessing how the user intended to close it.
- */
-export function hookProgram(command: string): string {
-  let program = "";
-  let quote: "'" | '"' | undefined;
-  let started = false;
-  for (let index = 0; index < command.length; index += 1) {
-    const character = command.charAt(index);
-    if (character === quote) {
-      quote = undefined;
-      continue;
-    }
-    if (quote === "'") {
-      program += character;
-      continue;
-    }
-    if (character === "\\") {
-      const next = command[index + 1];
-      if (next !== undefined && (quote === undefined || '\\"$`\n'.includes(next))) {
-        if (next !== "\n") {
-          program += next;
-          started = true;
-        }
-        index += 1;
-        continue;
-      }
-    }
-    if (quote === undefined) {
-      if (character === "'" || character === '"') {
-        quote = character;
-        started = true;
-        continue;
-      }
-      if (character === " " || character === "\t" || character === "\n") {
-        if (started) {
-          break;
-        }
-        continue;
-      }
-      if ("|&;()<>".includes(character)) {
-        break;
-      }
-    }
-    program += character;
-    started = true;
-  }
-  return program;
-}
-
 /** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
 const eventOf = (locator: ArtifactLocator): string => pointerTail(locator.pointer) ?? "";
 
 /**
  * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,
  * means the hook never runs; a timeout below one second where the dialect reads milliseconds looks like seconds
- * written in the wrong unit; a program given by absolute path that `exists` says is missing is a stale path. The
+ * written in the wrong unit; an absolute `program` the caller supplies that `exists` says is missing is a stale
+ * path. The caller decides whether the command's program is certain; this function does not parse the command. The
  * registration arrives parsed, so no shape is checked here.
  */
 export function hookHealth(
   dialect: HookDialect | undefined,
   locator: ArtifactLocator,
   hook: { readonly timeout?: number },
-  exists: (path: string) => boolean
+  exists: (path: string) => boolean,
+  program?: string
 ): readonly HookFinding[] {
   const findings: HookFinding[] = [];
   const event = eventOf(locator);
@@ -121,8 +71,7 @@ export function hookHealth(
   if (dialect?.timeout?.unit === "milliseconds" && timeout !== undefined && timeout < 1000) {
     findings.push({ problem: "timeout-unit", locator, agent: dialect.agent, timeout });
   }
-  const program = hookProgram(locator.member ?? "");
-  if (program.startsWith("/") && !exists(program)) {
+  if (program !== undefined && program.startsWith("/") && !exists(program)) {
     findings.push({ problem: "stale-path", locator, program });
   }
   return findings;

@@ -12,9 +12,9 @@ import {
   type HookDialects,
   type HookFinding,
   hookHealth,
-  hookProgram,
   type HookProblem
 } from "../../domain/lifecycle/index.js";
+import { hookProgram } from "./hook-program.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";
 import { observe, registrationLookup } from "../services/observe.js";
@@ -197,9 +197,10 @@ function agentHooks(
  * whether the LedgerLock is free (and what its holder recorded), owned Artifacts that drifted from the ledger or are
  * broken symlinks, and the command hooks each agent loads (its settings files and every plugin's or extension's hooks
  * file, plus the other agents' files it runs) that never run (unknown events), use the wrong timeout unit, point at a
- * missing program, or fire twice for one event: the same command twice, or, given `markers`, two hooks of one
- * application, such as an old hook in a settings file next to the plugin that replaced it. Taking the lock to test
- * it creates the lock files in the harness state directory and nothing else.
+ * missing program whose first word `shell-quote` reads as a certain absolute path, or fire twice for one event: the
+ * same command twice, or, given `markers`, two hooks of one application, such as an old hook in a settings file next
+ * to the plugin that replaced it. Taking the lock to test it creates the lock files in the harness state directory
+ * and nothing else.
  */
 export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Check[], never, HarnessServices> {
   return Effect.gen(function* () {
@@ -276,13 +277,13 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
       const findings: HookFinding[] = [];
       for (const hook of hooks.filter((found) => found.own)) {
         const program = hookProgram(hook.command);
-        if (program.startsWith("/") && !exists.has(program)) {
+        if (program !== undefined && !exists.has(program)) {
           const stat = yield* Effect.promise(() =>
             platform.fs.stat(program, { followSymlinks: true }).catch(() => undefined)
           );
           exists.set(program, stat !== undefined);
         }
-        findings.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true));
+        findings.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true, program));
       }
       findings.push(...duplicateHooks(agent, hooks, options.markers ?? []));
       checks.push(...findings.map(hookCheck));
