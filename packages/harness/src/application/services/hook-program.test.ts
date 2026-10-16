@@ -20,8 +20,7 @@ describe("hookProgram", () => {
     ["'/opt/$USER/hook'", "/opt/$USER/hook"],
     [String.raw`'/a\ b/hook'`, String.raw`/a\ b/hook`],
     [String.raw`"/a\q\ b/hook"`, String.raw`/a\q\ b/hook`],
-    ["/gone/bin/old-hook", "/gone/bin/old-hook"],
-    ["/hook # comment", "/hook"]
+    ["/gone/bin/old-hook", "/gone/bin/old-hook"]
   ])("%s → %s", (command, program) => {
     expect(hookProgram(command)).toBe(program);
   });
@@ -51,6 +50,9 @@ describe("hookProgram", () => {
     ["", "an empty command"],
     [" \t\n", "only whitespace"],
     ["'' --x", "an empty word"],
+    ["/hook # comment", "a comment after the word"],
+    ["/opt/a#b/hook", "a # in the middle of the word"],
+    ["/opt/c#/hook --x", "a # in the middle of the word, before another argument"],
     ["# /opt/hook", "a comment"],
     ["${}", "an empty substitution, which shell-quote rejects"],
     ["${", "an unfinished substitution, which shell-quote rejects"]
