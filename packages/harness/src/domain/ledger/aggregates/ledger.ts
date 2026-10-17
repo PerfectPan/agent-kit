@@ -224,9 +224,9 @@ export class Ledger {
     return Object.values(this.snapshot.entries);
   }
 
-  /** The entries whose owners include `owner`, in ledger order. */
-  entriesOf(owner: Owner): readonly LedgerEntry[] {
-    return this.entries().filter((entry) => holds(entry, owner));
+  /** The owner's entries in ledger order, optionally limited to entries naming any selected agent. */
+  entriesOf(owner: Owner, agents?: readonly CodingAgentId[]): readonly LedgerEntry[] {
+    return this.entries().filter((entry) => holds(entry, owner, agents));
   }
 
   /** Every agent the owner's entries name, without repeats and sorted; the default agents a change covers. */

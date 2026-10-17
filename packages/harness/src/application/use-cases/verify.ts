@@ -55,7 +55,10 @@ export interface VerifyOptions extends ScopeOptions {
    * finds desired Artifacts that are missing, and records silently in the ledger what is on disk already as desired.
    */
   readonly bundle?: Bundle;
-  /** The agents the bundle is for; every agent the owner's entries name by default. */
+  /**
+   * The agents to render the bundle for and verify: only owner entries naming at least one selected agent are
+   * compared, reported or acknowledged. Omit to include all the owner's entries and render for their agents.
+   */
   readonly agents?: readonly CodingAgentId[];
   /** The strategies the bundle was installed with, when they were not the adapters' preference. */
   readonly strategies?: PlanInstallOptions["strategies"];
@@ -127,7 +130,7 @@ export function verify(
       return observed;
     });
 
-    const owned = ledger.entriesOf(owner);
+    const owned = ledger.entriesOf(owner, options.agents);
     const first = verifyOwner(owned, yield* watch(owned), desired);
     if (first.behind.length === 0) {
       return { artifacts: first.artifacts, acknowledged: [] };
@@ -140,7 +143,7 @@ export function verify(
           waitMs: options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS,
           registrations
         });
-        const again = loaded.ledger.entriesOf(owner);
+        const again = loaded.ledger.entriesOf(owner, options.agents);
         const verification = verifyOwner(again, yield* watch(again), desired);
         if (verification.behind.length === 0) {
           return [];
