@@ -61,6 +61,7 @@ function sameRecord(a: LedgerEntry, b: LedgerEntry): boolean {
     sameList(a.agents, b.agents) &&
     a.bundleVersion === b.bundleVersion &&
     a.contentHash === b.contentHash &&
+    a.createdConfigFile === b.createdConfigFile &&
     samePreImage(a.preImage, b.preImage)
   );
 }
@@ -114,6 +115,7 @@ export function recordOperation(
     toolVersion: unchanged ? entry.toolVersion : op.toolVersion,
     contentHash: op.resultHash,
     preImage: entry?.preImage ?? op.preImage ?? { existed: false },
+    ...(entry?.createdConfigFile === true || op.createdConfigFile === true ? { createdConfigFile: true } : {}),
     appliedAt: at,
     entryRevision: revision
   };

@@ -53,6 +53,8 @@ export interface BeginContext {
   readonly toolVersion: string;
   /** For each step with `capturePreImage`, the copy the repository kept of what is at its target. */
   readonly preImages?: Readonly<Record<LocatorKey, PreImage>>;
+  /** Configuration files known to have been created by harness, including ones this plan is about to create. */
+  readonly createdConfigFiles?: readonly string[];
 }
 
 /**
@@ -298,6 +300,7 @@ export class Ledger {
         ...(step.desired === undefined ? {} : { resultHash: step.desired.hash }),
         ...(step.removal === undefined ? {} : { removal: step.removal }),
         ...(preImage === undefined ? {} : { preImage }),
+        ...(context.createdConfigFiles?.includes(step.locator.path) === true ? { createdConfigFile: true } : {}),
         ...(step.legacy === undefined ? {} : { legacy: step.legacy }),
         startedAt: context.at
       };
@@ -333,7 +336,10 @@ export class Ledger {
     const byKey = new Map(probes.map((probe) => [locatorKey(probe.locator), probe]));
     const resolved = this.pending.map((op) => {
       const probe = byKey.get(locatorKey(op.locator));
-      return { op, resolution: probe === undefined ? undefined : reconcilePending(op, probe.hash) };
+      // A matching entry cannot prove who created its file between pending and recovery. Only already committed
+      // provenance may survive; recordOperation retains it from the existing entry.
+      const { createdConfigFile: _unconfirmed, ...recovered } = op;
+      return { op: recovered, resolution: probe === undefined ? undefined : reconcilePending(op, probe.hash) };
     });
     return {
       ...this.settle(resolved, context.at),

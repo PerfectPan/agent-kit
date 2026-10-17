@@ -40,6 +40,7 @@ const Entry = z.object({
   toolVersion: z.string(),
   contentHash: Hash,
   preImage: PreImage,
+  createdConfigFile: z.optional(z.literal(true)),
   appliedAt: z.string(),
   entryRevision: z.number()
 });
@@ -56,6 +57,7 @@ const Pending = z.object({
   resultHash: z.optional(Hash),
   removal: z.optional(z.enum(["delete", "restore-pre-image", "release", "keep"])),
   preImage: z.optional(PreImage),
+  createdConfigFile: z.optional(z.literal(true)),
   legacy: z.optional(z.literal(true)),
   startedAt: z.string()
 });

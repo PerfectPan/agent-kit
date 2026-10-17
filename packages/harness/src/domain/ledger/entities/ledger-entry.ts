@@ -23,6 +23,8 @@ export interface LedgerEntry {
   readonly toolVersion: string;
   readonly contentHash: ContentHash;
   readonly preImage: PreImage;
+  /** Positive proof that harness created the containing configuration file; absent means unknown or pre-existing. */
+  readonly createdConfigFile?: true;
   readonly appliedAt: string;
   /** The ledger revision that last changed this entry. */
   readonly entryRevision: number;
