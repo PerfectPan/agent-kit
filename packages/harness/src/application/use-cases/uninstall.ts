@@ -54,7 +54,9 @@ export type UninstallError =
  * Removes what the ledger records for an owner, under one holding of the LedgerLock: plans the removal (an install
  * plan in which the owner wants nothing) against the ledger read under the lock and applies it at once. Only the
  * owner's entries go: a file harness created is deleted, a pre-image restored, an entry other owners or agents still
- * use released, and an Artifact the user changed since is kept and reported. With `legacyMarkers`, what older versions
+ * use released, and an Artifact the user changed since is kept and reported. Empty shared configuration files are
+ * deleted only with recorded file-creation provenance; pre-existing files and implicit parent directories stay.
+ * With `legacyMarkers`, what older versions
  * of the owner left without a ledger is removed as well. Nothing is written at a path a dotfiles manager owns or
  * through a symlink; such steps are notes of the plan.
  */

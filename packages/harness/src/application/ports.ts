@@ -69,7 +69,15 @@ export interface EntryChange {
 export interface ArtifactFilesShape {
   read(locator: ArtifactLocator): Effect.Effect<ArtifactRead | undefined, ArtifactFailure>;
   write(locator: ArtifactLocator, content: ArtifactContent): Effect.Effect<void, ArtifactFailure>;
-  remove(locator: ArtifactLocator): Effect.Effect<void, ArtifactFailure>;
+  /**
+   * Entry removal may delete its containing file only with positive creation provenance, when it actually removes
+   * the entry and leaves just whitespace or the empty root object. Comments and unrelated empty structures count
+   * as user content.
+   */
+  remove(
+    locator: ArtifactLocator,
+    options?: { readonly removeEmptyFile?: boolean }
+  ): Effect.Effect<void, ArtifactFailure>;
   scan(
     source: ArtifactSource
   ): Effect.Effect<readonly { readonly locator: ArtifactLocator; readonly read: ArtifactRead }[], ArtifactFailure>;

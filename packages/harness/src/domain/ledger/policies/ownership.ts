@@ -9,8 +9,9 @@ import type { LedgerEntry } from "../entities/ledger-entry.js";
 import type { PendingOperation } from "../entities/pending-operation.js";
 import type { PreImage } from "../value-objects/pre-image.js";
 
-export function holds(entry: LedgerEntry, owner: Owner): boolean {
-  return entry.owners.includes(owner);
+/** An owner's entry is in scope when it names any selected agent; omitting agents includes all its entries. */
+export function holds(entry: LedgerEntry, owner: Owner, agents?: readonly CodingAgentId[]): boolean {
+  return entry.owners.includes(owner) && (agents === undefined || entry.agents.some((agent) => agents.includes(agent)));
 }
 
 const sorted = <T extends string>(values: Iterable<T>): readonly T[] => [...new Set(values)].toSorted();
@@ -61,6 +62,7 @@ function sameRecord(a: LedgerEntry, b: LedgerEntry): boolean {
     sameList(a.agents, b.agents) &&
     a.bundleVersion === b.bundleVersion &&
     a.contentHash === b.contentHash &&
+    a.createdConfigFile === b.createdConfigFile &&
     samePreImage(a.preImage, b.preImage)
   );
 }
@@ -114,6 +116,7 @@ export function recordOperation(
     toolVersion: unchanged ? entry.toolVersion : op.toolVersion,
     contentHash: op.resultHash,
     preImage: entry?.preImage ?? op.preImage ?? { existed: false },
+    ...(entry?.createdConfigFile === true || op.createdConfigFile === true ? { createdConfigFile: true } : {}),
     appliedAt: at,
     entryRevision: revision
   };

@@ -119,6 +119,104 @@ function thrown(run: () => unknown): unknown {
 }
 
 describe("Ledger", () => {
+  it.each(["json-entry", "toml-entry"] as const)(
+    "revokes %s file proof for every owner before completion or recovery can inherit it",
+    (kind) => {
+      const path = `${HOME}/.claude/settings`;
+      const own: ArtifactLocator = { kind, path, pointer: "/own" };
+      const other: ArtifactLocator = { kind, path, pointer: "/other" };
+      const ledger = restore(
+        snapshot([
+          entry(own, { createdConfigFile: true }),
+          entry(other, { owners: ["other-app"], activeOwner: "other-app", createdConfigFile: true })
+        ])
+      );
+      const plan = planOn(ledger, [{ locator: own, hash: h(1) }], { desired: [want(own, 2)] });
+      expect(plan.steps.map((step) => step.locator)).toEqual([own]);
+      const begun = ledger.begin(plan, {
+        at: AT,
+        toolVersion: "0.2.0",
+        revokedConfigFiles: [path]
+      });
+      if (!begun.ok) {
+        throw new Error(JSON.stringify(begun.error));
+      }
+      expect(begun.value.state.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+      expect(begun.value.state.pending.every((op) => op.createdConfigFile === undefined)).toBe(true);
+      expect(begun.value.state.entry(other)?.entryRevision).toBe(begun.value.state.revision);
+      const completed = begun.value.state.complete([{ locator: own, status: "done" }], { at: AT }).state;
+      const recovered = restore(begun.value.state.toSnapshot()).recover([{ locator: own, hash: h(2) }], {
+        at: AT
+      }).state;
+      for (const settled of [completed, recovered]) {
+        expect(settled.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+        expect(settled.entry(own)?.contentHash).toBe(h(2));
+        expect(settled.entry(other)?.owners).toEqual(["other-app"]);
+      }
+    }
+  );
+
+  it.each(["json-entry", "toml-entry"] as const)(
+    "records new %s file proof while revoking the removed file's old proof",
+    (kind) => {
+      const path = `${HOME}/.claude/settings`;
+      const own: ArtifactLocator = { kind, path, pointer: "/own" };
+      const other: ArtifactLocator = { kind, path, pointer: "/other" };
+      const ledger = restore(
+        snapshot([
+          entry(own, { createdConfigFile: true }),
+          entry(other, { owners: ["other-app"], activeOwner: "other-app", createdConfigFile: true })
+        ])
+      );
+      const plan = planOn(ledger, [], { desired: [want(own, 2)] });
+      const begun = ledger.begin(plan, {
+        at: AT,
+        toolVersion: "0.2.0",
+        createdConfigFiles: [path],
+        revokedConfigFiles: [path]
+      });
+      if (!begun.ok) {
+        throw new Error(JSON.stringify(begun.error));
+      }
+      expect(begun.value.state.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+      expect(begun.value.state.pending).toHaveLength(1);
+      expect(begun.value.state.pending[0]?.createdConfigFile).toBe(true);
+      const completed = begun.value.state.complete([{ locator: own, status: "done" }], { at: AT }).state;
+      expect(completed.entry(own)?.createdConfigFile).toBe(true);
+      expect(completed.entry(other)?.createdConfigFile).toBeUndefined();
+      const recovered = restore(begun.value.state.toSnapshot()).recover([{ locator: own, hash: h(2) }], {
+        at: AT
+      }).state;
+      expect(recovered.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+    }
+  );
+
+  it.each(["json-entry", "toml-entry"] as const)(
+    "carries %s file proof without granting it to a command-line registration on the same path",
+    (kind) => {
+      const path = `${HOME}/.claude/settings`;
+      const config: ArtifactLocator = { kind, path, pointer: "/hooks" };
+      const cli: ArtifactLocator = { kind: "cli-registration", path, pointer: "/plugin" };
+      const ledger = restore(snapshot([entry(cli)]));
+      const plan = planOn(ledger, [{ locator: cli, hash: h(1) }], { desired: [want(config, 2), want(cli, 1)] });
+      const begun = ledger.begin(plan, { at: AT, toolVersion: "0.2.0", createdConfigFiles: [path] });
+      if (!begun.ok) {
+        throw new Error(JSON.stringify(begun.error));
+      }
+      expect(begun.value.state.pending.find((op) => op.locator.kind === kind)?.createdConfigFile).toBe(true);
+      expect(
+        begun.value.state.pending.find((op) => op.locator.kind === "cli-registration")?.createdConfigFile
+      ).toBeUndefined();
+      expect(begun.value.state.entry(cli)?.createdConfigFile).toBeUndefined();
+      const completed = begun.value.state.complete(
+        plan.steps.map((step) => ({ locator: step.locator, status: "done" as const })),
+        { at: AT }
+      ).state;
+      expect(completed.entry(config)?.createdConfigFile).toBe(true);
+      expect(completed.entry(cli)?.createdConfigFile).toBeUndefined();
+    }
+  );
+
   it("starts empty at revision 0 and refuses an empty lineage", () => {
     const created = Ledger.create("lineage-1");
     expect(created.ok && created.value.toSnapshot()).toEqual({

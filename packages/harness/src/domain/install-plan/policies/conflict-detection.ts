@@ -189,7 +189,7 @@ function removalStep(state: LocatorState): PlanStep | undefined {
         }
       : undefined;
   }
-  if (!holds(entry, owner) || !entry.agents.some((agent) => state.agents.includes(agent))) {
+  if (!holds(entry, owner, state.agents)) {
     return undefined;
   }
   const { removal, agents } = release(entry, owner, state.agents);

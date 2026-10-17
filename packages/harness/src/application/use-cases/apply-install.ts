@@ -184,7 +184,10 @@ function executeStep(
         yield* (yield* LedgerRepository).getPreImage(record.scope, op.preImage.blobRef)
       );
     }
-    return yield* files.remove(locator);
+    return yield* files.remove(locator, {
+      removeEmptyFile:
+        (locator.kind === "json-entry" || locator.kind === "toml-entry") && entry?.createdConfigFile === true
+    });
   });
 }
 
@@ -213,8 +216,41 @@ export function applyLocked(
       return yield* Effect.fail(stale satisfies PlanStale);
     }
     const repository = yield* LedgerRepository;
+    const files = yield* ArtifactFiles;
     const registrations = registrationLookup(record.adapters, record.context);
     const preImages: Record<string, PreImage> = {};
+    const configPaths = new Set(
+      steps
+        .filter((step) => step.locator.kind === "json-entry" || step.locator.kind === "toml-entry")
+        .map((step) => step.locator.path)
+    );
+    const createdConfigFiles = new Set<string>();
+    const revokedConfigFiles = new Set<string>();
+    for (const entry of ledger.entries()) {
+      const { locator } = entry;
+      if (
+        entry.createdConfigFile !== true ||
+        (locator.kind !== "json-entry" && locator.kind !== "toml-entry") ||
+        !configPaths.has(locator.path) ||
+        createdConfigFiles.has(locator.path)
+      ) {
+        continue;
+      }
+      // Creation evidence is optional, so failures here count as non-matches, including for this owner's entries.
+      // Required precondition reads still propagate failures on the operation's targets.
+      const found = yield* Effect.match(observe(locator, registrations), {
+        onFailure: () => undefined,
+        onSuccess: (observed) => observed
+      });
+      if (found?.hash === entry.contentHash && found.symlinkTarget === undefined) {
+        createdConfigFiles.add(locator.path);
+        revokedConfigFiles.delete(locator.path);
+      } else {
+        revokedConfigFiles.add(locator.path);
+      }
+    }
+    const absentConfigFiles = new Set<string>();
+    const inspectedConfigFiles = new Set<string>();
     for (const step of steps) {
       const check = yield* checkPrecondition(step, ledger.entry(step.locator), registrations);
       if (!check.matches) {
@@ -231,8 +267,29 @@ export function applyLocked(
         const blobRef = yield* repository.putPreImage(record.scope, check.content);
         preImages[locatorKey(step.locator)] = { existed: true, hash: check.actual, blobRef };
       }
+      const { locator } = step;
+      if (
+        (locator.kind === "json-entry" || locator.kind === "toml-entry") &&
+        step.action !== "remove" &&
+        touchesDisk(step) &&
+        !inspectedConfigFiles.has(locator.path)
+      ) {
+        inspectedConfigFiles.add(locator.path);
+        if ((yield* files.read({ kind: "file", path: locator.path })) === undefined) {
+          absentConfigFiles.add(locator.path);
+          createdConfigFiles.add(locator.path);
+        }
+      }
     }
-    const begun = yield* fromResult(ledger.begin(plan, { at: yield* nowIso, toolVersion: TOOL_VERSION, preImages }));
+    const begun = yield* fromResult(
+      ledger.begin(plan, {
+        at: yield* nowIso,
+        toolVersion: TOOL_VERSION,
+        preImages,
+        createdConfigFiles: [...createdConfigFiles],
+        revokedConfigFiles: [...revokedConfigFiles]
+      })
+    );
     let loaded = yield* Effect.uninterruptible(saveLedger(record.scope, start, begun));
     record.aggregate = (yield* fromResult(plan.markApplied())).state;
 
@@ -251,7 +308,12 @@ export function applyLocked(
           const entry = loaded.ledger.entry(step.locator);
           const op = loaded.ledger.pending.find((pending) => locatorKey(pending.locator) === locatorKey(step.locator));
           const check = yield* checkPrecondition(step, start.ledger.entry(step.locator), registrations);
-          if (!check.matches) {
+          // Entry absence alone does not detect a pre-existing empty file introduced after pending was saved.
+          const createsConfigFile =
+            step.action !== "remove" && touchesDisk(step) && absentConfigFiles.has(step.locator.path);
+          const fileAppeared =
+            createsConfigFile && (yield* files.read({ kind: "file", path: step.locator.path })) !== undefined;
+          if (!check.matches || fileAppeared) {
             const failure: TargetChanged = {
               _tag: "TargetChanged",
               planId,
@@ -283,6 +345,9 @@ export function applyLocked(
               loaded: yield* recordOutcome({ locator: step.locator, status: "failed" }, loaded),
               failure
             } as const;
+          }
+          if (createsConfigFile) {
+            absentConfigFiles.delete(step.locator.path);
           }
           return {
             status: "done",
