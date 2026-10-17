@@ -1,6 +1,15 @@
 # Change Log - @rivus/agent-kit
 
-This log was last generated on Fri, 16 Oct 2026 06:29:41 GMT and should not be manually modified.
+This log was last generated on Sat, 17 Oct 2026 06:13:04 GMT and should not be manually modified.
+
+## 0.19.0
+Sat, 17 Oct 2026 06:13:04 GMT
+
+### Patches
+
+- Correct discovery evidence to require agent-owned sessions, application state or credentials, preserving Cursor desktop storage. Consumers of detectAgents with built-in recipes, including agent-presence and application setup/detection screens, now report missing when no command, recognized application or agent-owned file exists, including Claude Code with only ~/.claude.json (macOS keychain login and no session yet) and machines populated only by harness hooks, plugins, skills or shared MCP/settings. Command and application evidence is unchanged.
+- Remove empty configuration files on uninstall only with current creation proof; retain pre-existing files and user content, renew proof for files recreated by harness, and isolate malformed entries owned by other applications.
+- Scope harness verification and acknowledgement to selected agents and their desired locators, preserving three-way comparisons for shared paths.
 
 ## 0.18.0
 Fri, 16 Oct 2026 06:29:41 GMT
