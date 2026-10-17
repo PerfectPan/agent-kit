@@ -55,7 +55,7 @@ export interface BeginContext {
   readonly preImages?: Readonly<Record<LocatorKey, PreImage>>;
   /** Configuration files known to have been created by harness, including ones this plan is about to create. */
   readonly createdConfigFiles?: readonly string[];
-  /** Paths with no surviving proven entry; revocation wins over creation and clears every existing entry's proof. */
+  /** Paths whose existing entries lose proof; new pending entries can independently prove a freshly created file. */
   readonly revokedConfigFiles?: readonly string[];
 }
 
@@ -303,8 +303,7 @@ export class Ledger {
         ...(step.removal === undefined ? {} : { removal: step.removal }),
         ...(preImage === undefined ? {} : { preImage }),
         ...((step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
-        context.createdConfigFiles?.includes(step.locator.path) === true &&
-        context.revokedConfigFiles?.includes(step.locator.path) !== true
+        context.createdConfigFiles?.includes(step.locator.path) === true
           ? { createdConfigFile: true }
           : {}),
         ...(step.legacy === undefined ? {} : { legacy: step.legacy }),
@@ -313,11 +312,7 @@ export class Ledger {
     });
     const entries = Object.fromEntries(
       Object.entries(this.snapshot.entries).map(([key, entry]) => {
-        if (
-          entry.createdConfigFile !== true ||
-          ((entry.locator.kind === "json-entry" || entry.locator.kind === "toml-entry") &&
-            context.revokedConfigFiles?.includes(entry.locator.path) !== true)
-        ) {
+        if (entry.createdConfigFile !== true || context.revokedConfigFiles?.includes(entry.locator.path) !== true) {
           return [key, entry];
         }
         // Clear proof before pending is saved, including entries outside this plan, so completion and recovery

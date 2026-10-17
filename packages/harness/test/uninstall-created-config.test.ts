@@ -2,7 +2,9 @@ import { existsSync } from "node:fs";
 
 import { parse as parseToml } from "@decimalturn/toml-patch";
 import { afterEach, describe, expect, it } from "@effect/vitest";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 
 import { ArtifactFiles, LedgerRepository } from "../src/application/ports.js";
@@ -12,6 +14,7 @@ import { planInstall, type PlanInstallOptions } from "../src/application/use-cas
 import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { verify } from "../src/application/use-cases/verify.js";
 import type { Bundle } from "../src/domain/bundle/index.js";
+import { parseJsonc } from "../src/infra/adapters/jsonc-editor.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
@@ -248,6 +251,162 @@ describe("uninstall of configuration files created by install", () => {
         expect((yield* inventory()).entries).toEqual([]);
       }).pipe(Effect.provide(isolatedLayer(home)));
     });
+
+    for (const malformedEvent of ["SessionStart", "Stop"]) {
+      for (const stage of ["fresh install", "direct uninstall"]) {
+        it.effect(
+          `${testCase.agent}: tolerates another owner's malformed ${malformedEvent} hook during ${stage}`,
+          () => {
+            const home = testHome();
+            const goodEvent = malformedEvent === "SessionStart" ? "Stop" : "SessionStart";
+            return Effect.gen(function* () {
+              if (stage === "fresh install") {
+                yield* install(testCase, hooksBundle(testCase, "other-app", ["SessionStart", "Stop"]));
+              } else {
+                const otherBundle = hooksBundle(testCase, "other-app", [malformedEvent]);
+                const ourBundle = hooksBundle(testCase, "demo-app", [goodEvent]);
+                if (malformedEvent === "SessionStart") {
+                  yield* install(testCase, otherBundle);
+                  yield* install(testCase, ourBundle);
+                } else {
+                  yield* install(testCase, ourBundle);
+                  yield* install(testCase, otherBundle);
+                }
+              }
+              const pointers = (yield* inventory()).entries.map((entry) => entry.locator.pointer);
+              expect(pointers.indexOf(`/hooks/${malformedEvent}`) < pointers.indexOf(`/hooks/${goodEvent}`)).toBe(
+                malformedEvent === "SessionStart"
+              );
+              const goodOwner = stage === "fresh install" ? "other-app" : "demo-app";
+              const command = `/opt/${goodOwner}/bin/hook --agent ${testCase.agent}`;
+              home.write(
+                testCase.path,
+                testCase.agent === "codex"
+                  ? `hooks.${malformedEvent} = { user = true }\n\n[[hooks.${goodEvent}]]\n[[hooks.${goodEvent}.hooks]]\ntype = "command"\ncommand = "${command}"\ntimeout = 5\n`
+                  : `${JSON.stringify(
+                      {
+                        hooks: {
+                          [malformedEvent]: { user: true },
+                          [goodEvent]: [{ hooks: [{ type: "command", command, timeout: 5 }] }]
+                        }
+                      },
+                      null,
+                      2
+                    )}\n`
+              );
+
+              if (stage === "fresh install") {
+                yield* install(testCase, hooksBundle(testCase, "demo-app", [goodEvent]));
+              }
+              expect((yield* uninstall("demo-app")).kept).toEqual([]);
+              const remaining = home.read(testCase.path);
+              expect(remaining).toBeDefined();
+              if (testCase.agent === "codex") {
+                expect(parseToml(remaining ?? "")).toMatchObject({ hooks: { [malformedEvent]: { user: true } } });
+              } else {
+                const parsed = parseJsonc(remaining ?? "");
+                expect(parsed.ok).toBe(true);
+                expect(parsed.ok ? parsed.value : undefined).toMatchObject({
+                  hooks: { [malformedEvent]: { user: true } }
+                });
+              }
+              expect(remaining).not.toContain("/opt/demo-app/bin/hook");
+              expect((yield* inventory()).entries.every((entry) => !entry.owners.includes("demo-app"))).toBe(true);
+            }).pipe(Effect.provide(isolatedLayer(home)));
+          }
+        );
+      }
+    }
+
+    it.effect(`${testCase.agent}: revokes file provenance when the only other owner's hook is malformed`, () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        yield* install(testCase, hooksBundle(testCase, "other-app", ["Stop"]));
+        home.write(
+          testCase.path,
+          testCase.agent === "codex"
+            ? "hooks.Stop = { user = true }\n"
+            : `${JSON.stringify({ hooks: { Stop: { user: true } } }, null, 2)}\n`
+        );
+
+        yield* install(testCase, hooksBundle(testCase, "demo-app", ["SessionStart"]));
+        const entries = (yield* inventory()).entries;
+        expect(entries).toHaveLength(2);
+        expect(entries.every((entry) => entry.createdConfigFile !== true)).toBe(true);
+        yield* uninstall("demo-app");
+        const remaining = home.read(testCase.path);
+        expect(remaining).toBeDefined();
+        expect(remaining).not.toContain("/opt/demo-app/bin/hook");
+        if (testCase.agent === "codex") {
+          expect(parseToml(remaining ?? "")).toEqual({ hooks: { Stop: { user: true } } });
+        } else {
+          const parsed = parseJsonc(remaining ?? "");
+          expect(parsed.ok).toBe(true);
+          expect(parsed.ok ? parsed.value : undefined).toEqual({ hooks: { Stop: { user: true } } });
+        }
+      }).pipe(Effect.provide(isolatedLayer(home)));
+    });
+
+    it.effect(`${testCase.agent}: deletes the new file after reinstall recreates a removed configuration file`, () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        const bundle = hooksBundle(testCase, "demo-app", ["Stop"]);
+        yield* install(testCase, bundle);
+        yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+        yield* install(testCase, bundle);
+        const reinstalled = (yield* inventory()).entries;
+        expect(home.read(testCase.path)).toContain("/opt/demo-app/bin/hook");
+        yield* uninstall("demo-app");
+        expect(home.read(testCase.path)).toBeUndefined();
+        expect(reinstalled.every((entry) => entry.createdConfigFile === true)).toBe(true);
+        expect((yield* inventory()).entries).toEqual([]);
+      }).pipe(Effect.provide(isolatedLayer(home)));
+    });
+
+    if (testCase.agent === "claude-code") {
+      it.effect("propagates defects from the optional file-provenance observation", () => {
+        const home = testHome();
+        const base = isolatedLayer(home);
+        const defectiveRead = Layer.effect(
+          ArtifactFiles,
+          Effect.gen(function* () {
+            const files = yield* ArtifactFiles;
+            return {
+              ...files,
+              read: (locator) =>
+                locator.member?.includes("/opt/other-app/") === true
+                  ? Effect.die("proof observation defect")
+                  : files.read(locator)
+            } satisfies typeof files;
+          })
+        ).pipe(Layer.provide(base));
+        return Effect.gen(function* () {
+          yield* install(testCase, hooksBundle(testCase, "other-app", ["Stop"]));
+          const before = home.read(testCase.path);
+          const plan = yield* planInstall(hooksBundle(testCase, "demo-app", ["SessionStart"]), {
+            agents: [testCase.agent],
+            strategies: testCase.strategies
+          });
+          const result = yield* Effect.exit(applyInstall(plan).pipe(Effect.provide(Layer.merge(base, defectiveRead))));
+          expect(Exit.isFailure(result) && Cause.hasDies(result.cause)).toBe(true);
+          expect(home.read(testCase.path)).toBe(before);
+        }).pipe(Effect.provide(base));
+      });
+
+      it.effect("propagates an own-target malformed-hook read failure", () => {
+        const home = testHome();
+        return Effect.gen(function* () {
+          yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
+          const changed = `${JSON.stringify({ hooks: { Stop: { user: true } } }, null, 2)}\n`;
+          home.write(testCase.path, changed);
+          expect(yield* Effect.flip(uninstall("demo-app"))).toMatchObject({
+            _tag: "UnexpectedShape",
+            detail: "/hooks/Stop is not a list"
+          });
+          expect(home.read(testCase.path)).toBe(changed);
+        }).pipe(Effect.provide(isolatedLayer(home)));
+      });
+    }
 
     it.effect(`${testCase.agent}: retains a replacement file after verify acknowledges a new hook hash`, () => {
       const home = testHome();

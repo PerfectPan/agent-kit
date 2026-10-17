@@ -236,7 +236,11 @@ export function applyLocked(
       ) {
         continue;
       }
-      const found = yield* observe(locator, registrations);
+      // Creation evidence is optional; an unreadable unrelated entry must not block this owner's operation.
+      const found = yield* Effect.match(observe(locator, registrations), {
+        onFailure: () => undefined,
+        onSuccess: (observed) => observed
+      });
       if (found?.hash === entry.contentHash && found.symlinkTarget === undefined) {
         createdConfigFiles.add(locator.path);
         revokedConfigFiles.delete(locator.path);

@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Remove empty configuration files on uninstall only when harness recorded creating them; revoke stale creation proof when the original entries disappear, and preserve pre-existing files and user content.",
+      "comment": "Remove empty configuration files on uninstall only with current creation proof; retain pre-existing files and user content, renew proof for files recreated by harness, and isolate malformed entries owned by other applications.",
       "type": "patch"
     }
   ],

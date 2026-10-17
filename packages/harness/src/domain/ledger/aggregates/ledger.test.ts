@@ -136,7 +136,6 @@ describe("Ledger", () => {
       const begun = ledger.begin(plan, {
         at: AT,
         toolVersion: "0.2.0",
-        createdConfigFiles: [path],
         revokedConfigFiles: [path]
       });
       if (!begun.ok) {
@@ -158,12 +157,47 @@ describe("Ledger", () => {
   );
 
   it.each(["json-entry", "toml-entry"] as const)(
+    "records new %s file proof while revoking the removed file's old proof",
+    (kind) => {
+      const path = `${HOME}/.claude/settings`;
+      const own: ArtifactLocator = { kind, path, pointer: "/own" };
+      const other: ArtifactLocator = { kind, path, pointer: "/other" };
+      const ledger = restore(
+        snapshot([
+          entry(own, { createdConfigFile: true }),
+          entry(other, { owners: ["other-app"], activeOwner: "other-app", createdConfigFile: true })
+        ])
+      );
+      const plan = planOn(ledger, [], { desired: [want(own, 2)] });
+      const begun = ledger.begin(plan, {
+        at: AT,
+        toolVersion: "0.2.0",
+        createdConfigFiles: [path],
+        revokedConfigFiles: [path]
+      });
+      if (!begun.ok) {
+        throw new Error(JSON.stringify(begun.error));
+      }
+      expect(begun.value.state.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+      expect(begun.value.state.pending).toHaveLength(1);
+      expect(begun.value.state.pending[0]?.createdConfigFile).toBe(true);
+      const completed = begun.value.state.complete([{ locator: own, status: "done" }], { at: AT }).state;
+      expect(completed.entry(own)?.createdConfigFile).toBe(true);
+      expect(completed.entry(other)?.createdConfigFile).toBeUndefined();
+      const recovered = restore(begun.value.state.toSnapshot()).recover([{ locator: own, hash: h(2) }], {
+        at: AT
+      }).state;
+      expect(recovered.entries().every((item) => item.createdConfigFile === undefined)).toBe(true);
+    }
+  );
+
+  it.each(["json-entry", "toml-entry"] as const)(
     "carries %s file proof without granting it to a command-line registration on the same path",
     (kind) => {
       const path = `${HOME}/.claude/settings`;
       const config: ArtifactLocator = { kind, path, pointer: "/hooks" };
       const cli: ArtifactLocator = { kind: "cli-registration", path, pointer: "/plugin" };
-      const ledger = restore(snapshot([entry(cli, { createdConfigFile: true })]));
+      const ledger = restore(snapshot([entry(cli)]));
       const plan = planOn(ledger, [{ locator: cli, hash: h(1) }], { desired: [want(config, 2), want(cli, 1)] });
       const begun = ledger.begin(plan, { at: AT, toolVersion: "0.2.0", createdConfigFiles: [path] });
       if (!begun.ok) {
