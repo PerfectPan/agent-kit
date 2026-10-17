@@ -184,7 +184,10 @@ function executeStep(
         yield* (yield* LedgerRepository).getPreImage(record.scope, op.preImage.blobRef)
       );
     }
-    return yield* files.remove(locator, { removeEmptyFile: entry?.createdConfigFile === true });
+    return yield* files.remove(locator, {
+      removeEmptyFile:
+        (locator.kind === "json-entry" || locator.kind === "toml-entry") && entry?.createdConfigFile === true
+    });
   });
 }
 
@@ -216,12 +219,31 @@ export function applyLocked(
     const files = yield* ArtifactFiles;
     const registrations = registrationLookup(record.adapters, record.context);
     const preImages: Record<string, PreImage> = {};
-    const createdConfigFiles = new Set(
-      ledger
-        .entries()
-        .filter((entry) => entry.createdConfigFile === true)
-        .map((entry) => entry.locator.path)
+    const configPaths = new Set(
+      steps
+        .filter((step) => step.locator.kind === "json-entry" || step.locator.kind === "toml-entry")
+        .map((step) => step.locator.path)
     );
+    const createdConfigFiles = new Set<string>();
+    const revokedConfigFiles = new Set<string>();
+    for (const entry of ledger.entries()) {
+      const { locator } = entry;
+      if (
+        entry.createdConfigFile !== true ||
+        (locator.kind !== "json-entry" && locator.kind !== "toml-entry") ||
+        !configPaths.has(locator.path) ||
+        createdConfigFiles.has(locator.path)
+      ) {
+        continue;
+      }
+      const found = yield* observe(locator, registrations);
+      if (found?.hash === entry.contentHash && found.symlinkTarget === undefined) {
+        createdConfigFiles.add(locator.path);
+        revokedConfigFiles.delete(locator.path);
+      } else {
+        revokedConfigFiles.add(locator.path);
+      }
+    }
     const absentConfigFiles = new Set<string>();
     const inspectedConfigFiles = new Set<string>();
     for (const step of steps) {
@@ -259,7 +281,8 @@ export function applyLocked(
         at: yield* nowIso,
         toolVersion: TOOL_VERSION,
         preImages,
-        createdConfigFiles: [...createdConfigFiles]
+        createdConfigFiles: [...createdConfigFiles],
+        revokedConfigFiles: [...revokedConfigFiles]
       })
     );
     let loaded = yield* Effect.uninterruptible(saveLedger(record.scope, start, begun));

@@ -55,6 +55,8 @@ export interface BeginContext {
   readonly preImages?: Readonly<Record<LocatorKey, PreImage>>;
   /** Configuration files known to have been created by harness, including ones this plan is about to create. */
   readonly createdConfigFiles?: readonly string[];
+  /** Paths with no surviving proven entry; revocation wins over creation and clears every existing entry's proof. */
+  readonly revokedConfigFiles?: readonly string[];
 }
 
 /**
@@ -300,12 +302,31 @@ export class Ledger {
         ...(step.desired === undefined ? {} : { resultHash: step.desired.hash }),
         ...(step.removal === undefined ? {} : { removal: step.removal }),
         ...(preImage === undefined ? {} : { preImage }),
-        ...(context.createdConfigFiles?.includes(step.locator.path) === true ? { createdConfigFile: true } : {}),
+        ...((step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
+        context.createdConfigFiles?.includes(step.locator.path) === true &&
+        context.revokedConfigFiles?.includes(step.locator.path) !== true
+          ? { createdConfigFile: true }
+          : {}),
         ...(step.legacy === undefined ? {} : { legacy: step.legacy }),
         startedAt: context.at
       };
     });
-    return ok({ state: this.next(this.snapshot.entries, pending), events: [] });
+    const entries = Object.fromEntries(
+      Object.entries(this.snapshot.entries).map(([key, entry]) => {
+        if (
+          entry.createdConfigFile !== true ||
+          ((entry.locator.kind === "json-entry" || entry.locator.kind === "toml-entry") &&
+            context.revokedConfigFiles?.includes(entry.locator.path) !== true)
+        ) {
+          return [key, entry];
+        }
+        // Clear proof before pending is saved, including entries outside this plan, so completion and recovery
+        // cannot inherit it from an old owner. The pending plan still checks its original ownership revision.
+        const { createdConfigFile: _revoked, ...unproven } = entry;
+        return [key, { ...unproven, entryRevision: this.revision + 1 }];
+      })
+    );
+    return ok({ state: this.next(entries, pending), events: [] });
   }
 
   /**
@@ -342,7 +363,7 @@ export class Ledger {
       return { op: recovered, resolution: probe === undefined ? undefined : reconcilePending(op, probe.hash) };
     });
     return {
-      ...this.settle(resolved, context.at),
+      ...this.settle(resolved, context.at, true),
       resolutions: resolved.flatMap(({ op, resolution }) =>
         resolution === undefined ? [] : [{ locator: op.locator, resolution }]
       )
@@ -369,7 +390,9 @@ export class Ledger {
         throw new AgentKitError("unknown-ledger-entry", `No ledger entry for ${locatorKey(locator)}`);
       }
       if (entry.contentHash !== contentHash) {
-        entries[locatorKey(locator)] = { ...entry, contentHash, appliedAt: context.at, entryRevision: revision };
+        // Observing new content proves no file creation; only unchanged entries can keep that proof.
+        const { createdConfigFile: _unconfirmed, ...unproven } = entry;
+        entries[locatorKey(locator)] = { ...unproven, contentHash, appliedAt: context.at, entryRevision: revision };
         changed = true;
       }
     }
@@ -383,7 +406,8 @@ export class Ledger {
   /** Clears resolved operations and writes the records of completed ones; without any resolution nothing changes. */
   private settle(
     resolved: readonly { readonly op: PendingOperation; readonly resolution: PendingResolution | undefined }[],
-    at: string
+    at: string,
+    recovering = false
   ): LedgerTransition {
     if (resolved.every(({ resolution }) => resolution === undefined)) {
       return { state: this, events: [] };
@@ -397,7 +421,18 @@ export class Ledger {
         continue;
       }
       const key = locatorKey(op.locator);
-      const recorded = recordOperation(entries[key], op, revision, at);
+      let previous = entries[key];
+      if (
+        recovering &&
+        previous?.createdConfigFile === true &&
+        op.resultHash !== undefined &&
+        previous.contentHash !== op.resultHash
+      ) {
+        // A probe cannot transfer an old file's creation proof to different content left by an unknown writer.
+        const { createdConfigFile: _unconfirmed, ...unproven } = previous;
+        previous = unproven;
+      }
+      const recorded = recordOperation(previous, op, revision, at);
       if (recorded.entry === undefined) {
         delete entries[key];
       } else {

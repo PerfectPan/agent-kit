@@ -72,7 +72,12 @@ function isolatedLayer(home: TestHome, platform = home.platform) {
   });
 }
 
-function hooksBundle(testCase: ConfigCase, owner = "demo-app", events: readonly string[] = EVENTS): Bundle {
+function hooksBundle(
+  testCase: ConfigCase,
+  owner = "demo-app",
+  events: readonly string[] = EVENTS,
+  timeoutSeconds = 5
+): Bundle {
   return demoBundle("1.0.0", {
     owner,
     legacyMarkers: [],
@@ -80,7 +85,7 @@ function hooksBundle(testCase: ConfigCase, owner = "demo-app", events: readonly 
       {
         type: "hooks",
         command: `/opt/${owner}/bin/hook --agent {agent}`,
-        timeoutSeconds: 5,
+        timeoutSeconds,
         events: { [testCase.agent]: events }
       }
     ]
@@ -117,6 +122,24 @@ describe("uninstall of configuration files created by install", () => {
     });
 
     for (const [index, seed] of testCase.emptySeeds.entries()) {
+      it.effect(`${testCase.agent}: retains an empty file when cleanup targets an absent hook (${index})`, () => {
+        const home = testHome();
+        home.write(testCase.path, seed);
+        return Effect.gen(function* () {
+          yield* (yield* ArtifactFiles).remove(
+            {
+              kind: testCase.agent === "codex" ? "toml-entry" : "json-entry",
+              path: home.path(testCase.path),
+              pointer: "/hooks/Stop",
+              member: `/opt/demo-app/bin/hook --agent ${testCase.agent}`,
+              memberIn: "hook-group"
+            },
+            { removeEmptyFile: true }
+          );
+          expect(home.read(testCase.path)).toBe(seed);
+        }).pipe(Effect.provide(isolatedLayer(home)));
+      });
+
       it.effect(`${testCase.agent}: retains a pre-existing empty configuration file (${index})`, () => {
         const home = testHome();
         home.write(testCase.path, seed);
@@ -204,6 +227,159 @@ describe("uninstall of configuration files created by install", () => {
         expect(home.read(testCase.path)).toBeUndefined();
       }).pipe(Effect.provide(isolatedLayer(home)));
     });
+
+    it.effect(`${testCase.agent}: inherits file provenance while another proven hook still matches`, () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        yield* install(testCase, hooksBundle(testCase, "first-app"));
+        const installed = home.read(testCase.path) ?? "";
+        const edited = installed.replace(/\b5\b/, "9");
+        expect(edited).not.toBe(installed);
+        home.write(testCase.path, edited);
+
+        yield* install(testCase, hooksBundle(testCase, "second-app"));
+        const inherited = (yield* inventory()).entries.filter((entry) => entry.owners.includes("second-app"));
+        expect(inherited).toHaveLength(4);
+        expect(inherited.every((entry) => entry.createdConfigFile === true)).toBe(true);
+        yield* uninstall("second-app");
+        expect((yield* uninstall("first-app")).kept).toHaveLength(1);
+        expect(home.read(testCase.path)).toContain("/opt/first-app/bin/hook");
+        expect(home.read(testCase.path)).not.toContain("/opt/second-app/bin/hook");
+        expect((yield* inventory()).entries).toEqual([]);
+      }).pipe(Effect.provide(isolatedLayer(home)));
+    });
+
+    it.effect(`${testCase.agent}: retains a replacement file after verify acknowledges a new hook hash`, () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
+        const installed = home.read(testCase.path) ?? "";
+        const replacement = installed.replace(/\b5\b/, "9");
+        expect(replacement).not.toBe(installed);
+        yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+        home.write(testCase.path, replacement);
+
+        const report = yield* verify("demo-app", {
+          bundle: hooksBundle(testCase, "demo-app", ["Stop"], 9),
+          agents: [testCase.agent],
+          ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies })
+        });
+        expect(report.acknowledged).toHaveLength(1);
+        const acknowledged = (yield* inventory()).entries;
+        yield* uninstall("demo-app");
+        expect(home.read(testCase.path)).toBeDefined();
+        expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
+        expect(acknowledged.every((entry) => entry.createdConfigFile !== true)).toBe(true);
+        expect((yield* inventory()).entries).toEqual([]);
+      }).pipe(Effect.provide(isolatedLayer(home)));
+    });
+
+    it.effect(`${testCase.agent}: retains a replacement file after recovering a failed hook update`, () => {
+      const home = testHome();
+      const base = isolatedLayer(home);
+      const beforeWriteFailure = Layer.effect(
+        ArtifactFiles,
+        Effect.gen(function* () {
+          const files = yield* ArtifactFiles;
+          return {
+            ...files,
+            write: (locator) =>
+              Effect.fail({
+                _tag: "ArtifactIoFailure" as const,
+                path: locator.path,
+                operation: "write" as const,
+                message: "failed before writing"
+              })
+          } satisfies typeof files;
+        })
+      ).pipe(Layer.provide(base));
+      return Effect.gen(function* () {
+        yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
+        const installed = home.read(testCase.path) ?? "";
+        const replacement = installed.replace(/\b5\b/, "9");
+        expect(replacement).not.toBe(installed);
+        const failure = yield* Effect.flip(
+          install(testCase, hooksBundle(testCase, "demo-app", ["Stop"], 9)).pipe(
+            Effect.provide(Layer.merge(base, beforeWriteFailure))
+          )
+        );
+        expect(failure).toMatchObject({ _tag: "ApplyFailed", completed: 0 });
+        expect(home.read(testCase.path)).toBe(installed);
+        expect((yield* inventory()).pending).toHaveLength(1);
+        yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+        home.write(testCase.path, replacement);
+
+        yield* uninstall("demo-app");
+        expect(home.read(testCase.path)).toBeDefined();
+        expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
+        expect((yield* inventory()).pending).toEqual([]);
+        expect((yield* inventory()).entries).toEqual([]);
+      }).pipe(Effect.provide(base));
+    });
+
+    for (const [index, seed] of testCase.emptySeeds.entries()) {
+      it.effect(
+        `${testCase.agent}: S1 retains a user-recreated empty file after the same owner reinstalls (${index})`,
+        () => {
+          const home = testHome();
+          return Effect.gen(function* () {
+            yield* install(testCase);
+            yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+            home.write(testCase.path, seed);
+
+            yield* install(testCase);
+            const reinstalled = (yield* inventory()).entries;
+            yield* uninstall("demo-app");
+            expect(home.read(testCase.path)).toBeDefined();
+            expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
+            expect(reinstalled.every((entry) => entry.createdConfigFile !== true)).toBe(true);
+            expect((yield* inventory()).entries).toEqual([]);
+          }).pipe(Effect.provide(isolatedLayer(home)));
+        }
+      );
+
+      for (const firstRemoved of ["first-app", "second-app"]) {
+        it.effect(
+          `${testCase.agent}: S2 retains a user-recreated empty file after another owner installs (${index}, ${firstRemoved} first)`,
+          () => {
+            const home = testHome();
+            return Effect.gen(function* () {
+              yield* install(testCase, hooksBundle(testCase, "first-app"));
+              yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+              home.write(testCase.path, seed);
+
+              yield* install(testCase, hooksBundle(testCase, "second-app"));
+              const reinstalled = (yield* inventory()).entries;
+              const lastRemoved = firstRemoved === "first-app" ? "second-app" : "first-app";
+              yield* uninstall(firstRemoved);
+              expect(home.read(testCase.path)).toBeDefined();
+              yield* uninstall(lastRemoved);
+              expect(home.read(testCase.path)).toBeDefined();
+              expect(home.read(testCase.path)).not.toContain("/bin/hook");
+              expect(reinstalled.every((entry) => entry.createdConfigFile !== true)).toBe(true);
+              expect((yield* inventory()).entries).toEqual([]);
+            }).pipe(Effect.provide(isolatedLayer(home)));
+          }
+        );
+      }
+
+      for (const change of ["recreate", "truncate"] as const) {
+        it.effect(`${testCase.agent}: retains a user-${change}d empty file without a reinstall (${index})`, () => {
+          const home = testHome();
+          return Effect.gen(function* () {
+            yield* install(testCase);
+            if (change === "recreate") {
+              yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+            }
+            home.write(testCase.path, seed);
+
+            yield* uninstall("demo-app");
+            expect(home.read(testCase.path)).toBe(seed);
+            expect((yield* inventory()).entries).toEqual([]);
+          }).pipe(Effect.provide(isolatedLayer(home)));
+        });
+      }
+    }
 
     it.effect(
       `${testCase.agent}: conservatively retains a file recorded by a v1 ledger without file provenance`,

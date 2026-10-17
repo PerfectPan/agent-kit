@@ -288,6 +288,9 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
           if (text === undefined) {
             return;
           }
+          if ((yield* fromParse(path, entryValue(data, locator))) === undefined) {
+            return;
+          }
           const next = yield* fromParse(path, editDocument(format, text, data, locator, undefined));
           // entryEdits already prunes the removed entry's containers. Any remaining key or comment belongs to
           // someone else, even when its parsed value is empty.
