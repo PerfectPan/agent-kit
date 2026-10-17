@@ -107,6 +107,11 @@ const AGENTS: readonly AgentPaths[] = [
 
 const EVIDENCE = AGENTS.flatMap((agent) => agent.evidence.map((evidence) => ({ ...agent, ...evidence })));
 
+const INSTALL_TARGETS: readonly { readonly agent: CodingAgentId; readonly installedHook: string }[] = [
+  ...AGENTS,
+  { agent: "cursor", installedHook: ".cursor/plugins/local/discovery-app/hooks/hooks.json" }
+];
+
 const BUNDLE: Bundle = {
   owner: "discovery-app",
   version: "1.0.0",
@@ -121,7 +126,8 @@ const BUNDLE: Bundle = {
         "gemini-cli": ["SessionStart"],
         grok: ["SessionStart"],
         opencode: ["session.created"],
-        pi: ["session_start"]
+        pi: ["session_start"],
+        cursor: ["sessionStart"]
       }
     },
     { type: "skill", name: "example-skill", files: { "SKILL.md": "---\nname: example-skill\n---\nExample\n" } }
@@ -157,25 +163,28 @@ async function seed(platform: Platform, path: string, kind: "dir" | "file"): Pro
   }
 }
 
-async function installerOnlyMachine(): Promise<ReturnType<typeof machine>> {
-  const platform = machine();
-  await platform.fs.mkdir(HOME);
-  const layer = Layer.mergeAll(
+function harnessLayer(platform: Platform) {
+  return Layer.mergeAll(
     PlatformArtifactFilesLive,
     FileLedgerRepositoryLive,
     ProcessAgentCliLive,
     ChezmoiExternalOwnerLive,
     Layer.succeed(LedgerLock, { acquire: () => Effect.void, holder: () => Effect.succeed(undefined) })
   ).pipe(Layer.provideMerge(Layer.succeed(PlatformService, platform)));
+}
+
+async function installerOnlyMachine(): Promise<ReturnType<typeof machine>> {
+  const platform = machine();
+  await platform.fs.mkdir(HOME);
   await Effect.runPromise(
     Effect.gen(function* () {
-      const plan = yield* planInstall(BUNDLE, { agents: AGENTS.map(({ agent }) => agent) });
+      const plan = yield* planInstall(BUNDLE, { agents: INSTALL_TARGETS.map(({ agent }) => agent) });
       const applied = yield* applyInstall(plan);
       expect(plan.status).toBe("applied");
       expect(applied.steps.length).toBeGreaterThan(0);
-    }).pipe(Effect.provide(layer))
+    }).pipe(Effect.provide(harnessLayer(platform)))
   );
-  for (const { installedHook } of AGENTS) {
+  for (const { installedHook } of INSTALL_TARGETS) {
     expect(await platform.fs.stat(`${HOME}/${installedHook}`)).toMatchObject({ kind: "file" });
   }
   expect(platform.process.run).not.toHaveBeenCalled();
@@ -241,24 +250,39 @@ const SHARED_PATHS: readonly { readonly agent: CodingAgentId; readonly paths: re
       ".cursor/mcp.json",
       ".cursor/plugins/local/example/hooks/hooks.json",
       ".config/cursor",
-      "Library/Application Support/Cursor/User",
       "Library/Application Support/Cursor/User/mcp.json",
-      ".config/Cursor/User",
       ".config/Cursor/User/mcp.json",
-      "AppData/Roaming/Cursor/User",
       "AppData/Roaming/Cursor/User/mcp.json"
     ]
   }
 ];
 
 describe("agent-owned discovery evidence", () => {
-  it("S117: reports every agent missing with only bundle artifacts installed for all six agents and an empty PATH", async () => {
+  it("S117: reports every agent missing with only default bundle artifacts installed for all seven agents and an empty PATH", async () => {
     const platform = await installerOnlyMachine();
     const installations = await detectAgents(platform, { versionProbe: false });
     expect(
       installations.map(({ agent, status, evidence, problems }) => ({ agent, status, evidence, problems }))
     ).toEqual(installations.map(({ agent }) => ({ agent, status: "missing", evidence: [], problems: [] })));
     expect(platform.process.run).not.toHaveBeenCalled();
+  });
+
+  it("refuses Codex's forced native-plugin strategy when its CLI is absent from PATH", async () => {
+    const platform = machine();
+    await platform.fs.mkdir(HOME);
+    const failure = await Effect.runPromise(
+      Effect.flip(planInstall(BUNDLE, { agents: ["codex"], strategies: { codex: { hooks: "native-plugin" } } })).pipe(
+        Effect.provide(harnessLayer(platform))
+      )
+    );
+    expect(failure).toEqual({
+      _tag: "StrategyUnavailable",
+      agent: "codex",
+      artifact: "hooks",
+      missing: [{ strategy: "native-plugin", command: "codex" }]
+    });
+    expect(platform.process.run).not.toHaveBeenCalled();
+    expect(platform.process.spawn).not.toHaveBeenCalled();
   });
 
   it.each(AGENTS)(
@@ -325,6 +349,29 @@ describe("agent-owned discovery evidence", () => {
       });
     }
   );
+
+  it.each([
+    "Library/Application Support/Cursor/User/globalStorage",
+    ".config/Cursor/User/globalStorage",
+    "AppData/Roaming/Cursor/User/globalStorage"
+  ])("finds only Cursor with desktop user data at %s and no command or application", async (path) => {
+    const platform = machine();
+    await platform.fs.mkdir(`${HOME}/${path}`);
+    const installations = await detectAgents(platform, { versionProbe: false });
+    expect(installations.map((installation) => [installation.agent, installation.status])).toEqual(
+      installations.map((installation) => [installation.agent, installation.agent === "cursor" ? "found" : "missing"])
+    );
+    const cursor = installations.find((installation) => installation.agent === "cursor");
+    expect(cursor).toMatchObject({
+      status: "found",
+      evidence: [{ kind: "config", path: `${HOME}/${path}` }],
+      problems: []
+    });
+    expect(cursor?.command).toBeUndefined();
+    expect(cursor?.appPath).toBeUndefined();
+    expect(platform.process.run).not.toHaveBeenCalled();
+    expect(platform.process.spawn).not.toHaveBeenCalled();
+  });
 
   it.each(SHARED_PATHS.flatMap(({ agent, paths }) => paths.map((path) => ({ agent, path }))))(
     "ignores installer-writable $agent path $path",

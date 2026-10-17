@@ -80,7 +80,7 @@ export interface ProbeRecipe {
   readonly appBundleIds?: readonly string[];
   /** Agent-owned state, session or credential paths; exclude homes and files that installers can create. */
   readonly configPaths: readonly ProbePath[];
-  /** Only agent-owned MCP state can establish installation; shared, installer-writable configuration cannot. */
+  /** Recipe authors must list only agent-owned MCP state, excluding shared, installer-writable configuration. */
   readonly mcpConfigPaths: readonly ProbePath[];
   /** Without a version probe, the agent is at most `found`. */
   readonly version?: VersionProbe;

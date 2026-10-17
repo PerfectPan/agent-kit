@@ -348,8 +348,9 @@ returning secret values; `authProbe: "commands"` also runs the agents' own statu
 recipe lists. Version probes run by default and make an agent `runnable`; `versionProbe: false` runs nothing at all.
 Commands run without a shell and with a time limit; a check that fails is reported in `problems`. `/catalog` has an identity for each of them, and a
 home rule for each one except Cursor.
-Configuration evidence comes from agent-owned session stores or credential files. Agent homes and shared hook/MCP
-settings, plugins, extensions and skills do not count: installing hooks alone leaves an agent `missing`.
+Configuration evidence comes from agent-owned session stores, application state or credential files. Agent homes
+and shared hook/MCP settings, plugins, extensions and skills do not count: installing hooks alone leaves an
+agent `missing`.
 See [discovery evidence](https://github.com/PerfectPan/agent-kit/blob/main/packages/discovery/README.md) for paths and overrides.
 
 MIT licensed. Source and design documents: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit).
