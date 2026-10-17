@@ -253,7 +253,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
       }
     });
 
-  const remove = (locator: ArtifactLocator): Effect.Effect<void, ArtifactFailure> =>
+  const remove: ArtifactFilesShape["remove"] = (locator, options) =>
     Effect.gen(function* () {
       const { path } = locator;
       switch (locator.kind) {
@@ -288,7 +288,21 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
           if (text === undefined) {
             return;
           }
+          if ((yield* fromParse(path, entryValue(data, locator))) === undefined) {
+            return;
+          }
           const next = yield* fromParse(path, editDocument(format, text, data, locator, undefined));
+          // entryEdits already prunes the removed entry's containers. Any remaining key or comment belongs to
+          // someone else, even when its parsed value is empty.
+          if (
+            options?.removeEmptyFile === true &&
+            (next.trim() === "" || (format === "json" && /^\s*\{\s*\}\s*$/.test(next)))
+          ) {
+            return yield* attempt(path, "remove", async () => {
+              await writable(path);
+              await fs.remove(path);
+            });
+          }
           return next === text ? undefined : yield* writeFile(path, next);
         }
         default:

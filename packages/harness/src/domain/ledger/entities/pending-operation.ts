@@ -25,6 +25,8 @@ export interface PendingOperation {
   readonly removal?: Removal;
   /** Captured before the step wrote, or, for `restore-pre-image`, the one to restore. */
   readonly preImage?: PreImage;
+  /** Creation provenance to retain only after the executor confirms completion, not from an ambiguous crash probe. */
+  readonly createdConfigFile?: true;
   readonly legacy?: true;
   readonly startedAt: string;
 }
