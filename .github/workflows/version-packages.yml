@@ -72,6 +72,9 @@ jobs:
       - name: Run release gates on the bumped versions
         # A pull request opened with GITHUB_TOKEN starts no CI, so this job verifies its content before opening it.
         run: npm run check
+      - name: Write the release PR body
+        # The body lists every policy package's changelog section; the script truncates it at GitHub's body limit.
+        run: node scripts/release-notes.ts > "$RUNNER_TEMP/release-pr-body.md"
       - name: Confirm main has not moved on
         # A re-run keeps its original commit. Once main has moved on, the newer push's run owns the release PR, and
         # updating it from this commit would drop the newer change files.
@@ -97,10 +100,4 @@ jobs:
           commit-message: "chore(release): version packages"
           title: "chore(release): version packages"
           draft: always-true
-          body: |
-            Coordinated Rush release prepared by the Version Packages workflow, which ran `npm run check` on this
-            content. Every push to `main` with pending change files regenerates this PR.
-
-            Pull requests created with the workflow token do not start CI. Review the version and changelog diff,
-            select **Ready for review** to run CI, then squash-merge. The merge tags the release, creates the
-            GitHub Release and publishes to npm from `publish-npm.yml`.
+          body-path: ${{ runner.temp }}/release-pr-body.md

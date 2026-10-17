@@ -10,7 +10,7 @@ private (`"shouldPublish": false`) and ship inside the shell's `dist`; collab bu
 | Step | Where | Result |
 | --- | --- | --- |
 | Change file | feature PR | `common/changes/<package>/*.json`, verified by CI |
-| Version Packages | `version-packages.yml`, on each push to `main` with pending change files | draft PR `chore(release): version packages` on `rush-release/main`, verified with `npm run check` |
+| Version Packages | `version-packages.yml`, on each push to `main` with pending change files | draft PR `chore(release): version packages` on `rush-release/main`, verified with `npm run check`; the PR body lists each package's changelog section |
 | Release PR merge | GitHub, the only manual step | bumped `package.json` versions, `CHANGELOG.md`/`CHANGELOG.json`, updated lockfile on `main` |
 | Tag and GitHub Release | `publish-npm.yml`, on the merge push | annotated tag `vX.Y.Z` and a GitHub Release with generated notes on the release commit |
 | Publish | `publish-npm.yml`, same run | packages on npm with provenance |
@@ -142,7 +142,10 @@ collab with an authentication error. Configure the publisher and re-run the fail
 2. Each such merge runs Version Packages: `rush version --bump` with the policy's `nextBump`, which consumes the
    change files, bumps the policy and package versions and writes changelogs, then `rush update` and
    `npm run check`, then opens or updates the signed draft PR `chore(release): version packages` from
-   `rush-release/main`. Every later push with change files regenerates the PR from the new `main`.
+   `rush-release/main`. The PR body is the output of `scripts/release-notes.ts`: the fixed intro followed by each
+   policy package's `## <name>@<version>` section from its `CHANGELOG.md`, cut with a pointer to the CHANGELOG
+   files when it passes GitHub's pull request body limit. Every later push with change files regenerates the PR
+   from the new `main`.
 3. For a bump other than `nextBump`, run **Actions → Version Packages → Run workflow** on `main` with
    `patch`/`minor`/`major` after the last feature merge of the release. The next push with change files regenerates
    the PR with `nextBump` again.
