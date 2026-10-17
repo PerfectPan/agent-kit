@@ -6,6 +6,7 @@ import * as Layer from "effect/Layer";
 import { findNodeAtLocation, parseTree } from "jsonc-parser";
 
 import { LedgerLock } from "../src/application/ports.js";
+import { hashContent } from "../src/application/services/content-hash.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { verify } from "../src/application/use-cases/verify.js";
@@ -21,6 +22,7 @@ afterEach(removeTestHomes);
 const LEDGER_FILE = ".local/state/agent-kit/harness/user/ledger.json";
 const CLAUDE_PLUGIN = ".claude/skills/demo-app";
 const GROK_HOOKS = ".grok/hooks/demo-app.json";
+const SHARED_SKILL = ".agents/skills/demo-skill";
 
 function hooksBundle(version = "1.0.0", timeoutSeconds = 5): Bundle {
   return demoBundle(version, {
@@ -32,6 +34,13 @@ function hooksBundle(version = "1.0.0", timeoutSeconds = 5): Bundle {
         events: { "claude-code": ["Stop"], grok: ["Stop"] }
       }
     ],
+    legacyMarkers: []
+  });
+}
+
+function skillsBundle(version = "1.0.0", text = "shared skill\n"): Bundle {
+  return demoBundle(version, {
+    artifacts: [{ type: "skill", name: "demo-skill", files: { "SKILL.md": text } }],
     legacyMarkers: []
   });
 }
@@ -59,14 +68,17 @@ function ledgerSnapshot(home: TestHome): LedgerSnapshot {
   return decoded.value;
 }
 
-function entryBytes(home: TestHome, locator: ArtifactLocator): Buffer {
-  const text = readFileSync(home.path(LEDGER_FILE), "utf8");
+function storedEntryBytes(text: string, locator: ArtifactLocator): Buffer {
   const tree = parseTree(text);
   const node = tree === undefined ? undefined : findNodeAtLocation(tree, ["entries", locatorKey(locator)]);
   if (node === undefined) {
     throw new Error("Missing ledger entry in fixture");
   }
   return Buffer.from(text.slice(node.offset, node.offset + node.length), "utf8");
+}
+
+function entryBytes(home: TestHome, locator: ArtifactLocator): Buffer {
+  return storedEntryBytes(readFileSync(home.path(LEDGER_FILE), "utf8"), locator);
 }
 
 function advanceClaudeHooks(home: TestHome): void {
@@ -106,7 +118,7 @@ describe("verify agent scope", () => {
     }
   );
 
-  it.effect("rechecks agent ownership under the lock before acknowledging a ledger-behind entry", () => {
+  it.effect("acknowledges a still-desired locator after its recorded agents change under the lock", () => {
     const home = testHome();
     let atLock: (() => void) | undefined;
     const lock = Layer.succeed(LedgerLock, {
@@ -120,7 +132,7 @@ describe("verify agent scope", () => {
       const grok = { kind: "file", path: home.path(GROK_HOOKS) } as const;
       const grokBefore = entryBytes(home, grok);
       let changedEntry: Buffer | undefined;
-      let changedLedger: Buffer | undefined;
+      let changedSnapshot: LedgerSnapshot | undefined;
       atLock = () => {
         const snapshot = ledgerSnapshot(home);
         const key = locatorKey(claude);
@@ -128,7 +140,7 @@ describe("verify agent scope", () => {
         if (entry === undefined) {
           throw new Error("Missing Claude Code fixture");
         }
-        // A writer that held the lock first handed this artifact to another agent.
+        // Another writer changed the recorded agent, but Claude Code still wants this locator.
         home.write(
           LEDGER_FILE,
           encodeLedger({
@@ -141,26 +153,35 @@ describe("verify agent scope", () => {
           })
         );
         changedEntry = entryBytes(home, claude);
-        changedLedger = readFileSync(home.path(LEDGER_FILE));
+        changedSnapshot = ledgerSnapshot(home);
       };
 
       const report = yield* verify("demo-app", { agents: ["claude-code"], bundle: hooksBundle("2.0.0", 10) });
 
       expect(changedEntry).toBeDefined();
-      expect(report.artifacts).toEqual([{ locator: claude, agents: ["claude-code"], status: "ledger-behind" }]);
-      expect(report.acknowledged).toEqual([]);
-      expect(entryBytes(home, claude)).toEqual(changedEntry);
+      expect(report.artifacts).toEqual([{ locator: claude, agents: ["claude-code"], status: "in-sync" }]);
+      expect(report.acknowledged).toEqual([claude]);
+      expect(entryBytes(home, claude)).not.toEqual(changedEntry);
       expect(entryBytes(home, grok)).toEqual(grokBefore);
-      expect(readFileSync(home.path(LEDGER_FILE))).toEqual(changedLedger);
+      if (changedSnapshot === undefined) {
+        throw new Error("Expected a ledger change under the lock");
+      }
+      const after = ledgerSnapshot(home);
+      const key = locatorKey(claude);
+      expect(after.revision).toBe(changedSnapshot.revision + 1);
+      expect(after.entries[key]).toEqual({
+        ...changedSnapshot.entries[key],
+        contentHash: expect.any(String),
+        appliedAt: new Date(0).toISOString(),
+        entryRevision: after.revision
+      });
+      expect(after.entries[key]?.contentHash).not.toBe(changedSnapshot.entries[key]?.contentHash);
     }).pipe(Effect.provide(Layer.merge(home.layer(isolatedPlatform(home)), lock)));
   });
 
   it.effect.each(["gemini-cli", "grok"] as const)("includes a shared entry when selecting %s alone", (agent) => {
     const home = testHome();
-    const bundle = demoBundle("1.0.0", {
-      artifacts: [{ type: "skill", name: "demo-skill", files: { "SKILL.md": "shared skill\n" } }],
-      legacyMarkers: []
-    });
+    const bundle = skillsBundle();
     return Effect.gen(function* () {
       yield* applyInstall(yield* planInstall(bundle, { agents: ["claude-code", "gemini-cli", "grok"] }));
       const before = readFileSync(home.path(LEDGER_FILE));
@@ -169,7 +190,7 @@ describe("verify agent scope", () => {
 
       expect(report.artifacts).toEqual([
         {
-          locator: { kind: "dir", path: home.path(".agents/skills/demo-skill") },
+          locator: { kind: "dir", path: home.path(SHARED_SKILL) },
           agents: ["gemini-cli", "grok"],
           status: "in-sync"
         }
@@ -178,6 +199,61 @@ describe("verify agent scope", () => {
       expect(readFileSync(home.path(LEDGER_FILE))).toEqual(before);
     }).pipe(Effect.provide(home.layer(isolatedPlatform(home))));
   });
+
+  it.effect.each(["in-sync", "outdated", "ledger-behind"] as const)(
+    "compares a Gemini-only shared skill as %s when selecting Grok",
+    (state) => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        const bundle = skillsBundle();
+        yield* applyInstall(yield* planInstall(bundle, { agents: ["gemini-cli"] }));
+        const shared = { kind: "dir", path: home.path(SHARED_SKILL) } as const;
+        const key = locatorKey(shared);
+        const snapshot = ledgerSnapshot(home);
+        const entry = snapshot.entries[key];
+        if (entry === undefined) {
+          throw new Error("Missing shared skill fixture");
+        }
+        expect(entry.agents).toEqual(["gemini-cli"]);
+        const before = readFileSync(home.path(LEDGER_FILE));
+        const desiredText = state === "in-sync" ? "shared skill\n" : "updated shared skill\n";
+        if (state === "ledger-behind") {
+          home.write(`${SHARED_SKILL}/SKILL.md`, desiredText);
+        }
+        const diskBefore = readFileSync(home.path(`${SHARED_SKILL}/SKILL.md`));
+        const expected = encodeLedger({
+          ...snapshot,
+          revision: snapshot.revision + 1,
+          entries: {
+            ...snapshot.entries,
+            [key]: {
+              ...entry,
+              contentHash: yield* hashContent("dir", { "SKILL.md": desiredText }),
+              appliedAt: new Date(0).toISOString(),
+              entryRevision: snapshot.revision + 1
+            }
+          }
+        });
+
+        const report = yield* verify("demo-app", {
+          agents: ["grok"],
+          bundle: state === "in-sync" ? bundle : skillsBundle("2.0.0", desiredText)
+        });
+
+        expect(report.artifacts).toEqual([
+          { locator: shared, agents: ["gemini-cli"], status: state === "outdated" ? "outdated" : "in-sync" }
+        ]);
+        expect(report.acknowledged).toEqual(state === "ledger-behind" ? [shared] : []);
+        expect(readFileSync(home.path(`${SHARED_SKILL}/SKILL.md`))).toEqual(diskBefore);
+        if (state === "ledger-behind") {
+          expect(entryBytes(home, shared)).toEqual(storedEntryBytes(expected, shared));
+          expect(ledgerSnapshot(home).revision).toBe(snapshot.revision + 1);
+        } else {
+          expect(readFileSync(home.path(LEDGER_FILE))).toEqual(before);
+        }
+      }).pipe(Effect.provide(home.layer(isolatedPlatform(home))));
+    }
+  );
 
   it.effect("keeps all owner entries in the report when agents is omitted", () => {
     const home = testHome();

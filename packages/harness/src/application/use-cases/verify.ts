@@ -17,6 +17,8 @@ import {
 } from "../../domain/install-plan/index.js";
 import {
   type ContentHash,
+  holds,
+  type Ledger,
   type LedgerEntry,
   markAcknowledged,
   type PendingOperations,
@@ -56,8 +58,8 @@ export interface VerifyOptions extends ScopeOptions {
    */
   readonly bundle?: Bundle;
   /**
-   * The agents to render the bundle for and verify: only owner entries naming at least one selected agent are
-   * compared, reported or acknowledged. Omit to include all the owner's entries and render for their agents.
+   * The agents to render the bundle for and verify. Owner entries naming any selected agent or occupying a desired
+   * locator are compared, reported or acknowledged. Omit to include all owner entries and render for their agents.
    */
   readonly agents?: readonly CodingAgentId[];
   /** The strategies the bundle was installed with, when they were not the adapters' preference. */
@@ -111,6 +113,12 @@ export function verify(
       desired = yield* desiredArtifacts(rendered);
     }
 
+    const desiredKeys = new Set(desired.map((artifact) => locatorKey(artifact.locator)));
+    const entriesInScope = (state: Ledger): readonly LedgerEntry[] =>
+      state
+        .entriesOf(owner)
+        .filter((entry) => holds(entry, owner, options.agents) || desiredKeys.has(locatorKey(entry.locator)));
+
     /** The disk's hashes at every held locator and at every desired one the owner does not hold. */
     const watch = Effect.fnUntraced(function* (entries: readonly LedgerEntry[]) {
       const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
@@ -130,7 +138,7 @@ export function verify(
       return observed;
     });
 
-    const owned = ledger.entriesOf(owner, options.agents);
+    const owned = entriesInScope(ledger);
     const first = verifyOwner(owned, yield* watch(owned), desired);
     if (first.behind.length === 0) {
       return { artifacts: first.artifacts, acknowledged: [] };
@@ -143,7 +151,7 @@ export function verify(
           waitMs: options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS,
           registrations
         });
-        const again = loaded.ledger.entriesOf(owner, options.agents);
+        const again = entriesInScope(loaded.ledger);
         const verification = verifyOwner(again, yield* watch(again), desired);
         if (verification.behind.length === 0) {
           return [];

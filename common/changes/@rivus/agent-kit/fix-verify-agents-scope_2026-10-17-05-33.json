@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@rivus/agent-kit",
-      "comment": "Scope harness verification and acknowledgement to the selected agents while retaining shared entries.",
+      "comment": "Scope harness verification and acknowledgement to selected agents and their desired locators, preserving three-way comparisons for shared paths.",
       "type": "patch"
     }
   ],
