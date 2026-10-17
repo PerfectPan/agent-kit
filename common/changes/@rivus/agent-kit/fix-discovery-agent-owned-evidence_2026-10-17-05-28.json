@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Correct discovery evidence to require agent-owned sessions, application state or credentials, preserving Cursor desktop storage. Consumers of detectAgents with built-in recipes, including agent-presence and application setup/detection screens, now report missing when no command, recognized application or agent-owned file exists, including Claude Code with only ~/.claude.json (macOS keychain login and no session yet) and machines populated only by harness hooks, plugins, skills or shared MCP/settings. Command and application evidence is unchanged.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

@@ -225,6 +225,10 @@ returning secret values; `authProbe: "commands"` also runs the agents' own statu
 recipe lists. Version probes run by default and make an agent `runnable`; `versionProbe: false` runs nothing at all.
 Commands run without a shell and with a time limit; a check that fails is reported in `problems`.
 `/catalog` has an identity for each of them, and a home rule for each one except Cursor.
+Configuration evidence comes from agent-owned session stores, application state or credential files. Installing
+hooks, plugins or skills alone does not make an agent `found`; shared hook/MCP settings and agent home directories
+do not count.
+See [discovery evidence](packages/discovery/README.md) for the paths and their environment overrides.
 
 [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md), in the same lockstep release policy, adds fenced
 leases (`/lease`, an Effect entry) and single-instance process locks (`/process-lock`) on top of the same platform,

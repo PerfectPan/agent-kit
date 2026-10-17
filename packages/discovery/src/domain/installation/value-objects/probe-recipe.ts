@@ -78,7 +78,9 @@ export interface ProbeRecipe {
    * `Contents/Info.plist` is XML and names another id does not count; one whose id cannot be read counts by its path.
    */
   readonly appBundleIds?: readonly string[];
+  /** Agent-owned state, session or credential paths; exclude homes and files that installers can create. */
   readonly configPaths: readonly ProbePath[];
+  /** Recipe authors must list only agent-owned MCP state, excluding shared, installer-writable configuration. */
   readonly mcpConfigPaths: readonly ProbePath[];
   /** Without a version probe, the agent is at most `found`. */
   readonly version?: VersionProbe;

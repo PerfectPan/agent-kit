@@ -8,7 +8,7 @@ export const piProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["pi"],
   appPaths: [],
-  configPaths: [{ agentHome: "pi" }],
+  configPaths: [{ agentHome: "pi", path: "sessions" }],
   mcpConfigPaths: [],
   version: VERSION_FLAG,
   warnings: []

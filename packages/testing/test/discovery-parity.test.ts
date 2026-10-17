@@ -185,7 +185,9 @@ const FACTS: readonly Fact[] = [
 
 const OPENCODE_CONFIG = "https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/config/paths.ts";
 const CURSOR_CLI = "https://cursor.com/docs/cli/reference/authentication";
+const CURSOR_DESKTOP_STORAGE = "https://forum.cursor.com/t/custom-modes-where-are-they-saved/124271";
 const PI_CONFIG = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/config.ts";
+const DISCOVERY_EVIDENCE = "packages/discovery/README.md";
 
 /**
  * Every fact of a built-in recipe that differs from agent-finder's, with the source that settled it. A `warnings`
@@ -195,17 +197,24 @@ const PI_CONFIG = "https://github.com/earendil-works/pi/blob/main/packages/codin
 const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string }[] = [
   // Catalog owns display names.
   { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/coding-agent/adapters/opencode.ts" },
-  // opencode also reads opencode.jsonc.
-  { agent: "opencode", fact: "mcpConfigPaths", source: OPENCODE_CONFIG },
+  // Agent-owned session and credential paths replace installer-writable homes and shared MCP configuration.
+  { agent: "opencode", fact: "configPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "opencode", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },
   { agent: "opencode", fact: "warnings", source: OPENCODE_CONFIG },
-  // The Cursor CLI is cursor-agent with its configuration in ~/.cursor; its other name, agent, is left out because
-  // other agents install a command with that name.
+  { agent: "claude-code", fact: "configPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "claude-code", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "codex", fact: "configPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "codex", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },
+  // The Cursor CLI is cursor-agent; its other name, agent, is left out because other agents install that command.
   { agent: "cursor", fact: "commands", source: CURSOR_CLI },
-  { agent: "cursor", fact: "configPaths", source: CURSOR_CLI },
+  // Narrow the desktop User roots to application storage; keep the CLI credential locations from its auth probe.
+  { agent: "cursor", fact: "configPaths", source: CURSOR_DESKTOP_STORAGE },
+  { agent: "cursor", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },
   { agent: "cursor", fact: "warnings", source: CURSOR_CLI },
-  // Pi keeps its configuration in ~/.pi/agent.
-  { agent: "pi", fact: "configPaths", source: PI_CONFIG },
-  { agent: "pi", fact: "warnings", source: PI_CONFIG }
+  { agent: "pi", fact: "configPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "pi", fact: "warnings", source: PI_CONFIG },
+  { agent: "gemini-cli", fact: "configPaths", source: DISCOVERY_EVIDENCE },
+  { agent: "gemini-cli", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE }
 ];
 
 describe("parity with agent-finder", () => {

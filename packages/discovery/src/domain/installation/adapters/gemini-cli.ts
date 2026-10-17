@@ -8,8 +8,11 @@ export const geminiCliProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["gemini"],
   appPaths: [],
-  configPaths: [{ agentHome: "gemini-cli" }],
-  mcpConfigPaths: [{ agentHome: "gemini-cli", path: "settings.json" }],
+  configPaths: [
+    { agentHome: "gemini-cli", path: "tmp" },
+    { agentHome: "gemini-cli", path: "oauth_creds.json" }
+  ],
+  mcpConfigPaths: [],
   version: VERSION_FLAG,
   auth: {
     // The OAuth login, unless the user chose encrypted storage in the system keychain.

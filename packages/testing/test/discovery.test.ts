@@ -57,9 +57,9 @@ function program(version: string, rest: Record<string, MemoryCommand> = {}): Mem
 }
 
 describe("detectAgents", () => {
-  it("S36: reports a command with a working version probe as runnable and a configuration directory as found", async () => {
+  it("S36: reports a command with a working version probe as runnable and an agent's session store as found", async () => {
     const platform = machine({
-      files: { [`${HOME}/.gemini/settings.json`]: "{}" },
+      files: { [`${HOME}/.gemini/tmp/project/chats/session.json`]: "{}" },
       commands: { "/opt/bin/codex": program("codex-cli 0.154.0") }
     });
     const [codex, gemini] = await detectAgents(platform, { agents: ["codex", "gemini-cli"] });
@@ -86,10 +86,7 @@ describe("detectAgents", () => {
       kind: "cli",
       status: "found",
       auth: { status: "unknown" },
-      evidence: [
-        { kind: "config", path: `${HOME}/.gemini` },
-        { kind: "mcp-config", path: `${HOME}/.gemini/settings.json` }
-      ],
+      evidence: [{ kind: "config", path: `${HOME}/.gemini/tmp` }],
       problems: [],
       warnings: []
     });
@@ -105,20 +102,14 @@ describe("detectAgents", () => {
     const platform = machine({
       env: { CODEX_HOME: "/cfg/codex", CLAUDE_CONFIG_DIR: "/cfg/claude" },
       files: {
-        [`${HOME}/.codex/config.toml`]: "",
-        "/cfg/codex/config.toml": "",
-        "/cfg/claude/settings.json": "{}"
+        [`${HOME}/.codex/sessions/session.jsonl`]: "",
+        "/cfg/codex/sessions/session.jsonl": "",
+        "/cfg/claude/projects/project/session.jsonl": ""
       }
     });
     const [codex, claude] = await detectAgents(platform, { agents: ["codex", "claude"] });
-    expect(codex?.evidence).toEqual([
-      { kind: "config", path: "/cfg/codex" },
-      { kind: "mcp-config", path: "/cfg/codex/config.toml" }
-    ]);
-    expect(claude?.evidence).toEqual([
-      { kind: "config", path: "/cfg/claude" },
-      { kind: "mcp-config", path: "/cfg/claude/settings.json" }
-    ]);
+    expect(codex?.evidence).toEqual([{ kind: "config", path: "/cfg/codex/sessions" }]);
+    expect(claude?.evidence).toEqual([{ kind: "config", path: "/cfg/claude/projects" }]);
   });
 
   it("accepts aliases once each and throws capability-unsupported for an agent without a recipe", async () => {
@@ -154,13 +145,13 @@ describe("detectAgents", () => {
   });
 
   it("S53: reports unknown when nothing is found and a path could not be checked", async () => {
-    const base = machine({ files: { [`${HOME}/.grok`]: "" } });
+    const base = machine();
     const platform: MemoryPlatform = {
       ...base,
       fs: {
         ...base.fs,
         stat: async (path, options) => {
-          if (path === `${HOME}/.grok`) {
+          if (path === `${HOME}/.grok/sessions`) {
             throw Object.assign(new Error(`EACCES: ${path}`), { code: "EACCES" });
           }
           return base.fs.stat(path, options);
@@ -169,7 +160,7 @@ describe("detectAgents", () => {
     };
     const installation = await detectOne(platform, "grok");
     expect(installation.status).toBe("unknown");
-    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: `${HOME}/.grok`, code: "EACCES" }]);
+    expect(installation.problems).toEqual([{ _tag: "StatFailed", path: `${HOME}/.grok/sessions`, code: "EACCES" }]);
   });
 
   it("rejects when stat fails without an errno code, which is a defect", async () => {
@@ -376,7 +367,7 @@ describe("login state", () => {
 
   it("S54: reports logged-out only from the status command, and unknown without one", async () => {
     const platform = machine({
-      files: { [`${HOME}/.gemini/settings.json`]: "{}" },
+      files: { [`${HOME}/.gemini/tmp/project/chats/session.json`]: "{}" },
       commands: {
         "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": { code: 1, stderr: "Not logged in\n" } })
       }
@@ -670,14 +661,11 @@ describe("detectAgents edge cases", () => {
     expect(calls).toEqual([]);
 
     const ownHome: ProbeRecipe = { ...builtinProbeRecipes.codex, home: { defaultPath: [".codex-alt"] } };
-    const [codex] = await detectAgents(machine({ files: { [`${HOME}/.codex-alt/config.toml`]: "" } }), {
+    const [codex] = await detectAgents(machine({ files: { [`${HOME}/.codex-alt/sessions/session.jsonl`]: "" } }), {
       recipes: { codex: ownHome },
       versionProbe: false
     });
-    expect(codex?.evidence).toEqual([
-      { kind: "config", path: `${HOME}/.codex-alt` },
-      { kind: "mcp-config", path: `${HOME}/.codex-alt/config.toml` }
-    ]);
+    expect(codex?.evidence).toEqual([{ kind: "config", path: `${HOME}/.codex-alt/sessions` }]);
   });
 
   it("tells too much output and defects apart from a command that cannot start", async () => {

@@ -25,8 +25,12 @@ export const opencodeProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["opencode"],
   appPaths: [],
-  configPaths: ["~/.config/opencode"],
-  mcpConfigPaths: ["~/.config/opencode/opencode.json", "~/.config/opencode/opencode.jsonc"],
+  configPaths: [
+    { agentHome: "opencode", path: "opencode.db" },
+    { agentHome: "opencode", path: "storage/message" },
+    { agentHome: "opencode", path: "auth.json" }
+  ],
+  mcpConfigPaths: [],
   version: VERSION_FLAG,
   auth: {
     credentialFiles: [{ path: { agentHome: "opencode", path: "auth.json" }, parse: parseOpencodeAuthFile }],
