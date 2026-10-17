@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync, statSync } from "node:fs";
 
 import { parse as parseToml } from "@decimalturn/toml-patch";
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -632,6 +632,114 @@ describe("uninstall of configuration files created by install", () => {
         }).pipe(Effect.provide(Layer.merge(base, concurrentCreation)));
       }
     );
+
+    it.effect(
+      `${testCase.agent}: revokes old proof when another writer recreates a deleted file before reinstall writes`,
+      () => {
+        const home = testHome();
+        const base = isolatedLayer(home);
+        const concurrentCreation = Layer.effect(
+          LedgerRepository,
+          Effect.gen(function* () {
+            const repository = yield* LedgerRepository;
+            let created = false;
+            return {
+              ...repository,
+              save: (scope, snapshot, expectedRevision) =>
+                Effect.gen(function* () {
+                  yield* repository.save(scope, snapshot, expectedRevision);
+                  if (!created && snapshot.pending.length > 0) {
+                    created = true;
+                    home.write(testCase.path, "");
+                  }
+                })
+            } satisfies typeof repository;
+          })
+        ).pipe(Layer.provide(base));
+        return Effect.gen(function* () {
+          const bundle = hooksBundle(testCase, "demo-app", ["Stop"]);
+          yield* install(testCase, bundle);
+          expect((yield* inventory()).entries).toEqual([expect.objectContaining({ createdConfigFile: true })]);
+          yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
+          const plan = yield* planInstall(bundle, {
+            agents: [testCase.agent],
+            ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies })
+          });
+          const failure = yield* Effect.flip(
+            applyInstall(plan).pipe(Effect.provide(Layer.merge(base, concurrentCreation)))
+          );
+          expect(failure).toMatchObject({ _tag: "TargetChanged", completed: 0 });
+          expect(home.read(testCase.path)).toBe("");
+          expect((yield* inventory()).pending).toEqual([]);
+          expect(home.read(LEDGER_PATH)).not.toContain('"createdConfigFile"');
+
+          yield* install(testCase, bundle);
+          expect((yield* inventory()).entries).toHaveLength(1);
+          expect(home.read(LEDGER_PATH)).not.toContain('"createdConfigFile"');
+          yield* uninstall("demo-app");
+          expect(home.read(testCase.path)).toBeDefined();
+          expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
+          expect((yield* inventory()).entries).toEqual([]);
+        }).pipe(Effect.provide(base));
+      }
+    );
+
+    for (const stage of ["install", "uninstall"]) {
+      it.effect(`${testCase.agent}: propagates a real own-target permission read failure during ${stage}`, () => {
+        const home = testHome();
+        const base = isolatedLayer(home);
+        return Effect.gen(function* () {
+          yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
+          const installed = home.read(testCase.path);
+          const plan =
+            stage === "install"
+              ? yield* planInstall(hooksBundle(testCase, "demo-app", ["Stop"], 9), {
+                  agents: [testCase.agent],
+                  ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies })
+                })
+              : undefined;
+          const path = home.path(testCase.path);
+          const mode = statSync(path).mode & 0o777;
+          let previewed = false;
+          const denyAfterPreview = Layer.effect(
+            ArtifactFiles,
+            Effect.gen(function* () {
+              const files = yield* ArtifactFiles;
+              return {
+                ...files,
+                preview: (previewPath, format, changes) =>
+                  Effect.gen(function* () {
+                    const result = yield* files.preview(previewPath, format, changes);
+                    if (previewPath === path) {
+                      previewed = true;
+                      chmodSync(path, 0o000);
+                    }
+                    return result;
+                  })
+              } satisfies typeof files;
+            })
+          ).pipe(Layer.provide(base));
+          if (stage === "install") {
+            chmodSync(path, 0o000);
+          }
+          const operation =
+            plan === undefined
+              ? uninstall("demo-app").pipe(Effect.provide(Layer.merge(base, denyAfterPreview)))
+              : applyInstall(plan);
+          const failure = yield* Effect.flip(operation).pipe(Effect.ensuring(Effect.sync(() => chmodSync(path, mode))));
+          expect(previewed).toBe(stage === "uninstall");
+          expect(failure).toMatchObject({
+            _tag: "ArtifactIoFailure",
+            path,
+            operation: "read",
+            cause: { code: "EACCES" }
+          });
+          expect(home.read(testCase.path)).toBe(installed);
+          expect((yield* inventory()).entries).toEqual([expect.objectContaining({ createdConfigFile: true })]);
+          expect((yield* inventory()).pending).toEqual([]);
+        }).pipe(Effect.provide(base));
+      });
+    }
 
     it.effect(
       `${testCase.agent}: preserves hooks when deleting the empty result fails and retries after recovery`,

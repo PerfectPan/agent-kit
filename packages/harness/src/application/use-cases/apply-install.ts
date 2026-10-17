@@ -236,7 +236,8 @@ export function applyLocked(
       ) {
         continue;
       }
-      // Creation evidence is optional; an unreadable unrelated entry must not block this owner's operation.
+      // Creation evidence is optional, so failures here count as non-matches, including for this owner's entries.
+      // Required precondition reads still propagate failures on the operation's targets.
       const found = yield* Effect.match(observe(locator, registrations), {
         onFailure: () => undefined,
         onSuccess: (observed) => observed
