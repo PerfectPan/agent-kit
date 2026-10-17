@@ -37,13 +37,8 @@ export const cursorProbe: ProbeRecipe = {
   kind: "app",
   commands: ["cursor", "cursor-agent"],
   appPaths: ["/Applications/Cursor.app"],
-  configPaths: [
-    "~/Library/Application Support/Cursor/User",
-    "~/.config/Cursor/User",
-    "~/AppData/Roaming/Cursor/User",
-    "~/.cursor"
-  ],
-  mcpConfigPaths: ["~/.cursor/mcp.json", "~/Library/Application Support/Cursor/User/mcp.json"],
+  configPaths: ["~/.config/cursor/auth.json", "~/AppData/Roaming/Cursor/auth.json"],
+  mcpConfigPaths: [],
   auth: {
     command: {
       command: "cursor-agent",

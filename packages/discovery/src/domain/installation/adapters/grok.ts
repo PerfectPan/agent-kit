@@ -18,7 +18,10 @@ export const grokProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["grok"],
   appPaths: [],
-  configPaths: [{ agentHome: "grok" }],
+  configPaths: [
+    { agentHome: "grok", path: "sessions" },
+    { agentHome: "grok", path: "auth.json" }
+  ],
   mcpConfigPaths: [],
   version: {
     ...VERSION_FLAG,

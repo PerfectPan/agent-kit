@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@rivus/agent-kit",
+      "comment": "Discovery now requires agent-owned session or credential evidence: harness-installed hooks, plugins, skills and shared MCP/settings files no longer report an agent as found. This affects agent-presence, agent-finder CLI and all application setup/detection consumers of detectAgents with built-in recipes; command and application evidence is unchanged.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@rivus/agent-kit",
+  "email": "24316656+PerfectPan@users.noreply.github.com"
+}

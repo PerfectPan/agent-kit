@@ -73,8 +73,12 @@ export const codexProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["codex"],
   appPaths: [],
-  configPaths: [{ agentHome: "codex" }],
-  mcpConfigPaths: [{ agentHome: "codex", path: "config.toml" }],
+  configPaths: [
+    { agentHome: "codex", path: "sessions" },
+    { agentHome: "codex", path: "archived_sessions" },
+    { agentHome: "codex", path: "auth.json" }
+  ],
+  mcpConfigPaths: [],
   version: { ...VERSION_FLAG, sideEffects: ["Creates $CODEX_HOME/tmp/arg0, as every codex run does."] },
   auth: {
     command: {

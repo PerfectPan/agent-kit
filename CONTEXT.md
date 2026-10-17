@@ -26,7 +26,7 @@ The value `{ ok: true, value } | { ok: false, error }` that plain TS functions r
 What is known about one CodingAgent on this machine: its evidence, DetectionStatus, version, AuthState and the ProbeProblems of checks that could not complete.
 
 **Evidence**:
-One observation that an agent is present: a command on `PATH`, version output, an application path, a configuration path, or an MCP configuration path.
+One observation that an agent is present: a command on `PATH`, version output, an application path, or an agent-owned state path. The `config` and `mcp-config` kinds remain in the interface; built-in recipes exclude installer-writable configuration and use session or credential paths for `config`.
 
 **DetectionStatus**:
 The classification of an Installation from its evidence: `runnable` (the version probe succeeded), `found` (other evidence), `missing` (every check completed and found nothing) or `unknown` (nothing found, but a check could not complete).

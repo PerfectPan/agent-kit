@@ -55,8 +55,11 @@ export const claudeCodeProbe: ProbeRecipe = {
   kind: "cli",
   commands: ["claude"],
   appPaths: [],
-  configPaths: [{ agentHome: "claude-code" }, "~/.claude.json"],
-  mcpConfigPaths: ["~/.claude.json", { agentHome: "claude-code", path: "settings.json" }],
+  configPaths: [
+    { agentHome: "claude-code", path: "projects" },
+    { agentHome: "claude-code", path: ".credentials.json" }
+  ],
+  mcpConfigPaths: [],
   version: VERSION_FLAG,
   auth: {
     command: {
