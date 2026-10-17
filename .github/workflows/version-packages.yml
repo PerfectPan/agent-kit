@@ -73,7 +73,8 @@ jobs:
         # A pull request opened with GITHUB_TOKEN starts no CI, so this job verifies its content before opening it.
         run: npm run check
       - name: Write the release PR body
-        # The body lists every policy package's changelog section; the script truncates it at GitHub's body limit.
+        # The body lists every policy package's changelog section; the script cuts it at a package boundary because
+        # the action would truncate a longer body mid-section.
         run: node scripts/release-notes.ts > "$RUNNER_TEMP/release-pr-body.md"
       - name: Confirm main has not moved on
         # A re-run keeps its original commit. Once main has moved on, the newer push's run owns the release PR, and

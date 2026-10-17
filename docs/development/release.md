@@ -64,8 +64,9 @@ To version packages independently, switch the policy to `individualVersion`:
 ```
 
 Rush then bumps each package from the bump types in its own change files. Update the workflows to match:
-`scripts/check-release.ts` skips the tag-equals-version rule for `individualVersion`, and `scripts/release-state.ts`
-accepts only a single `lockStepVersion` policy, so choose a tag scheme (for example `release-2026-10-01`), teach
+`scripts/check-release.ts` skips the tag-equals-version rule for `individualVersion`, `scripts/release-state.ts`
+accepts only a single `lockStepVersion` policy, and `scripts/release-notes.ts` renders the release PR body from
+that policy's packages, so choose a tag scheme (for example `release-2026-10-01`), teach
 `release-state.ts` when it is due, and document it here. To rename the policy, update
 `version-policies.json`, every `versionPolicyName` in `rush.json`, and the `--version-policy main` arguments in
 `package.json` and `.github/workflows/`.
@@ -143,9 +144,9 @@ collab with an authentication error. Configure the publisher and re-run the fail
    change files, bumps the policy and package versions and writes changelogs, then `rush update` and
    `npm run check`, then opens or updates the signed draft PR `chore(release): version packages` from
    `rush-release/main`. The PR body is the output of `scripts/release-notes.ts`: the fixed intro followed by each
-   policy package's `## <name>@<version>` section from its `CHANGELOG.md`, cut with a pointer to the CHANGELOG
-   files when it passes GitHub's pull request body limit. Every later push with change files regenerates the PR
-   from the new `main`.
+   policy package's `## <name>@<version>` section from its `CHANGELOG.md`. The script cuts the body at a package
+   boundary and points at the CHANGELOG files before create-pull-request would truncate it mid-section at GitHub's
+   65,536-character limit. Every later push with change files regenerates the PR from the new `main`.
 3. For a bump other than `nextBump`, run **Actions → Version Packages → Run workflow** on `main` with
    `patch`/`minor`/`major` after the last feature merge of the release. The next push with change files regenerates
    the PR with `nextBump` again.

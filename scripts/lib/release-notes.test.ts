@@ -80,15 +80,42 @@ describe("renderReleaseNotes", () => {
 
   it("cuts the entries past the cap and points at the CHANGELOG files", () => {
     const changelog = `## 0.19.0\n${"- a long change note that fills the body. ".repeat(12)}`;
-    // The cap fits the intro, the first section and the notice with its separator; the second section does not.
-    const cap = renderReleaseNotes([entries[0]!]).length + 2 + TRUNCATION_NOTICE.length + 1;
+    // At this cap an entry fits only when the notice and the blank line before it fit too; reserving the notice
+    // alone leaves the truncated body 2 characters over.
+    const cap = renderReleaseNotes([entries[0]!]).length + TRUNCATION_NOTICE.length;
     const body = renderReleaseNotes([entries[0]!, { ...entries[1]!, changelog }], cap);
-    expect(renderReleaseNotes([entries[0]!, { ...entries[1]!, changelog }]).length).toBeGreaterThan(cap);
     expect(body.startsWith(RELEASE_PR_INTRO)).toBe(true);
-    expect(body).toContain("## @rivus/agent-kit@0.19.0");
-    expect(body).not.toContain("## @rivus/agent-kit-collab@0.19.0");
-    expect(body.endsWith(TRUNCATION_NOTICE)).toBe(true);
     expect(body.length).toBeLessThanOrEqual(cap);
+    expect(body.endsWith(TRUNCATION_NOTICE)).toBe(true);
+    expect(body).not.toContain("## @rivus/agent-kit@0.19.0");
+    expect(body).not.toContain("## @rivus/agent-kit-collab@0.19.0");
+  });
+
+  it("does not match a heading that merely starts with the target version", () => {
+    const changelog = `# Change Log - @rivus/agent-kit
+
+## 0.19.0-beta.1
+Wed, 15 Oct 2026 06:13:04 GMT
+
+### Patches
+
+- A prerelease note.
+
+## 0.19.0
+Sat, 17 Oct 2026 06:13:04 GMT
+
+### Patches
+
+- The released note.
+`;
+    expect(
+      renderReleaseNotes([{ name: "@rivus/agent-kit", version: "0.19.0", changelog }]).endsWith(
+        "### Patches\n\n- The released note."
+      )
+    ).toBe(true);
+    expect(renderReleaseNotes([{ name: "@rivus/agent-kit", version: "0.19.0", changelog }])).not.toContain(
+      "A prerelease note."
+    );
   });
 
   it("cuts a body that one huge section already fills and still points at the CHANGELOG files", () => {

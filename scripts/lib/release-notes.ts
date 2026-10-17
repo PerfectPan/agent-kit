@@ -1,8 +1,9 @@
 /**
  * The Version Packages pull request body: the fixed intro plus, for every package of the lockstep policy, the
- * package's section for the released version from its CHANGELOG.md. The workflow passes the rendered body to
- * create-pull-request through `body-path`, which raises the size limit from what a `body:` input should carry to
- * GitHub's hard cap of 65,536 characters.
+ * package's section for the released version from its CHANGELOG.md. `body-path` does not raise the size limit:
+ * create-pull-request truncates a longer body, from `body` or `body-path` alike, at GitHub's 65,536 characters —
+ * mid-section. The script therefore cuts at 60,000, at a package boundary, and points at the CHANGELOG files for
+ * the rest.
  */
 
 export const RELEASE_PR_INTRO = `Coordinated Rush release prepared by the Version Packages workflow, which ran \`npm run check\` on this
@@ -63,10 +64,10 @@ export function renderReleaseNotes(entries: readonly ReleaseNotesEntry[], cap: n
   });
   let body = RELEASE_PR_INTRO;
   let truncated = false;
-  // Reserve room for the notice so it fits whenever truncation drops an entry.
+  // Reserve the notice and the blank line before it, or the truncated body ends up 2 characters past the cap.
   for (const section of sections) {
     const next = `${body}\n\n${section}`;
-    if (next.length + TRUNCATION_NOTICE.length > cap) {
+    if (next.length + TRUNCATION_NOTICE.length + 2 > cap) {
       truncated = true;
       break;
     }
