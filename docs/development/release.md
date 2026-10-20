@@ -179,10 +179,10 @@ the run fails at it with an authentication error. Configure the publisher and re
 4. The merge push runs Publish npm on the merge commit. After waiting for any other run of the same version, it
    checks the state again, creates the annotated tag `vX.Y.Z` locally, and runs `release:check --verify-git`: the
    tag equals the version of every published package, no changesets remain and the commit is on `origin/main`. It
-   then runs `pnpm install --frozen-lockfile` and `pnpm run check`, pushes the tag, creates a GitHub Release with
-   generated notes, and runs `pnpm publish -r --access public --no-git-checks`. pnpm skips private packages and
-   versions that already exist on npm. The remote refuses to move an existing tag, so two runs cannot release one
-   version from different commits.
+   then runs `pnpm install --frozen-lockfile --no-runtime` and `pnpm run check`, pushes the tag, creates a GitHub
+   Release with generated notes, and runs `pnpm publish -r --access public --no-git-checks`. pnpm skips private
+   packages and versions that already exist on npm. The remote refuses to move an existing tag, so two runs cannot
+   release one version from different commits.
 5. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z`,
    `npm view @rivus/agent-kit-collab@X.Y.Z` and a clean `npm install @rivus/agent-kit @rivus/agent-kit-collab` in a
    scratch project. Registry reads can lag the publish by a minute; retry the read, not the

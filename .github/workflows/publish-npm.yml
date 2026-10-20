@@ -83,7 +83,9 @@ jobs:
         run: node scripts/check-release.ts "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
       - name: Install dependencies
         if: steps.pending.outputs.state != 'none'
-        run: pnpm install --frozen-lockfile
+        # The command pnpm/setup runs in ci.yml. pnpm/setup already installed Node.js from .node-version, and
+        # --no-runtime keeps pnpm from installing the runtimes in devEngines.runtime again.
+        run: pnpm install --frozen-lockfile --no-runtime
       - name: Run release gates
         if: steps.pending.outputs.state != 'none'
         run: pnpm run check
