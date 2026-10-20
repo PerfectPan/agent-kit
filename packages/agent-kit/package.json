@@ -96,16 +96,16 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "1.8.0",
-    "@decimalturn/toml-patch": "^3.3.0",
-    "es-toolkit": "^1.52.0",
-    "jsonc-parser": "^3.3.1",
-    "shell-quote": "^1.12.0",
-    "zod": "^4.6.5"
+    "@agentclientprotocol/sdk": "catalog:",
+    "@decimalturn/toml-patch": "catalog:",
+    "es-toolkit": "catalog:",
+    "jsonc-parser": "catalog:",
+    "shell-quote": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.5",
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
+    "@arethetypeswrong/cli": "catalog:",
+    "@perfectpan/lint-config": "catalog:",
     "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-cost": "workspace:*",
@@ -116,18 +116,18 @@
     "@rivus/agent-kit-redact": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",
-    "@size-limit/preset-small-lib": "14.1.0",
-    "@types/node": "24.19.2",
-    "effect": "4.0.3",
-    "oxc-parser": "0.153.0",
-    "publint": "0.3.25",
+    "@size-limit/preset-small-lib": "catalog:",
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "oxc-parser": "catalog:",
+    "publint": "catalog:",
     "rolldown": "1.2.12",
-    "size-limit": "14.1.0",
-    "typescript": "7.0.2",
-    "vite-plus": "1.1.0"
+    "size-limit": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
-    "effect": "4.0.3"
+    "effect": "catalog:"
   },
   "peerDependenciesMeta": {
     "effect": {

@@ -20,27 +20,27 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
-    "@decimalturn/toml-patch": "^3.3.0",
+    "@decimalturn/toml-patch": "catalog:",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
-    "es-toolkit": "^1.52.0",
-    "jsonc-parser": "^3.3.1",
-    "shell-quote": "^1.12.0",
-    "zod": "^4.6.5"
+    "es-toolkit": "catalog:",
+    "jsonc-parser": "catalog:",
+    "shell-quote": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@effect/tsgo": "0.50.0",
-    "@effect/vitest": "4.0.3",
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
+    "@effect/tsgo": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@perfectpan/lint-config": "catalog:",
     "@rivus/agent-kit-platform-node": "workspace:*",
-    "@types/node": "24.19.2",
-    "effect": "4.0.3",
-    "typescript": "7.0.2",
-    "vite-plus": "1.1.0",
-    "vitest": "5.0.3"
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
-    "effect": "4.0.3"
+    "effect": "catalog:"
   },
   "peerDependenciesMeta": {
     "effect": {

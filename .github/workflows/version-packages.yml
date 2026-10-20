@@ -3,14 +3,8 @@ name: Version Packages
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: Version bump for the lockstep policy (policy uses its nextBump when left as "policy")
-        required: true
-        default: policy
-        type: choice
-        options: [policy, patch, minor, major]
+  # Rebuilds the release PR from the current main, for example after it was closed by hand.
+  workflow_dispatch: {}
 
 permissions: {}
 
@@ -30,9 +24,12 @@ jobs:
       state: ${{ steps.state.outputs.state }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # release-state.ts asks pnpm for the workspace packages and the versioning.fixed group; it needs no
+      # dependencies, so this job installs none.
+      - uses: pnpm/setup@v3
         with:
           node-version-file: .node-version
+          install: false
       - id: state
         run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
 
@@ -48,37 +45,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # The changelog links and the release branch need full history.
           fetch-depth: 0
-      - uses: actions/setup-node@v7
+      - uses: pnpm/setup@v3
         with:
           node-version-file: .node-version
-      - run: node common/scripts/install-run-rush.js install
-      - name: Set a Git identity for rush version
-        # rush version reads git config user.email and fails without it. The release PR commit itself is created and
-        # signed through the GitHub API by create-pull-request, so this identity does not appear on it.
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Bump versions and write changelogs with Rush
-        env:
-          BUMP: ${{ inputs.bump || 'policy' }}
-        run: |
-          if [[ "$BUMP" == "policy" ]]; then
-            npm run version-packages
-          else
-            node common/scripts/install-run-rush.js version --bump --version-policy main --override-bump "$BUMP"
-            node common/scripts/install-run-rush.js update
-          fi
-      - name: Run release gates on the bumped versions
-        # A pull request opened with GITHUB_TOKEN starts no CI, so this job verifies its content before opening it.
-        run: npm run check
-      - name: Write the release PR body
-        # The body lists every policy package's changelog section; the script cuts it at a package boundary because
-        # the action would truncate a longer body mid-section.
-        run: node scripts/release-notes.ts > "$RUNNER_TEMP/release-pr-body.md"
+          require-lockfile: true
       - name: Confirm main has not moved on
         # A re-run keeps its original commit. Once main has moved on, the newer push's run owns the release PR, and
-        # updating it from this commit would drop the newer change files.
+        # updating it from this commit would drop the newer changesets.
         id: fresh
         # pipefail: a failed remote query must fail the run instead of reading as "main moved on".
         shell: bash
@@ -91,14 +66,24 @@ jobs:
             echo "::notice::main is at $main, not $GITHUB_SHA; leaving the release PR to the newer run"
             echo "current=false" >> "$GITHUB_OUTPUT"
           fi
+      # Runs the version script `release:version`: `pnpm version -r` bumps the versioning.fixed group to one shared
+      # version (the largest bump across the pending changesets), writes each package's CHANGELOG.md and deletes the
+      # consumed changesets, then `pnpm run check` runs the release gates on the bumped tree. A pull request opened
+      # with github.token starts no CI until it is marked ready for review, so the gates run here. The action runs
+      # the script before it pushes anything, so a failing gate fails the run and leaves the release PR as it was.
+      # Otherwise the action commits through the GitHub API (signed) and opens or updates the draft PR
+      # `changeset-release/main` -> `main`, whose body lists each package's new changelog section. That commit takes
+      # every change in the checkout that .gitignore does not exclude, so the gates must write only ignored files.
       - name: Create or update the version pull request
         if: steps.fresh.outputs.current == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: changesets/action@v2
         with:
-          branch: rush-release/main
-          base: main
-          sign-commits: true
-          commit-message: "chore(release): version packages"
-          title: "chore(release): version packages"
-          draft: always-true
-          body-path: ${{ runner.temp }}/release-pr-body.md
+          # The action runs this command without a shell, so the `&&` between the bump and the gates lives in the
+          # root package.json script.
+          version-script: pnpm run release:version
+          commit-message: 'chore(release): version packages'
+          pr-title: 'chore(release): version packages'
+          pr-draft: always
+          # The token goes through the input, not the GITHUB_TOKEN environment variable: the action fails when the
+          # env var and the input disagree, which would break a later switch to an App token or PAT.
+          github-token: ${{ github.token }}

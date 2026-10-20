@@ -19,11 +19,11 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
-    "es-toolkit": "^1.52.0"
+    "es-toolkit": "catalog:"
   },
   "devDependencies": {
-    "@perfectpan/lint-config": "github:PerfectPan/lint-config#v0.6.0",
-    "typescript": "7.0.2",
-    "vite-plus": "1.1.0"
+    "@perfectpan/lint-config": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

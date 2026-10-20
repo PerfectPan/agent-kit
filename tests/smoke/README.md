@@ -4,9 +4,9 @@ Tests against the coding agents installed on this machine. They start the agents
 user's login, so they may spend tokens; CI never runs them (the project's `test` script is empty).
 
 ```bash
-node common/scripts/install-run-rush.js install
+pnpm install
 cd tests/smoke
-AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok npm run smoke
+AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok pnpm run smoke
 ```
 
 `AGENT_KIT_SMOKE_AGENTS` names the agents to run, by `CodingAgentId`; the others are skipped. Each agent needs its ACP

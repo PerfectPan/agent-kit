@@ -22,9 +22,12 @@ jobs:
       tag: ${{ steps.state.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # release-state.ts asks pnpm for the workspace packages and the versioning.fixed group; it needs no
+      # dependencies, so this job installs none.
+      - uses: pnpm/setup@v3
         with:
           node-version-file: .node-version
+          install: false
       - id: state
         run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
 
@@ -56,11 +59,11 @@ jobs:
           ref: ${{ github.event.release.tag_name || github.sha }}
           # Keeps the write token out of .git/config while repository dependencies run; the tag push passes it.
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: pnpm/setup@v3
         with:
           node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
-          package-manager-cache: false
+          # Dependencies are installed below, once this run is known to release.
+          install: false
       - name: Confirm no concurrent run released this version
         # This job may have waited in the concurrency group for a run of the same version. Every later step
         # skips when this reports none; a release event skips this step and runs them.
@@ -77,12 +80,15 @@ jobs:
           fi
       - name: Verify tag, versions and main ancestry
         if: steps.pending.outputs.state != 'none'
-        run: npm run release:check -- "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
-      - if: steps.pending.outputs.state != 'none'
-        run: node common/scripts/install-run-rush.js install
+        run: node scripts/check-release.ts "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
+      - name: Install dependencies
+        if: steps.pending.outputs.state != 'none'
+        # The command pnpm/setup runs in ci.yml. pnpm/setup already installed Node.js from .node-version, and
+        # --no-runtime keeps pnpm from installing the runtimes in devEngines.runtime again.
+        run: pnpm install --frozen-lockfile --no-runtime
       - name: Run release gates
         if: steps.pending.outputs.state != 'none'
-        run: npm run check
+        run: pnpm run check
       - name: Push the tag and create the GitHub Release
         if: steps.pending.outputs.state == 'publish'
         env:
@@ -95,16 +101,15 @@ jobs:
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --generate-notes --title "$RELEASE_TAG"
           fi
-      - name: Publish packages with Rush
+      - name: Publish packages
         if: steps.pending.outputs.state != 'none'
-        # Publishes every package of the main policy at the one version, in rush.json order: @rivus/agent-kit
-        # first, then @rivus/agent-kit-collab, whose peer range (`workspace:^`, packed as ^<version>) names it, so
-        # the peer is on npm before the package that needs it. Each package needs its own trusted publisher; a
-        # missing one stops the publish at that package, and once it is configured a re-run publishes only what is
-        # missing (see docs/development/release.md).
-        # Rush runs `pnpm publish`, which ignores NPM_CONFIG_* variables. pnpm attaches provenance on its own after
-        # the OIDC exchange when both the repository and the package are public, and skips it otherwise.
-        run: >-
-          node common/scripts/install-run-rush.js publish
-          --include-all --version-policy main --publish
-          --set-access-level public
+        # Publishes every package that is not private, in dependency order: @rivus/agent-kit first, then
+        # @rivus/agent-kit-collab, whose peer range (`workspace:^`, packed as ^<version>) names it, so the peer is on
+        # npm before the package that needs it. pnpm stops at the first package that fails and skips versions that
+        # already exist on npm. Each package needs its own trusted publisher; a missing one stops the publish at that
+        # package, and once it is configured a re-run publishes only what is missing (see
+        # docs/development/release.md). pnpm exchanges the job's OIDC token for the publish credential and attaches
+        # provenance on its own when both the repository and the package are public, and skips it otherwise.
+        # `--no-git-checks` only skips pnpm's own branch and clean-tree checks, which a tag or commit checkout fails;
+        # the release:check step above verified the tag, the clean worktree and main ancestry.
+        run: pnpm publish -r --access public --no-git-checks

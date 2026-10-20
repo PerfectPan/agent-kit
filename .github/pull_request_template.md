@@ -12,11 +12,11 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 
 <!-- Commands you ran and their results; logs or screenshots for behavior claims. Name skipped checks and why. -->
 
-- [ ] Aggregate gate (format, build, lint, typecheck, test): `npm run check`
+- [ ] Aggregate gate (format, build, lint, typecheck, test): `pnpm run check`
 - [ ] Repository checks: `gh repo-checks repository`
 - [ ] PR title and description: `gh repo-checks pr-title "<title>"`, `gh repo-checks pr-body <body-file>`
-- [ ] Change files for package changes: `npm run change:verify`
-- [ ] Package or release dry-run, when publishing changes: `npm run publish:dry-run`
+- [ ] Changeset for published-package changes, when this PR should produce a release: `.changeset/<name>.md`
+- [ ] Package or release dry-run, when publishing changes: `pnpm run publish:dry-run`
 
 ## Risks
 

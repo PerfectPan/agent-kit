@@ -1,3 +1,0 @@
-# Registry for rush publish. The publish workflow authenticates with npm Trusted Publishing (OIDC),
-# so this file must not carry a token.
-registry=https://registry.npmjs.org/
