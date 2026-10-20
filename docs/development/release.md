@@ -16,7 +16,7 @@ hand-made GitHub Release instead.
 | Step | Where | Result |
 | --- | --- | --- |
 | Changeset | feature PR | `.changeset/<name>.md`, written with `pnpm change` or by hand; CI does not check for it |
-| Version Packages | `version-packages.yml`, on each push to `main` with pending changesets | draft PR `chore(release): version packages` on `changeset-release/main`, whose body lists each package's changelog section; the run then checks the bumped tree with `pnpm run check` |
+| Version Packages | `version-packages.yml`, on each push to `main` with pending changesets | draft PR `chore(release): version packages` on `changeset-release/main`, whose body lists each package's changelog section, opened or updated only after `pnpm run check` passes on the bumped tree |
 | Release PR merge | GitHub, the only manual step | bumped `package.json` versions, `CHANGELOG.md` per package and `.changeset/ledger.yaml` on `main`, no pending changesets |
 | Tag and GitHub Release | `publish-npm.yml`, on the merge push | annotated tag `vX.Y.Z` and a GitHub Release with generated notes on the release commit |
 | Publish | `publish-npm.yml`, same run | packages on npm with provenance |
@@ -162,15 +162,15 @@ the run fails at it with an authentication error. Configure the publisher and re
 ## Cutting a Release
 
 1. Merge feature PRs with changesets (see [Changesets](#changesets)).
-2. Each such merge runs Version Packages. `changesets/action` runs `pnpm run version-packages` (`pnpm version -r`),
-   which consumes the changesets, bumps both packages to the new shared version and writes their changelogs. The
-   action commits the result through the GitHub API (signed) and opens or updates the draft PR
-   `chore(release): version packages` from `changeset-release/main`; the PR body lists each package's new
-   `CHANGELOG.md` section. The run then runs `pnpm run check` on the bumped tree. Every later push with changesets
-   regenerates the PR from the new `main`, and a re-run on a `main` that has moved on leaves the PR to the newer
-   run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the PR
-   was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset with
-   that bump.
+2. Each such merge runs Version Packages. `changesets/action` runs `pnpm run release:version`: `pnpm version -r`
+   consumes the changesets, bumps both packages to the new shared version and writes their changelogs, then
+   `pnpm run check` runs on the bumped tree. Only when both pass does the action commit the result through the
+   GitHub API (signed) and open or update the draft PR `chore(release): version packages` from
+   `changeset-release/main`; the PR body lists each package's new `CHANGELOG.md` section. Every later push with
+   changesets regenerates the PR from the new `main`, and a re-run on a `main` that has moved on leaves the PR to the
+   newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
+   PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
+   with that bump.
 3. Review the version and changelog diff, then select **Ready for review**. Pull requests created with the
    workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
    reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, pass a GitHub App
@@ -217,9 +217,9 @@ Run it after `pnpm run check` so `dist` exists.
 
 ## Failure Recovery
 
-- **Version Packages fails**: nothing is released. A failure before the action leaves the release PR as it was; a
-  failure in `pnpm run check` after it leaves the bumped PR open as a draft, so fix the cause in a new PR with or
-  without a changeset, and its merge regenerates the release PR.
+- **Version Packages fails**: nothing is released, and the release PR stays as it was, because the action pushes
+  only after `pnpm version -r` and `pnpm run check` pass; the run is red. Re-run it for a transient failure.
+  Otherwise fix the cause in a new PR with or without a changeset, and its merge regenerates the release PR.
 - **Validation fails before publishing** (`release:check`, `pnpm run check` in Publish npm): nothing was tagged or
   published. Re-run the run for a transient failure. Otherwise fix the cause in a new PR: a fix without changesets
   releases the same version from its merge commit, and a fix with changesets goes into the next release PR,

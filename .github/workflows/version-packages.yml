@@ -66,23 +66,24 @@ jobs:
             echo "::notice::main is at $main, not $GITHUB_SHA; leaving the release PR to the newer run"
             echo "current=false" >> "$GITHUB_OUTPUT"
           fi
-      # Runs the version script (`pnpm version -r`), which bumps the versioning.fixed group to one shared version
-      # (the largest bump across the pending changesets), writes each package's CHANGELOG.md and deletes the
-      # consumed changesets. The action then commits through the GitHub API (signed) and opens or updates the draft
-      # PR `changeset-release/main` -> `main`, whose body lists each package's new changelog section.
+      # Runs the version script `release:version`: `pnpm version -r` bumps the versioning.fixed group to one shared
+      # version (the largest bump across the pending changesets), writes each package's CHANGELOG.md and deletes the
+      # consumed changesets, then `pnpm run check` runs the release gates on the bumped tree. A pull request opened
+      # with github.token starts no CI until it is marked ready for review, so the gates run here. The action runs
+      # the script before it pushes anything, so a failing gate fails the run and leaves the release PR as it was.
+      # Otherwise the action commits through the GitHub API (signed) and opens or updates the draft PR
+      # `changeset-release/main` -> `main`, whose body lists each package's new changelog section. That commit takes
+      # every change in the checkout that .gitignore does not exclude, so the gates must write only ignored files.
       - name: Create or update the version pull request
         if: steps.fresh.outputs.current == 'true'
         uses: changesets/action@v2
         with:
-          version-script: pnpm run version-packages
+          # The action runs this command without a shell, so the `&&` between the bump and the gates lives in the
+          # root package.json script.
+          version-script: pnpm run release:version
           commit-message: 'chore(release): version packages'
           pr-title: 'chore(release): version packages'
           pr-draft: always
           # The token goes through the input, not the GITHUB_TOKEN environment variable: the action fails when the
           # env var and the input disagree, which would break a later switch to an App token or PAT.
           github-token: ${{ github.token }}
-      - name: Run release gates on the bumped versions
-        # The checkout still holds the bumped tree. A pull request opened with github.token starts no CI until it
-        # is marked ready for review, so this run reports a broken release PR right away.
-        if: steps.fresh.outputs.current == 'true'
-        run: pnpm run check

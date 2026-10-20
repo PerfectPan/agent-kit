@@ -13,7 +13,7 @@
     "check:package": "pnpm -r run check:package",
     "change": "pnpm change",
     "check": "pnpm run format:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:package",
-    "version-packages": "pnpm version -r",
+    "release:version": "pnpm version -r && pnpm run check",
     "release:check": "node scripts/check-release.ts",
     "publish:dry-run": "pnpm publish -r --access public --no-git-checks --dry-run --json"
   },
