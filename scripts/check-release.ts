@@ -1,25 +1,24 @@
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 
 import {
-  isPublished,
-  type PackageManifest,
-  readJson,
-  readPendingChangeFiles,
-  readPolicies,
-  readProjects,
-  releaseErrors
+  findRepositoryRoot,
+  isPublishable,
+  pendingChangesets,
+  readWorkspacePackages,
+  type ReleaseInput,
+  releaseErrors,
+  splitScriptArgs
 } from "./lib/workspace.ts";
 
-const USAGE = "usage: node scripts/check-release.ts <tag> [--repository owner/name] [--policy <name>] [--verify-git]";
+const USAGE = "usage: node scripts/check-release.ts <tag> [--repository owner/name] [--verify-git]";
 
 const { positionals, values } = parseArgs({
+  args: splitScriptArgs(process.argv.slice(2)),
   allowPositionals: true,
   options: {
     repository: { type: "string" },
-    policy: { type: "string" },
     "verify-git": { type: "boolean" },
     help: { type: "boolean", short: "h" }
   }
@@ -29,38 +28,20 @@ if (values.help === true) {
   process.exit(0);
 }
 
-const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
+const root = findRepositoryRoot();
 const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 
 const tag = positionals[0] ?? process.env.RELEASE_TAG;
 const repository = values.repository ?? process.env.GITHUB_REPOSITORY ?? "";
-const policies = readPolicies(root);
-const policy = values.policy
-  ? policies.find((candidate) => candidate.policyName === values.policy)
-  : policies.length === 1
-    ? policies[0]
-    : undefined;
-if (policy === undefined) {
-  console.error(`check-release: --policy must name one of ${policies.map((p) => p.policyName).join(", ")}\n${USAGE}`);
-  process.exit(1);
-}
 
-const projects = readProjects(root);
-const packages = projects
-  .filter((project) => project.versionPolicyName === policy.policyName)
-  .map((project) => ({
-    project,
-    manifest: readJson<PackageManifest>(root, join(project.projectFolder, "package.json"))
-  }));
-
-const errors = releaseErrors({
+const input: ReleaseInput = {
   tag,
   repository,
-  policy,
-  packages,
-  pendingChangeFiles: readPendingChangeFiles(root),
-  unpublished: projects.filter((project) => !isPublished(project)).map((project) => project.packageName)
-});
+  packages: readWorkspacePackages(root),
+  pendingChangesets: pendingChangesets(root)
+};
+
+const errors = releaseErrors(input);
 
 if (values["verify-git"] === true) {
   const head = git("rev-parse", "HEAD");
@@ -88,5 +69,8 @@ if (errors.length > 0) {
   }
   process.exit(1);
 }
-const names = packages.map(({ project }) => project.packageName).join(", ");
-console.log(`check-release: ok (${policy.policyName} ${tag}: ${names})`);
+const names = input.packages
+  .filter(isPublishable)
+  .map((pkg) => pkg.manifest.name)
+  .join(", ");
+console.log(`check-release: ok (${tag}: ${names})`);

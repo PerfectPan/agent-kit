@@ -35,6 +35,29 @@ function withFiles(files: Record<string, string>, extraPackages: WorkspacePackag
   };
 }
 
+/** The files of a package folder under `packages/` with its entry files, for `loadFixture`. */
+function fixturePackage(folder: string, name: string): Record<string, string> {
+  return {
+    [`packages/${folder}/package.json`]: JSON.stringify({ name }),
+    [`packages/${folder}/src/index.ts`]: "export {};",
+    [`packages/${folder}/src/public.ts`]: "export {};"
+  };
+}
+
+/** Writes `files` into a temporary pnpm workspace whose members are `packages/*`, and loads it as pnpm lists it. */
+function loadFixture(files: Record<string, string>): Workspace {
+  const root = mkdtempSync(join(tmpdir(), "boundaries-"));
+  try {
+    for (const [path, source] of Object.entries({ "pnpm-workspace.yaml": "packages:\n  - packages/*\n", ...files })) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), source);
+    }
+    return loadWorkspace(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 const sessionsFile = (path: string, source: string) => withFiles({ [`packages/sessions/src/${path}`]: source });
 const collabFile = (path: string, source: string) => withFiles({ [`packages/agent-kit-collab/src/${path}`]: source });
 
@@ -376,36 +399,24 @@ describe("violations", () => {
   });
 
   it("loads hand-written declaration files from disk, so a domain/ import through one is caught", () => {
-    const root = mkdtempSync(join(tmpdir(), "boundaries-"));
-    try {
-      const files: Record<string, string> = {
-        "rush.json": JSON.stringify({ projects: [{ packageName: SESSIONS, projectFolder: "packages/sessions" }] }),
-        "packages/sessions/package.json": "{}",
-        "packages/sessions/src/index.ts": "export {};",
-        "packages/sessions/src/public.ts": "export {};",
-        "packages/sessions/src/domain/a.ts": `import { x } from "./bridge.js";`,
-        "packages/sessions/src/domain/bridge.d.ts": `export { x } from "../application/x.js";`,
-        "packages/sessions/src/application/x.ts": "export const x = 1;"
-      };
-      for (const [path, source] of Object.entries(files)) {
-        mkdirSync(dirname(join(root, path)), { recursive: true });
-        writeFileSync(join(root, path), source);
-      }
-      expect(checkBoundaries(loadWorkspace(root), boundaries)).toEqual([
-        expect.objectContaining({ file: "packages/sessions/src/domain/bridge.d.ts", rule: "source-file" })
-      ]);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+    const workspace = loadFixture({
+      ...fixturePackage("sessions", SESSIONS),
+      "packages/sessions/src/domain/a.ts": `import { x } from "./bridge.js";`,
+      "packages/sessions/src/domain/bridge.d.ts": `export { x } from "../application/x.js";`,
+      "packages/sessions/src/application/x.ts": "export const x = 1;"
+    });
+    expect(checkBoundaries(workspace, boundaries)).toEqual([
+      expect.objectContaining({ file: "packages/sessions/src/domain/bridge.d.ts", rule: "source-file" })
+    ]);
   });
 
-  it("rejects a Rush project under packages/ that the manifest does not declare", () => {
-    const stray: WorkspacePackage = {
-      name: "@rivus/agent-kit-stray",
-      folder: "packages/stray",
-      workspaceDependencies: []
-    };
-    expect(rulesOf(withFiles({}, [stray]))).toEqual(["undeclared-package"]);
+  it("rejects a workspace package under packages/ that the manifest does not declare", () => {
+    const declared = fixturePackage("sessions", SESSIONS);
+    expect(checkBoundaries(loadFixture(declared), boundaries)).toEqual([]);
+    const stray = loadFixture({ ...declared, ...fixturePackage("stray", "@rivus/agent-kit-stray") });
+    expect(checkBoundaries(stray, boundaries)).toEqual([
+      expect.objectContaining({ file: "packages/stray/package.json", rule: "undeclared-package" })
+    ]);
   });
 
   it("rejects a package.json workspace dependency the manifest does not allow", () => {

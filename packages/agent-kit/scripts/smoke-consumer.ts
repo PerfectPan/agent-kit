@@ -17,7 +17,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-// Packs the shell and the other packages of its release set with pnpm, as `rush publish` does, installs the tarballs
+// Packs the shell and the other packages of its release set with pnpm, as `pnpm publish` does, installs the tarballs
 // into a throwaway consumer project the way a user would, and checks them from there: each tarball holds only what it
 // should, every entry type-checks under node16 and bundler resolution, every entry loads in Node and reads sessions
 // and their usage from a temporary home, `/cost` prices that usage, `/discovery` finds a fake agent, the companions
@@ -31,8 +31,8 @@ const repoRoot = resolve(packageRoot, "../..");
 const fixtures = join(repoRoot, "packages/testing/test/fixtures");
 const fakeAgent = join(repoRoot, "packages/acp/test/fixtures/fake-agent.ts");
 const tsc = join(packageRoot, "node_modules/.bin/tsc");
-// Rush's own pnpm: it rewrites `workspace:` ranges in the packed manifests the way publishing does.
-const pnpm = join(repoRoot, "common/temp/pnpm-local/node_modules/.bin/pnpm");
+// The workspace's pnpm: it rewrites `workspace:` and `catalog:` ranges in the packed manifests the way publishing does.
+const pnpm = "pnpm";
 const nodeTypes = join(packageRoot, "node_modules/@types");
 
 /**
@@ -78,8 +78,8 @@ interface Companion {
 }
 
 /**
- * The other packages of the shell's lockstep version policy in rush.json, released and installed together with it.
- * The smoke test fails when the policy has a package this table lacks.
+ * The other packages of the shell's `versioning.fixed` group in pnpm-workspace.yaml, released and installed together
+ * with it. The smoke test fails when the group has a package this table lacks.
  */
 const COMPANIONS: Readonly<Record<string, Companion>> = {
   "@rivus/agent-kit-collab": {
@@ -161,7 +161,7 @@ interface PackResult {
   files: { path: string }[];
 }
 
-// npm reads npm_config_* variables before its config files; the ones Rush and pnpm export must not steer it.
+// npm reads npm_config_* variables before its config files; the ones pnpm exports must not steer it.
 const npmEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^npm_/i.test(key)));
 
 function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): string {
@@ -584,26 +584,35 @@ function typecheck(cwd: string, lib: readonly string[]): void {
   }
 }
 
-/** The shell first, then the other packages of its version policy in rush.json, which are released with it. */
+/**
+ * The shell first, then the other packages of its `versioning.fixed` group, which are released with it. pnpm reads
+ * the group from pnpm-workspace.yaml (it prints `null` when no versioning is set) and lists the workspace folders.
+ */
 function releaseSet(shell: Manifest): ReleasePackage[] {
-  const { projects } = JSON.parse(readFileSync(join(repoRoot, "rush.json"), "utf8")) as {
-    projects: { packageName: string; projectFolder: string; versionPolicyName?: string }[];
-  };
-  const policy = projects.find((project) => project.packageName === shell.name)?.versionPolicyName;
-  const others = projects.filter(
-    (project) => policy !== undefined && project.versionPolicyName === policy && project.packageName !== shell.name
-  );
+  const versioning = JSON.parse(run(pnpm, ["config", "get", "versioning", "--json"], repoRoot)) as {
+    fixed?: string[][];
+  } | null;
+  const group = versioning?.fixed?.find((names) => names.includes(shell.name)) ?? [];
+  const projects = JSON.parse(run(pnpm, ["ls", "-r", "--depth", "-1", "--json"], repoRoot)) as {
+    name: string;
+    path: string;
+  }[];
   return [
     { folder: packageRoot, manifest: shell, effectEntries: EFFECT_ENTRIES, companion: undefined },
-    ...others.map((project) => {
-      const companion = COMPANIONS[project.packageName];
-      if (companion === undefined) {
-        throw new Error(`${project.packageName} is released with ${shell.name}; add it to COMPANIONS`);
-      }
-      const folder = join(repoRoot, project.projectFolder);
-      const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as Manifest;
-      return { folder, manifest, effectEntries: companion.effectEntries, companion };
-    })
+    ...group
+      .filter((name) => name !== shell.name)
+      .map((name) => {
+        const companion = COMPANIONS[name];
+        if (companion === undefined) {
+          throw new Error(`${name} is released with ${shell.name}; add it to COMPANIONS`);
+        }
+        const folder = projects.find((project) => project.name === name)?.path;
+        if (folder === undefined) {
+          throw new Error(`${name} is in the versioning.fixed group of ${shell.name} but not in the workspace`);
+        }
+        const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as Manifest;
+        return { folder, manifest, effectEntries: companion.effectEntries, companion };
+      })
   ];
 }
 
@@ -617,13 +626,21 @@ function pack(folder: string, destination: string): PackResult {
 const started = performance.now();
 const work = mkdtempSync(join(tmpdir(), "agent-kit-smoke-"));
 try {
-  const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as Manifest;
-  const packages = releaseSet(manifest);
-  const packs = packages.map(({ folder }) => pack(folder, work));
+  const sources = releaseSet(JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as Manifest);
+  const packs = sources.map(({ folder }) => pack(folder, work));
   const tarballs = packs.map((packed) => packed.filename);
   const consumer = join(work, "consumer");
   mkdirSync(consumer);
   npmInstall(consumer, tarballs);
+  // The installed manifests are the packed ones, in which pnpm replaced the `workspace:` and `catalog:` ranges of the
+  // source manifests with the versions a consumer sees, such as the exact `effect` peer.
+  const packages = sources.map((release) => ({
+    ...release,
+    manifest: JSON.parse(
+      readFileSync(join(consumer, "node_modules", release.manifest.name, "package.json"), "utf8")
+    ) as Manifest
+  }));
+  const [{ manifest } = shellOnly()] = packages;
   if (effectCopies(join(consumer, "node_modules")).length > 0) {
     throw new Error("npm installed effect, which must stay an optional peer");
   }
