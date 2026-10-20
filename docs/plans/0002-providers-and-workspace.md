@@ -428,7 +428,7 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 | `package-dependency` | The `workspace:` dependencies declared in each `package.json` are allowed (`check-boundaries.ts:301-310`), whether or not they are imported | A manifest test in `infra/architecture` that reads every `package.json` and checks its `workspace:` dependencies against the same allowed-dependency matrix the lint configuration uses (defined once) |
 | `entry-file`, `source-file`, `parse` | Package entry and source files exist and parse | publint, attw or `check:package` where they already check the same thing, otherwise the manifest test (decided by the spike) |
 
-- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell's provider modules are outside its scope. It is a short custom rule written with `@oxlint/plugins`, because exact matching and skipping module specifiers take many `no-restricted-syntax` selectors. It reports a value that equals a marker exactly, never a substring of a longer value:
+- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell are outside its scope. It is a short custom rule written with `@oxlint/plugins`, because exact matching and skipping module specifiers take many `no-restricted-syntax` selectors. It reports a value that equals a marker exactly, never a substring of a longer value:
   - a string literal or a string literal type whose whole value is a marker;
   - a path segment of a template literal's static text (the text split on `/`) that is a marker.
 
@@ -640,7 +640,7 @@ One batch per agent, in this order:
 #### Batch 12: provider closeout
 
 - Files:
-  - delete the seven built-in tables from the contexts and the identity table from catalog; move `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` to the shell (3.4);
+  - delete the seven built-in tables from the contexts and the identity table from catalog; move `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` to the shell (3.4). In catalog, `CodingAgentId` becomes a plain string type checked by `CODING_AGENT_ID_PATTERN`, and `CodingAgent.id` uses it. The shell's `/catalog` exports `CodingAgentId` as `BuiltinCodingAgentId | (string & {})`, so applications keep editor completion for the built-in ids;
   - add the capability check;
   - write the README support matrix (one row per agent, one column per service) with its test;
   - compute the marker list from the providers' `facts.ts`, delete the constant, and end the exemptions.
@@ -687,7 +687,7 @@ One batch each:
 | 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` exemption removed | Pass |
 | 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; within 2% of the batch 2 sizes or explained |
 | 6 | 6–11 | Same as row 5 for each provider | Pass |
-| 7 | 12 | The capability check; the README matrix test; marker rule over all context source | Pass; no exemptions left |
+| 7 | 12 | The capability check; the README matrix test; marker rule over all non-test context source | Pass; no exemptions left |
 | 8 | 13 | Shell export list compared with Appendix A plus SPI and testing names; the entry files of 3.8 only | Every remaining export has a recorded consumer |
 | 9 | 14–18 | Root `check`; revert outputs for moved rules | Pass; each revert fails its test |
 | 10 | 19 | The application check of 5.3; `npm view @rivus/agent-kit@0.20.0` | Every new error comes from 3.10; published |
