@@ -428,12 +428,16 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 | `package-dependency` | The `workspace:` dependencies declared in each `package.json` are allowed (`check-boundaries.ts:301-310`), whether or not they are imported | A manifest test in `infra/architecture` that reads every `package.json` and checks its `workspace:` dependencies against the same allowed-dependency matrix the lint configuration uses (defined once) |
 | `entry-file`, `source-file`, `parse` | Package entry and source files exist and parse | publint, attw or `check:package` where they already check the same thing, otherwise the manifest test (decided by the spike) |
 
-- **The agent-marker rule** is new, written with `no-restricted-syntax`. It matches string literals and template-literal parts in context source, never comments or tests.
+- **The agent-marker rule** is new, written with `no-restricted-syntax`. It reports a value that equals a marker exactly, never a substring of a longer value:
+  - a string literal or a string literal type whose whole value is a marker;
+  - a path segment of a template literal's static text (the text split on `/`) that is a marker.
+
+  Import and export specifiers are not checked; the boundary rules cover them. Comments and tests are not checked. Exact matching keeps words such as `invalid-cursor` and `api` from reporting.
   - From batch 3 to batch 11 its list is a constant in `infra/architecture`: the seven ids plus the markers found in 1.1 (for example `.claude`, `CLAUDE_CONFIG_DIR`, `CURSOR_VERSION`). It also matches string literal types, so the id unions are caught.
   - Until the code moves, it exempts exactly the files that hold agent knowledge on batch 3's base:
     - `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`, until batch 12;
     - `harness/src/domain/lifecycle/policies/host-sniffing.ts`, until batch 4 removes it;
-    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 12 removes the identity table.
+    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 4 removes `CodingAgentIdWithHome` and moves `BuiltinCodingAgentId` to the shell (3.4).
 
     Batch 3 confirms with a whole-repository lint that nothing outside this list reports. Each later batch removes the exemptions for the code it moves.
   - From batch 12 the list is computed in the lint configuration from the providers' `facts.ts` (a `vite.config.ts` is code), the constant is deleted, and the exemptions end.
@@ -449,7 +453,7 @@ No compatibility layer. 0.20.0 changes:
 - The seven `builtinXxx` tables are replaced by `builtinProviders` and the shell's service tables. `isBuiltinCodingAgentId` and `BuiltinCodingAgentId` stay exported from `/catalog` (3.4).
 - Per-agent exports such as `translateCodexRecords`, `CLAUDE_CODE_CAPABILITIES` and `claudeCodeUsage` are removed.
 - Override options (`adapters`, `dialects`, `profiles`) are replaced by `providers?: readonly Provider[]`, merged by agent id and service.
-- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table.
+- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table. The shell exports a bound one-argument `parseCodingAgentId` only if batch 13 finds a consumer (3.4).
 - The lease rule functions are no longer exported: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness` and the other rules in `lease/public.ts`.
 - The conformance suites take service tables; the shell's `/testing` binds the built-in ones.
 - Names without a consumer are removed (3.8).
@@ -606,7 +610,7 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
   - harness lifecycle: `HostMarkers` in `HookDialect`, `sniffSource` reading the declarations, `host-sniffing.ts` removed;
   - testing: the conformance suites take service tables (3.6);
   - harness's install adapters that call `resolveHome` (`domain/bundle/adapters/*/config-files.ts`);
-  - the docs that name changed APIs: `docs/specs/0001-agent-kit.md` (around lines 51–54 and 256–262 for `resolveHome`), `packages/agent-kit/README.md`, `docs/development/adoption.md`;
+  - the docs that name changed APIs: `docs/specs/0001-agent-kit.md` (around lines 51–54 and 256–262 for `resolveHome`), `README.md`, `packages/agent-kit/README.md`, `docs/development/adoption.md`;
   - shell: `src/providers/` (the per-service modules, `builtinProviders`, `unsupported.ts`), the `Provider` type and the binding functions.
 - Change: 3.3–3.6. The built-in adapters still live in the contexts for now; the shell's per-service modules import them from the contexts' existing tables.
 - Tests: both lookups; the merge by id and service for each shell function; the existing host-sniffing cases unchanged; the conformance suites with a given table.
@@ -680,7 +684,7 @@ One batch each:
 | 1.2f | 1 | `gh repo-checks repository`; PR CI | Pass |
 | 2 | 2 | Version Packages PR; publish job log; `npm view @rivus/agent-kit@0.19.1 --registry https://registry.npmjs.org/` | Opened by the action; published with provenance; listed |
 | 3 | 3 | `vp lint` and the manifest test on the fixtures; whole-repository `vp lint` | Each violating fixture reports its rule; no other violations |
-| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` exemption removed | Pass |
+| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` and `coding-agent-id.ts` exemptions removed | Pass |
 | 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; within 2% of the batch 2 sizes or explained |
 | 6 | 6–11 | Same as row 5 for each provider | Pass |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all context source | Pass; no exemptions left |
