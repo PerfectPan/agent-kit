@@ -31,11 +31,12 @@ catalog:
   # The bundled vitest peers on a real `vite` range, while vite-plus provides `vite` as this core alias;
   # pnpm can only satisfy that peer through the override below. Keep the version in lockstep with the
   # `vite-plus` entry (same release train; Dependabot does not see the mapping), and keep the `vitest`
-  # entry at the version vite-plus bundles, which `@effect/vitest` requires beside it: a lone vitest bump
-  # puts a second vitest beside the bundled one.
+  # entry at the exact version vite-plus depends on, which `@effect/vitest` requires beside it: a lone vitest
+  # bump puts a second vitest beside the bundled one, and `@effect/vitest` then registers its tests with the
+  # copy whose runner never started ("Cannot read properties of undefined (reading 'config')").
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
-  vitest: 5.0.4
+  vitest: 5.0.3
   zod: ^4.6.7
 
 # Redirect whatever declares a `vite` range to the vite-plus core alias.

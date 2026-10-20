@@ -6,8 +6,9 @@ updates:
   # `pnpm install` and commit the lockfile on the branch before merging. One weekly PR collects every minor and
   # patch npm update, and a second one every major so a failing major does not hold back the rest (see
   # docs/development/release.md). The cooldown must not be shorter than minimumReleaseAge in pnpm-workspace.yaml.
-  # A vite-plus bump must also bump the `vite` alias (npm:@voidzero-dev/vite-plus-core) in the same pnpm-workspace.yaml;
-  # Dependabot proposes them in separate PRs, so add the matching alias bump to the branch before merging.
+  # A vite-plus bump must also bump the `vite` alias (npm:@voidzero-dev/vite-plus-core) and `vitest` in the same
+  # pnpm-workspace.yaml; Dependabot proposes the alias in a separate PR and ignores vitest, so add both bumps to the
+  # branch before merging.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -33,6 +34,9 @@ updates:
       # lint-config is a git dependency whose upgrades land with their code fixes; Dependabot misreads its tags and
       # proposes downgrades (v0.5.0 -> v0.3.2).
       - dependency-name: "@perfectpan/lint-config"
+      # vitest stays at the version vite-plus depends on (see the catalog in pnpm-workspace.yaml); it moves only with
+      # a vite-plus bump.
+      - dependency-name: "vitest"
 
   - package-ecosystem: "github-actions"
     directory: "/"

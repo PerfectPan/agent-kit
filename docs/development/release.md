@@ -200,7 +200,8 @@ Run it after `pnpm run check` so `dist` exists.
   edit `package.json` files or the catalog in `pnpm-workspace.yaml` without regenerating the root `pnpm-lock.yaml`.
   Check out the branch, run `pnpm install`, commit the lockfile, and push. A `vite-plus` bump and the matching
   `vite` alias (`npm:@voidzero-dev/vite-plus-core`) land in separate PRs; add the alias bump to the first branch
-  before merging so the two stay in lockstep. Then add changesets:
+  before merging so the two stay in lockstep. Dependabot ignores `vitest`: on a `vite-plus` bump, also set the
+  `vitest` catalog entry to the exact version the new `vite-plus` depends on. Then add changesets:
   - For each published package whose runtime dependencies changed:
     `pnpm change <name> --bump patch --summary "Update dependencies."`.
   - When the PR moves the exact optional `effect` peer (Dependabot moves it together with the devDependency), one
