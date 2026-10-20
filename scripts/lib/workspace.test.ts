@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vite-plus/test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
+  CHANGES_DIRECTORY,
   fixedGroupVersion,
   isPublishable,
   type PackageManifest,
   parseWorkspaceDirectories,
+  pendingChangesets,
   type ReleaseInput,
   releaseErrors,
   releaseState,
@@ -44,6 +50,30 @@ describe("isPublishable", () => {
   it("is false for private packages", () => {
     expect(isPublishable({ dir: "packages/lib", manifest: { name: "@scope/lib" } })).toBe(true);
     expect(isPublishable({ dir: "scripts", manifest: { name: "repo-scripts", private: true } })).toBe(false);
+  });
+});
+
+describe("pendingChangesets", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "pending-changesets-"));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("lists only change records, not the README, ledger.yaml or config.json", () => {
+    mkdirSync(join(root, CHANGES_DIRECTORY));
+    for (const name of ["README.md", "ledger.yaml", "config.json", "olive-hats-sort.md"]) {
+      writeFileSync(join(root, CHANGES_DIRECTORY, name), "");
+    }
+    expect(pendingChangesets(root)).toEqual(["olive-hats-sort.md"]);
+  });
+
+  it("is empty when the directory is missing", () => {
+    expect(pendingChangesets(root)).toEqual([]);
   });
 });
 
