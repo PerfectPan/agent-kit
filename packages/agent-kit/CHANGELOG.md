@@ -1,5 +1,11 @@
 # Change Log - @rivus/agent-kit
 
+## 0.19.1
+
+### Patch Changes
+
+- The packages are now built and published from a pnpm workspace instead of Rush; the published code is unchanged.
+
 ## 0.19.0
 Sat, 17 Oct 2026 06:13:04 GMT
 

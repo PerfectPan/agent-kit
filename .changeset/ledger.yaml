@@ -1,0 +1,8 @@
+"@rivus/agent-kit-collab@0.19.1":
+  dir: packages/agent-kit-collab
+  intents:
+    - olive-hats-sort
+"@rivus/agent-kit@0.19.1":
+  dir: packages/agent-kit
+  intents:
+    - olive-hats-sort
