@@ -314,7 +314,7 @@ packages/providers/claude-code/
   - `parseCodingAgentId(input, identities)` resolves aliases from the given table;
   - `homeRuleOf(agent, identities, own?)` keeps today's precedence: the caller's own rule, then the table's.
 - `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
-- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package. The shell derives them from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
+- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package in batch 12, together with the identity table. Until then the contexts' built-in tables are still typed with the union, and a context may not depend on the shell, so catalog keeps it. From batch 12 the shell derives both from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
 
 ### 3.5 Host markers
@@ -423,12 +423,12 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 | --- | --- | --- |
 | `layer`, `deep-import`, `relative-escape`, `public-entry`, `external-dependency`, `types-only` | Imports between layers and packages, entry use, external packages, type-only upstream imports | eslint-plugin-boundaries: element types by path (each context layer, providers, shell, platform-node), `dependencies` policies, `entry-point`, `external`, and `importKind` for type-only imports. The new provider rules of 3.1 are written the same way |
 | `node-builtin`, `effect` | `node:*` only in platform-node; `effect` only in the allowed layers | oxlint's built-in `no-restricted-imports` with `overrides` per directory |
-| `dynamic-import`, `shell-entry` | `import()` needs a literal specifier; shell entries re-export names one by one | `no-restricted-syntax` from `oxlint-plugin-eslint`, or a short rule written with `@oxlint/plugins` |
+| `dynamic-import`, `shell-entry` | `import()` needs a literal specifier; shell entries re-export names one by one | `no-restricted-syntax` from `oxlint-plugin-eslint` |
 | `undeclared-package` | Every workspace package under `packages/` is declared in the manifest (`check-boundaries.ts:289-290`) | Every package directory must match an element type; the boundaries plugin's unknown-file rule reports a file outside every element |
 | `package-dependency` | The `workspace:` dependencies declared in each `package.json` are allowed (`check-boundaries.ts:301-310`), whether or not they are imported | A manifest test in `infra/architecture` that reads every `package.json` and checks its `workspace:` dependencies against the same allowed-dependency matrix the lint configuration uses (defined once) |
 | `entry-file`, `source-file`, `parse` | Package entry and source files exist and parse | publint, attw or `check:package` where they already check the same thing, otherwise the manifest test (decided by the spike) |
 
-- **The agent-marker rule** is new, written with `no-restricted-syntax`. It reports a value that equals a marker exactly, never a substring of a longer value:
+- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell's provider modules are outside its scope. It is a short custom rule written with `@oxlint/plugins`, because exact matching and skipping module specifiers take many `no-restricted-syntax` selectors. It reports a value that equals a marker exactly, never a substring of a longer value:
   - a string literal or a string literal type whose whole value is a marker;
   - a path segment of a template literal's static text (the text split on `/`) that is a marker.
 
@@ -437,7 +437,7 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
   - Until the code moves, it exempts exactly the files that hold agent knowledge on batch 3's base:
     - `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`, until batch 12;
     - `harness/src/domain/lifecycle/policies/host-sniffing.ts`, until batch 4 removes it;
-    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 4 removes `CodingAgentIdWithHome` and moves `BuiltinCodingAgentId` to the shell (3.4).
+    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 12. Batch 4 removes `CodingAgentIdWithHome`; `BuiltinCodingAgentId` stays until the identity table goes (3.4).
 
     Batch 3 confirms with a whole-repository lint that nothing outside this list reports. Each later batch removes the exemptions for the code it moves.
   - From batch 12 the list is computed in the lint configuration from the providers' `facts.ts` (a `vite.config.ts` is code), the constant is deleted, and the exemptions end.
@@ -604,7 +604,7 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
 #### Batch 4: service tables, routing and SPI entries
 
 - Files:
-  - catalog: `ServiceTable`, the two lookups, `CapabilityUnsupported`, and the identity functions of 3.4;
+  - catalog: `ServiceTable`, the two lookups, `CapabilityUnsupported`, the identity functions of 3.4, and the removal of `resolveHome` and `CodingAgentIdWithHome` (`BuiltinCodingAgentId` stays until batch 12);
   - each context: `src/spi.ts`, `domain/<concept>/spi/` and `application/spi.ts`, with the SPI interfaces moved out of `value-objects/` and `ports.ts`;
   - every routing site of 1.1, with the `providers` option of 3.3;
   - harness lifecycle: `HostMarkers` in `HookDialect`, `sniffSource` reading the declarations, `host-sniffing.ts` removed;
@@ -640,7 +640,7 @@ One batch per agent, in this order:
 #### Batch 12: provider closeout
 
 - Files:
-  - delete the seven built-in tables from the contexts and the identity table from catalog;
+  - delete the seven built-in tables from the contexts and the identity table from catalog; move `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` to the shell (3.4);
   - add the capability check;
   - write the README support matrix (one row per agent, one column per service) with its test;
   - compute the marker list from the providers' `facts.ts`, delete the constant, and end the exemptions.
@@ -684,7 +684,7 @@ One batch each:
 | 1.2f | 1 | `gh repo-checks repository`; PR CI | Pass |
 | 2 | 2 | Version Packages PR; publish job log; `npm view @rivus/agent-kit@0.19.1 --registry https://registry.npmjs.org/` | Opened by the action; published with provenance; listed |
 | 3 | 3 | `vp lint` and the manifest test on the fixtures; whole-repository `vp lint` | Each violating fixture reports its rule; no other violations |
-| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` and `coding-agent-id.ts` exemptions removed | Pass |
+| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` exemption removed | Pass |
 | 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; within 2% of the batch 2 sizes or explained |
 | 6 | 6–11 | Same as row 5 for each provider | Pass |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all context source | Pass; no exemptions left |
