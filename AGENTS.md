@@ -13,39 +13,42 @@ This repository is intended to become a maintainable, publishable project. Treat
 
 ## Project-Specific Commands
 
-This is a Rush + pnpm TypeScript monorepo. Rush pins its own version and pnpm in `rush.json`; the root
-`package.json` only holds shortcuts that call `common/scripts/install-run-rush.js`, so `npm run <script>` works
-without a global Rush or pnpm install. Node comes from `.node-version`.
+This is a pnpm workspace TypeScript monorepo. The pnpm version is pinned in the root `package.json`
+`packageManager` field (corepack and CI resolve it automatically). The root `package.json` is itself a private
+workspace project: it publishes nothing and holds the `pnpm -r` shortcuts. Node comes from `.node-version`.
 
 ```bash
 # Install local Git hooks (pre-commit repository checks, pre-push blocks direct pushes to main):
 ./scripts/install-git-hooks.sh
 
-# Install dependencies from the committed lockfile (CI does the same):
-node common/scripts/install-run-rush.js install
+# Install dependencies from the committed lockfile (CI does the same with --frozen-lockfile):
+pnpm install
 
-# After adding or changing a dependency in any package.json:
-node common/scripts/install-run-rush.js update
+# After adding or changing a dependency, refresh the lockfile and commit it:
+pnpm install
 
 # Aggregate gate: format:check, build, lint, typecheck, test, check:package:
-npm run check
+pnpm run check
 
-# Individual gates (Rush bulk commands run in every project):
-npm run format        # or format:check
-npm run build         # rush rebuild: internal packages have no build step, so an incremental build would skip
-                      # the shell after an internal-package change
-npm run lint          # vp lint: oxlint with type-aware rules and TypeScript diagnostics
-npm run typecheck
-npm run test          # includes the architecture boundary test in infra/architecture
-npm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
+# Individual gates (run in every workspace package that defines them, in dependency order):
+pnpm run format        # or format:check
+pnpm run build         # internal packages have no build step; the shell's vp pack bundles them
+pnpm run lint          # vp lint: oxlint with type-aware rules and TypeScript diagnostics
+pnpm run typecheck
+pnpm run test          # includes the architecture boundary test in infra/architecture
+pnpm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
 
-# Record a release note for changed packages, then verify one exists (CI runs the verify step on PRs):
-npm run change
-npm run change:verify
+# Work on one package (add ... after the name to include its workspace dependencies):
+pnpm --filter @rivus/agent-kit-platform run test
 
-# Release identity check and publish dry run (never add --publish locally):
-npm run release:check -- vX.Y.Z --repository OWNER/REPO
-npm run publish:dry-run
+# Record a release note for changed packages. Non-interactive form (works without a terminal):
+pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
+# Interactive prompt (needs a terminal); preview with `pnpm change status`:
+pnpm change
+
+# Release identity check and publish dry run (dry run never uploads):
+pnpm run release:check -- vX.Y.Z --repository OWNER/REPO
+pnpm run publish:dry-run
 
 # Repository, PR/MR title and description checks:
 gh repo-checks repository
@@ -56,7 +59,8 @@ gh repo-checks pr-body pr-body.md
 gh repo-checks protect --repo OWNER/REPO
 ```
 
-Rush projects are listed in `rush.json`:
+Workspace members are the folders that the globs in `pnpm-workspace.yaml` match (`packages/*`,
+`packages/providers/*`, `infra/*`, `tests/*`, `scripts`):
 
 - `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files only re-export names,
   one by one, from internal packages' `public.ts` (or a lighter public sub-entry such as
@@ -65,9 +69,9 @@ Rush projects are listed in `rush.json`:
 - `packages/agent-kit-collab` is `@rivus/agent-kit-collab`, the second published package, with its own code: each
   entry lives in `src/<entry>/` (layers at `src/<entry>/<layer>/`, entry file `src/<entry>/public.ts`). It reaches
   `@rivus/agent-kit` only through the public entries listed in `boundaries.ts`, as a peer (`workspace:^`). Both
-  packages are the `main` lockstep version policy: one version, one tag, one release.
+  packages are the one `versioning.fixed` group in `pnpm-workspace.yaml`: one version, one tag, one release.
 - The other folders under `packages/`, such as `packages/platform`, are private internal packages named
-  `@rivus/agent-kit-<folder>`, one per bounded context, with `"shouldPublish": false`. Each exports `src/index.ts`
+  `@rivus/agent-kit-<folder>`, one per bounded context, with `"private": true`. Each exports `src/index.ts`
   for sibling packages and `src/public.ts` for the shell, straight from TypeScript source, and is a `workspace:*`
   devDependency of the shell. Their tsconfig enables `isolatedDeclarations` because the shell's declaration bundler
   (Oxc) needs explicit types on exported declarations; keep exports whose type is only inferred, such as zod
@@ -78,10 +82,13 @@ Rush projects are listed in `rush.json`:
 - `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run directly
   by Node.
 - `tests/smoke` is the private `agent-kit-smoke` project: smoke tests against the coding agents installed on this
-  machine, run by hand with `npm run smoke` there (see its README). Its `test` script is empty, so CI never runs them.
+  machine, run by hand with `pnpm run smoke` there (see its README). Its `test` script is empty, so CI never runs them.
 
-Every project defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the Rush
-bulk commands call. `docs/development/release.md` is the release runbook.
+Every package defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the root
+`pnpm -r` shortcuts call; pnpm skips a package whose script is empty. Shared dependency versions live in the
+`pnpm-workspace.yaml` catalog, referenced as `catalog:`; `catalogMode: strict` rejects `pnpm add` of an
+already-cataloged package at an out-of-range version, but it does not police hand-edited manifests, so keep shared
+versions in the catalog deliberately. `docs/development/release.md` is the release runbook.
 
 Do not claim implementation work is complete until the relevant commands pass, or until skipped commands are explained with concrete blockers.
 
@@ -101,13 +108,14 @@ For non-trivial changes:
 ## Releases
 
 - A PR that changes a published package's source, manifest or build config, an internal package that the shell
-  bundles, or the Rush lockfile, includes a Rush change file under `common/changes/`. A change in an internal package
-  needs a change file for `@rivus/agent-kit`. Create it with `npm run change`; when Rush reports nothing to do (an
-  internal-package or lockfile-only change), use `node scripts/release-intent.ts add --type <major|minor|patch|none> --message "<text>"`.
-- Never bump versions, edit `CHANGELOG.json`/`CHANGELOG.md`, create release tags, or run `rush publish --publish`
-  by hand. Every push to `main` runs both release workflows: `version-packages.yml` opens or updates the release PR
-  while change files are pending, and once the merged release PR has consumed them, `publish-npm.yml` tags the
-  release, creates the GitHub Release and publishes. Follow `docs/development/release.md`.
+  bundles, or the lockfile, includes a changeset under `.changeset/`. A change in an internal package needs a
+  changeset for `@rivus/agent-kit`. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
+  (format in `CONTRIBUTING.md`); while the packages are 0.x, a breaking change is `minor`, never `major`. CI does not
+  check for missing changesets; adding one is the author's and the reviewer's call.
+- Never bump versions, edit `CHANGELOG.md`, create release tags, or publish by hand. Every push to `main` runs both
+  release workflows: `version-packages.yml` opens or updates the release PR while changesets are pending, and once
+  the merged release PR has consumed them, `publish-npm.yml` tags the release, creates the GitHub Release and
+  publishes. Follow `docs/development/release.md`.
 - Workspace dependencies between packages use `workspace:*`; pnpm replaces them with exact versions when packing.
 
 ## Repository Architecture
@@ -130,7 +138,7 @@ For non-trivial changes:
 - Use `CONTRIBUTING.md` for contribution workflow.
 - Use `docs/specs/` for active product behavior and `docs/plans/` for active technical decisions and detailed execution plans. Current-state documentation owns implemented behavior.
 - Use `docs/` for durable current-state knowledge such as architecture, development guides, operational runbooks, references, and onboarding tutorials.
-- Record user-facing changes with Rush change files (`npm run change`) in the same PR; do not edit generated changelogs or add a hand-written root `CHANGELOG.md`.
+- Record user-facing changes with changesets (`.changeset/*.md`, written by `pnpm change`) in the same PR; do not edit generated changelogs or add a hand-written root `CHANGELOG.md`.
 - When behavior, configuration, commands, APIs, deployment, architecture, or operations change, update the relevant docs in the same PR/MR or explain why no docs changed.
 
 ## AI Delivery Workflow
@@ -169,10 +177,7 @@ rg --hidden --no-ignore -n "/Users/[A-Za-z]|BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[
   --glob '!.git/**' \
   --glob '!.omx/**' \
   --glob '!**/node_modules/**' \
-  --glob '!common/temp/**' \
   --glob '!**/dist/**' \
-  --glob '!**/rush-logs/**' \
-  --glob '!**/.rush/**' \
   --glob '!AGENTS.md' \
   --glob '!CONTRIBUTING.md' \
   --glob '!SECURITY.md'

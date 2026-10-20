@@ -2,44 +2,53 @@
 
 ## Development Setup
 
-Requirements: the Node.js major in `.node-version` (Node 24, the current LTS) and Git. Rush and pnpm are downloaded on demand
-at the versions pinned in `rush.json`; a global install is optional.
+Requirements: the Node.js major in `.node-version` (Node 24, the current LTS) and Git. The root `package.json`
+declares the range in `engines.node` and enforces it through `devEngines.runtime` (`onFail: "error"`): with a Node
+outside `^24.11.0`, `pnpm install` fails with `ERR_PNPM_BAD_RUNTIME_VERSION`. pnpm is pinned in the root
+`package.json` `packageManager` field; corepack resolves it automatically (`corepack enable pnpm` once per
+machine), and CI installs it through `pnpm/setup`. A standalone pnpm install also works if its major matches.
 
-CI and `.node-version` follow the current Node.js Active LTS major, and workflows reference actions by their latest major tag. When a new Node.js line enters Active LTS (Node 26 is expected in late October 2026), move `.node-version`, `nodeSupportedVersionRange` in `rush.json`, the `engines` fields and `@types/node` to it in one change.
+CI and `.node-version` follow the current Node.js Active LTS major, and workflows reference actions by their latest major tag. When a new Node.js line enters Active LTS (Node 26 is expected in late October 2026), move `.node-version`, the `engines` and `devEngines.runtime` fields and the `@types/node` catalog entry to it in one change.
 
 ```bash
 # install local Git hooks
 ./scripts/install-git-hooks.sh
 
-# install dependencies from the committed lockfile
-node common/scripts/install-run-rush.js install
+# install dependencies from the committed lockfile (CI does the same with --frozen-lockfile)
+pnpm install
 
 # after changing dependencies in any package.json, refresh the lockfile and commit it
-# (pnpm rejects versions published less than a day ago: minimumReleaseAgeMinutes in common/config/rush/pnpm-config.json)
-node common/scripts/install-run-rush.js update
+# (pnpm rejects versions published less than a day ago: minimumReleaseAge in pnpm-workspace.yaml)
+pnpm install
 
 # run the full local gate
-npm run check
+pnpm run check
 
-# work on one package; rushx runs that package's scripts (needs a global `npm i -g @microsoft/rush`)
-cd packages/platform && rushx test
+# work on one package (add ... after the name to include its workspace dependencies)
+pnpm --filter @rivus/agent-kit-platform run test
 ```
 
 The publishable packages are `packages/agent-kit` (`@rivus/agent-kit`) and `packages/agent-kit-collab`
-(`@rivus/agent-kit-collab`), in the `main` lockstep version policy. The shell bundles private context packages;
-collab owns its entry code and uses agent-kit's public subpaths through a peer dependency. See
+(`@rivus/agent-kit-collab`), released together through the `versioning.fixed` group in `pnpm-workspace.yaml`. The
+shell bundles private context packages; collab owns its entry code and uses agent-kit's public subpaths through a
+peer dependency. See
 [Authoring Conventions](docs/architecture/authoring.md) for their layouts and dependency boundaries.
 To add an internal package for a bounded context, copy
 `packages/platform` (its `package.json`, `tsconfig.json` and `vite.config.ts`), name it `@rivus/agent-kit-<folder>`,
-register it in `rush.json` with `"shouldPublish": false`, declare its dependencies in
-`infra/architecture/boundaries.ts`, add it to the shell's devDependencies as `workspace:*` when the shell re-exports
-it, and run `node common/scripts/install-run-rush.js update`. A new public entry is a subpath in the shell's
+keep `"private": true`, declare its dependencies in `infra/architecture/boundaries.ts`, add it to the shell's
+devDependencies as `workspace:*` when the shell re-exports it, and run `pnpm install`; the `packages/*` glob in
+`pnpm-workspace.yaml` makes it a workspace member. A new public entry is a subpath in the shell's
 `exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts`.
-Each package owns its toolchain devDependencies; `ensureConsistentVersions` in `rush.json` keeps their versions
-identical across packages. devDependencies are pinned to exact versions. Runtime dependencies of `@rivus/agent-kit`,
-declared both in the shell and in the internal package that imports them, use caret ranges such as `^4.6.5` so
-that consumers can deduplicate them against their own copies; give every package the same range. An optional peer
-such as `effect` stays exact, because two different Effect versions in one process can fail at runtime.
+Each package lists its own toolchain devDependencies. A version that two or more packages share lives once in the
+`catalog` of `pnpm-workspace.yaml`, and the packages reference it as `"catalog:"`; `catalogMode: strict` rejects
+`pnpm add` of an already-cataloged package at an out-of-range version, but a hand-edited version or a dependency
+outside the catalog still installs, so keep shared versions in the catalog deliberately. devDependencies are pinned
+to exact versions. Runtime dependencies of `@rivus/agent-kit`, declared both in the shell and in the internal package
+that imports them, use caret ranges such as `^4.6.5` so that consumers can deduplicate them against their own
+copies; the catalog gives every package the same range, and packing writes that range into the published manifest.
+An optional peer such as `effect` stays exact, because two different Effect versions in one process can fail at
+runtime. A new published package needs a stable `version`, a `repository.url` pointing at this GitHub repository,
+`publishConfig.access: "public"`, a `files` list, and a place in the `versioning.fixed` group.
 
 ## Contribution Flow
 
@@ -65,10 +74,7 @@ Small typo corrections, narrow documentation fixes, and repository metadata upda
 ./scripts/install-git-hooks.sh
 
 # Aggregate gate: format:check, build, lint, typecheck, test, package checks:
-npm run check
-
-# Change files for package changes (compares with origin/main; CI runs it on every PR):
-npm run change:verify
+pnpm run check
 
 # PR/MR title:
 gh repo-checks pr-title "docs: update project template"
@@ -80,32 +86,37 @@ gh repo-checks pr-body pr-body.md
 gh repo-checks protect --repo OWNER/REPO
 
 # Package or release dry-run:
-npm run publish:dry-run
+pnpm run publish:dry-run
 ```
 
-## Change Files
+## Changesets
 
-Rush builds changelogs and version bumps from change files in `common/changes/`. A PR that changes what a
-published package ships (source, manifest, build config, or an internal package that it bundles) or the Rush
-lockfile needs at least one:
+pnpm builds changelogs and version bumps from changesets in `.changeset/`. A PR that changes what a published
+package ships (source, manifest, build config, or an internal package that it bundles) or the lockfile needs one.
+A change inside an internal package ships in the shell's `dist`, so its changeset names `@rivus/agent-kit`:
 
 ```bash
-npm run change
+pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
 ```
 
-Rush asks for a bump type and a user-facing message per changed package. Use `none` for changes that need a record
-but no release. `rush change --verify` only sees files inside published project folders, so
-`scripts/release-intent.ts` additionally requires a change file for `@rivus/agent-kit` when an internal package it
-bundles changes, and a change file when `common/config/rush/pnpm-lock.yaml` changes. When `rush change` reports
-nothing to do, write one directly:
+Pass the package name as an argument; `pnpm change` without arguments asks for the packages, the bump type and the
+message, and needs a terminal (`pnpm --filter <package> change -y` fails without one). The command writes a file
+like this, which you can also write by hand:
 
-```bash
-node scripts/release-intent.ts add --package @rivus/agent-kit --type patch --message "Update runtime dependencies."
+```markdown
+---
+"@rivus/agent-kit": patch
+---
+
+Update runtime dependencies.
 ```
 
-Tests, fixtures and Markdown inside a package do not count as shipped files for `release-intent`, but
-`rush change --verify` still asks for a record; answer with `none`. Release and dependency bot PRs skip both checks
-in CI. See [`docs/development/release.md`](docs/development/release.md) for the release procedure.
+The file name is a short kebab-case slug, and one file may name both published packages. Both packages release at
+one shared version, the largest bump across the pending changesets; while they are 0.x, record a breaking change as
+`minor`, because `major` would release 1.0.0. `pnpm change status` previews what the pending changesets would
+release. CI does not check for missing changesets: tests, fixtures and Markdown need none, and whether a change rides
+a release is the author's and the reviewer's call. See [`docs/development/release.md`](docs/development/release.md)
+for the release procedure.
 
 ## SDD Workflow And Document Lifecycle
 
@@ -189,7 +200,7 @@ Update the description when review feedback, rebases, or follow-up commits chang
 
 ## Release Notes
 
-Release notes come from the release tool. Rush writes each published package's `CHANGELOG.md` from the change files in `common/changes/` (see [Change Files](#change-files)). Do not edit generated changelogs or keep a hand-written root `CHANGELOG.md` beside them.
+Release notes come from the release tool. `pnpm version -r` writes each published package's `CHANGELOG.md` from the changesets in `.changeset/` (see [Changesets](#changesets)). Do not edit generated changelogs or keep a hand-written root `CHANGELOG.md` beside them.
 
 ## License
 

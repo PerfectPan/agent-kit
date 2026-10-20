@@ -248,15 +248,15 @@ adoption and real-agent acceptance remain open; see
 
 ## Repository
 
-A Rush + pnpm monorepo generated from
-[PerfectPan/project-template-rush](https://github.com/PerfectPan/project-template-rush). Each bounded context is a
+A pnpm workspace monorepo laid out like
+[PerfectPan/project-template-pnpm](https://github.com/PerfectPan/project-template-pnpm). Each bounded context is a
 private package under `packages/`; `packages/agent-kit` is the published shell that re-exports their public names
 and bundles them into `dist`. `infra/architecture/boundaries.ts` declares which package and layer may import what,
 and a test checks the real import graph against it.
 
 ```bash
-node common/scripts/install-run-rush.js install
-npm run check   # format, build, lint, typecheck, test, package checks
+pnpm install
+pnpm run check   # format, build, lint, typecheck, test, package checks
 ```
 
 - [`docs/plans/0001-agent-kit.md`](docs/plans/0001-agent-kit.md): design, decisions and phases.
