@@ -243,7 +243,7 @@ packages/providers/claude-code/
     facts.ts          the agent's facts, written once: home rule, credential and configuration files,
                       environment variables, command names, and its marker strings for the lint rule
     layout.ts         where the agent stores sessions and usage; read by discovery, sessions and usage
-    records.ts        parsing of the agent's log records, shared by sessions and usage (agents with logs)
+    records.ts        parsing of the agent's log records and other code shared by sessions and usage (agents with logs)
     identity.ts       CodingAgent                                   → ./identity
     discovery.ts      ProbeRecipe                                   → ./discovery
     hooks.ts          HookDialect                                   → ./hooks
@@ -257,10 +257,11 @@ packages/providers/claude-code/
 - A provider creates only the files of the services it supports. The shell records why a service is unsupported.
 - There is no barrel file. The shell imports each service from its own subpath, so an entry bundles only the services it binds.
 - Import limits inside a provider:
-  - `hooks.ts` imports only `facts.ts` and harness's SPI;
-  - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts` and sessions' SPI, never `sessions/`.
+  - `hooks.ts` imports only `facts.ts`, harness's SPI and `zod/mini`;
+  - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, sessions' SPI and `zod/mini`, never `sessions/`;
+  - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay (`transcript/adapters/codex/fork-replay.ts` today), which its usage decoding also uses, moves to `records/`.
 
-  The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform and import no npm package.
+  The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform. Both entries keep importing nothing at run time: `zod/mini` stays bundled into them, as `ZOD_BUNDLE_ENTRIES` in `packages/agent-kit/scripts/check-dist.ts` requires today.
 - Relations between agents are declared by agent id, not by import. Grok and Cursor also run Claude Code's hooks; they declare that in their own HookDialect, as `foreignHooks` does today.
 - Formats shared by several agents belong to no provider. They are SPI helpers of the context that reads them, named by format:
   - the ACP `session/update` translation (sessions);
@@ -312,8 +313,8 @@ packages/providers/claude-code/
 - The functions that read the table take it as a parameter:
   - `parseCodingAgentId(input, identities)` resolves aliases from the given table;
   - `homeRuleOf(agent, identities, own?)` keeps today's precedence: the caller's own rule, then the table's.
-- `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same.
-- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package. The shell derives them from its provider list and still exports them from `/catalog`. The shell also exports `parseCodingAgentId(input)` and `sessionAdapterHome(adapter, context)` bound to the built-in identities, because applications call them; the trace viewer uses `sessionAdapterHome` for its own adapter.
+- `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
+- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package. The shell derives them from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
 
 ### 3.5 Host markers
@@ -406,7 +407,7 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 - A shell export needs a consumer: an application, a third-party provider (SPI interface types), or the testing entry. Option and result types that only appear in signatures are not exported by name; callers derive them with `Parameters` and `ReturnType`, as `authoring.md` already says.
 - The pruning starts from the 456 names and the 107 that the applications use (Appendix A), and keeps the SPI interfaces and the testing suites.
 - Entry files that stay:
-  - each context: `public.ts` and `spi.ts`;
+  - each internal package (the contexts, platform, platform-node, redact, testing): `public.ts`, and `spi.ts` for the contexts;
   - the runtime-profile entries `authoring.md` allows: harness's `src/events.ts` (the hook path) and the `src/effect.ts` files of platform, platform-node and testing;
   - collab: one `src/<entry>/public.ts` per public entry;
   - providers: one file per service subpath (3.2);
@@ -428,7 +429,13 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 | `entry-file`, `source-file`, `parse` | Package entry and source files exist and parse | publint, attw or `check:package` where they already check the same thing, otherwise the manifest test (decided by the spike) |
 
 - **The agent-marker rule** is new, written with `no-restricted-syntax`. It matches string literals and template-literal parts in context source, never comments or tests.
-  - From batch 3 to batch 11 its list is a constant in `infra/architecture`: the seven ids plus the markers found in 1.1 (for example `.claude`, `CLAUDE_CONFIG_DIR`, `CURSOR_VERSION`). While the adapters still live in the contexts, it exempts `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`.
+  - From batch 3 to batch 11 its list is a constant in `infra/architecture`: the seven ids plus the markers found in 1.1 (for example `.claude`, `CLAUDE_CONFIG_DIR`, `CURSOR_VERSION`). It also matches string literal types, so the id unions are caught.
+  - Until the code moves, it exempts exactly the files that hold agent knowledge on batch 3's base:
+    - `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`, until batch 12;
+    - `harness/src/domain/lifecycle/policies/host-sniffing.ts`, until batch 4 removes it;
+    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 12 removes the identity table.
+
+    Batch 3 confirms with a whole-repository lint that nothing outside this list reports. Each later batch removes the exemptions for the code it moves.
   - From batch 12 the list is computed in the lint configuration from the providers' `facts.ts` (a `vite.config.ts` is code), the constant is deleted, and the exemptions end.
   - The rule catches hand-written ids, directories and environment variable names. It cannot catch agent knowledge without a marker, such as branching on Claude's `notification_type` field; `authoring.md` states that this is a review item.
 - **Where the configuration lives.** The configuration is specific to this repository, so it stays out of the shared lint-config. `infra/architecture` exports it, and each package's `vite.config.ts` merges it with the shared `lint`.
@@ -442,7 +449,7 @@ No compatibility layer. 0.20.0 changes:
 - The seven `builtinXxx` tables are replaced by `builtinProviders` and the shell's service tables. `isBuiltinCodingAgentId` and `BuiltinCodingAgentId` stay exported from `/catalog` (3.4).
 - Per-agent exports such as `translateCodexRecords`, `CLAUDE_CODE_CAPABILITIES` and `claudeCodeUsage` are removed.
 - Override options (`adapters`, `dialects`, `profiles`) are replaced by `providers?: readonly Provider[]`, merged by agent id and service.
-- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table in the contexts; the shell's `parseCodingAgentId` keeps its one-argument form.
+- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table.
 - The lease rule functions are no longer exported: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness` and the other rules in `lease/public.ts`.
 - The conformance suites take service tables; the shell's `/testing` binds the built-in ones.
 - Names without a consumer are removed (3.8).
@@ -548,7 +555,7 @@ Publishing stays on trusted publishing with provenance, from the same workflow f
 
 ### 6.3 Execution order
 
-Each batch is one PR and leaves `main` buildable. A batch that changes shipped code adds a `minor` change record (0.x breaking) or a `patch` record (no API change).
+Each batch is one PR and leaves `main` buildable. A batch that changes shipped code adds a `minor` change record (0.x breaking) or a `patch` record (no API change). A batch that changes or removes a public name also updates every document that names it: `docs/specs/0001-agent-kit.md`, the READMEs, `docs/development/adoption.md` and `authoring.md`.
 
 #### Batch 1: lint spike and the pnpm workspace
 
@@ -586,7 +593,7 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
   - add the boundary lint configuration, the manifest test, the marker constant and their fixtures under `infra/architecture`;
   - change each package's `vite.config.ts` to merge the configuration;
   - delete `check-boundaries.ts`, `boundaries.ts`, `workspace.ts` and `boundaries.test.ts`.
-- Change: 3.9, with the marker list and exemptions that apply until batch 12.
+- Change: 3.9, with the marker list and the exemptions listed there.
 - Tests: a violating and an allowed fixture per rule, including a new unlisted package directory and a forbidden `workspace:` dependency.
 - Exit condition: 6.4 row 3.
 
@@ -598,6 +605,8 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
   - every routing site of 1.1, with the `providers` option of 3.3;
   - harness lifecycle: `HostMarkers` in `HookDialect`, `sniffSource` reading the declarations, `host-sniffing.ts` removed;
   - testing: the conformance suites take service tables (3.6);
+  - harness's install adapters that call `resolveHome` (`domain/bundle/adapters/*/config-files.ts`);
+  - the docs that name changed APIs: `docs/specs/0001-agent-kit.md` (around lines 51–54 and 256–262 for `resolveHome`), `packages/agent-kit/README.md`, `docs/development/adoption.md`;
   - shell: `src/providers/` (the per-service modules, `builtinProviders`, `unsupported.ts`), the `Provider` type and the binding functions.
 - Change: 3.3–3.6. The built-in adapters still live in the contexts for now; the shell's per-service modules import them from the contexts' existing tables.
 - Tests: both lookups; the merge by id and service for each shell function; the existing host-sniffing cases unchanged; the conformance suites with a given table.
@@ -671,7 +680,7 @@ One batch each:
 | 1.2f | 1 | `gh repo-checks repository`; PR CI | Pass |
 | 2 | 2 | Version Packages PR; publish job log; `npm view @rivus/agent-kit@0.19.1 --registry https://registry.npmjs.org/` | Opened by the action; published with provenance; listed |
 | 3 | 3 | `vp lint` and the manifest test on the fixtures; whole-repository `vp lint` | Each violating fixture reports its rule; no other violations |
-| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests | Pass |
+| 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` exemption removed | Pass |
 | 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; within 2% of the batch 2 sizes or explained |
 | 6 | 6–11 | Same as row 5 for each provider | Pass |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all context source | Pass; no exemptions left |
