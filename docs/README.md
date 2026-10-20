@@ -22,6 +22,7 @@ Do not create empty directories just to match this list. Add a section when the 
 - [`../CONTEXT.md`](../CONTEXT.md): glossary of the domain terms, including same-name concepts with different meanings.
 - [`specs/0001-agent-kit.md`](specs/0001-agent-kit.md): behavior of the public entries.
 - [`plans/0001-agent-kit.md`](plans/0001-agent-kit.md): design decisions and phased execution plan.
+- [`plans/0002-providers-and-workspace.md`](plans/0002-providers-and-workspace.md): provider packages, the service tables, the model cleanup and the move to a pnpm workspace.
 
 ## Spec And Plan Boundary
 
