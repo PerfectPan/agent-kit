@@ -166,6 +166,47 @@ export const providerCases: Case[] = [
   ),
   allowed("grok usage: records", "providers/grok", "src/usage.ts", 'export { grokUsageLines } from "./records.js";'),
   rejects(
+    "grok records: no sessions through usage helper",
+    "providers/grok",
+    "src/records.ts",
+    'export { translateGrokRecords } from "./sessions/events.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok layout: no sessions through usage helper",
+    "providers/grok",
+    "src/layout.ts",
+    'export { translateGrokRecords } from "./sessions/events.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok nested records: no sessions",
+    "providers/grok",
+    fresh("src/records/deep/x"),
+    'export { translateGrokRecords } from "../../sessions/events.js";',
+    "provider-entry"
+  ),
+  allowed(
+    "grok nested records: shared layout and records",
+    "providers/grok",
+    fresh("src/records/deep/x"),
+    'export { grokRoots } from "../../layout.js"; export { grokUsage } from "../../records.js";'
+  ),
+  rejects(
+    "grok facts: no layout through hooks helper",
+    "providers/grok",
+    "src/facts.ts",
+    'export { grokRoots } from "./layout.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok facts: no sessions SPI through hooks helper",
+    "providers/grok",
+    "src/facts.ts",
+    'export { readText } from "@rivus/agent-kit-sessions/spi";',
+    "provider-entry"
+  ),
+  rejects(
     "grok usage: no sessions",
     "providers/grok",
     "src/usage.ts",
@@ -178,18 +219,19 @@ export const providerCases: Case[] = [
     "src/sessions.ts",
     'export { discoverSessions } from "@rivus/agent-kit-sessions/spi";'
   ),
-  allowed(
-    "grok: Platform port types",
+  rejects(
+    "grok: Platform types are tests-only",
     "providers/grok",
     fresh("src/x"),
-    'export type { Platform } from "@rivus/agent-kit-platform";'
+    'export type { Platform } from "@rivus/agent-kit-platform";',
+    "package-dependency"
   ),
   rejects(
     "grok: no Platform values",
     "providers/grok",
     fresh("src/x"),
     'export { Platform } from "@rivus/agent-kit-platform";',
-    "types-only"
+    "package-dependency"
   ),
   allowed(
     "shell sessions: grok adapter",

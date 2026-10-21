@@ -122,10 +122,9 @@ export const boundaries: BoundaryRules = {
   packages: {
     [GROK]: {
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [PLATFORM],
-      typesOnly: [PLATFORM],
+      dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
+      testsOnly: [TESTING, PLATFORM],
       external: ["zod/mini"]
     },
     [OPENCODE]: {

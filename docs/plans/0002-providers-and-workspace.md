@@ -261,6 +261,7 @@ packages/providers/claude-code/
   - `hooks.ts` imports only `facts.ts`, catalog's SPI (the zero-dependency shared kernel), harness's SPI and `zod/mini`;
   - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, catalog's SPI, sessions' SPI and `zod/mini`, never `sessions/`;
   - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay (`transcript/adapters/codex/fork-replay.ts` today), which its usage decoding also uses, moves to `records/`.
+  - these limits also apply to every allowed local helper, including nested `records/` files; `facts.ts`, shared by both entries, satisfies both limits.
 
   The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform. Both entries keep importing nothing at run time: `zod/mini` stays bundled into them, as `ZOD_BUNDLE_ENTRIES` in `packages/agent-kit/scripts/check-dist.ts` requires today.
 - Relations between agents are declared by agent id, not by import. Grok and Cursor also run Claude Code's hooks; they declare that in their own HookDialect, as `foreignHooks` does today.
@@ -688,6 +689,9 @@ One batch per agent, in this order:
 - Files: the same shape as batch 5. grok, claude-code and codex also move their records parsing, session listing, preview and transcript translation.
 - Provider tests consume conformance helpers from testing. Cursor's and Grok's cross-agent host-sniffing tests
   stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
+  The same applies to unnamed session use cases and cross-agent detection: keep their full session tables in
+  testing/harness. Provider tests may import generic test helpers by relative paths into `testing/test/*`;
+  these tests-only imports are an accepted pattern, not production API.
 - Per-batch sync points (update together when moving an agent):
   - the shell's `src/providers/<service>.ts` tables and its provider devDependency; when moving the first ACP
     profile, also re-export `builtinAcpProfiles` from shell assembly in `src/acp.ts`; when moving the first session

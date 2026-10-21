@@ -450,24 +450,35 @@ function policiesOf(project: Project): Policy[] {
     ...(rule.providerServices === undefined
       ? []
       : Object.entries({
-          hooks: ["./facts.js", "@rivus/agent-kit-catalog/spi", "@rivus/agent-kit-harness/spi", "zod/mini"],
-          usage: [
-            "./facts.js",
-            "./layout.js",
-            "./records.js",
-            "./records/**",
-            "@rivus/agent-kit-catalog/spi",
-            "@rivus/agent-kit-sessions/spi",
-            "zod/mini"
-          ]
-        }).flatMap(([service, sources]): Policy[] => {
-          const from = { ...element(project, "src"), file: { path: `${project.folder}/src/${service}.ts` } };
+          hooks: {
+            local: ["facts.ts"],
+            external: ["@rivus/agent-kit-catalog/spi", "@rivus/agent-kit-harness/spi", "zod/mini"]
+          },
+          usage: {
+            local: ["facts.ts", "layout.ts", "records.ts", "records/**"],
+            external: ["@rivus/agent-kit-catalog/spi", "@rivus/agent-kit-sessions/spi", "zod/mini"]
+          }
+        }).flatMap(([service, imports]): Policy[] => {
+          // Constrain the whole allowed local set, so a helper cannot reintroduce a forbidden service. Resolved
+          // paths keep nested records helpers independent of how many ../ segments their imports need.
+          const paths = imports.local.map((path) => `${project.folder}/src/${path}`);
+          const from = {
+            ...element(project, "src"),
+            file: { path: [`${project.folder}/src/${service}.ts`, ...paths] }
+          };
           return [
             {
               from,
               disallow: {
-                to: [external(), { module: { origin: ["local", "core"] } }],
-                dependency: { source: `!${braces(sources)}` }
+                to: [external(), { module: { origin: "core" } }],
+                dependency: { source: `!${braces(imports.external)}` }
+              },
+              message: `[provider-entry] {{dependency.source}}: ${service} must keep its slim import graph`
+            },
+            {
+              from,
+              disallow: {
+                to: { ...local(project), file: { path: `!${braces(paths)}` } }
               },
               message: `[provider-entry] {{dependency.source}}: ${service} must keep its slim import graph`
             }
