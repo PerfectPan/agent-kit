@@ -482,6 +482,8 @@ export function boundaryLintOf(folder: string): BoundaryLint {
     {
       files: SOURCES,
       excludeFiles: [...TESTS, DECLARATIONS],
+      // A package may replace the top-level plugin list; the Node boundary rule still needs its built-in plugin.
+      plugins: ["import"],
       rules: {
         "boundaries/dependencies": error({
           default: "disallow",

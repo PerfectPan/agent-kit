@@ -148,6 +148,28 @@ async function nestedProvider(copy: string): Promise<Diagnostic[]> {
   return lint(copy, folder, ["src/plain.ts", "src/allowed.ts"]);
 }
 
+/** The generated override must enable the Node boundary rule even when the top-level plugins list omits import. */
+async function restrictedPlugins(copy: string): Promise<Diagnostic[]> {
+  const folder = "packages/sessions";
+  const config = join(copy, folder, "vite.config.ts");
+  const original = readFileSync(config, "utf8");
+  const restricted = original.replace(
+    "withBoundaryLint(lint, import.meta.url)",
+    '{ ...withBoundaryLint(lint, import.meta.url), plugins: ["typescript"] }'
+  );
+  if (restricted === original) {
+    throw new Error("The plugin fixture could not replace sessions' top-level plugins");
+  }
+  writeFileSync(config, restricted);
+  writeFileSync(join(copy, folder, "src/plugin-node.ts"), 'export { readFile } from "node:fs/promises";\n');
+  writeFileSync(join(copy, folder, "src/plugin-plain.ts"), 'export { ok } from "@rivus/agent-kit-catalog";\n');
+  try {
+    return await lint(copy, folder, ["src/plugin-node.ts", "src/plugin-plain.ts"]);
+  } finally {
+    writeFileSync(config, original);
+  }
+}
+
 function report(name: string, path: string, expected: readonly string[], diagnostics: Diagnostic[]): boolean {
   const reported = diagnostics.flatMap((diagnostic) => {
     const rule = ruleOf(diagnostic);
@@ -196,6 +218,23 @@ try {
       }
     }
   }
+  const restricted = await restrictedPlugins(copy);
+  failures += report(
+    "typescript-only top-level plugins: Node builtin",
+    "packages/sessions/src/plugin-node.ts",
+    ["node-builtin"],
+    restricted.filter(({ filename }) => filename === "src/plugin-node.ts")
+  )
+    ? 0
+    : 1;
+  failures += report(
+    "typescript-only top-level plugins: allowed import",
+    "packages/sessions/src/plugin-plain.ts",
+    [],
+    restricted.filter(({ filename }) => filename === "src/plugin-plain.ts")
+  )
+    ? 0
+    : 1;
   const stray = await strayPackage(copy);
   failures += report("an undeclared package directory", "packages/stray/src/index.ts", ["undeclared-package"], stray)
     ? 0
@@ -222,5 +261,5 @@ try {
 }
 
 const seconds = ((performance.now() - started) / 1000).toFixed(1);
-console.log(`${cases.length + 3} cases, ${failures} failed, ${seconds} s`);
+console.log(`${cases.length + 5} cases, ${failures} failed, ${seconds} s`);
 process.exitCode = failures === 0 ? 0 : 1;

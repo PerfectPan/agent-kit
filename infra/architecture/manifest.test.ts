@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { lint as sharedLint } from "@perfectpan/lint-config/vite-plus";
-import { isEqual } from "es-toolkit";
+import { isEqual, pickBy } from "es-toolkit";
 import type { OxlintConfig } from "vite-plus/lint";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -85,11 +85,14 @@ function missingBoundaryRules(lint: OxlintConfig | undefined, folder: string): s
   const boundary = boundaryLintOf(folder);
   const has = <T>(own: readonly T[] | null | undefined, expected: readonly T[]): boolean =>
     expected.every((item) => own?.some((candidate) => isEqual(candidate, item)) === true);
+  const settings = pickBy(
+    lint?.settings ?? {},
+    (_value, key) => key.startsWith("boundaries/") || key.startsWith("import/")
+  );
   return [
     ...(has(lint?.jsPlugins, boundary.jsPlugins) ? [] : ["jsPlugins"]),
-    ...(Object.entries(boundary.settings).every(([key, value]) => isEqual(lint?.settings?.[key], value))
-      ? []
-      : ["settings"]),
+    // Extra settings such as boundaries/ignore can suppress diagnostics without changing any generated key.
+    ...(isEqual(settings, boundary.settings) ? [] : ["settings"]),
     // Later overrides can disable a rule, so withBoundaryLint must append the final overrides in their original order.
     ...(isEqual(lint?.overrides?.slice(-boundary.overrides.length), boundary.overrides) ? [] : ["overrides"]),
     // Restrict ignores to build output; arbitrary globs could silently exclude present or future source files.
@@ -201,6 +204,36 @@ describe("the lint configuration", () => {
       overrides: [...(lint.overrides ?? []), { files: ["src/**/*.ts"], rules: { [rule]: "off" } }]
     };
     expect(missingBoundaryRules(probe, "packages/sessions")).toEqual(["overrides"]);
+  });
+
+  it.each(["boundaries/ignore", "boundaries/include", "import/ignore"])(
+    "rejects the extra reserved setting %s",
+    (key) => {
+      const lint = withBoundaryLint(sharedLint, pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href);
+      expect(
+        missingBoundaryRules({ ...lint, settings: { ...lint.settings, [key]: ["**/src/**"] } }, "packages/sessions")
+      ).toEqual(["settings"]);
+    }
+  );
+
+  it("rejects dropping the import plugin from the generated source override", () => {
+    const lint = withBoundaryLint(sharedLint, pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href);
+    const probe: OxlintConfig = {
+      ...lint,
+      plugins: ["typescript"],
+      overrides: lint.overrides?.map((override) =>
+        override.plugins?.includes("import") ? { ...override, plugins: ["typescript"] } : override
+      )
+    };
+    expect(missingBoundaryRules(probe, "packages/sessions")).toEqual(["overrides"]);
+  });
+
+  it("accepts unrelated settings and a narrower top-level plugin list", () => {
+    const lint = withBoundaryLint(
+      { ...sharedLint, plugins: ["typescript"], settings: { "react/version": "detect" } },
+      pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href
+    );
+    expect(missingBoundaryRules(lint, "packages/sessions")).toEqual([]);
   });
 
   it.each(["src", "src/**", "**/*.ts"])("rejects the source ignore %s", (pattern) => {
