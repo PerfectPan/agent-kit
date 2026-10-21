@@ -28,12 +28,7 @@ catalog:
   shell-quote: ^1.12.0
   size-limit: 14.1.0
   typescript: 7.0.2
-  # The bundled vitest peers on a real `vite` range, while vite-plus provides `vite` as this core alias;
-  # pnpm can only satisfy that peer through the override below. Both entries follow `vite-plus`: the alias
-  # must equal vite-plus's own `vite` dependency, and `vitest`, which `@effect/vitest` requires beside it, its
-  # exact `vitest` dependency. Any other vitest is a second copy that `@effect/vitest` registers its tests with
-  # while its runner never starts ("Cannot read properties of undefined (reading 'config')").
-  # scripts/toolchain.test.ts fails `pnpm run check` when either entry differs from the installed vite-plus.
+  # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
   vite: npm:@voidzero-dev/vite-plus-core@1.2.0
   vite-plus: 1.2.0
   vitest: 5.0.4
