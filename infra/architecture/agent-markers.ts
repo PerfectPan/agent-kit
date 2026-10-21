@@ -5,19 +5,8 @@ export function extractAgentMarkers(file: string, text: string): string[] {
   const fail = (element: string, reason: string): never => {
     throw new Error(`${file}: ${element}: ${reason}`);
   };
-  let source = text;
-  let parsed = parseSync(file, source);
-  // Oxc rejects exported resources before returning an AST. Treat them as mutable bindings so marker errors stay specific.
-  while (parsed.errors[0]?.message === "Using declarations cannot be exported directly.") {
-    const span = parsed.errors[0].labels[0];
-    if (span === undefined) {
-      return fail("source at 0", parsed.errors[0].message);
-    }
-    source = `${source.slice(0, span.start)}${"let _".padEnd(span.end - span.start)}${source.slice(span.end)}`;
-    parsed = parseSync(file, source);
-  }
-  // Uninitialized constants cannot supply markers; diagnose them through the same declaration/element checks.
-  const diagnostic = parsed.errors.find((error) => error.message !== "Missing initializer in const declaration");
+  const parsed = parseSync(file, text);
+  const diagnostic = parsed.errors[0];
   if (diagnostic !== undefined) {
     return fail(`source at ${diagnostic.labels[0]?.start ?? 0}`, diagnostic.message);
   }

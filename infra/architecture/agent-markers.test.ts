@@ -21,10 +21,8 @@ it("reads literals and same-file exported constants without executing imports or
 it.each([
   ["missing", "export const ID = 'sample';"],
   ["non-array", "export const agentMarkers = 'sample';"],
-  ["uninitialized", "export const agentMarkers: string[];"],
   ["private", "const agentMarkers = ['sample'];"],
   ["mutable", "export let agentMarkers = ['sample'];"],
-  ["resource", "export await using agentMarkers = ['sample'];"],
   ["computed array", "export const agentMarkers = getMarkers();"]
 ])("rejects a %s marker declaration", (_name, source) => {
   expect(() => extractAgentMarkers(file, source)).toThrow(
@@ -39,7 +37,6 @@ it.each([
   ["MISSING", ""],
   ["PRIVATE", "const PRIVATE = 'sample';"],
   ["MUTABLE", "export let MUTABLE = 'sample';"],
-  ["RESOURCE", "export await using RESOURCE = 'sample';"],
   ["ALIAS", "export const ID = 'sample'; export const ALIAS = ID;"],
   ["COMPUTED", "export const COMPUTED = 'sam' + 'ple';"],
   ["42", ""],
@@ -57,6 +54,14 @@ it("rejects duplicate bindings", () => {
   expect(() =>
     extractAgentMarkers(file, `export const ID = 'a'; export const ID = 'b'; export const agentMarkers = [ID];`)
   ).toThrow(`${file}: ID: duplicate exported const`);
+});
+
+it.each([
+  ["uninitialized declaration", "export const agentMarkers: string[];"],
+  ["resource declaration", "export await using agentMarkers = ['sample'];"],
+  ["resource element", "export await using RESOURCE = 'sample';\nexport const agentMarkers = [RESOURCE];"]
+])("rejects invalid source: %s", (_name, source) => {
+  expect(() => extractAgentMarkers(file, source)).toThrow(`${file}: source at`);
 });
 
 it("rejects syntax errors", () => {
