@@ -41,6 +41,45 @@ const rejects = (name: string, pkg: string, path: string, source: string, rule: 
 });
 
 export const cases: Case[] = [
+  allowed(
+    "collab root domain: catalog value",
+    "agent-kit-collab",
+    fresh("src/domain/x"),
+    `export { ok } from "${SHELL}/catalog";`
+  ),
+  allowed(
+    "collab root adapters: zod/mini",
+    "agent-kit-collab",
+    fresh("src/domain/probe/adapters/x"),
+    `export * as z from "zod/mini";`
+  ),
+  rejects(
+    "collab root domain: platform import",
+    "agent-kit-collab",
+    fresh("src/domain/x"),
+    `export { splitLines } from "${SHELL}/platform";`,
+    "layer"
+  ),
+  rejects(
+    "collab root domain: npm import",
+    "agent-kit-collab",
+    fresh("src/domain/x"),
+    `export * as z from "zod/mini";`,
+    "external-dependency"
+  ),
+  allowed(
+    "shell entry: lowercase numeric hyphenated public subpath",
+    "agent-kit",
+    fresh("src/x"),
+    'export { probe } from "@rivus/agent-kit-harness/public/probe-1";'
+  ),
+  rejects(
+    "shell entry: invalid public subpath",
+    "agent-kit",
+    fresh("src/x"),
+    'export { probe } from "@rivus/agent-kit-harness/public/Foo_Bar.js";',
+    "shell-entry"
+  ),
   // allowed imports
   allowed(
     "sessions domain: kernel value and type",

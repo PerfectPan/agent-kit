@@ -12,6 +12,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync
@@ -134,6 +135,19 @@ async function strayPackage(copy: string): Promise<Diagnostic[]> {
   return lint(copy, "packages/stray", ["src/index.ts"]);
 }
 
+/** Move a declared package into the provider workspace glob, without adding a fake package to the manifest. */
+async function nestedProvider(copy: string): Promise<Diagnostic[]> {
+  const folder = "packages/providers/probe";
+  mkdirSync(join(copy, "packages/providers"), { recursive: true });
+  renameSync(join(copy, "packages/catalog"), join(copy, folder));
+  const config = join(copy, folder, "vite.config.ts");
+  writeFileSync(config, readFileSync(config, "utf8").replace("../../infra/", "../../../infra/"));
+  writeFileSync(join(copy, folder, "src/effect.ts"), "export const providerEffect = 1;\n");
+  writeFileSync(join(copy, folder, "src/plain.ts"), 'export { providerEffect } from "./effect.js";\n');
+  writeFileSync(join(copy, folder, "src/allowed.ts"), 'export { ok } from "./index.js";\n');
+  return lint(copy, folder, ["src/plain.ts", "src/allowed.ts"]);
+}
+
 function report(name: string, path: string, expected: readonly string[], diagnostics: Diagnostic[]): boolean {
   const reported = diagnostics.flatMap((diagnostic) => {
     const rule = ruleOf(diagnostic);
@@ -186,10 +200,27 @@ try {
   failures += report("an undeclared package directory", "packages/stray/src/index.ts", ["undeclared-package"], stray)
     ? 0
     : 1;
+  const provider = await nestedProvider(copy);
+  failures += report(
+    "provider plain entry: local Effect entry",
+    "packages/providers/probe/src/plain.ts",
+    ["effect"],
+    provider.filter(({ filename }) => filename === "src/plain.ts")
+  )
+    ? 0
+    : 1;
+  failures += report(
+    "provider plain entry: local plain entry",
+    "packages/providers/probe/src/allowed.ts",
+    [],
+    provider.filter(({ filename }) => filename === "src/allowed.ts")
+  )
+    ? 0
+    : 1;
 } finally {
   removeCopy();
 }
 
 const seconds = ((performance.now() - started) / 1000).toFixed(1);
-console.log(`${cases.length + 1} cases, ${failures} failed, ${seconds} s`);
+console.log(`${cases.length + 3} cases, ${failures} failed, ${seconds} s`);
 process.exitCode = failures === 0 ? 0 : 1;

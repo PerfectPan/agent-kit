@@ -131,13 +131,18 @@ const NODE_BUILTINS: Entity[] = [{ module: { origin: "core" } }, external({ sour
 /** Layer folders first, then the rest of `src/`, then the rest of the package; each file gets the first match. */
 function elementsOf(project: Project): ElementDescriptor[] {
   const entries = boundaries.packages[project.name]?.entries;
-  const base = entries === undefined ? `${project.folder}/src` : `${project.folder}/src/${braces(entries)}`;
+  const bases = [
+    `${project.folder}/src`,
+    ...(entries === undefined ? [] : [`${project.folder}/src/${braces(entries)}`])
+  ];
   const layers = isShell(project.name)
     ? []
-    : LAYERS.map((layer) => ({
-        type: typeOf(project, layer),
-        pattern: layer === "adapters" ? `${base}/domain/*/adapters` : `${base}/${layer}`
-      }));
+    : LAYERS.flatMap((layer) =>
+        bases.map((base) => ({
+          type: typeOf(project, layer),
+          pattern: layer === "adapters" ? `${base}/domain/*/adapters` : `${base}/${layer}`
+        }))
+      );
   return [
     ...layers,
     { type: typeOf(project, "src"), pattern: `${project.folder}/src` },
@@ -201,7 +206,7 @@ function shellPolicies(project: Project): Policy[] {
     },
     {
       from: element(project, "src"),
-      allow: { to: external({ source: internalNames, internalPath: ["public", "public/*"] }) }
+      allow: { to: external({ source: internalNames, internalPath: ["public", "public/+([a-z0-9-])"] }) }
     }
   ];
 }
@@ -515,9 +520,10 @@ export function boundaryLintOf(folder: string): BoundaryLint {
       "boundaries/elements": projects
         .filter(({ name }) => isShell(name) || boundaries.packages[name] !== undefined)
         .flatMap(elementsOf),
-      "boundaries/files": [
-        { category: "effect-entry", pattern: `packages/*/src${boundaries.effect.workspaceEntry}.ts` }
-      ],
+      "boundaries/files": projects.map(({ folder }) => ({
+        category: "effect-entry",
+        pattern: `${folder}/src${boundaries.effect.workspaceEntry}.ts`
+      })),
       "boundaries/flag-as-external": { customSourcePatterns: workspaceNames.flatMap((name) => [name, `${name}/**`]) },
       "boundaries/additional-dependency-nodes": ADDITIONAL_DEPENDENCY_NODES,
       "boundaries/legacy-templates": false,

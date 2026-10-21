@@ -14,11 +14,13 @@ interface WorkspacePackage {
   readonly name: string;
   /** Repository-relative POSIX path, such as `packages/platform`. */
   readonly folder: string;
+  readonly lintScript?: string;
   /** Dependencies declared with the `workspace:` protocol in any dependency field of `package.json`. */
   readonly workspaceDependencies: readonly string[];
 }
 
 interface Manifest {
+  scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
@@ -32,6 +34,7 @@ const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
   return {
     name,
     folder,
+    lintScript: manifest.scripts?.lint,
     workspaceDependencies: Object.keys(dependencies).filter((key) => dependencies[key]?.startsWith("workspace:"))
   };
 });
@@ -40,7 +43,7 @@ const onDisk = (path: string) => existsSync(join(root, path));
 /**
  * The boundary rules that concern manifests rather than source files, which `vp lint` cannot see: every package is
  * declared in `boundaries.ts`, its `package.json` declares only allowed workspace dependencies (also when no source
- * file imports them), and its entry files exist.
+ * file imports them), its entry files exist, and recursive lint actually runs `vp lint` for it.
  */
 function manifestViolations(workspace: readonly WorkspacePackage[], exists: (path: string) => boolean): string[] {
   const internal = Object.entries(boundaries.packages)
@@ -58,6 +61,12 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
         : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"]);
     const allowed = isShell ? internal : [...(rule?.dependsOn ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
+      ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
+        pkg.lintScript ?? ""
+      )
+        ? []
+        : [`${pkg.folder}: lint-script must run vp lint`]),
       ...entries
         .filter((entry) => !exists(`${pkg.folder}/${entry}`))
         .map((entry) => `${pkg.folder}: entry-file ${entry}`),
@@ -81,7 +90,10 @@ function missingBoundaryRules(lint: OxlintConfig | undefined, folder: string): s
     ...(Object.entries(boundary.settings).every(([key, value]) => isEqual(lint?.settings?.[key], value))
       ? []
       : ["settings"]),
-    ...(has(lint?.overrides, boundary.overrides) ? [] : ["overrides"])
+    // Later overrides can disable a rule, so withBoundaryLint must append the final overrides in their original order.
+    ...(isEqual(lint?.overrides?.slice(-boundary.overrides.length), boundary.overrides) ? [] : ["overrides"]),
+    // Restrict ignores to build output; arbitrary globs could silently exclude present or future source files.
+    ...((lint?.ignorePatterns ?? []).every((pattern) => pattern === "dist/**") ? [] : ["ignorePatterns"])
   ];
 }
 
@@ -104,6 +116,27 @@ describe("the package manifests", () => {
   it("match the boundary manifest", () => {
     expect(manifestViolations(packages, onDisk)).toEqual([]);
   });
+
+  it.each([
+    "vp lint",
+    "vp lint 2>&1",
+    "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict"
+  ])("accept the whole-package lint script %s", (lintScript) => {
+    expect(
+      manifestViolations(
+        packages.map((pkg) => ({ ...pkg, lintScript })),
+        onDisk
+      )
+    ).toEqual([]);
+  });
+
+  it.each([undefined, "", "vp test", "vp lint src/index.ts", "vp lint || true"])(
+    "reject a missing or bypassed lint script: %s",
+    (lintScript) => {
+      const probe = packages.map((pkg) => (pkg.name === SESSIONS ? { ...pkg, lintScript } : pkg));
+      expect(manifestViolations(probe, onDisk)).toEqual(["packages/sessions: lint-script must run vp lint"]);
+    }
+  );
 
   it("reject a package under packages/ that the manifest does not declare", () => {
     const stray = { name: "@rivus/agent-kit-stray", folder: "packages/stray", workspaceDependencies: [] };
@@ -154,5 +187,38 @@ describe("the lint configuration", () => {
     expect(missingBoundaryRules(sharedLint, "packages/sessions")).toEqual(["jsPlugins", "settings", "overrides"]);
     const otherFolder = withBoundaryLint(sharedLint, pathToFileURL(join(root, "packages/cost/vite.config.ts")).href);
     expect(missingBoundaryRules(otherFolder, "packages/sessions")).toEqual(["overrides"]);
+  });
+
+  it.each([
+    "boundaries/dependencies",
+    "boundaries/no-unknown-files",
+    "import/no-nodejs-modules",
+    "eslint-js/no-restricted-syntax"
+  ])("rejects a later override disabling %s", (rule) => {
+    const lint = withBoundaryLint(sharedLint, pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href);
+    const probe: OxlintConfig = {
+      ...lint,
+      overrides: [...(lint.overrides ?? []), { files: ["src/**/*.ts"], rules: { [rule]: "off" } }]
+    };
+    expect(missingBoundaryRules(probe, "packages/sessions")).toEqual(["overrides"]);
+  });
+
+  it.each(["src", "src/**", "**/*.ts"])("rejects the source ignore %s", (pattern) => {
+    const lint = withBoundaryLint(sharedLint, pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href);
+    expect(missingBoundaryRules({ ...lint, ignorePatterns: [pattern] }, "packages/sessions")).toEqual([
+      "ignorePatterns"
+    ]);
+  });
+
+  it("accepts build-output ignores and overrides before the boundary rules", () => {
+    const lint = withBoundaryLint(
+      {
+        ...sharedLint,
+        ignorePatterns: ["dist/**"],
+        overrides: [{ files: ["src/**/*.ts"], rules: { "boundaries/dependencies": "off" } }]
+      },
+      pathToFileURL(join(root, "packages/sessions/vite.config.ts")).href
+    );
+    expect(missingBoundaryRules(lint, "packages/sessions")).toEqual([]);
   });
 });
