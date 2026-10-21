@@ -1,13 +1,39 @@
-import { ok } from "@rivus/agent-kit-catalog";
+import { ok } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
-
-import { type SourcePointer, sourceOf, timeOf } from "../../transcript/index.js";
-import { compactUsage, type Usage, type UsageRecord } from "../index.js";
-import { lenient } from "../../transcript/adapters/lenient.js";
-import { logTimestamp } from "../../transcript/adapters/timestamp.js";
-import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
-
-const AGENT = "gemini-cli";
+import {
+  type SourcePointer,
+  sourceOf,
+  timeOf,
+  compactUsage,
+  type Usage,
+  type UsageRecord,
+  lenient,
+  logTimestamp,
+  type UsageFile,
+  type UsageLineDecoder,
+  belowRoot,
+  guardIo,
+  readText,
+  type DecodeUsageOptions,
+  type UsageDecoder,
+  type UsagePlatform,
+  type UsageStream,
+  type UsageTarget,
+  decodeJsonlUsage,
+  drain,
+  fileSources,
+  type JsonlUsageLayout,
+  sameFile,
+  usageStreamOf
+} from "@rivus/agent-kit-sessions/spi";
+import {
+  GEMINI_CLI_CHAT_FILES,
+  geminiCliSessionStem,
+  geminiCliUsageRoots,
+  isGeminiCliLegacyChat,
+  isGeminiCliUsageSource
+} from "./layout.js";
+import { GEMINI_CLI_ID as AGENT, GEMINI_CLI_MESSAGE_TYPE } from "./facts.js";
 
 /** The `tokens` of a `gemini` message, which copy the API's usage metadata. */
 const GeminiCliTokens = z.looseObject({
@@ -36,7 +62,7 @@ type GeminiCliRecordValue = z.output<typeof GeminiCliRecord>;
  * includes the cached tokens; tool-use prompt tokens (`tool`) are input billed like it, and `total` includes them, so
  * they are added to the input. `thoughts` are reasoning, billed as output and not part of `output`.
  */
-export function geminiCliUsage(value: unknown): Usage | undefined {
+function geminiCliUsage(value: unknown): Usage | undefined {
   const tokens = z.safeParse(GeminiCliTokens, value).data;
   return compactUsage({
     inputTokens: tokens?.input === undefined ? undefined : tokens.input + (tokens.tool ?? 0),
@@ -122,7 +148,7 @@ export function geminiCliUsageLines(file: UsageFile, saved?: unknown): UsageLine
       const again = id === state.lastId;
       state.lastId = id;
       state.lastReported = again && state.lastReported === true;
-      if (state.lastReported || rec.type !== "gemini") {
+      if (state.lastReported || rec.type !== GEMINI_CLI_MESSAGE_TYPE) {
         return ok([]);
       }
       const usage = geminiCliUsage(rec.tokens);
@@ -160,7 +186,7 @@ export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: So
   for (const item of messages) {
     const message = z.safeParse(GeminiCliRecord, item).data;
     const id = message?.id;
-    const usage = message?.type === "gemini" ? geminiCliUsage(message.tokens) : undefined;
+    const usage = message?.type === GEMINI_CLI_MESSAGE_TYPE ? geminiCliUsage(message.tokens) : undefined;
     if (!message || !usage || (id !== undefined && seen.has(id))) {
       continue;
     }
@@ -173,6 +199,88 @@ export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: So
 }
 
 /** The key under which a scan counts a record once in its window: the session and the message id, which a migrated chat keeps. */
-export function geminiCliUsageKey(record: UsageRecord): string | undefined {
+function geminiCliUsageKey(record: UsageRecord): string | undefined {
   return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
 }
+
+const layout: JsonlUsageLayout = {
+  agent: AGENT,
+  file: sameFile((path) => ({ sessionId: geminiCliSessionStem(path) })),
+  decoder: geminiCliUsageLines
+};
+
+/**
+ * An older chat is one JSON object, read whole. Its cursor is the file size: the CLI no longer writes such files, and
+ * one that changed since is `SourceChanged`.
+ */
+function decodeLegacyChat(platform: UsagePlatform, target: UsageTarget, options: DecodeUsageOptions): UsageStream {
+  const { from, signal } = options;
+  const path = target.path;
+  return usageStreamOf(async function* (position) {
+    const io = guardIo(platform);
+    try {
+      const info = await io.platform.fs.stat(path, { followSymlinks: true });
+      if (info?.kind !== "file") {
+        yield { agent: AGENT, path, error: { _tag: "SessionNotFound", path } };
+        return;
+      }
+      if (from && from.offset !== info.size) {
+        position.cursor = () => undefined;
+        const source = { file: path, offset: from.offset, length: 0, line: from.line };
+        yield { agent: AGENT, path, error: { _tag: "SourceChanged", source } };
+        return;
+      }
+      const queue: UsageRecord[] = [...(from?.queue ?? [])];
+      position.cursor = () => ({
+        agent: AGENT,
+        offset: info.size,
+        line: 1,
+        ...(queue.length > 0 ? { queue: [...queue] } : {})
+      });
+      if (!from) {
+        let value: unknown;
+        try {
+          value = JSON.parse(await readText(io.platform, path, signal ? { signal } : {})) as unknown;
+        } catch (error) {
+          if (!(error instanceof SyntaxError)) {
+            throw error;
+          }
+        }
+        const source = { file: path, offset: 0, length: info.size, line: 1 };
+        queue.push(
+          ...geminiCliLegacyUsage(value, { path, sessionId: geminiCliSessionStem(path), mtimeMs: info.mtimeMs }, source)
+        );
+      }
+      yield* drain(queue);
+    } catch (error) {
+      signal?.throwIfAborted();
+      const failure = io.failure(error, path);
+      if (!failure) {
+        throw error;
+      }
+      yield { agent: AGENT, path, error: failure };
+    }
+  }, from);
+}
+
+/**
+ * Every chat file under `<home>/tmp/<project>/chats/`. An older `.json` chat whose `.jsonl` sibling exists was
+ * migrated into it, so only the `.jsonl` file is a source; its records keep their message ids.
+ */
+export const geminiCliUsageDecoder: UsageDecoder = {
+  specificationVersion: "usage-v1",
+  agent: AGENT,
+  usageKey: geminiCliUsageKey,
+  sources(platform, home, options = {}) {
+    return fileSources(platform, AGENT, geminiCliUsageRoots(home), GEMINI_CLI_CHAT_FILES, {
+      ...options,
+      keep: isGeminiCliUsageSource,
+      identify: belowRoot
+    });
+  },
+  decode(platform, target, options = {}) {
+    return isGeminiCliLegacyChat(target.path)
+      ? decodeLegacyChat(platform, target, options)
+      : decodeJsonlUsage(platform, target, layout, options);
+  }
+};

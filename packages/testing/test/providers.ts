@@ -1,3 +1,8 @@
+import { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";
+import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";
+import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";
+import { geminiCliProbe } from "@rivus/agent-kit-provider-gemini-cli/discovery";
+import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { cursorProbe } from "@rivus/agent-kit-provider-cursor/discovery";
 import { cursor } from "@rivus/agent-kit-provider-cursor/identity";
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
@@ -17,7 +22,7 @@ export const builtinCodingAgents = {
   "claude-code": identity["claude-code"],
   codex: identity.codex,
   cursor: cursor,
-  "gemini-cli": identity["gemini-cli"],
+  "gemini-cli": geminiCli,
   grok: identity.grok,
   opencode: identity.opencode,
   pi: pi
@@ -28,14 +33,14 @@ export const builtinProbeRecipes = {
   codex: discovery.codex,
   cursor: cursorProbe,
   pi: piProbe,
-  "gemini-cli": discovery["gemini-cli"],
+  "gemini-cli": geminiCliProbe,
   grok: discovery.grok
 };
 export const builtinHookDialects = {
   "claude-code": hooks["claude-code"],
   codex: hooks.codex,
   cursor: cursorHookDialect,
-  "gemini-cli": hooks["gemini-cli"],
+  "gemini-cli": geminiCliHookDialect,
   grok: hooks.grok,
   opencode: hooks.opencode,
   pi: piHookDialect
@@ -44,9 +49,16 @@ export const builtinInstallAdapters = {
   "claude-code": install["claude-code"],
   codex: install.codex,
   cursor: cursorInstallAdapter,
-  "gemini-cli": install["gemini-cli"],
+  "gemini-cli": geminiCliInstallAdapter,
   grok: install.grok,
   opencode: install.opencode,
   pi: piInstallAdapter
 };
-export const builtinUsageDecoders = { ...usage, pi: piUsageDecoder };
+export const builtinUsageDecoders = {
+  "claude-code": usage["claude-code"],
+  codex: usage.codex,
+  "gemini-cli": geminiCliUsageDecoder,
+  grok: usage.grok,
+  opencode: usage.opencode,
+  pi: piUsageDecoder
+};

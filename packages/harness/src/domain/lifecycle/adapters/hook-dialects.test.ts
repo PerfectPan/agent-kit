@@ -663,30 +663,6 @@ describe("hook dialect facts", () => {
     });
   });
 
-  it("S45 (agent-presence#86): Gemini CLI uses its own event names, none of Claude Code's", () => {
-    const gemini = Object.keys(builtinHookDialects["gemini-cli"].events);
-    expect(gemini.toSorted()).toEqual(
-      [
-        "SessionStart",
-        "SessionEnd",
-        "BeforeAgent",
-        "AfterAgent",
-        "BeforeTool",
-        "AfterTool",
-        "BeforeModel",
-        "AfterModel",
-        "BeforeToolSelection",
-        "PreCompress",
-        "Notification"
-      ].toSorted()
-    );
-    for (const claudeOnly of ["UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"]) {
-      expect(
-        readHookEvent("gemini-cli", { hook_event_name: claudeOnly }, {}, { providers: { hooks: testHooks } }).phase
-      ).toBe("unknown");
-    }
-  });
-
   it("S46 (agent-presence#89): Cursor's permission hooks are gates, and Claude Code's PreToolUse becomes one", () => {
     const cursor = builtinHookDialects.cursor;
     const gates = Object.entries(cursor.events)

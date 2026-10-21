@@ -41,7 +41,8 @@
     "effect": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@rivus/agent-kit-provider-gemini-cli": "workspace:*"
   },
   "peerDependencies": {
     "effect": "catalog:"

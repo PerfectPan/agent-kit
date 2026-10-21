@@ -1,9 +1,12 @@
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
+import { builtinCodingAgents } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
 import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import type { ProbeRecipe } from "../../domain/installation/index.js";
 import { expandProbePath, findCommand, type PathCheck } from "./host-paths.js";
+
+const testIdentity = { ...builtinCodingAgents, "gemini-cli": geminiCli };
 
 const files = (...paths: string[]) => {
   const checked: string[] = [];

@@ -1,4 +1,5 @@
-import type { HookDialect, HookOutput } from "../index.js";
+import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
+import { GEMINI_CLI_ID, GEMINI_CLI_SESSION_ENV, GEMINI_CLI_CWD_ENV } from "./facts.js";
 
 // https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md and docs/hooks/index.md (events,
 // input and output, exit codes, environment). Where they are silent or disagree, checked against
@@ -24,7 +25,7 @@ const OUTPUT: HookOutput = {
 
 export const geminiCliHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  agent: "gemini-cli",
+  agent: GEMINI_CLI_ID,
   delivery: "command",
   // Milliseconds, default 60000. `gemini hooks migrate --from-claude` copies Claude's seconds unchanged.
   timeout: { unit: "milliseconds", default: 60_000 },
@@ -34,8 +35,8 @@ export const geminiCliHookDialect: HookDialect = {
   output: OUTPUT,
   fields: {
     event: { paths: [["hook_event_name"]] },
-    sessionId: { paths: [["session_id"]], env: ["GEMINI_SESSION_ID"] },
-    cwd: { paths: [["cwd"]], env: ["GEMINI_CWD"] },
+    sessionId: { paths: [["session_id"]], env: [GEMINI_CLI_SESSION_ENV] },
+    cwd: { paths: [["cwd"]], env: [GEMINI_CLI_CWD_ENV] },
     // An empty string when the session is not recorded.
     transcriptPath: { paths: [["transcript_path"]] },
     // No turn, prompt or tool call id reaches hooks.

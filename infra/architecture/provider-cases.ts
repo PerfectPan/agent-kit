@@ -4,6 +4,163 @@ const PI = "@rivus/agent-kit-provider-pi";
 
 export const providerCases: Case[] = [
   allowed(
+    "gemini-cli: context SPI",
+    "providers/gemini-cli",
+    fresh("src/x"),
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
+  ),
+  rejects(
+    "gemini-cli: no context index",
+    "providers/gemini-cli",
+    fresh("src/x"),
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    "package-dependency"
+  ),
+  rejects(
+    "gemini-cli: no other provider",
+    "providers/gemini-cli",
+    fresh("src/x"),
+    `export { pi } from "${PI}/identity";`,
+    "package-dependency"
+  ),
+  rejects(
+    "gemini-cli: no peer provider by relative path",
+    "providers/gemini-cli",
+    fresh("src/x"),
+    'export { pi } from "../../pi/src/identity.js";',
+    "relative-escape"
+  ),
+  rejects(
+    "harness: gemini-cli is tests-only",
+    "harness",
+    fresh("src/x"),
+    'export { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";',
+    "package-dependency"
+  ),
+  rejects(
+    "testing: gemini-cli is tests-only",
+    "testing",
+    fresh("src/x"),
+    'export { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";',
+    "package-dependency"
+  ),
+  rejects(
+    "gemini-cli: testing is tests-only",
+    "providers/gemini-cli",
+    fresh("src/x"),
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    "package-dependency"
+  ),
+  allowed(
+    "gemini-cli hooks: facts",
+    "providers/gemini-cli",
+    "src/hooks.ts",
+    'export { GEMINI_CLI_ID } from "./facts.js";'
+  ),
+  allowed(
+    "gemini-cli hooks: catalog SPI",
+    "providers/gemini-cli",
+    "src/hooks.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "gemini-cli hooks: harness SPI",
+    "providers/gemini-cli",
+    "src/hooks.ts",
+    'export { finishSelectorsOf } from "@rivus/agent-kit-harness/spi";'
+  ),
+  rejects(
+    "gemini-cli hooks: no installation",
+    "providers/gemini-cli",
+    "src/hooks.ts",
+    'export { geminiCliInstallAdapter } from "./install.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "gemini-cli hooks: no discovery SPI",
+    "providers/gemini-cli",
+    "src/hooks.ts",
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "shell hooks: gemini-cli hooks",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";'
+  ),
+  rejects(
+    "shell hooks: no gemini-cli install",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";',
+    "shell-entry"
+  ),
+  rejects(
+    "shell usage: no gemini-cli hooks",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";',
+    "shell-entry"
+  ),
+  allowed(
+    "gemini-cli usage: layout",
+    "providers/gemini-cli",
+    "src/usage.ts",
+    'export { geminiCliUsageRoots } from "./layout.js";'
+  ),
+  allowed(
+    "gemini-cli usage: catalog SPI",
+    "providers/gemini-cli",
+    "src/usage.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "gemini-cli usage: sessions SPI",
+    "providers/gemini-cli",
+    "src/usage.ts",
+    'export { readText } from "@rivus/agent-kit-sessions/spi";'
+  ),
+  rejects(
+    "gemini-cli usage: no hooks",
+    "providers/gemini-cli",
+    "src/usage.ts",
+    'export { geminiCliHookDialect } from "./hooks.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "gemini-cli usage: no ACP SPI",
+    "providers/gemini-cli",
+    "src/usage.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "gemini-cli ACP: base environment SPI",
+    "providers/gemini-cli",
+    "src/acp.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";'
+  ),
+  allowed(
+    "shell ACP: gemini-cli profile",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { geminiCliAcpProfile } from "@rivus/agent-kit-provider-gemini-cli/acp";'
+  ),
+  allowed(
+    "shell usage: gemini-cli usage",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";'
+  ),
+  rejects(
+    "shell ACP: no gemini-cli usage",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";',
+    "shell-entry"
+  ),
+  allowed(
     "cursor: context SPI",
     "providers/cursor",
     fresh("src/x"),
