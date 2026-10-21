@@ -2,20 +2,24 @@
   "name": "architecture-boundaries",
   "version": "0.0.0",
   "private": true,
-  "description": "Architecture boundary manifest for the packages and the test that checks their real import graph against it.",
+  "description": "Architecture boundary manifest, the vp lint rules generated from it for every package, and the tests of both.",
   "type": "module",
   "scripts": {
     "build": "",
     "lint": "vp lint 2>&1",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vp test 2>&1",
+    "test": "vp test 2>&1 && node run-lint-cases.ts",
     "format": "vp fmt .",
     "format:check": "vp fmt --check ."
   },
   "devDependencies": {
     "@perfectpan/lint-config": "catalog:",
     "@types/node": "catalog:",
-    "oxc-parser": "catalog:",
+    "es-toolkit": "catalog:",
+    "eslint": "10.12.0",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-boundaries": "7.2.0",
+    "oxlint-plugin-eslint": "1.87.0",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }
