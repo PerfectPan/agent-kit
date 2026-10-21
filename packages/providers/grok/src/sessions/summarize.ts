@@ -1,4 +1,5 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { GROK_ID } from "../facts.js";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   addTurnDuration,
@@ -6,16 +7,17 @@ import {
   isPrompt,
   type SourcedRecord,
   type UnknownFormatGeneration,
-  unknownFormatGeneration
-} from "../../index.js";
-import { addRequest, emptyPrompts, finishPass } from "../../services/fold-transcript.js";
-import { requestUsage } from "../../policies/turns.js";
-import type { SessionPromptsOptions, SessionSummaryWithPrompts } from "../../../session/index.js";
-import type { GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
+  unknownFormatGeneration,
+  addRequest,
+  emptyPrompts,
+  finishPass,
+  requestUsage,
+  type SessionPromptsOptions,
+  type SessionSummaryWithPrompts
+} from "@rivus/agent-kit-sessions/spi";
+import { type GrokSubagentMeta } from "../layout.js";
 import { GROK_CAPABILITIES } from "./events.js";
 import { applyGrokSubagents, createGrokTranslation } from "./translation.js";
-
-const AGENT = "grok";
 
 export interface GrokSummarizeOptions {
   /** `meta.json` of each `<session>/subagents/<id>/` directory, keyed by the directory name. */
@@ -47,7 +49,7 @@ export async function summarizeGrokRecords(
   for await (const record of records) {
     const step = translation.step(record);
     if (!step.ok) {
-      return err(unknownFormatGeneration(AGENT, record));
+      return err(unknownFormatGeneration(GROK_ID, record));
     }
     for (const part of step.parts) {
       if (part.kind === "request") {

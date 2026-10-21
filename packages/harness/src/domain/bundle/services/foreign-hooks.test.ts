@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
-import { builtinInstallAdapters } from "../../bundle/adapters/install-adapters.js";
+import { builtinHookDialects } from "../../../../test/support/providers.js";
+import { builtinInstallAdapters } from "../../../../test/support/providers.js";
 import { droppedHooksOf, placeHooks } from "./hook-placement.js";
 import { foreignHookFiles } from "./hook-registrations.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";

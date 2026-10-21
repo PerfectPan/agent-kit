@@ -10,8 +10,6 @@ export {
   claudeCodeUsage,
   CODEX_CAPABILITIES,
   codexUsage,
-  GROK_CAPABILITIES,
-  grokUsage,
   foldStreamParts,
   foldTranscript,
   isPrompt,
@@ -31,15 +29,13 @@ export {
   snapshotHasTools,
   TRANSCRIPT_EVENT_KINDS,
   translateClaudeCodeRecords,
-  translateCodexRecords,
-  translateGrokRecords
+  translateCodexRecords
 } from "@rivus/agent-kit-sessions/public";
 export type {
   CapabilityUnsupported,
   Capability,
   ClaudeCodeTranslateOptions,
   CodexTranslateOptions,
-  GrokTranslateOptions,
   CompactionPayload,
   HookPayload,
   Lane,
@@ -103,3 +99,6 @@ export function summarizeSession(
     providers: { sessions: sessionsTable(options.providers), identity: identityTable(options.providers) }
   });
 }
+
+export { GROK_CAPABILITIES, translateGrokRecords, type GrokTranslateOptions } from "./providers/sessions.js";
+export { grokUsage } from "./providers/usage.js";

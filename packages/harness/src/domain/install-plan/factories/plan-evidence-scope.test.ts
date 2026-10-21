@@ -1,8 +1,8 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
-import { builtinInstallAdapters } from "../../bundle/adapters/install-adapters.js";
+import { builtinHookDialects } from "../../../../test/support/providers.js";
+import { builtinInstallAdapters } from "../../../../test/support/providers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";

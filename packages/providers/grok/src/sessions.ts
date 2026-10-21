@@ -1,4 +1,12 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import {
+  GROK_DISPLAY_NAME,
+  GROK_ID,
+  GROK_SUBAGENTS_DIR,
+  GROK_SUBAGENT_META_FILE,
+  GROK_SYSTEM_PROMPT_FILE,
+  GROK_TOOLS_FILE
+} from "./facts.js";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   GROK_SESSION_FILES,
@@ -10,35 +18,34 @@ import {
   grokSummaryFields,
   grokSummaryPath,
   grokUpdatesPath
-} from "../../../domain/session/adapters/grok/layout.js";
-import { applyGrokSummary, previewGrokRecords } from "../../../domain/session/adapters/grok/preview.js";
-import {
-  GROK_CAPABILITIES,
-  grokCapabilities,
-  translateGrokRecords
-} from "../../../domain/transcript/adapters/grok/events.js";
-import { summarizeGrokRecords } from "../../../domain/transcript/adapters/grok/summarize.js";
+} from "./layout.js";
+import { applyGrokSummary, previewGrokRecords } from "./sessions/preview.js";
+import { GROK_CAPABILITIES, grokCapabilities, translateGrokRecords } from "./sessions/events.js";
+import { summarizeGrokRecords } from "./sessions/summarize.js";
 import {
   joinPath,
   type SessionHead,
   type SessionPromptsOptions,
   type SessionRef,
-  type SessionSummaryWithPrompts
-} from "../../../domain/session/index.js";
-import {
+  type SessionSummaryWithPrompts,
   createTranscript,
   type SkippedRecord,
   type Transcript,
-  type UnknownFormatGeneration
-} from "../../../domain/transcript/index.js";
-import { discoverSessions } from "../discover-sessions.js";
-import { EDGE_BYTES } from "../files/edges.js";
-import { catchIoFailure } from "../files/io-failure.js";
-import { type JsonlRecords, readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
-import { type ReadProgress, readProgress, readText } from "../files/read-file.js";
-import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../spi.js";
-
-const AGENT = "grok";
+  type UnknownFormatGeneration,
+  discoverSessions,
+  EDGE_BYTES,
+  catchIoFailure,
+  type JsonlRecords,
+  readJsonlRecords,
+  readJsonlStream,
+  type ReadProgress,
+  readProgress,
+  readText,
+  type LoadOptions,
+  type SessionAdapter,
+  type SessionPlatform,
+  type SessionReadError
+} from "@rivus/agent-kit-sessions/spi";
 
 /** `undefined` when `text` is not JSON. The caller records an `invalid-json` skip. */
 function parseJson(text: string): unknown {
@@ -90,11 +97,11 @@ async function loadMeta(
       Object.assign(meta, parsed.value);
     }
   }
-  const prompt = await readIfFile(platform, joinPath(dir, "system_prompt.txt"), options);
+  const prompt = await readIfFile(platform, joinPath(dir, GROK_SYSTEM_PROMPT_FILE), options);
   if (prompt && prompt.length > 0) {
     meta.systemPrompt = prompt;
   }
-  const toolsPath = joinPath(dir, "tool_definitions.json");
+  const toolsPath = joinPath(dir, GROK_TOOLS_FILE);
   const toolsText = await readIfFile(platform, toolsPath, options);
   if (toolsText !== undefined) {
     const value = parseJson(toolsText);
@@ -114,7 +121,7 @@ async function readSubagentMetas(
   skipped: SkippedRecord[]
 ): Promise<Map<string, GrokSubagentMeta>> {
   const out = new Map<string, GrokSubagentMeta>();
-  const dir = joinPath(sessionDir, "subagents");
+  const dir = joinPath(sessionDir, GROK_SUBAGENTS_DIR);
   if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
     return out;
   }
@@ -122,7 +129,7 @@ async function readSubagentMetas(
     if (entry.kind !== "dir") {
       continue;
     }
-    const metaPath = joinPath(joinPath(dir, entry.name), "meta.json");
+    const metaPath = joinPath(joinPath(dir, entry.name), GROK_SUBAGENT_META_FILE);
     const text = await readIfFile(platform, metaPath, options);
     if (!text) {
       continue;
@@ -178,7 +185,7 @@ async function loadGrok(
   const parsed = translated.value;
   parsed.skipped.push(...skipped, ...main.skipped);
   options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, grokCapabilities(parsed.session, parsed.agents), parsed));
+  return ok(createTranscript(GROK_ID, grokCapabilities(parsed.session, parsed.agents), parsed));
 }
 
 /**
@@ -294,12 +301,12 @@ async function summarizeGrok(
 
 export const grokSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
-  agent: AGENT,
-  displayName: "Grok",
+  agent: GROK_ID,
+  displayName: GROK_DISPLAY_NAME,
   capabilities: GROK_CAPABILITIES,
   roots: grokRoots,
   discover(platform, root, options = {}) {
-    return discoverSessions(platform, AGENT, root, {
+    return discoverSessions(platform, GROK_ID, root, {
       ...options,
       files: GROK_SESSION_FILES,
       preview: previewGrokRecords,
@@ -319,3 +326,5 @@ interface GrokSessionFiles {
   main: JsonlRecords;
   subagents: Map<string, GrokSubagentMeta>;
 }
+
+export { GROK_CAPABILITIES, translateGrokRecords, type GrokTranslateOptions } from "./sessions/events.js";

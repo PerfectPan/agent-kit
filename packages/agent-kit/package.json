@@ -132,7 +132,8 @@
     "rolldown": "1.2.13",
     "size-limit": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "@rivus/agent-kit-provider-grok": "workspace:*"
   },
   "peerDependencies": {
     "effect": "catalog:"

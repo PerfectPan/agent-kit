@@ -1,6 +1,7 @@
+import { grokSessions } from "../../providers/grok/test/support.js";
 import { builtinUsageDecoders as testUsage } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
-import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinSessionAdapters as testSessions } from "./providers.js";
 import { fileURLToPath } from "node:url";
 
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
@@ -19,7 +20,7 @@ import {
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryPlatform } from "../src/memory-platform.js";
-import { claudeCodeSessions, codexSessions, grokSessions, readTree, readUsageHome } from "./support.js";
+import { claudeCodeSessions, codexSessions, readTree, readUsageHome } from "./support.js";
 
 // The invariant every usage decoder keeps: a file decoded in steps while it grows (a cursor stored between the steps,
 // as JSON) gives the records one decode of the whole file gives, and those records sum to the request usage of the
@@ -29,7 +30,10 @@ const fixtures = (path: string) => fileURLToPath(new URL(`fixtures/${path}`, imp
 const tree = {
   ...(await readTree(fixtures("claude-code"), "/fx/claude-code")),
   ...(await readTree(fixtures("codex"), "/fx/codex")),
-  ...(await readTree(fixtures("grok"), "/fx/grok")),
+  ...(await readTree(
+    fileURLToPath(new URL("../../providers/grok/test/fixtures/sessions", import.meta.url)),
+    "/fx/grok"
+  )),
   ...(await readUsageHome("/u/me"))
 };
 

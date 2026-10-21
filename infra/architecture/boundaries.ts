@@ -111,6 +111,7 @@ const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 const ACP = "@rivus/agent-kit-acp";
+const GROK = "@rivus/agent-kit-provider-grok";
 const OPENCODE = "@rivus/agent-kit-provider-opencode";
 const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
@@ -119,6 +120,14 @@ const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
   packages: {
+    [GROK]: {
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
+      dependsOn: [PLATFORM],
+      typesOnly: [PLATFORM],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
     [OPENCODE]: {
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
@@ -163,7 +172,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE]
+      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE, GROK]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
@@ -181,7 +190,7 @@ export const boundaries: BoundaryRules = {
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE],
+      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.
@@ -234,7 +243,12 @@ export const boundaries: BoundaryRules = {
     "src/sessions.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"],
     "src/testing.ts": ["./providers/hooks.js", "./providers/identity.js", "./providers/types.js"],
     "src/transcript/usage.ts": ["../providers/usage.js", "../providers/identity.js", "../providers/types.js"],
-    "src/transcript.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"]
+    "src/transcript.ts": [
+      "./providers/sessions.js",
+      "./providers/usage.js",
+      "./providers/identity.js",
+      "./providers/types.js"
+    ]
   },
   sharedKernel: CATALOG,
   layers: {

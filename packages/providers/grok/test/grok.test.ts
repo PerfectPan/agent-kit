@@ -1,13 +1,12 @@
-import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "./providers.js";
-import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { grok } from "../src/identity.js";
+import { grokUsageDecoder } from "../src/usage.js";
+import { grokSessionAdapter, translateGrokRecords } from "../src/sessions.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
-  builtinSessionAdapters,
   decodeUsage,
   foldTranscript,
   isSessionHead,
@@ -17,17 +16,21 @@ import {
   type DecodeUsageOptions,
   type SessionHead,
   summarizeSession,
-  translateGrokRecords,
   type Transcript,
   type UsageCursor,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { readTree } from "../../../testing/test/support.js";
 
-const tree = await readTree(fileURLToPath(new URL("fixtures/grok", import.meta.url)), "/u/me/.grok/sessions");
+const testIdentity = { grok };
+const testSessions = { grok: grokSessionAdapter };
+const builtinSessionAdapters = testSessions;
+const testUsage = { grok: grokUsageDecoder };
+
+const tree = await readTree(fileURLToPath(new URL("fixtures/sessions", import.meta.url)), "/u/me/.grok/sessions");
 const files = {
   ...tree,
   "/u/me/.grok/sessions/bad-summary/updates.jsonl":
@@ -645,7 +648,7 @@ describe("grok translation", () => {
 });
 
 describe("grok translation output pins", () => {
-  const conformance = fileURLToPath(new URL("fixtures/grok/conformance", import.meta.url));
+  const conformance = fileURLToPath(new URL("fixtures/sessions/conformance", import.meta.url));
 
   /**
    * The records of one fixture's `updates.jsonl`, at their real offsets. The file path is a stable stand-in, so the

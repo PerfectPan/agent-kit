@@ -1,3 +1,10 @@
+import { builtinSessionAdapters as sessions } from "@rivus/agent-kit-sessions";
+import { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";
+import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
+import { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";
+import { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";
+import { grokProbe } from "@rivus/agent-kit-provider-grok/discovery";
+import { grok } from "@rivus/agent-kit-provider-grok/identity";
 import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
 import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
 import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
@@ -28,7 +35,7 @@ export const builtinCodingAgents = {
   codex: identity.codex,
   cursor: cursor,
   "gemini-cli": geminiCli,
-  grok: identity.grok,
+  grok: grok,
   opencode: opencode,
   pi: pi
 };
@@ -39,14 +46,14 @@ export const builtinProbeRecipes = {
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
-  grok: discovery.grok
+  grok: grokProbe
 };
 export const builtinHookDialects = {
   "claude-code": hooks["claude-code"],
   codex: hooks.codex,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
-  grok: hooks.grok,
+  grok: grokHookDialect,
   opencode: opencodeHookDialect,
   pi: piHookDialect
 };
@@ -55,7 +62,7 @@ export const builtinInstallAdapters = {
   codex: install.codex,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
-  grok: install.grok,
+  grok: grokInstallAdapter,
   opencode: opencodeInstallAdapter,
   pi: piInstallAdapter
 };
@@ -63,7 +70,13 @@ export const builtinUsageDecoders = {
   "claude-code": usage["claude-code"],
   codex: usage.codex,
   "gemini-cli": geminiCliUsageDecoder,
-  grok: usage.grok,
+  grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
   pi: piUsageDecoder
+};
+
+export const builtinSessionAdapters = {
+  "claude-code": sessions["claude-code"],
+  codex: sessions.codex,
+  grok: grokSessionAdapter
 };

@@ -1,14 +1,22 @@
-import { err, ok } from "@rivus/agent-kit-catalog";
+import { GROK_ID } from "./facts.js";
+import { err, ok } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
 
-import { sourceOf, timeOf, unknownFormatGeneration } from "../../transcript/index.js";
-import { compactUsage, type ModelUsage, type Usage, type UsageRecord } from "../index.js";
-import { lenient } from "../../transcript/adapters/lenient.js";
-import { logTimestamp } from "../../transcript/adapters/timestamp.js";
-import type { AcpUpdateField, AcpUpdateValue } from "../../transcript/adapters/acp-updates.js";
-import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
-
-const AGENT = "grok";
+import {
+  sourceOf,
+  timeOf,
+  unknownFormatGeneration,
+  compactUsage,
+  type ModelUsage,
+  type Usage,
+  type UsageRecord,
+  lenient,
+  logTimestamp,
+  type AcpUpdateField,
+  type AcpUpdateValue,
+  type UsageFile,
+  type UsageLineDecoder
+} from "@rivus/agent-kit-sessions/spi";
 
 /** Grok's per-update metadata: the turn's prompt index, its model, and whether the CLI hides the chunk. */
 export interface GrokMetaValue {
@@ -184,7 +192,7 @@ export interface GrokUpdateValue extends AcpUpdateValue, GrokFieldsValue {}
 
 /**
  * The body of one recorded update, parsed in one pass: the shared `session/update` fields, kept in sync with
- * `AcpUpdate` (../../transcript/adapters/acp-updates.ts, whose test reads the same fields through both readers),
+ * `AcpUpdate` in the sessions SPI (the ACP parity test reads the same fields through both readers),
  * then the fields Grok adds. The assertion below holds this schema to exactly the fields `GrokUpdateValue` names —
  * `AcpUpdateField` plus `GrokFieldsValue` — in both directions, so the parsed value cannot carry an undeclared
  * field and the value cannot declare one the schema drops. The schemas stay module-private: an exported
@@ -386,7 +394,7 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
       const parsed = z.safeParse(GrokUsageRecordedUpdate, record.value).data;
       const update: GrokUsageUpdateValue | undefined = parsed?.params?.update ?? parsed?.update;
       if (!update || !knownGeneration(update, parsed)) {
-        return err(unknownFormatGeneration(AGENT, record));
+        return err(unknownFormatGeneration(GROK_ID, record));
       }
       const ts = timeOf(parsed?.timestamp) ?? state.lastTime ?? file.mtimeMs;
       state.lastTime = ts;
@@ -404,7 +412,7 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
         return ok([]);
       }
       const turn: UsageRecord = {
-        agent: AGENT,
+        agent: GROK_ID,
         sessionId: file.sessionId,
         granularity: "turn",
         timestamp: ts,

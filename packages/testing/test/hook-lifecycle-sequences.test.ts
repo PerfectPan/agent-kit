@@ -14,7 +14,7 @@ import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
 import { geminiCliSamples } from "../../providers/gemini-cli/test/fixtures/hooks.js";
-import { grokSamples } from "./fixtures/hooks/grok.js";
+import { grokSamples } from "../../providers/grok/test/fixtures/hooks.js";
 import { opencodeSamples } from "../../providers/opencode/test/fixtures/hooks.js";
 import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
 

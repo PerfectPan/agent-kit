@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SourcedRecord } from "../../index.js";
-import { MAIN_LANE_ID } from "../../index.js";
-import type { GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
-import { applyGrokSubagents, createGrokTranslation } from "./translation.js";
+import type { SourcedRecord } from "@rivus/agent-kit-sessions";
+import { MAIN_LANE_ID } from "@rivus/agent-kit-sessions";
+import type { GrokSubagentMeta } from "../src/layout.js";
+import { applyGrokSubagents, createGrokTranslation } from "../src/sessions/translation.js";
 
 const record = (update: Record<string, unknown>, line: number): SourcedRecord => ({
   value: { timestamp: 1767225600 + line, params: { update } },

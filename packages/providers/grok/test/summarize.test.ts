@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SessionRef } from "../../../domain/session/index.js";
-import type { SessionPlatform } from "../../spi.js";
-import { grokSessionAdapter } from "./grok.js";
+import type { SessionRef } from "@rivus/agent-kit-sessions";
+import type { SessionPlatform } from "@rivus/agent-kit-sessions";
+import { grokSessionAdapter } from "../src/sessions.js";
 
 const encoder = new TextEncoder();
 

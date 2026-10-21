@@ -3,15 +3,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { builtinSessionAdapters, type SessionPlatform } from "@rivus/agent-kit-sessions";
+import { type SessionPlatform } from "@rivus/agent-kit-sessions";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "../src/memory-platform.js";
-import { oversizedSession, sessionAdapterConformance } from "../src/session-adapter-conformance.js";
-import { grokSessions, nodeReadFs, readTree } from "./support.js";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { oversizedSession, sessionAdapterConformance } from "@rivus/agent-kit-testing";
+import { grokSessions } from "./support.js";
+import { nodeReadFs, readTree } from "../../../testing/test/support.js";
+import { grokSessionAdapter } from "../src/sessions.js";
 
-const fixtures = fileURLToPath(new URL("fixtures/grok", import.meta.url));
-const adapter = builtinSessionAdapters.grok;
+const fixtures = fileURLToPath(new URL("fixtures/sessions", import.meta.url));
+const adapter = grokSessionAdapter;
 const oversizedLine =
   '{"timestamp":"2026-01-01T00:00:00.000Z","params":{"update":{"sessionUpdate":"user_message_chunk","content":{"type":"text","text":"x"}}}}';
 

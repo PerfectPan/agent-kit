@@ -43,7 +43,8 @@
     "effect": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@rivus/agent-kit-provider-grok": "workspace:*"
   },
   "peerDependencies": {
     "effect": "catalog:"

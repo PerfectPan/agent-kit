@@ -1,4 +1,5 @@
-import { err, ok } from "@rivus/agent-kit-catalog";
+import { GROK_ID } from "./facts.js";
+import { err, ok } from "@rivus/agent-kit-catalog/spi";
 
 import {
   GROK_SESSION_FILES,
@@ -9,16 +10,18 @@ import {
   grokUpdatesPath,
   grokUsageSessionId,
   grokUsageSourceId
-} from "../../../domain/session/adapters/grok/layout.js";
-import { grokUsageKey, grokUsageLines } from "../../../domain/usage/adapters/grok.js";
-import { readText } from "../files/read-file.js";
-import type { UsageDecoder } from "../../spi.js";
-import { decodeJsonlUsage, fileSources, type JsonlUsageLayout } from "./files.js";
-
-const AGENT = "grok";
+} from "./layout.js";
+import { grokUsageKey, grokUsageLines } from "./records.js";
+import {
+  readText,
+  type UsageDecoder,
+  decodeJsonlUsage,
+  fileSources,
+  type JsonlUsageLayout
+} from "@rivus/agent-kit-sessions/spi";
 
 const layout: JsonlUsageLayout = {
-  agent: AGENT,
+  agent: GROK_ID,
   /**
    * `updates.jsonl` of the session directory. The session id is the one `summary.json` names, else the directory's;
    * a summary of a format generation this adapter does not read ends the decode, as it ends a load.
@@ -52,10 +55,10 @@ const layout: JsonlUsageLayout = {
 /** Every session's `updates.jsonl` under `<home>/sessions`. A subagent's usage is part of its parent's turns. */
 export const grokUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
-  agent: AGENT,
+  agent: GROK_ID,
   usageKey: grokUsageKey,
   sources(platform, home, options = {}) {
-    return fileSources(platform, AGENT, grokRoots(home), GROK_SESSION_FILES, {
+    return fileSources(platform, GROK_ID, grokRoots(home), GROK_SESSION_FILES, {
       ...options,
       identify: grokUsageSourceId
     });
@@ -64,3 +67,5 @@ export const grokUsageDecoder: UsageDecoder = {
     return decodeJsonlUsage(platform, target, layout, options);
   }
 };
+
+export { grokUsage } from "./records.js";

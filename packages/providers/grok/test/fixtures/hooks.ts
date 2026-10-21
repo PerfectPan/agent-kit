@@ -1,6 +1,6 @@
 import type { LifecycleEvent } from "@rivus/agent-kit-harness";
 
-import type { HookDialectSample } from "../../../src/hook-dialect-conformance.js";
+import type { HookDialectSample } from "@rivus/agent-kit-testing";
 
 // Scrubbed Grok hook payloads (user guide 10-hooks.md and xai-grok-hooks/src/event.rs in xai-org/grok-build): the
 // camelCase keys every build sends, with hookEventName as the snake_case wire name.
@@ -168,42 +168,5 @@ export const grokSamples: readonly HookDialectSample[] = [
   ),
   sample("PreCompact", "pre_compact", { source: "auto" }, { phase: "activity" }),
   sample("PostCompact", "post_compact", { source: "auto" }, { phase: "activity" }),
-  sample("SessionEnd", "session_end", { reason: "shutdown", turnCount: 3 }, { phase: "finish", scope: "session" }),
-  {
-    name: "S30: a hook registered for Claude Code and run by Grok names Grok",
-    declaredAgent: "claude-code",
-    payload: {
-      ...common,
-      hookEventName: "pre_tool_use",
-      hook_event_name: "PreToolUse",
-      session_id: common.sessionId,
-      transcript_path: common.transcriptPath,
-      ...bash,
-      tool_name: bash.toolName,
-      tool_use_id: bash.toolUseId
-    },
-    env,
-    expected: {
-      ...identity,
-      nativeEvent: "pre_tool_use",
-      phase: "activity",
-      tool: { name: "run_terminal_command", callId: "tc-1" }
-    }
-  },
-  {
-    name: "an inherited GROK_SESSION_ID does not name Grok without a Grok payload",
-    declaredAgent: "claude-code",
-    payload: { hook_event_name: "Stop", session_id: "claude-session-1", cwd: common.cwd },
-    env: { GROK_SESSION_ID: common.sessionId, HERDR_PANE_ID: "w1:p2", TMUX_PANE: "%1" },
-    expected: {
-      agent: "claude-code",
-      nativeEvent: "Stop",
-      phase: "finish",
-      scope: "turn",
-      outcome: "completed",
-      sessionId: "claude-session-1",
-      cwd: common.cwd,
-      terminal: { host: "herdr", paneId: "w1:p2" }
-    }
-  }
+  sample("SessionEnd", "session_end", { reason: "shutdown", turnCount: 3 }, { phase: "finish", scope: "session" })
 ];

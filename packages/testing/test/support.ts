@@ -27,7 +27,7 @@ const USAGE_FIXTURES = {
   "claude-code": { home: ".claude", source: "fixtures/usage/claude-code" },
   codex: { home: ".codex", source: "fixtures/usage/codex" },
   "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
-  grok: { home: ".grok", source: "fixtures/usage/grok" },
+  grok: { home: ".grok", source: "../../providers/grok/test/fixtures/usage" },
   opencode: { home: ".local/share/opencode", source: "../../providers/opencode/test/fixtures/usage" },
   pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" }
 } as const;
@@ -96,33 +96,6 @@ export function nodeSqlite(): PlatformSqlite {
   return {
     open: (path, options) => new sqlite.DatabaseSync(path, { readOnly: options?.readonly ?? false })
   };
-}
-
-/** The Grok fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
-export function grokSessions(root: string): ConformanceSession[] {
-  const at = (path: string) => `${root}/${path}`;
-  return [
-    {
-      path: at("plain/updates.jsonl"),
-      records: 9,
-      capabilities: ["requests", "usage", "durations", "reasoning", "hooks", "systemPrompt", "toolSchemas"]
-    },
-    { path: at("compaction/updates.jsonl"), records: 4, capabilities: ["compaction", "compactionTokens"] },
-    { path: at("subagent/updates.jsonl"), records: 6, capabilities: ["subagents"] },
-    { path: at("tool-title/updates.jsonl"), records: 5, capabilities: ["requests"] },
-    { path: at("unknown-type/updates.jsonl"), records: 1, capabilities: [] },
-    {
-      path: at("tool-progress/updates.jsonl"),
-      records: 10,
-      capabilities: ["requests", "usage", "durations"]
-    },
-    { path: at("duplicate-turn/updates.jsonl"), records: 6, capabilities: ["requests", "usage", "durations"] },
-    {
-      path: at("subagent-meta-id/updates.jsonl"),
-      records: 4,
-      capabilities: ["requests", "usage", "durations", "subagents"]
-    }
-  ];
 }
 
 /** The Claude Code fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */

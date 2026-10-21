@@ -1,7 +1,7 @@
 import type { Result } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinHookDialects } from "../../lifecycle/adapters/hook-dialects.js";
+import { builtinHookDialects } from "../../../../test/support/providers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";

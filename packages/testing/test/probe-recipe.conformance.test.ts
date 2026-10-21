@@ -63,22 +63,6 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
       { path: "~/.codex/auth.json", json: { OPENAI_API_KEY: null }, reading: { loggedIn: false } },
       { path: "~/.codex/auth.json", json: [], reading: undefined }
     ]
-  },
-  grok: {
-    credentialFiles: [
-      {
-        path: "~/.grok/auth.json",
-        json: { "https://example.invalid/scope": { token: "x" } },
-        reading: { loggedIn: true }
-      },
-      { path: "~/.grok/auth.json", json: {}, reading: { loggedIn: false } }
-    ],
-    versions: [
-      {
-        output: ok("grok 1.0.46 (2765805b9442)\n"),
-        version: { output: "grok 1.0.46 (2765805b9442)", number: "1.0.46" }
-      }
-    ]
   }
 };
 

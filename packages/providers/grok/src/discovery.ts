@@ -1,7 +1,14 @@
+import {
+  GROK_API_KEY_ENV,
+  GROK_AUTH_FILE,
+  GROK_DISPLAY_NAME,
+  GROK_ID,
+  GROK_SESSIONS_DIR,
+  GROK_VERSION_SIDE_EFFECT
+} from "./facts.js";
 import * as z from "zod/mini";
 
-import type { AuthReading, ProbeRecipe } from "../index.js";
-import { VERSION_FLAG } from "./version-flag.js";
+import { type AuthReading, type ProbeRecipe, VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";
 
 const Entries = z.record(z.string(), z.unknown());
 
@@ -13,24 +20,24 @@ export function parseGrokAuthFile(json: unknown): AuthReading | undefined {
 
 export const grokProbe: ProbeRecipe = {
   specificationVersion: "discovery-v1",
-  agent: "grok",
-  displayName: "Grok",
+  agent: GROK_ID,
+  displayName: GROK_DISPLAY_NAME,
   kind: "cli",
-  commands: ["grok"],
+  commands: [GROK_ID],
   appPaths: [],
   configPaths: [
-    { agentHome: "grok", path: "sessions" },
-    { agentHome: "grok", path: "auth.json" }
+    { agentHome: GROK_ID, path: GROK_SESSIONS_DIR },
+    { agentHome: GROK_ID, path: GROK_AUTH_FILE }
   ],
   mcpConfigPaths: [],
   version: {
     ...VERSION_FLAG,
-    sideEffects: ["Creates ~/.grok, or $GROK_HOME, when it does not exist, as every grok run does."]
+    sideEffects: [GROK_VERSION_SIDE_EFFECT]
   },
   auth: {
-    credentialFiles: [{ path: { agentHome: "grok", path: "auth.json" }, parse: parseGrokAuthFile }],
+    credentialFiles: [{ path: { agentHome: GROK_ID, path: GROK_AUTH_FILE }, parse: parseGrokAuthFile }],
     // Used when no login is stored.
-    env: [{ name: "XAI_API_KEY", method: "api-key" }]
+    env: [{ name: GROK_API_KEY_ENV, method: "api-key" }]
   },
   warnings: []
 };

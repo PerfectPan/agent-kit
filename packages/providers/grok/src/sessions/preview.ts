@@ -1,9 +1,13 @@
-import type { SessionHead, SessionPreview } from "../../index.js";
-import { SESSION_TITLE_MAX } from "../../index.js";
-import { acpChunkText, acpRecordedUpdate } from "../../../transcript/adapters/acp-updates.js";
-import type { GrokSessionMeta } from "./layout.js";
-import { isInjectedChunk } from "../../../transcript/adapters/grok/chunks.js";
-import { grokMetaOf } from "../../../usage/adapters/grok.js";
+import {
+  type SessionHead,
+  type SessionPreview,
+  SESSION_TITLE_MAX,
+  acpChunkText,
+  acpRecordedUpdate
+} from "@rivus/agent-kit-sessions/spi";
+import { type GrokSessionMeta } from "../layout.js";
+import { isInjectedChunk } from "./chunks.js";
+import { grokMetaOf } from "../records.js";
 
 /** The first prompt follows the turn rule: the first user chunk that is not injected. */
 export function previewGrokRecords(records: readonly Record<string, unknown>[]): SessionPreview {
