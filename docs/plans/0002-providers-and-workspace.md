@@ -417,34 +417,35 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 
 ### 3.9 Boundary rules
 
-`vp lint` runs oxlint, which loads ESLint plugins through `jsPlugins` (alpha since 2026-03, outside semver). vite-plus 1.1.0 already depends on `@oxlint/plugins`.
+`vp lint` runs oxlint, which loads ESLint plugins through `jsPlugins` (alpha since 2026-03, outside semver). `infra/architecture/boundaries.ts` stays the one manifest: `infra/architecture/lint.ts` generates the lint configuration from it, and the manifest test reads the same allowed-dependency matrix. Generated messages carry the rule id in brackets, such as `[layer]`; the built-in Node rule and parser keep their own diagnostics.
 
-| Today's rule | What it checks today | Replacement |
+| Rule | What it checks | Implementation |
 | --- | --- | --- |
-| `layer`, `deep-import`, `relative-escape`, `public-entry`, `external-dependency`, `types-only` | Imports between layers and packages, entry use, external packages, type-only upstream imports | eslint-plugin-boundaries: element types by path (each context layer, providers, shell, platform-node), `dependencies` policies, `entry-point`, `external`, and `importKind` for type-only imports. The new provider rules of 3.1 are written the same way |
-| `node-builtin`, `effect` | `node:*` only in platform-node; `effect` only in the allowed layers | oxlint's built-in `no-restricted-imports` with `overrides` per directory |
-| `dynamic-import`, `shell-entry` | `import()` needs a literal specifier; shell entries re-export names one by one | `no-restricted-syntax` from `oxlint-plugin-eslint` |
-| `undeclared-package` | Every workspace package under `packages/` is declared in the manifest (`check-boundaries.ts:289-290`) | Every package directory must match an element type; the boundaries plugin's unknown-file rule reports a file outside every element |
-| `package-dependency` | The `workspace:` dependencies declared in each `package.json` are allowed (`check-boundaries.ts:301-310`), whether or not they are imported | A manifest test in `infra/architecture` that reads every `package.json` and checks its `workspace:` dependencies against the same allowed-dependency matrix the lint configuration uses (defined once) |
-| `entry-file`, `source-file`, `parse` | Package entry and source files exist and parse | publint, attw or `check:package` where they already check the same thing, otherwise the manifest test (decided by the spike) |
+| `layer`, `deep-import`, `relative-escape`, `public-entry`, `external-dependency`, `types-only`, `package-dependency` (imports) | Imports between layers and packages, entry use, external packages, type-only upstream imports | eslint-plugin-boundaries `dependencies` policies, resolved by `eslint-import-resolver-typescript`: element types by path (each context layer, the shell), workspace packages judged by specifier, relative imports by the element they resolve to, `dependency.kind` for type-only imports. A relative import that resolves to no file reports `[unresolved]`. The new provider rules of 3.1 are written the same way |
+| `node-builtin` | `node:*` only in platform-node | oxlint's built-in `import/no-nodejs-modules`, off for platform-node, plus a boundaries policy for `import("node:…")` types, which the built-in rule does not see |
+| `effect` | `effect`, `<package>/effect` and the package's own `src/effect.ts` only in the allowed paths | Boundaries policies: the allowed paths by file path, `src/effect.ts` as a file category |
+| `dynamic-import`, `shell-entry`, `source-file` | `import()` needs a literal specifier; shell entries re-export names one by one; only `.ts` under `src/` | `no-restricted-syntax` from `oxlint-plugin-eslint`; the shell entries' sources also through a boundaries policy |
+| `undeclared-package` | Every workspace package under `packages/` is declared in the manifest | Elements exist only for declared packages, so `boundaries/no-unknown-files` reports the sources of an undeclared one; the manifest test checks pnpm's project list |
+| `package-dependency` (manifests) | The `workspace:` dependencies declared in each `package.json` are allowed, whether or not they are imported | The manifest test, against the matrix of `boundaries.ts` |
+| `entry-file`, `parse` | Package entry files exist; sources parse | `entry-file`: the manifest test. `parse`: oxlint's parser on every run |
 
-- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell are outside its scope. It is a short custom rule written with `@oxlint/plugins`, because exact matching and skipping module specifiers take many `no-restricted-syntax` selectors. It reports a value that equals a marker exactly, never a substring of a longer value:
+- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell are outside its scope. It is two `no-restricted-syntax` selectors: a `Literal` whose whole value is a marker, except a module specifier, and a `TemplateElement` with a marker between `/`, the start and the end of its text. It reports a value that equals a marker exactly, never a substring of a longer value:
   - a string literal or a string literal type whose whole value is a marker;
-  - a path segment of a template literal's static text (the text split on `/`) that is a marker.
+  - a piece of a template literal's static text (each part between expressions, split on `/`) that is a marker, so `` `${home}/.claude/settings.json` `` and `` `${name}codex` `` report.
 
   Import and export specifiers are not checked; the boundary rules cover them. Comments and tests are not checked. Exact matching keeps words such as `invalid-cursor` and `api` from reporting.
-  - From batch 3 to batch 11 its list is a constant in `infra/architecture`: the seven ids plus the markers found in 1.1 (for example `.claude`, `CLAUDE_CONFIG_DIR`, `CURSOR_VERSION`). It also matches string literal types, so the id unions are caught.
+  - From batch 3 to batch 11 its list is `agentMarkers` in `boundaries.ts`: the seven ids plus `.claude`, `CLAUDE_CONFIG_DIR` and `CURSOR_VERSION`. It also matches string literal types, so the id unions are caught.
   - Until the code moves, it exempts exactly the files that hold agent knowledge on batch 3's base:
     - `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`, until batch 12;
     - `harness/src/domain/lifecycle/policies/host-sniffing.ts`, until batch 4 removes it;
     - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 12. Batch 4 removes `CodingAgentIdWithHome`; `BuiltinCodingAgentId` stays until the identity table goes (3.4).
 
-    Batch 3 confirms with a whole-repository lint that nothing outside this list reports. Each later batch removes the exemptions for the code it moves.
-  - From batch 12 the list is computed in the lint configuration from the providers' `facts.ts` (a `vite.config.ts` is code), the constant is deleted, and the exemptions end.
+    On batch 3's branch the whole-repository lint reports nothing outside this list. Each later batch removes the exemptions for the code it moves.
+  - From batch 12 the list is computed in `lint.ts` from the providers' `facts.ts`, the constant is deleted, and the exemptions end.
   - The rule catches hand-written ids, directories and environment variable names. It cannot catch agent knowledge without a marker, such as branching on Claude's `notification_type` field; `authoring.md` states that this is a review item.
-- **Where the configuration lives.** The configuration is specific to this repository, so it stays out of the shared lint-config. `infra/architecture` exports it, and each package's `vite.config.ts` merges it with the shared `lint`.
-- **Fixtures.** Every rule has a fixture that violates it and one that does not. A test lints them and asserts the expected rule ids. This matters because eslint-plugin-boundaries classifies an import it cannot resolve as external and skips it silently.
-- **The spike** (task 1.1) settles three things: the resolver (`eslint-import-resolver-typescript` or `eslint-import-resolver-oxc`) on this repository's TypeScript 7 code, whether `importKind` separates type-only imports, and the lint time. Tool versions must have been published at least 14 days earlier. If the spike is NO-GO, the fallback is ast-grep for the single-file rules and dependency-cruiser for the rules that need resolved paths, with the same fixtures and manifest test.
+- **Where the configuration lives.** The configuration is specific to this repository, so it stays out of the shared lint-config. `pnpm -r run lint` runs `vp lint` in each package, and oxlint then reads only that package's `lint` block (a root block would apply only to packages without one), so each package's `vite.config.ts` passes its block through `withBoundaryLint` from `infra/architecture/lint.ts`. The manifest test fails for a package under `packages/` whose block lacks the rules. The plugins are devDependencies of `infra/architecture`.
+- **Fixtures.** Every rule has cases that violate it and cases that do not (`infra/architecture/lint-cases.ts`). `run-lint-cases.ts`, part of `pnpm run test`, lints them in a temporary copy of the repository and asserts the exact rule ids, so a run never writes into the working tree. This matters because eslint-plugin-boundaries classifies an import it cannot resolve as external and skips it silently.
+- **The spike** (task 1.1) settled the resolver (`eslint-import-resolver-typescript`), that `dependency.kind` separates type-only imports, and the lint time; Appendix C records the verdict. Tool versions must have been published at least 14 days earlier.
 
 ### 3.10 Compatibility and migration
 
@@ -594,9 +595,9 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
 #### Batch 3: boundary rules
 
 - Files:
-  - add the boundary lint configuration, the manifest test, the marker constant and their fixtures under `infra/architecture`;
+  - add the boundary lint configuration (`lint.ts`), the manifest test, the case list and its runner under `infra/architecture`; keep `boundaries.ts` as the manifest they read, with the marker list added;
   - change each package's `vite.config.ts` to merge the configuration;
-  - delete `check-boundaries.ts`, `boundaries.ts`, `workspace.ts` and `boundaries.test.ts`.
+  - delete `check-boundaries.ts`, `workspace.ts` and `boundaries.test.ts`.
 - Change: 3.9, with the marker list and the exemptions listed there.
 - Tests: a violating and an allowed fixture per rule, including a new unlisted package directory and a forbidden `workspace:` dependency.
 - Exit condition: 6.4 row 3.
@@ -717,7 +718,7 @@ One batch each:
 | The hook entry could grow | risk | Hook processes load more code | PerfectPan | The size comparison of 5.3 in every batch |
 | 22 workspace packages instead of 15, without a build cache | risk | Slower CI | PerfectPan | Record CI time per batch |
 | Context tests that use built-in adapters as fixtures | follow-up | Tests must change when the adapters move | PerfectPan | Use providers through `testsOnly`, or test-only fake providers |
-| The lint spike verdict | open question | Decides batch 3's tools | PerfectPan | Task 1.1; recorded in Appendix C |
+| The lint spike verdict | decided | Decided batch 3's tools | PerfectPan | GO; recorded in Appendix C |
 
 ## Appendix
 
@@ -762,4 +763,9 @@ A function not listed here is placed by the same test: it belongs to one type, i
 
 ### C. Lint spike verdict
 
-Recorded by task 1.1.
+Task 1.1 ran on the Rush layout; the maintainer chose the lint approach on 2026-10-20 after reviewing its costs.
+
+- **Verdict: GO.** Every rule of the old checker has a home. Lint covers the import rules (`layer`, `deep-import`, `relative-escape`, `public-entry`, `external-dependency`, `types-only`, `package-dependency` for imports, `node-builtin`, `effect`, `shell-entry`, `dynamic-import`, `source-file`), `undeclared-package` for source files, and `parse` through oxlint's parser. The manifest test keeps what has no source file: undeclared packages in pnpm's project list, `workspace:` dependencies in `package.json`, and the entry files. The spike's 112 checks each reported exactly the expected rule id.
+- **Resolver**: `eslint-import-resolver-typescript` resolves this repository's TypeScript 7 code (`.js` specifiers to `.ts` files); the node resolver left 391 imports in sessions unresolved. `dependency.kind` separates declaration-level `import type` from value imports.
+- **Cost**: a generator of about 540 lines (`lint.ts`), four devDependencies of `infra/architecture` (eslint-plugin-boundaries 7.2.0, eslint-import-resolver-typescript 4.4.5, oxlint-plugin-eslint 1.87.0, and eslint 10.12.0 only as their peer, never run) that add 110 packages to the install, JS plugins that oxlint calls alpha, and lint time: the spike measured a sequential whole-repository `vp lint` at 7.5 s before and 13.1 s after. In batch 3, `pnpm run lint` took 7.25–10.67 s before and 10.08–11.55 s after (three runs each), and the case runner about 10.5 s.
+- **Batch 2 baseline**: 0.19.1 was published from the pnpm workspace with provenance (#154). Its tarball has `dist/harness/events.js` at 68,666 bytes and `dist/transcript/usage.js` at 170,049 bytes; rows 5 and 6 compare against these.

@@ -33,9 +33,9 @@ pnpm run check
 # Individual gates (run in every workspace package that defines them, in dependency order):
 pnpm run format        # or format:check
 pnpm run build         # internal packages have no build step; the shell's vp pack bundles them
-pnpm run lint          # vp lint: oxlint with type-aware rules and TypeScript diagnostics
+pnpm run lint          # vp lint: oxlint with type-aware rules, TypeScript diagnostics and the boundary rules
 pnpm run typecheck
-pnpm run test          # includes the architecture boundary test in infra/architecture
+pnpm run test          # includes the boundary manifest test and lint cases in infra/architecture
 pnpm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
 
 # Work on one package (add ... after the name to include its workspace dependencies):
@@ -77,8 +77,9 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
   (Oxc) needs explicit types on exported declarations; keep exports whose type is only inferred, such as zod
   schemas, module-private.
 - `infra/architecture` is the private `architecture-boundaries` project: `boundaries.ts` declares allowed package
-  dependencies, layer rules, npm and Node built-in allowlists and the Effect allowlist; its test checks every
-  package source file against them.
+  dependencies, layer rules, npm and Node built-in allowlists, the Effect allowlist and the agent markers; `lint.ts`
+  turns them into `vp lint` rules that every package's `vite.config.ts` applies through `withBoundaryLint`. Its tests
+  check the package manifests against `boundaries.ts` and lint violating and allowed cases of every rule.
 - `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run directly
   by Node.
 - `tests/smoke` is the private `agent-kit-smoke` project: smoke tests against the coding agents installed on this

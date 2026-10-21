@@ -34,11 +34,11 @@ shell bundles private context packages; collab owns its entry code and uses agen
 peer dependency. See
 [Authoring Conventions](docs/architecture/authoring.md) for their layouts and dependency boundaries.
 To add an internal package for a bounded context, copy
-`packages/platform` (its `package.json`, `tsconfig.json` and `vite.config.ts`), name it `@rivus/agent-kit-<folder>`,
-keep `"private": true`, declare its dependencies in `infra/architecture/boundaries.ts`, add it to the shell's
-devDependencies as `workspace:*` when the shell re-exports it, and run `pnpm install`; the `packages/*` glob in
-`pnpm-workspace.yaml` makes it a workspace member. A new public entry is a subpath in the shell's
-`exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts`.
+`packages/platform` (its `package.json`, `tsconfig.json` and `vite.config.ts`, which applies the boundary lint), name
+it `@rivus/agent-kit-<folder>`, keep `"private": true`, declare its dependencies in `infra/architecture/boundaries.ts`,
+add it to the shell's devDependencies as `workspace:*` when the shell re-exports it, and run `pnpm install`; the
+`packages/*` glob in `pnpm-workspace.yaml` makes it a workspace member. A new public entry is a subpath in the
+shell's `exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts`.
 Each package lists its own toolchain devDependencies. A version that two or more packages share lives once in the
 `catalog` of `pnpm-workspace.yaml`, and the packages reference it as `"catalog:"`; `catalogMode: strict` rejects
 `pnpm add` of an already-cataloged package at an out-of-range version, but a hand-edited version or a dependency
