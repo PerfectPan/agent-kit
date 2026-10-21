@@ -15,7 +15,6 @@ export {
   type CommandLine,
   type HookSource,
   type InstallAdapter,
-  type InstallAdapters,
   type InstallContext,
   type RenderedArtifact,
   ownerSlug
@@ -33,7 +32,6 @@ export {
   type FinishSelector,
   type ForeignHooks,
   type HookDialect,
-  type HookDialects,
   type HookEventSpec,
   type HookOutput,
   type HookTimeout,

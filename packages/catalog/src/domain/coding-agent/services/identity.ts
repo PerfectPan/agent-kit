@@ -23,6 +23,35 @@ export function homeRuleOf(
   return identity.ok ? identity.value.home : undefined;
 }
 
+function identityNames(identities: ServiceTable<CodingAgent>): Map<string, CodingAgentId> {
+  const names = new Map<string, CodingAgentId>();
+  for (const [key, identity] of Object.entries(identities)) {
+    if (identity == null) {
+      continue;
+    }
+    if (key !== identity.id) {
+      throw new AgentKitError("invalid-identity-table", `Identity key "${key}" differs from id "${identity.id}"`);
+    }
+    names.set(key, identity.id);
+  }
+  for (const identity of Object.values(identities)) {
+    if (identity == null) {
+      continue;
+    }
+    for (const alias of identity.aliases) {
+      const existing = names.get(alias);
+      if (existing !== undefined && existing !== identity.id) {
+        throw new AgentKitError(
+          "invalid-identity-table",
+          `Identity name "${alias}" belongs to both "${existing}" and "${identity.id}"`
+        );
+      }
+      names.set(alias, identity.id);
+    }
+  }
+  return names;
+}
+
 /** Resolves aliases from the given identities, ignoring input case and space; other valid ids stay unchanged. */
 export function parseCodingAgentId(
   input: string,
@@ -40,29 +69,4 @@ export function parseCodingAgentId(
 /** Invalid identity tables are caller errors, even when the queried name is otherwise unambiguous. */
 export function validateIdentities(identities: ServiceTable<CodingAgent>): void {
   identityNames(identities);
-}
-
-function identityNames(identities: ServiceTable<CodingAgent>): Map<string, CodingAgentId> {
-  const names = new Map<string, CodingAgentId>();
-  for (const [key, identity] of Object.entries(identities)) {
-    if (identity == null) continue;
-    if (key !== identity.id) {
-      throw new AgentKitError("invalid-identity-table", `Identity key "${key}" differs from id "${identity.id}"`);
-    }
-    names.set(key, identity.id);
-  }
-  for (const identity of Object.values(identities)) {
-    if (identity == null) continue;
-    for (const alias of identity.aliases) {
-      const existing = names.get(alias);
-      if (existing !== undefined && existing !== identity.id) {
-        throw new AgentKitError(
-          "invalid-identity-table",
-          `Identity name "${alias}" belongs to both "${existing}" and "${identity.id}"`
-        );
-      }
-      names.set(alias, identity.id);
-    }
-  }
-  return names;
 }

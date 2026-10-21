@@ -213,7 +213,7 @@ describe("the package manifests", () => {
     ]);
   });
 
-  it.each(["catalog", "discovery", "sessions", "harness", "acp", "cost"])("requires %s's SPI entry", (context) => {
+  it.each(["catalog", "discovery", "sessions", "harness", "acp"])("requires %s's SPI entry", (context) => {
     const folder = `packages/${context}`;
     expect(manifestViolations(packages, (path) => path !== `${folder}/src/spi.ts` && onDisk(path))).toEqual([
       `${folder}: entry-file src/spi.ts`

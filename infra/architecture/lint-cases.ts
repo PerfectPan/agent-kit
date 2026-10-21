@@ -46,8 +46,7 @@ export const cases: Case[] = [
     ["discovery", "ProbeRecipe"],
     ["sessions", "SessionAdapter"],
     ["harness", "HookDialect"],
-    ["acp", "AcpProfile"],
-    ["cost", "Price"]
+    ["acp", "AcpProfile"]
   ].map(([context, symbol]) =>
     allowed(
       `provider: declared ${context} SPI`,
@@ -55,6 +54,12 @@ export const cases: Case[] = [
       fresh("src/x"),
       `export type { ${symbol} } from "@rivus/agent-kit-${context}/spi";`
     )
+  ),
+  allowed(
+    "provider: catalog SPI result helpers",
+    "providers/spi-probe",
+    fresh("src/x"),
+    `export { ok, err, AgentKitError } from "${CATALOG}/spi";`
   ),
   allowed(
     "provider: SPI runtime helper",
@@ -80,7 +85,7 @@ export const cases: Case[] = [
     "provider: SPI access keeps type-only restriction",
     "providers/spi-probe",
     fresh("src/x"),
-    'export { Price } from "@rivus/agent-kit-cost/spi";',
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";',
     "types-only"
   ),
   rejects(

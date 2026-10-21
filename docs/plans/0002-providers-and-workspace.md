@@ -278,7 +278,7 @@ packages/providers/claude-code/
   - `CapabilityUnsupported`, moved from sessions.
 
   The lookup names are `lookupService(agent, table)` and `requireService(agent, table, reason?)`. Only own,
-  defined entries count; inherited properties and explicit `undefined` are missing. The throwing lookup accepts a
+  non-null entries count; inherited properties, `null` and `undefined` are missing. The throwing lookup accepts a
   reason so each use case can keep a service-specific message. The lookups, `ServiceTable`, and `homeRuleOf` are
   sibling-context exports, not new shell exports. Identity table queries accept third-party ids too.
   Part A introduces these foundations and passes the current built-in identity table at existing callers; Part B
@@ -321,6 +321,9 @@ packages/providers/claude-code/
 - The functions that read the table take it as a parameter:
   - `parseCodingAgentId(input, identities)` resolves aliases from the given table;
   - `homeRuleOf(agent, identities, own?)` keeps today's precedence: the caller's own rule, then the table's.
+- Identity tables reject keys differing from `identity.id` and names shared by different identities. Canonical ids
+  are registered before aliases; the shell validates its merged identity table with `validateIdentities`, also used
+  by catalog parsing.
 - `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
 - `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package in batch 12, together with the identity table. Until then the contexts' built-in tables are still typed with the union, and a context may not depend on the shell, so catalog keeps it. From batch 12 the shell derives both from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
@@ -367,8 +370,8 @@ interface HostMarkers {
   lint fixtures exercise explicit access without registering a production provider before its batch.
 - The sessions entry is derived from non-test adapter imports, including shared file and format helpers. It exports
   the SPI interfaces and their parts, then only imported context symbols; agent-specific layouts, records, tables
-  and translators stay out. ACP format helpers are retained where Grok imports them. Cost exports the `Price` and
-  `PricingTable` types its format adapter consumes; it has no provider service interface to invent.
+  and translators stay out. ACP format helpers are retained where Grok imports them. Catalog exports identity model types, `homeFromRule`, `ok`, `err`, `Result` and `AgentKitError`; built-in
+  tables and their id union stay out of SPI. Cost has no provider consumer and therefore no SPI entry.
 - SPI interface types are public through their service's shell entry, because the trace viewer implements its own `SessionAdapter` and runs `sessionAdapterConformance`. SPI helpers stay internal until a third-party provider needs one.
 - Pure SPI interfaces (`HookDialect`, `InstallAdapter`, `ProbeRecipe`, `AcpProfile`) live in `domain/<concept>/spi/`. Interfaces that read files (`SessionAdapter`, `UsageDecoder`) live in `application/spi.ts`. `application/ports.ts` keeps only ports that the kit's own `infra/` implements.
 - The published conformance suites take the service tables they need as parameters instead of reading built-in tables. For example, `hookDialectConformance` merges the dialect under test over a given hooks table so that host sniffing works as in use. The shell's `/testing` binds the built-in tables.
@@ -393,6 +396,9 @@ interface HostMarkers {
   public.ts           application interface
   spi.ts              entry for providers
 ```
+
+A Platform slice named by an SPI interface lives in `application/spi.ts` (sessions); a slice needed only by
+use cases lives in `application/platform.ts` (discovery and acp). `ports.ts` holds only infrastructure ports.
 
 The domain folders no longer have `adapters/`, so the name no longer clashes with `infra/adapters/`.
 

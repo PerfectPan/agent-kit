@@ -97,7 +97,7 @@ function copyRepository(copy: string): void {
 function spiProvider(copy: string): void {
   const folder = join(copy, "packages/providers/spi-probe");
   const name = "@rivus/agent-kit-provider-spi-probe";
-  const contexts = ["catalog", "discovery", "sessions", "harness", "acp", "cost"].map(
+  const contexts = ["catalog", "discovery", "sessions", "harness", "acp"].map(
     (context) => `@rivus/agent-kit-${context}`
   );
   const dependsOn = [...contexts, "@rivus/agent-kit-platform"];
@@ -120,7 +120,7 @@ function spiProvider(copy: string): void {
   const rule = {
     dependsOn: ["@rivus/agent-kit-platform"],
     spiImports: [...contexts, "@rivus/agent-kit-platform"],
-    typesOnly: ["@rivus/agent-kit-cost"],
+    typesOnly: ["@rivus/agent-kit-acp"],
     external: []
   };
   writeFileSync(

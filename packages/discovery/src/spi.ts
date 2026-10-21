@@ -9,7 +9,6 @@ export {
   type InstallationKind,
   type ProbePath,
   type ProbeRecipe,
-  type ProbeRecipes,
   type VersionProbe
 } from "./domain/installation/spi/probe-recipe.js";
 export { type AuthReading } from "./domain/installation/value-objects/auth-state.js";

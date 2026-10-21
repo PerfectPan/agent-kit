@@ -132,7 +132,7 @@ export const boundaries: BoundaryRules = {
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
     // bundles into the entry.
-    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: ["zod/mini"], spi: true },
+    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: ["zod/mini"] },
     // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a
     // fake agent through the Node platform, which only applications may provide.
     [ACP]: {
