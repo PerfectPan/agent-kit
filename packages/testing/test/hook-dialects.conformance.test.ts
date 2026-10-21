@@ -40,7 +40,7 @@ describe("Cursor running Claude Code hooks", () => {
     it(`${sample.name}`, () => {
       expect(
         readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })
-      ).toEqual(sample.expected);
+      ).toStrictEqual(sample.expected);
     });
   }
 });

@@ -19,8 +19,10 @@ import {
   CURSOR_HOOKS_FILE
 } from "./facts.js";
 
-// https://cursor.com/docs/plugins and https://cursor.com/docs/reference/plugins.
-// Cursor has no verified identity home rule; local plugins live under this documented directory.
+// https://cursor.com/docs/plugins and https://cursor.com/docs/reference/plugins: a plugin under
+// `~/.cursor/plugins/local/<name>/` with `.cursor-plugin/plugin.json` (only `name` is required) is discovered after a
+// reload, and its `hooks/hooks.json` lists `{ "command" }` objects per event, with timeouts in seconds.
+// Cursor has no verified identity home rule; plugins live under `~/.cursor` as documented.
 function cursorHome(context: InstallContext): string {
   return `${context.home}/${CURSOR_PLUGIN_HOME}`;
 }
