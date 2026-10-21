@@ -125,7 +125,7 @@ export const boundaries: BoundaryRules = {
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM],
+      testsOnly: [TESTING],
       external: ["zod/mini"]
     },
     [GROK]: {

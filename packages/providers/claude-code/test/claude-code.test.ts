@@ -22,7 +22,6 @@ import { createMemoryPlatform } from "@rivus/agent-kit-testing";
 import { readTree } from "../../../testing/test/support.js";
 
 const testSessions = { "claude-code": claudeCodeSessionAdapter };
-const builtinSessionAdapters = testSessions;
 const testIdentity = { "claude-code": claudeCode };
 
 const tree = await readTree(fileURLToPath(new URL("fixtures/sessions", import.meta.url)), "/u/me/.claude/fx");
@@ -339,7 +338,7 @@ describe("sessions use cases over Claude Code", () => {
   });
 
   it("resolves the home a session adapter lists: its own rule, else the catalog's, else it throws", () => {
-    const adapter = builtinSessionAdapters["claude-code"];
+    const adapter = testSessions["claude-code"];
     expect(
       sessionAdapterHome(adapter, { env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }, home: "/u/me" }, testIdentity)
     ).toMatchObject({

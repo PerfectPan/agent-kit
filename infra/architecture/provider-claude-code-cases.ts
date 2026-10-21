@@ -221,7 +221,7 @@ export const claudeCodeCases: Case[] = [
     'export { discoverSessions } from "@rivus/agent-kit-sessions/spi";'
   ),
   rejects(
-    "claude-code: Platform types are tests-only",
+    "claude-code: no Platform types",
     "providers/claude-code",
     fresh("src/x"),
     'export type { Platform } from "@rivus/agent-kit-platform";',

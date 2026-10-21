@@ -32,7 +32,6 @@
     "@rivus/agent-kit-acp": "workspace:*"
   },
   "devDependencies": {
-    "@rivus/agent-kit-platform": "workspace:*",
     "@perfectpan/lint-config": "catalog:",
     "@rivus/agent-kit-testing": "workspace:*",
     "@types/node": "catalog:",

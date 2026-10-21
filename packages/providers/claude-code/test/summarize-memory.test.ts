@@ -12,7 +12,6 @@ import { type SessionPlatform, loadTranscript, summarizeSession } from "@rivus/a
 import { describe, expect, it } from "vite-plus/test";
 import { createMemoryPlatform } from "@rivus/agent-kit-testing";
 const testSessions = { "claude-code": claudeCodeSessionAdapter };
-const builtinSessionAdapters = testSessions;
 const testIdentity = { "claude-code": claudeCode };
 function sessionContent(turns: number): string {
   const lines: string[] = [];
@@ -35,7 +34,7 @@ describe("summarizeSession memory", () => {
         "/claude/large/session.jsonl": sessionContent(LARGE_TURNS)
       }
     });
-    const adapter = builtinSessionAdapters["claude-code"]!;
+    const adapter = testSessions["claude-code"]!;
     const peakDuring = async (run: (sampled: SessionPlatform) => Promise<unknown>): Promise<number> => {
       gc();
       await new Promise((resolve) => setImmediate(resolve));
