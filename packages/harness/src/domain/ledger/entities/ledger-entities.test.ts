@@ -120,6 +120,62 @@ describe("Ledger children", () => {
     expect(pending?.resolve(undefined)).toBe("unknown");
   });
 
+  it("completes an ownedAt operation even when its probe differs from the result hash", () => {
+    const value = snapshot();
+    const ledger = restore({
+      ...value,
+      pending: value.pending.map((op) => ({ ...op, precondition: { ownedAt: 1 } }))
+    });
+    expect(ledger.pending[0]?.resolve(hash(3))).toBe("completed");
+    expect(ledger.pending[0]?.resolve(undefined)).toBe("completed");
+  });
+
+  it.each(["release", "keep"] as const)("completes a %s removal regardless of the disk probe", (removal) => {
+    const value = snapshot();
+    const ledger = restore({
+      ...value,
+      pending: value.pending.map((op) => ({ ...op, action: "remove", removal }))
+    });
+    expect(ledger.pending[0]?.resolve(hash(3))).toBe("completed");
+    expect(ledger.pending[0]?.resolve(hash(1))).toBe("completed");
+    expect(ledger.pending[0]?.resolve(undefined)).toBe("completed");
+  });
+
+  it("leaves every caller-owned child unfrozen when a later invariant rejects the snapshot", () => {
+    const value = structuredClone(snapshot());
+    const rejected = { ...value, pending: [...value.pending, ...value.pending] };
+    expect(Ledger.restore(rejected)).toEqual({
+      ok: false,
+      error: { _tag: "InvalidLedger", reason: "two pending operations on one locator" }
+    });
+    const descendants = [
+      rejected,
+      value.entries,
+      ...Object.values(value.entries).flatMap((entry) => [
+        entry,
+        entry.locator,
+        entry.owners,
+        entry.agents,
+        entry.preImage
+      ]),
+      rejected.pending,
+      ...value.pending.flatMap((op) => [op, op.locator, op.agents, op.precondition]),
+      value.kept,
+      ...Object.values(value.kept ?? {}).flatMap((kept) => [kept, kept.locator])
+    ];
+    for (const descendant of descendants) {
+      expect(Object.isFrozen(descendant)).toBe(false);
+    }
+  });
+
+  it("reports a mismatched entry key before invalid owners", () => {
+    const value = snapshot({ owners: [] });
+    expect(Ledger.restore({ ...value, entries: { wrong: value.entries[key]! } })).toEqual({
+      ok: false,
+      error: { _tag: "InvalidLedger", reason: "entry is not keyed by its locator", key: "wrong" }
+    });
+  });
+
   it("rejects invalid pending and kept children at the root boundary", () => {
     const value = snapshot();
     expect(

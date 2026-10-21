@@ -77,7 +77,8 @@ export class LedgerEntry {
 
   readonly #snapshot: LedgerEntrySnapshot;
 
-  private constructor(snapshot: LedgerEntrySnapshot) {
+  private constructor(input: LedgerEntrySnapshot) {
+    const snapshot = structuredClone(input);
     Object.freeze(snapshot.locator);
     Object.freeze(snapshot.owners);
     Object.freeze(snapshot.agents);

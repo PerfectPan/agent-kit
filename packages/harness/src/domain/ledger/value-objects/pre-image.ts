@@ -9,5 +9,4 @@ export type PreImage =
   | { readonly existed: true; readonly hash: ContentHash; readonly blobRef: string };
 
 export const isPreImage = (preImage: PreImage): boolean =>
-  !preImage.existed ||
-  (isContentHash(preImage.hash) && typeof preImage.blobRef === "string" && preImage.blobRef !== "");
+  !preImage.existed || (isContentHash(preImage.hash) && preImage.blobRef !== "");

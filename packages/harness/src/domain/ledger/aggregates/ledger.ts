@@ -7,7 +7,8 @@ import { basisMoved } from "../../install-plan/value-objects/plan-basis.js";
 import {
   type ArtifactLocator,
   type LocatorKey,
-  locatorKey
+  locatorKey,
+  locatorProblem
 } from "../../install-plan/value-objects/artifact-locator.js";
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
 import type { LedgerVersionUnsupported } from "../errors/ledger-version-unsupported.js";
@@ -136,23 +137,24 @@ export class Ledger {
     }
     const invalid = (reason: string, key?: LocatorKey): Result<never, InvalidLedger> =>
       err(key === undefined ? { _tag: "InvalidLedger", reason } : { _tag: "InvalidLedger", reason, key });
-    if (typeof snapshot.lineage !== "string" || snapshot.lineage === "") {
+    if (snapshot.lineage === "") {
       return invalid("lineage is empty");
     }
     if (!isRevision(snapshot.revision)) {
       return invalid("revision is not a non-negative integer");
     }
-    if (typeof snapshot.entries !== "object" || Object.is(snapshot.entries, null) || !Array.isArray(snapshot.pending)) {
-      return invalid("entries or pending are missing");
-    }
     const entries: Record<LocatorKey, LedgerEntry> = {};
     for (const [key, value] of Object.entries(snapshot.entries)) {
+      const locatorIssue = locatorProblem(value.locator);
+      if (locatorIssue !== undefined) {
+        return invalid(locatorIssue, key);
+      }
+      if (key !== locatorKey(value.locator)) {
+        return invalid("entry is not keyed by its locator", key);
+      }
       const entry = LedgerEntry.restore(value);
       if (!entry.ok) {
         return invalid(entry.error.reason, key);
-      }
-      if (key !== locatorKey(entry.value.locator)) {
-        return invalid("entry is not keyed by its locator", key);
       }
       if (entry.value.entryRevision > snapshot.revision) {
         return invalid("entry revision is not between 0 and the ledger revision", key);
@@ -190,7 +192,7 @@ export class Ledger {
   }
 
   /** Every agent these entries name, without repeats and sorted. */
-  static agentsOfEntries(entries: readonly LedgerEntry[]): readonly CodingAgentId[] {
+  private static agentsOfEntries(entries: readonly LedgerEntry[]): readonly CodingAgentId[] {
     return [...new Set(entries.flatMap((entry) => entry.agents))].toSorted();
   }
 
@@ -363,7 +365,7 @@ export class Ledger {
       const probe = byKey.get(locatorKey(op.locator));
       // A matching entry cannot prove who created its file between pending and recovery. Only already committed
       // provenance may survive; recordOperation retains it from the existing entry.
-      const { createdConfigFile: _unconfirmed, ...recovered } = op;
+      const { createdConfigFile: _unconfirmed, ...recovered } = op.toSnapshot();
       return { op: recovered, resolution: probe === undefined ? undefined : op.resolve(probe.hash) };
     });
     return {
@@ -395,7 +397,7 @@ export class Ledger {
       }
       if (entry.contentHash !== contentHash) {
         // Observing new content proves no file creation; only unchanged entries can keep that proof.
-        const { createdConfigFile: _unconfirmed, ...unproven } = entry;
+        const { createdConfigFile: _unconfirmed, ...unproven } = entry.toSnapshot();
         entries[locatorKey(locator)] = { ...unproven, contentHash, appliedAt: context.at, entryRevision: revision };
         changed = true;
       }

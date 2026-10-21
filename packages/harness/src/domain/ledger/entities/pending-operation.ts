@@ -92,7 +92,8 @@ export class PendingOperation {
 
   readonly #snapshot: PendingOperationSnapshot;
 
-  private constructor(snapshot: PendingOperationSnapshot) {
+  private constructor(input: PendingOperationSnapshot) {
+    const snapshot = structuredClone(input);
     Object.freeze(snapshot.locator);
     Object.freeze(snapshot.agents);
     Object.freeze(snapshot.precondition);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { LedgerEntrySnapshot as LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import { Ledger } from "../../ledger/aggregates/ledger.js";
+import { locatorKey } from "./artifact-locator.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { ObservedArtifact } from "./observed-artifact.js";
 import type { PlanStep } from "./plan-step.js";
@@ -17,7 +19,33 @@ const step = (overrides: Partial<PlanStep> = {}): PlanStep => ({
   ...overrides
 });
 
-const entry = (revision: number): LedgerEntry => ({ entryRevision: revision }) as unknown as LedgerEntry;
+function entry(revision: number): LedgerEntry {
+  const locator = { kind: "file", path: "/u/me/x" } as const;
+  const restored = Ledger.restore({
+    schemaVersion: 1,
+    lineage: "fixture",
+    revision,
+    pending: [],
+    entries: {
+      [locatorKey(locator)]: {
+        locator,
+        owners: ["app"],
+        activeOwner: "app",
+        agents: ["codex"],
+        bundleVersion: "1",
+        toolVersion: "1",
+        contentHash: hash(1),
+        preImage: { existed: false },
+        appliedAt: "t0",
+        entryRevision: revision
+      }
+    }
+  });
+  if (!restored.ok) {
+    throw new Error(restored.error._tag);
+  }
+  return restored.value.entries()[0]!;
+}
 
 const seen = (overrides: Partial<ObservedArtifact> = {}): ObservedArtifact => ({
   locator: { kind: "file", path: "/u/me/x" },

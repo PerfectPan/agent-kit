@@ -36,7 +36,8 @@ export class KeptArtifact {
 
   readonly #snapshot: KeptArtifactSnapshot;
 
-  private constructor(snapshot: KeptArtifactSnapshot) {
+  private constructor(input: KeptArtifactSnapshot) {
+    const snapshot = structuredClone(input);
     Object.freeze(snapshot.locator);
     this.#snapshot = Object.freeze(snapshot);
     Object.assign(this, snapshot);

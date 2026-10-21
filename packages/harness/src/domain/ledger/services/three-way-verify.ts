@@ -5,7 +5,7 @@ import {
   type LocatorKey,
   locatorKey
 } from "../../install-plan/value-objects/artifact-locator.js";
-import type { LedgerEntrySnapshot as LedgerEntry } from "../entities/ledger-entry.js";
+import type { LedgerEntry } from "../entities/ledger-entry.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
 import type { VerifyStatus } from "../value-objects/drift.js";
 import { Ledger } from "../aggregates/ledger.js";
