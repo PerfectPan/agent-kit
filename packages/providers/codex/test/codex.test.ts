@@ -11,12 +11,11 @@ import {
   isSessionHead,
   listSessions,
   loadTranscript,
-  mergeByTime,
   type SessionHead,
   type SessionListFailure,
-  timedRecord,
   type Transcript
 } from "@rivus/agent-kit-sessions/public";
+import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryPlatform } from "@rivus/agent-kit-testing/public";

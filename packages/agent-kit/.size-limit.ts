@@ -10,8 +10,7 @@ const nodeOnly = {
 // The service-table bindings add merging, identity validation and catalog lookups. The exact byte budgets for
 // providers, ACP, harness, events and sessions include that code, measured with the existing dependencies.
 // Packing /providers separately keeps full usage adapters out of /sessions; the resulting chunk layout also
-// changes compression of /providers and /acp. Direct defining-file imports also change module order and compression;
-// these two budgets match the measured barrel-free output.
+// changes compression of /providers and /acp.
 // Provider assembly budgets include service tables and shared facts; these limits track measured output
 // without extra headroom.
 // Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
@@ -46,7 +45,7 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24476 B" },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24488 B" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "40.4 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25622 B" },

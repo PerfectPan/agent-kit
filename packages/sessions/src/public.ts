@@ -137,6 +137,4 @@ export { type Usage } from "./domain/usage/value-objects/usage.js";
 
 export { type AcpPartTranslator, createAcpPartTranslator } from "./domain/transcript/adapters/acp-updates.js";
 export { type StreamFolder, createStreamFolder } from "./domain/transcript/services/fold-stream-parts.js";
-export { mergeByTime } from "./domain/transcript/policies/event-ordering.js";
-export { timedRecord } from "./domain/transcript/adapters/record-time.js";
 export { readLines, readText } from "./application/services/files/read-file.js";

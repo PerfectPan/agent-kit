@@ -948,6 +948,19 @@ export const cases: Case[] = [
     fresh("src/x"),
     'export { readHookEvent } from "@rivus/agent-kit-harness/public/events";'
   ),
+  allowed(
+    "testing: a declared harness public subentry",
+    "testing",
+    fresh("src/x"),
+    'export type { InstallAdapter } from "@rivus/agent-kit-harness/public/install";'
+  ),
+  rejects(
+    "a public subentry absent from the target exports",
+    "sessions",
+    fresh("src/application/x"),
+    `export { ok } from "${CATALOG}/public/events";`,
+    "deep-import"
+  ),
 
   // resolution
   rejects(
