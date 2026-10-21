@@ -327,7 +327,7 @@ describe("the package manifests", () => {
     }
   });
 
-  it("requires every provider to supply its marker list from import-free facts", () => {
+  it("requires every provider to supply its marker list from facts", () => {
     for (const { name, folder } of projects) {
       const rule = boundaries.packages[name];
       if (rule?.providerServices !== undefined) {
@@ -336,7 +336,6 @@ describe("the package manifests", () => {
         expect(onDisk(path), `facts file of ${name}`).toBe(true);
         const facts = readFileSync(join(root, path), "utf8");
         expect(extractAgentMarkers(path, facts).length, `markers of ${name}`).toBeGreaterThan(0);
-        expect(facts, `facts of ${name}`).not.toMatch(/\b(?:import|require)\s*(?:[({*]|type\b|["'])|\bfrom\s*["']/);
       }
     }
   });

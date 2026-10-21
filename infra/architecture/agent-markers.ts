@@ -1,70 +1,55 @@
-import { API } from "typescript/unstable/sync";
-import { createVirtualFileSystem } from "typescript/unstable/fs";
-import {
-  isArrayLiteralExpression,
-  isIdentifier,
-  isStringLiteral,
-  isVariableStatement,
-  ModifierFlags,
-  NodeFlags,
-  type Expression
-} from "typescript/unstable/ast";
+import { parseSync, type Expression } from "oxc-parser";
 
-// Parse an isolated virtual file because configuration must never execute provider code, including illegal-import fixtures.
+// Parse facts as text because configuration must never execute provider code, including illegal-import fixtures.
 export function extractAgentMarkers(file: string, text: string): string[] {
-  const files = createVirtualFileSystem({
-    "/facts.ts": text,
-    "/tsconfig.json": JSON.stringify({
-      files: ["facts.ts"],
-      compilerOptions: { noLib: true, noResolve: true, types: [] }
-    })
-  });
-  const api = new API({ cwd: "/", fs: { ...files, readFile: (path) => files.readFile?.(path) ?? null } });
   const fail = (element: string, reason: string): never => {
     throw new Error(`${file}: ${element}: ${reason}`);
   };
-  try {
-    const program = api.updateSnapshot({ openProjects: ["/tsconfig.json"] }).getProject("/tsconfig.json")?.program;
-    const source = program?.getSourceFile("/facts.ts");
-    if (source === undefined) {
-      return fail("agentMarkers", "could not parse facts source");
+  let source = text;
+  let parsed = parseSync(file, source);
+  // Oxc rejects exported resources before returning an AST. Treat them as mutable bindings so marker errors stay specific.
+  while (parsed.errors[0]?.message === "Using declarations cannot be exported directly.") {
+    const span = parsed.errors[0].labels[0];
+    if (span === undefined) {
+      return fail("source at 0", parsed.errors[0].message);
     }
-    const diagnostic = program?.getSyntacticDiagnostics("/facts.ts")[0];
-    if (diagnostic !== undefined) {
-      return fail(`source at ${diagnostic.pos}`, diagnostic.text);
-    }
-    const constants = new Map<string, Expression | undefined>();
-    for (const statement of source.statements) {
-      if (
-        isVariableStatement(statement) &&
-        (statement.modifierFlags & ModifierFlags.Export) !== 0 &&
-        (statement.declarationList.flags & NodeFlags.BlockScoped) === NodeFlags.Const
-      ) {
-        for (const declaration of statement.declarationList.declarations) {
-          if (isIdentifier(declaration.name)) {
-            if (constants.has(declaration.name.text)) {
-              return fail(declaration.name.text, "duplicate exported const");
-            }
-            constants.set(declaration.name.text, declaration.initializer);
+    source = `${source.slice(0, span.start)}${"let _".padEnd(span.end - span.start)}${source.slice(span.end)}`;
+    parsed = parseSync(file, source);
+  }
+  // Uninitialized constants cannot supply markers; diagnose them through the same declaration/element checks.
+  const diagnostic = parsed.errors.find((error) => error.message !== "Missing initializer in const declaration");
+  if (diagnostic !== undefined) {
+    return fail(`source at ${diagnostic.labels[0]?.start ?? 0}`, diagnostic.message);
+  }
+  const constants = new Map<string, Expression | null>();
+  for (const statement of parsed.program.body) {
+    if (
+      statement.type === "ExportNamedDeclaration" &&
+      statement.declaration?.type === "VariableDeclaration" &&
+      statement.declaration.kind === "const"
+    ) {
+      for (const declaration of statement.declaration.declarations) {
+        if (declaration.id.type === "Identifier") {
+          if (constants.has(declaration.id.name)) {
+            return fail(declaration.id.name, "duplicate exported const");
           }
+          constants.set(declaration.id.name, declaration.init);
         }
       }
     }
-    const markers = constants.get("agentMarkers");
-    if (markers === undefined || !isArrayLiteralExpression(markers)) {
-      return fail("agentMarkers", "expected an exported const array literal");
-    }
-    return markers.elements.map((element, index) => {
-      const value = isIdentifier(element) ? constants.get(element.text) : element;
-      if (value !== undefined && isStringLiteral(value)) {
-        return value.text;
-      }
-      return fail(
-        `agentMarkers[${index}] (${element.getText(source) || "<empty>"})`,
-        "expected a string literal or a same-file export const initialized with a string literal"
-      );
-    });
-  } finally {
-    api.close();
   }
+  const markers = constants.get("agentMarkers");
+  if (markers?.type !== "ArrayExpression") {
+    return fail("agentMarkers", "expected an exported const array literal");
+  }
+  return markers.elements.map((element, index) => {
+    const value = element?.type === "Identifier" ? constants.get(element.name) : element;
+    if (value?.type === "Literal" && typeof value.value === "string") {
+      return value.value;
+    }
+    return fail(
+      `agentMarkers[${index}] (${element === null ? "<empty>" : text.slice(element.start, element.end)})`,
+      "expected a string literal or a same-file export const initialized with a string literal"
+    );
+  });
 }

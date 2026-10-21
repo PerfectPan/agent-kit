@@ -3,8 +3,6 @@ export { detectAgents, type DetectAgentsOptions } from "./application/use-cases/
 export type { DiscoveryErrorCode } from "./application/errors.js";
 export type { DiscoveryPlatform } from "./application/platform.js";
 
-// Probe recipes
-
 // Published language and rules
 export {
   type AuthCommandProbe,

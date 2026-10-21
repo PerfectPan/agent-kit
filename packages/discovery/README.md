@@ -31,7 +31,10 @@ Pi remains session-only: the kit has no Pi authentication probe or documented au
 [Provider home rules](../agent-kit/src/providers/identity.ts) and
 [`homeFromRule`](../catalog/src/domain/coding-agent/policies/home-from-rule.ts) own override resolution.
 [Usage source tests](../testing/test/usage-sources.test.ts) cover all six default layouts and overrides using
-[usage fixtures](../testing/test/fixtures/usage). Discovery's
+the providers’ usage fixtures: [Claude Code](../providers/claude-code/test/fixtures/usage),
+[Codex](../providers/codex/test/fixtures/usage), [Gemini CLI](../providers/gemini-cli/test/fixtures/usage),
+[Grok](../providers/grok/test/fixtures/usage), [opencode](../providers/opencode/test/fixtures/usage) and
+[Pi](../providers/pi/test/fixtures/usage). Discovery's
 [evidence regression tests](../testing/test/discovery-evidence.test.ts) check each path independently and run
 `planInstall`/`applyInstall` over an in-memory home before detection.
 

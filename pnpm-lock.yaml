@@ -249,6 +249,9 @@ importers:
       eslint-plugin-boundaries:
         specifier: 7.2.0
         version: 7.2.0(eslint-import-resolver-typescript@4.4.5(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0))(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0)
+      oxc-parser:
+        specifier: 'catalog:'
+        version: 0.154.0
       oxlint-plugin-eslint:
         specifier: 1.88.0
         version: 1.88.0
