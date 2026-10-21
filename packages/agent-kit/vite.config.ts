@@ -4,6 +4,8 @@ import { fmt, lint } from "@perfectpan/lint-config/vite-plus";
 import { defineConfig } from "vite-plus";
 import type { PackUserConfig } from "vite-plus/pack";
 
+import { withBoundaryLint } from "../../infra/architecture/lint.ts";
+
 const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
   version: string;
   exports: Record<string, unknown>;
@@ -41,7 +43,7 @@ const shared = (entryNames: string[]): PackUserConfig => ({
 export default defineConfig({
   // The generated changelog is release output, not a repository source; dist is build output.
   fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
-  lint: { ...lint, ignorePatterns: ["dist/**"] },
+  lint: withBoundaryLint({ ...lint, ignorePatterns: ["dist/**"] }, import.meta.url),
   // One pack per zero-dependency entry: sharing a pack would let the bundler put zod/mini into a common chunk the
   // entries import, and the built entry files must inline it instead.
   pack: [

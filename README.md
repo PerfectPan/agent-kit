@@ -252,7 +252,7 @@ A pnpm workspace monorepo laid out like
 [PerfectPan/project-template-pnpm](https://github.com/PerfectPan/project-template-pnpm). Each bounded context is a
 private package under `packages/`; `packages/agent-kit` is the published shell that re-exports their public names
 and bundles them into `dist`. `infra/architecture/boundaries.ts` declares which package and layer may import what,
-and a test checks the real import graph against it.
+and `vp lint` checks every package's imports against it.
 
 ```bash
 pnpm install

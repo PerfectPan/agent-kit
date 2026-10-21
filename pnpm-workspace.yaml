@@ -51,6 +51,9 @@ autoInstallPeers: true
 allowBuilds:
   # Its postinstall verifies the platform binary that the bundled vite runs.
   esbuild: true
+  # Under eslint-import-resolver-typescript (the boundary lint's resolver). Its native binding arrives as an
+  # optional dependency; the postinstall only re-checks that binding, so it does not need to run.
+  unrs-resolver: false
 
 versioning:
   # `pnpm version -r` must delete consumed changesets and write each package's CHANGELOG.md immediately.

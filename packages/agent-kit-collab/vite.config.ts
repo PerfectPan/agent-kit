@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { fmt, lint } from "@perfectpan/lint-config/vite-plus";
 import { defineConfig } from "vite-plus";
 
+import { withBoundaryLint } from "../../infra/architecture/lint.ts";
+
 const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
   exports: Record<string, unknown>;
 };
@@ -23,15 +25,18 @@ const bundleProcessLockZod = (id: string, importer: string | undefined): boolean
 export default defineConfig({
   // The generated changelogs are release output, not repository sources.
   fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
-  lint: {
-    ...lint,
-    ignorePatterns: ["dist/**"],
-    // it.effect and it.live are test blocks that the standalone-expect rule does not know by default.
-    rules: {
-      ...lint.rules,
-      "vitest/no-standalone-expect": ["error", { additionalTestBlockFunctions: ["it.effect", "it.live"] }]
-    }
-  },
+  lint: withBoundaryLint(
+    {
+      ...lint,
+      ignorePatterns: ["dist/**"],
+      // it.effect and it.live are test blocks that the standalone-expect rule does not know by default.
+      rules: {
+        ...lint.rules,
+        "vitest/no-standalone-expect": ["error", { additionalTestBlockFunctions: ["it.effect", "it.live"] }]
+      }
+    },
+    import.meta.url
+  ),
   pack: {
     entry,
     format: "esm",

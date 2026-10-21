@@ -1,7 +1,8 @@
 /**
  * Architecture boundary manifest: which package may import which, and what each layer inside a context package may
- * import. `check-boundaries.ts` applies it to the real import graph of every `packages/<name>/src` file; a new
- * package or dependency starts here. Packages listed before their folder exists are planned contexts.
+ * import. `lint.ts` turns it into the `vp lint` rules of every `packages/<name>/src` file and `manifest.test.ts`
+ * checks the package manifests against it; a new package or dependency starts here. Packages listed before their
+ * folder exists are planned contexts.
  */
 
 /**
@@ -57,6 +58,15 @@ export interface LayerRule {
   readonly external: boolean;
 }
 
+export interface AgentMarkerRule {
+  /** Values that name one built-in agent: its id, a home directory, an environment variable. */
+  readonly markers: readonly string[];
+  /** Package-relative globs exempt in every package of `packages`: the agent adapters. */
+  readonly exempt: readonly string[];
+  /** Packages whose non-test source may not spell a marker, each with further package-relative globs it exempts. */
+  readonly packages: Readonly<Record<string, readonly string[]>>;
+}
+
 export interface BoundaryRules {
   readonly packages: Readonly<Record<string, PackageRule>>;
   /** Published packages whose `src/<entry>.ts` files only re-export names from internal packages' `public.ts`. */
@@ -64,7 +74,8 @@ export interface BoundaryRules {
   readonly sharedKernel: string;
   readonly layers: Readonly<Record<Layer, LayerRule>>;
   readonly effect: {
-    readonly specifier: RegExp;
+    /** Base npm package-name patterns; subpaths of these packages count as Effect imports too. */
+    readonly modules: readonly string[];
     /**
      * Subpath of a workspace package's Effect entry, such as `@rivus/agent-kit-platform/effect` for its
      * `src/effect.ts`. Siblings import it instead of the package's `index.ts`, which stays free of Effect. Importing
@@ -74,6 +85,12 @@ export interface BoundaryRules {
     /** Package-relative path prefixes that may import Effect, even with `import type`. */
     readonly allowedPaths: Readonly<Record<string, readonly string[]>>;
   };
+  /**
+   * Agent knowledge belongs in the agent adapters, so the contexts' other files may not spell a marker: a string
+   * literal or string literal type whose whole value is one, or a piece of a template literal's static text (each part
+   * between expressions, split on `/`) that is one.
+   */
+  readonly agentMarkers: AgentMarkerRule;
 }
 
 const PLATFORM = "@rivus/agent-kit-platform";
@@ -153,7 +170,7 @@ export const boundaries: BoundaryRules = {
     infra: { layers: ["domain", "application", "infra"], workspace: "any", external: true }
   },
   effect: {
-    specifier: /^(?:effect|@effect\/[^/]+)(?:\/|$)/,
+    modules: ["effect", "@effect/*"],
     workspaceEntry: "/effect",
     allowedPaths: {
       // The Platform port as an Effect service and its Node Layer; `/platform` and `/node` stay plain.
@@ -164,6 +181,30 @@ export const boundaries: BoundaryRules = {
       "@rivus/agent-kit-harness": ["src/application/", "src/infra/"],
       [ACP]: ["src/application/", "src/infra/"],
       [COLLAB]: ["src/lease/application/", "src/lease/infra/", "src/lanes/application/", "src/lanes/infra/"]
+    }
+  },
+  agentMarkers: {
+    markers: [
+      "claude-code",
+      "codex",
+      "cursor",
+      "gemini-cli",
+      "grok",
+      "opencode",
+      "pi",
+      ".claude",
+      "CLAUDE_CONFIG_DIR",
+      "CURSOR_VERSION"
+    ],
+    exempt: ["src/domain/*/adapters/**"],
+    // The files outside the adapters that hold agent knowledge until it moves into the provider packages.
+    packages: {
+      [CATALOG]: ["src/domain/coding-agent/value-objects/coding-agent-id.ts"],
+      [DISCOVERY]: [],
+      [SESSIONS]: ["src/application/services/session-adapters/**", "src/application/services/usage-decoders/**"],
+      [HARNESS]: ["src/domain/lifecycle/policies/host-sniffing.ts"],
+      [ACP]: [],
+      [COST]: []
     }
   }
 };
