@@ -1,10 +1,10 @@
-import type { Bundle } from "../../src/domain/bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../../src/domain/bundle/value-objects/bundle.js";
 
 /** The stable shim a hook command points at; it never runs in these tests. */
 export const SHIM = "/opt/demo/bin/demo-hook --agent {agent}";
 
 /** An application's bundle: observer hooks for every agent with a dialect, and one skill. */
-export function demoBundle(version = "1.0.0", overrides: Partial<Bundle> = {}): Bundle {
+export function demoBundle(version = "1.0.0", overrides: Partial<BundleSnapshot> = {}): BundleSnapshot {
   return {
     owner: "demo-app",
     version,

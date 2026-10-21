@@ -12,8 +12,8 @@ import { hashContent } from "../src/application/services/content-hash.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { verify } from "../src/application/use-cases/verify.js";
-import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
-import { type ArtifactLocator, locatorKey } from "../src/domain/install-plan/value-objects/artifact-locator.js";
+import type { BundleSnapshot } from "../src/domain/bundle/value-objects/bundle.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../src/domain/install-plan/value-objects/artifact-locator.js";
 import type { LedgerSnapshot } from "../src/domain/ledger/aggregates/ledger.js";
 import { decodeLedger, encodeLedger } from "../src/infra/models/ledger-file.js";
 import { demoBundle, SHIM } from "./support/bundles.js";
@@ -26,7 +26,7 @@ const CLAUDE_PLUGIN = ".claude/skills/demo-app";
 const GROK_HOOKS = ".grok/hooks/demo-app.json";
 const SHARED_SKILL = ".agents/skills/demo-skill";
 
-function hooksBundle(version = "1.0.0", timeoutSeconds = 5): Bundle {
+function hooksBundle(version = "1.0.0", timeoutSeconds = 5): BundleSnapshot {
   return demoBundle(version, {
     artifacts: [
       {
@@ -40,7 +40,7 @@ function hooksBundle(version = "1.0.0", timeoutSeconds = 5): Bundle {
   });
 }
 
-function skillsBundle(version = "1.0.0", text = "shared skill\n"): Bundle {
+function skillsBundle(version = "1.0.0", text = "shared skill\n"): BundleSnapshot {
   return demoBundle(version, {
     artifacts: [{ type: "skill", name: "demo-skill", files: { "SKILL.md": text } }],
     legacyMarkers: []
@@ -70,7 +70,7 @@ function ledgerSnapshot(home: TestHome): LedgerSnapshot {
   return decoded.value;
 }
 
-function storedEntryBytes(text: string, locator: ArtifactLocator): Buffer {
+function storedEntryBytes(text: string, locator: ArtifactLocatorSnapshot): Buffer {
   const tree = parseTree(text);
   const node = tree === undefined ? undefined : findNodeAtLocation(tree, ["entries", locatorKey(locator)]);
   if (node === undefined) {
@@ -79,7 +79,7 @@ function storedEntryBytes(text: string, locator: ArtifactLocator): Buffer {
   return Buffer.from(text.slice(node.offset, node.offset + node.length), "utf8");
 }
 
-function entryBytes(home: TestHome, locator: ArtifactLocator): Buffer {
+function entryBytes(home: TestHome, locator: ArtifactLocatorSnapshot): Buffer {
   return storedEntryBytes(readFileSync(home.path(LEDGER_FILE), "utf8"), locator);
 }
 

@@ -1,14 +1,14 @@
 import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
-import type { TrustPromptKind } from "../../install-plan/value-objects/trust-prompt.js";
+import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
+import type { TrustPromptKind } from "../../install-plan/spi/trust-prompt.js";
 import type { ArtifactContent } from "../../ledger/value-objects/content-hash.js";
 import type { PlacedRegistration } from "../services/hook-placement.js";
 import type { SkillSpec } from "../value-objects/artifact-spec.js";
 import type { BundleRef } from "../value-objects/bundle.js";
-import type { Owner } from "../value-objects/owner.js";
-import type { Strategy } from "../value-objects/strategy.js";
+import type { OwnerSnapshot } from "../value-objects/owner.js";
+import type { Strategy } from "./strategy.js";
 
 /** What an install adapter renders against: the user's home and environment, as the application's platform has them. */
 export interface InstallContext {
@@ -18,7 +18,7 @@ export interface InstallContext {
 
 /** One Artifact as an agent's strategy renders it, before its path is resolved and its content hashed. */
 export interface RenderedArtifact {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly content: ArtifactContent;
   readonly strategy: Strategy;
   /** The confirmation the agent asks for when this content is new or changed. */
@@ -92,7 +92,7 @@ export interface CliRegistration {
    * declared config path: after resolving its specific agent home, that path must equal the planned locator's path.
    * Paths under an agent home resolve that home, never descendants.
    */
-  readonly recorded?: { readonly entries: readonly ArtifactLocator[]; readonly copies: readonly string[] };
+  readonly recorded?: { readonly entries: readonly ArtifactLocatorSnapshot[]; readonly copies: readonly string[] };
 }
 
 /**
@@ -126,9 +126,9 @@ export interface InstallAdapter {
   /** Every file this agent loads command hooks from, any owner's, so that `doctor` can find an event firing twice. */
   hookSources?(context: InstallContext): readonly HookSource[];
   /** Where older versions of this owner may have installed things for this agent without a ledger. */
-  legacySources?(context: InstallContext, owner: Owner): readonly ArtifactSource[];
+  legacySources?(context: InstallContext, owner: OwnerSnapshot): readonly ArtifactSource[];
   /** The command lines behind a `cli-registration` locator this adapter renders, `undefined` for any other. */
-  cliRegistration?(locator: ArtifactLocator, context: InstallContext): CliRegistration | undefined;
+  cliRegistration?(locator: ArtifactLocatorSnapshot, context: InstallContext): CliRegistration | undefined;
 }
 
 /** Install adapters by agent id; supplied to installation use cases. */

@@ -1,20 +1,24 @@
+import { legacyTexts } from "../../../application/services/legacy-artifact.js";
 import { describe, expect, it } from "vite-plus/test";
 
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
-import { buildInstallPlan } from "../factories/build-install-plan.js";
-import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
-import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import { buildInstallPlan } from "../../../application/services/build-install-plan.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../value-objects/artifact-locator.js";
+import type { ObservedArtifact } from "../spi/observed-artifact.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 import { InstallPlan, type InstallPlanDraft } from "./install-plan.js";
 
 const HOME = "/u/me";
 const OWNER = "agent-presence";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
-const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
+const file = (name: string): ArtifactLocatorSnapshot => ({
+  kind: "file",
+  path: `${HOME}/.claude/skills/${name}/SKILL.md`
+});
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
+function entry(locator: ArtifactLocatorSnapshot, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -44,7 +48,7 @@ function ledger(entries: readonly LedgerEntrySnapshot[] = []): Ledger {
   return restored.value;
 }
 
-const draft = (steps: readonly PlanStep[]): InstallPlanDraft => ({
+const draft = (steps: readonly PlanStepSnapshot[]): InstallPlanDraft => ({
   planId: "plan-1",
   basedOn: { ledgerLineage: "lineage-1", ledgerRevision: 3 },
   bundle: { owner: OWNER, version: "2.0.0", digest: "d" },
@@ -53,7 +57,7 @@ const draft = (steps: readonly PlanStep[]): InstallPlanDraft => ({
   expectedTrustPrompts: []
 });
 
-const remove = (locator: ArtifactLocator, overrides: Partial<PlanStep> = {}): PlanStep => ({
+const remove = (locator: ArtifactLocatorSnapshot, overrides: Partial<PlanStepSnapshot> = {}): PlanStepSnapshot => ({
   locator,
   action: "remove",
   agents: [],
@@ -64,14 +68,20 @@ const remove = (locator: ArtifactLocator, overrides: Partial<PlanStep> = {}): Pl
 });
 
 /** What is on disk for each step's precondition, unless a test observes something else. */
-const observedFor = (steps: readonly PlanStep[]): ObservedArtifact[] =>
+const observedFor = (steps: readonly PlanStepSnapshot[]): ObservedArtifact[] =>
   steps.flatMap(({ locator, precondition }) => ("hash" in precondition ? [{ locator, hash: precondition.hash }] : []));
 
 const create = (
-  steps: readonly PlanStep[],
+  steps: readonly PlanStepSnapshot[],
   entries: readonly LedgerEntrySnapshot[] = [],
   observed: readonly ObservedArtifact[] = observedFor(steps)
-) => InstallPlan.create(draft(steps), { ledger: ledger(entries), observed, legacyMarkers: ["@rivus/agent-presence"] });
+) =>
+  InstallPlan.create(draft(steps), {
+    ledger: ledger(entries),
+    observed,
+    legacyTexts: legacyTexts(observed),
+    legacyMarkers: ["@rivus/agent-presence"]
+  });
 
 describe("InstallPlan.create", () => {
   const userFile = file("notes");
@@ -117,7 +127,7 @@ describe("InstallPlan.create", () => {
   });
 
   it("refuses a write over another owner's entry unless it is forced", () => {
-    const update: PlanStep = {
+    const update: PlanStepSnapshot = {
       locator: userFile,
       action: "update",
       agents: ["claude-code"],
@@ -131,7 +141,7 @@ describe("InstallPlan.create", () => {
   });
 
   it("checks write steps against what was observed, not against the step's own fields", () => {
-    const write: PlanStep = {
+    const write: PlanStepSnapshot = {
       locator: userFile,
       action: "update",
       agents: ["claude-code"],
@@ -164,7 +174,7 @@ describe("InstallPlan.create", () => {
       ok: false,
       error: { reason: "invalid-step", detail: "a precondition other than what was observed" }
     });
-    const takeLink: PlanStep = { ...write, action: "adopt", desired: { hash: h(1), content: "x" } };
+    const takeLink: PlanStepSnapshot = { ...write, action: "adopt", desired: { hash: h(1), content: "x" } };
     const linked = [{ locator: userFile, hash: h(1), symlinkTarget: "/dotfiles/notes.md" }];
     expect(create([takeLink], [], linked)).toMatchObject({
       ok: false,
@@ -176,7 +186,7 @@ describe("InstallPlan.create", () => {
   });
 
   it("records a file the ledger lacks only with its pre-image kept, an adopt or backup choice, or legacy evidence", () => {
-    const take: PlanStep = {
+    const take: PlanStepSnapshot = {
       locator: userFile,
       action: "noop",
       agents: ["claude-code"],
@@ -194,7 +204,7 @@ describe("InstallPlan.create", () => {
   });
 
   it("offers adopt for a symlinked target only where no ledger entry exists, the one case adopt resolves", () => {
-    const conflict: PlanStep = {
+    const conflict: PlanStepSnapshot = {
       locator: userFile,
       action: "conflict",
       agents: ["claude-code"],
@@ -210,7 +220,7 @@ describe("InstallPlan.create", () => {
   });
 
   it("rejects a conflict without a reason as invalid and one with a reason as PlanConflict", () => {
-    const conflict: PlanStep = {
+    const conflict: PlanStepSnapshot = {
       locator: userFile,
       action: "conflict",
       agents: ["claude-code"],
@@ -233,7 +243,7 @@ describe("InstallPlan.create", () => {
     ["no agents for an Artifact the ledger records", { agents: [] }],
     ["a pre-image to capture where nothing is", { precondition: { absent: true }, capturePreImage: true }]
   ] as const)("refuses a step with %s, which the ledger could not record", (detail, overrides) => {
-    const step: PlanStep = {
+    const step: PlanStepSnapshot = {
       locator: userFile,
       action: "create",
       agents: ["claude-code"],
@@ -286,5 +296,26 @@ describe("InstallPlan.staleAgainst", () => {
     expect(applied.ok && applied.value.state.staleAgainst({ lineage: "lineage-1", revision: 3 })).toMatchObject({
       reason: "applied"
     });
+  });
+});
+
+describe("InstallPlan input ownership", () => {
+  it("freezes detached steps without freezing an accepted or rejected draft", () => {
+    const step = remove(file("copy"));
+    const acceptedDraft = draft([]);
+    const accepted = InstallPlan.create(acceptedDraft, {
+      ledger: ledger([]),
+      observed: [],
+      legacyMarkers: [],
+      legacyTexts: new Map()
+    });
+    expect(accepted.ok).toBe(true);
+    expect(Object.isFrozen(acceptedDraft.target)).toBe(false);
+    expect(Object.isFrozen(acceptedDraft.target.roots)).toBe(false);
+    expect(accepted.ok && Object.isFrozen(accepted.value.toSnapshot().target.roots)).toBe(true);
+    const rejected = create([step]);
+    expect(rejected.ok).toBe(false);
+    expect(Object.isFrozen(step.locator)).toBe(false);
+    expect(Object.isFrozen(step.precondition)).toBe(false);
   });
 });

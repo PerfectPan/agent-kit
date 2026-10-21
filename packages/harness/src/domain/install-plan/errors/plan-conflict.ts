@@ -1,5 +1,5 @@
 import type { ConflictChoice } from "../value-objects/conflict.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 
 /**
  * The plan has conflicts without an explicit choice, so it is rejected as a whole before anything is written. Each
@@ -8,5 +8,5 @@ import type { PlanStep } from "../value-objects/plan-step.js";
 export interface PlanConflict {
   readonly _tag: "PlanConflict";
   readonly planId: string;
-  readonly conflicts: readonly { readonly step: PlanStep; readonly choices: readonly ConflictChoice[] }[];
+  readonly conflicts: readonly { readonly step: PlanStepSnapshot; readonly choices: readonly ConflictChoice[] }[];
 }

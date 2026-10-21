@@ -1,6 +1,6 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import type { ArtifactLocator } from "./artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
 
 /**
  * `hook-review`: the agent asks the user to review a new or changed hook (agents that record trust by content hash).
@@ -13,5 +13,5 @@ export type TrustPromptKind = "hook-review" | "plugin-consent" | "folder-trust";
 export interface TrustPrompt {
   readonly agent: CodingAgentId;
   readonly kind: TrustPromptKind;
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
 }

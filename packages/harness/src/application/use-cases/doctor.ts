@@ -7,9 +7,9 @@ import * as z from "zod/mini";
 
 import { foreignHookFiles } from "../../domain/bundle/services/hook-registrations.js";
 import { type HookSource } from "../../domain/bundle/spi/install-adapter.js";
-import { type Owner } from "../../domain/bundle/value-objects/owner.js";
-import { type ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import { isBrokenSymlink } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
+import { type ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { isBrokenSymlink } from "../../domain/install-plan/services/observation.js";
 import { threeWayVerify } from "../../domain/ledger/services/three-way-verify.js";
 import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
 import {
@@ -31,7 +31,7 @@ export interface Check {
   readonly name: "ledger" | "pending" | "lock" | "drift" | "broken-symlink" | HookProblem;
   readonly status: "ok" | "warn" | "error";
   readonly message: string;
-  readonly locator?: ArtifactLocator;
+  readonly locator?: ArtifactLocatorSnapshot;
 }
 
 /** What a hook problem says, from the values the domain classified; the wording matches what doctor has reported. */
@@ -59,7 +59,7 @@ const hookCheck = (finding: HookFinding): Check => ({
 
 export interface DoctorOptions extends ScopeOptions {
   /** Only this owner's ledger entries are compared with the disk; every owner's by default. */
-  readonly owner?: Owner;
+  readonly owner?: OwnerSnapshot;
   /** The agents whose hook configuration is read; every agent with an install adapter by default. */
   readonly agents?: readonly CodingAgentId[];
   /**
@@ -77,7 +77,7 @@ interface FoundHook {
   /** The fields `hookHealth` reads; the rest of the registration stays in the file. */
   readonly hook: { readonly timeout?: number };
   /** Where it is written; its pointer holds the event as that file names it. */
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   /** Written in one of the agent's own files rather than another agent's that it also runs. */
   readonly own: boolean;
 }

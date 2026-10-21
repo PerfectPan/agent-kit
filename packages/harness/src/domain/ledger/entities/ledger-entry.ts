@@ -1,11 +1,11 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
-import { locatorProblem } from "../../install-plan/value-objects/artifact-locator.js";
+import { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 import type { Removal } from "../../install-plan/value-objects/plan-step.js";
 
-import type { Owner } from "../../bundle/value-objects/owner.js";
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
+import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
 import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
 
@@ -14,11 +14,11 @@ import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
  * only when harness created it or the user adopted it.
  */
 export interface LedgerEntrySnapshot {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   /** Every owner that installed this content; never empty. Uninstalling one hands the Artifact to the others. */
-  readonly owners: readonly Owner[];
+  readonly owners: readonly OwnerSnapshot[];
   /** The owner whose content is on disk; one of `owners`. */
-  readonly activeOwner: Owner;
+  readonly activeOwner: OwnerSnapshot;
   /** The agents that use the Artifact, such as several agents reading one skills directory; never empty. */
   readonly agents: readonly CodingAgentId[];
   /** The active owner's bundle version that last recorded it. */
@@ -35,7 +35,7 @@ export interface LedgerEntrySnapshot {
 }
 
 function entryProblem(entry: LedgerEntrySnapshot): string | undefined {
-  const locatorIssue = locatorProblem(entry.locator);
+  const locatorIssue = ArtifactLocator.problem(entry.locator);
   if (locatorIssue !== undefined) {
     return locatorIssue;
   }
@@ -58,9 +58,9 @@ function entryProblem(entry: LedgerEntrySnapshot): string | undefined {
 
 /** A validated, immutable child of the Ledger; only the root restores or replaces it. */
 export class LedgerEntry {
-  declare readonly locator: ArtifactLocator;
-  declare readonly owners: readonly Owner[];
-  declare readonly activeOwner: Owner;
+  declare readonly locator: ArtifactLocatorSnapshot;
+  declare readonly owners: readonly OwnerSnapshot[];
+  declare readonly activeOwner: OwnerSnapshot;
   declare readonly agents: readonly CodingAgentId[];
   declare readonly bundleVersion: string;
   declare readonly toolVersion: string;
@@ -93,7 +93,7 @@ export class LedgerEntry {
   }
 
   /** An owner's entry is in scope when it names any selected agent; omitting agents includes all its entries. */
-  heldBy(owner: Owner, agents?: readonly CodingAgentId[]): boolean {
+  heldBy(owner: OwnerSnapshot, agents?: readonly CodingAgentId[]): boolean {
     return this.owners.includes(owner) && (agents === undefined || this.agents.some((agent) => agents.includes(agent)));
   }
 
@@ -103,7 +103,7 @@ export class LedgerEntry {
    * uses it does it leave the disk, restoring the pre-image if there was one.
    */
   release(
-    owner: Owner,
+    owner: OwnerSnapshot,
     agents: readonly CodingAgentId[]
   ): { readonly removal: Removal; readonly agents: readonly CodingAgentId[] } {
     if (this.owners.some((other) => other !== owner)) {

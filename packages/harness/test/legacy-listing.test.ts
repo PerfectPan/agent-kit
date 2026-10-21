@@ -18,9 +18,9 @@ import {
 } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { LedgerRepository } from "../src/application/ports.js";
-import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../src/domain/bundle/value-objects/bundle.js";
 import { locatorKey } from "../src/domain/install-plan/value-objects/artifact-locator.js";
-import { type PlanStep } from "../src/domain/install-plan/value-objects/plan-step.js";
+import { type PlanStepSnapshot } from "../src/domain/install-plan/value-objects/plan-step.js";
 import type { LedgerSnapshot } from "../src/domain/ledger/aggregates/ledger.js";
 import { PlatformArtifactFilesLive } from "../src/infra/adapters/platform-artifact-files.js";
 import { FileLedgerRepositoryLive } from "../src/infra/repository/file-ledger-repository.js";
@@ -37,7 +37,7 @@ const legacyCommand = (event: string): string => `${LEGACY} --event ${event}`;
 const MARKERS = ["legacy-demo hook", "demo-hook", "plugins/legacy-demo.js", "extensions/legacy-demo.ts"];
 
 const OWNER = "demo-app";
-const bundle = (): Bundle => demoBundle("2.0.0", { legacyMarkers: MARKERS });
+const bundle = (): BundleSnapshot => demoBundle("2.0.0", { legacyMarkers: MARKERS });
 
 const SHARED_CLAUDE: PlanInstallOptions["strategies"] = { "claude-code": { hooks: "shared-config" } };
 const SHARED_GEMINI: PlanInstallOptions["strategies"] = { "gemini-cli": { hooks: "shared-config" } };
@@ -69,7 +69,7 @@ const codexStopGroup = (command: string): string =>
   `[[hooks.Stop]]\n\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = ${JSON.stringify(command)}\n`;
 
 /** An older version of the owner whose only Claude Code hook is PostToolUse, which the scanned bundle never fires. */
-const olderClaudeBundle = (): Bundle => ({
+const olderClaudeBundle = (): BundleSnapshot => ({
   ...demoBundle("1.9.0", { legacyMarkers: MARKERS }),
   artifacts: [{ type: "hooks", command: SHIM, events: { "claude-code": ["PostToolUse"] } }]
 });
@@ -78,7 +78,7 @@ const olderClaudeBundle = (): Bundle => ({
 const recordFor = (
   record: CodingAgentId,
   strategies?: PlanInstallOptions["strategies"],
-  installed: Bundle = bundle()
+  installed: BundleSnapshot = bundle()
 ) =>
   Effect.gen(function* () {
     const plan = yield* planInstall(installed, {
@@ -94,7 +94,7 @@ const recordFor = (
  * the home holds a legacy hook entry (where the adapter scans for one), a legacy plugin or extension file and
  * configuration reference (where it has those), another owner's entry, and the owner's own recorded entries.
  */
-const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: Bundle = bundle()) =>
+const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: BundleSnapshot = bundle()) =>
   Effect.gen(function* () {
     switch (agent) {
       case "claude-code": {
@@ -311,7 +311,7 @@ const protectKeys = (entries: readonly LegacyEntry[]): readonly string[] =>
     .map((entry) => locatorKey(entry.locator))
     .toSorted();
 
-const legacyStepKeys = (steps: readonly PlanStep[]): readonly string[] =>
+const legacyStepKeys = (steps: readonly PlanStepSnapshot[]): readonly string[] =>
   steps
     .filter((step) => step.legacy === true)
     .map((step) => locatorKey(step.locator))

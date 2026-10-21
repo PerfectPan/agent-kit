@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import {
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot,
   type LocatorKey,
   locatorKey
 } from "../../install-plan/value-objects/artifact-locator.js";
@@ -53,7 +53,7 @@ export function threeWayVerify({ ledger, actual, desired }: VerifyInput): Verify
 
 /** One Artifact as the verify of an Owner's entries reports it: the ledger's record, the disk, the desired content. */
 export interface VerifiedArtifact {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly agents: readonly CodingAgentId[];
   readonly status: VerifyStatus;
 }
@@ -62,7 +62,7 @@ export interface VerifiedArtifact {
 export interface OwnerVerification {
   readonly artifacts: readonly VerifiedArtifact[];
   /** The `ledger-behind` Artifacts, whose hash `Ledger.acknowledge` records. */
-  readonly behind: readonly { readonly locator: ArtifactLocator; readonly contentHash: ContentHash }[];
+  readonly behind: readonly { readonly locator: ArtifactLocatorSnapshot; readonly contentHash: ContentHash }[];
 }
 
 /**
@@ -76,14 +76,14 @@ export function verifyOwner(
   entries: readonly LedgerEntry[],
   observed: ReadonlyMap<LocatorKey, ContentHash>,
   desired: readonly {
-    readonly locator: ArtifactLocator;
+    readonly locator: ArtifactLocatorSnapshot;
     readonly hash: ContentHash;
     readonly agent: CodingAgentId;
   }[]
 ): OwnerVerification {
   const wanted = new Map<
     LocatorKey,
-    { readonly locator: ArtifactLocator; readonly hash: ContentHash; readonly agents: readonly CodingAgentId[] }
+    { readonly locator: ArtifactLocatorSnapshot; readonly hash: ContentHash; readonly agents: readonly CodingAgentId[] }
   >();
   for (const want of desired) {
     const key = locatorKey(want.locator);
@@ -96,7 +96,7 @@ export function verifyOwner(
   }
   const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
   const artifacts: VerifiedArtifact[] = [];
-  const behind: { readonly locator: ArtifactLocator; readonly contentHash: ContentHash }[] = [];
+  const behind: { readonly locator: ArtifactLocatorSnapshot; readonly contentHash: ContentHash }[] = [];
   for (const entry of entries) {
     const key = locatorKey(entry.locator);
     const actual = observed.get(key);
@@ -128,7 +128,7 @@ export function verifyOwner(
 /** The verification once the silent update recorded the disk's hashes: what was acknowledged reads as in-sync and no longer runs behind. */
 export function markAcknowledged(
   verification: OwnerVerification,
-  acknowledged: readonly ArtifactLocator[]
+  acknowledged: readonly ArtifactLocatorSnapshot[]
 ): OwnerVerification {
   const updated = new Set(acknowledged.map(locatorKey));
   return {

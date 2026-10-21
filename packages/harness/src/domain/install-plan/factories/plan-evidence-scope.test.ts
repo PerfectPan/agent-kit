@@ -3,23 +3,23 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../../../test/support/providers.js";
 import { builtinInstallAdapters } from "../../../../test/support/providers.js";
-import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
-import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../value-objects/artifact-locator.js";
+import type { DesiredArtifact } from "../spi/desired-artifact.js";
 import type { InstallContext } from "../../bundle/spi/install-adapter.js";
-import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import type { ObservedArtifact } from "../spi/observed-artifact.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 import { planEvidenceScope } from "./plan-evidence-scope.js";
-import type { ForeignHookObservation } from "../policies/legacy-ownership.js";
-import { retainedForeignConflict } from "../policies/legacy-ownership.js";
+import type { ForeignHookObservation } from "../services/legacy-ownership.js";
+import { retainedForeignConflict } from "../services/legacy-ownership.js";
 
 const OWNER = "agent-presence";
 const context: InstallContext = { home: "/u/me", env: {} };
 
-const hookBundle = (overrides: Partial<Bundle> = {}): Bundle => ({
+const hookBundle = (overrides: Partial<BundleSnapshot> = {}): BundleSnapshot => ({
   owner: OWNER,
   version: "2.0.0",
   digest: "d2",
@@ -30,8 +30,8 @@ const hookBundle = (overrides: Partial<Bundle> = {}): Bundle => ({
 
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
 
-const grokHookFile: ArtifactLocator = { kind: "file", path: "/u/me/.grok/hooks/agent-presence.json" };
-const claudeStop = (command: string): ArtifactLocator => ({
+const grokHookFile: ArtifactLocatorSnapshot = { kind: "file", path: "/u/me/.grok/hooks/agent-presence.json" };
+const claudeStop = (command: string): ArtifactLocatorSnapshot => ({
   kind: "json-entry",
   path: "/u/me/.claude/settings.json",
   pointer: "/hooks/Stop",
@@ -39,7 +39,7 @@ const claudeStop = (command: string): ArtifactLocator => ({
   memberIn: "hook-group"
 });
 
-const wanted = (locator: ArtifactLocator): DesiredArtifact => ({
+const wanted = (locator: ArtifactLocatorSnapshot): DesiredArtifact => ({
   agent: "grok",
   locator,
   content: "{}",
@@ -61,7 +61,7 @@ const emptyLedger = (): Ledger => {
   return restored.value;
 };
 
-const ledgerWithEntry = (locator: ArtifactLocator): Ledger => {
+const ledgerWithEntry = (locator: ArtifactLocatorSnapshot): Ledger => {
   const entry: LedgerEntrySnapshot = {
     locator,
     owners: [OWNER],
@@ -164,7 +164,10 @@ describe("retainedForeignConflict", () => {
   const observed: ObservedArtifact = { locator, hash: h(1) };
   const item: ForeignHookObservation = { observed, runner: "grok", event: "Stop" };
 
-  const ctx = (steps: readonly PlanStep[], overrides: { readonly bundle?: Bundle; readonly ledger?: Ledger } = {}) => ({
+  const ctx = (
+    steps: readonly PlanStepSnapshot[],
+    overrides: { readonly bundle?: BundleSnapshot; readonly ledger?: Ledger } = {}
+  ) => ({
     bundle: overrides.bundle ?? bundle,
     dialects: builtinHookDialects,
     ledger: overrides.ledger ?? ledger,
@@ -172,7 +175,7 @@ describe("retainedForeignConflict", () => {
   });
 
   it("conflicts when a tracked foreign hook stays for another consumer", () => {
-    const stays: PlanStep = {
+    const stays: PlanStepSnapshot = {
       locator,
       action: "remove",
       agents: [],
@@ -200,7 +203,7 @@ describe("retainedForeignConflict", () => {
   });
 
   it("stays silent when the plan deletes the hook, the bundle stops firing the event, or nobody tracks it", () => {
-    const deletes: PlanStep = {
+    const deletes: PlanStepSnapshot = {
       locator,
       action: "remove",
       agents: [],

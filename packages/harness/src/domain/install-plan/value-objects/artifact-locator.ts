@@ -1,3 +1,4 @@
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 /** What kind of thing an Artifact is at its path. */
 export type ArtifactKind =
   | "file"
@@ -17,7 +18,7 @@ export type ArtifactKind =
  * application reports it as `ObservedArtifact.symlinkTarget`, and a step that would write or delete through it is a
  * `symlinked-target` conflict, because an atomic write replaces the link with a regular file.
  */
-export interface ArtifactLocator {
+export interface ArtifactLocatorSnapshot {
   readonly kind: ArtifactKind;
   /** See the path convention above. For a cli-registration, the file in which the agent's command line records it. */
   readonly path: string;
@@ -59,7 +60,7 @@ const ENTRY_KINDS: ReadonlySet<ArtifactKind> = new Set([
 
 const ARRAY_INDEX = /^(?:\d+|-)$/;
 
-export function locatorKey(locator: ArtifactLocator): LocatorKey {
+export function locatorKey(locator: ArtifactLocatorSnapshot): LocatorKey {
   const { path, pointer, member } = locator;
   return JSON.stringify(
     pointer === undefined ? [path] : member === undefined ? [path, pointer] : [path, pointer, member]
@@ -67,7 +68,7 @@ export function locatorKey(locator: ArtifactLocator): LocatorKey {
 }
 
 /** The pointer text, or `""` when the locator kind has none. */
-export function locatorPointer(locator: Pick<ArtifactLocator, "pointer">): string {
+export function locatorPointer(locator: Pick<ArtifactLocatorSnapshot, "pointer">): string {
   return locator.pointer ?? "";
 }
 
@@ -91,30 +92,6 @@ function segments(path: string): readonly string[] | undefined {
   return rest.some((segment) => segment === "" || segment === "." || segment === "..") ? undefined : [head, ...rest];
 }
 
-/** Why a locator cannot be used, or `undefined` when it can. */
-export function locatorProblem(locator: ArtifactLocator): string | undefined {
-  if (segments(locator.path) === undefined) {
-    return "path is not absolute and normalized";
-  }
-  if (ENTRY_KINDS.has(locator.kind) !== (locator.pointer !== undefined)) {
-    return ENTRY_KINDS.has(locator.kind) ? `${locator.kind} needs a pointer` : `${locator.kind} takes no pointer`;
-  }
-  const structured = locator.kind === "json-entry" || locator.kind === "toml-entry";
-  if (structured && !locator.pointer?.startsWith("/")) {
-    return "pointer is not a JSON pointer to an entry";
-  }
-  if (structured && locator.pointer?.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
-    return "pointer names an array index; address the element by `member`";
-  }
-  if (locator.member !== undefined && (!structured || locator.member === "")) {
-    return structured ? "member is empty" : `${locator.kind} takes no member`;
-  }
-  if (locator.memberIn !== undefined && locator.member === undefined) {
-    return "memberIn without a member";
-  }
-  return locator.pointer === "" ? "pointer is empty" : undefined;
-}
-
 /** Whether `path` is `root` or inside it. Both must be absolute and normalized. */
 export function isWithin(path: string, root: string): boolean {
   const inner = segments(path);
@@ -136,7 +113,7 @@ function pointerContains(outer: string, inner: string): boolean {
  * file or one pointer contains the other (elements of one array overlap only the whole array or themselves), or a
  * path inside another path.
  */
-export function locatorsOverlap(a: ArtifactLocator, b: ArtifactLocator): boolean {
+export function locatorsOverlap(a: ArtifactLocatorSnapshot, b: ArtifactLocatorSnapshot): boolean {
   if (a.path === b.path) {
     if (a.pointer === undefined || b.pointer === undefined) {
       return true;
@@ -147,4 +124,48 @@ export function locatorsOverlap(a: ArtifactLocator, b: ArtifactLocator): boolean
     return pointerContains(a.pointer, b.pointer) || pointerContains(b.pointer, a.pointer);
   }
   return isWithin(a.path, b.path) || isWithin(b.path, a.path);
+}
+
+export class ArtifactLocator {
+  readonly #snapshot: ArtifactLocatorSnapshot;
+  private constructor(snapshot: ArtifactLocatorSnapshot) {
+    this.#snapshot = Object.freeze({ ...snapshot });
+    Object.freeze(this);
+  }
+  static restore(snapshot: ArtifactLocatorSnapshot): Result<ArtifactLocator, string> {
+    const problem = ArtifactLocator.problem(snapshot);
+    return problem === undefined ? ok(new ArtifactLocator(snapshot)) : err(problem);
+  }
+  key(): LocatorKey {
+    return locatorKey(this.#snapshot);
+  }
+  overlaps(other: ArtifactLocatorSnapshot): boolean {
+    return locatorsOverlap(this.#snapshot, other);
+  }
+  toSnapshot(): ArtifactLocatorSnapshot {
+    return this.#snapshot;
+  }
+  /** Why a locator cannot be used, or `undefined` when it can. */
+  static problem(locator: ArtifactLocatorSnapshot): string | undefined {
+    if (segments(locator.path) === undefined) {
+      return "path is not absolute and normalized";
+    }
+    if (ENTRY_KINDS.has(locator.kind) !== (locator.pointer !== undefined)) {
+      return ENTRY_KINDS.has(locator.kind) ? `${locator.kind} needs a pointer` : `${locator.kind} takes no pointer`;
+    }
+    const structured = locator.kind === "json-entry" || locator.kind === "toml-entry";
+    if (structured && !locator.pointer?.startsWith("/")) {
+      return "pointer is not a JSON pointer to an entry";
+    }
+    if (structured && locator.pointer?.split("/").some((segment) => ARRAY_INDEX.test(segment))) {
+      return "pointer names an array index; address the element by `member`";
+    }
+    if (locator.member !== undefined && (!structured || locator.member === "")) {
+      return structured ? "member is empty" : `${locator.kind} takes no member`;
+    }
+    if (locator.memberIn !== undefined && locator.member === undefined) {
+      return "memberIn without a member";
+    }
+    return locator.pointer === "" ? "pointer is empty" : undefined;
+  }
 }

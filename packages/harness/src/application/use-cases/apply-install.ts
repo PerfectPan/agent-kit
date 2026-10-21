@@ -2,16 +2,10 @@ import { AgentKitError } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import { type ArtifactLocator, locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import {
-  type PlanAction,
-  type PlanStep,
-  type Removal,
-  touchesDisk
-} from "../../domain/install-plan/value-objects/plan-step.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { type PlanAction, type Removal, PlanStep } from "../../domain/install-plan/value-objects/plan-step.js";
 import { planClosedError, type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
-import { preconditionHolds } from "../../domain/install-plan/value-objects/precondition.js";
-import { registrationCommands } from "../../domain/install-plan/policies/registration-commands.js";
+import { registrationCommands } from "../../domain/install-plan/services/registration-commands.js";
 import type { ArtifactContent, ContentHash } from "../../domain/ledger/value-objects/content-hash.js";
 import type { LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
 import type { LedgerEvent } from "../../domain/ledger/aggregates/ledger.js";
@@ -49,7 +43,7 @@ export interface ApplyInstallOptions {
 }
 
 export interface AppliedStep {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly action: PlanAction;
   readonly removal?: Removal;
 }
@@ -84,7 +78,7 @@ function checkPrecondition(
 > {
   return Effect.gen(function* () {
     const found = "ownedAt" in step.precondition ? undefined : yield* observe(step.locator, registrations);
-    const matches = preconditionHolds(step, { entry, observed: found });
+    const matches = step.preconditionHolds({ entry, observed: found });
     if (found === undefined || found.content === undefined) {
       return { matches, ...(found?.hash === undefined ? {} : { actual: found.hash }) };
     }
@@ -104,12 +98,12 @@ function executeStep(
   ArtifactFiles | AgentCli | LedgerRepository | PlatformService
 > {
   return Effect.gen(function* () {
-    if (!touchesDisk(step)) {
+    if (!step.touchesDisk()) {
       return;
     }
     const { locator } = step;
     if (locator.kind === "cli-registration") {
-      const commands = registrationCommands(step, entry);
+      const commands = registrationCommands(step.toSnapshot(), entry);
       if (commands === undefined) {
         throw new AgentKitError("invalid-plan", `Step ${locatorKey(locator)} has no agent to run its command line`);
       }
@@ -265,7 +259,7 @@ export function applyLocked(
       if (
         (locator.kind === "json-entry" || locator.kind === "toml-entry") &&
         step.action !== "remove" &&
-        touchesDisk(step) &&
+        step.touchesDisk() &&
         !inspectedConfigFiles.has(locator.path)
       ) {
         inspectedConfigFiles.add(locator.path);
@@ -304,7 +298,7 @@ export function applyLocked(
           const check = yield* checkPrecondition(step, start.ledger.entry(step.locator), registrations);
           // Entry absence alone does not detect a pre-existing empty file introduced after pending was saved.
           const createsConfigFile =
-            step.action !== "remove" && touchesDisk(step) && absentConfigFiles.has(step.locator.path);
+            step.action !== "remove" && step.touchesDisk() && absentConfigFiles.has(step.locator.path);
           const fileAppeared =
             createsConfigFile && (yield* files.read({ kind: "file", path: step.locator.path })) !== undefined;
           if (!check.matches || fileAppeared) {

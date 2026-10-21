@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
 import type { LedgerEntry, LedgerEntrySnapshot } from "../entities/ledger-entry.js";
 import { Ledger } from "../aggregates/ledger.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
@@ -28,9 +28,9 @@ describe("threeWayVerify", () => {
   });
 });
 
-const at = (path: string): ArtifactLocator => ({ kind: "file", path: `/u/me/${path}` });
+const at = (path: string): ArtifactLocatorSnapshot => ({ kind: "file", path: `/u/me/${path}` });
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntry {
+function entry(locator: ArtifactLocatorSnapshot, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntry {
   const snapshot: LedgerEntrySnapshot = {
     locator,
     owners: ["app"],

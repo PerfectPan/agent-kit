@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { hasLegacyMarker, isLegacyArtifact } from "./legacy-markers.js";
+import { hasLegacyMarker } from "./legacy-markers.js";
+import { isLegacyArtifact } from "../../../application/services/legacy-artifact.js";
 
 describe("hasLegacyMarker", () => {
   it.each([

@@ -2,26 +2,26 @@ import type { Result } from "@rivus/agent-kit-catalog/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../../../test/support/providers.js";
-import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
 import type { InstallPlan } from "../aggregates/install-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
-import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ConflictChoice } from "../value-objects/conflict.js";
-import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
-import type { InstallTarget } from "../value-objects/install-target.js";
-import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
-import type { ForeignHookObservation } from "../policies/legacy-ownership.js";
-import { buildInstallPlan } from "./build-install-plan.js";
+import type { DesiredArtifact } from "../spi/desired-artifact.js";
+import type { InstallTargetSnapshot } from "../value-objects/install-target.js";
+import type { ObservedArtifact } from "../spi/observed-artifact.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
+import type { ForeignHookObservation } from "../services/legacy-ownership.js";
+import { buildInstallPlan } from "../../../application/services/build-install-plan.js";
 
 const HOME = "/u/me";
 const OWNER = "agent-presence";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
-const file = (path: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/${path}` });
-const settingsHook = (event: string, command: string): ArtifactLocator => ({
+const file = (path: string): ArtifactLocatorSnapshot => ({ kind: "file", path: `${HOME}/${path}` });
+const settingsHook = (event: string, command: string): ArtifactLocatorSnapshot => ({
   kind: "json-entry",
   path: `${HOME}/.claude/settings.json`,
   pointer: `/hooks/${event}`,
@@ -29,16 +29,20 @@ const settingsHook = (event: string, command: string): ArtifactLocator => ({
   memberIn: "hook-group"
 });
 
-const BUNDLE: Bundle = {
+const BUNDLE: BundleSnapshot = {
   owner: OWNER,
   version: "2.0.0",
   digest: "d2",
   artifacts: [],
   legacyMarkers: ["agent-presence hook", "@rivus/agent-presence"]
 };
-const TARGET: InstallTarget = { scope: "user", agents: ["claude-code"], roots: [`${HOME}/.claude`, `${HOME}/.agents`] };
+const TARGET: InstallTargetSnapshot = {
+  scope: "user",
+  agents: ["claude-code"],
+  roots: [`${HOME}/.claude`, `${HOME}/.agents`]
+};
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
+function entry(locator: ArtifactLocatorSnapshot, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -68,7 +72,11 @@ function ledger(entries: readonly LedgerEntrySnapshot[] = []): Ledger {
   return restored.value;
 }
 
-const want = (locator: ArtifactLocator, n: number, overrides: Partial<DesiredArtifact> = {}): DesiredArtifact => ({
+const want = (
+  locator: ArtifactLocatorSnapshot,
+  n: number,
+  overrides: Partial<DesiredArtifact> = {}
+): DesiredArtifact => ({
   agent: "claude-code",
   locator,
   content: `content ${n}`,
@@ -77,7 +85,11 @@ const want = (locator: ArtifactLocator, n: number, overrides: Partial<DesiredArt
   ...overrides
 });
 
-const seen = (locator: ArtifactLocator, n: number, overrides: Partial<ObservedArtifact> = {}): ObservedArtifact => ({
+const seen = (
+  locator: ArtifactLocatorSnapshot,
+  n: number,
+  overrides: Partial<ObservedArtifact> = {}
+): ObservedArtifact => ({
   locator,
   hash: h(n),
   ...overrides
@@ -88,10 +100,10 @@ function plan(input: {
   readonly ledger?: Ledger;
   readonly observed?: readonly ObservedArtifact[];
   readonly choices?: Readonly<Record<string, ConflictChoice>>;
-  readonly target?: InstallTarget;
+  readonly target?: InstallTargetSnapshot;
   readonly managedPaths?: Readonly<Record<string, string>>;
   readonly linkedPaths?: Readonly<Record<string, string>>;
-  readonly bundle?: Bundle;
+  readonly bundle?: BundleSnapshot;
   readonly foreignHooks?: readonly ForeignHookObservation[];
 }): Result<InstallPlan, { readonly _tag: string }> {
   return buildInstallPlan(
@@ -110,7 +122,7 @@ function plan(input: {
   );
 }
 
-function steps(result: Result<InstallPlan, { readonly _tag: string }>): readonly PlanStep[] {
+function steps(result: Result<InstallPlan, { readonly _tag: string }>): readonly PlanStepSnapshot[] {
   if (!result.ok) {
     throw new Error(`expected a plan, got ${JSON.stringify(result.error)}`);
   }
@@ -125,7 +137,7 @@ function planned(input: Parameters<typeof plan>[0]): InstallPlan {
   return built.value;
 }
 
-const stepAt = (all: readonly PlanStep[], locator: ArtifactLocator): PlanStep | undefined =>
+const stepAt = (all: readonly PlanStepSnapshot[], locator: ArtifactLocatorSnapshot): PlanStepSnapshot | undefined =>
   all.find((step) => locatorKey(step.locator) === locatorKey(locator));
 
 describe("buildInstallPlan", () => {
@@ -205,7 +217,7 @@ describe("buildInstallPlan", () => {
   it("reports a retained foreign hook in the same conflict as the plan's own, resolvable in one round (H2)", () => {
     const foreign = file(".claude/skills/presence/extra.md");
     const oldHook = settingsHook("Stop", "npx --yes @rivus/agent-presence@0.9.0 hook --event Stop");
-    const firing: Bundle = {
+    const firing: BundleSnapshot = {
       ...BUNDLE,
       artifacts: [{ type: "hooks", command: "agent-presence hook", events: { grok: ["Stop"] } }]
     };

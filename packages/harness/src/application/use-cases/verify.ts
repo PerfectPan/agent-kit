@@ -2,15 +2,15 @@ import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 
-import { type Bundle, checkBundle, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
+import { type BundleSnapshot, Bundle, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
 import { type HookCompat } from "../../domain/bundle/services/hook-registrations.js";
-import { type Owner } from "../../domain/bundle/value-objects/owner.js";
+import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
 import {
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot,
   type LocatorKey,
   locatorKey
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import { type DesiredArtifact } from "../../domain/install-plan/value-objects/desired-artifact.js";
+import { type DesiredArtifact } from "../../domain/install-plan/spi/desired-artifact.js";
 import { type ContentHash } from "../../domain/ledger/value-objects/content-hash.js";
 import { type Ledger } from "../../domain/ledger/aggregates/ledger.js";
 import { type LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
@@ -46,7 +46,7 @@ export interface VerifyOptions extends ScopeOptions {
    * What the owner wants installed now. With it, verify also tells an outdated Artifact from one the user changed,
    * finds desired Artifacts that are missing, and records silently in the ledger what is on disk already as desired.
    */
-  readonly bundle?: Bundle;
+  readonly bundle?: BundleSnapshot;
   /**
    * The agents to render the bundle for and verify. Owner entries naming any selected agent or occupying a desired
    * locator are compared, reported or acknowledged. Omit to include all owner entries and render for their agents.
@@ -65,7 +65,7 @@ export type { VerifiedArtifact };
 export interface VerifyReport {
   readonly artifacts: readonly VerifiedArtifact[];
   /** Entries whose record was updated silently (`ledger-behind`): the disk already held the desired content. */
-  readonly acknowledged: readonly ArtifactLocator[];
+  readonly acknowledged: readonly ArtifactLocatorSnapshot[];
 }
 
 export type VerifyError =
@@ -84,7 +84,7 @@ export type VerifyError =
  * LedgerLock, compare again under it and record the disk's hash (`acknowledge`).
  */
 export function verify(
-  owner: Owner,
+  owner: OwnerSnapshot,
   options: VerifyOptions
 ): Effect.Effect<VerifyReport, VerifyError, HarnessServices> {
   return Effect.gen(function* () {
@@ -95,7 +95,7 @@ export function verify(
     const { ledger } = yield* loadLedger(scope);
     let desired: readonly DesiredArtifact[] = [];
     if (options.bundle !== undefined) {
-      const bundle = yield* fromResult(checkBundle(options.bundle));
+      const bundle = yield* fromResult(Bundle.restore(options.bundle));
       const agents = options.agents ?? ledger.agentsOf(owner);
       const available = yield* probeCommands(agents, setup);
       const { rendered } = yield* renderBundle(bundle, agents, setup, { ...options, available });
@@ -111,7 +111,7 @@ export function verify(
     /** The disk's hashes at every held locator and at every desired one the owner does not hold. */
     const watch = Effect.fnUntraced(function* (entries: readonly LedgerEntry[]) {
       const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
-      const unheld = new Map<LocatorKey, ArtifactLocator>();
+      const unheld = new Map<LocatorKey, ArtifactLocatorSnapshot>();
       for (const want of desired) {
         if (!held.has(locatorKey(want.locator))) {
           unheld.set(locatorKey(want.locator), want.locator);

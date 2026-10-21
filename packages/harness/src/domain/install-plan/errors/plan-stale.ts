@@ -1,4 +1,4 @@
-import type { PlanBasis } from "../value-objects/plan-basis.js";
+import type { PlanBasisSnapshot } from "../value-objects/plan-basis.js";
 
 /**
  * The plan can no longer be applied. `ledger-moved`: another apply, uninstall or recovery changed the ledger after
@@ -8,15 +8,15 @@ export interface PlanStale {
   readonly _tag: "PlanStale";
   readonly planId: string;
   readonly reason: "ledger-moved" | "applied" | "discarded";
-  readonly basedOn: PlanBasis;
-  readonly current?: PlanBasis;
+  readonly basedOn: PlanBasisSnapshot;
+  readonly current?: PlanBasisSnapshot;
 }
 
 /** The error for applying or discarding a plan that was used up. */
 export function planClosedError(plan: {
   readonly planId: string;
   readonly status: "ready" | "applied" | "discarded";
-  readonly basedOn: PlanBasis;
+  readonly basedOn: PlanBasisSnapshot;
 }): PlanStale | undefined {
   return plan.status === "ready"
     ? undefined
@@ -26,7 +26,7 @@ export function planClosedError(plan: {
 /** The error for a plan whose basis the ledger moved on, when the ledger is not exactly what it was built on. */
 export function ledgerMovedError(
   planId: string,
-  basedOn: PlanBasis,
+  basedOn: PlanBasisSnapshot,
   ledger: { readonly lineage: string; readonly revision: number }
 ): PlanStale {
   return {

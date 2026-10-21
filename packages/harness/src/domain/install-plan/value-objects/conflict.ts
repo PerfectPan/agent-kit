@@ -5,7 +5,12 @@
  * `dotfiles-managed`: a ForeignOwner such as chezmoi manages the path and would undo the write.
  * `symlinked-target`: the path is a symlink, which an atomic write would replace with a regular file.
  */
-export type Conflict = "unmanaged-exists" | "user-modified" | "other-owner" | "dotfiles-managed" | "symlinked-target";
+export type ConflictSnapshot =
+  | "unmanaged-exists"
+  | "user-modified"
+  | "other-owner"
+  | "dotfiles-managed"
+  | "symlinked-target";
 
 /**
  * An explicit decision for one conflicting locator. `adopt`: what is there counts as the owner's own and is replaced,
@@ -20,10 +25,29 @@ export type ConflictChoice = "force" | "adopt" | "backup";
  * target only where nothing has to be written, taking the link's current content as the owner's; `conflictChoices`
  * gives the choices for one conflicting step.
  */
-export const CONFLICT_CHOICES: Readonly<Record<Conflict, readonly ConflictChoice[]>> = {
+export const CONFLICT_CHOICES: Readonly<Record<ConflictSnapshot, readonly ConflictChoice[]>> = {
   "unmanaged-exists": ["adopt", "backup"],
   "user-modified": ["force"],
   "other-owner": ["force"],
   "dotfiles-managed": [],
   "symlinked-target": ["adopt"]
 };
+
+export class Conflict {
+  readonly #value: ConflictSnapshot;
+  readonly #choices: readonly ConflictChoice[];
+  private constructor(value: ConflictSnapshot) {
+    this.#value = value;
+    this.#choices = Object.freeze([...CONFLICT_CHOICES[value]]);
+    Object.freeze(this);
+  }
+  static restore(value: ConflictSnapshot): Conflict {
+    return new Conflict(value);
+  }
+  choices(): readonly ConflictChoice[] {
+    return this.#choices;
+  }
+  toSnapshot(): ConflictSnapshot {
+    return this.#value;
+  }
+}

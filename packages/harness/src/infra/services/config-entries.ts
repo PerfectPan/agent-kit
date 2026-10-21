@@ -1,7 +1,10 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { UnexpectedShape } from "../../application/ports.js";
-import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import {
+  type ArtifactLocatorSnapshot,
+  locatorPointer
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
 import type { Document } from "./document.js";
 import { isDocumentRecord } from "./document.js";
@@ -61,7 +64,10 @@ interface Found {
 }
 
 /** Where the locator's entry is in `data`, or `undefined` when it is not there. */
-function find(data: Document | undefined, locator: ArtifactLocator): Result<Found | undefined, UnexpectedShape> {
+function find(
+  data: Document | undefined,
+  locator: ArtifactLocatorSnapshot
+): Result<Found | undefined, UnexpectedShape> {
   const base = pointerKeys(locatorPointer(locator));
   const list = at(data, base);
   if (locator.member === undefined) {
@@ -93,7 +99,7 @@ function find(data: Document | undefined, locator: ArtifactLocator): Result<Foun
 /** The value of the locator's entry in a parsed document, or `undefined` when the document has none. */
 export function entryValue(
   data: Document | undefined,
-  locator: ArtifactLocator
+  locator: ArtifactLocatorSnapshot
 ): Result<JsonValue | undefined, UnexpectedShape> {
   const found = find(data, locator);
   return found.ok ? ok(found.value?.value as JsonValue | undefined) : found;
@@ -140,7 +146,7 @@ function emptiedAncestor(data: Document | undefined, path: EntryPath): EntryPath
  */
 export function entryEdits(
   data: Document | undefined,
-  locator: ArtifactLocator,
+  locator: ArtifactLocatorSnapshot,
   value: JsonValue | undefined
 ): Result<readonly EntryEdit[], UnexpectedShape> {
   const found = find(data, locator);
@@ -190,7 +196,7 @@ export function listEntries(
   pointer: string,
   memberIn: "element" | "hook-group"
 ): readonly {
-  readonly locator: Pick<ArtifactLocator, "pointer" | "member" | "memberIn">;
+  readonly locator: Pick<ArtifactLocatorSnapshot, "pointer" | "member" | "memberIn">;
   readonly value: JsonValue;
 }[] {
   const keys = pointerKeys(pointer);
