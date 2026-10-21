@@ -18,6 +18,235 @@ export const providerCases: Case[] = [
     "package-dependency"
   ),
   allowed(
+    "grok: context SPI",
+    "providers/grok",
+    fresh("src/x"),
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
+  ),
+  rejects(
+    "grok: no context index",
+    "providers/grok",
+    fresh("src/x"),
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    "package-dependency"
+  ),
+  rejects(
+    "grok: no other provider",
+    "providers/grok",
+    fresh("src/x"),
+    `export { pi } from "${PI}/identity";`,
+    "package-dependency"
+  ),
+  rejects(
+    "grok: no peer provider by relative path",
+    "providers/grok",
+    fresh("src/x"),
+    'export { pi } from "../../pi/src/identity.js";',
+    "relative-escape"
+  ),
+  rejects(
+    "harness: grok is tests-only",
+    "harness",
+    fresh("src/x"),
+    'export { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";',
+    "package-dependency"
+  ),
+  rejects(
+    "testing: grok is tests-only",
+    "testing",
+    fresh("src/x"),
+    'export { grok } from "@rivus/agent-kit-provider-grok/identity";',
+    "package-dependency"
+  ),
+  rejects(
+    "grok: testing is tests-only",
+    "providers/grok",
+    fresh("src/x"),
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    "package-dependency"
+  ),
+  allowed("grok hooks: facts", "providers/grok", "src/hooks.ts", 'export { GROK_ID } from "./facts.js";'),
+  allowed(
+    "grok hooks: catalog SPI",
+    "providers/grok",
+    "src/hooks.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "grok hooks: harness SPI",
+    "providers/grok",
+    "src/hooks.ts",
+    'export { finishSelectorsOf } from "@rivus/agent-kit-harness/spi";'
+  ),
+  rejects(
+    "grok hooks: no installation",
+    "providers/grok",
+    "src/hooks.ts",
+    'export { grokInstallAdapter } from "./install.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok hooks: no discovery SPI",
+    "providers/grok",
+    "src/hooks.ts",
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "shell hooks: grok hooks",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";'
+  ),
+  rejects(
+    "shell hooks: no grok install",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";',
+    "shell-entry"
+  ),
+  rejects(
+    "shell usage: no grok hooks",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";',
+    "shell-entry"
+  ),
+  allowed("grok usage: layout", "providers/grok", "src/usage.ts", 'export { grokRoots } from "./layout.js";'),
+  allowed(
+    "grok usage: catalog SPI",
+    "providers/grok",
+    "src/usage.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "grok usage: sessions SPI",
+    "providers/grok",
+    "src/usage.ts",
+    'export { readText } from "@rivus/agent-kit-sessions/spi";'
+  ),
+  rejects(
+    "grok usage: no hooks",
+    "providers/grok",
+    "src/usage.ts",
+    'export { grokHookDialect } from "./hooks.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok usage: no ACP SPI",
+    "providers/grok",
+    "src/usage.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "grok ACP: base environment SPI",
+    "providers/grok",
+    "src/acp.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";'
+  ),
+  allowed(
+    "shell ACP: grok profile",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { grokAcpProfile } from "@rivus/agent-kit-provider-grok/acp";'
+  ),
+  allowed(
+    "shell usage: grok usage",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";'
+  ),
+  rejects(
+    "shell ACP: no grok usage",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";',
+    "shell-entry"
+  ),
+  allowed("grok usage: records", "providers/grok", "src/usage.ts", 'export { grokUsageLines } from "./records.js";'),
+  rejects(
+    "grok records: no sessions through usage helper",
+    "providers/grok",
+    "src/records.ts",
+    'export { translateGrokRecords } from "./sessions/events.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok layout: no sessions through usage helper",
+    "providers/grok",
+    "src/layout.ts",
+    'export { translateGrokRecords } from "./sessions/events.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok nested records: no sessions",
+    "providers/grok",
+    fresh("src/records/deep/x"),
+    'export { translateGrokRecords } from "../../sessions/events.js";',
+    "provider-entry"
+  ),
+  allowed(
+    "grok nested records: shared layout and records",
+    "providers/grok",
+    fresh("src/records/deep/x"),
+    'export { grokRoots } from "../../layout.js"; export { grokUsage } from "../../records.js";'
+  ),
+  rejects(
+    "grok facts: no layout through hooks helper",
+    "providers/grok",
+    "src/facts.ts",
+    'export { grokRoots } from "./layout.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok facts: no sessions SPI through hooks helper",
+    "providers/grok",
+    "src/facts.ts",
+    'export { readText } from "@rivus/agent-kit-sessions/spi";',
+    "provider-entry"
+  ),
+  rejects(
+    "grok usage: no sessions",
+    "providers/grok",
+    "src/usage.ts",
+    'export { translateGrokRecords } from "./sessions/events.js";',
+    "provider-entry"
+  ),
+  allowed(
+    "grok sessions: context SPI",
+    "providers/grok",
+    "src/sessions.ts",
+    'export { discoverSessions } from "@rivus/agent-kit-sessions/spi";'
+  ),
+  rejects(
+    "grok: Platform types are tests-only",
+    "providers/grok",
+    fresh("src/x"),
+    'export type { Platform } from "@rivus/agent-kit-platform";',
+    "package-dependency"
+  ),
+  rejects(
+    "grok: no Platform values",
+    "providers/grok",
+    fresh("src/x"),
+    'export { Platform } from "@rivus/agent-kit-platform";',
+    "package-dependency"
+  ),
+  allowed(
+    "shell sessions: grok adapter",
+    "agent-kit",
+    "src/providers/sessions.ts",
+    'export { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";'
+  ),
+  rejects(
+    "shell hooks: no grok sessions",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";',
+    "shell-entry"
+  ),
+  allowed(
     "opencode: context SPI",
     "providers/opencode",
     fresh("src/x"),

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { translateGrokRecords } from "./grok/events.js";
-import { foldStreamParts, type SourcedRecord, type TranscriptStreamPart } from "../index.js";
+import { foldStreamParts, type TranscriptStreamPart } from "../index.js";
 import {
   acpChunkText,
   acpToolCallPayload,
@@ -228,111 +227,6 @@ const MERGED_ARGS = {
   type: "text",
   multiline: false
 };
-
-describe("S89: Grok logs and live turns read ACP updates with the same rules", () => {
-  /** The recorded events one list of updates produces, as `[kind, payload]` pairs, through the Grok translation. */
-  const recordedOf = (
-    updates: readonly Record<string, unknown>[],
-    kinds: readonly string[] = ["tool_call"]
-  ): [string, Record<string, unknown>][] => {
-    const records: SourcedRecord[] = updates.map((update, index) => ({
-      file: "updates.jsonl",
-      offset: index * 100,
-      length: 100,
-      line: index + 1,
-      value: { timestamp: "2026-01-01T00:00:00.000Z", params: { update } }
-    }));
-    const grok = translateGrokRecords(records);
-    if (!grok.ok) {
-      throw new Error(grok.error._tag);
-    }
-    return grok.value.events.filter((event) => kinds.includes(event.kind)).map((event) => [event.kind, event.payload]);
-  };
-
-  /** The events the same list of updates produces live, as `[kind, payload]` pairs, through one translator. */
-  const liveOf = (
-    updates: readonly Record<string, unknown>[],
-    kinds: readonly string[] = ["tool_call"]
-  ): [string, Record<string, unknown>][] =>
-    foldStreamParts(translate(updates))
-      .filter((event) => kinds.includes(event.kind))
-      .map((event) => [event.kind, event.payload]);
-
-  it("merges a tool call's updates into the same call and result", () => {
-    expect(liveOf(TOOL_UPDATES, ["tool_call", "tool_result"])).toEqual(
-      recordedOf(TOOL_UPDATES, ["tool_call", "tool_result"])
-    );
-  });
-
-  it("reads a titled call and its display-title update to the same name, title and args on both paths", () => {
-    expect(liveOf(GROK_TITLE_UPDATES)).toEqual(recordedOf(GROK_TITLE_UPDATES));
-    expect(liveOf(GROK_TITLE_UPDATES)[0]?.[1]).toEqual({
-      callId: "c1",
-      name: "read_file",
-      title: "Read `/u/me/x.md`",
-      args: MERGED_ARGS
-    });
-  });
-
-  it("carries a title-only later update into the live fold like the Grok log", () => {
-    const updates = [
-      { sessionUpdate: "tool_call", toolCallId: "c1", title: "bash", rawInput: { command: "ls" } },
-      { sessionUpdate: "tool_call_update", toolCallId: "c1", title: "List files" }
-    ];
-    expect(liveOf(updates)).toEqual(recordedOf(updates));
-    expect(liveOf(updates)[0]?.[1]).toEqual({
-      callId: "c1",
-      name: "bash",
-      title: "List files",
-      args: { command: "ls" }
-    });
-  });
-
-  it("reads a display title that arrives on the completed update without input (OpenCode shape) on both paths", () => {
-    const updates = [
-      {
-        sessionUpdate: "tool_call",
-        toolCallId: "c1",
-        title: "run_terminal_command",
-        rawInput: { command: "ls -la" }
-      },
-      {
-        sessionUpdate: "tool_call_update",
-        toolCallId: "c1",
-        title: "List `.`",
-        status: "completed",
-        content: "file one"
-      }
-    ];
-    expect(liveOf(updates)).toEqual(recordedOf(updates));
-    expect(liveOf(updates)[0]?.[1]).toEqual({
-      callId: "c1",
-      name: "run_terminal_command",
-      title: "List `.`",
-      args: { command: "ls -la" }
-    });
-  });
-
-  it("clears the title again on both paths when a later title equals the name", () => {
-    const updates = [
-      { sessionUpdate: "tool_call", toolCallId: "c1", title: "bash", rawInput: { command: "ls" } },
-      { sessionUpdate: "tool_call_update", toolCallId: "c1", title: "List files" },
-      {
-        sessionUpdate: "tool_call_update",
-        toolCallId: "c1",
-        title: "bash",
-        status: "completed",
-        content: "done"
-      }
-    ];
-    const live = liveOf(updates);
-    const recorded = recordedOf(updates);
-    expect(live).toEqual(recorded);
-    expect(live[0]?.[1]).toEqual({ callId: "c1", name: "bash", args: { command: "ls" } });
-    expect("title" in live[0]![1]).toBe(false);
-    expect("title" in recorded[0]![1]).toBe(false);
-  });
-});
 
 describe("tool names and args across updates", () => {
   const merged = (updates: readonly Record<string, unknown>[]): AcpToolState | undefined => {

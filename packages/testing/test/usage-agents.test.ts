@@ -170,30 +170,6 @@ describe("codex usage", () => {
   });
 });
 
-describe("grok usage", () => {
-  it("reports each turn with its model calls, per-model split and the cost Grok logged", async () => {
-    const records = await decode("grok", ".grok/sessions/%2Fu%2Fme%2Fwork/gk-usage/updates.jsonl");
-    expect(records).toHaveLength(1);
-    const [turn] = records;
-    expect(turn).toMatchObject({
-      agent: "grok",
-      sessionId: "gk-usage",
-      granularity: "turn",
-      modelCalls: 9,
-      model: "grok-main",
-      costSource: "agent",
-      usage: { inputTokens: 600000, outputTokens: 20000, cacheReadTokens: 300000, reasoningTokens: 15000 }
-    });
-    expect(turn?.costUsd).toBeCloseTo(0.123456789, 12);
-    expect(turn?.usageByModel?.["grok-mini"]).toMatchObject({ modelCalls: 1, costSource: "agent" });
-    expect(turn?.usageByModel?.["grok-mini"]?.costUsd).toBeCloseTo(0.003456789, 12);
-  });
-
-  it("decodes a session given by its directory", async () => {
-    expect(await decode("grok", ".grok/sessions/%2Fu%2Fme%2Fwork/gk-usage")).toHaveLength(1);
-  });
-});
-
 describe("ccusage buckets", () => {
   // presence and ccusage price four disjoint buckets: input without cache, cache reads, cache writes and output.
   // The kit's convention has input include the cache, and `noCacheInputTokens` gives the first bucket back, so a

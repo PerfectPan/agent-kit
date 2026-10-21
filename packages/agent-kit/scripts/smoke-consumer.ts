@@ -28,7 +28,6 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = resolve(packageRoot, "../..");
-const fixtures = join(repoRoot, "packages/testing/test/fixtures");
 const fakeAgent = join(repoRoot, "packages/acp/test/fixtures/fake-agent.ts");
 const tsc = join(packageRoot, "node_modules/.bin/tsc");
 // The workspace's pnpm: it rewrites `workspace:` and `catalog:` ranges in the packed manifests the way publishing does.
@@ -36,18 +35,25 @@ const pnpm = "pnpm";
 const nodeTypes = join(packageRoot, "node_modules/@types");
 
 /**
- * One seeded session per built-in session adapter: a fixture under `packages/testing/test/fixtures` and where the
- * agent keeps it under its home. The consumer fails when `builtinSessionAdapters` has an agent this list lacks, so a
- * new adapter (Grok next) adds its row here.
+ * One seeded session per built-in session adapter: a repository-relative fixture and where the agent keeps it
+ * under its home. The consumer fails when `builtinSessionAdapters` has an agent this list lacks.
  */
 const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
-  { agent: "claude-code", fixture: "claude-code/conformance/subagent", target: ".claude/projects/smoke" },
+  {
+    agent: "claude-code",
+    fixture: "packages/testing/test/fixtures/claude-code/conformance/subagent",
+    target: ".claude/projects/smoke"
+  },
   {
     agent: "codex",
-    fixture: "codex/conformance/rollout-plain.jsonl",
+    fixture: "packages/testing/test/fixtures/codex/conformance/rollout-plain.jsonl",
     target: ".codex/sessions/2026/01/01/rollout-plain.jsonl"
   },
-  { agent: "grok", fixture: "grok/conformance/plain", target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session" }
+  {
+    agent: "grok",
+    fixture: "packages/providers/grok/test/fixtures/sessions/conformance/plain",
+    target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session"
+  }
 ];
 
 /** A stand-in `codex` for `/discovery`: it prints a version and reports that nobody is logged in. */
@@ -658,7 +664,7 @@ try {
   const home = join(work, "home");
   for (const seed of SEEDS) {
     mkdirSync(dirname(join(home, seed.target)), { recursive: true });
-    cpSync(join(fixtures, seed.fixture), join(home, seed.target), { recursive: true });
+    cpSync(join(repoRoot, seed.fixture), join(home, seed.target), { recursive: true });
   }
   const anHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   for (const entry of readdirSync(home, { recursive: true, withFileTypes: true })) {

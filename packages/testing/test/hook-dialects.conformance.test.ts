@@ -6,12 +6,11 @@ import { type HookDialectSample, hookDialectConformance } from "../src/hook-dial
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
-import { grokSamples } from "./fixtures/hooks/grok.js";
+import { grokHostSamples } from "./fixtures/hooks/grok-host.js";
 
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
-  codex: codexSamples,
-  grok: grokSamples
+  codex: codexSamples
 };
 
 for (const [agent, dialect] of Object.entries(builtinHookDialects)) {
@@ -33,6 +32,16 @@ for (const [agent, dialect] of Object.entries(builtinHookDialects)) {
 // Cross-agent host resolution needs the full table, assembled only by this test package.
 describe("Cursor running Claude Code hooks", () => {
   for (const sample of cursorHostSamples) {
+    it(`${sample.name}`, () => {
+      expect(
+        readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })
+      ).toStrictEqual(sample.expected);
+    });
+  }
+});
+
+describe("Grok running Claude Code hooks", () => {
+  for (const sample of grokHostSamples) {
     it(`${sample.name}`, () => {
       expect(
         readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })

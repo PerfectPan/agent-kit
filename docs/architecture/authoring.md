@@ -20,8 +20,8 @@ Start from the knowledge and the invariants, not from the file you want to write
 Packages are created in the phase that gives them content; see the plan's section 6.3.
 
 Providers own their agent's identity, probe recipes, hook dialects, install adapters, log layouts and decoding,
-and ACP launch details. Pi, Cursor, Gemini CLI and OpenCode live in `packages/providers/`; the remaining agents stay in context adapter
-folders until their batches in 9–11 of [plan 0002](../plans/0002-providers-and-workspace.md#32-provider-packages).
+and ACP launch details. Pi, Cursor, Gemini CLI, OpenCode and Grok live in `packages/providers/`; the remaining agents stay in context adapter
+folders until their batches in 10–11 of [plan 0002](../plans/0002-providers-and-workspace.md#32-provider-packages).
 Providers implement context SPI interfaces; contexts own the service models, shared helpers and use cases.
 The shell assembles the built-in service tables from both locations during migration.
 

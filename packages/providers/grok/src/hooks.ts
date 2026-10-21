@@ -1,4 +1,14 @@
-import type { HookDialect, HookOutput } from "../index.js";
+import {
+  GROK_CLAUDE_AGENT,
+  GROK_CLAUDE_HOOK_FILES,
+  GROK_CURSOR_AGENT,
+  GROK_CURSOR_HOOK_FILES,
+  GROK_EVENT_ENV,
+  GROK_EVENT_FIELD,
+  GROK_ID,
+  GROK_SESSION_ENV
+} from "./facts.js";
+import { type HookDialect, type HookOutput } from "@rivus/agent-kit-harness/spi";
 
 // https://docs.x.ai/build/features/hooks and the fuller user guide in the source,
 // https://github.com/xai-org/grok-build/blob/2bdd1d6/crates/codegen/xai-grok-pager/docs/user-guide/10-hooks.md
@@ -36,8 +46,8 @@ const CLAUDE_EVENTS = [
 
 export const grokHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  hostMarkers: { payloadFields: ["hookEventName"] },
-  agent: "grok",
+  hostMarkers: { payloadFields: [GROK_EVENT_FIELD] },
+  agent: GROK_ID,
   delivery: "command",
   // Seconds. 5 for most events in the public docs; newer source raises Stop, SubagentStop and PostToolUse to 600,
   // UserPromptSubmit to 30, and gives SessionEnd 1.5 s.
@@ -48,9 +58,9 @@ export const grokHookDialect: HookDialect = {
   fields: {
     // camelCase keys are authoritative. hookEventName carries the snake_case wire name; newer builds add
     // snake_case copies of some keys, with hook_event_name in PascalCase.
-    event: { paths: [["hookEventName"], ["hook_event_name"]], env: ["GROK_HOOK_EVENT"] },
+    event: { paths: [[GROK_EVENT_FIELD], ["hook_event_name"]], env: [GROK_EVENT_ENV] },
     // Inside a subagent this is the subagent's own session.
-    sessionId: { paths: [["sessionId"], ["session_id"]], env: ["GROK_SESSION_ID"] },
+    sessionId: { paths: [["sessionId"], ["session_id"]], env: [GROK_SESSION_ENV] },
     cwd: { paths: [["cwd"]] },
     // The session's ACP update log, not a Claude Code transcript.
     transcriptPath: { paths: [["transcriptPath"], ["transcript_path"]] },
@@ -116,21 +126,16 @@ export const grokHookDialect: HookDialect = {
   },
   runsHooksOf: [
     {
-      agent: "claude-code",
+      agent: GROK_CLAUDE_AGENT,
       // `[compat.claude] hooks = false` or GROK_CLAUDE_HOOKS_ENABLED turns this off.
-      files: [
-        "~/.claude/settings.json",
-        "~/.claude/settings.local.json",
-        ".claude/settings.json",
-        ".claude/settings.local.json"
-      ],
+      files: GROK_CLAUDE_HOOK_FILES,
       byDefault: true,
       events: Object.fromEntries(CLAUDE_EVENTS.map((name) => [name, name]))
     },
     {
-      agent: "cursor",
+      agent: GROK_CURSOR_AGENT,
       // `[compat.cursor] hooks = false` or GROK_CURSOR_HOOKS_ENABLED turns this off.
-      files: ["~/.cursor/hooks.json", ".cursor/hooks.json"],
+      files: GROK_CURSOR_HOOK_FILES,
       byDefault: true,
       events: {
         ...Object.fromEntries(

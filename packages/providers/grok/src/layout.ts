@@ -1,25 +1,25 @@
-import { type AgentHome, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { GROK_ID, GROK_SESSIONS_DIR, GROK_SUBAGENTS_DIR, GROK_SUMMARY_FILE, GROK_UPDATES_FILE } from "./facts.js";
+import { type AgentHome, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
 
-import { basenamePath, dirnamePath, joinPath } from "../../index.js";
 import {
+  basenamePath,
+  dirnamePath,
+  joinPath,
   type SourcePointer,
   timeOf,
   type UnknownFormatGeneration,
-  unknownFormatGeneration
-} from "../../../transcript/index.js";
-import { lenient } from "../../../transcript/adapters/lenient.js";
-import { logTimestamp } from "../../../transcript/adapters/timestamp.js";
+  unknownFormatGeneration,
+  lenient,
+  logTimestamp
+} from "@rivus/agent-kit-sessions/spi";
 
 // Grok keeps one directory per session under `<home>/sessions/<encoded-cwd>/<session-id>/`. The transcript is
 // `updates.jsonl`. `summary.json`, `system_prompt.txt` and `tool_definitions.json` sit beside it. A subagent's
 // `meta.json` lives in `<session>/subagents/<id>/` and is not itself a transcript.
 
-const UPDATES = "updates.jsonl";
-const SUBAGENTS = "subagents";
-
 export function grokRoots(home: AgentHome): string[] {
-  return [joinPath(home.path, "sessions")];
+  return [joinPath(home.path, GROK_SESSIONS_DIR)];
 }
 
 /** How listing walks a root: `updates.jsonl` files, never the subagent directories. */
@@ -28,22 +28,24 @@ export const GROK_SESSION_FILES: {
   skipDir(name: string): boolean;
   maxDepth: number;
 } = {
-  match: (name) => name === UPDATES,
-  skipDir: (name) => name === SUBAGENTS,
+  match: (name) => name === GROK_UPDATES_FILE,
+  skipDir: (name) => name === GROK_SUBAGENTS_DIR,
   maxDepth: 8
 };
 
 /** The session directory of an `updates.jsonl` path, or `path` when it already is that directory. */
 export function grokSessionDir(path: string): string {
-  return path.endsWith(`/${UPDATES}`) || path === UPDATES ? dirnamePath(path) : path;
+  return path.endsWith(`/${GROK_UPDATES_FILE}`) || path === GROK_UPDATES_FILE ? dirnamePath(path) : path;
 }
 
 export function grokUpdatesPath(path: string): string {
-  return path.endsWith(`/${UPDATES}`) || path === UPDATES ? path : joinPath(path, UPDATES);
+  return path.endsWith(`/${GROK_UPDATES_FILE}`) || path === GROK_UPDATES_FILE
+    ? path
+    : joinPath(path, GROK_UPDATES_FILE);
 }
 
 export function grokSummaryPath(sessionDir: string): string {
-  return joinPath(sessionDir, "summary.json");
+  return joinPath(sessionDir, GROK_SUMMARY_FILE);
 }
 
 /** A usage source's identity: its session directory's name. */
@@ -116,7 +118,7 @@ export function grokSummaryFields(
   const summary = z.safeParse(SummaryFile, value).data;
   const format = summary?.chat_format_version;
   if (format !== undefined && format !== 1) {
-    return err(unknownFormatGeneration("grok", source));
+    return err(unknownFormatGeneration(GROK_ID, source));
   }
   const meta: GrokSessionMeta = {};
   const id = summary?.info?.id;

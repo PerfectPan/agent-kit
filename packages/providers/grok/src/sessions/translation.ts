@@ -9,9 +9,7 @@ import {
   type SourcedRecord,
   type TranscriptEvent,
   type TranscriptEventBody,
-  type TranscriptEventOf
-} from "../../index.js";
-import {
+  type TranscriptEventOf,
   acpChunkText,
   acpMessageKind,
   acpToolCallPayload,
@@ -21,9 +19,9 @@ import {
   isAcpToolError,
   mergeAcpToolStatus,
   mergeAcpToolUpdate
-} from "../acp-updates.js";
+} from "@rivus/agent-kit-sessions/spi";
 import { isInjectedChunk } from "./chunks.js";
-import type { GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
+import { type GrokSubagentMeta } from "../layout.js";
 import {
   followGrokTurn,
   type GrokHookRunValue,
@@ -34,7 +32,7 @@ import {
   grokUsageByModel,
   grokUsageOf,
   knownGrokUpdate
-} from "../../../usage/adapters/grok.js";
+} from "../records.js";
 
 /** Record types that only the Grok CLI reads. Each becomes a skipped record with its type as the reason. */
 const BOOKKEEPING = new Set([

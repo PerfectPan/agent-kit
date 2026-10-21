@@ -67,14 +67,6 @@ export {
 } from "./domain/transcript/adapters/codex/events.js";
 export { codexUsage } from "./domain/usage/adapters/codex.js";
 
-// Grok rules
-export {
-  GROK_CAPABILITIES,
-  type GrokTranslateOptions,
-  translateGrokRecords
-} from "./domain/transcript/adapters/grok/events.js";
-export { grokUsage } from "./domain/usage/adapters/grok.js";
-
 // Published language and the rules a viewer needs to interpret events
 export {
   isSessionHead,

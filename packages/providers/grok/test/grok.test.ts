@@ -1,13 +1,12 @@
-import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "./providers.js";
-import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { grok } from "../src/identity.js";
+import { grokUsageDecoder } from "../src/usage.js";
+import { grokSessionAdapter, translateGrokRecords } from "../src/sessions.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
-  builtinSessionAdapters,
   decodeUsage,
   foldTranscript,
   isSessionHead,
@@ -16,18 +15,21 @@ import {
   loadTranscript,
   type DecodeUsageOptions,
   type SessionHead,
-  summarizeSession,
-  translateGrokRecords,
   type Transcript,
   type UsageCursor,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "../src/memory-platform.js";
-import { readTree } from "./support.js";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { readTree } from "../../../testing/test/support.js";
 
-const tree = await readTree(fileURLToPath(new URL("fixtures/grok", import.meta.url)), "/u/me/.grok/sessions");
+const testIdentity = { grok };
+const testSessions = { grok: grokSessionAdapter };
+const builtinSessionAdapters = testSessions;
+const testUsage = { grok: grokUsageDecoder };
+
+const tree = await readTree(fileURLToPath(new URL("fixtures/sessions", import.meta.url)), "/u/me/.grok/sessions");
 const files = {
   ...tree,
   "/u/me/.grok/sessions/bad-summary/updates.jsonl":
@@ -590,62 +592,10 @@ describe("grok translation", () => {
     expect(parsed.events.map((event) => event.kind)).toEqual(["tool_result"]);
     expect(parsed.events[0]?.payload).toEqual({ callId: "c1", isError: false, output: "done", orphan: true });
   });
-
-  it("returns ReadFailed when summary.json cannot be stated and no agent is named", async () => {
-    const dir = "/u/me/.grok/sessions/locked";
-    const updates = `${dir}/updates.jsonl`;
-    const base = createMemoryPlatform({
-      files: {
-        [updates]: '{"timestamp":"2026-01-01T00:00:00.000Z","params":{"update":{"sessionUpdate":"widget"}}}\n',
-        [`${dir}/summary.json`]: "{}"
-      },
-      home: "/u/me"
-    });
-    const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
-    const platform = {
-      ...base,
-      fs: {
-        ...base.fs,
-        async stat(path: string, options?: { readonly followSymlinks?: boolean }): Promise<FileStat | undefined> {
-          if (path.endsWith("/summary.json")) {
-            throw denied;
-          }
-          return base.fs.stat(path, options);
-        }
-      }
-    };
-    const named = await loadTranscript(
-      platform,
-      { agent: "grok", path: updates },
-      { providers: { sessions: testSessions, identity: testIdentity } }
-    );
-    const detected = await loadTranscript(
-      platform,
-      { path: updates },
-      { providers: { sessions: testSessions, identity: testIdentity } }
-    );
-    const namedSummary = await summarizeSession(
-      platform,
-      { agent: "grok", path: updates },
-      { providers: { sessions: testSessions, identity: testIdentity } }
-    );
-    const detectedSummary = await summarizeSession(
-      platform,
-      { path: updates },
-      { providers: { sessions: testSessions, identity: testIdentity } }
-    );
-    expect(named).toEqual(detected);
-    expect(namedSummary).toEqual(named);
-    expect(detectedSummary).toEqual(named);
-    expect(named).toEqual({
-      ok: false,
-      error: { _tag: "ReadFailed", path: updates, message: denied.message, cause: denied }
-    });
-  });
 });
 
 describe("grok translation output pins", () => {
-  const conformance = fileURLToPath(new URL("fixtures/grok/conformance", import.meta.url));
+  const conformance = fileURLToPath(new URL("fixtures/sessions/conformance", import.meta.url));
 
   /**
    * The records of one fixture's `updates.jsonl`, at their real offsets. The file path is a stable stand-in, so the

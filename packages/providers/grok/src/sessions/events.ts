@@ -1,4 +1,5 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { GROK_ID } from "../facts.js";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   assignSeq,
@@ -12,13 +13,11 @@ import {
   type SourcedRecord,
   type TranscriptSession,
   type UnknownFormatGeneration,
-  unknownFormatGeneration
-} from "../../index.js";
-import type { GrokSessionMeta, GrokSubagentMeta } from "../../../session/adapters/grok/layout.js";
-import { recordTime } from "../record-time.js";
+  unknownFormatGeneration,
+  recordTime
+} from "@rivus/agent-kit-sessions/spi";
+import { type GrokSessionMeta, type GrokSubagentMeta } from "../layout.js";
 import { applyGrokSubagents, createGrokTranslation } from "./translation.js";
-
-const AGENT = "grok";
 
 /** Recorded by every Grok session. */
 const BASE_CAPABILITIES: readonly Capability[] = [
@@ -87,7 +86,7 @@ export function translateGrokRecords(
     const ts = times[index]!;
     const step = translation.step(record, ts);
     if (!step.ok) {
-      return err(unknownFormatGeneration(AGENT, record));
+      return err(unknownFormatGeneration(GROK_ID, record));
     }
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);

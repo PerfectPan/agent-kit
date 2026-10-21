@@ -308,7 +308,7 @@ export const cases: Case[] = [
     "a concept importing another concept's adapters/",
     "sessions",
     fresh("src/domain/transcript/x"),
-    `export * as g from "../session/adapters/grok/preview.js";`,
+    `export * as g from "../session/adapters/claude-code/preview.js";`,
     "layer"
   ),
   rejects(

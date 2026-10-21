@@ -1,4 +1,4 @@
-import type { GrokMetaValue } from "../../../usage/adapters/grok.js";
+import { type GrokMetaValue } from "../records.js";
 
 const REMINDER_ONLY = /^\s*<system-reminder>[\s\S]*<\/system-reminder>\s*$/;
 

@@ -1,3 +1,4 @@
+import { grokAcpProfile } from "@rivus/agent-kit-provider-grok/acp";
 import { opencodeAcpProfile } from "@rivus/agent-kit-provider-opencode/acp";
 import { geminiCliAcpProfile } from "@rivus/agent-kit-provider-gemini-cli/acp";
 import { builtinAcpProfiles as contextBuiltins } from "@rivus/agent-kit-acp/public";
@@ -8,7 +9,7 @@ export const builtinAcpProfiles: typeof contextBuiltins = {
   "claude-code": contextBuiltins["claude-code"],
   codex: contextBuiltins.codex,
   "gemini-cli": geminiCliAcpProfile,
-  grok: contextBuiltins.grok,
+  grok: grokAcpProfile,
   opencode: opencodeAcpProfile
 };
 

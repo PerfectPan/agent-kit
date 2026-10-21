@@ -1,3 +1,4 @@
+import { grokProbe } from "@rivus/agent-kit-provider-grok/discovery";
 import { opencodeProbe } from "@rivus/agent-kit-provider-opencode/discovery";
 import { geminiCliProbe } from "@rivus/agent-kit-provider-gemini-cli/discovery";
 import { cursorProbe } from "@rivus/agent-kit-provider-cursor/discovery";
@@ -7,6 +8,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinProbeRecipes: typeof contextBuiltins & {
+  readonly grok: typeof grokProbe;
   readonly opencode: typeof opencodeProbe;
   readonly "gemini-cli": typeof geminiCliProbe;
   readonly cursor: typeof cursorProbe;
@@ -18,7 +20,7 @@ export const builtinProbeRecipes: typeof contextBuiltins & {
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
-  grok: contextBuiltins.grok
+  grok: grokProbe
 };
 
 export const discoveryTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"discovery">> =>

@@ -3,15 +3,15 @@ import type { BuiltinCodingAgentId, CodingAgentWithHome } from "../index.js";
 
 import { claudeCode } from "./claude-code.js";
 import { codex } from "./codex.js";
-import { grok } from "./grok.js";
 
 /** Built-in identities still owned by catalog during provider migration. */
 export const builtinCodingAgents: {
-  readonly [Id in Exclude<BuiltinCodingAgentId, "pi" | "cursor" | "gemini-cli" | "opencode">]: CodingAgentWithHome;
+  readonly [
+    Id in Exclude<BuiltinCodingAgentId, "pi" | "cursor" | "gemini-cli" | "opencode" | "grok">
+  ]: CodingAgentWithHome;
 } = {
   "claude-code": claudeCode,
-  codex,
-  grok
+  codex
 };
 
 export function isBuiltinCodingAgentId(value: string): value is BuiltinCodingAgentId {

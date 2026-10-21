@@ -1,4 +1,4 @@
-import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinSessionAdapters as testSessions } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { fileURLToPath } from "node:url";
 

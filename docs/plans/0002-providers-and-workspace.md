@@ -261,6 +261,7 @@ packages/providers/claude-code/
   - `hooks.ts` imports only `facts.ts`, catalog's SPI (the zero-dependency shared kernel), harness's SPI and `zod/mini`;
   - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, catalog's SPI, sessions' SPI and `zod/mini`, never `sessions/`;
   - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay (`transcript/adapters/codex/fork-replay.ts` today), which its usage decoding also uses, moves to `records/`.
+  - these limits also apply to every allowed local helper, including nested `records/` files; `facts.ts`, shared by both entries, satisfies both limits.
 
   The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform. Both entries keep importing nothing at run time: `zod/mini` stays bundled into them, as `ZOD_BUNDLE_ENTRIES` in `packages/agent-kit/scripts/check-dist.ts` requires today.
 - Relations between agents are declared by agent id, not by import. Grok and Cursor also run Claude Code's hooks; they declare that in their own HookDialect, as `foreignHooks` does today.
@@ -565,7 +566,7 @@ Publishing stays on trusted publishing with provenance, from the same workflow f
 ### 5.3 Compatibility checks
 
 - `/harness/events` and `/transcript/usage` still import nothing in their built files. Each provider batch compares every entry with the main commit it is based on; growth over 1% of any entry needs an explanation in its PR, except the expected `/catalog` growth described below. Batch 2 sizes remain historical measurements.
-- Until batch 12, rolldown places each provider's whole `facts.ts` in the shared chunk imported by `/catalog`, typically adding about 20–30 bytes per provider, though compression and reused facts can offset the net entry growth. Accept and measure this growth here rather than repeating the explanation in each provider PR; keep facts together.
+- Until batch 12, the unbundled dist chunk imported by `/catalog` contains each provider's whole `facts.ts`. The measured, tree-shaken bundle retains only identity facts; its size typically grows about 20–30 bytes per provider, though compression and reused facts can offset the net entry growth. Accept and measure this growth here rather than repeating the explanation in each provider PR; keep facts together.
 - The pnpm migration changes no shipped byte: the shell's and collab's `dist/` are compared file by file with a build of 821ebcf, and the dry-run pack file lists are compared too.
 - **The application check before 0.20.0.** Each application's type check and tests run twice: against the published 0.19.1, and against the locally packed 0.20.0. Every error that appears only in the second run must come from a change listed in 3.10. Errors the first run already has come from the application's older kit version, and its upgrade PR handles them.
 
@@ -688,9 +689,14 @@ One batch per agent, in this order:
 - Files: the same shape as batch 5. grok, claude-code and codex also move their records parsing, session listing, preview and transcript translation.
 - Provider tests consume conformance helpers from testing. Cursor's and Grok's cross-agent host-sniffing tests
   stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
+  The same applies to unnamed session use cases and cross-agent detection: keep their full session tables in
+  testing/harness. Provider tests may import generic test helpers by relative paths into `testing/test/*`;
+  these tests-only imports are an accepted pattern, not production API.
 - Per-batch sync points (update together when moving an agent):
   - the shell's `src/providers/<service>.ts` tables and its provider devDependency; when moving the first ACP
-    profile, also re-export `builtinAcpProfiles` from shell assembly in `src/acp.ts`;
+    profile, also re-export `builtinAcpProfiles` from shell assembly in `src/acp.ts`; when moving the first session
+    adapter, also re-export `builtinSessionAdapters` from shell assembly in `src/sessions.ts`; preserve the existing
+    per-agent transcript exports through the matching shell service modules until batch 13;
   - `packages/agent-kit/test/provider-bindings.test.ts`: keep `expectedProvider(...)` backed by the shell's complete
     tables as context tables lose their agents;
   - context tables losing the agent, including `Exclude<BuiltinCodingAgentId, ...>` in
@@ -698,14 +704,20 @@ One batch per agent, in this order:
   - harness's literal agent unions in `src/domain/lifecycle/adapters/hook-dialects.ts` and
     `src/domain/bundle/adapters/install-adapters.ts`;
   - `harness/test/support/providers.ts` and `testing/test/providers.ts`, which assemble full test tables;
+    harness's `foreign-hooks.test.ts`, `plan-evidence-scope.test.ts` and `build-install-plan.test.ts` consume those
+    complete tables for foreign-hook integration;
     discovery's `src/application/services/host-paths.test.ts` also needs the moved identity via `testsOnly`
     to keep testing its home override without depending on the shrinking context table; it also reads
     `builtinProbeRecipes.codex` from the context table, which batch 11 must replace;
   - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
     `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
-    cross-agent fixtures and conformance-suite self-tests stay in testing;
+    cross-agent fixtures and conformance-suite self-tests stay in testing; session consumers there use the complete
+    test sessions table, and ACP recorded/live comparisons stay in testing as their translators move;
+    `packages/agent-kit/scripts/smoke-consumer.ts` seeds the packed consumer from those session fixture paths;
   - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
-    manifests and the lockfile.
+    manifests and the lockfile; update adapter source links in `packages/discovery/README.md`;
+  - boundary cases importing a moved adapter: keep their target resolvable so they still test the intended rule
+    (`lint-cases.ts` uses the Claude Code preview for the cross-concept adapter rejection until batch 10).
 - Exit condition: 6.4 row 6 for each.
 
 #### Batch 12: provider closeout
