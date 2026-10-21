@@ -1,0 +1,38 @@
+{
+  "name": "@rivus/agent-kit-provider-pi",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pi identity, discovery, hooks, installation and usage. Bundled into @rivus/agent-kit.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./identity": "./src/identity.ts",
+    "./discovery": "./src/discovery.ts",
+    "./hooks": "./src/hooks.ts",
+    "./install": "./src/install.ts",
+    "./usage": "./src/usage.ts"
+  },
+  "scripts": {
+    "build": "",
+    "lint": "vp lint 2>&1",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
+    "test": "vp test --passWithNoTests 2>&1",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
+  },
+  "dependencies": {
+    "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-discovery": "workspace:*",
+    "@rivus/agent-kit-harness": "workspace:*",
+    "@rivus/agent-kit-sessions": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "catalog:",
+    "@rivus/agent-kit-testing": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -1,4 +1,5 @@
-import type { HookDialect } from "../index.js";
+import type { HookDialect } from "@rivus/agent-kit-harness/spi";
+import { PI_ID } from "./facts.js";
 
 // https://github.com/earendil-works/pi/blob/27c7b6f/packages/coding-agent/docs/extensions.md and the event types
 // in packages/coding-agent/src/core/extensions/types.ts (npm @earendil-works/pi-coding-agent; the older
@@ -10,7 +11,7 @@ import type { HookDialect } from "../index.js";
 
 export const piHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  agent: "pi",
+  agent: PI_ID,
   delivery: "plugin",
   fields: {
     event: { paths: [["type"]] },

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinCodingAgents, isBuiltinCodingAgentId } from "./index.js";
-import { homeRuleOf, parseCodingAgentId } from "../services/identity.js";
-import { homeFromRule } from "../policies/home-from-rule.js";
+import { builtinCodingAgents, isBuiltinCodingAgentId, homeFromRule, parseCodingAgentId } from "../src/catalog.js";
+import { homeRuleOf } from "@rivus/agent-kit-catalog";
 
 const home = "/u/me";
 

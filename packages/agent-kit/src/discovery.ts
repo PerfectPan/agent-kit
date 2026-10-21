@@ -1,10 +1,10 @@
+export { builtinProbeRecipes } from "./providers/discovery.js";
 import { detectAgents as contextDetectAgents } from "@rivus/agent-kit-discovery/public";
 import { discoveryTable } from "./providers/discovery.js";
 import { identityTable } from "./providers/identity.js";
 import type { ProviderOptions } from "./providers/types.js";
 
 export {
-  builtinProbeRecipes,
   classifyInstallation,
   DETECTION_STATUSES,
   resolveAuthState,

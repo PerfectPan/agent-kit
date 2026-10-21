@@ -258,8 +258,8 @@ packages/providers/claude-code/
 - A provider creates only the files of the services it supports. The shell records why a service is unsupported.
 - There is no barrel file. The shell imports each service from its own subpath, so an entry bundles only the services it binds.
 - Import limits inside a provider:
-  - `hooks.ts` imports only `facts.ts`, harness's SPI and `zod/mini`;
-  - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, sessions' SPI and `zod/mini`, never `sessions/`;
+  - `hooks.ts` imports only `facts.ts`, catalog's SPI (the zero-dependency shared kernel), harness's SPI and `zod/mini`;
+  - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, catalog's SPI, sessions' SPI and `zod/mini`, never `sessions/`;
   - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay (`transcript/adapters/codex/fork-replay.ts` today), which its usage decoding also uses, moves to `records/`.
 
   The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform. Both entries keep importing nothing at run time: `zod/mini` stays bundled into them, as `ZOD_BUNDLE_ENTRIES` in `packages/agent-kit/scripts/check-dist.ts` requires today.
@@ -564,7 +564,7 @@ Publishing stays on trusted publishing with provenance, from the same workflow f
 
 ### 5.3 Compatibility checks
 
-- `/harness/events` and `/transcript/usage` still import nothing in their built files. Batch 2 records their built sizes from the 0.19.1 tarball. A later batch that grows either by more than 2% explains why in its PR.
+- `/harness/events` and `/transcript/usage` still import nothing in their built files. Each provider batch compares every entry with the main commit it is based on; growth over 1% of any entry needs an explanation in its PR. Batch 2 sizes remain historical measurements.
 - The pnpm migration changes no shipped byte: the shell's and collab's `dist/` are compared file by file with a build of 821ebcf, and the dry-run pack file lists are compared too.
 - **The application check before 0.20.0.** Each application's type check and tests run twice: against the published 0.19.1, and against the locally packed 0.20.0. Every error that appears only in the second run must come from a change listed in 3.10. Errors the first run already has come from the application's older kit version, and its upgrade PR handles them.
 
@@ -654,6 +654,24 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
 - Tests: the moved tests unchanged; the conformance suites for hooks, discovery and usage on the pi provider.
 - Exit condition: 6.4 row 5. This batch also confirms that the package layout, the SPI entries and the slim `./hooks` and `./usage` subpaths work as designed. If one does not, this plan is revised before batch 6.
 
+Pilot decisions for batch 5 (apply to later provider batches):
+
+- 3.2/3.9: `providerServices` declares flat service exports; provider packages have no `index.ts` or `public.ts`.
+  Manifest checks validate those files and exact exports. Shell lint allows each subpath only in its matching
+  service module and checks the slim hooks/usage import lists.
+- 3.3: existing published built-in table exports are assembled in the shell during migration, preserving key
+  order and data. Catalog's id union and membership check stay backed by a static list until batch 12, so moving
+  an identity does not make `isBuiltinCodingAgentId` forget it. Services retain their existing data fields and
+  resolve homes through the shell identity table; installer home lookup reads provider facts directly.
+- 3.6: usage had no conformance suite. Add an internal runner-agnostic suite in testing and run it in pi; do not
+  add a published export without a consumer. Result helpers come directly from catalog's SPI;
+  harness SPI exposes the shared agent root alongside the shared skills directory.
+- 3.9: allowed test dependencies create workspace cycles. Set `ignoreWorkspaceCycles: true` because internal
+  packages export source and have no build step. Lint checks source dependency direction; manifest tests
+  require `testsOnly` packages to appear only in `devDependencies` and reject cycles in the graph formed by
+  `dependencies` and `peerDependencies`. Slim entry rules only restrict imports and cannot grant SPI or npm access. Cross-agent integration tests remain in their context and assemble providers in test-only
+  tables; pi-specific parsing, hook fixtures and usage fixtures move to the provider.
+
 #### Batches 6–11: the other providers
 
 One batch per agent, in this order:
@@ -666,6 +684,18 @@ One batch per agent, in this order:
 6. codex (2,474).
 
 - Files: the same shape as batch 5. grok, claude-code and codex also move their records parsing, session listing, preview and transcript translation.
+- Provider tests consume conformance helpers from testing. Cursor's and Grok's cross-agent host-sniffing tests
+  stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
+- Per-batch sync points (update together when moving an agent):
+  - the shell's `src/providers/<service>.ts` tables and its provider devDependency;
+  - context tables losing the agent, including `Exclude<BuiltinCodingAgentId, ...>` in
+    `catalog/src/domain/coding-agent/adapters/index.ts` and `discovery/src/domain/installation/adapters/index.ts`;
+  - harness's literal agent unions in `src/domain/lifecycle/adapters/hook-dialects.ts` and
+    `src/domain/bundle/adapters/install-adapters.ts`;
+  - `harness/test/support/providers.ts` and `testing/test/providers.ts`, which assemble full test tables;
+  - the agent-keyed fixture source/home table in `testing/test/support.ts`;
+  - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
+    manifests and the lockfile.
 - Exit condition: 6.4 row 6 for each.
 
 #### Batch 12: provider closeout
@@ -716,8 +746,8 @@ One batch each:
 | 2 | 2 | Version Packages PR; publish job log; `npm view @rivus/agent-kit@0.19.1 --registry https://registry.npmjs.org/` | Opened by the action; published with provenance; listed |
 | 3 | 3 | `vp lint` and the manifest test on the fixtures; whole-repository `vp lint` | Each violating fixture reports its rule; no other violations |
 | 4 | 4 | Root `check`; the lookup, merge and host-sniffing tests; whole-repository lint with the `host-sniffing.ts` exemption removed | Pass |
-| 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; within 2% of the batch 2 sizes or explained |
-| 6 | 6–11 | Same as row 5 for each provider | Pass |
+| 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; compare every entry against the main commit this batch is based on; growth over 1% of an entry explained in the PR |
+| 6 | 6–11 | Root `check`; each provider's conformance runs; every entry's size against the main commit that batch is based on; slim entry imports | Pass; still no imports in slim entries; growth over 1% of an entry explained in the PR |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all non-test context source | Pass; no exemptions left |
 | 8 | 13 | Shell export list compared with Appendix A plus SPI and testing names; the entry files of 3.8 only | Every remaining export has a recorded consumer |
 | 9 | 14–18 | Root `check`; revert outputs for moved rules | Pass; each revert fails its test |

@@ -1,5 +1,5 @@
-import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {

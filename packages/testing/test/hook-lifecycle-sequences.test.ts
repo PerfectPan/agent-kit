@@ -1,4 +1,4 @@
-import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
+import { builtinHookDialects as testHooks } from "./providers.js";
 import {
   heartbeatSignal,
   INITIAL_LIFECYCLE_STATE,
@@ -16,7 +16,7 @@ import { cursorSamples } from "./fixtures/hooks/cursor.js";
 import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";
-import { piSamples } from "./fixtures/hooks/pi.js";
+import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
 
 // Real fixture payloads, read with readHookEvent and folded with reduceLifecycle in the order an agent sends them:
 // one turn per agent, then the same turn with the session start arriving late.

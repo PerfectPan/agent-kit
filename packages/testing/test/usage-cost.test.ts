@@ -1,5 +1,5 @@
-import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { calendarWindow, costOf, createPricing, type Price, summarize } from "@rivus/agent-kit-cost";
 import { decodeUsage, isUsageRecord, noCacheInputTokens, type UsageRecord } from "@rivus/agent-kit-sessions";

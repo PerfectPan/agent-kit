@@ -94,10 +94,11 @@ function copyRepository(copy: string): void {
   }
 }
 
-/** A provider-shaped importer exists only in the fixture copy, before provider packages land. */
-function spiProvider(copy: string): void {
-  const folder = join(copy, "packages/providers/spi-probe");
-  const name = "@rivus/agent-kit-provider-spi-probe";
+/** A synthetic peer provider exists only in the fixture copy for SPI and inter-provider boundary cases. */
+function spiProvider(copy: string, slim = false): void {
+  const id = slim ? "slim-probe" : "spi-probe";
+  const folder = join(copy, "packages/providers", id);
+  const name = `@rivus/agent-kit-provider-${id}`;
   const contexts = ["catalog", "discovery", "sessions", "harness", "acp"].map(
     (context) => `@rivus/agent-kit-${context}`
   );
@@ -111,6 +112,7 @@ function spiProvider(copy: string): void {
       dependencies: Object.fromEntries(dependsOn.map((dep) => [dep, "workspace:*"]))
     })
   );
+  writeFileSync(join(folder, "src/identity.ts"), "export const probeIdentity = true;\n");
   cpSync(join(copy, "packages/catalog/tsconfig.json"), join(folder, "tsconfig.json"));
   writeFileSync(
     join(folder, "vite.config.ts"),
@@ -120,7 +122,10 @@ function spiProvider(copy: string): void {
   const manifest = join(copy, "infra/architecture/boundaries.ts");
   const rule = {
     dependsOn: ["@rivus/agent-kit-platform"],
-    spiImports: [...contexts, "@rivus/agent-kit-platform"],
+    spiImports: [...contexts, "@rivus/agent-kit-platform"].filter(
+      (context) => !slim || context !== "@rivus/agent-kit-harness"
+    ),
+    ...(slim ? { providerServices: ["hooks", "usage"] } : {}),
     typesOnly: ["@rivus/agent-kit-acp"],
     external: []
   };
@@ -237,6 +242,7 @@ let failures = 0;
 try {
   copyRepository(copy);
   spiProvider(copy);
+  spiProvider(copy, true);
   for (const batch of batches()) {
     const undo = batch.map((entry) => apply(copy, entry));
     try {

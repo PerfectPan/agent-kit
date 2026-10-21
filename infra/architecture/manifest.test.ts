@@ -10,7 +10,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { boundaries } from "./boundaries.ts";
 import { boundaryLintOf, withBoundaryLint, workspaceProjects } from "./lint.ts";
 
-interface WorkspacePackage {
+interface WorkspacePackage extends Manifest {
   readonly name: string;
   /** Repository-relative POSIX path, such as `packages/platform`. */
   readonly folder: string;
@@ -26,14 +26,21 @@ interface Manifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
 }
 
 const root = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
 const projects = workspaceProjects(root).filter(({ folder }) => folder.startsWith("packages/"));
 const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
   const manifest = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as Manifest;
-  const dependencies = { ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies };
+  const dependencies = {
+    ...manifest.dependencies,
+    ...manifest.devDependencies,
+    ...manifest.peerDependencies,
+    ...manifest.optionalDependencies
+  };
   return {
+    ...manifest,
     name,
     folder,
     lintScript: manifest.scripts?.lint,
@@ -42,6 +49,38 @@ const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
   };
 });
 const onDisk = (path: string) => existsSync(join(root, path));
+
+/** Development edges may cycle; only runtime dependencies determine production build direction. */
+function productionCycles(workspace: readonly WorkspacePackage[]): string[] {
+  const graph = new Map(
+    workspace.map((pkg) => [pkg.name, Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies })])
+  );
+  const visited = new Set<string>();
+  const active: string[] = [];
+  const cycles: string[] = [];
+  function visit(name: string): void {
+    const start = active.indexOf(name);
+    if (start !== -1) {
+      cycles.push(`production-cycle ${[...active.slice(start), name].join(" -> ")}`);
+      return;
+    }
+    if (visited.has(name)) {
+      return;
+    }
+    visited.add(name);
+    active.push(name);
+    for (const dependency of graph.get(name) ?? []) {
+      if (graph.has(dependency)) {
+        visit(dependency);
+      }
+    }
+    active.pop();
+  }
+  for (const name of graph.keys()) {
+    visit(name);
+  }
+  return cycles;
+}
 
 /**
  * The boundary rules that concern manifests rather than source files, which `vp lint` cannot see: every package is
@@ -52,7 +91,7 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
   const internal = Object.entries(boundaries.packages)
     .filter(([, rule]) => rule.entries === undefined)
     .map(([name]) => name);
-  return workspace.flatMap((pkg) => {
+  const violations = workspace.flatMap((pkg) => {
     const isShell = boundaries.shells.includes(pkg.name);
     const rule = boundaries.packages[pkg.name];
     if (rule === undefined && !isShell) {
@@ -61,13 +100,27 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
     const entries = [
       ...(rule === undefined
         ? []
-        : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
+        : (rule.providerServices?.map((service) => `src/${service}.ts`) ??
+          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
       ...(rule?.spi ? ["src/spi.ts"] : [])
     ];
     const allowed = isShell
       ? internal
       : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      ...Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies, ...pkg.optionalDependencies })
+        .filter((dependency) => rule?.testsOnly?.includes(dependency))
+        .map((dependency) => `${pkg.folder}: tests-only-dependency ${dependency} must be in devDependencies only`),
+      ...(rule?.providerServices === undefined
+        ? []
+        : [
+            ...rule.providerServices
+              .filter((service) => pkg.exports?.[`./${service}`] !== `./src/${service}.ts`)
+              .map((service) => `${pkg.folder}: entry-export ./${service}`),
+            ...Object.keys(pkg.exports ?? {})
+              .filter((entry) => !rule.providerServices?.some((service) => entry === `./${service}`))
+              .map((entry) => `${pkg.folder}: entry-export unexpected ${entry}`)
+          ]),
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
       ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
@@ -83,6 +136,7 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
         .map((dependency) => `${pkg.folder}: package-dependency ${dependency}`)
     ];
   });
+  return [...violations, ...productionCycles(workspace)];
 }
 
 /**
@@ -120,12 +174,45 @@ const SESSIONS = "@rivus/agent-kit-sessions";
 describe("the package manifests", () => {
   it("list the packages from pnpm", () => {
     expect(packages.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([SESSIONS, "@rivus/agent-kit", "@rivus/agent-kit-collab"])
+      expect.arrayContaining([SESSIONS, "@rivus/agent-kit", "@rivus/agent-kit-collab", "@rivus/agent-kit-provider-pi"])
     );
   });
 
   it("match the boundary manifest", () => {
     expect(manifestViolations(packages, onDisk)).toEqual([]);
+  });
+
+  it.each(["dependencies", "peerDependencies", "optionalDependencies"] as const)("rejects testsOnly in %s", (field) => {
+    const provider = "@rivus/agent-kit-provider-pi";
+    const probe = packages.map((pkg) =>
+      pkg.name === "@rivus/agent-kit-testing" ? { ...pkg, [field]: { ...pkg[field], [provider]: "workspace:*" } } : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([
+      `packages/testing: tests-only-dependency ${provider} must be in devDependencies only`
+    ]);
+  });
+
+  it("accepts testsOnly in devDependencies", () => {
+    const testing = packages.find((pkg) => pkg.name === "@rivus/agent-kit-testing")!;
+    expect(testing.devDependencies?.["@rivus/agent-kit-provider-pi"]).toBe("workspace:*");
+    expect(manifestViolations(packages, onDisk)).toEqual([]);
+  });
+
+  it.each(["dependencies", "peerDependencies"] as const)("rejects production cycles through %s", (field) => {
+    const catalog = "@rivus/agent-kit-catalog";
+    const probe = packages.map((pkg) =>
+      pkg.name === catalog ? { ...pkg, [field]: { ...pkg[field], [SESSIONS]: "workspace:*" } } : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([`production-cycle ${catalog} -> ${SESSIONS} -> ${catalog}`]);
+  });
+
+  it("accepts an acyclic production graph with a development cycle", () => {
+    const probe = packages.map((pkg) =>
+      pkg.name === "@rivus/agent-kit-catalog"
+        ? { ...pkg, devDependencies: { ...pkg.devDependencies, [SESSIONS]: "workspace:*" } }
+        : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([]);
   });
 
   it.each([
@@ -194,6 +281,41 @@ describe("the package manifests", () => {
     } finally {
       Object.defineProperty(boundaries, "packages", { value: original });
     }
+  });
+
+  it("keeps provider production dependencies at context SPI entries", () => {
+    for (const [name, rule] of Object.entries(boundaries.packages)) {
+      if (rule.providerServices !== undefined) {
+        for (const dependency of rule.dependsOn) {
+          expect(dependency).toBe("@rivus/agent-kit-platform");
+          expect(rule.typesOnly).toContain(dependency);
+        }
+        for (const dependency of rule.spiImports ?? []) {
+          expect(boundaries.packages[dependency]?.spi, `${name} -> ${dependency}`).toBe(true);
+          expect(boundaries.packages[dependency]?.providerServices).toBeUndefined();
+        }
+      } else {
+        for (const dependency of [...rule.dependsOn, ...(rule.spiImports ?? [])]) {
+          expect(boundaries.packages[dependency]?.providerServices, `${name} -> ${dependency}`).toBeUndefined();
+        }
+      }
+    }
+  });
+
+  it("requires provider service exports and refuses a barrel", () => {
+    const folder = "packages/providers/pi";
+    expect(manifestViolations(packages, (path) => path !== `${folder}/src/hooks.ts` && onDisk(path))).toEqual([
+      `${folder}: entry-file src/hooks.ts`
+    ]);
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder
+        ? { ...pkg, exports: { ...pkg.exports, "./hooks": "./src/usage.ts", ".": "./src/index.ts" } }
+        : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([
+      `${folder}: entry-export ./hooks`,
+      `${folder}: entry-export unexpected .`
+    ]);
   });
 
   it("keep collab out of the shell's dependencies", () => {

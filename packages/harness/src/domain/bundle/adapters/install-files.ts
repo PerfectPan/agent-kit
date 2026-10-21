@@ -27,9 +27,14 @@ export function groupedHooksFile(registrations: readonly HookRegistration[]): Js
   return { hooks };
 }
 
+/** The shared agent configuration root. */
+export function sharedAgentsDir(context: InstallContext): string {
+  return `${context.home}/.agents`;
+}
+
 /** The `~/.agents/skills` directory that every agent but Claude Code reads. */
 export function sharedSkillsDir(context: InstallContext): string {
-  return `${context.home}/.agents/skills`;
+  return `${sharedAgentsDir(context)}/skills`;
 }
 
 /** `$XDG_CONFIG_HOME`, or `~/.config` when it is unset or not absolute. */

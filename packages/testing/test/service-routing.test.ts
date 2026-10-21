@@ -1,9 +1,9 @@
 import { err, type CodingAgent } from "@rivus/agent-kit-catalog";
-import { builtinProbeRecipes, detectAgents } from "@rivus/agent-kit-discovery";
+import { detectAgents } from "@rivus/agent-kit-discovery";
+import { builtinProbeRecipes } from "./providers.js";
 import { type HookDialect, readHookEvent } from "@rivus/agent-kit-harness";
 import {
   builtinSessionAdapters,
-  builtinUsageDecoders,
   decodeUsage,
   listSessions,
   listUsageSources,
@@ -13,6 +13,7 @@ import {
   type UsageDecoder,
   type UsageRecord
 } from "@rivus/agent-kit-sessions";
+import { builtinUsageDecoders } from "./providers.js";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { hookDialectConformance } from "../src/hook-dialect-conformance.js";

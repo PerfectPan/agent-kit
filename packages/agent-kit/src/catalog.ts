@@ -1,6 +1,6 @@
+export { builtinCodingAgents } from "./providers/identity.js";
 export {
   AgentKitError,
-  builtinCodingAgents,
   err,
   homeFromRule,
   isAgentKitError,

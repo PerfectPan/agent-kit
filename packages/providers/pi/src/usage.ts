@@ -1,13 +1,24 @@
-import { ok } from "@rivus/agent-kit-catalog";
 import * as z from "zod/mini";
-
-import { sourceOf, timeOf } from "../../transcript/index.js";
-import { compactUsage, type Usage, type UsageRecord } from "../index.js";
-import { lenient } from "../../transcript/adapters/lenient.js";
-import { logTimestamp } from "../../transcript/adapters/timestamp.js";
-import type { UsageFile, UsageLineDecoder } from "./usage-lines.js";
-
-const AGENT = "pi";
+import { ok } from "@rivus/agent-kit-catalog/spi";
+import {
+  sourceOf,
+  timeOf,
+  compactUsage,
+  type Usage,
+  type UsageRecord,
+  lenient,
+  logTimestamp,
+  type UsageFile,
+  type UsageLineDecoder,
+  basenamePath,
+  type UsageDecoder,
+  decodeJsonlUsage,
+  fileSources,
+  type JsonlUsageLayout,
+  sameFile
+} from "@rivus/agent-kit-sessions/spi";
+import { PI_ID as AGENT } from "./facts.js";
+import { PI_SESSION_FILES, piSessionStem, piUsageRoots } from "./layout.js";
 
 /**
  * The `usage` of an assistant message: Pi's counts, plus the `cost` Pi logged for it. Pi's `Usage` type counts `input`
@@ -155,6 +166,25 @@ export function piUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder
 }
 
 /** The key under which a scan counts a record once in its window: the session and the entry id, unique in its session (a provider's response id need not be unique: a local model server numbers them). */
-export function piUsageKey(record: UsageRecord): string | undefined {
+function piUsageKey(record: UsageRecord): string | undefined {
   return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
 }
+
+const layout: JsonlUsageLayout = {
+  agent: AGENT,
+  file: sameFile((path) => ({ sessionId: piSessionStem(path) })),
+  decoder: piUsageLines
+};
+
+/** Every session file under `<home>/sessions`. */
+export const piUsageDecoder: UsageDecoder = {
+  specificationVersion: "usage-v1",
+  agent: AGENT,
+  usageKey: piUsageKey,
+  sources(platform, home, options = {}) {
+    return fileSources(platform, AGENT, piUsageRoots(home), PI_SESSION_FILES, { ...options, identify: basenamePath });
+  },
+  decode(platform, target, options) {
+    return decodeJsonlUsage(platform, target, layout, options);
+  }
+};

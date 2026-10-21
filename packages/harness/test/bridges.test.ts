@@ -1,5 +1,5 @@
-import { builtinInstallAdapters as testInstall } from "../src/public.js";
-import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinInstallAdapters as testInstall } from "./support/providers.js";
+import { builtinHookDialects as testHooks } from "./support/providers.js";
 import type { SpawnSyncReturns } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -9,7 +9,7 @@ import * as Effect from "effect/Effect";
 
 import { readHookEvent } from "../src/domain/lifecycle/adapters/read-hook-event.js";
 import { opencodeHookDialect } from "../src/domain/lifecycle/adapters/opencode.js";
-import { piHookDialect } from "../src/domain/lifecycle/adapters/pi.js";
+import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { finishSelectorsOf } from "../src/domain/lifecycle/index.js";
 import type { HookEventSpec } from "../src/domain/lifecycle/index.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
@@ -18,7 +18,7 @@ import {
   bridgeSource as opencodeBridgeSource,
   opencodeInstallAdapter
 } from "../src/domain/bundle/adapters/opencode/strategies.js";
-import { bridgeSource as piBridgeSource, piInstallAdapter } from "../src/domain/bundle/adapters/pi/strategies.js";
+import { bridgeSource as piBridgeSource, piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 

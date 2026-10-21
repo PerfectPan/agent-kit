@@ -1,3 +1,4 @@
+export { builtinInstallAdapters } from "./providers/install.js";
 import { planInstall as contextPlanInstall } from "@rivus/agent-kit-harness/public";
 import { findLegacy as contextFindLegacy } from "@rivus/agent-kit-harness/public";
 import { verify as contextVerify } from "@rivus/agent-kit-harness/public";
@@ -12,7 +13,6 @@ export {
   AgentCli,
   applyInstall,
   ArtifactFiles,
-  builtinInstallAdapters,
   ChezmoiExternalOwnerLive,
   CONFLICT_CHOICES,
   discardPlan,

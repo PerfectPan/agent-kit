@@ -9,3 +9,4 @@ export {
   ledgerFixture,
   ledgerSnapshotFixture
 } from "./ledger-fixture.js";
+export { usageDecoderConformance, type UsageDecoderFixtures } from "./usage-decoder-conformance.js";

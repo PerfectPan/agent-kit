@@ -117,7 +117,8 @@ const workspaceNames = [...new Set([...internalNames, ...boundaries.shells, ...p
 const isShell = (name: string): boolean => boundaries.shells.includes(name);
 
 const braces = (items: readonly string[]): string => (items.length === 1 ? (items[0] ?? "") : `{${items.join(",")}}`);
-const typeOf = (project: Project, kind: string): string => `${project.folder.slice("packages/".length)}:${kind}`;
+const typeOf = (project: Project, kind: string): string =>
+  `${project.folder.slice("packages/".length)}:${kind === "src" && boundaries.packages[project.name]?.providerServices ? "provider" : kind}`;
 const element = (project: Project, kind: string): Entity => ({ element: { type: typeOf(project, kind) } });
 const local = (project: Project, kind = "*"): Entity => ({ ...element(project, kind), module: { origin: "local" } });
 const external = (module: ModuleSelector = {}): Entity => ({ module: { origin: "external", ...module } });
@@ -211,8 +212,19 @@ function shellPolicies(project: Project): Policy[] {
     },
     {
       from: element(project, "src"),
-      allow: { to: external({ source: internalNames, internalPath: ["public", "public/+([a-z0-9-])"] }) }
+      allow: {
+        to: external({
+          source: internalNames.filter((name) => boundaries.packages[name]?.providerServices === undefined),
+          internalPath: ["public", "public/+([a-z0-9-])"]
+        })
+      }
     },
+    ...Object.entries(boundaries.packages).flatMap(([name, rule]): Policy[] =>
+      (rule.providerServices ?? []).map((service): Policy => ({
+        from: { ...element(project, "src"), file: { path: `${project.folder}/src/providers/${service}.ts` } },
+        allow: { to: external({ source: name, internalPath: service }) }
+      }))
+    ),
     ...Object.entries(boundaries.shellImports).map(([file, sources]): Policy => ({
       from: { ...element(project, "src"), file: { path: `${project.folder}/${file}` } },
       allow: { to: local(project), dependency: { source: [...sources] } }
@@ -375,7 +387,7 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
       from: all,
       disallow: {
         to: external({
-          source: workspaceNames.filter((name) => !isShell(name)),
+          source: workspaceNames.filter((name) => !isShell(name) && !boundaries.packages[name]?.providerServices),
           internalPath: `!{${EFFECT_ENTRY},spi}`
         })
       },
@@ -434,7 +446,33 @@ function policiesOf(project: Project): Policy[] {
   return [
     ...forbiddenByDefault(project, rule),
     ...allowed(project, rule, targets),
-    ...restricted(project, rule, targets)
+    ...restricted(project, rule, targets),
+    ...(rule.providerServices === undefined
+      ? []
+      : Object.entries({
+          hooks: ["./facts.js", "@rivus/agent-kit-catalog/spi", "@rivus/agent-kit-harness/spi", "zod/mini"],
+          usage: [
+            "./facts.js",
+            "./layout.js",
+            "./records.js",
+            "./records/**",
+            "@rivus/agent-kit-catalog/spi",
+            "@rivus/agent-kit-sessions/spi",
+            "zod/mini"
+          ]
+        }).flatMap(([service, sources]): Policy[] => {
+          const from = { ...element(project, "src"), file: { path: `${project.folder}/src/${service}.ts` } };
+          return [
+            {
+              from,
+              disallow: {
+                to: [external(), { module: { origin: ["local", "core"] } }],
+                dependency: { source: `!${braces(sources)}` }
+              },
+              message: `[provider-entry] {{dependency.source}}: ${service} must keep its slim import graph`
+            }
+          ];
+        }))
   ];
 }
 

@@ -8,23 +8,29 @@ Start from the knowledge and the invariants, not from the file you want to write
 
 | Context | Package | Kind | Owns |
 | --- | --- | --- | --- |
-| catalog | `@rivus/agent-kit-catalog` | Shared kernel | Agent identity, home directory rules, `Result`, service tables and lookups |
-| discovery | `@rivus/agent-kit-discovery` | Supporting | What is installed on this machine; probe recipes |
-| sessions | `@rivus/agent-kit-sessions` | Core | What an agent stores and how to read it: layout, preview, event translation, usage decoding |
+| catalog | `@rivus/agent-kit-catalog` | Shared kernel | Identity and home-rule models, `Result`, service tables and lookups |
+| discovery | `@rivus/agent-kit-discovery` | Supporting | Installation detection and probe recipe interfaces |
+| sessions | `@rivus/agent-kit-sessions` | Core | Session, transcript and usage models; reading and decoding use cases |
 | cost | `@rivus/agent-kit-cost` | Supporting | Pricing formulas and summaries over injected price tables |
-| harness | `@rivus/agent-kit-harness` | Core | What can be extended and how to install it: strategies, hook dialects, plans, the ledger |
-| acp | `@rivus/agent-kit-acp` | Supporting | How to drive an agent over ACP: profiles, sessions, bindings |
+| harness | `@rivus/agent-kit-harness` | Core | Extension strategies, hook and install interfaces, plans and the ledger |
+| acp | `@rivus/agent-kit-acp` | Supporting | ACP profile interfaces, sessions and bindings |
 | lease, lanes | `@rivus/agent-kit-collab` | Generic | Mutual exclusion and scheduling between agents |
 | redact | `@rivus/agent-kit-redact` | Utility module | Pure redaction functions; no domain model |
 
 Packages are created in the phase that gives them content; see the plan's section 6.3.
 
-- Knowledge used by only one context belongs to that context: hook dialects to harness, ACP launch details to acp, log layouts to sessions, probe methods to discovery. catalog stays small because every context must coordinate when it changes.
-- Code that changes because of the same upstream change belongs together. When Gemini renames its hook events, the installer and the hook parser change together, so both live in harness and share one HookDialect.
+Providers own their agent's identity, probe recipes, hook dialects, install adapters, log layouts and decoding,
+and ACP launch details. Pi's code lives in `packages/providers/pi`; other agents remain in context adapter
+folders until batches 6–11 of [plan 0002](../plans/0002-providers-and-workspace.md#32-provider-packages).
+Providers implement context SPI interfaces; contexts own the service models, shared helpers and use cases.
+The shell assembles the built-in service tables from both locations during migration.
+
+- Agent-specific code belongs to its provider; shared format rules and helpers belong to the context that uses them. catalog stays small because every context must coordinate when it changes.
+- Code that changes because of the same upstream change belongs together. An agent's installer and hook parser share its HookDialect in the provider.
 - A package is not a new bounded context, and a pure re-export is not a second owner. The shell packages own nothing; Platform is a technical port, not a context.
 - A revision counter, a JSON file, a state machine or a validator does not by itself establish an owner. Find the context whose invariants the code protects.
 - An abstraction needs at least two real consumers. Code with a single consumer stays in that application until a second consumer appears.
-- Adding an agent: add its identity in `catalog/src/domain/coding-agent/adapters/`, add the agent's pure translation in the `adapters/` of the concept whose model it produces in each context that supports it, and register the adapter in that context's builtin table (in sessions: `application/services/session-adapters/index.ts`, because an adapter that reads files needs Platform, which `adapters/` may not import). Each context's conformance tests check the new adapter. The shell assembles per-agent `Provider` descriptors; catalog does not depend on other contexts.
+- Adding an agent: create its provider package with one subpath per supported service, declare its SPI dependencies and services in `boundaries.ts`, and register it in the shell's service tables. Run the services' conformance suites from testing. Plan 0002 lists the sync points while context tables are being migrated.
 
 ## Lay Out A Context Package
 

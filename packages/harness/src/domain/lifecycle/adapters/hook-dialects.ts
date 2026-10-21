@@ -7,12 +7,11 @@ import { cursorHookDialect } from "./cursor.js";
 import { geminiCliHookDialect } from "./gemini-cli.js";
 import { grokHookDialect } from "./grok.js";
 import { opencodeHookDialect } from "./opencode.js";
-import { piHookDialect } from "./pi.js";
 
 /** The agents with a built-in dialect; catalog knows more agents than have hooks. */
 type HookAgentId = Extract<
   BuiltinCodingAgentId,
-  "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode" | "pi"
+  "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode"
 >;
 
 export const builtinHookDialects: Readonly<Record<HookAgentId, HookDialect>> = {
@@ -21,6 +20,5 @@ export const builtinHookDialects: Readonly<Record<HookAgentId, HookDialect>> = {
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
-  opencode: opencodeHookDialect,
-  pi: piHookDialect
+  opencode: opencodeHookDialect
 };

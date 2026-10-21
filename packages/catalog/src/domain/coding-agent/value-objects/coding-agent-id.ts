@@ -1,5 +1,14 @@
-/** Ids of the coding agents the kit knows. Each has an identity in `catalog/src/domain/coding-agent/adapters/`. */
-export type BuiltinCodingAgentId = "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode" | "pi";
+/** Built-in ids remain here until the shell owns the complete provider list. */
+export const BUILTIN_CODING_AGENT_IDS = [
+  "claude-code",
+  "codex",
+  "cursor",
+  "gemini-cli",
+  "grok",
+  "opencode",
+  "pi"
+] as const;
+export type BuiltinCodingAgentId = (typeof BUILTIN_CODING_AGENT_IDS)[number];
 
 /**
  * A built-in id, or the id of a third-party agent whose adapters a caller passes to a use case. The `string & {}`

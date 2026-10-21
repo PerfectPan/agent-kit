@@ -18,6 +18,8 @@ export interface PackageRule {
   readonly dependsOn: readonly string[];
   /** This context exports `src/spi.ts` as `./spi` for provider implementations. */
   readonly spi?: true;
+  /** Private provider: one src/<service>.ts export per supported service, with no barrel. */
+  readonly providerServices?: readonly string[];
   /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
   readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
@@ -109,10 +111,18 @@ const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 const ACP = "@rivus/agent-kit-acp";
+const PI = "@rivus/agent-kit-provider-pi";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
   packages: {
+    [PI]: {
+      providerServices: ["identity", "discovery", "hooks", "install", "usage"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
     [PLATFORM]: { dependsOn: [], external: [] },
     [PLATFORM_NODE]: { dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
     [CATALOG]: { dependsOn: [], external: [], spi: true },
@@ -129,7 +139,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE]
+      testsOnly: [PLATFORM_NODE, PI]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
@@ -147,6 +157,7 @@ export const boundaries: BoundaryRules = {
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
+      testsOnly: [PI],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.
@@ -166,6 +177,7 @@ export const boundaries: BoundaryRules = {
   },
   shells: [SHELL],
   shellImports: {
+    "src/catalog.ts": ["./providers/identity.js"],
     "src/acp.ts": ["./providers/acp.js", "./providers/types.js"],
     "src/discovery.ts": ["./providers/discovery.js", "./providers/identity.js", "./providers/types.js"],
     "src/harness/events.ts": ["../providers/hooks.js", "../providers/types.js"],
