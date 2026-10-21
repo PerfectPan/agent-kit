@@ -73,8 +73,10 @@ export interface AgentMarkerRule {
 
 export interface BoundaryRules {
   readonly packages: Readonly<Record<string, PackageRule>>;
-  /** Published packages whose `src/<entry>.ts` files only re-export names from internal packages' `public.ts`. */
+  /** Published shells that bind providers and re-export named public APIs. */
   readonly shells: readonly string[];
+  /** Explicit local imports for shell bindings and per-service assembly; all other local imports are refused. */
+  readonly shellImports: Readonly<Record<string, readonly string[]>>;
   readonly sharedKernel: string;
   readonly layers: Readonly<Record<Layer, LayerRule>>;
   readonly effect: {
@@ -163,6 +165,41 @@ export const boundaries: BoundaryRules = {
     }
   },
   shells: [SHELL],
+  shellImports: {
+    "src/acp.ts": ["./providers/acp.js", "./providers/types.js"],
+    "src/discovery.ts": ["./providers/discovery.js", "./providers/identity.js", "./providers/types.js"],
+    "src/harness/events.ts": ["../providers/hooks.js", "../providers/types.js"],
+    "src/harness.ts": [
+      "./providers/install.js",
+      "./providers/hooks.js",
+      "./providers/identity.js",
+      "./providers/types.js"
+    ],
+    "src/providers/acp.ts": ["./merge.js", "./types.js"],
+    "src/providers/builtin.ts": [
+      "./types.js",
+      "./identity.js",
+      "./discovery.js",
+      "./hooks.js",
+      "./install.js",
+      "./sessions.js",
+      "./usage.js",
+      "./acp.js"
+    ],
+    "src/providers/discovery.ts": ["./merge.js", "./types.js"],
+    "src/providers/hooks.ts": ["./merge.js", "./types.js"],
+    "src/providers/identity.ts": ["./merge.js", "./types.js"],
+    "src/providers/install.ts": ["./merge.js", "./types.js"],
+    "src/providers/merge.ts": ["./types.js"],
+    "src/providers/sessions.ts": ["./merge.js", "./types.js"],
+    "src/providers/unsupported.ts": ["./types.js"],
+    "src/providers/usage.ts": ["./merge.js", "./types.js"],
+    "src/providers.ts": ["./providers/types.js", "./providers/builtin.js"],
+    "src/sessions.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"],
+    "src/testing.ts": ["./providers/hooks.js", "./providers/identity.js", "./providers/types.js"],
+    "src/transcript/usage.ts": ["../providers/usage.js", "../providers/identity.js", "../providers/types.js"],
+    "src/transcript.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"]
+  },
   sharedKernel: CATALOG,
   layers: {
     // The domain does no IO, so it never sees the Platform port, not even its types, and never reaches the agent
@@ -208,7 +245,7 @@ export const boundaries: BoundaryRules = {
       [CATALOG]: ["src/domain/coding-agent/value-objects/coding-agent-id.ts"],
       [DISCOVERY]: [],
       [SESSIONS]: ["src/application/services/session-adapters/**", "src/application/services/usage-decoders/**"],
-      [HARNESS]: ["src/domain/lifecycle/policies/host-sniffing.ts"],
+      [HARNESS]: [],
       [ACP]: [],
       [COST]: []
     }

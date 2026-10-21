@@ -38,7 +38,8 @@ To add an internal package for a bounded context, copy
 it `@rivus/agent-kit-<folder>`, keep `"private": true`, declare its dependencies in `infra/architecture/boundaries.ts`,
 add it to the shell's devDependencies as `workspace:*` when the shell re-exports it, and run `pnpm install`; the
 `packages/*` glob in `pnpm-workspace.yaml` makes it a workspace member. A new public entry is a subpath in the
-shell's `exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts`.
+shell's `exports` map plus a `src/<entry>.ts` file that re-exports names from internal packages' `public.ts` or binds their routed functions to the required
+provider tables. Declare local shell imports in `boundaries.shellImports`; see the authoring guide.
 Each package lists its own toolchain devDependencies. A version that two or more packages share lives once in the
 `catalog` of `pnpm-workspace.yaml`, and the packages reference it as `"catalog:"`; `catalogMode: strict` rejects
 `pnpm add` of an already-cataloged package at an out-of-range version, but a hand-edited version or a dependency

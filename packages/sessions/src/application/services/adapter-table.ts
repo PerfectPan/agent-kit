@@ -3,7 +3,9 @@ import {
   type CodingAgentId,
   type HomeContext,
   type HomeRule,
-  builtinCodingAgents,
+  type CodingAgent,
+  type ServiceTable,
+  requireService,
   homeFromRule,
   homeRuleOf,
   parseCodingAgentId
@@ -13,18 +15,16 @@ import { capabilityUnsupported } from "../errors.js";
 
 /** The adapters of the requested agents, by id or alias, each once. An agent without one throws. */
 export function selectAdapters<Adapter>(
-  table: Readonly<Partial<Record<CodingAgentId, Adapter>>>,
+  table: ServiceTable<Adapter>,
   agents: readonly CodingAgentId[],
-  kind: string
+  kind: string,
+  identities: ServiceTable<CodingAgent>
 ): Adapter[] {
   const selected = new Map<CodingAgentId, Adapter>();
   for (const requested of agents) {
-    const parsed = parseCodingAgentId(requested, builtinCodingAgents);
+    const parsed = parseCodingAgentId(requested, identities);
     const agent = parsed.ok ? parsed.value : requested;
-    const adapter = table[agent];
-    if (!adapter) {
-      throw capabilityUnsupported(agent, `has no ${kind}`);
-    }
+    const adapter = requireService(agent, table, `has no ${kind}`);
     selected.set(agent, adapter);
   }
   return [...selected.values()];
@@ -34,9 +34,10 @@ export function selectAdapters<Adapter>(
 export function adapterHome(
   adapter: { readonly agent: CodingAgentId; readonly home?: HomeRule },
   context: HomeContext,
-  kind: string
+  kind: string,
+  identities: ServiceTable<CodingAgent>
 ): AgentHome {
-  const rule = homeRuleOf(adapter.agent, builtinCodingAgents, adapter.home);
+  const rule = homeRuleOf(adapter.agent, identities, adapter.home);
   if (rule) {
     return homeFromRule(adapter.agent, rule, context);
   }

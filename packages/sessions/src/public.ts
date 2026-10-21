@@ -150,3 +150,5 @@ export {
   type UsageGranularity,
   type UsageRecord
 } from "./domain/usage/index.js";
+
+export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";

@@ -1,6 +1,11 @@
-import { type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import {
+  type CodingAgentId,
+  type CodingAgent,
+  type ServiceTable,
+  requireService,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog";
 
-import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import {
   type AuthObservation,
   type AuthState,
@@ -17,7 +22,6 @@ import {
   resolveAuthState,
   type Version
 } from "../../domain/installation/index.js";
-import { capabilityUnsupported } from "../errors.js";
 import { mayBeBundle } from "../services/app-bundle.js";
 import {
   assertRecipePaths,
@@ -32,10 +36,9 @@ import { readCredentialFile } from "../services/read-credential-file.js";
 import { runProbe } from "../services/run-probe.js";
 
 export interface DetectAgentsOptions {
-  /** Agents to detect, by id or alias; defaults to every agent in `recipes`, in table order. */
+  /** Agents to detect, by id or alias; defaults to every agent in `providers.discovery`, in table order. */
   readonly agents?: readonly CodingAgentId[];
-  /** Replaces `builtinProbeRecipes` for this call; spread it to extend it. */
-  readonly recipes?: ProbeRecipes;
+  readonly providers: { readonly discovery: ServiceTable<ProbeRecipe>; readonly identity: ServiceTable<CodingAgent> };
   readonly signal?: AbortSignal;
   /** Time limit of each probe command; defaults to 5 seconds. */
   readonly timeoutMs?: number;
@@ -56,6 +59,7 @@ export interface DetectAgentsOptions {
 const DEFAULT_TIMEOUT_MS = 5_000;
 
 interface Run {
+  readonly identities: ServiceTable<CodingAgent>;
   readonly platform: DiscoveryPlatform;
   readonly check: (path: string) => Promise<PathCheck>;
   readonly timeoutMs: number;
@@ -65,16 +69,17 @@ interface Run {
 }
 
 /** Picks the recipes and checks every path they name before anything runs. */
-function selectRecipes(table: ProbeRecipes, agents: readonly CodingAgentId[]): ProbeRecipe[] {
+function selectRecipes(
+  table: ProbeRecipes,
+  agents: readonly CodingAgentId[],
+  identities: ServiceTable<CodingAgent>
+): ProbeRecipe[] {
   const selected = new Map<CodingAgentId, ProbeRecipe>();
   for (const requested of agents) {
-    const parsed = parseCodingAgentId(requested, builtinCodingAgents);
+    const parsed = parseCodingAgentId(requested, identities);
     const agent = parsed.ok ? parsed.value : requested;
-    const recipe = Object.hasOwn(table, agent) ? table[agent] : undefined;
-    if (recipe === undefined) {
-      throw capabilityUnsupported(agent);
-    }
-    assertRecipePaths(recipe);
+    const recipe = requireService(agent, table, "has no probe recipe");
+    assertRecipePaths(recipe, identities);
     selected.set(agent, recipe);
   }
   return [...selected.values()];
@@ -134,7 +139,7 @@ async function detectAuth(
   }
   const lists = authProbeLists(auth);
   for (const file of lists.credentialFiles) {
-    const path = expandProbePath(file.path, platform, recipe);
+    const path = expandProbePath(file.path, platform, recipe, run.identities);
     const found = await check(path);
     if (found !== undefined && "_tag" in found) {
       problems.push(found);
@@ -166,7 +171,7 @@ async function detectAuth(
 async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
   const { platform, check } = run;
   const expand = (paths: ProbeRecipe["configPaths"]): string[] =>
-    paths.map((path) => expandProbePath(path, platform, recipe));
+    paths.map((path) => expandProbePath(path, platform, recipe, run.identities));
   const [lookup, ...checked] = await Promise.all([
     firstCommand(run, recipe.commands),
     ...[recipe.appPaths, recipe.configPaths, recipe.mcpConfigPaths].map(async (paths) => {
@@ -242,18 +247,17 @@ async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
  * `problems`, and detection goes on. Throws `capability-unsupported` when a requested agent has no recipe; an abort
  * rejects with `signal.reason` and stops the running commands.
  */
-export async function detectAgents(
-  platform: DiscoveryPlatform,
-  options: DetectAgentsOptions = {}
-): Promise<Installation[]> {
+export async function detectAgents(platform: DiscoveryPlatform, options: DetectAgentsOptions): Promise<Installation[]> {
   const { signal } = options;
   signal?.throwIfAborted();
-  const table: ProbeRecipes = options.recipes ?? builtinProbeRecipes;
+  const table = options.providers.discovery;
   const recipes = selectRecipes(
     table,
-    options.agents ?? Object.keys(table).filter((agent) => Object.hasOwn(table, agent) && table[agent] !== undefined)
+    options.agents ?? Object.keys(table).filter((agent) => Object.hasOwn(table, agent) && table[agent] != null),
+    options.providers.identity
   );
   const run: Run = {
+    identities: options.providers.identity,
     platform,
     check: createPathChecker(platform, signal),
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,

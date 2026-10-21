@@ -1,3 +1,4 @@
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { builtinProbeRecipes, type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -100,7 +101,7 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
 
 for (const recipe of Object.values(builtinProbeRecipes)) {
   describe(`${recipe.agent} probe recipe conformance`, () => {
-    for (const { name, run } of probeRecipeConformance(recipe, SAMPLES[recipe.agent])) {
+    for (const { name, run } of probeRecipeConformance(recipe, SAMPLES[recipe.agent], testIdentity)) {
       it(`${name}`, async () => {
         await expect(run()).resolves.toBeUndefined();
       });
@@ -122,7 +123,9 @@ describe("probe recipe conformance catches", () => {
     warnings: []
   };
   const failure = async (recipe: ProbeRecipe, check: string, samples?: ProbeRecipeSamples): Promise<unknown> => {
-    const found = probeRecipeConformance(recipe, samples).find((candidate) => candidate.name.startsWith(check));
+    const found = probeRecipeConformance(recipe, samples, testIdentity).find((candidate) =>
+      candidate.name.startsWith(check)
+    );
     if (found === undefined) {
       throw new Error(`no check named ${check}`);
     }
@@ -133,7 +136,7 @@ describe("probe recipe conformance catches", () => {
   };
 
   it("passes a well-formed third-party recipe", async () => {
-    for (const { run } of probeRecipeConformance(good)) {
+    for (const { run } of probeRecipeConformance(good, {}, testIdentity)) {
       await expect(run()).resolves.toBeUndefined();
     }
   });

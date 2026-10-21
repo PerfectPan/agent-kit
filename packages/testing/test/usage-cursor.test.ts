@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { type CodingAgentId, isAgentKitError } from "@rivus/agent-kit-catalog";
 import {
   decodeUsage,
@@ -37,7 +39,12 @@ async function decode(
   options: DecodeUsageOptions & { stop?: number } = {}
 ): Promise<{ items: Item[]; cursor: UsageCursor | undefined }> {
   const { stop, ...decodeOptions } = options;
-  const stream = decodeUsage(platform, agent, { path }, decodeOptions);
+  const stream = decodeUsage(
+    platform,
+    agent,
+    { path },
+    { ...decodeOptions, providers: { usage: testUsage, identity: testIdentity } }
+  );
   const items: Item[] = [];
   for await (const item of stream) {
     items.push(item);
@@ -129,7 +136,12 @@ describe("decodeUsage cursors", () => {
     const { cursor } = await decode(platform, ...FILES[1]!);
     let thrown: unknown;
     try {
-      decodeUsage(platform, "claude-code", { path: FILES[0]![1] }, cursor ? { from: cursor } : {});
+      decodeUsage(
+        platform,
+        "claude-code",
+        { path: FILES[0]![1] },
+        { ...(cursor ? { from: cursor } : {}), providers: { usage: testUsage, identity: testIdentity } }
+      );
     } catch (error) {
       thrown = error;
     }
@@ -173,7 +185,12 @@ describe("decodeUsage reads", () => {
     const controller = new AbortController();
     const [agent, path] = FILES[1]!;
     const consume = async () => {
-      for await (const _item of decodeUsage(platform, agent, { path }, { signal: controller.signal })) {
+      for await (const _item of decodeUsage(
+        platform,
+        agent,
+        { path },
+        { signal: controller.signal, providers: { usage: testUsage, identity: testIdentity } }
+      )) {
         controller.abort(new Error("stop"));
       }
     };

@@ -1,15 +1,6 @@
-import { AgentKitError, type BuiltinCodingAgentId, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { type BuiltinCodingAgentId } from "@rivus/agent-kit-catalog";
 
-import {
-  type Env,
-  type HookDialect,
-  type HookDialects,
-  type LifecycleEvent,
-  readWithDialect,
-  sniffSource,
-  terminalIdentity
-} from "../index.js";
-import { payloadView } from "./payload-shape.js";
+import type { HookDialect } from "../spi/hook-dialect.js";
 import { claudeCodeHookDialect } from "./claude-code.js";
 import { codexHookDialect } from "./codex.js";
 import { cursorHookDialect } from "./cursor.js";
@@ -33,41 +24,3 @@ export const builtinHookDialects: Readonly<Record<HookAgentId, HookDialect>> = {
   opencode: opencodeHookDialect,
   pi: piHookDialect
 };
-
-export interface ReadHookEventOptions {
-  /** Dialects for this call, merged over `builtinHookDialects`, such as a third-party agent's. */
-  readonly adapters?: HookDialects;
-}
-
-/**
- * Translates one hook payload, synchronously and without IO, so a hook process can load nothing else. The payload
- * is whatever the agent sent (parsed JSON on stdin, or the event object a plugin forwards), and `env` is the hook
- * process's environment. The payload is parsed into a view at this boundary, and every path the dialects read is a
- * chain of zod schemas, so an unexpected type reads as absent. The agent is sniffed first, because Grok and Cursor
- * also run hooks registered for Claude
- * Code: payload evidence (Grok's `hookEventName`, Cursor's `cursor_version`) decides, and the inherited
- * `CURSOR_VERSION` only counts for an agent whose hooks Cursor runs. An unknown payload shape or event reads as phase
- * `unknown` with the event name it carried; it never throws.
- *
- * Naming an agent without a dialect is a programming error: it throws an `AgentKitError` with code
- * `capability-unsupported`, whatever the payload.
- */
-export function readHookEvent(
-  agent: CodingAgentId,
-  payload: unknown,
-  env: Env,
-  options: ReadHookEventOptions = {}
-): LifecycleEvent {
-  const dialects: HookDialects =
-    options.adapters === undefined ? builtinHookDialects : { ...builtinHookDialects, ...options.adapters };
-  const declared = Object.hasOwn(dialects, agent) ? dialects[agent] : undefined;
-  if (declared === undefined) {
-    throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no hook dialect`);
-  }
-  const view = payloadView(payload);
-  const source = sniffSource(agent, view, env, dialects);
-  const dialect = Object.hasOwn(dialects, source) ? (dialects[source] ?? declared) : declared;
-  const event = { ...readWithDialect(dialect, view, env), agent: source };
-  const terminal = terminalIdentity(env);
-  return terminal === undefined ? event : { ...event, terminal };
-}

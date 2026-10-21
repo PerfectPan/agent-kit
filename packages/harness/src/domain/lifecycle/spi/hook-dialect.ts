@@ -1,3 +1,4 @@
+import type { ServiceTable } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import type { LifecycleMapping } from "../value-objects/lifecycle-event.js";
@@ -100,11 +101,19 @@ export interface ForeignHooks {
   readonly unverified?: string;
 }
 
+/** Evidence that identifies the agent actually running a hook. */
+export interface HostMarkers {
+  readonly payloadFields?: readonly string[];
+  /** Environment markers apply only to agents whose hooks this dialect runs. */
+  readonly env?: readonly string[];
+}
+
 /**
  * One agent's hook facts: the only place they are kept. Hook installation generates registrations from it (event
  * names, timeout unit, what an observer prints), and `readHookEvent` reads payloads with it.
  */
 export interface HookDialect {
+  readonly hostMarkers?: HostMarkers;
   readonly specificationVersion: "harness-v1";
   readonly agent: CodingAgentId;
   /**
@@ -128,8 +137,8 @@ export interface HookDialect {
   readonly runsHooksOf?: readonly ForeignHooks[];
 }
 
-/** Hook dialects by agent id; `readHookEvent` defaults to `builtinHookDialects`. */
-export type HookDialects = Readonly<Partial<Record<CodingAgentId, HookDialect>>>;
+/** Hook dialects by agent id; supplied to `readHookEvent`. */
+export type HookDialects = ServiceTable<HookDialect>;
 
 /**
  * The agents whose hooks this dialect also runs. A dialect is caller data, so the optional list is read live through

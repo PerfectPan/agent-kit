@@ -1,3 +1,5 @@
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinProbeRecipes as testDiscovery } from "@rivus/agent-kit-discovery";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -143,7 +145,7 @@ const FINDER_EVIDENCE: Record<Evidence["kind"], { kind: string; reason: string }
 
 /** The candidate as agent-finder wrote it: agent-home paths with their default home under `~`. */
 function candidate(path: ProbePath, recipe: ProbeRecipe): string {
-  return expandProbePath(path, { env: {}, home: "~" }, recipe);
+  return expandProbePath(path, { env: {}, home: "~" }, recipe, testIdentity);
 }
 
 function toFinderRecord(installation: Installation): FinderRecord {
@@ -238,7 +240,9 @@ describe("parity with agent-finder", () => {
 
   for (const parityCase of cases) {
     it(`reports what agent-finder reported for ${parityCase.name} (${parityCase.source})`, async () => {
-      const installations = await detectAgents(machineOf(parityCase.probe), { recipes: finderRecipes });
+      const installations = await detectAgents(machineOf(parityCase.probe), {
+        providers: { discovery: finderRecipes, identity: testIdentity }
+      });
       expect(installations.map(toFinderRecord)).toEqual(parityCase.report.agents);
     });
   }
@@ -246,7 +250,9 @@ describe("parity with agent-finder", () => {
   it("counts statuses like agent-finder's doctor", async () => {
     const parityCase = cases.find((candidateCase) => candidateCase.name === "doctor-config-only");
     expect(parityCase).toBeDefined();
-    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), { recipes: finderRecipes });
+    const installations = await detectAgents(machineOf(parityCase?.probe as HostProbe), {
+      providers: { discovery: finderRecipes, identity: testIdentity }
+    });
     const count = (status: string) => installations.filter((installation) => installation.status === status).length;
     expect([installations.length, count("found"), count("runnable"), count("missing"), count("unknown")]).toEqual([
       26, 1, 0, 25, 0
@@ -264,7 +270,10 @@ describe("parity with agent-finder", () => {
       },
       files: { "C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD": "" }
     });
-    const [cursor] = await detectAgents(platform, { agents: ["cursor"] });
+    const [cursor] = await detectAgents(platform, {
+      agents: ["cursor"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(cursor?.command).toBe("C:\\Program Files\\Microsoft VS Code\\bin\\cursor-agent.CMD");
   });
 

@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./public": "./src/public.ts",
     "./public/events": "./src/events.ts",
-    "./spi": "./src/spi.ts"
+    "./spi": "./src/spi.ts",
+    "./public/install": "./src/public/install.ts"
   },
   "scripts": {
     "build": "",

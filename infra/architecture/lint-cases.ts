@@ -3,7 +3,8 @@
  * id each must report and allowed cases that must report nothing. Paths are package-relative; `fresh` names a new file
  * in the given folder, so a case keeps the folder's layer without editing a real file.
  */
-import { dirname } from "node:path";
+import { allowed, rejects, fresh, type Case } from "./case.ts";
+import { spiCases } from "./spi-cases.ts";
 
 const PLATFORM = "@rivus/agent-kit-platform";
 const CATALOG = "@rivus/agent-kit-catalog";
@@ -12,119 +13,8 @@ const TESTING = "@rivus/agent-kit-testing";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 
-export interface Case {
-  readonly name: string;
-  /** Package folder under `packages/`. */
-  readonly pkg: string;
-  /** Package-relative path. A file that exists gets the source appended. */
-  readonly path: string;
-  readonly source: string;
-  readonly expected: readonly string[];
-}
-
-let counter = 0;
-/** A new file in the directory of `path`, so that the case keeps its layer without touching real files. */
-const fresh = (path: string, extension = "ts"): string => `${dirname(path)}/case-${(counter += 1)}.${extension}`;
-const allowed = (name: string, pkg: string, path: string, source: string): Case => ({
-  name,
-  pkg,
-  path,
-  source,
-  expected: []
-});
-const rejects = (name: string, pkg: string, path: string, source: string, rule: string): Case => ({
-  name,
-  pkg,
-  path,
-  source,
-  expected: [rule]
-});
-
 export const cases: Case[] = [
-  ...[
-    ["catalog", "CodingAgent"],
-    ["discovery", "ProbeRecipe"],
-    ["sessions", "SessionAdapter"],
-    ["harness", "HookDialect"],
-    ["acp", "AcpProfile"]
-  ].map(([context, symbol]) =>
-    allowed(
-      `provider: declared ${context} SPI`,
-      "providers/spi-probe",
-      fresh("src/x"),
-      `export type { ${symbol} } from "@rivus/agent-kit-${context}/spi";`
-    )
-  ),
-  allowed(
-    "provider: catalog SPI result helpers",
-    "providers/spi-probe",
-    fresh("src/x"),
-    `export { ok, err, AgentKitError } from "${CATALOG}/spi";`
-  ),
-  allowed(
-    "provider: SPI runtime helper",
-    "providers/spi-probe",
-    fresh("src/x"),
-    `export { readBytes } from "${SESSIONS}/spi";`
-  ),
-  rejects(
-    "provider: SPI-only access rejects the context index",
-    "providers/spi-probe",
-    fresh("src/x"),
-    `export { listSessions } from "${SESSIONS}";`,
-    "package-dependency"
-  ),
-  rejects(
-    "provider: declared SPI does not expose deep paths",
-    "providers/spi-probe",
-    fresh("src/x"),
-    `export type { SessionAdapter } from "${SESSIONS}/application/spi";`,
-    "deep-import"
-  ),
-  rejects(
-    "provider: SPI access keeps type-only restriction",
-    "providers/spi-probe",
-    fresh("src/x"),
-    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";',
-    "types-only"
-  ),
-  rejects(
-    "provider: SPI access keeps layer restriction",
-    "providers/spi-probe",
-    fresh("src/domain/probe/x"),
-    `export { readBytes } from "${SESSIONS}/spi";`,
-    "layer"
-  ),
-  rejects(
-    "provider: dependency without an SPI entry",
-    "providers/spi-probe",
-    fresh("src/x"),
-    `export type { Platform } from "${PLATFORM}/spi";`,
-    "spi-import"
-  ),
-  ...["acp", "cost"].map((pkg) =>
-    rejects(
-      `${pkg}: normal dependency grants no sibling SPI access`,
-      pkg,
-      fresh("src/x"),
-      `export type { SessionAdapter } from "${SESSIONS}/spi";`,
-      "spi-import"
-    )
-  ),
-  rejects(
-    "sessions: kernel dependency grants no SPI access",
-    "sessions",
-    fresh("src/application/x"),
-    `export type { CodingAgent } from "${CATALOG}/spi";`,
-    "spi-import"
-  ),
-  rejects(
-    "shell entry: context SPI",
-    "agent-kit",
-    fresh("src/x"),
-    `export type { SessionAdapter } from "${SESSIONS}/spi";`,
-    "shell-entry"
-  ),
+  ...spiCases,
   allowed(
     "collab root domain: catalog value",
     "agent-kit-collab",
@@ -735,11 +625,31 @@ export const cases: Case[] = [
     `export { z } from "zod/mini";`,
     "shell-entry"
   ),
-  rejects(
-    "shell entry: local code",
+  allowed(
+    "shell entry: binding code",
     "agent-kit",
     fresh("src/x"),
-    `import { splitLines } from "${PLATFORM}/public";\nexport const split = splitLines;`,
+    `import { splitLines } from "${PLATFORM}/public";\nexport const split = splitLines;`
+  ),
+
+  allowed(
+    "shell: declared hooks binding",
+    "agent-kit",
+    "src/harness/events.ts",
+    'export { hooksTable as hookTableProbe } from "../providers/hooks.js";'
+  ),
+  rejects(
+    "shell: hooks entry cannot load all providers",
+    "agent-kit",
+    "src/harness/events.ts",
+    'export { builtinProviders as allProvidersProbe } from "../providers/builtin.js";',
+    "shell-entry"
+  ),
+  rejects(
+    "shell: undeclared local import",
+    "agent-kit",
+    fresh("src/x"),
+    'export { hooksTable } from "./providers/hooks.js";',
     "shell-entry"
   ),
 
@@ -877,11 +787,12 @@ export const cases: Case[] = [
     fresh("src/application/services/usage-decoders/x"),
     `export const id = "gemini-cli";`
   ),
-  allowed(
-    "agent marker: harness host-sniffing.ts",
+  rejects(
+    "agent marker: no host-sniffing exemption",
     "harness",
-    "src/domain/lifecycle/policies/host-sniffing.ts",
-    `export const caseHost = "opencode";`
+    "src/domain/lifecycle/services/sniff-source.ts",
+    `export const caseHost = "opencode";`,
+    "agent-marker"
   ),
   allowed(
     "agent marker: catalog's id unions",
@@ -903,12 +814,7 @@ export const cases: Case[] = [
     `export const id = "codex";`,
     "agent-marker"
   ),
-  allowed(
-    "agent marker: a test file",
-    "sessions",
-    `src/application/case-${(counter += 1)}.test.ts`,
-    `export const id = "codex";`
-  ),
+  allowed("agent marker: a test file", "sessions", fresh("src/application/x", "test.ts"), `export const id = "codex";`),
   allowed(
     "agent marker: a package outside the six contexts",
     "testing",

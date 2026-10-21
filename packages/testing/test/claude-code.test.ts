@@ -1,3 +1,5 @@
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog";
@@ -38,7 +40,13 @@ function value<T>(result: Result<T, unknown>): T {
 }
 
 const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "claude-code", path: session(name) }));
+  value(
+    await loadTranscript(
+      platform,
+      { agent: "claude-code", path: session(name) },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    )
+  );
 
 // oxlint-disable-next-line require-yield -- an iterator that fails on its first pull, like an unreadable file
 async function* failing(error: Error): AsyncGenerator<Uint8Array> {
@@ -185,7 +193,13 @@ describe("claude-code translation", () => {
 
   it("returns an unknown format generation as a tagged failure", async () => {
     const path = "/u/me/.claude/fx/unknown-generation/session.jsonl";
-    expect(await loadTranscript(platform, { agent: "claude-code", path })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "claude-code", path },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "UnknownFormatGeneration", agent: "claude-code", file: path, line: 1 }
     });
@@ -221,7 +235,13 @@ describe("claude-code subagent metadata", () => {
         [`${root}/s/subagents/agent-a.meta.json`]: bom
       }
     });
-    const transcript = value(await loadTranscript(withBom, { agent: "claude-code", path: `${root}/s.jsonl` }));
+    const transcript = value(
+      await loadTranscript(
+        withBom,
+        { agent: "claude-code", path: `${root}/s.jsonl` },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    );
     const skip = transcript.skipped.find((entry) => entry.reason === "agent-meta");
     expect(skip?.source).toEqual({
       file: `${root}/s/subagents/agent-a.meta.json`,
@@ -275,9 +295,12 @@ describe("claude-code prompt snapshots", () => {
 });
 
 describe("sessions use cases over Claude Code", () => {
-  async function list(options: Parameters<typeof listSessions>[1] = {}, on = platform) {
+  async function list(options: Omit<Parameters<typeof listSessions>[1], "providers"> = {}, on = platform) {
     const items: (SessionHead | SessionListFailure)[] = [];
-    for await (const item of listSessions(on, options)) {
+    for await (const item of listSessions(on, {
+      ...options,
+      providers: { sessions: testSessions, identity: testIdentity }
+    })) {
       items.push(item);
     }
     return items;
@@ -320,16 +343,24 @@ describe("sessions use cases over Claude Code", () => {
 
   it("resolves the home a session adapter lists: its own rule, else the catalog's, else it throws", () => {
     const adapter = builtinSessionAdapters["claude-code"];
-    expect(sessionAdapterHome(adapter, { env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }, home: "/u/me" })).toMatchObject({
+    expect(
+      sessionAdapterHome(adapter, { env: { CLAUDE_CONFIG_DIR: "/cfg/claude" }, home: "/u/me" }, testIdentity)
+    ).toMatchObject({
       agent: "claude-code",
       path: "/cfg/claude"
     });
-    expect(sessionAdapterHome(adapter, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.claude" });
+    expect(sessionAdapterHome(adapter, { env: {}, home: "/u/me" }, testIdentity)).toMatchObject({
+      path: "/u/me/.claude"
+    });
     const overridden = { agent: "claude-code", home: { defaultPath: [".x"] } };
-    expect(sessionAdapterHome(overridden, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.x" });
+    expect(sessionAdapterHome(overridden, { env: {}, home: "/u/me" }, testIdentity)).toMatchObject({
+      path: "/u/me/.x"
+    });
     const own = { agent: "my-agent", home: { defaultPath: [".my-agent"] } };
-    expect(sessionAdapterHome(own, { env: {}, home: "/u/me" })).toMatchObject({ path: "/u/me/.my-agent" });
-    expect(() => sessionAdapterHome({ agent: "my-agent" }, { env: {}, home: "/u/me" })).toThrow(
+    expect(sessionAdapterHome(own, { env: {}, home: "/u/me" }, testIdentity)).toMatchObject({
+      path: "/u/me/.my-agent"
+    });
+    expect(() => sessionAdapterHome({ agent: "my-agent" }, { env: {}, home: "/u/me" }, testIdentity)).toThrow(
       expect.objectContaining({ code: "capability-unsupported" })
     );
   });
@@ -340,21 +371,53 @@ describe("sessions use cases over Claude Code", () => {
   });
 
   it("detects the agent of a ref without one, and returns tagged failures for the expected cases", async () => {
-    expect(value(await loadTranscript(platform, { path: session("plain") })).agent).toBe("claude-code");
+    expect(
+      value(
+        await loadTranscript(
+          platform,
+          { path: session("plain") },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
+      ).agent
+    ).toBe("claude-code");
     const foreign = createMemoryPlatform({ files: { "/x/notes.jsonl": '{"kind":"note"}\n' } });
-    expect(await loadTranscript(foreign, { path: "/x/notes.jsonl" })).toEqual({
+    expect(
+      await loadTranscript(
+        foreign,
+        { path: "/x/notes.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "NoAdapterAccepted", path: "/x/notes.jsonl" }
     });
-    expect(await loadTranscript(platform, { path: "/nowhere.jsonl" })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { path: "/nowhere.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "SessionNotFound", path: "/nowhere.jsonl" }
     });
-    expect(await loadTranscript(platform, { agent: "gemini-cli", path: session("plain") })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "gemini-cli", path: session("plain") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "CapabilityUnsupported", agent: "gemini-cli" }
     });
-    expect(await summarizeSession(platform, { path: "/nowhere.jsonl" })).toEqual({
+    expect(
+      await summarizeSession(
+        platform,
+        { path: "/nowhere.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "SessionNotFound", path: "/nowhere.jsonl" }
     });
@@ -370,7 +433,13 @@ describe("sessions use cases over Claude Code", () => {
         }
       }
     };
-    expect(await loadTranscript(locked, { agent: "claude-code", path: session("subagent") })).toEqual({
+    expect(
+      await loadTranscript(
+        locked,
+        { agent: "claude-code", path: session("subagent") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "ReadFailed", path: session("subagent"), message: denied.message, cause: denied }
     });
@@ -397,7 +466,8 @@ describe("sessions use cases over Claude Code", () => {
         onProgress: (bytes) => {
           progress.push(bytes);
           controller.abort(new Error("stop"));
-        }
+        },
+        providers: { sessions: testSessions, identity: testIdentity }
       }
     );
     await expect(load).rejects.toThrow("stop");
@@ -412,7 +482,8 @@ describe("sessions use cases over Claude Code", () => {
       {
         onProgress: () => {
           throw uiError;
-        }
+        },
+        providers: { sessions: testSessions, identity: testIdentity }
       }
     );
     await expect(callback).rejects.toBe(uiError);
@@ -423,7 +494,8 @@ describe("sessions use cases over Claude Code", () => {
       {
         onProgress: () => {
           throw fakeErrno;
-        }
+        },
+        providers: { sessions: testSessions, identity: testIdentity }
       }
     );
     await expect(lying).rejects.toBe(fakeErrno);
@@ -446,7 +518,13 @@ describe("sessions use cases over Claude Code", () => {
     };
     const locked = { fs: { ...platform.fs, read: () => failing(denied) } };
     for (const run of [loadTranscript, summarizeSession]) {
-      expect(await run(locked, { path: session("plain") }, { adapters: { "my-agent": custom } })).toEqual({
+      expect(
+        await run(
+          locked,
+          { path: session("plain") },
+          { providers: { sessions: { "my-agent": custom }, identity: testIdentity } }
+        )
+      ).toEqual({
         ok: false,
         error: { _tag: "ReadFailed", path: session("plain"), message: denied.message, cause: denied }
       });
@@ -456,7 +534,13 @@ describe("sessions use cases over Claude Code", () => {
   it("rejects with the abort reason instead of returning a failure found while resolving the target", async () => {
     const aborted = AbortSignal.abort(new Error("stop"));
     for (const run of [loadTranscript, summarizeSession]) {
-      await expect(run(platform, { path: "/nowhere.jsonl" }, { signal: aborted })).rejects.toThrow("stop");
+      await expect(
+        run(
+          platform,
+          { path: "/nowhere.jsonl" },
+          { signal: aborted, providers: { sessions: testSessions, identity: testIdentity } }
+        )
+      ).rejects.toThrow("stop");
     }
     const controller = new AbortController();
     const declining = {
@@ -470,23 +554,30 @@ describe("sessions use cases over Claude Code", () => {
     const run = loadTranscript(
       platform,
       { path: session("plain") },
-      {
-        adapters: { "my-agent": declining },
-        signal: controller.signal
-      }
+      { signal: controller.signal, providers: { sessions: { "my-agent": declining }, identity: testIdentity } }
     );
     await expect(run).rejects.toThrow("stop");
   });
 
   it("still throws a defect instead of returning it", async () => {
     const broken = { fs: { ...platform.fs, read: () => failing(new TypeError("bug")) } };
-    await expect(loadTranscript(broken, { agent: "claude-code", path: session("plain") })).rejects.toThrow("bug");
+    await expect(
+      loadTranscript(
+        broken,
+        { agent: "claude-code", path: session("plain") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).rejects.toThrow("bug");
   });
 
   it("reports progress up to the total bytes of the session files and honours an abort", async () => {
     const progress: number[] = [];
     value(
-      await loadTranscript(platform, { path: session("subagent") }, { onProgress: (bytes) => progress.push(bytes) })
+      await loadTranscript(
+        platform,
+        { path: session("subagent") },
+        { onProgress: (bytes) => progress.push(bytes), providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     const sizes = await Promise.all(
       [session("subagent"), "/u/me/.claude/projects/subagent/session/subagents/agent-helper.jsonl"].map(
@@ -499,13 +590,27 @@ describe("sessions use cases over Claude Code", () => {
     expect(progress.at(-1)).toBe(sizes[0]! + sizes[1]! + metaSize!);
     expect(progress).toEqual(progress.toSorted((a, b) => a - b));
     const aborted = AbortSignal.abort();
-    expect(await rejection(loadTranscript(platform, { path: session("plain") }, { signal: aborted }))).toMatchObject({
+    expect(
+      await rejection(
+        loadTranscript(
+          platform,
+          { path: session("plain") },
+          { signal: aborted, providers: { sessions: testSessions, identity: testIdentity } }
+        )
+      )
+    ).toMatchObject({
       name: "AbortError"
     });
   });
 
   it("summarizes a session like folding its transcript", async () => {
-    const summary = value(await summarizeSession(platform, { agent: "claude-code", path: session("plain") }));
+    const summary = value(
+      await summarizeSession(
+        platform,
+        { agent: "claude-code", path: session("plain") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    );
     expect(summary).toEqual({
       turns: 1,
       requests: 2,
@@ -523,7 +628,9 @@ describe("sessions use cases over Claude Code", () => {
     const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     const exported = createMemoryPlatform({ files: { "/export/session.jsonl": "{}\n" } });
     const locked = { fs: { ...exported.fs, read: () => failing(denied) } };
-    const options = { adapters: { "claude-code": builtinSessionAdapters["claude-code"] } };
+    const options = {
+      providers: { sessions: { "claude-code": builtinSessionAdapters["claude-code"] }, identity: testIdentity }
+    };
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
         ok: false,

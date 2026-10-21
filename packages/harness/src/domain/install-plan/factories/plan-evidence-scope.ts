@@ -1,3 +1,4 @@
+import { lookupService } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
@@ -66,9 +67,13 @@ export function legacyHookSources(
   context: InstallContext,
   compat: readonly HookCompat[] = []
 ): readonly LegacyHookSource[] {
-  const own: LegacyHookSource[] = agents.flatMap((agent) =>
-    (adapters[agent]?.legacySources?.(context, owner) ?? []).map((source) => ({ source, agent }))
-  );
+  const own: LegacyHookSource[] = agents.flatMap((agent) => {
+    const adapter = lookupService(agent, adapters);
+    return (adapter.ok ? (adapter.value.legacySources?.(context, owner) ?? []) : []).map((source) => ({
+      source,
+      agent
+    }));
+  });
   const foreign: LegacyHookSource[] = agents.flatMap((runner) =>
     foreignHookFiles(runner, dialects, adapters, context, compat).flatMap((file) => foreignSource(file, runner))
   );
@@ -129,10 +134,8 @@ export function planEvidenceScope(input: {
   ]);
   const rootCandidates: string[] = [];
   for (const agent of rootedAgents) {
-    // An agent's name is data, not a key to trust: a ledger agent named like a prototype key must read as
-    // adapterless, not pick a method off the prototype chain and call it.
-    const adapter = Object.hasOwn(adapters, agent) ? adapters[agent] : undefined;
-    rootCandidates.push(...(adapter?.roots(context) ?? []));
+    const adapter = lookupService(agent, adapters);
+    rootCandidates.push(...(adapter.ok ? adapter.value.roots(context) : []));
   }
   for (const source of sources) {
     if (source.runner !== undefined) {

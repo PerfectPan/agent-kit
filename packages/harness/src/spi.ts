@@ -32,6 +32,7 @@ export {
   type FinishSelector,
   type ForeignHooks,
   type HookDialect,
+  type HostMarkers,
   type HookEventSpec,
   type HookOutput,
   type HookTimeout,

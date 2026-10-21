@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
@@ -85,15 +88,27 @@ describe("legacy source file safety", () => {
     const home = testHome();
     home.write(USER_FILE, userHooks);
     return Effect.gen(function* () {
-      expect(yield* findLegacy(OWNER, { agents: ["grok"], legacyMarkers: MARKERS })).toEqual([]);
-      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] });
+      expect(
+        yield* findLegacy(OWNER, {
+          agents: ["grok"],
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      ).toEqual([]);
+      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(plan.steps.filter((step) => step.locator.path === home.path(USER_FILE))).toEqual([]);
       expect(home.read(USER_FILE)).toBe(userHooks);
       yield* applyInstall(plan);
       expect(home.read(USER_FILE)).toBe(userHooks);
       expect(home.read(".grok/hooks/demo-app.json")).toContain("demo-hook --agent grok");
 
-      const removed = yield* uninstall(OWNER, { legacyMarkers: MARKERS });
+      const removed = yield* uninstall(OWNER, {
+        legacyMarkers: MARKERS,
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(removed.plan.steps.filter((step) => step.locator.path === home.path(USER_FILE))).toEqual([]);
       expect(removed.kept).toEqual([]);
       expect(home.read(USER_FILE)).toBe(userHooks);
@@ -107,7 +122,10 @@ describe("legacy source file safety", () => {
     home.write(USER_FILE, userHooks);
     return Effect.gen(function* () {
       expect((yield* inventory()).entries).toEqual([]);
-      const removed = yield* uninstall(OWNER, { legacyMarkers: MARKERS });
+      const removed = yield* uninstall(OWNER, {
+        legacyMarkers: MARKERS,
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(removed.plan.steps).toEqual([]);
       expect(removed.steps).toEqual([]);
       expect(removed.kept).toEqual([]);
@@ -121,7 +139,11 @@ describe("legacy source file safety", () => {
     home.write(USER_FILE, userHooks);
     return Effect.gen(function* () {
       expect((yield* inventory()).entries).toEqual([]);
-      const removed = yield* uninstall(OWNER, { agents: ["grok"], legacyMarkers: MARKERS });
+      const removed = yield* uninstall(OWNER, {
+        agents: ["grok"],
+        legacyMarkers: MARKERS,
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(removed.plan.steps).toEqual([]);
       expect(removed.steps).toEqual([]);
       expect(removed.kept).toEqual([]);
@@ -172,7 +194,11 @@ describe("legacy source file safety", () => {
       const { accepted, ignored, content, reads, platform } = sourceFixture(home, source);
       const installed = `${source.dir}/${source.installed}`;
       return Effect.gen(function* () {
-        const listed = yield* findLegacy(OWNER, { agents: [source.agent], legacyMarkers: MARKERS });
+        const listed = yield* findLegacy(OWNER, {
+          agents: [source.agent],
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         expect(
           listed
             .map(({ agent, locator, kind, treatment }) => ({ agent, path: locator.path, kind, treatment }))
@@ -184,7 +210,8 @@ describe("legacy source file safety", () => {
           expect(reads).toContain(home.path(path));
         }
         const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
-          agents: [source.agent]
+          agents: [source.agent],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
         });
         expect(
           plan.steps
@@ -207,9 +234,18 @@ describe("legacy source file safety", () => {
           expect(home.read(path)).toBe(content);
           expect(reads).not.toContain(home.path(path));
         }
-        expect(yield* findLegacy(OWNER, { agents: [source.agent], legacyMarkers: MARKERS })).toEqual([]);
+        expect(
+          yield* findLegacy(OWNER, {
+            agents: [source.agent],
+            legacyMarkers: MARKERS,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        ).toEqual([]);
 
-        const removed = yield* uninstall(OWNER, { legacyMarkers: MARKERS });
+        const removed = yield* uninstall(OWNER, {
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         expect(
           removed.plan.steps.filter((step) => ignored.some((path) => step.locator.path === home.path(path)))
         ).toEqual([]);
@@ -230,7 +266,10 @@ describe("legacy source file safety", () => {
         const { accepted, ignored, content, reads, platform } = sourceFixture(home, source);
         return Effect.gen(function* () {
           expect((yield* inventory()).entries).toEqual([]);
-          const removed = yield* uninstall(OWNER, { legacyMarkers: MARKERS });
+          const removed = yield* uninstall(OWNER, {
+            legacyMarkers: MARKERS,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(
             removed.plan.steps
               .filter((step) => step.legacy === true)

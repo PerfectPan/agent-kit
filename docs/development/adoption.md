@@ -32,6 +32,15 @@ The source exports 16 agent-kit entries and three collab entries (19 in total). 
 
 The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node 24. Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
 
+Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/agent-kit/providers` alongside
+`builtinProviders`. Replace `adapters`, `dialects`, `recipes` and `profiles` with descriptors such as
+`{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`. Each service merges independently;
+other services for the same id and all other agents keep their defaults. A supplied identity carries aliases and
+fallback homes; conflicting names and mismatched ids are rejected. `parseCodingAgentId(input, identities)` now
+needs an identity table. Use `homeFromRule(agent, rule, context)` in place of the removed `resolveHome`;
+`CodingAgentIdWithHome` is removed. The shell conformance suites bind built-ins; their optional third argument
+accepts `{ providers }` for custom host and identity facts.
+
 ## Choose the runtime boundary
 
 Plain applications create one platform with `createNodePlatform()` and pass it to the APIs they use. Check `Result.ok` and handle failures by `error._tag`, and handle failure items from asynchronous listings and usage scans. `detectAgents` returns one `Installation` per agent with per-agent problems, rather than a call-level `Result`. An aborted plain IO call rejects with `signal.reason`.

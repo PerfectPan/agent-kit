@@ -59,6 +59,10 @@ export function parseCodingAgentId(
 ): Result<CodingAgentId, InvalidCodingAgentId> {
   const id = input.trim().toLowerCase();
   const aliases = identityNames(identities);
+  const direct = lookupService(id, identities);
+  if (direct.ok) {
+    return ok(direct.value.id);
+  }
   const canonical = aliases.get(id);
   if (canonical !== undefined) {
     return ok(canonical);

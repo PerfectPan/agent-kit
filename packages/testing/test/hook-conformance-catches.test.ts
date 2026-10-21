@@ -1,3 +1,4 @@
+import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
 import { builtinHookDialects, type HookDialect } from "@rivus/agent-kit-harness";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -9,7 +10,7 @@ import { cursorSamples } from "./fixtures/hooks/cursor.js";
 const cursor = builtinHookDialects.cursor;
 
 async function failure(dialect: HookDialect, name: string, samples = cursorSamples): Promise<string> {
-  const check = hookDialectConformance(dialect, { samples }).find((candidate) => candidate.name === name);
+  const check = hookDialectConformance(dialect, { samples }, testHooks).find((candidate) => candidate.name === name);
   expect(check).toBeDefined();
   try {
     await check!.run();

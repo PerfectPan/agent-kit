@@ -1,3 +1,13 @@
+import { planInstall as contextPlanInstall } from "@rivus/agent-kit-harness/public";
+import { findLegacy as contextFindLegacy } from "@rivus/agent-kit-harness/public";
+import { verify as contextVerify } from "@rivus/agent-kit-harness/public";
+import { uninstall as contextUninstall } from "@rivus/agent-kit-harness/public";
+import { doctor as contextDoctor } from "@rivus/agent-kit-harness/public";
+import { installTable } from "./providers/install.js";
+import { hooksTable } from "./providers/hooks.js";
+import { identityTable } from "./providers/identity.js";
+import type { ProviderOptions } from "./providers/types.js";
+
 export {
   AgentCli,
   applyInstall,
@@ -6,8 +16,6 @@ export {
   ChezmoiExternalOwnerLive,
   CONFLICT_CHOICES,
   discardPlan,
-  doctor,
-  findLegacy,
   ExternalOwner,
   FileLedgerRepositoryLive,
   HarnessLive,
@@ -16,12 +24,9 @@ export {
   LedgerRepository,
   locatorKey,
   ownerSlug,
-  planInstall,
   PlatformArtifactFilesLive,
   ProcessAgentCliLive,
-  SqliteLedgerLockLive,
-  uninstall,
-  verify
+  SqliteLedgerLockLive
 } from "@rivus/agent-kit-harness/public";
 export type {
   AgentCliFailure,
@@ -51,10 +56,8 @@ export type {
   Conflict,
   ConflictChoice,
   ContentHash,
-  DoctorOptions,
   DocumentInvalid,
   FindLegacyError,
-  FindLegacyOptions,
   FindLegacyServices,
   Drift,
   DroppedHook,
@@ -103,7 +106,6 @@ export type {
   PlanBasis,
   PlanConflict,
   PlanInstallError,
-  PlanInstallOptions,
   PlannedCommand,
   PlannedFileChange,
   PlanStale,
@@ -124,11 +126,86 @@ export type {
   TrustPromptKind,
   UnexpectedShape,
   UninstallError,
-  UninstallOptions,
   UninstallReport,
   VerifiedArtifact,
   VerifyError,
-  VerifyOptions,
   VerifyReport,
   VerifyStatus
 } from "@rivus/agent-kit-harness/public";
+
+export type PlanInstallOptions = ProviderOptions<Parameters<typeof contextPlanInstall>[1]>;
+
+export function planInstall(
+  bundle: Parameters<typeof contextPlanInstall>[0],
+  options: PlanInstallOptions
+): ReturnType<typeof contextPlanInstall> {
+  return contextPlanInstall(bundle, {
+    ...options,
+    providers: {
+      install: installTable(options.providers),
+      hooks: hooksTable(options.providers),
+      identity: identityTable(options.providers)
+    }
+  });
+}
+
+export type FindLegacyOptions = ProviderOptions<Parameters<typeof contextFindLegacy>[1]>;
+
+export function findLegacy(
+  owner: Parameters<typeof contextFindLegacy>[0],
+  options: FindLegacyOptions
+): ReturnType<typeof contextFindLegacy> {
+  return contextFindLegacy(owner, {
+    ...options,
+    providers: {
+      install: installTable(options.providers),
+      hooks: hooksTable(options.providers),
+      identity: identityTable(options.providers)
+    }
+  });
+}
+
+export type VerifyOptions = ProviderOptions<Parameters<typeof contextVerify>[1]>;
+
+export function verify(
+  owner: Parameters<typeof contextVerify>[0],
+  options: VerifyOptions = {}
+): ReturnType<typeof contextVerify> {
+  return contextVerify(owner, {
+    ...options,
+    providers: {
+      install: installTable(options.providers),
+      hooks: hooksTable(options.providers),
+      identity: identityTable(options.providers)
+    }
+  });
+}
+
+export type UninstallOptions = ProviderOptions<Parameters<typeof contextUninstall>[1]>;
+
+export function uninstall(
+  owner: Parameters<typeof contextUninstall>[0],
+  options: UninstallOptions = {}
+): ReturnType<typeof contextUninstall> {
+  return contextUninstall(owner, {
+    ...options,
+    providers: {
+      install: installTable(options.providers),
+      hooks: hooksTable(options.providers),
+      identity: identityTable(options.providers)
+    }
+  });
+}
+
+export type DoctorOptions = ProviderOptions<Parameters<typeof contextDoctor>[0]>;
+
+export function doctor(options: DoctorOptions = {}): ReturnType<typeof contextDoctor> {
+  return contextDoctor({
+    ...options,
+    providers: {
+      install: installTable(options.providers),
+      hooks: hooksTable(options.providers),
+      identity: identityTable(options.providers)
+    }
+  });
+}

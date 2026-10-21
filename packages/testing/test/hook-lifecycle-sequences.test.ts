@@ -1,3 +1,4 @@
+import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
 import {
   heartbeatSignal,
   INITIAL_LIFECYCLE_STATE,
@@ -145,7 +146,9 @@ function fold(agent: string, samples: readonly HookDialectSample[], names: reado
     if (sample === undefined) {
       throw new Error(`${agent} has no sample named ${name}`);
     }
-    const event = readHookEvent(sample.declaredAgent ?? agent, sample.payload, sample.env ?? {});
+    const event = readHookEvent(sample.declaredAgent ?? agent, sample.payload, sample.env ?? {}, {
+      providers: { hooks: testHooks }
+    });
     const before = state;
     state = reduceLifecycle(state, event, { ttlMs: 180_000, now: index * 1000 });
     return { status: state.status, signal: heartbeatSignal(before, state, event) };

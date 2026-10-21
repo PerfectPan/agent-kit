@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { cpSync, lstatSync, rmSync, symlinkSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -33,7 +36,10 @@ describe("directory write safety", () => {
   it.effect("S95: refuses creation through a parent replaced by a symlink after planning", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      const plan = yield* planInstall(skill("1"), { agents: ["claude-code"] });
+      const plan = yield* planInstall(skill("1"), {
+        agents: ["claude-code"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       home.write(".claude/skills/placeholder", "unchanged");
       home.write("outside/demo-skill/SKILL.md", "user data");
       rmSync(home.path(".claude/skills"), { recursive: true });
@@ -49,12 +55,22 @@ describe("directory write safety", () => {
   it.effect("S95: a nested symlink makes an upgrade a conflict and leaves outside data and the link intact", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(skill("1"), { agents: ["claude-code"] }));
+      yield* applyInstall(
+        yield* planInstall(skill("1"), {
+          agents: ["claude-code"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       const before = yield* inventory();
       home.write("outside/keep.txt", "user data");
       symlinkSync(home.path("outside"), home.path(".claude/skills/demo-skill/extras"));
 
-      const failure = yield* Effect.flip(planInstall(skill("2", true), { agents: ["claude-code"] }));
+      const failure = yield* Effect.flip(
+        planInstall(skill("2", true), {
+          agents: ["claude-code"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       expect(failure).toMatchObject({
         _tag: "PlanConflict",
         conflicts: [{ step: { conflict: "symlinked-target" }, choices: [] }]
@@ -84,8 +100,16 @@ describe("directory write safety", () => {
                   ]
                 })
               : skill("1");
-          yield* applyInstall(yield* planInstall(initial, { agents: ["claude-code"] }));
-          const plan = yield* planInstall(skill("2", true), { agents: ["claude-code"] });
+          yield* applyInstall(
+            yield* planInstall(initial, {
+              agents: ["claude-code"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
+          const plan = yield* planInstall(skill("2", true), {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           const before = yield* inventory();
           const installed = home.path(".claude/skills/demo-skill");
           if (location === "artifact") {
@@ -124,8 +148,16 @@ describe("directory write safety", () => {
       }
     } satisfies typeof home.platform;
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(skill("1"), { agents: ["claude-code"] }));
-      const plan = yield* planInstall(skill("2", true), { agents: ["claude-code"] });
+      yield* applyInstall(
+        yield* planInstall(skill("1"), {
+          agents: ["claude-code"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
+      const plan = yield* planInstall(skill("2", true), {
+        agents: ["claude-code"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       home.write("outside/keep.txt", "user data");
       armed = true;
       const failure = yield* Effect.flip(applyInstall(plan));
@@ -149,12 +181,15 @@ describe("directory write safety", () => {
             : undefined;
         const plan = yield* planInstall(skill("1"), {
           agents: ["claude-code"],
-          ...(choices === undefined ? {} : { choices })
+          ...(choices === undefined ? {} : { choices }),
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
         });
         yield* applyInstall(plan);
         home.write("outside/keep.txt", "user data");
         symlinkSync(home.path("outside"), home.path(".claude/skills/demo-skill/extras"));
-        const report = yield* uninstall("demo-app");
+        const report = yield* uninstall("demo-app", {
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         expect(report.plan.steps).toMatchObject([{ action: "remove", removal: "keep", note: "symlinked-target" }]);
         expect(home.read("outside/keep.txt")).toBe("user data");
         expect(home.read(".claude/skills/demo-skill/SKILL.md")).toBe("skill");
@@ -169,14 +204,23 @@ describe("hook ownership and execution safety", () => {
   it.effect("S33: protects renamed commands when the first uninstall already supplies legacy markers", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          ...sharedConfig,
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       const edited = (home.read(".claude/settings.json") ?? "").replaceAll(
         "demo-hook --agent",
         "demo-hook --verbose --agent"
       );
       home.write(".claude/settings.json", edited);
       for (let attempt = 0; attempt < 2; attempt++) {
-        yield* uninstall("demo-app", { legacyMarkers: ["demo-hook"] });
+        yield* uninstall("demo-app", {
+          legacyMarkers: ["demo-hook"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         expect(home.read(".claude/settings.json")).toBe(edited);
         expect((yield* inventory()).entries).toEqual([]);
       }
@@ -188,11 +232,20 @@ describe("hook ownership and execution safety", () => {
       const home = testHome();
       const file = agent === "codex" ? ".codex/config.toml" : ".claude/settings.json";
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: [agent], ...sharedConfig }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: [agent],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         const edited = (home.read(file) ?? "").replaceAll("demo-hook --agent", "demo-hook --verbose --agent");
         home.write(file, edited);
         const unsafeUpgrade = yield* Effect.flip(
-          planInstall(demoBundle("2", { legacyMarkers: [] }), { agents: [agent] })
+          planInstall(demoBundle("2", { legacyMarkers: [] }), {
+            agents: [agent],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
         );
         expect(
           unsafeUpgrade._tag === "PlanConflict" &&
@@ -202,15 +255,23 @@ describe("hook ownership and execution safety", () => {
           ["user-modified", []],
           ["user-modified", []]
         ]);
-        yield* uninstall("demo-app");
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
         expect(home.read(file)).toBe(edited);
         expect((yield* inventory()).entries).toEqual([]);
         for (let attempt = 0; attempt < 2; attempt++) {
-          const removed = yield* uninstall("demo-app", { legacyMarkers: ["demo-hook"] });
+          const removed = yield* uninstall("demo-app", {
+            legacyMarkers: ["demo-hook"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(removed.plan.steps).toEqual([]);
           expect(home.read(file)).toBe(edited);
         }
-        const reinstall = yield* Effect.flip(planInstall(demoBundle("2", { legacyMarkers: [] }), { agents: [agent] }));
+        const reinstall = yield* Effect.flip(
+          planInstall(demoBundle("2", { legacyMarkers: [] }), {
+            agents: [agent],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         expect(
           reinstall._tag === "PlanConflict" && reinstall.conflicts.map(({ step, choices }) => [step.conflict, choices])
         ).toEqual([
@@ -248,7 +309,10 @@ describe("hook ownership and execution safety", () => {
           )
         );
         return Effect.gen(function* () {
-          const plan = yield* planInstall(demoBundle(), { agents: [agent] });
+          const plan = yield* planInstall(demoBundle(), {
+            agents: [agent],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(
             plan.steps
               .filter((step) => step.legacy)
@@ -259,9 +323,11 @@ describe("hook ownership and execution safety", () => {
             hooks: { Stop: [{ hooks: [{ type: "command", command: "/opt/user/notify" }] }] }
           });
           expect(
-            (yield* doctor({ agents: [agent], markers: ["legacy-demo hook", "demo-hook"] })).filter(
-              (check) => check.name === "duplicate-hook"
-            )
+            (yield* doctor({
+              agents: [agent],
+              markers: ["legacy-demo hook", "demo-hook"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })).filter((check) => check.name === "duplicate-hook")
           ).toEqual([]);
         }).pipe(Effect.provide(home.layer()));
       }
@@ -281,7 +347,10 @@ describe("hook ownership and execution safety", () => {
         JSON.stringify({ hooks: { stop: [{ command: "legacy-demo hook --cursor" }, { command: "/opt/user/notify" }] } })
       );
       return Effect.gen(function* () {
-        const plan = yield* planInstall(demoBundle(), { agents: ["grok"] });
+        const plan = yield* planInstall(demoBundle(), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         expect(plan.steps.filter((step) => step.legacy)).toHaveLength(2);
         yield* applyInstall(plan);
         expect(home.read(".claude/settings.local.json")).not.toContain("legacy-demo");
@@ -289,9 +358,11 @@ describe("hook ownership and execution safety", () => {
           hooks: { stop: [{ command: "/opt/user/notify" }] }
         });
         expect(
-          (yield* doctor({ agents: ["grok"], markers: ["legacy-demo hook", "demo-hook"] })).filter(
-            (check) => check.name === "duplicate-hook"
-          )
+          (yield* doctor({
+            agents: ["grok"],
+            markers: ["legacy-demo hook", "demo-hook"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })).filter((check) => check.name === "duplicate-hook")
         ).toEqual([]);
       }).pipe(Effect.provide(home.layer()));
     }
@@ -304,7 +375,8 @@ describe("hook ownership and execution safety", () => {
     return Effect.gen(function* () {
       const plan = yield* planInstall(demoBundle(), {
         agents: ["grok"],
-        compat: [{ runner: "grok", agent: "claude-code", enabled: false }]
+        compat: [{ runner: "grok", agent: "claude-code", enabled: false }],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
       });
       expect(plan.steps.some((step) => step.legacy)).toBe(false);
       yield* applyInstall(plan);
@@ -316,10 +388,21 @@ describe("hook ownership and execution safety", () => {
   it.effect("S94: a Grok-only replacement conflicts when a tracked Claude hook must stay for Claude", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          ...sharedConfig,
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       const settings = home.read(".claude/settings.json");
       const before = yield* inventory();
-      const failure = yield* Effect.flip(planInstall(demoBundle("2"), { agents: ["grok"] }));
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle("2"), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       expect(
         failure._tag === "PlanConflict" && failure.conflicts.map(({ step, choices }) => [step.locator.path, choices])
       ).toEqual([
@@ -341,7 +424,12 @@ describe("hook ownership and execution safety", () => {
     home.write(".claude/settings.json", settings);
     home.command("chezmoi", `console.log(${JSON.stringify(home.path(".claude/settings.json"))});`);
     return Effect.gen(function* () {
-      const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["grok"] }));
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle(), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       expect(failure).toMatchObject({
         _tag: "PlanConflict",
         conflicts: [{ step: { conflict: "dotfiles-managed" }, choices: [] }]
@@ -357,11 +445,22 @@ describe("hook ownership and execution safety", () => {
     () => {
       const home = testHome();
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["claude-code"],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         const settings = home.read(".claude/settings.json");
         const before = yield* inventory();
         home.command("chezmoi", `console.log(${JSON.stringify(home.path(".claude/settings.json"))});`);
-        const failure = yield* Effect.flip(planInstall(demoBundle("2"), { agents: ["claude-code"] }));
+        const failure = yield* Effect.flip(
+          planInstall(demoBundle("2"), {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         expect(
           failure._tag === "PlanConflict" && failure.conflicts.map(({ step, choices }) => [step.conflict, choices])
         ).toEqual([
@@ -372,10 +471,13 @@ describe("hook ownership and execution safety", () => {
         expect(home.read(".claude/settings.json")).toBe(settings);
         expect(home.read(".claude/skills/demo-app/hooks/hooks.json")).toBeUndefined();
         expect(yield* inventory()).toEqual(before);
-        expect((yield* doctor({ agents: ["claude-code"] })).filter((check) => check.name === "duplicate-hook")).toEqual(
-          []
-        );
-        yield* uninstall("demo-app");
+        expect(
+          (yield* doctor({
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })).filter((check) => check.name === "duplicate-hook")
+        ).toEqual([]);
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
         expect(home.read(".claude/settings.json")).toBe(settings);
         expect((yield* inventory()).entries).toEqual([]);
       }).pipe(Effect.provide(home.layer()));
@@ -389,13 +491,21 @@ describe("hook ownership and execution safety", () => {
       home.command("codex", FAKE_CODEX);
       return Effect.gen(function* () {
         const bundle = demoBundle();
-        yield* applyInstall(yield* planInstall(bundle, { agents: ["codex"] }));
+        yield* applyInstall(
+          yield* planInstall(bundle, {
+            agents: ["codex"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         const enabled = home.read(".codex/config.toml") ?? "";
         expect(enabled).toContain("enabled = true");
         home.write(".codex/config.toml", enabled.replace("enabled = true", "enabled = false"));
         const before = yield* inventory();
         for (const options of [{}, { bundle }] as const) {
-          const report = yield* verify("demo-app", options);
+          const report = yield* verify("demo-app", {
+            ...options,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(
             report.artifacts.find((artifact) => artifact.locator.pointer === "/plugins/demo-app@demo-app")?.status
           ).toBe("user-modified");
@@ -403,7 +513,11 @@ describe("hook ownership and execution safety", () => {
           expect(yield* inventory()).toEqual(before);
         }
         home.write(".codex/config.toml", enabled);
-        expect((yield* verify("demo-app")).artifacts.every((artifact) => artifact.status === "in-sync")).toBe(true);
+        expect(
+          (yield* verify("demo-app", {
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })).artifacts.every((artifact) => artifact.status === "in-sync")
+        ).toBe(true);
       }).pipe(Effect.provide(home.layer()));
     }
   );

@@ -1,19 +1,15 @@
+import { lookupService } from "@rivus/agent-kit-catalog";
+import { canonicalAgents, type InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as z from "zod/mini";
 
-import { foreignHookFiles, type HookSource, type InstallAdapters, type Owner } from "../../domain/bundle/index.js";
+import { foreignHookFiles, type HookSource, type Owner } from "../../domain/bundle/index.js";
 import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
 import { holds, threeWayVerify } from "../../domain/ledger/index.js";
 import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
-import {
-  duplicateHooks,
-  type HookDialects,
-  type HookFinding,
-  hookHealth,
-  type HookProblem
-} from "../../domain/lifecycle/index.js";
+import { duplicateHooks, type HookFinding, hookHealth, type HookProblem } from "../../domain/lifecycle/index.js";
 import { hookProgram } from "../services/hook-program.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";
@@ -63,8 +59,7 @@ export interface DoctorOptions extends ScopeOptions {
    * that runs more than one of them in an agent is reported as firing twice.
    */
   readonly markers?: readonly string[];
-  readonly adapters?: InstallAdapters;
-  readonly dialects?: HookDialects;
+  readonly providers: InstallProviders;
 }
 
 /** One command hook an agent runs, as `event` in the agent's own names. */
@@ -181,7 +176,8 @@ function agentHooks(
         }
       }
     });
-    for (const source of setup.adapters[agent]?.hookSources?.(setup.context) ?? []) {
+    const adapter = lookupService(agent, setup.adapters);
+    for (const source of (adapter.ok ? adapter.value.hookSources?.(setup.context) : undefined) ?? []) {
       yield* read(source, true);
     }
     for (const file of foreignHookFiles(agent, setup.dialects, setup.adapters, setup.context)) {
@@ -202,7 +198,10 @@ function agentHooks(
  * to the plugin that replaced it. Taking the lock to test it creates the lock files in the harness state directory
  * and nothing else.
  */
-export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Check[], never, HarnessServices> {
+export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], never, HarnessServices> {
+  if (options.agents !== undefined) {
+    options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
+  }
   return Effect.gen(function* () {
     requireUserScope(options);
     const scope = yield* ledgerScope(options);
@@ -272,7 +271,7 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
 
     const exists = new Map<string, boolean>();
     for (const agent of options.agents ?? (Object.keys(setup.adapters) as CodingAgentId[])) {
-      const dialect = Object.hasOwn(setup.dialects, agent) ? setup.dialects[agent] : undefined;
+      const dialect = lookupService(agent, setup.dialects);
       const hooks = yield* agentHooks(agent, setup);
       const findings: HookFinding[] = [];
       for (const hook of hooks.filter((found) => found.own)) {
@@ -283,7 +282,15 @@ export function doctor(options: DoctorOptions = {}): Effect.Effect<readonly Chec
           );
           exists.set(program, stat !== undefined);
         }
-        findings.push(...hookHealth(dialect, hook.locator, hook.hook, (target) => exists.get(target) ?? true, program));
+        findings.push(
+          ...hookHealth(
+            dialect.ok ? dialect.value : undefined,
+            hook.locator,
+            hook.hook,
+            (target) => exists.get(target) ?? true,
+            program
+          )
+        );
       }
       findings.push(...duplicateHooks(agent, hooks, options.markers ?? []));
       checks.push(...findings.map(hookCheck));

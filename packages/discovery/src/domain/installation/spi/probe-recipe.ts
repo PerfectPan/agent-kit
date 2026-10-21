@@ -1,3 +1,4 @@
+import type { ServiceTable } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog";
 
 import type { AuthReading } from "../value-objects/auth-state.js";
@@ -60,7 +61,7 @@ export interface AuthProbe {
 
 /**
  * How discovery detects one agent. A recipe is data plus pure parsers; `detectAgents` does the IO. Built-in recipes
- * are in `builtinProbeRecipes`; a caller passes its own through the `recipes` option, and `/testing` has the
+ * are in `builtinProbeRecipes`; a caller supplies its own through provider descriptors, and `/testing` has the
  * conformance checks a recipe must pass.
  */
 export interface ProbeRecipe {
@@ -91,8 +92,8 @@ export interface ProbeRecipe {
   readonly home?: HomeRule;
 }
 
-/** Probe recipes by agent id; `detectAgents` defaults to `builtinProbeRecipes`. */
-export type ProbeRecipes = Readonly<Partial<Record<CodingAgentId, ProbeRecipe>>>;
+/** Probe recipes by agent id; supplied to `detectAgents`. */
+export type ProbeRecipes = ServiceTable<ProbeRecipe>;
 
 /** Credential files and variables an auth probe walks. Absent auth, and absent lists, are empty. */
 export function authProbeLists(auth: AuthProbe | undefined): {

@@ -9,6 +9,8 @@ agent-presence, a trace viewer and agent-task-loop (plus an editor plugin) each 
 - Paired Spec: [docs/specs/0001-agent-kit.md](../specs/0001-agent-kit.md) (the kit's public entries; each application's external behavior stays the same)
 - Repository: `PerfectPan/agent-kit`, generated from `PerfectPan/project-template-rush` after the decisions were confirmed
 
+The provider APIs described in this original plan are superseded by [Plan 0002](0002-providers-and-workspace.md#33-service-tables-descriptors-and-routing). Current calls use provider descriptors; `resolveHome` and `CodingAgentIdWithHome` are removed, and identity parsing takes an explicit table. See the [current Spec](../specs/0001-agent-kit.md) for the supported interfaces.
+
 ## Contents
 
 - [1. Background and goals](#1-background-and-goals)

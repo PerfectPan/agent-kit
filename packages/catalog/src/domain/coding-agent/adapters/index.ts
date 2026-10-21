@@ -1,3 +1,4 @@
+import { lookupService } from "../services/service-table.js";
 import type { BuiltinCodingAgentId, CodingAgent, CodingAgentWithHome } from "../index.js";
 
 import { claudeCode } from "./claude-code.js";
@@ -22,5 +23,5 @@ export const builtinCodingAgents: {
 };
 
 export function isBuiltinCodingAgentId(value: string): value is BuiltinCodingAgentId {
-  return Object.hasOwn(builtinCodingAgents, value);
+  return lookupService(value, builtinCodingAgents).ok;
 }

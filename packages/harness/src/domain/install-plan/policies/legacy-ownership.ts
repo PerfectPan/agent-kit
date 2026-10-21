@@ -1,3 +1,4 @@
+import { lookupService } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
@@ -109,7 +110,8 @@ export function protectedReplacement(
 
 /** Whether the runner installs a hook for the same event, under the event's own name or one of its dialect aliases. */
 function bundleFiresEvent(bundle: Bundle, runner: CodingAgentId, event: string, dialects: HookDialects): boolean {
-  const aliases = new Set(aliasesOf(dialects[runner]?.events, event));
+  const dialect = lookupService(runner, dialects);
+  const aliases = new Set(aliasesOf(dialect.ok ? dialect.value.events : undefined, event));
   return bundle.artifacts.some(
     (spec) => spec.type === "hooks" && spec.events[runner]?.some((name) => name === event || aliases.has(name)) === true
   );

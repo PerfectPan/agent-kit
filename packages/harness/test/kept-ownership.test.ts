@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
@@ -19,12 +22,20 @@ describe("kept hook replacement ownership", () => {
       () => {
         const home = testHome();
         return Effect.gen(function* () {
-          yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+          yield* applyInstall(
+            yield* planInstall(demoBundle(), {
+              agents: ["claude-code"],
+              ...sharedConfig,
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
           home.write(
             ".claude/settings.json",
             (home.read(".claude/settings.json") ?? "").replaceAll("demo-hook --agent", "demo-hook --verbose --agent")
           );
-          yield* uninstall("demo-app");
+          yield* uninstall("demo-app", {
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           const edited = home.read(".claude/settings.json");
           const bundle = demoBundle("1", {
             owner: "other-app",
@@ -37,10 +48,18 @@ describe("kept hook replacement ownership", () => {
               }
             ]
           });
-          yield* applyInstall(yield* planInstall(bundle, { agents: ["claude-code"] }));
+          yield* applyInstall(
+            yield* planInstall(bundle, {
+              agents: ["claude-code"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
           expect(home.read(".claude/skills/other-app/hooks/hooks.json")).toContain("/opt/other-hook");
           expect(home.read(".claude/settings.json")).toBe(edited);
-          yield* uninstall("other-app", { legacyMarkers: ["demo-hook"] });
+          yield* uninstall("other-app", {
+            legacyMarkers: ["demo-hook"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(home.read(".claude/settings.json")).toBe(edited);
           expect((yield* inventory()).entries).toEqual([]);
         }).pipe(Effect.provide(home.layer()));
@@ -52,12 +71,18 @@ describe("kept hook replacement ownership", () => {
     it.effect(`S33: still refuses replacement when the protected hook matches the ${match}`, () => {
       const home = testHome();
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["claude-code"],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         home.write(
           ".claude/settings.json",
           (home.read(".claude/settings.json") ?? "").replaceAll("demo-hook --agent", "demo-hook --verbose --agent")
         );
-        yield* uninstall("demo-app");
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
         const edited = home.read(".claude/settings.json");
         const before = yield* inventory();
         const bundle = demoBundle("2", {
@@ -71,7 +96,12 @@ describe("kept hook replacement ownership", () => {
             }
           ]
         });
-        const failure = yield* Effect.flip(planInstall(bundle, { agents: ["claude-code"] }));
+        const failure = yield* Effect.flip(
+          planInstall(bundle, {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         expect(failure).toMatchObject({ _tag: "PlanConflict" });
         expect(home.read(".claude/settings.json")).toBe(edited);
         expect(yield* inventory()).toEqual(before);

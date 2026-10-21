@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../../src/public.js";
+import { builtinHookDialects as testHooks } from "../../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node";
 import * as Effect from "effect/Effect";
@@ -45,14 +48,20 @@ const stuckFiles = Layer.effect(
 
 const program = Effect.gen(function* () {
   if (mode === "stuck-apply") {
-    const plan = yield* planInstall(demoBundle(), { agents: ["claude-code", "grok"] });
+    const plan = yield* planInstall(demoBundle(), {
+      agents: ["claude-code", "grok"],
+      providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+    });
     print("planned", { steps: plan.steps.length });
     yield* applyInstall(plan);
     return;
   }
   if (mode === "apply") {
     // Plans first, then applies on "go", so that several workers apply plans built on the same ledger at once.
-    const plan = yield* planInstall(demoBundle(), { agents: ["claude-code", "grok"] });
+    const plan = yield* planInstall(demoBundle(), {
+      agents: ["claude-code", "grok"],
+      providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+    });
     print("ready");
     yield* Effect.promise(() => stdinLine("go"));
     const outcome = yield* applyInstall(plan, { lockWaitMs: 20_000 }).pipe(

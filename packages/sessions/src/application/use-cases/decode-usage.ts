@@ -1,15 +1,14 @@
-import { AgentKitError, type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { UsageRecord } from "../../domain/usage/index.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
 import type { SessionErrorCode } from "../errors.js";
-import { builtinUsageDecoders } from "../services/usage-decoders/index.js";
+import type { UsageProviders } from "../providers.js";
 import type {
   DecodeUsageOptions,
   UsageCursor,
   UsageDecodeFailure,
-  UsageDecoders,
   UsagePlatform,
   UsageSource,
   UsageSourceFailure,
@@ -31,18 +30,18 @@ export function decodeUsage(
   platform: UsagePlatform,
   agent: CodingAgentId,
   target: UsageTarget,
-  options: DecodeUsageOptions = {}
+  options: DecodeUsageOptions & { readonly providers: UsageProviders }
 ): UsageStream {
-  const table: UsageDecoders = builtinUsageDecoders;
-  const parsed = parseCodingAgentId(agent, builtinCodingAgents);
+  const table = options.providers.usage;
+  const parsed = parseCodingAgentId(agent, options.providers.identity);
   const id = parsed.ok ? parsed.value : agent;
-  const decoder = table[id];
+  const found = lookupService(id, table);
   const { from, since, until, signal } = options;
-  if (!decoder) {
+  if (!found.ok) {
     const failure: UsageDecodeFailure = {
       agent: id,
       path: target.path,
-      error: { _tag: "CapabilityUnsupported", agent: id }
+      error: found.error
     };
     return {
       cursor: from,
@@ -52,6 +51,7 @@ export function decodeUsage(
       }
     };
   }
+  const decoder = found.value;
   if (from && from.agent !== decoder.agent) {
     throw new AgentKitError<SessionErrorCode>(
       "invalid-cursor",
@@ -94,6 +94,7 @@ export function decodeUsage(
 }
 
 export interface ListUsageSourcesOptions extends UsageSourceOptions {
+  readonly providers: UsageProviders;
   /** Agents to list, by id or alias; defaults to every agent with a usage decoder. */
   readonly agents?: readonly CodingAgentId[];
 }
@@ -106,17 +107,26 @@ export interface ListUsageSourcesOptions extends UsageSourceOptions {
  */
 export async function* listUsageSources(
   platform: UsagePlatform & Pick<Platform, "env" | "home">,
-  options: ListUsageSourcesOptions = {}
+  options: ListUsageSourcesOptions
 ): AsyncGenerator<UsageSource | UsageSourceFailure, void, undefined> {
-  const table: UsageDecoders = builtinUsageDecoders;
-  const decoders = selectAdapters(table, options.agents ?? Object.keys(table), "usage decoder");
+  const table = options.providers.usage;
+  const decoders = selectAdapters(
+    table,
+    options.agents ?? Object.keys(table),
+    "usage decoder",
+    options.providers.identity
+  );
   const sourceOptions = {
     ...(options.since === undefined ? {} : { since: options.since }),
     ...(options.signal ? { signal: options.signal } : {})
   };
   for (const decoder of decoders) {
     options.signal?.throwIfAborted();
-    yield* decoder.sources(platform, adapterHome(decoder, platform, "usage decoder"), sourceOptions);
+    yield* decoder.sources(
+      platform,
+      adapterHome(decoder, platform, "usage decoder", options.providers.identity),
+      sourceOptions
+    );
   }
 }
 

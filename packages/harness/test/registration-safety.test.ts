@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { cpSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -48,7 +51,12 @@ describe("CLI registration side-effect paths", () => {
         home.command("codex", FAKE_CODEX);
         return Effect.gen(function* () {
           if (stage !== "initial") {
-            yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
+            yield* applyInstall(
+              yield* planInstall(initial, {
+                agents: ["codex"],
+                providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              })
+            );
           }
           const before = yield* inventory();
           const calls = home.read("codex-calls.log") ?? "";
@@ -56,7 +64,9 @@ describe("CLI registration side-effect paths", () => {
           const config = home.read(".codex/config.toml");
           const outsideHooks = home.read("outside/hooks.json");
           if (stage === "uninstall") {
-            const report = yield* uninstall("demo-app");
+            const report = yield* uninstall("demo-app", {
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            });
             expect(report.plan.steps).toContainEqual(
               expect.objectContaining({
                 locator: expect.objectContaining({ pointer: "/plugins/demo-app@demo-app" }),
@@ -70,7 +80,10 @@ describe("CLI registration side-effect paths", () => {
             expect(home.read(".codex/config.toml")).toContain('[plugins."demo-app@demo-app"]');
           } else {
             const failure = yield* Effect.flip(
-              planInstall(stage === "initial" ? initial : upgrade, { agents: ["codex"] })
+              planInstall(stage === "initial" ? initial : upgrade, {
+                agents: ["codex"],
+                providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              })
             );
             expect(failure).toMatchObject({ _tag: "PlanConflict" });
             expect(failure._tag === "PlanConflict" && failure.conflicts).toContainEqual(
@@ -100,11 +113,16 @@ describe("CLI registration side-effect paths", () => {
       home.command("codex", FAKE_CODEX);
       return Effect.gen(function* () {
         if (stage !== "initial") {
-          yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
+          yield* applyInstall(
+            yield* planInstall(initial, {
+              agents: ["codex"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
         }
         const plan = yield* planInstall(
           stage === "initial" ? initial : stage === "upgrade" ? upgrade : demoBundle("2", { artifacts: [] }),
-          { agents: ["codex"] }
+          { agents: ["codex"], providers: { install: testInstall, hooks: testHooks, identity: testIdentity } }
         );
         const before = yield* inventory();
         const calls = home.read("codex-calls.log") ?? "";
@@ -137,8 +155,16 @@ describe("CLI registration side-effect paths", () => {
       }
     } satisfies typeof home.platform;
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
-      const plan = yield* planInstall(upgrade, { agents: ["codex"] });
+      yield* applyInstall(
+        yield* planInstall(initial, {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
+      const plan = yield* planInstall(upgrade, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       const calls = home.read("codex-calls.log") ?? "";
       armed = true;
       const failure = yield* Effect.flip(applyInstall(plan));
@@ -158,11 +184,23 @@ describe("CLI registration side-effect paths", () => {
         home.write(`${destination}/config.toml`, 'model = "user-model"\n');
         symlinkSync(home.path(destination), home.path(".codex"));
         return Effect.gen(function* () {
-          yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
-          yield* applyInstall(yield* planInstall(upgrade, { agents: ["codex"] }));
+          yield* applyInstall(
+            yield* planInstall(initial, {
+              agents: ["codex"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
+          yield* applyInstall(
+            yield* planInstall(upgrade, {
+              agents: ["codex"],
+              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            })
+          );
           expect(home.read(copy)).toContain('"timeout": 6');
           rmSync(home.path("bin/codex"));
-          yield* uninstall("demo-app");
+          yield* uninstall("demo-app", {
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(home.read(copy)).toBeUndefined();
           expect(home.read(`${destination}/config.toml`)?.trim()).toBe('model = "user-model"');
         }).pipe(Effect.provide(home.layer()));
@@ -188,8 +226,16 @@ describe("CLI registration side-effect paths", () => {
       }
     } satisfies typeof home.platform;
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
-      const plan = yield* planInstall(upgrade, { agents: ["codex"] });
+      yield* applyInstall(
+        yield* planInstall(initial, {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
+      const plan = yield* planInstall(upgrade, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       const calls = home.read("codex-calls.log") ?? "";
       armed = true;
       const failure = yield* Effect.flip(applyInstall(plan));
@@ -206,8 +252,16 @@ describe("CLI registration side-effect paths", () => {
     home.write("dotfiles/codex/config.toml", 'model = "user-model"\n');
     symlinkSync(home.path("dotfiles/codex"), home.path(".codex"));
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
-      const plan = yield* planInstall(upgrade, { agents: ["codex"] });
+      yield* applyInstall(
+        yield* planInstall(initial, {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
+      const plan = yield* planInstall(upgrade, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       const calls = home.read("codex-calls.log");
       cpSync(home.path("dotfiles/codex"), home.path("outside"), { recursive: true });
       rmSync(home.path(".codex"));
@@ -226,8 +280,16 @@ describe("CLI registration side-effect paths", () => {
     home.write(".agents/codex/config.toml", 'model = "user-model"\n');
     symlinkSync(home.path(".agents/codex"), home.path(".codex"));
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
-      const plan = yield* planInstall(upgrade, { agents: ["codex"] });
+      yield* applyInstall(
+        yield* planInstall(initial, {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
+      const plan = yield* planInstall(upgrade, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       const before = yield* inventory();
       const calls = home.read("codex-calls.log");
       cpSync(home.path(".agents/codex"), home.path("outside"), { recursive: true });
@@ -248,16 +310,26 @@ describe("CLI registration side-effect paths", () => {
     const home = testHome();
     home.command("codex", FAKE_CODEX);
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(initial, { agents: ["codex"] }));
+      yield* applyInstall(
+        yield* planInstall(initial, {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        })
+      );
       // The plugin predates harness's knowledge, as if the user had installed it: the ledger no longer knows it, so
       // the next plan adopts the identical installation and keeps what was there as the pre-image.
       rmSync(home.path(".local/state/agent-kit/harness/user/ledger.json"), { force: true });
-      const adopted = yield* planInstall(initial, { agents: ["codex"] });
+      const adopted = yield* planInstall(initial, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(adopted.steps.every((step) => step.action === "adopt" && step.capturePreImage)).toBe(true);
       yield* applyInstall(adopted);
       const calls = home.read("codex-calls.log") ?? "";
       const config = home.read(".codex/config.toml");
-      const removed = yield* uninstall("demo-app");
+      const removed = yield* uninstall("demo-app", {
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       expect(removed.plan.steps).toContainEqual(
         expect.objectContaining({
           locator: expect.objectContaining({ pointer: "/plugins/demo-app@demo-app" }),

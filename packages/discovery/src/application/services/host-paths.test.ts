@@ -1,3 +1,4 @@
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
 import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
@@ -18,19 +19,21 @@ describe("expandProbePath", () => {
 
   it("expands ~ against the home directory and keeps absolute paths", () => {
     const platform = { env: {}, home: "/u/me/" };
-    expect(expandProbePath("~", platform, recipe)).toBe("/u/me/");
-    expect(expandProbePath("~/.x/y", platform, recipe)).toBe("/u/me/.x/y");
-    expect(expandProbePath("/Applications/X.app", platform, recipe)).toBe("/Applications/X.app");
-    expect(expandProbePath("~other/x", platform, recipe)).toBe("~other/x");
+    expect(expandProbePath("~", platform, recipe, testIdentity)).toBe("/u/me/");
+    expect(expandProbePath("~/.x/y", platform, recipe, testIdentity)).toBe("/u/me/.x/y");
+    expect(expandProbePath("/Applications/X.app", platform, recipe, testIdentity)).toBe("/Applications/X.app");
+    expect(expandProbePath("~other/x", platform, recipe, testIdentity)).toBe("~other/x");
   });
 
   it("follows the agent's home rule, including its override variable, or the recipe's own rule", () => {
     const platform = { env: { GEMINI_CLI_HOME: "/alt" }, home: "/u/me" };
-    expect(expandProbePath({ agentHome: "gemini-cli", path: "settings.json" }, platform, recipe)).toBe(
+    expect(expandProbePath({ agentHome: "gemini-cli", path: "settings.json" }, platform, recipe, testIdentity)).toBe(
       "/alt/.gemini/settings.json"
     );
-    expect(expandProbePath({ agentHome: "my-agent", path: "a/b" }, platform, recipe)).toBe("/u/me/.mine/a/b");
-    expect(() => expandProbePath({ agentHome: "other-agent" }, platform, recipe)).toThrow(/other-agent/);
+    expect(expandProbePath({ agentHome: "my-agent", path: "a/b" }, platform, recipe, testIdentity)).toBe(
+      "/u/me/.mine/a/b"
+    );
+    expect(() => expandProbePath({ agentHome: "other-agent" }, platform, recipe, testIdentity)).toThrow(/other-agent/);
   });
 });
 

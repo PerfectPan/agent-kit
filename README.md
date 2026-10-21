@@ -20,11 +20,12 @@ adoption. See [Adopting agent-kit](docs/development/adoption.md).
 
 ## Entries
 
-The source API has 16 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (19 in total).
+The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (19 in total).
 
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
 | `@rivus/agent-kit/acp`            | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, binding store Layers               | with `effect` and a platform that spawns |
+| `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | anywhere |
 | `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`             | anywhere                  |
 | `@rivus/agent-kit/cost`           | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                           | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
@@ -213,8 +214,14 @@ holds entries such as family aliases. A model without a price has no cost (`unde
 Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/transcript/usage` reads the usage of every agent in the table except
 Cursor (added after 0.1.0).
 
-To read another agent, pass your own `SessionAdapter` through the `adapters` option
-(`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
+Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
+`@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
+changes only Codex hooks. Omitted services and other agents remain available; the old `adapters`, `dialects`,
+`recipes` and `profiles` options are removed. A custom `identity` supplies aliases and a fallback home rule;
+conflicting aliases or an identity whose id differs from its descriptor are rejected. `parseCodingAgentId` takes
+an explicit identity table; `homeFromRule` takes the chosen rule. `resolveHome` and `CodingAgentIdWithHome` are removed.
+
+To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]` and check it with `sessionAdapterConformance` from `/testing`.
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 

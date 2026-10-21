@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import {
@@ -14,11 +14,10 @@ import {
 } from "../../domain/usage/index.js";
 import { decodeUsage, isUsageRecord, isUsageSource, listUsageSources } from "./decode-usage.js";
 import type { SessionErrorCode } from "../errors.js";
-import { builtinUsageDecoders } from "../services/usage-decoders/index.js";
+import type { UsageProviders } from "../providers.js";
 import type {
   UsageCursor,
   UsageDecodeFailure,
-  UsageDecoders,
   UsagePlatform,
   UsageSource,
   UsageSourceFailure,
@@ -28,6 +27,7 @@ import type {
 export type { UsageScanMark, UsageScanSource, UsageScanState };
 
 interface ScanUsageCommon {
+  readonly providers: UsageProviders;
   /** Agents to scan, by id or alias; defaults to every agent with a usage decoder. */
   readonly agents?: readonly CodingAgentId[];
   /** Stops each source at its first record at or after this time. */
@@ -81,7 +81,7 @@ export interface UsageScan extends AsyncIterable<UsageRecord | UsageDecodeFailur
  */
 export function scanUsage(
   platform: UsagePlatform & Pick<Platform, "env" | "home" | "clock">,
-  options: ScanUsageOptions = {}
+  options: ScanUsageOptions
 ): UsageScan {
   const { agents, since, until, signal } = options;
   const previous = options.state;
@@ -94,6 +94,7 @@ export function scanUsage(
 
   const decode = (source: UsageSource, from: UsageCursor | undefined): UsageStream =>
     decodeUsage(platform, source.agent, source, {
+      providers: options.providers,
       ...(from ? { from } : {}),
       ...(since === undefined ? {} : { since }),
       ...(until === undefined ? {} : { until }),
@@ -111,8 +112,8 @@ export function scanUsage(
     },
     async *[Symbol.asyncIterator]() {
       const scanned = new Set(
-        (agents ?? Object.keys(builtinUsageDecoders)).map((agent) => {
-          const parsed = parseCodingAgentId(agent, builtinCodingAgents);
+        (agents ?? Object.keys(options.providers.usage)).map((agent) => {
+          const parsed = parseCodingAgentId(agent, options.providers.identity);
           return parsed.ok ? parsed.value : agent;
         })
       );
@@ -120,6 +121,7 @@ export function scanUsage(
       const listing: UsageSource[] = [];
       const failed: string[] = [];
       for await (const item of listUsageSources(platform, {
+        providers: options.providers,
         ...(agents ? { agents } : {}),
         ...(since === undefined ? {} : { since }),
         ...(signal ? { signal } : {})
@@ -159,7 +161,8 @@ export function scanUsage(
               yield item;
               continue;
             }
-            const usageKey = (builtinUsageDecoders as UsageDecoders)[item.agent]?.usageKey(item);
+            const decoder = lookupService(item.agent, options.providers.usage);
+            const usageKey = decoder.ok ? decoder.value.usageKey(item) : undefined;
             if (usageKey !== undefined) {
               if (window.count(item, usageKey)) {
                 yield item;

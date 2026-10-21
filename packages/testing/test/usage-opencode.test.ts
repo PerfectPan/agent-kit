@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -85,7 +87,12 @@ async function decode(
   options: DecodeUsageOptions = {},
   on: UsagePlatform = platform
 ): Promise<{ records: UsageRecord[]; failures: string[]; cursor: UsageCursor | undefined }> {
-  const stream = decodeUsage(on, "opencode", { path }, options);
+  const stream = decodeUsage(
+    on,
+    "opencode",
+    { path },
+    { ...options, providers: { usage: testUsage, identity: testIdentity } }
+  );
   const records: UsageRecord[] = [];
   const failures: string[] = [];
   for await (const item of stream) {
@@ -106,7 +113,12 @@ async function decodePart(
   options: DecodeUsageOptions = {},
   on: UsagePlatform = platform
 ): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
-  const stream = decodeUsage(on, "opencode", { path }, options);
+  const stream = decodeUsage(
+    on,
+    "opencode",
+    { path },
+    { ...options, providers: { usage: testUsage, identity: testIdentity } }
+  );
   const records: UsageRecord[] = [];
   for await (const item of stream) {
     if (!isUsageRecord(item)) {
@@ -341,7 +353,7 @@ describe("opencode usage (SQLite)", () => {
     const sources = [];
     for await (const item of listUsageSources(
       { ...platform, env: { XDG_DATA_HOME: dataHome }, home: "/u/me" },
-      { agents: ["opencode"] }
+      { agents: ["opencode"], providers: { usage: testUsage, identity: testIdentity } }
     )) {
       sources.push(isUsageSource(item) ? item.path : item.error._tag);
     }

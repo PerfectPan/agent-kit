@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { isUsageSource, listUsageSources, type ListUsageSourcesOptions } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
@@ -9,13 +11,16 @@ const tree = await readUsageHome("/u/me");
 
 async function list(
   files: Record<string, MemoryFile>,
-  options: ListUsageSourcesOptions = {},
+  options: Omit<ListUsageSourcesOptions, "providers"> = {},
   env: Record<string, string> = {}
 ): Promise<{ sources: string[]; failures: string[] }> {
   const platform = createMemoryPlatform({ files, env, home: "/u/me" });
   const sources: string[] = [];
   const failures: string[] = [];
-  for await (const item of listUsageSources(platform, options)) {
+  for await (const item of listUsageSources(platform, {
+    ...options,
+    providers: { usage: testUsage, identity: testIdentity }
+  })) {
     if (isUsageSource(item)) {
       sources.push(`${item.agent} ${item.path}`);
     } else {
@@ -90,12 +95,6 @@ describe("listUsageSources", () => {
     const { sources } = await list(files, { agents: ["codex"], since: Date.parse("2026-01-01T00:00:00.000Z") });
     expect(sources).toHaveLength(3);
     expect(sources.some((source) => source.includes("archived"))).toBe(false);
-  });
-
-  it("keeps the decoder table out of the public surface", async () => {
-    const names = Object.keys(await import("@rivus/agent-kit-sessions/public"));
-    expect(names).toContain("scanUsage");
-    expect(names).not.toContain("builtinUsageDecoders");
   });
 
   it("reports a missing root as a failure item and throws for an agent without a decoder", async () => {

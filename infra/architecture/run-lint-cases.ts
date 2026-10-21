@@ -22,7 +22,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { type Case, cases } from "./lint-cases.ts";
+import { cases } from "./lint-cases.ts";
+import type { Case } from "./case.ts";
 import { workspaceProjects } from "./lint.ts";
 
 const ROOT = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));

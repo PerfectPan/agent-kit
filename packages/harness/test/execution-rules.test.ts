@@ -1,3 +1,6 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -51,7 +54,10 @@ describe("apply execution rules (plan 3.9)", () => {
             })
         }));
         yield* Effect.gen(function* () {
-          const plan = yield* planInstall(demoBundle(), { agents: [...agents] });
+          const plan = yield* planInstall(demoBundle(), {
+            agents: [...agents],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect(plan.steps.length).toBeGreaterThan(2);
           const fiber = yield* Effect.forkChild(applyInstall(plan));
           yield* Deferred.await(entered);
@@ -81,7 +87,10 @@ describe("apply execution rules (plan 3.9)", () => {
 
         // The next change probes the pending steps (none started) and starts over from the recorded state.
         yield* Effect.gen(function* () {
-          const again = yield* planInstall(demoBundle(), { agents: [...agents] });
+          const again = yield* planInstall(demoBundle(), {
+            agents: [...agents],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          });
           expect((yield* inventory()).pending).toEqual([]);
           yield* applyInstall(again);
           expect((yield* inventory()).entries).toHaveLength(again.steps.length);
@@ -111,7 +120,10 @@ describe("apply execution rules (plan 3.9)", () => {
           })
       }));
       yield* Effect.gen(function* () {
-        const plan = yield* planInstall(demoBundle(), { agents: [...agents] });
+        const plan = yield* planInstall(demoBundle(), {
+          agents: [...agents],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         const failure = yield* Effect.flip(applyInstall(plan));
         expect(failure).toMatchObject({ _tag: "ApplyFailed", completed: 1, cause: { message: "disk full" } });
         expect(attempts).toBe(2);
@@ -146,7 +158,13 @@ describe("apply execution rules (plan 3.9)", () => {
         }
       }));
       yield* Effect.flip(
-        Effect.flatMap(planInstall(demoBundle(), { agents: [...agents] }), applyInstall).pipe(Effect.provide(failing))
+        Effect.flatMap(
+          planInstall(demoBundle(), {
+            agents: [...agents],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          }),
+          applyInstall
+        ).pipe(Effect.provide(failing))
       );
 
       const entered = yield* Deferred.make<void>();
@@ -169,7 +187,12 @@ describe("apply execution rules (plan 3.9)", () => {
       ).pipe(Layer.provide(base));
       yield* Effect.gen(function* () {
         expect((yield* inventory()).pending).toHaveLength(1);
-        const fiber = yield* Effect.forkChild(planInstall(demoBundle(), { agents: [...agents] }));
+        const fiber = yield* Effect.forkChild(
+          planInstall(demoBundle(), {
+            agents: [...agents],
+            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          })
+        );
         yield* Deferred.await(entered);
         const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber));
         yield* Effect.sleep(50);
@@ -185,8 +208,14 @@ describe("apply execution rules (plan 3.9)", () => {
   it.effect("S32: a plan built before the ledger moved is refused and writes nothing", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      const stale = yield* planInstall(demoBundle(), { agents: ["grok"] });
-      const fresh = yield* planInstall(demoBundle(), { agents: ["grok"] });
+      const stale = yield* planInstall(demoBundle(), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
+      const fresh = yield* planInstall(demoBundle(), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      });
       yield* applyInstall(fresh);
       const before = home.read(".grok/hooks/demo-app.json");
       const failure = yield* Effect.flip(applyInstall(stale));
@@ -200,7 +229,10 @@ describe("apply execution rules (plan 3.9)", () => {
     () => {
       const home = testHome();
       return Effect.gen(function* () {
-        const plan = yield* planInstall(demoBundle(), { agents: ["claude-code", "grok"] });
+        const plan = yield* planInstall(demoBundle(), {
+          agents: ["claude-code", "grok"],
+          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        });
         home.write(".grok/hooks/demo-app.json", "{}\n");
         const failure = yield* Effect.flip(applyInstall(plan));
         expect(failure).toMatchObject({ _tag: "TargetChanged", completed: 0, expected: { absent: true } });

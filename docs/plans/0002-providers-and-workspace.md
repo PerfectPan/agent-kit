@@ -310,7 +310,13 @@ packages/providers/claude-code/
     sessions.listSessions(platform, { ...options, providers: tablesFor(["sessions", "identity"], options.providers) })
   ```
 
-  This ends the rule that shell entries only re-export names; `authoring.md` changes with it.
+  This ends the rule that shell entries only re-export names; `authoring.md` changes with it. Local shell imports
+  are declared per file in `boundaries.shellImports`, so the hooks entry cannot import the complete descriptor list.
+  `/providers` exports `Provider` and `builtinProviders`. Related public operations (`verify`, `uninstall`, `doctor`,
+  `probeAgent`, `summarizeSession`, `sessionAdapterHome`) bind the same tables as the use cases they call. Existing
+  individual built-in table exports remain until provider closeout; the old override options do not.
+  Descriptor types use the narrow `acp/public/profiles` and `harness/public/install` type entries: importing their
+  aggregate public entries makes declaration bundling carry Effect into the plain and zero-dependency entries.
 - **The built-in tables** are built in `packages/agent-kit/src/providers/<service>.ts`, one module per service, each importing that service's subpath from every provider. `builtinProviders` (all descriptors) is assembled in its own module.
 - **Unsupported services**: `packages/agent-kit/src/providers/unsupported.ts` records, for each built-in agent and service it does not provide, the reason.
 - **The capability check** requires each built-in agent to either provide each service or have a recorded reason. The README support matrix is written in the same batch, and a test keeps it equal to the tables.

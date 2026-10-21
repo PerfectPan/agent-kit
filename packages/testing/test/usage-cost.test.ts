@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { calendarWindow, costOf, createPricing, type Price, summarize } from "@rivus/agent-kit-cost";
 import { decodeUsage, isUsageRecord, noCacheInputTokens, type UsageRecord } from "@rivus/agent-kit-sessions";
@@ -28,7 +30,12 @@ const SOURCES: readonly (readonly [CodingAgentId, string])[] = [
 
 async function decode(agent: CodingAgentId, path: string): Promise<UsageRecord[]> {
   const records: UsageRecord[] = [];
-  for await (const item of decodeUsage(platform, agent, { path: `/u/me/${path}` }, { final: true })) {
+  for await (const item of decodeUsage(
+    platform,
+    agent,
+    { path: `/u/me/${path}` },
+    { final: true, providers: { usage: testUsage, identity: testIdentity } }
+  )) {
     if (!isUsageRecord(item)) {
       throw new Error(`${path}: ${JSON.stringify(item.error)}`);
     }

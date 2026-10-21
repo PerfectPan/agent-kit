@@ -1,7 +1,8 @@
 import {
   type CodingAgentId,
   type HomeRule,
-  builtinCodingAgents,
+  type CodingAgent,
+  type ServiceTable,
   homeFromRule,
   homeRuleOf
 } from "@rivus/agent-kit-catalog";
@@ -61,8 +62,12 @@ export function envValue(platform: Pick<DiscoveryPlatform, "env" | "os">, name: 
  * The home rule a recipe path under `agent`'s home follows: the recipe's own rule when it is for that same agent,
  * else the shared rule a path under another agent's home follows (catalog's for a built-in agent).
  */
-function recipeHomeRule(agent: CodingAgentId, recipe: ProbeRecipe): HomeRule | undefined {
-  return homeRuleOf(agent, builtinCodingAgents, agent === recipe.agent ? recipe.home : undefined);
+function recipeHomeRule(
+  agent: CodingAgentId,
+  recipe: ProbeRecipe,
+  identities: ServiceTable<CodingAgent>
+): HomeRule | undefined {
+  return homeRuleOf(agent, identities, agent === recipe.agent ? recipe.home : undefined);
 }
 
 /** Every path a recipe checks, including its credential files. */
@@ -76,9 +81,9 @@ export function recipePaths(recipe: ProbeRecipe): ProbePath[] {
 }
 
 /** Throws `capability-unsupported` when a recipe checks a path under the home of an agent without a home rule. */
-export function assertRecipePaths(recipe: ProbeRecipe): void {
+export function assertRecipePaths(recipe: ProbeRecipe, identities: ServiceTable<CodingAgent>): void {
   for (const path of recipePaths(recipe)) {
-    if (typeof path !== "string" && recipeHomeRule(path.agentHome, recipe) === undefined) {
+    if (typeof path !== "string" && recipeHomeRule(path.agentHome, recipe, identities) === undefined) {
       throw capabilityUnsupported(path.agentHome, "has no home rule, but a probe recipe checks a path under its home");
     }
   }
@@ -88,7 +93,8 @@ export function assertRecipePaths(recipe: ProbeRecipe): void {
 export function expandProbePath(
   path: ProbePath,
   platform: Pick<DiscoveryPlatform, "env" | "home">,
-  recipe: ProbeRecipe
+  recipe: ProbeRecipe,
+  identities: ServiceTable<CodingAgent>
 ): string {
   if (typeof path === "string") {
     if (path === "~") {
@@ -96,7 +102,7 @@ export function expandProbePath(
     }
     return path.startsWith("~/") ? `${platform.home.replace(/[/\\]+$/, "")}${path.slice(1)}` : path;
   }
-  const rule = recipeHomeRule(path.agentHome, recipe);
+  const rule = recipeHomeRule(path.agentHome, recipe, identities);
   if (rule === undefined) {
     throw capabilityUnsupported(path.agentHome, "has no home rule, but a probe recipe checks a path under its home");
   }

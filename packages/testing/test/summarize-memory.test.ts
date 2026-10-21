@@ -1,3 +1,5 @@
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import v8 from "node:v8";
 import vm from "node:vm";
 
@@ -105,23 +107,47 @@ describe("summarizeSession memory", () => {
     // A warm-up round: the first parse of a session pays for JIT and module warm-up, which would otherwise land in
     // the first measured round.
     await peakDuring((sampled) =>
-      loadTranscript(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+      loadTranscript(
+        sampled,
+        { agent: adapter.agent, path: "/claude/small/session.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     await peakDuring((sampled) =>
-      summarizeSession(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" }, { prompts })
+      summarizeSession(
+        sampled,
+        { agent: adapter.agent, path: "/claude/small/session.jsonl" },
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     for (let round = 1; round <= 5; round++) {
       const loadSmall = await peakDuring((sampled) =>
-        loadTranscript(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" })
+        loadTranscript(
+          sampled,
+          { agent: adapter.agent, path: "/claude/small/session.jsonl" },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const passSmall = await peakDuring((sampled) =>
-        summarizeSession(sampled, { agent: adapter.agent, path: "/claude/small/session.jsonl" }, { prompts })
+        summarizeSession(
+          sampled,
+          { agent: adapter.agent, path: "/claude/small/session.jsonl" },
+          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const loadLarge = await peakDuring((sampled) =>
-        loadTranscript(sampled, { agent: adapter.agent, path: "/claude/large/session.jsonl" })
+        loadTranscript(
+          sampled,
+          { agent: adapter.agent, path: "/claude/large/session.jsonl" },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const passLarge = await peakDuring((sampled) =>
-        summarizeSession(sampled, { agent: adapter.agent, path: "/claude/large/session.jsonl" }, { prompts })
+        summarizeSession(
+          sampled,
+          { agent: adapter.agent, path: "/claude/large/session.jsonl" },
+          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       console.log(
@@ -151,9 +177,17 @@ describe("summarizeSession memory", () => {
       const peak = { value: before };
       const sampled = withSampledReads(files, peak);
       if (summarize) {
-        await summarizeSession(sampled, { agent, path }, { prompts });
+        await summarizeSession(
+          sampled,
+          { agent, path },
+          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+        );
       } else {
-        await loadTranscript(sampled, { agent, path });
+        await loadTranscript(
+          sampled,
+          { agent, path },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        );
       }
       return peak.value - before;
     };
@@ -207,22 +241,48 @@ describe("summarizeSession memory", () => {
       await run(withSampledReads(files, peak));
       return peak.value - before;
     };
-    await peakDuring((sampled) => loadTranscript(sampled, { agent: adapter.agent, path: "/grok/small/updates.jsonl" }));
     await peakDuring((sampled) =>
-      summarizeSession(sampled, { agent: adapter.agent, path: "/grok/small/updates.jsonl" }, { prompts })
+      loadTranscript(
+        sampled,
+        { agent: adapter.agent, path: "/grok/small/updates.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    );
+    await peakDuring((sampled) =>
+      summarizeSession(
+        sampled,
+        { agent: adapter.agent, path: "/grok/small/updates.jsonl" },
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     for (let round = 1; round <= 5; round++) {
       const loadSmall = await peakDuring((sampled) =>
-        loadTranscript(sampled, { agent: adapter.agent, path: "/grok/small/updates.jsonl" })
+        loadTranscript(
+          sampled,
+          { agent: adapter.agent, path: "/grok/small/updates.jsonl" },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const passSmall = await peakDuring((sampled) =>
-        summarizeSession(sampled, { agent: adapter.agent, path: "/grok/small/updates.jsonl" }, { prompts })
+        summarizeSession(
+          sampled,
+          { agent: adapter.agent, path: "/grok/small/updates.jsonl" },
+          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const loadLarge = await peakDuring((sampled) =>
-        loadTranscript(sampled, { agent: adapter.agent, path: "/grok/large/updates.jsonl" })
+        loadTranscript(
+          sampled,
+          { agent: adapter.agent, path: "/grok/large/updates.jsonl" },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const passLarge = await peakDuring((sampled) =>
-        summarizeSession(sampled, { agent: adapter.agent, path: "/grok/large/updates.jsonl" }, { prompts })
+        summarizeSession(
+          sampled,
+          { agent: adapter.agent, path: "/grok/large/updates.jsonl" },
+          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+        )
       );
       const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       console.log(
@@ -270,13 +330,25 @@ describe("summarizeSession memory", () => {
     };
     // A warm-up round pays for JIT and module warm-up, which would otherwise land in the measured round.
     await peakDuring((sampled) =>
-      summarizeSession(sampled, { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" }, { prompts })
+      summarizeSession(
+        sampled,
+        { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" },
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     const passLarge = await peakDuring((sampled) =>
-      summarizeSession(sampled, { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" }, { prompts })
+      summarizeSession(
+        sampled,
+        { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" },
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     const loadLarge = await peakDuring((sampled) =>
-      loadTranscript(sampled, { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" })
+      loadTranscript(
+        sampled,
+        { agent: adapter.agent, path: "/grok/time-less/updates.jsonl" },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
     );
     const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     console.log(`grok time-less: load ${megabytes(loadLarge)}, summarize ${megabytes(passLarge)}`);

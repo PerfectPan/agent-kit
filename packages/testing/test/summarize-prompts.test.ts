@@ -1,3 +1,5 @@
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { type SessionPromptsOptions, summarizeSession } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
@@ -23,7 +25,7 @@ describe("summarizeSession prompts option", () => {
       const thrown = await summarizeSession(
         platform,
         { agent: "codex", path: "/codex/rollout.jsonl" },
-        { prompts }
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
       ).then(
         (): unknown => undefined,
         (error: unknown): unknown => error

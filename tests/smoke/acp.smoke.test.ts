@@ -31,6 +31,7 @@ function textOf(parts: readonly TranscriptStreamPart[]): string {
 
 describe.each(agents)("%s over ACP", (agent, profile) => {
   const options = () => ({
+    providers: { acp: builtinAcpProfiles },
     cwd: mkdtempSync(join(tmpdir(), `agent-kit-smoke-${agent}-`)),
     env: profile === undefined ? {} : agentEnv(profile, process.env),
     handshakeTimeoutMs: 120_000,

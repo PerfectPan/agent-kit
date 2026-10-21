@@ -1,3 +1,4 @@
+import type { ServiceTable } from "@rivus/agent-kit-catalog";
 import type { AgentHome, CapabilityUnsupported, CodingAgentId, HomeRule, Result } from "@rivus/agent-kit-catalog";
 import type { PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform";
 import type {
@@ -85,8 +86,8 @@ export interface SessionAdapter {
 /** The expected failures of reading one session's files. */
 export type SessionReadError = SessionNotFound | ReadFailed | UnknownFormatGeneration;
 
-/** Session adapters by agent id; use cases default to `builtinSessionAdapters`. */
-export type SessionAdapters = Readonly<Partial<Record<CodingAgentId, SessionAdapter>>>;
+/** Session adapters by agent id; supplied by the caller. */
+export type SessionAdapters = ServiceTable<SessionAdapter>;
 
 export type { UsageCursor };
 
@@ -213,4 +214,4 @@ export interface UsageDecoder {
 }
 
 /** Usage decoders by agent id. */
-export type UsageDecoders = Readonly<Partial<Record<CodingAgentId, UsageDecoder>>>;
+export type UsageDecoders = ServiceTable<UsageDecoder>;
