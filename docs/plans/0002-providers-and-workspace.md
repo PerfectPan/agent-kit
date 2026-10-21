@@ -276,6 +276,13 @@ packages/providers/claude-code/
   - two lookups: one returns `Result<T, CapabilityUnsupported>`, for data that names an agent without a provider; the other throws `AgentKitError` with code `capability-unsupported`, for options in which the caller named such an agent;
   - `CapabilityUnsupported`, moved from sessions.
 
+  The lookup names are `lookupService(agent, table)` and `requireService(agent, table, reason?)`. Only own,
+  defined entries count; inherited properties and explicit `undefined` are missing. The throwing lookup accepts a
+  reason so each use case can keep a service-specific message. The lookups, `ServiceTable`, and `homeRuleOf` are
+  sibling-context exports, not new shell exports. Identity table queries accept third-party ids too.
+  Part A introduces these foundations and passes the current built-in identity table at existing callers; Part B
+  switches the routing sites and shell bindings.
+
   Every routing site in 1.1 uses them.
 - **The `Provider` descriptor** is declared in the shell, because it names the SPI types of every context:
 

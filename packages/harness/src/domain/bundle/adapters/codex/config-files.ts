@@ -1,4 +1,4 @@
-import { resolveHome } from "@rivus/agent-kit-catalog";
+import { builtinCodingAgents, homeFromRule } from "@rivus/agent-kit-catalog";
 
 import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
@@ -11,7 +11,7 @@ import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
 /** Codex's home: `CODEX_HOME`, or `~/.codex`. */
 export function codexHome(context: InstallContext): string {
-  return resolveHome("codex", context).path;
+  return homeFromRule("codex", builtinCodingAgents["codex"].home, context).path;
 }
 
 export function codexConfigFile(context: InstallContext): string {

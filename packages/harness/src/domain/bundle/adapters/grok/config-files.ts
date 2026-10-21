@@ -1,4 +1,4 @@
-import { resolveHome } from "@rivus/agent-kit-catalog";
+import { builtinCodingAgents, homeFromRule } from "@rivus/agent-kit-catalog";
 
 import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
@@ -9,7 +9,7 @@ import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
 /** Grok's home: `GROK_HOME`, or `~/.grok`. */
 export function grokHome(context: InstallContext): string {
-  return resolveHome("grok", context).path;
+  return homeFromRule("grok", builtinCodingAgents["grok"].home, context).path;
 }
 
 export function grokHooksFile(context: InstallContext, bundle: Pick<BundleRef, "owner">): string {

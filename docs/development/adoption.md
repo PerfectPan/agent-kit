@@ -10,7 +10,7 @@ The source exports 16 agent-kit entries and three collab entries (19 in total). 
 
 | Entry                                  | Main API                                                                                                                              | Calling style                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
+| `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
 | `@rivus/agent-kit/platform`            | `Platform` and port types, `splitLines`                                                                                               | Plain                                           |
 | `@rivus/agent-kit/node`                | `createNodePlatform`                                                                                                                  | Plain, Node                                     |
 | `@rivus/agent-kit/platform/effect`     | `PlatformService`                                                                                                                     | Effect service                                  |

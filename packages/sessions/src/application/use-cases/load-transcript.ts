@@ -1,7 +1,15 @@
-import { AgentKitError, type CodingAgentId, err, ok, parseCodingAgentId, type Result } from "@rivus/agent-kit-catalog";
+import {
+  AgentKitError,
+  type CapabilityUnsupported,
+  type CodingAgentId,
+  type Result,
+  builtinCodingAgents,
+  err,
+  ok,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog";
 
 import type {
-  CapabilityUnsupported,
   NoAdapterAccepted,
   SessionPromptsOptions,
   SessionRef,
@@ -51,7 +59,7 @@ async function resolveTarget(
     path: target.path,
     ...(target.sessionId === undefined ? {} : { sessionId: target.sessionId })
   });
-  const named = target.agent === undefined ? undefined : parseCodingAgentId(target.agent);
+  const named = target.agent === undefined ? undefined : parseCodingAgentId(target.agent, builtinCodingAgents);
   if (named?.ok) {
     const adapter = table[named.value];
     return adapter

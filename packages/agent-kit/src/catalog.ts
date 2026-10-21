@@ -6,8 +6,7 @@ export {
   isAgentKitError,
   isBuiltinCodingAgentId,
   ok,
-  parseCodingAgentId,
-  resolveHome
+  parseCodingAgentId
 } from "@rivus/agent-kit-catalog/public";
 export type {
   AgentHome,
@@ -16,7 +15,6 @@ export type {
   BuiltinCodingAgentId,
   CodingAgent,
   CodingAgentId,
-  CodingAgentIdWithHome,
   CodingAgentWithHome,
   HomeContext,
   HomeRule,

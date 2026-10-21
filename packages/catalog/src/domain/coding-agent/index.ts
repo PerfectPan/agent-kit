@@ -5,6 +5,5 @@ export {
   type BuiltinCodingAgentId,
   CODING_AGENT_ID_PATTERN,
   type CodingAgentId,
-  type CodingAgentIdWithHome,
   type InvalidCodingAgentId
 } from "./value-objects/coding-agent-id.js";

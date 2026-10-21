@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import {
@@ -112,7 +112,7 @@ export function scanUsage(
     async *[Symbol.asyncIterator]() {
       const scanned = new Set(
         (agents ?? Object.keys(builtinUsageDecoders)).map((agent) => {
-          const parsed = parseCodingAgentId(agent);
+          const parsed = parseCodingAgentId(agent, builtinCodingAgents);
           return parsed.ok ? parsed.value : agent;
         })
       );

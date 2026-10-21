@@ -1,3 +1,5 @@
+export type { CapabilityUnsupported } from "@rivus/agent-kit-catalog";
+
 // Use cases
 export { listSessions, type ListSessionsOptions, sessionAdapterHome } from "./application/use-cases/list-sessions.js";
 export {
@@ -74,7 +76,6 @@ export { grokUsage } from "./domain/usage/adapters/grok.js";
 
 // Published language and the rules a viewer needs to interpret events
 export {
-  type CapabilityUnsupported,
   isSessionHead,
   type NoAdapterAccepted,
   type ReadFailed,

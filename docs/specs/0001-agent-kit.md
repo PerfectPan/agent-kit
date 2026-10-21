@@ -48,11 +48,11 @@ Excluded: application state and policy (presence's online state, agent-task-loop
 
 ### `/catalog`
 
-- Exports `CodingAgentId`, `BuiltinCodingAgentId`, `CodingAgentIdWithHome`, `parseCodingAgentId`, `isBuiltinCodingAgentId`, the identities of the built-in agents (`builtinCodingAgents`, `CodingAgent`, `CodingAgentWithHome`), `AgentHome`, `HomeRule`, `resolveHome(id, { env, home })`, `homeFromRule`, `Result`, `ok`, `err`, and `AgentKitError` with `isAgentKitError`.
-- Every agent that a context supports has an identity: an id, a display name and its aliases. A home rule is part of the identity only when upstream sources or the agent's documentation confirm it; `resolveHome` takes the ids that have one (`CodingAgentIdWithHome`), and for any other agent `builtinCodingAgents[id].home` is absent.
+- Exports `CodingAgentId`, `BuiltinCodingAgentId`, `parseCodingAgentId(input, identities)`, `isBuiltinCodingAgentId`, the identities of the built-in agents (`builtinCodingAgents`, `CodingAgent`, `CodingAgentWithHome`), `AgentHome`, `HomeRule`, `homeFromRule`, `Result`, `ok`, `err`, and `AgentKitError` with `isAgentKitError`.
+- Every agent that a context supports has an identity: an id, a display name and its aliases. A home rule is part of the identity only when upstream sources or the agent's documentation confirm it; `homeRuleOf` uses the caller's own rule first, then the given identity table, and returns `undefined` when neither has a rule.
 - A `CodingAgentId` has documented aliases (for example `claude` for `claude-code`); an alias identifies the same agent as its canonical id.
-- `resolveHome` is pure: it reads only the `env` and `home` it receives. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
-- `catalog` holds identity, home directory rules and `Result` only. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
+- `homeFromRule(agent, rule, { env, home })` is pure: it reads only the supplied rule, `env` and `home`. It honors the agents' home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `XDG_DATA_HOME` for opencode, `GROK_HOME`, `PI_CODING_AGENT_DIR`), otherwise returns the agent's default directory under `home`, and reports which of the two set the path.
+- `catalog` holds identity, home directory rules, `Result`, `ServiceTable`, `CapabilityUnsupported`, and the `lookupService` and `requireService` lookups. Log layouts, hook dialects, ACP launch details and probe methods belong to the context that uses them.
 - Built-in identities: the seven agents that `/discovery` detects. `cursor` (alias `cursor-agent`) has no home rule: Cursor uses `CURSOR_CONFIG_DIR`, then `$XDG_CONFIG_HOME/cursor`, then `~/.cursor`, which one HomeRule cannot express.
 
 ### `/platform`
@@ -253,18 +253,18 @@ An Effect entry (it needs `effect` 4.0.4, like `/platform/effect`). It installs 
 ### S1: Claude home honors `CLAUDE_CONFIG_DIR`
 
 - Given `env` contains `CLAUDE_CONFIG_DIR=/tmp/claude-config` and `home` is `/u/me`
-- When `resolveHome('claude-code', { env, home })` is called
+- When `homeFromRule('claude-code', builtinCodingAgents['claude-code'].home, { env, home })` is called
 - Then it returns `/tmp/claude-config`; without the variable it returns `/u/me/.claude`
 
 ### S2: Codex home honors `CODEX_HOME`
 
 - Given `env` contains `CODEX_HOME=/tmp/codex-home` and `home` is `/u/me`
-- When `resolveHome('codex', { env, home })` is called
+- When `homeFromRule('codex', builtinCodingAgents.codex.home, { env, home })` is called
 - Then it returns `/tmp/codex-home`; without the variable it returns `/u/me/.codex`
 
 ### S3: An alias identifies the same agent
 
-- Given the alias `claude`
+- Given the alias `claude` and `builtinCodingAgents` as the identity table
 - When it is resolved through `/catalog`
 - Then it identifies the same built-in agent as `claude-code`
 

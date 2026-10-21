@@ -230,7 +230,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
         // A conformance suite judges the recipe as given, and a JS adapter can author one that ignores ProbeRecipe.
         // oxlint-disable-next-line no-unnecessary-condition
         check(recipe.specificationVersion === "discovery-v1", `specificationVersion is ${recipe.specificationVersion}`);
-        const parsed = parseCodingAgentId(recipe.agent);
+        const parsed = parseCodingAgentId(recipe.agent, builtinCodingAgents);
         check(parsed.ok && parsed.value === recipe.agent, `${recipe.agent} is not a canonical agent id`);
         if (isBuiltinCodingAgentId(recipe.agent)) {
           const { displayName } = builtinCodingAgents[recipe.agent];

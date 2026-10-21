@@ -1,4 +1,4 @@
-import { type CodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
 import {
@@ -68,7 +68,7 @@ interface Run {
 function selectRecipes(table: ProbeRecipes, agents: readonly CodingAgentId[]): ProbeRecipe[] {
   const selected = new Map<CodingAgentId, ProbeRecipe>();
   for (const requested of agents) {
-    const parsed = parseCodingAgentId(requested);
+    const parsed = parseCodingAgentId(requested, builtinCodingAgents);
     const agent = parsed.ok ? parsed.value : requested;
     const recipe = Object.hasOwn(table, agent) ? table[agent] : undefined;
     if (recipe === undefined) {

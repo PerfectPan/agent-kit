@@ -1,8 +1,5 @@
-/** Built-in agents whose home directory rule is verified against upstream sources; `resolveHome` takes these. */
-export type CodingAgentIdWithHome = "claude-code" | "codex" | "gemini-cli" | "grok" | "opencode" | "pi";
-
 /** Ids of the coding agents the kit knows. Each has an identity in `catalog/src/domain/coding-agent/adapters/`. */
-export type BuiltinCodingAgentId = CodingAgentIdWithHome | "cursor";
+export type BuiltinCodingAgentId = "claude-code" | "codex" | "cursor" | "gemini-cli" | "grok" | "opencode" | "pi";
 
 /**
  * A built-in id, or the id of a third-party agent whose adapters a caller passes to a use case. The `string & {}`

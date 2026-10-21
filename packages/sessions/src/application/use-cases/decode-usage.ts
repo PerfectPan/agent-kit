@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, builtinCodingAgents, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { UsageRecord } from "../../domain/usage/index.js";
@@ -34,7 +34,7 @@ export function decodeUsage(
   options: DecodeUsageOptions = {}
 ): UsageStream {
   const table: UsageDecoders = builtinUsageDecoders;
-  const parsed = parseCodingAgentId(agent);
+  const parsed = parseCodingAgentId(agent, builtinCodingAgents);
   const id = parsed.ok ? parsed.value : agent;
   const decoder = table[id];
   const { from, since, until, signal } = options;

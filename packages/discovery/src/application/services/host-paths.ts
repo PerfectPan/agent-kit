@@ -1,4 +1,10 @@
-import { type CodingAgentId, homeFromRule, type HomeRule, homeRuleOf } from "@rivus/agent-kit-catalog";
+import {
+  type CodingAgentId,
+  type HomeRule,
+  builtinCodingAgents,
+  homeFromRule,
+  homeRuleOf
+} from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 
 import { authProbeLists, type ProbePath, type ProbeRecipe, type StatFailed } from "../../domain/installation/index.js";
@@ -56,7 +62,7 @@ export function envValue(platform: Pick<DiscoveryPlatform, "env" | "os">, name: 
  * else the shared rule a path under another agent's home follows (catalog's for a built-in agent).
  */
 function recipeHomeRule(agent: CodingAgentId, recipe: ProbeRecipe): HomeRule | undefined {
-  return homeRuleOf(agent, agent === recipe.agent ? recipe.home : undefined);
+  return homeRuleOf(agent, builtinCodingAgents, agent === recipe.agent ? recipe.home : undefined);
 }
 
 /** Every path a recipe checks, including its credential files. */

@@ -2,8 +2,9 @@ import {
   type AgentHome,
   type CodingAgentId,
   type HomeContext,
-  homeFromRule,
   type HomeRule,
+  builtinCodingAgents,
+  homeFromRule,
   homeRuleOf,
   parseCodingAgentId
 } from "@rivus/agent-kit-catalog";
@@ -18,7 +19,7 @@ export function selectAdapters<Adapter>(
 ): Adapter[] {
   const selected = new Map<CodingAgentId, Adapter>();
   for (const requested of agents) {
-    const parsed = parseCodingAgentId(requested);
+    const parsed = parseCodingAgentId(requested, builtinCodingAgents);
     const agent = parsed.ok ? parsed.value : requested;
     const adapter = table[agent];
     if (!adapter) {
@@ -35,7 +36,7 @@ export function adapterHome(
   context: HomeContext,
   kind: string
 ): AgentHome {
-  const rule = homeRuleOf(adapter.agent, adapter.home);
+  const rule = homeRuleOf(adapter.agent, builtinCodingAgents, adapter.home);
   if (rule) {
     return homeFromRule(adapter.agent, rule, context);
   }

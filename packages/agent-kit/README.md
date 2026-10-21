@@ -24,7 +24,7 @@ The entry table describes the source API. Verify the exports of the npm version 
 | Entry                               | Main exports                                                                                                         | Runs in                                  |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                 | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                                 |
+| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                               | anywhere                                 |
 | `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
 | `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
 | `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports     | anywhere, with `effect` and a platform   |

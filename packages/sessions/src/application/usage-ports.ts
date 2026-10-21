@@ -1,7 +1,7 @@
-import type { AgentHome, CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog";
+import type { AgentHome, CapabilityUnsupported, CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog";
 import type { PlatformSqlite } from "@rivus/agent-kit-platform";
 
-import type { CapabilityUnsupported, ReadFailed, SessionListError, SessionNotFound } from "../domain/session/index.js";
+import type { ReadFailed, SessionListError, SessionNotFound } from "../domain/session/index.js";
 import type { SourceChanged, UnknownFormatGeneration } from "../domain/transcript/index.js";
 import type { UsageCursor, UsageRecord } from "../domain/usage/index.js";
 import type { SessionPlatform } from "./ports.js";

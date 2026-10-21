@@ -25,7 +25,7 @@ The source API has 16 entries in `@rivus/agent-kit` and three in `@rivus/agent-k
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
 | `@rivus/agent-kit/acp`            | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, binding store Layers               | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`             | anywhere                  |
+| `@rivus/agent-kit/catalog`        | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`             | anywhere                  |
 | `@rivus/agent-kit/cost`           | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                           | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                      | anywhere, with a platform |
 | `@rivus/agent-kit/harness`        | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` | anywhere, with `effect`   |
