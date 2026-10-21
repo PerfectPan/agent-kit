@@ -9,7 +9,7 @@ import { Precondition } from "./precondition.js";
 
 const hash = `sha256:${"1".repeat(64)}` as const;
 const stepInput = (): PlanStepSnapshot => ({
-  locator: { kind: "file", path: "/home/example/hook" },
+  locator: { kind: "file", path: "/u/example/hook" },
   action: "create",
   agents: ["example"],
   precondition: { absent: true },
@@ -34,7 +34,7 @@ describe("install value objects", () => {
     expect(Object.isFrozen(input.desired?.content)).toBe(false);
     expect(Object.isFrozen(step.toSnapshot().desired?.content)).toBe(true);
     expect(step.toSnapshot().desired?.content).not.toBe(input.desired?.content);
-    expect(step.key()).toBe('["/home/example/hook"]');
+    expect(step.key()).toBe('["/u/example/hook"]');
     expect(step.touchesDisk()).toBe(true);
     expect(step.contentAfter(undefined)).toEqual({ desired: { nested: ["original"] } });
   });
@@ -62,15 +62,15 @@ describe("install value objects", () => {
     if (!locator.ok) {
       throw new Error(locator.error);
     }
-    expect(locator.value.key()).toBe('["/home/example/hook"]');
-    expect(locator.value.overlaps({ kind: "dir", path: "/home/example" })).toBe(true);
-    expect(locator.value.overlaps({ kind: "file", path: "/home/elsewhere" })).toBe(false);
+    expect(locator.value.key()).toBe('["/u/example/hook"]');
+    expect(locator.value.overlaps({ kind: "dir", path: "/u/example" })).toBe(true);
+    expect(locator.value.overlaps({ kind: "file", path: "/u/elsewhere" })).toBe(false);
     expect(locator.value.toSnapshot()).toEqual(input);
     expect(Object.isFrozen(input)).toBe(false);
-    const targetInput = { scope: "user" as const, agents: ["example"], roots: ["/home/example"] };
+    const targetInput = { scope: "user" as const, agents: ["example"], roots: ["/u/example"] };
     const target = InstallTarget.restore(targetInput);
     expect(target.contains(input)).toBe(true);
-    expect(target.contains({ kind: "file", path: "/home/example-other/hook" })).toBe(false);
+    expect(target.contains({ kind: "file", path: "/u/example-other/hook" })).toBe(false);
     expect(Object.isFrozen(targetInput.roots)).toBe(false);
     expect(Object.isFrozen(target.toSnapshot().roots)).toBe(true);
     expect(Conflict.restore("unmanaged-exists").choices()).toEqual(["adopt", "backup"]);

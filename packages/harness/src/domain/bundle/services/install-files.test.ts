@@ -10,7 +10,7 @@ import {
   sharedSkillsDir
 } from "./install-files.js";
 
-const context = { home: "/home/example", env: {} };
+const context = { home: "/u/example", env: {} };
 
 describe("shared install file rendering", () => {
   it("writes readable JSON with a final newline and preserves hook command timeouts", () => {
@@ -42,10 +42,10 @@ describe("shared install file rendering", () => {
   });
 
   it("uses the shared home directories and only an absolute XDG configuration root", () => {
-    expect(sharedAgentsDir(context)).toBe("/home/example/.agents");
-    expect(sharedSkillsDir(context)).toBe("/home/example/.agents/skills");
-    expect(configHome(context)).toBe("/home/example/.config");
-    expect(configHome({ ...context, env: { XDG_CONFIG_HOME: "relative" } })).toBe("/home/example/.config");
+    expect(sharedAgentsDir(context)).toBe("/u/example/.agents");
+    expect(sharedSkillsDir(context)).toBe("/u/example/.agents/skills");
+    expect(configHome(context)).toBe("/u/example/.config");
+    expect(configHome({ ...context, env: { XDG_CONFIG_HOME: "relative" } })).toBe("/u/example/.config");
     expect(configHome({ ...context, env: { XDG_CONFIG_HOME: "/config///" } })).toBe("/config");
   });
 

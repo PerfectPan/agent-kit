@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isLegacyArtifact, legacyTexts } from "./legacy-artifact.js";
 
-const locator = { kind: "file" as const, path: "/home/example/hook" };
+const locator = { kind: "file" as const, path: "/u/example/hook" };
 const hash = `sha256:${"1".repeat(64)}` as const;
 
 describe("legacy content boundary", () => {
