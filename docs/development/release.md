@@ -199,10 +199,16 @@ Run it after `pnpm run check` so `dist` exists.
   Dependabot officially supports pnpm 7–10; on pnpm 12 its support is limited (dependabot-core#16397), so a PR may
   edit `package.json` files or the catalog in `pnpm-workspace.yaml` without regenerating the root `pnpm-lock.yaml`.
   Check out the branch, run `pnpm install`, commit the lockfile, and push. `vitest` and the `vite` alias
-  (`npm:@voidzero-dev/vite-plus-core`) move with `vite-plus`, so Dependabot ignores them: on a `vite-plus` PR, set
-  both catalog entries to what the new version depends on (`npm view vite-plus@<version> dependencies`) before
-  running `pnpm install`. `scripts/toolchain.test.ts`, part of `pnpm run check`, fails until they match. Then add
-  changesets:
+  (`npm:@voidzero-dev/vite-plus-core`) must equal `vite-plus`'s exact dependencies. The `vite@*` override supplies
+  the core alias to Vitest's `vite` peer; a different `vitest` gives `@effect/vitest` a second copy whose runner
+  never starts ("Cannot read properties of undefined (reading 'config')"). Dependabot therefore ignores `vitest`,
+  the catalog key `vite`, and the real package name `@voidzero-dev/vite-plus-core`, while `vite-plus` stays
+  updatable. The [Dependabot parser tests](https://github.com/dependabot/dependabot-core/blob/fda701f49c7d6ba5807e98a06549fdb935e3bd2e/npm_and_yarn/spec/dependabot/npm_and_yarn/file_parser_spec.rb#L1433-L1529)
+  show that npm aliases are skipped by default and use the real package name when `dealias_packages` is enabled;
+  the real-name ignore can match that path. On a `vite-plus` PR, set both catalog entries to what the new version
+  depends on (`npm view vite-plus@<version> dependencies`), then run `pnpm install`. `scripts/toolchain.test.ts`,
+  part of `pnpm run check`, first checks that installed `vite-plus` matches the catalog (otherwise it asks for
+  `pnpm install`), then checks its two dependencies. Then add changesets:
   - For each published package whose runtime dependencies changed:
     `pnpm change <name> --bump patch --summary "Update dependencies."`.
   - When the PR moves the exact optional `effect` peer (Dependabot moves it together with the devDependency), one
