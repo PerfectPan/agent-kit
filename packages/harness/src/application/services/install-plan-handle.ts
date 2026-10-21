@@ -11,7 +11,7 @@ import type {
 } from "../../domain/install-plan/aggregates/install-plan.js";
 import type { PlanBasisSnapshot } from "../../domain/install-plan/value-objects/plan-basis.js";
 import type { PlanStepSnapshot } from "../../domain/install-plan/value-objects/plan-step.js";
-import type { TrustPrompt } from "../../domain/install-plan/spi/trust-prompt.js";
+import type { TrustPrompt } from "../../domain/install-plan/value-objects/trust-prompt.js";
 import type { AgentCommand, LedgerScope } from "../ports.js";
 
 /** One file's text before and after the plan: `before` is absent for a new file, `after` for a removed one. */

@@ -144,6 +144,67 @@ describe("buildInstallPlan", () => {
   const skill = file(".claude/skills/presence/SKILL.md");
   const shim = file(".claude/skills/presence/hooks/hooks.json");
 
+  it.each([
+    ["legacy", "bare"],
+    ["bare", "legacy"],
+    ["user", "legacy"]
+  ] as const)("preserves only the legacy observation with duplicate hooks ordered %s then %s", (first, last) => {
+    const hook = settingsHook("Stop", "older command");
+    const restored = Ledger.restore({
+      ...ledger().toSnapshot(),
+      kept: {
+        [locatorKey(hook)]: { locator: hook, owner: "other-app", keptAt: "2026-10-01T00:00:00.000Z" }
+      }
+    });
+    if (!restored.ok) {
+      throw new Error(JSON.stringify(restored.error));
+    }
+    const observations = {
+      legacy: seen(hook, 9, { content: { command: "agent-presence hook" } }),
+      bare: seen(hook, 10),
+      user: seen(hook, 11, { content: { command: "user hook" } })
+    };
+    expect(
+      plan({
+        desired: [want(skill, 2)],
+        ledger: restored.value,
+        observed: [observations[first], observations[last]]
+      })
+    ).toEqual({
+      ok: false,
+      error: {
+        _tag: "PlanConflict",
+        planId: "plan-1",
+        conflicts: [
+          {
+            step: {
+              locator: hook,
+              action: "conflict",
+              conflict: "user-modified",
+              agents: [],
+              precondition: { hash: h(9) },
+              capturePreImage: false
+            },
+            choices: []
+          }
+        ]
+      }
+    });
+  });
+
+  it("announces trust prompts in execution order when desired artifacts are out of order", () => {
+    const earlier = file(".claude/a.json");
+    const later = file(".claude/z.json");
+    const result = planned({
+      desired: [want(later, 3, { trust: "plugin-consent" }), want(earlier, 2, { trust: "hook-review" })]
+    });
+    expect(result.steps.map((step) => step.locator)).toEqual([earlier, later]);
+    expect(result.expectedTrustPrompts).toEqual([
+      { agent: "claude-code", kind: "hook-review", locator: earlier },
+      { agent: "claude-code", kind: "plugin-consent", locator: later }
+    ]);
+  });
+
   it("creates what is missing, keeps what is in sync, and announces trust prompts only for new content", () => {
     const result = plan({
       desired: [want(skill, 2), want(shim, 3, { trust: "hook-review" })],

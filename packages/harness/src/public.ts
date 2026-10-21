@@ -135,7 +135,8 @@ export { type PlanConflict } from "./domain/install-plan/errors/plan-conflict.js
 export { type PlanStale } from "./domain/install-plan/errors/plan-stale.js";
 export { type PlanStatus } from "./domain/install-plan/aggregates/install-plan.js";
 export { type PreconditionSnapshot as Precondition } from "./domain/install-plan/value-objects/precondition.js";
-export { type TrustPrompt, type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
+export { type TrustPrompt } from "./domain/install-plan/value-objects/trust-prompt.js";
+export { type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
 export type { ArtifactContent, ContentHash, JsonValue } from "./domain/ledger/value-objects/content-hash.js";
 export type { ArtifactInstalled } from "./domain/ledger/events/artifact-installed.js";
 export type { ArtifactRemoved } from "./domain/ledger/events/artifact-removed.js";

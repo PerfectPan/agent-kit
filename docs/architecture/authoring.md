@@ -56,6 +56,7 @@ Every context package uses the same layout, creating only the directories it nee
     adapters/           other port implementations (editors, CLI runners, fences)
     factories/          Layer compositions
     services/           helpers shared by infra files
+  lib/                  pure utilities with no domain or IO dependencies
   public.ts             names used by sibling contexts and selected by the shell package
   spi.ts                provider interfaces and the context helpers their implementations need
 ```
@@ -68,9 +69,10 @@ adapters may import other adapters, but contain no agent-specific rules.
 
 The layer principles:
 
-- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may not import any `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
+- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may import pure utilities in `lib/`, but no `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
 - `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
 - `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
+- Every layer may use `lib/`; a utility may import only other utilities in its context and the shared kernel, with no domain, application, infrastructure, Platform or external-package dependencies.
 
 | Layer | Contents | May import |
 | --- | --- | --- |
@@ -141,23 +143,28 @@ An entity is a child of one aggregate: it has a local identity inside that aggre
 
 Install-plan and bundle keep their own rules on immutable classes: `ArtifactLocator`, `PlanStep`, `Precondition`,
 `Conflict`, `InstallTarget`, `PlanBasis`, `Bundle`, `ArtifactSpec`, `Owner` and `RegistrationState`. Construction keeps
-caller input untouched, including rejected input; snapshots and nested content are copied before freezing. A
-`PlanStep` owns its field invariants, disk-write decision, precondition checks and resulting content. `InstallPlan`
-checks cross-step and ledger evidence, then stores validated steps; it orders installation before reverse-order
+caller input untouched, including rejected input. ArtifactSpec copies each spec once; Bundle copies its metadata and
+retains the validated spec snapshots. RegistrationState copies its record and installed-copy inputs; ordinary file
+and directory observations keep the read content until a value object retains it. Values and aggregates share the
+pure `lib/deep-freeze.ts` helper. A `PlanStep` owns its field invariants, disk-write decision, precondition checks and
+resulting content. `InstallPlan` checks cross-step and ledger evidence, then stores validated steps; it orders installation before reverse-order
 removal. Root containment and ledger-basis comparisons retain their existing aggregate error reasons and ordering.
 
 Public and persisted data stay plain. Explicit `Snapshot` types name those shapes internally; public and testing
 SPI exports retain their existing names. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
 `InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, the `StepContentAfter`
 result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
-rendered/observed/result records; `Strategy` lives with the bundle SPI. Registration observations are transient and
-need no additional snapshot type. Every aggregate-to-port or public boundary uses the existing plain snapshots.
+rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
+`StepContentAfter` is local to the application executor. `Strategy` lives with the bundle SPI. Registration
+observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
+the existing plain snapshots.
 
 Neither of these concepts has a `policies/` folder. Cross-object conflict choices, legacy ownership, registration
 commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
 install-file rendering also lives in bundle `services/`, retaining its provider SPI exports. Legacy command content
-is parsed with `zod/mini` in the application layer before the domain receives a locator-keyed map of text evidence;
-marker matching itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
+is parsed with `zod/mini` in the application layer before the domain receives text evidence keyed by each observation;
+locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
+itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
 
 ## Aggregates, Entities And Repositories
 

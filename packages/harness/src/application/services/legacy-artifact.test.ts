@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isLegacyArtifact, legacyTexts } from "./legacy-artifact.js";
 
 const locator = { kind: "file" as const, path: "/u/example/hook" };
@@ -15,13 +14,15 @@ describe("legacy content boundary", () => {
     expect(isLegacyArtifact(["example"], ["example hook"])).toBe(false);
   });
 
-  it("uses the last observation at a locator even when it has no legacy text", () => {
+  it("keeps each observation's text even when a later observation at the same locator has none", () => {
     const first = { locator, hash, content: { command: "example hook" } };
-    expect(legacyTexts([first]).get(locatorKey(locator))).toBe("example hook");
-    expect(legacyTexts([first, { locator, hash }]).get(locatorKey(locator))).toBeUndefined();
-    expect(
-      legacyTexts([first, { locator, hash, content: { other: "example hook" } }]).get(locatorKey(locator))
-    ).toBeUndefined();
-    expect(legacyTexts([first, { locator, hash, content: "new hook" }]).get(locatorKey(locator))).toBe("new hook");
+    const bare = { locator, hash };
+    const other = { locator, hash, content: { other: "example hook" } };
+    const last = { locator, hash, content: "new hook" };
+    const texts = legacyTexts([first, bare, other, last]);
+    expect(texts.get(first)).toBe("example hook");
+    expect(texts.get(bare)).toBeUndefined();
+    expect(texts.get(other)).toBeUndefined();
+    expect(texts.get(last)).toBe("new hook");
   });
 });

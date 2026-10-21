@@ -30,7 +30,8 @@ export class Bundle {
   readonly #artifacts: readonly ArtifactSpec[];
 
   private constructor(input: BundleSnapshot, owner: Owner, artifacts: readonly ArtifactSpec[]) {
-    const snapshot = structuredClone(input);
+    const { artifacts: _artifacts, ...metadata } = input;
+    const snapshot = structuredClone(metadata);
     this.#owner = owner;
     this.#artifacts = Object.freeze([...artifacts]);
     this.#snapshot = Object.freeze({

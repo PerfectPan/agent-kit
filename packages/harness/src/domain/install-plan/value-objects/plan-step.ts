@@ -1,8 +1,8 @@
+import { deepFreeze } from "../../../lib/deep-freeze.js";
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { PreImage } from "../../ledger/value-objects/pre-image.js";
 import type { ObservedArtifact } from "../spi/observed-artifact.js";
-import type { StepContentAfter } from "../spi/content-after.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { Strategy } from "../../bundle/spi/strategy.js";
@@ -57,17 +57,6 @@ export interface PlanStepSnapshot {
   readonly note?: StepNote;
 }
 
-/** Deep-freeze helper: the copied desired content can contain nested JSON data. */
-function freeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const inner of Object.values(value)) {
-      freeze(inner);
-    }
-  }
-  return value;
-}
-
 export class PlanStep {
   declare readonly locator: ArtifactLocatorSnapshot;
   declare readonly action: PlanAction;
@@ -93,7 +82,7 @@ export class PlanStep {
   readonly #locator: ArtifactLocator;
   readonly #condition: Precondition;
   private constructor(snapshot: PlanStepSnapshot, locator: ArtifactLocator, condition: Precondition) {
-    this.#snapshot = freeze(structuredClone(snapshot));
+    this.#snapshot = deepFreeze(structuredClone(snapshot));
     this.#locator = locator;
     this.#condition = condition;
     Object.assign(this, this.#snapshot);
@@ -125,7 +114,7 @@ export class PlanStep {
   touchesDisk(): boolean {
     return PlanStep.touchesDisk(this.#snapshot);
   }
-  contentAfter(preImage: PreImage | undefined): StepContentAfter {
+  contentAfter(preImage: PreImage | undefined): ReturnType<typeof PlanStep.contentAfter> {
     return PlanStep.contentAfter(this.#snapshot, preImage);
   }
   preconditionSatisfied(context: { readonly entry?: LedgerEntry; readonly observed?: ObservedArtifact }): boolean {
@@ -187,7 +176,10 @@ export class PlanStep {
    * leaves its desired content; a `restore-pre-image` of something that existed leaves that pre-image; anything else
    * leaves nothing. The use case fetches the pre-image's bytes from the ledger repository.
    */
-  static contentAfter(step: PlanStepSnapshot, preImage: PreImage | undefined): StepContentAfter {
+  static contentAfter(
+    step: PlanStepSnapshot,
+    preImage: PreImage | undefined
+  ): { readonly desired: ArtifactContent } | { readonly preImage: string } | undefined {
     if (step.action !== "remove") {
       return step.desired === undefined ? undefined : { desired: step.desired.content };
     }

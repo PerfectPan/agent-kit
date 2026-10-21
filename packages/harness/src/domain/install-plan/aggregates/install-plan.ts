@@ -1,3 +1,4 @@
+import { deepFreeze } from "../../../lib/deep-freeze.js";
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import { type BundleRef } from "../../bundle/value-objects/bundle.js";
 import { type PendingOperations } from "../../ledger/errors/pending-operations.js";
@@ -14,7 +15,7 @@ import {
 import { type InstallTargetSnapshot, InstallTarget } from "../value-objects/install-target.js";
 import { PlanBasis, type PlanBasisSnapshot } from "../value-objects/plan-basis.js";
 import { PlanStep, type PlanStepSnapshot, type StepNote, type PlanAction } from "../value-objects/plan-step.js";
-import { type TrustPrompt } from "../spi/trust-prompt.js";
+import { type TrustPrompt } from "../value-objects/trust-prompt.js";
 import { type OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import { hasLegacyMarker } from "../../bundle/services/legacy-markers.js";
 import { type Ledger } from "../../ledger/aggregates/ledger.js";
@@ -44,20 +45,9 @@ export type InstallPlanDraft = Omit<InstallPlanSnapshot, "status" | "notes">;
 
 export type InstallPlanTransition = { readonly state: InstallPlan; readonly events: readonly [] };
 
-/** Deep-freeze helper: snapshots retain no mutable descendants. */
-function freeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const inner of Object.values(value)) {
-      freeze(inner);
-    }
-  }
-  return value;
-}
-
 /** What a plan's steps are checked against: the ledger it was built on and what the application observed. */
 export interface PlanEvidence {
-  readonly legacyTexts: ReadonlyMap<string, string>;
+  readonly legacyTexts: ReadonlyMap<ObservedArtifact, string>;
   readonly ledger: Ledger;
   readonly observed: readonly ObservedArtifact[];
   /** The bundle's legacy markers, which a step marked `legacy` must match again. */
@@ -87,12 +77,13 @@ function ownershipProblem(
 ): string | undefined {
   const entry = evidence.ledger.entry(step.locator);
   if (step.legacy === true) {
+    const text = observed === undefined ? undefined : evidence.legacyTexts.get(observed);
     const matches =
       entry === undefined &&
       observed !== undefined &&
       !protectedLegacy(step.locator, owner, evidence.ledger, evidence.observed) &&
-      evidence.legacyTexts.has(locatorKey(observed.locator)) &&
-      hasLegacyMarker(evidence.legacyMarkers, evidence.legacyTexts.get(locatorKey(observed.locator))!) &&
+      text !== undefined &&
+      hasLegacyMarker(evidence.legacyMarkers, text) &&
       "hash" in step.precondition &&
       step.precondition.hash === observed.hash;
     if (!matches) {
@@ -240,7 +231,7 @@ export class InstallPlan {
   private readonly snapshot: InstallPlanSnapshot;
 
   private constructor(snapshot: InstallPlanSnapshot) {
-    this.snapshot = freeze(structuredClone(snapshot));
+    this.snapshot = deepFreeze(structuredClone(snapshot));
     this.planSteps = Object.freeze(
       snapshot.steps.map((step) => {
         const restored = PlanStep.restore(step);

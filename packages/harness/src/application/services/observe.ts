@@ -127,11 +127,14 @@ export function observe(
         ? undefined
         : yield* observation(locator, { kind: locator.kind, content: "", symlinkTarget: state.symlinkTarget });
     }
-    const planned = RegistrationState.observe(read.content, {
-      installedCopy: state.registration?.installedCopy,
-      copy: state.copy === undefined ? undefined : { isFile: state.copy.kind === "file", content: state.copy.content }
-    });
-    const content = planned.content() ?? read.content;
+    const content =
+      locator.kind === "cli-registration"
+        ? (RegistrationState.observe(read.content, {
+            installedCopy: state.registration?.installedCopy,
+            copy:
+              state.copy === undefined ? undefined : { isFile: state.copy.kind === "file", content: state.copy.content }
+          }).content() ?? read.content)
+        : read.content;
     const symlinkTarget = read.symlinkTarget ?? state.symlinkTarget;
     return yield* observation(locator, { ...read, content, ...(symlinkTarget === undefined ? {} : { symlinkTarget }) });
   });

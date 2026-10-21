@@ -20,7 +20,7 @@ import { type DesiredArtifact } from "../spi/desired-artifact.js";
 import { type InstallTargetSnapshot } from "../value-objects/install-target.js";
 import { type ObservedArtifact } from "../spi/observed-artifact.js";
 import { PlanStep, type PlanStepSnapshot, type StepNote } from "../value-objects/plan-step.js";
-import { type TrustPrompt } from "../spi/trust-prompt.js";
+import { type TrustPrompt } from "../value-objects/trust-prompt.js";
 import { type OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import { type Strategy } from "../../bundle/spi/strategy.js";
 import { threeWayVerify } from "../../ledger/services/three-way-verify.js";
@@ -29,10 +29,10 @@ import { type LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { type PreconditionSnapshot } from "../value-objects/precondition.js";
 
 export interface PlanRequest {
-  readonly legacyTexts: ReadonlyMap<LocatorKey, string>;
+  readonly legacyTexts: ReadonlyMap<ObservedArtifact, string>;
   /** Chosen by the caller, such as a random UUID. */
   readonly planId: string;
-  /** Checked with `checkBundle`. */
+  /** Checked with `Bundle.restore`. */
   readonly bundle: BundleSnapshot;
   readonly target: InstallTargetSnapshot;
   /**
@@ -312,7 +312,7 @@ export function buildInstallPlan(
     const seen = found.get(key);
     return (
       seen !== undefined &&
-      legacyTreatment(seen, bundle.owner, markers, ledger, observed, request.legacyTexts.get(key)) === "replace"
+      legacyTreatment(seen, bundle.owner, markers, ledger, observed, request.legacyTexts.get(seen)) === "replace"
     );
   };
   const preservedHooks = observed.filter(
@@ -321,14 +321,7 @@ export function buildInstallPlan(
       seen.locator.memberIn === "hook-group" &&
       !entries.has(locatorKey(seen.locator)) &&
       protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
-      protectedReplacement(
-        seen,
-        bundle,
-        target.agents,
-        ledger,
-        observed,
-        request.legacyTexts.get(locatorKey(seen.locator))
-      )
+      protectedReplacement(seen, bundle, target.agents, ledger, observed, request.legacyTexts.get(seen))
   );
   const preserved: PlanConflict["conflicts"] = preservedHooks.map((seen) => ({
     step: {

@@ -1,3 +1,4 @@
+import { deepFreeze } from "../../../lib/deep-freeze.js";
 import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
@@ -101,16 +102,6 @@ function sameRecord(a: LedgerEntrySnapshot, b: LedgerEntrySnapshot): boolean {
   );
 }
 
-/** Deep-freeze helper: snapshots retain no mutable descendants. */
-function freeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const inner of Object.values(value)) {
-      freeze(inner);
-    }
-  }
-  return value;
-}
 const isRevision = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
 /**
@@ -210,10 +201,10 @@ export class Ledger {
     pending: readonly PendingOperation[],
     kept: Readonly<Record<LocatorKey, KeptArtifact>>
   ) {
-    this.snapshot = freeze(snapshot);
-    this.entriesByKey = freeze(entries);
-    this.pendingOperations = freeze(pending);
-    this.keptByKey = freeze(kept);
+    this.snapshot = deepFreeze(snapshot);
+    this.entriesByKey = deepFreeze(entries);
+    this.pendingOperations = deepFreeze(pending);
+    this.keptByKey = deepFreeze(kept);
     Object.freeze(this);
   }
 

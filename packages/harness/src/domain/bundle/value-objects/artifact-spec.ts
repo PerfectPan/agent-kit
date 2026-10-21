@@ -1,3 +1,4 @@
+import { deepFreeze } from "../../../lib/deep-freeze.js";
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import type { InvalidBundle } from "./bundle.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
@@ -49,17 +50,6 @@ export interface InstructionSpec {
 /** One thing a Bundle wants installed, before a strategy renders it for an agent. */
 export type ArtifactSpecSnapshot = HookSpec | SkillSpec | McpServerSpec | InstructionSpec;
 
-/** Deep-freeze helper: a spec retains no mutable descendants from its caller. */
-function freeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const inner of Object.values(value)) {
-      freeze(inner);
-    }
-  }
-  return value;
-}
-
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** Starts with a letter or `_`, so that as a JSON pointer segment it never reads as an array index (`0`, `-`). */
 const MCP_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -72,7 +62,7 @@ export class ArtifactSpec {
   readonly #snapshot: ArtifactSpecSnapshot;
 
   private constructor(snapshot: ArtifactSpecSnapshot) {
-    this.#snapshot = freeze(structuredClone(snapshot));
+    this.#snapshot = deepFreeze(structuredClone(snapshot));
     Object.freeze(this);
   }
 

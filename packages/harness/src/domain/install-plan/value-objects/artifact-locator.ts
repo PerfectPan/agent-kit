@@ -26,7 +26,7 @@ export interface ArtifactLocatorSnapshot {
    * Required for the kinds inside a file and absent for the others: a JSON pointer (`/hooks/Stop`) for json-entry and
    * toml-entry (over the TOML document's data), the block id for managed-block, the registered name for
    * cli-registration. A JSON pointer never names an array index, because indexes move when the user edits the array;
-   * a segment of digits or `-` reads as one, so object keys the kit writes never look like that (see `checkBundle`).
+   * a segment of digits or `-` reads as one, so object keys the kit writes never look like that (see `Bundle.restore`).
    */
   readonly pointer?: string;
   /**

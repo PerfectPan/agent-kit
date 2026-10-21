@@ -27,7 +27,7 @@ export default [
   // command's first word for doctor, is counted with the entry. Configuration cleanup also carries the ledger
   // creation proof and its invalidation when the original entries disappear. Install-plan and bundle values own
   // validation and copy their inputs before freezing; legacy command content is parsed at the application boundary.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "82731 B" },
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "82674 B" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "7692 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.

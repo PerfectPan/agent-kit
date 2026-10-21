@@ -1,7 +1,6 @@
 import * as z from "zod/mini";
 import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
 import { hasLegacyMarker } from "../../domain/bundle/services/legacy-markers.js";
-import { locatorKey, type LocatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 
 const commandSchema = z.object({ command: z.string() });
@@ -20,15 +19,13 @@ export function isLegacyArtifact(markers: readonly string[], content: ArtifactCo
   return text !== undefined && hasLegacyMarker(markers, text);
 }
 
-export function legacyTexts(observed: readonly ObservedArtifact[]): ReadonlyMap<LocatorKey, string> {
-  const texts = new Map<LocatorKey, string>();
+/** Keep evidence per observation: a locator's final observation and its preserved hooks need different selections. */
+export function legacyTexts(observed: readonly ObservedArtifact[]): ReadonlyMap<ObservedArtifact, string> {
+  const texts = new Map<ObservedArtifact, string>();
   for (const artifact of observed) {
-    const key = locatorKey(artifact.locator);
     const text = legacyText(artifact.content);
-    if (text === undefined) {
-      texts.delete(key);
-    } else {
-      texts.set(key, text);
+    if (text !== undefined) {
+      texts.set(artifact, text);
     }
   }
   return texts;

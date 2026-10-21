@@ -36,7 +36,7 @@ const MANIFEST = "infra/architecture/boundaries.ts";
 const { resolve } = createRequire(import.meta.url);
 
 /** `adapters` comes first: its folder sits inside `domain/`, and the first matching element wins. */
-const LAYERS: readonly Layer[] = ["adapters", "domain", "application", "infra"];
+const LAYERS: readonly Layer[] = ["adapters", "domain", "application", "infra", "lib"];
 const EFFECT_MODULES = [...boundaries.effect.modules];
 const EFFECT_ENTRY = boundaries.effect.workspaceEntry.slice(1);
 /** `import("x")` types and `import x = require("x")`, which are not among the plugin's default dependency nodes. */
