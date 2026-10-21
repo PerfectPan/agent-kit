@@ -36,6 +36,5 @@ export {
 } from "./domain/transcript/index.js";
 export { timedRecord } from "./domain/transcript/adapters/record-time.js";
 export type { SessionPreview } from "./domain/session/index.js";
-export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";
 export type { UsageDecoder, UsageDecoders } from "./application/spi.js";
 export { compactUsage } from "./domain/usage/index.js";

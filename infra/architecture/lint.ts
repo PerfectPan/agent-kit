@@ -12,7 +12,7 @@
  * - `boundaries/no-unknown-files` reports `src/` files of a package that the manifest does not declare.
  * - `import/no-nodejs-modules` (built in) keeps Node built-ins in the packages that declare `nodeBuiltins`.
  * - `eslint-js/no-restricted-syntax` (oxlint-plugin-eslint) rejects computed dynamic imports, the statements a shell
- *   entry may not contain, non-`.ts` sources under `src/`, and agent markers spelled outside the agent adapters.
+ *   entry may not contain, non-`.ts` sources under `src/`, and agent markers spelled in contexts.
  *
  * Rules that concern manifests rather than source files (undeclared packages, `package.json` dependencies, entry
  * files) are checked by `manifest.test.ts`. `run-lint-cases.ts` lints the cases of `lint-cases.ts`, violating and
@@ -487,7 +487,10 @@ function policiesOf(project: Project): Policy[] {
   ];
 }
 
-const MARKERS = boundaries.agentMarkers.markers.map((marker) => escapeRegExp(marker)).join("|");
+// Provider declarations reference their import-free facts; no build or second marker list is needed.
+const MARKERS = [...new Set(Object.values(boundaries.packages).flatMap((rule) => rule.providerMarkers ?? []))]
+  .map((marker) => escapeRegExp(marker))
+  .join("|");
 /** A module specifier is a Literal too; the boundary rules judge it instead. */
 const MODULE_SPECIFIERS = [
   "ImportDeclaration > Literal",
@@ -497,7 +500,7 @@ const MODULE_SPECIFIERS = [
   "TSImportType > Literal",
   "TSExternalModuleReference > Literal"
 ].join(", ");
-const AGENT_MARKER_MESSAGE = `[agent-marker] this value names one agent, and agent knowledge belongs in the agent adapters (markers in ${MANIFEST})`;
+const AGENT_MARKER_MESSAGE = `[agent-marker] this value names one agent, and agent knowledge belongs in providers (markers from their facts.ts)`;
 
 /** A rule entry at error level with the given options. */
 const error = (...options: unknown[]): ["error", ...unknown[]] => ["error", ...options];
@@ -538,7 +541,6 @@ export function boundaryLintOf(folder: string): BoundaryLint {
   const manifest = JSON.parse(readFileSync(`${ROOT}/${folder}/package.json`, "utf8")) as { name: string };
   const project = { name: manifest.name, folder };
   const rule = boundaries.packages[project.name];
-  const markerExemptions = boundaries.agentMarkers.packages[project.name];
   const base = isShell(project.name) ? [syntax.dynamicImport, ...syntax.shellEntry] : [syntax.dynamicImport];
   const policies: DependenciesPolicy[] = policiesOf(project);
   const overrides: OxlintOverride[] = [
@@ -560,12 +562,12 @@ export function boundaryLintOf(folder: string): BoundaryLint {
         "eslint-js/no-restricted-syntax": error(...base)
       }
     },
-    ...(markerExemptions === undefined
+    ...(!boundaries.agentMarkers.packages.includes(project.name)
       ? []
       : [
           {
             files: SOURCES,
-            excludeFiles: [...TESTS, DECLARATIONS, ...boundaries.agentMarkers.exempt, ...markerExemptions],
+            excludeFiles: [...TESTS, DECLARATIONS],
             rules: { "eslint-js/no-restricted-syntax": error(...base, ...syntax.agentMarker) }
           }
         ]),

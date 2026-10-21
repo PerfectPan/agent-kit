@@ -1,9 +1,7 @@
-export { builtinCodingAgents, isBuiltinCodingAgentId } from "./domain/coding-agent/adapters/index.js";
 export { homeFromRule } from "./domain/coding-agent/index.js";
 export type {
   AgentHome,
   AgentHomeSource,
-  BuiltinCodingAgentId,
   CodingAgent,
   CodingAgentId,
   CodingAgentWithHome,

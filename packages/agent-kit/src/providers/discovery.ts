@@ -4,12 +4,11 @@ import { grokProbe } from "@rivus/agent-kit-provider-grok/discovery";
 import { opencodeProbe } from "@rivus/agent-kit-provider-opencode/discovery";
 import { geminiCliProbe } from "@rivus/agent-kit-provider-gemini-cli/discovery";
 import { cursorProbe } from "@rivus/agent-kit-provider-cursor/discovery";
-import { builtinProbeRecipes as contextBuiltins } from "@rivus/agent-kit-discovery/public";
 import { piProbe } from "@rivus/agent-kit-provider-pi/discovery";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinProbeRecipes: typeof contextBuiltins & {
+export const builtinProbeRecipes: {
   readonly codex: typeof codexProbe;
   readonly "claude-code": typeof claudeCodeProbe;
   readonly grok: typeof grokProbe;

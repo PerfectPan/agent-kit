@@ -655,6 +655,19 @@ export const cases: Case[] = [
     "shell-entry"
   ),
 
+  allowed(
+    "agent marker: generic values and plain file names",
+    "sessions",
+    fresh("src/application/x"),
+    'export const generic = ["invalid-cursor", "api", "settings.json", "auth.json", "agent", "share"];'
+  ),
+  rejects(
+    "agent marker: a provider alias",
+    "catalog",
+    fresh("src/domain/x"),
+    'export const alias = "claude";',
+    "agent-marker"
+  ),
   // the agent-marker rule
   rejects(
     "agent marker: a string literal",
@@ -765,29 +778,33 @@ export const cases: Case[] = [
     `export type C = typeof import("cursor");`,
     "external-dependency"
   ),
-  allowed(
+  rejects(
     "agent marker: a domain adapters folder",
     "sessions",
     fresh("src/domain/session/adapters/x"),
-    `export const id = "codex";`
+    `export const id = "codex";`,
+    "agent-marker"
   ),
-  allowed(
+  rejects(
     "agent marker: catalog's adapters folder",
     "catalog",
     fresh("src/domain/coding-agent/adapters/x"),
-    `export const id = "cursor";`
+    `export const id = "cursor";`,
+    "agent-marker"
   ),
-  allowed(
+  rejects(
     "agent marker: sessions session-adapters",
     "sessions",
     fresh("src/application/services/session-adapters/x"),
-    `export const id = "codex";`
+    `export const id = "codex";`,
+    "agent-marker"
   ),
-  allowed(
+  rejects(
     "agent marker: sessions usage-decoders",
     "sessions",
     fresh("src/application/services/usage-decoders/x"),
-    `export const id = "gemini-cli";`
+    `export const id = "gemini-cli";`,
+    "agent-marker"
   ),
   rejects(
     "agent marker: no host-sniffing exemption",
@@ -796,21 +813,22 @@ export const cases: Case[] = [
     `export const caseHost = "opencode";`,
     "agent-marker"
   ),
-  allowed(
+  rejects(
     "agent marker: catalog's id unions",
     "catalog",
     "src/domain/coding-agent/value-objects/coding-agent-id.ts",
-    `export type CaseId = "pi";`
+    `export type CaseId = "pi";`,
+    "agent-marker"
   ),
   rejects(
-    "agent marker: the host-sniffing exemption is one file",
+    "agent marker: lifecycle policies",
     "harness",
     fresh("src/domain/lifecycle/policies/x"),
     `export const host = "grok";`,
     "agent-marker"
   ),
   rejects(
-    "agent marker: the sessions exemptions are per package",
+    "agent marker: discovery session services",
     "discovery",
     fresh("src/application/services/session-adapters/x"),
     `export const id = "codex";`,

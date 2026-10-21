@@ -1,9 +1,12 @@
-import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
-
 export const OPENCODE_ID = "opencode";
+const HOME_ENV = "XDG_DATA_HOME";
 // OpenCode keeps data in the XDG data directory and plugins in the XDG configuration directory.
-export const OPENCODE_HOME: HomeRule = {
-  envVar: "XDG_DATA_HOME",
+export const OPENCODE_HOME: {
+  readonly envVar: string;
+  readonly defaultPath: readonly string[];
+  readonly envSubpath: readonly string[];
+} = {
+  envVar: HOME_ENV,
   envSubpath: [OPENCODE_ID],
   defaultPath: [".local", "share", OPENCODE_ID]
 };
@@ -33,3 +36,6 @@ export const OPENCODE_ACP_ENV: readonly string[] = [
 
 /** The bridge remembers the session under a key absent from native payloads. */
 export const OPENCODE_CURRENT_SESSION_FIELD = "currentSessionId";
+
+/** Agent-specific values forbidden in context source; generic path segments are deliberately excluded. */
+export const agentMarkers: readonly string[] = [OPENCODE_ID, HOME_ENV];

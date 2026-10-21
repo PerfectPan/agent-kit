@@ -35,7 +35,7 @@ export interface LoadOptions {
 }
 
 /**
- * How one CodingAgent stores its sessions and how to read them. Built-in adapters are in `builtinSessionAdapters`;
+ * How one CodingAgent stores its sessions and how to read them. The shell supplies built-in adapters;
  * a shell caller passes its own as a `sessions` service in the `providers` option, and `/testing` has the checks an
  * adapter must pass. Every read goes through the platform passed to the call.
  */
@@ -190,7 +190,7 @@ export interface DecodeUsageOptions {
 }
 
 /**
- * Where one CodingAgent keeps its usage and how to decode it; `builtinUsageDecoders` has one per built-in agent. The
+ * Where one CodingAgent keeps its usage and how to decode it; the shell supplies built-in decoders. The
  * use cases select decoders from that table. Provider implementations use this interface.
  */
 export interface UsageDecoder {

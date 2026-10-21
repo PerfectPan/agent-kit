@@ -315,7 +315,7 @@ packages/providers/claude-code/
   are declared per file in `boundaries.shellImports`, so the hooks entry cannot import the complete descriptor list.
   `/providers` exports `Provider` and `builtinProviders`. Related public operations (`verify`, `uninstall`, `doctor`,
   `probeAgent`, `summarizeSession`, `sessionAdapterHome`) bind the same tables as the use cases they call. Existing
-  individual built-in table exports remain until provider closeout; the old override options do not.
+  individual built-in table exports remain until batch 13 prunes the public surface against Appendix A; the old override options do not.
   Descriptor types use the narrow `acp/public/profiles` and `harness/public/install` type entries: importing their
   aggregate public entries makes declaration bundling carry Effect into the plain and zero-dependency entries.
 - **The built-in tables** are built in `packages/agent-kit/src/providers/<service>.ts`, one module per service, each importing that service's subpath from every provider. `builtinProviders` (all descriptors) is assembled in its own module.
@@ -332,7 +332,7 @@ packages/providers/claude-code/
   are registered before aliases; the shell validates its merged identity table with `validateIdentities`, also used
   by catalog parsing.
 - `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
-- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package in batch 12, together with the identity table. Until then the contexts' built-in tables are still typed with the union, and a context may not depend on the shell, so catalog keeps it. From batch 12 the shell derives both from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
+- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` belong to the shell, derived from the built-in provider identity table, and remain exported from `/catalog`. Catalog uses `CodingAgentId = string`; the shell exports `CodingAgentId` as `BuiltinCodingAgentId | (string & {})` to retain editor completion. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
 
 ### 3.5 Host markers
@@ -460,19 +460,13 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 | `package-dependency` (manifests) | The `workspace:` dependencies declared in each `package.json` are allowed, whether or not they are imported | The manifest test, against the matrix of `boundaries.ts` |
 | `entry-file`, `parse` | Package entry files exist; sources parse | `entry-file`: the manifest test. `parse`: oxlint's parser on every run |
 
-- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the marker list in `infra/architecture`, the providers and the shell are outside its scope. It is two `no-restricted-syntax` selectors: a `Literal` whose whole value is a marker, except a module specifier, and a `TemplateElement` with a marker between `/`, the start and the end of its text. It reports a value that equals a marker exactly, never a substring of a longer value:
+- **The agent-marker rule** is new. It applies to the non-test source of the six contexts (catalog, discovery, sessions, harness, acp, cost); the providers, shell and infrastructure are outside its scope. It is two `no-restricted-syntax` selectors: a `Literal` whose whole value is a marker, except a module specifier, and a `TemplateElement` with a marker between `/`, the start and the end of its text. It reports a value that equals a marker exactly, never a substring of a longer value:
   - a string literal or a string literal type whose whole value is a marker;
   - a piece of a template literal's static text (each part between expressions, split on `/`) that is a marker, so `` `${home}/.claude/settings.json` `` and `` `${name}codex` `` report.
 
   Import and export specifiers are not checked; the boundary rules cover them. Comments and tests are not checked. Exact matching keeps words such as `invalid-cursor` and `api` from reporting.
-  - From batch 3 to batch 11 its list is `agentMarkers` in `boundaries.ts`: the seven ids plus `.claude`, `CLAUDE_CONFIG_DIR` and `CURSOR_VERSION`. It also matches string literal types, so the id unions are caught.
-  - Until the code moves, it exempts exactly the files that hold agent knowledge on batch 3's base:
-    - `domain/*/adapters/` and sessions' `session-adapters/` and `usage-decoders/`, until batch 12;
-    - `harness/src/domain/lifecycle/policies/host-sniffing.ts`, until batch 4 removes it;
-    - `catalog/src/domain/coding-agent/value-objects/coding-agent-id.ts` (the id unions), until batch 12. Batch 4 removes `CodingAgentIdWithHome`; `BuiltinCodingAgentId` stays until the identity table goes (3.4).
-
-    On batch 3's branch the whole-repository lint reports nothing outside this list. Each later batch removes the exemptions for the code it moves.
-  - From batch 12 the list is computed in `lint.ts` from the providers' `facts.ts`, the constant is deleted, and the exemptions end.
+  - Each provider's import-free `facts.ts` exports `agentMarkers`, built from its id, aliases, agent-specific home directory names, home override and host-marker environment names. Provider declarations in `boundaries.ts` reference these exports through `providerMarkers`; `lint.ts` combines and deduplicates them. Static imports let the configuration loader resolve import-free source facts without a build. The existing cases that inject illegal imports into facts currently fail during configuration loading; resolving that interaction needs a follow-up design decision before closeout can pass its case-runner gate. Infrastructure keeps no second list of marker values.
+  - There are no context-source exemptions, including former adapter directories and catalog's id type. Generic path segments and file names are excluded from provider marker lists.
   - The rule catches hand-written ids, directories and environment variable names. It cannot catch agent knowledge without a marker, such as branching on Claude's `notification_type` field; `authoring.md` states that this is a review item.
 - **Where the configuration lives.** The configuration is specific to this repository, so it stays out of the shared lint-config. `pnpm -r run lint` runs `vp lint` in each package, and oxlint then reads only that package's `lint` block (a root block would apply only to packages without one), so each package's `vite.config.ts` passes its block through `withBoundaryLint` from `infra/architecture/lint.ts`. The manifest test checks every package under `packages/`, including nested providers: its lint script must run whole-package `vp lint`, its block must keep the generated overrides last and in order, and it may ignore only build output (`dist/**`). The plugins are devDependencies of `infra/architecture`.
 - **Fixtures.** Every rule has cases that violate it and cases that do not (`infra/architecture/lint-cases.ts`). `run-lint-cases.ts`, part of `pnpm run test`, lints them in a temporary copy of the repository and asserts the exact rule ids, so a run never writes into the working tree. This matters because eslint-plugin-boundaries classifies an import it cannot resolve as external and skips it silently.
@@ -566,7 +560,7 @@ Publishing stays on trusted publishing with provenance, from the same workflow f
 ### 5.3 Compatibility checks
 
 - `/harness/events` and `/transcript/usage` still import nothing in their built files. Each provider batch compares every entry with the main commit it is based on; growth over 1% of any entry needs an explanation in its PR, except the expected `/catalog` growth described below. Batch 2 sizes remain historical measurements.
-- Until batch 12, the unbundled dist chunk imported by `/catalog` contains each provider's whole `facts.ts`. The measured, tree-shaken bundle retains only identity facts; its size typically grows about 20–30 bytes per provider, though compression and reused facts can offset the net entry growth. Accept and measure this growth here rather than repeating the explanation in each provider PR; keep facts together.
+- The unbundled dist chunk imported by `/catalog` contains each provider's whole `facts.ts`. The measured, tree-shaken bundle retains only identity facts; its size typically grows about 20–30 bytes per provider, though compression and reused facts can offset the net entry growth. Accept and measure this growth here rather than repeating the explanation in each provider PR; keep facts together.
 - The pnpm migration changes no shipped byte: the shell's and collab's `dist/` are compared file by file with a build of 821ebcf, and the dry-run pack file lists are compared too.
 - **The application check before 0.20.0.** Each application's type check and tests run twice: against the published 0.19.1, and against the locally packed 0.20.0. Every error that appears only in the second run must come from a change listed in 3.10. Errors the first run already has come from the application's older kit version, and its upgrade PR handles them.
 
@@ -637,7 +631,7 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
 #### Batch 4: service tables, routing and SPI entries
 
 - Files:
-  - catalog: `ServiceTable`, the two lookups, `CapabilityUnsupported`, the identity functions of 3.4, and the removal of `resolveHome` and `CodingAgentIdWithHome` (`BuiltinCodingAgentId` stays until batch 12);
+  - catalog: `ServiceTable`, the two lookups, `CapabilityUnsupported`, the identity functions of 3.4, and the removal of `resolveHome` and `CodingAgentIdWithHome`;
   - each context: `src/spi.ts`, `domain/<concept>/spi/` and `application/spi.ts`, with the SPI interfaces moved out of `value-objects/` and `ports.ts`;
   - every routing site of 1.1, with the `providers` option of 3.3;
   - harness lifecycle: `HostMarkers` in `HookDialect`, `sniffSource` reading the declarations, `host-sniffing.ts` removed;
@@ -662,8 +656,7 @@ Pilot decisions for batch 5 (apply to later provider batches):
   Manifest checks validate those files and exact exports. Shell lint allows each subpath only in its matching
   service module and checks the slim hooks/usage import lists.
 - 3.3: existing published built-in table exports are assembled in the shell during migration, preserving key
-  order and data. Catalog's id union and membership check stay backed by a static list until batch 12, so moving
-  an identity does not make `isBuiltinCodingAgentId` forget it. Services retain their existing data fields and
+  order and data. The shell derives the built-in id union and membership check from its complete identity table. Services retain their existing data fields and
   resolve homes through the shell identity table; installer home lookup reads provider facts directly.
 - 3.6: usage had no conformance suite. Add an internal runner-agnostic suite in testing and run it in pi; do not
   add a published export without a consumer. Result helpers come directly from catalog's SPI;
@@ -711,13 +704,13 @@ One batch per agent, in this order:
     complete tables for foreign-hook integration;
     discovery's `src/application/services/host-paths.test.ts` also needs the moved identity via `testsOnly`
     to keep testing its home override without depending on the shrinking context table; its recipe fixture also uses the Codex provider through `testsOnly`;
-    the recipe-table key check lives in `testing/test/probe-recipes.test.ts` on the complete table once the context table is empty;
+    the recipe-table key check in `testing/test/probe-recipes.test.ts` covers the test table; shell tests also check each shipped service table against its entries' ids;
   - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
     `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
     cross-agent fixtures and conformance-suite self-tests stay in testing; session consumers there use the complete
     test sessions table, and ACP recorded/live comparisons stay in testing as their translators move;
     `packages/agent-kit/scripts/smoke-consumer.ts` seeds the packed consumer from those session fixture paths;
-  - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
+  - `infra/architecture/boundaries.ts` (`providerServices`, `providerMarkers`, `spiImports`, `testsOnly`), package
     manifests and the lockfile; update adapter source links in `packages/discovery/README.md`;
   - boundary cases importing a moved adapter: keep their target resolvable so they still test the intended rule
     (`run-lint-cases.ts` creates synthetic session adapters in its temporary copy after the last agent moves).
@@ -727,7 +720,7 @@ One batch per agent, in this order:
 
 - Files:
   - delete the seven built-in tables from the contexts and the identity table from catalog; move `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` to the shell (3.4). In catalog, `CodingAgentId` becomes a plain string type checked by `CODING_AGENT_ID_PATTERN`, and `CodingAgent.id` uses it. The shell's `/catalog` exports `CodingAgentId` as `BuiltinCodingAgentId | (string & {})`, so applications keep editor completion for the built-in ids;
-  - add the capability check;
+  - require an unsupported-service entry for every built-in id and retain the capability check;
   - write the README support matrix (one row per agent, one column per service) with its test;
   - compute the marker list from the providers' `facts.ts`, delete the constant, and end the exemptions.
 - Exit condition: 6.4 row 7.

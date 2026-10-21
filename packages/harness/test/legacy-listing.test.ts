@@ -197,7 +197,7 @@ interface ExpectedEntry {
 }
 
 /** What each adapter's replace fixture must list. Cursor and Grok see the event under their own name. */
-const expectedReplace: Readonly<Record<CodingAgentId, readonly ExpectedEntry[]>> = {
+const expectedReplace: Readonly<Record<keyof typeof testInstall, readonly ExpectedEntry[]>> = {
   "claude-code": [
     {
       file: "/.claude/settings.json",
@@ -320,7 +320,7 @@ const conflictKeys = (failure: PlanInstallError): readonly string[] =>
   failure._tag === "PlanConflict" ? failure.conflicts.map(({ step }) => locatorKey(step.locator)).toSorted() : [];
 
 describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
-  for (const agent of Object.keys(expectedReplace) as CodingAgentId[]) {
+  for (const agent of Object.keys(expectedReplace) as (keyof typeof expectedReplace)[]) {
     const strategies = agent === "claude-code" ? SHARED_CLAUDE : agent === "gemini-cli" ? SHARED_GEMINI : undefined;
     it.effect(`lists exactly what the ${agent} plan replaces, and nothing else`, () =>
       Effect.gen(function* () {
@@ -332,7 +332,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
             legacyMarkers: MARKERS,
             providers: { install: testInstall, hooks: testHooks }
           });
-          const expected = expectedReplace[agent] ?? [];
+          const expected = expectedReplace[agent];
           expect(asView(home, entries).toSorted((a, b) => a.file.localeCompare(b.file))).toEqual(
             [...expected].toSorted((a, b) => a.file.localeCompare(b.file))
           );

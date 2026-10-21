@@ -27,7 +27,6 @@ export {
 } from "./application/use-cases/scan-usage.js";
 
 // Session adapters and usage ports
-export { builtinSessionAdapters } from "./application/services/session-adapters/index.js";
 export type {
   DecodeUsageOptions,
   SqliteUnavailable,
@@ -126,5 +125,3 @@ export {
   type UsageGranularity,
   type UsageRecord
 } from "./domain/usage/index.js";
-
-export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";

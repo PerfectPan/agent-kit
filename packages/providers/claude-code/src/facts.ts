@@ -1,11 +1,13 @@
-import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
-
 export const CLAUDE_CODE_ID = "claude-code";
 export const CLAUDE_CODE_DISPLAY_NAME = "Claude Code";
 export const CLAUDE_CODE_COMMAND = "claude";
 export const CLAUDE_CODE_HOME_DIR = ".claude";
+const HOME_ENV = "CLAUDE_CONFIG_DIR";
 // The override names the configuration directory itself.
-export const CLAUDE_CODE_HOME: HomeRule = { envVar: "CLAUDE_CONFIG_DIR", defaultPath: [CLAUDE_CODE_HOME_DIR] };
+export const CLAUDE_CODE_HOME: { readonly envVar: string; readonly defaultPath: readonly string[] } = {
+  envVar: HOME_ENV,
+  defaultPath: [CLAUDE_CODE_HOME_DIR]
+};
 export const CLAUDE_CODE_PROJECTS_DIR = "projects";
 export const CLAUDE_CODE_CREDENTIALS_FILE = ".credentials.json";
 export const CLAUDE_CODE_GLOBAL_CONFIG = "~/.claude.json";
@@ -36,3 +38,6 @@ export const CLAUDE_CODE_ACP_ENV: readonly string[] = [
   "CLOUD_ML_REGION",
   "GOOGLE_APPLICATION_CREDENTIALS"
 ];
+
+/** Agent-specific values forbidden in context source; generic path segments are deliberately excluded. */
+export const agentMarkers: readonly string[] = [CLAUDE_CODE_ID, CLAUDE_CODE_COMMAND, CLAUDE_CODE_HOME_DIR, HOME_ENV];

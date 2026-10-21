@@ -4,12 +4,12 @@ import { grok } from "@rivus/agent-kit-provider-grok/identity";
 import { opencode } from "@rivus/agent-kit-provider-opencode/identity";
 import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { cursor } from "@rivus/agent-kit-provider-cursor/identity";
-import { builtinCodingAgents as contextBuiltins, validateIdentities } from "@rivus/agent-kit-catalog/public";
+import { validateIdentities } from "@rivus/agent-kit-catalog/public";
 import { pi } from "@rivus/agent-kit-provider-pi/identity";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinCodingAgents: typeof contextBuiltins & {
+export const builtinCodingAgents: {
   readonly codex: typeof codex;
   readonly "claude-code": typeof claudeCode;
   readonly grok: typeof grok;
@@ -32,3 +32,13 @@ export const identityTable = (providers?: readonly Provider[]): ReturnType<typeo
   validateIdentities(table);
   return table;
 };
+
+/** Built-in ids come from the shell's provider identities, not a second list in a context. */
+export type BuiltinCodingAgentId = keyof typeof builtinCodingAgents;
+
+/** Accept third-party ids while keeping editor completion for built-ins. */
+export type CodingAgentId = BuiltinCodingAgentId | (string & {});
+
+export function isBuiltinCodingAgentId(value: string): value is BuiltinCodingAgentId {
+  return Object.hasOwn(builtinCodingAgents, value);
+}

@@ -1,7 +1,10 @@
+import type { BuiltinCodingAgentId } from "./identity.js";
 import type { Provider } from "./types.js";
 
 /** Missing built-in capabilities; every other service has an implementation. */
-export const unsupported: Readonly<Record<string, Partial<Record<Exclude<keyof Provider, "id">, string>>>> = {
+export const unsupported: Readonly<
+  Record<BuiltinCodingAgentId, Partial<Record<Exclude<keyof Provider, "id">, string>>>
+> = {
   "claude-code": {},
   codex: {},
   grok: {},

@@ -1,4 +1,3 @@
-import { builtinAcpProfiles as testAcp } from "../src/public.js";
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -251,7 +250,7 @@ describe("connectAgent", () => {
       const defectOf = (exit: Exit.Exit<unknown, unknown>) =>
         Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
       const unknown = defectOf(
-        yield* Effect.exit(connectAgent("no-such-agent", { cwd: workDir(), env: {}, providers: { acp: testAcp } }))
+        yield* Effect.exit(connectAgent("no-such-agent", { cwd: workDir(), env: {}, providers: { acp: {} } }))
       );
       expect(isAgentKitError(unknown) && unknown.code).toBe("capability-unsupported");
       const zero = defectOf(yield* Effect.exit(connectFake({ cancelTimeoutMs: 0 })));

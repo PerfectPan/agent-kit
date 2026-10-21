@@ -326,6 +326,17 @@ describe("the package manifests", () => {
     }
   });
 
+  it("requires every provider to supply its marker list from import-free facts", () => {
+    for (const { name, folder } of projects) {
+      const rule = boundaries.packages[name];
+      if (rule?.providerServices !== undefined) {
+        expect(rule.providerMarkers?.length, `markers of ${name}`).toBeGreaterThan(0);
+        const facts = readFileSync(join(root, folder, "src/facts.ts"), "utf8");
+        expect(facts, `facts of ${name}`).not.toMatch(/\b(?:import|require)\s*(?:[({*]|type\b|["'])|\bfrom\s*["']/);
+      }
+    }
+  });
+
   it("requires provider service exports and refuses a barrel", () => {
     const folder = "packages/providers/pi";
     expect(manifestViolations(packages, (path) => path !== `${folder}/src/hooks.ts` && onDisk(path))).toEqual([

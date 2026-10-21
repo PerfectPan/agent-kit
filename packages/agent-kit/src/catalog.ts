@@ -1,10 +1,14 @@
-export { builtinCodingAgents } from "./providers/identity.js";
+export {
+  builtinCodingAgents,
+  isBuiltinCodingAgentId,
+  type BuiltinCodingAgentId,
+  type CodingAgentId
+} from "./providers/identity.js";
 export {
   AgentKitError,
   err,
   homeFromRule,
   isAgentKitError,
-  isBuiltinCodingAgentId,
   ok,
   parseCodingAgentId
 } from "@rivus/agent-kit-catalog/public";
@@ -12,9 +16,7 @@ export type {
   AgentHome,
   AgentHomeSource,
   AgentKitErrorOptions,
-  BuiltinCodingAgentId,
   CodingAgent,
-  CodingAgentId,
   CodingAgentWithHome,
   HomeContext,
   HomeRule,

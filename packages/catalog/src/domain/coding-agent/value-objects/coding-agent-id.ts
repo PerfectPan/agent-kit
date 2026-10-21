@@ -1,21 +1,5 @@
-/** Built-in ids remain here until the shell owns the complete provider list. */
-export const BUILTIN_CODING_AGENT_IDS = [
-  "claude-code",
-  "codex",
-  "cursor",
-  "gemini-cli",
-  "grok",
-  "opencode",
-  "pi"
-] as const;
-export type BuiltinCodingAgentId = (typeof BUILTIN_CODING_AGENT_IDS)[number];
-
-/**
- * A built-in id, or the id of a third-party agent whose adapters a caller passes to a use case. The `string & {}`
- * member accepts any id while keeping editor completion for the built-in ones; `parseCodingAgentId` resolves
- * aliases and checks the shape.
- */
-export type CodingAgentId = BuiltinCodingAgentId | (string & {});
+/** A canonical agent id; `parseCodingAgentId` checks it with `CODING_AGENT_ID_PATTERN`. */
+export type CodingAgentId = string;
 
 /** The canonical id of a known CodingAgent, or a third-party id: lowercase letters and digits in `-`-joined words. */
 export const CODING_AGENT_ID_PATTERN: RegExp = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

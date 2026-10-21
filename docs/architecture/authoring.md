@@ -22,14 +22,15 @@ Packages are created in the phase that gives them content; see the plan's sectio
 Providers own their agent's identity, probe recipes, hook dialects, install adapters, log layouts and decoding,
 and ACP launch details. All seven built-in agents live in `packages/providers/`, following [plan 0002](../plans/0002-providers-and-workspace.md#32-provider-packages).
 Providers implement context SPI interfaces; contexts own the service models, shared helpers and use cases.
-The shell assembles the built-in service tables from the providers. Empty context tables remain until provider closeout.
+The shell assembles the built-in service tables and derives its built-in id union from the provider identities.
+Contexts contain no agent knowledge or built-in tables; they read the service tables supplied by their callers.
 
 - Agent-specific code belongs to its provider; shared format rules and helpers belong to the context that uses them. catalog stays small because every context must coordinate when it changes.
 - Code that changes because of the same upstream change belongs together. An agent's installer and hook parser share its HookDialect in the provider.
 - A package is not a new bounded context, and a pure re-export is not a second owner. The shell packages own nothing; Platform is a technical port, not a context.
 - A revision counter, a JSON file, a state machine or a validator does not by itself establish an owner. Find the context whose invariants the code protects.
 - An abstraction needs at least two real consumers. Code with a single consumer stays in that application until a second consumer appears.
-- Adding an agent: create its provider package with one subpath per supported service, declare its SPI dependencies and services in `boundaries.ts`, and register it in the shell's service tables. Run the services' conformance suites from testing. Plan 0002 lists the sync points while context tables are being migrated.
+- Adding an agent: create its provider package with one subpath per supported service, declare its SPI dependencies and services in `boundaries.ts`, and register it in the shell's service tables. Run the services' conformance suites from testing. Record unsupported services, update the README support matrix, and declare the provider's import-free marker facts in the boundary manifest.
 
 ## Lay Out A Context Package
 
@@ -39,8 +40,7 @@ Every context package uses the same layout, creating only the directories it nee
 <context>/src/
   domain/<concept>/
     aggregates/  entities/  value-objects/  policies/  factories/  errors/  events/  services/
-    adapters/           agent adapters (anti-corruption layer) for this concept's model; a
-                        builtinXxx table of pure adapters may live here
+    adapters/           shared format readers and renderers for this concept's model
     spi/                pure provider interfaces and their parts
     index.ts            the concept's facade inside the package
   application/
@@ -62,14 +62,11 @@ Every context package uses the same layout, creating only the directories it nee
   index.ts              the surface for sibling packages
 ```
 
-One agent's code is split by concept, not grouped by agent: each file lives in the `adapters/` of the concept whose
-model it produces — in sessions, a log line's translation in `transcript`, the directory layout and preview in
-`session`, the usage decoding in `usage`. A concept's `builtinXxx` table lives in that concept's `adapters/` when its
-entries are pure (harness's `install-adapters.ts` and `hook-dialects.ts`); a table whose entries need Platform lives
-in `application/services/` (sessions' `builtinSessionAdapters` and `builtinUsageDecoders`), because `adapters/` may
-not import Platform. A wire format shared across agents at one protocol boundary, such as sessions' translation of
-ACP `session/update` streams, is an adapter too and lives in the adapters of the concept whose model it reads and
-writes; counted as adapters, it may import other adapters, which the removed `domain/protocols/` layer forbade.
+Each provider groups its agent's service implementations, shared facts, layout and record parsing under
+`packages/providers/<agent>/src/`. Its service subpaths implement the context SPI; it has no barrel. The shell
+owns every built-in table, including the identity table. Contexts keep shared format adapters, such as sessions'
+translation of ACP `session/update` streams, under the concept whose model they read and write. Those shared
+adapters may import other adapters, but contain no agent-specific rules.
 
 The layer principles:
 
@@ -80,8 +77,8 @@ The layer principles:
 | Layer | Contents | May import |
 | --- | --- | --- |
 | `domain/` | Value objects, aggregates, their child entities, policies (rules), factories, errors, domain events, stateless domain services | Any concept folder of this context, but no `adapters/` folder — its own or another concept's — plus catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
-| `domain/<concept>/adapters/` | Translation of one agent's external format into the model of the concept whose `adapters/` holds the file: a log line into TranscriptEvents, a hook payload into a LifecycleEvent. Pure functions, no IO | Any concept folder, also of other concepts, other concepts' `adapters/` folders, catalog, and the external packages the package allows, such as `zod/mini` |
-| `application/` | `use-cases/` carry agent knowledge and coordinate ports; `services/` is code shared by use cases; `ports.ts` declares infrastructure ports; Platform slices named by provider interfaces live in `spi.ts`, and use-case-only slices in `platform.ts` | Domain, the `adapters/` folders and ports |
+| `domain/<concept>/adapters/` | Shared external-format readers and renderers; agent-specific translation lives in providers. Pure functions, no IO | Any concept folder, also of other concepts, other concepts' `adapters/` folders, catalog, and the external packages the package allows, such as `zod/mini` |
+| `application/` | `use-cases/` coordinate supplied service tables and ports; `services/` is code shared by use cases; `ports.ts` declares infrastructure ports; Platform slices named by provider interfaces live in `spi.ts`, and use-case-only slices in `platform.ts` | Domain, the `adapters/` folders and ports |
 | `infra/` | Implementations of ports the kit declares: persistence implementations under `repository/` (aggregate repositories and key-value stores such as acp's session bindings), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
 
 `@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary rules treat as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
@@ -279,7 +276,7 @@ The assembly root lives in each consuming application, not in the kit.
 
 - A rule that a repository cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.
 - When ownership or dependencies change, update `infra/architecture/boundaries.ts`; the boundary rules are generated from it. `infra/architecture/lint.ts` turns it into `vp lint` rules, which every package's `vite.config.ts` applies through `withBoundaryLint`: eslint-plugin-boundaries for imports between packages and layers, Effect and npm specifiers; oxlint's `import/no-nodejs-modules` for Node built-ins; `no-restricted-syntax` for computed `import()`, shell entries, non-`.ts` sources and agent markers. Generated diagnostics carry their rule id in brackets, such as `[layer]`; the built-in Node rule and parser keep their own diagnostics. `manifest.test.ts` checks what has no source file to lint: every package under `packages/` is declared, its `workspace:` dependencies are allowed, its entry files exist, its lint script runs whole-package `vp lint`, and its `vite.config.ts` applies the rules. Lint scripts may add `2>&1` and the existing `&& effect-tsgo diagnostics --project … --strict` commands. The manifest test requires the generated overrides last and in order, accepts only `dist/**` in top-level `ignorePatterns`, and requires the top-level `boundaries/` and `import/` settings to match the generator exactly, including their keys. The generated source override explicitly enables the `import` plugin even when the top-level plugin list omits it. `run-lint-cases.ts`, part of `pnpm run test`, lints the cases of `lint-cases.ts` in a temporary copy of the repository: a legal import (such as cost's domain importing a type from sessions) must report nothing, and a violating one (`node:*` in a domain file, `effect` in a plain context, a deep import into another package's `domain/`) must report its rule. A new rule or exemption comes with its cases.
-- Agent knowledge stays in the agent adapters. Outside `domain/*/adapters/` and the files listed under `agentMarkers` in `boundaries.ts`, the non-test source of catalog, discovery, sessions, harness, acp and cost may not spell an agent marker (an agent id, a home directory such as `.claude`, an environment variable such as `CLAUDE_CONFIG_DIR`) as a whole string literal or literal type, or as a `/`-separated piece of a template literal's static text. The lint cannot see agent knowledge without a marker, such as branching on Claude's `notification_type` field; review checks for it.
+- Agent knowledge stays in providers. The non-test source of catalog, discovery, sessions, harness, acp and cost may not spell an agent marker (an agent id, a home directory such as `.claude`, an environment variable such as `CLAUDE_CONFIG_DIR`) as a whole string literal or literal type, or as a `/`-separated piece of a template literal's static text. Each provider's import-free `facts.ts` supplies markers from its own constants; `boundaries.ts` references that list and `lint.ts` computes the combined set without a build. There are no source-path exemptions. Generic path segments and plain file names are not markers. The lint cannot see agent knowledge without a marker, such as branching on Claude's `notification_type` field; review checks for it.
 
 ## What Not To Build
 

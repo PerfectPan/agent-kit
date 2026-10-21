@@ -26,3 +26,11 @@ export const CURSOR_FOREIGN_HOOK_FILES: readonly string[] = [
   ".claude/settings.json",
   ".claude/settings.local.json"
 ];
+
+/** Agent-specific values forbidden in context source; generic path segments are deliberately excluded. */
+export const agentMarkers: readonly string[] = [
+  CURSOR_ID,
+  CURSOR_AGENT_COMMAND,
+  CURSOR_PLUGIN_HOME,
+  CURSOR_VERSION_ENV
+];
