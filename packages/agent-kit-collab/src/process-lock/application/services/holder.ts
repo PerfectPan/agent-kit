@@ -1,8 +1,10 @@
 import { err, ok, type Result } from "@rivus/agent-kit/catalog";
-import type { ProcessIdentity } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 import * as z from "zod/mini";
 
 import type { ProcessLockPlatform } from "../ports.js";
+
+type ProcessIdentity = Platform["process"]["self"];
 
 /** Who holds or held a process lock, as recorded when it was acquired; it may be stale. */
 export interface ProcessLockHolder {

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinCodingAgents, isBuiltinCodingAgentId, homeFromRule, parseCodingAgentId } from "../src/catalog.js";
-import { homeRuleOf } from "@rivus/agent-kit-catalog/public";
+import { isBuiltinCodingAgentId } from "../src/catalog.js";
+import { builtinProviders } from "../src/providers.js";
+import { homeRuleOf, homeFromRule, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
+
+const builtinCodingAgents = Object.fromEntries(
+  builtinProviders.flatMap(({ id, identity }) => (identity ? [[id, identity]] : []))
+);
 
 const home = "/u/me";
 
@@ -17,7 +22,7 @@ describe("built-in home rules", () => {
     ["opencode", "/u/me/.local/share/opencode"],
     ["pi", "/u/me/.pi/agent"]
   ] as const)("defaults %s to %s", (id, path) => {
-    expect(homeFromRule(id, builtinCodingAgents[id].home, { env: {}, home })).toEqual({
+    expect(homeFromRule(id, builtinCodingAgents[id]!.home!, { env: {}, home })).toEqual({
       agent: id,
       path,
       source: { kind: "default" }
@@ -32,7 +37,7 @@ describe("built-in home rules", () => {
     ["opencode", "XDG_DATA_HOME", "/data", "/data/opencode"],
     ["pi", "PI_CODING_AGENT_DIR", "/cfg/pi", "/cfg/pi"]
   ] as const)("lets %s's %s override the default", (id, variable, value, path) => {
-    expect(homeFromRule(id, builtinCodingAgents[id].home, { env: { [variable]: value }, home })).toEqual({
+    expect(homeFromRule(id, builtinCodingAgents[id]!.home!, { env: { [variable]: value }, home })).toEqual({
       agent: id,
       path,
       source: { kind: "env", variable }
@@ -40,44 +45,44 @@ describe("built-in home rules", () => {
   });
 
   it("treats a blank override as unset and drops a trailing slash", () => {
-    expect(homeFromRule("codex", builtinCodingAgents["codex"].home, { env: { CODEX_HOME: "  " }, home }).path).toBe(
+    expect(homeFromRule("codex", builtinCodingAgents["codex"]!.home!, { env: { CODEX_HOME: "  " }, home }).path).toBe(
       "/u/me/.codex"
     );
     expect(
-      homeFromRule("codex", builtinCodingAgents["codex"].home, { env: { CODEX_HOME: " /cfg/codex/ " }, home }).path
+      homeFromRule("codex", builtinCodingAgents["codex"]!.home!, { env: { CODEX_HOME: " /cfg/codex/ " }, home }).path
     ).toBe("/cfg/codex");
-    expect(homeFromRule("claude-code", builtinCodingAgents["claude-code"].home, { env: {}, home: "/" }).path).toBe(
+    expect(homeFromRule("claude-code", builtinCodingAgents["claude-code"]!.home!, { env: {}, home: "/" }).path).toBe(
       "/.claude"
     );
   });
 
   it("keeps the separator of a root, so a drive root does not become drive-relative", () => {
-    expect(homeFromRule("codex", builtinCodingAgents["codex"].home, { env: { CODEX_HOME: "C:\\" }, home }).path).toBe(
+    expect(homeFromRule("codex", builtinCodingAgents["codex"]!.home!, { env: { CODEX_HOME: "C:\\" }, home }).path).toBe(
       "C:\\"
     );
-    expect(homeFromRule("claude-code", builtinCodingAgents["claude-code"].home, { env: {}, home: "C:\\" }).path).toBe(
+    expect(homeFromRule("claude-code", builtinCodingAgents["claude-code"]!.home!, { env: {}, home: "C:\\" }).path).toBe(
       "C:\\.claude"
     );
     expect(
-      homeFromRule("claude-code", builtinCodingAgents["claude-code"].home, { env: {}, home: "C:\\Users\\me\\" }).path
+      homeFromRule("claude-code", builtinCodingAgents["claude-code"]!.home!, { env: {}, home: "C:\\Users\\me\\" }).path
     ).toBe("C:\\Users\\me/.claude");
-    expect(homeFromRule("codex", builtinCodingAgents["codex"].home, { env: { CODEX_HOME: "//" }, home }).path).toBe(
+    expect(homeFromRule("codex", builtinCodingAgents["codex"]!.home!, { env: { CODEX_HOME: "//" }, home }).path).toBe(
       "/"
     );
   });
 
   it("expands a leading ~ only for an agent that does so itself", () => {
     expect(
-      homeFromRule("pi", builtinCodingAgents["pi"].home, { env: { PI_CODING_AGENT_DIR: "~/pi-agent" }, home }).path
+      homeFromRule("pi", builtinCodingAgents["pi"]!.home!, { env: { PI_CODING_AGENT_DIR: "~/pi-agent" }, home }).path
     ).toBe("/u/me/pi-agent");
-    expect(homeFromRule("pi", builtinCodingAgents["pi"].home, { env: { PI_CODING_AGENT_DIR: "~" }, home }).path).toBe(
+    expect(homeFromRule("pi", builtinCodingAgents["pi"]!.home!, { env: { PI_CODING_AGENT_DIR: "~" }, home }).path).toBe(
       "/u/me"
     );
     expect(
-      homeFromRule("pi", builtinCodingAgents["pi"].home, { env: { PI_CODING_AGENT_DIR: "~other/x" }, home }).path
+      homeFromRule("pi", builtinCodingAgents["pi"]!.home!, { env: { PI_CODING_AGENT_DIR: "~other/x" }, home }).path
     ).toBe("~other/x");
     expect(
-      homeFromRule("codex", builtinCodingAgents["codex"].home, { env: { CODEX_HOME: "~/codex" }, home }).path
+      homeFromRule("codex", builtinCodingAgents["codex"]!.home!, { env: { CODEX_HOME: "~/codex" }, home }).path
     ).toBe("~/codex");
   });
 
@@ -100,7 +105,7 @@ describe("homeRuleOf", () => {
   it("gives the caller's own rule for the agent precedence, else a built-in agent's, else nothing", () => {
     const own = { envVar: "MY_HOME", defaultPath: [".mine"] };
     expect(homeRuleOf("claude-code", builtinCodingAgents, own)).toBe(own);
-    expect(homeRuleOf("claude-code", builtinCodingAgents)).toEqual(builtinCodingAgents["claude-code"].home);
+    expect(homeRuleOf("claude-code", builtinCodingAgents)).toEqual(builtinCodingAgents["claude-code"]!.home!);
     expect(homeRuleOf("my-agent", builtinCodingAgents)).toBeUndefined();
     expect(homeRuleOf("my-agent", builtinCodingAgents, own)).toBe(own);
   });

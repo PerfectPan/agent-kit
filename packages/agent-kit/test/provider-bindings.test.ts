@@ -1,9 +1,3 @@
-import { acpTable } from "../src/providers/acp.js";
-import { usageTable } from "../src/providers/usage.js";
-import { sessionsTable } from "../src/providers/sessions.js";
-import { builtinInstallAdapters } from "../src/providers/install.js";
-import { builtinHookDialects } from "../src/providers/hooks.js";
-import { builtinProbeRecipes } from "../src/providers/discovery.js";
 import { describe, expect, it, vi } from "vite-plus/test";
 import * as sessions from "@rivus/agent-kit-sessions/public";
 import * as discovery from "@rivus/agent-kit-discovery/public";
@@ -14,21 +8,18 @@ import * as testing from "@rivus/agent-kit-testing/public";
 import { listSessions, sessionAdapterHome } from "../src/sessions.js";
 import { detectAgents } from "../src/discovery.js";
 import { loadTranscript, summarizeSession } from "../src/transcript.js";
-import { decodeUsage, listUsageSources, scanUsage } from "../src/transcript/usage.js";
+import { scanUsage } from "../src/transcript/usage.js";
 import { readHookEvent } from "../src/harness/events.js";
-import { planInstall, findLegacy, verify, uninstall, doctor } from "../src/harness.js";
+import { planInstall, verify, uninstall, doctor } from "../src/harness.js";
 import { connectAgent, probeAgent } from "../src/acp.js";
 import { hookDialectConformance, probeRecipeConformance } from "../src/testing.js";
-import type { Provider } from "../src/providers.js";
-import { builtinCodingAgents } from "../src/providers/identity.js";
+import { builtinProviders, type Provider } from "../src/providers.js";
 vi.mock("@rivus/agent-kit-sessions/public", async (original) => ({
   ...(await original<typeof import("@rivus/agent-kit-sessions/public")>()),
   listSessions: vi.fn<typeof sessions.listSessions>(),
   sessionAdapterHome: vi.fn<typeof sessions.sessionAdapterHome>(),
   loadTranscript: vi.fn<typeof sessions.loadTranscript>(),
   summarizeSession: vi.fn<typeof sessions.summarizeSession>(),
-  decodeUsage: vi.fn<typeof sessions.decodeUsage>(),
-  listUsageSources: vi.fn<typeof sessions.listUsageSources>(),
   scanUsage: vi.fn<typeof sessions.scanUsage>()
 }));
 vi.mock("@rivus/agent-kit-discovery/public", async (original) => ({
@@ -42,7 +33,6 @@ vi.mock("@rivus/agent-kit-harness/public/events", async (original) => ({
 vi.mock("@rivus/agent-kit-harness/public", async (original) => ({
   ...(await original<typeof import("@rivus/agent-kit-harness/public")>()),
   planInstall: vi.fn<typeof harness.planInstall>(),
-  findLegacy: vi.fn<typeof harness.findLegacy>(),
   verify: vi.fn<typeof harness.verify>(),
   uninstall: vi.fn<typeof harness.uninstall>(),
   doctor: vi.fn<typeof harness.doctor>()
@@ -58,16 +48,7 @@ vi.mock("@rivus/agent-kit-testing/public", async (original) => ({
   probeRecipeConformance: vi.fn<typeof testing.probeRecipeConformance>()
 }));
 
-const expectedProvider = (id: "codex" | "grok"): Provider => ({
-  id,
-  identity: builtinCodingAgents[id],
-  discovery: builtinProbeRecipes[id],
-  hooks: builtinHookDialects[id],
-  install: builtinInstallAdapters[id],
-  sessions: sessionsTable()[id],
-  usage: usageTable()[id],
-  acp: acpTable()[id]
-});
+const expectedProvider = (id: "codex" | "grok"): Provider => builtinProviders.find((provider) => provider.id === id)!;
 const builtin = expectedProvider("codex");
 const other = expectedProvider("grok");
 const platform = testing.createMemoryPlatform();
@@ -144,22 +125,6 @@ const bindings: readonly {
     read: () => captured(sessions.summarizeSession, 2)
   },
   {
-    name: "decodeUsage",
-    services: ["usage", "identity"],
-    call: (providers) => {
-      decodeUsage(platform, "codex", { path: "/usage" }, { providers });
-    },
-    read: () => captured(sessions.decodeUsage, 3)
-  },
-  {
-    name: "listUsageSources",
-    services: ["usage", "identity"],
-    call: (providers) => {
-      listUsageSources(platform, { providers });
-    },
-    read: () => captured(sessions.listUsageSources, 1)
-  },
-  {
     name: "scanUsage",
     services: ["usage", "identity"],
     call: (providers) => {
@@ -182,14 +147,6 @@ const bindings: readonly {
       planInstall(bundle, { agents: ["codex"], providers });
     },
     read: () => captured(harness.planInstall, 1)
-  },
-  {
-    name: "findLegacy",
-    services: ["install", "hooks"],
-    call: (providers) => {
-      findLegacy("test-app", { agents: ["codex"], legacyMarkers: ["test"], providers });
-    },
-    read: () => captured(harness.findLegacy, 1)
   },
   {
     name: "verify",
@@ -311,4 +268,20 @@ it("keeps the decoder table out of the published usage entry", async () => {
   const names = Object.keys(await import("../src/transcript/usage.js"));
   expect(names).toContain("scanUsage");
   expect(names).not.toContain("builtinUsageDecoders");
+});
+
+it("shares descriptor services with ordinary use cases; hooks stay distinct in the isolated events pack", () => {
+  const ordinary = bindings.filter((binding) => !["scanUsage", "readHookEvent"].includes(binding.name));
+  const covered = new Set<Service>();
+  for (const binding of ordinary) {
+    binding.call();
+    const tables = binding.read();
+    for (const service of binding.services) {
+      covered.add(service);
+      for (const provider of builtinProviders) {
+        expect(tables[service]?.[provider.id], `${binding.name}/${provider.id}/${service}`).toBe(provider[service]);
+      }
+    }
+  }
+  expect([...covered].sort()).toEqual(["acp", "discovery", "hooks", "identity", "install", "sessions"]);
 });

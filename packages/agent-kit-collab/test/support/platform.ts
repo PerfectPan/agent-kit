@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createNodePlatform } from "@rivus/agent-kit/node";
-import type { Platform, PlatformClock } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
+
+type PlatformClock = Platform["clock"];
 
 /** The Node platform with an empty environment and a home that does not exist, so no test reads a real agent home. */
 export function testPlatform(options: { readonly sqlite?: boolean } = {}): Platform {

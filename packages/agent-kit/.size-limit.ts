@@ -9,19 +9,16 @@ const nodeOnly = {
 // copy of effect would exceed their budgets.
 // The service-table bindings add merging, identity validation and catalog lookups. The exact byte budgets for
 // providers, ACP, harness, events and sessions include that code, measured with the existing dependencies.
-// Packing /providers separately keeps full usage adapters out of /sessions; the resulting chunk layout also
-// changes compression of /providers and /acp.
-// Provider assembly budgets include service tables and shared facts; these limits track measured output
-// without extra headroom.
-// Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
-// objects are distinct from the individual built-in exports.
+// Descriptors share ordinary-entry chunks and service references. Direct ESM loading can reach additional service
+// code through those chunks; size-limit rebundles and tree-shakes each entry before compression.
+// Budgets that need adjustment track measured output without extra headroom.
 export default [
   { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38603 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44533 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
-  // The LiteLLM adapter parses the price list with zod/mini, bundled into the entry: about 6.6 kB.
+  // Pricing and summarization are pure; their entry imports nothing.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "7 kB" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12 kB" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini

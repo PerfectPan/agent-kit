@@ -314,10 +314,11 @@ packages/providers/claude-code/
   This ends the rule that shell entries only re-export names; `authoring.md` changes with it. Local shell imports
   are declared per file in `boundaries.shellImports`, so the hooks entry cannot import the complete descriptor list.
   `/providers` exports `Provider` and `builtinProviders`. Related public operations (`verify`, `uninstall`, `doctor`,
-  `probeAgent`, `summarizeSession`, `sessionAdapterHome`) bind the same tables as the use cases they call. Existing
-  individual built-in table exports remain until batch 13 prunes the public surface against Appendix A; the old override options do not.
+  `probeAgent`, `summarizeSession`, `sessionAdapterHome`) bind the same tables as the use cases they call. The
+  individual table exports are removed except `builtinHookDialects` on `/harness/events`; the old override options are removed.
   Descriptor types use the narrow `acp/public/profiles` and `harness/public/install` type entries: importing their
   aggregate public entries makes declaration bundling carry Effect into the plain and zero-dependency entries.
+- **Packing**: `/providers` shares the ordinary entries' pack and their service objects. `/cost`, `/harness/events` and `/transcript/usage` keep isolated runtime and declaration bundles with no imports. Hooks in the isolated events pack are distinct objects.
 - **The built-in tables** are built in `packages/agent-kit/src/providers/<service>.ts`, one module per service, each importing that service's subpath from every provider. `builtinProviders` (all descriptors) is assembled in its own module.
 - **Unsupported services**: `packages/agent-kit/src/providers/unsupported.ts` records, for each built-in agent and service it does not provide, the reason.
 - **The capability check** requires each built-in agent to either provide each service or have a recorded reason. The README support matrix is written in the same batch, and a test keeps it equal to the tables.
@@ -332,7 +333,7 @@ packages/providers/claude-code/
   are registered before aliases; the shell validates its merged identity table with `validateIdentities`, also used
   by catalog parsing.
 - `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
-- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` belong to the shell, derived from the built-in provider identity table, and remain exported from `/catalog`. Catalog uses `CodingAgentId = string`; the shell exports `CodingAgentId` as `BuiltinCodingAgentId | (string & {})` to retain editor completion. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
+- `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` belong to the shell, derived from the built-in provider identity table, and remain exported from `/catalog`. Catalog uses `CodingAgentId = string`; the shell exports `CodingAgentId` as `BuiltinCodingAgentId | (string & {})` to retain editor completion. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. No application imports `parseCodingAgentId`, so it stays internal without a bound shell export.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
 
 ### 3.5 Host markers
@@ -437,7 +438,9 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 ### 3.8 Public surface
 
 - A shell export needs a consumer: an application, a third-party provider (SPI interface types), or the testing entry. Option and result types that only appear in signatures are not exported by name; callers derive them with `Parameters` and `ReturnType`, as `authoring.md` already says.
-- The pruning starts from the 456 names and the 107 that the applications use (Appendix A), and keeps the SPI interfaces and the testing suites.
+- Recollected on 2026-10-22 at ef9200e: the 20 published code entries contain 521 entry/name pairs (505 distinct names), including 107 distinct kit names used by applications (Appendix A). The built surface retains 160 pairs, all distinct names, and removes 361 pairs; package.json metadata routes stay unchanged. Collab retains its 20 application-consumed names.
+- Keep `builtinHookDialects` on `/harness/events` because the hook path must import nothing, and `AgentKitError` / `isAgentKitError` on `/catalog` because shell functions throw that error. Do not add a hook accessor or a bound `parseCodingAgentId`.
+- Keep the consumed option/result types, minimal provider SPI interfaces and conformance suites. Other signature-only types remain embedded without named exports. `/platform` exports only the `Platform` type; its runtime entry is empty. Sibling-only internal entries keep the names their callers need.
 - Entry files that stay:
   - each internal package (the contexts, platform, platform-node, redact, testing): `public.ts`, and `spi.ts` for the contexts;
   - the runtime-profile entries `authoring.md` allows: harness's `src/events.ts` (the hook path) and the `src/effect.ts` files of platform, platform-node and testing;
@@ -477,22 +480,22 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 
 No compatibility layer. 0.20.0 changes:
 
-- The seven `builtinXxx` tables are replaced by `builtinProviders` and the shell's service tables. `isBuiltinCodingAgentId` and `BuiltinCodingAgentId` stay exported from `/catalog` (3.4).
+- `builtinCodingAgents`, `builtinProbeRecipes`, `builtinSessionAdapters`, `builtinAcpProfiles` and `builtinInstallAdapters` are replaced by `builtinProviders`. `builtinHookDialects` stays on `/harness/events`; the usage table stays private. `isBuiltinCodingAgentId` and `BuiltinCodingAgentId` stay exported from `/catalog` (3.4).
 - Per-agent exports such as `translateCodexRecords`, `CLAUDE_CODE_CAPABILITIES` and `claudeCodeUsage` are removed.
-- Override options (`adapters`, `dialects`, `profiles`) are replaced by `providers?: readonly Provider[]`, merged by agent id and service.
-- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table. The shell exports a bound one-argument `parseCodingAgentId` only if batch 13 finds a consumer (3.4).
-- The lease rule functions are no longer exported: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness` and the other rules in `lease/public.ts`.
+- Override options (`recipes`, `adapters`, `dialects`, `profiles`) are replaced by `providers?: readonly Provider[]`, merged by agent id and service.
+- `resolveHome` and `CodingAgentIdWithHome` are removed. `parseCodingAgentId` and `homeRuleOf` take the identity table. Neither has a shell consumer, so the unbound `parseCodingAgentId` is removed without a bound replacement (3.4).
+- The lease rule functions are no longer exported: `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence` and `holderLiveness`.
 - The conformance suites take service tables; the shell's `/testing` binds the built-in ones.
 - Names without a consumer are removed (3.8).
 - SPI interface types keep their names and shapes but are imported from their service's entry.
 
 What each application uses today and must change:
 
-| Application | Names that change |
+| Application | Required edits |
 | --- | --- |
-| agent-presence | `builtinCodingAgents`, `isBuiltinCodingAgentId`, `builtinProbeRecipes`, `builtinHookDialects` |
-| agent-task-loop | `builtinCodingAgents`, `isBuiltinCodingAgentId`, `builtinProbeRecipes`, `builtinAcpProfiles` |
-| the trace viewer | `builtinSessionAdapters`; the SPI types of its own `SessionAdapter` |
+| agent-presence | Select descriptor `identity` for display names and `discovery` for recipes; pass customized recipes as `providers`, preserving agent filters and version-probe settings. Keep `isBuiltinCodingAgentId` and all hook-path `builtinHookDialects` reads, event-name and alias assertions. No removed signature-only type is imported today. |
+| agent-task-loop | Select `identity` / `discovery` for catalog and legacy recipe presentation, preserving local `ProbeRecipes` and id guards; resolve aliases from descriptor identities. Select `acp`, retain application command aliases, and pass edited profiles as `providers`. Lease/lanes imports remain. |
+| the trace viewer | Project descriptors with `sessions` into a local adapter map for root enumeration and conformance. Omit providers for defaults; map custom adapters to `{ id, sessions }` for list/load/summarize. Preserve agent restrictions, custom adapter types, progress/prompts and fixture assertions. |
 
 The trace viewer is on 0.14.0 and agent-task-loop on 0.11.0, so their upgrade PRs also absorb the changes between those versions and 0.19.
 
@@ -742,9 +745,11 @@ One batch per agent, in this order:
 
 #### Batch 13b: public surface pruning
 
-- Files: the shell entries and each package's `public.ts`.
-- Change: 3.8. Collect the applications' imports again (Appendix A) before pruning the public surface.
-- Exit condition: 6.4 row 8b.
+- Prune shell and collab entries against the per-name ledger with the two exceptions in 3.8; keep declarations required by retained signatures private. Remove unused shell forwarding exports.
+- Share `/providers` with the ordinary pack; retain isolated cost/events/usage builds. Test descriptor service reference identity against every ordinary use-case binding, with the isolated hook distinction stated explicitly.
+- Migrate tests and collab's signature-only imports to retained APIs or derived types, preserving assertions. Update root/package READMEs and this plan; record one minor change for both published packages.
+- Recount base and branch runtime/declaration exports and application imports; compare seven-agent behavior through retained use cases and descriptors and prove one injected defect is caught. Measure every package-check entry, explain growth over 1%, and raise only exceeded budgets to measured sizes.
+- Exit condition: 6.4 row 8b plus all check steps, boundary case runner, repository checks and PR CI. Application changes and release are later batches.
 
 #### Batches 14–18: domain model
 
@@ -783,7 +788,7 @@ One batch each:
 | 6 | 6–11 | Root `check`; each provider's conformance runs; every entry's size against the main commit that batch is based on; slim entry imports | Pass; still no imports in slim entries; growth over 1% of an entry explained in the PR |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all non-test context source | Pass; no exemptions left |
 | 8a | 13a | Normalized AST and chunk comparison; seven-provider fixed-input parity; runtime and declaration exports; every entry size against main | Equivalent statements and chunks; identical outputs and exports; measured size budgets pass |
-| 8b | 13b | Shell export list compared with Appendix A plus SPI and testing names; the entry files of 3.8 only | Every remaining export has a recorded consumer |
+| 8b | 13b | Built runtime/declaration delta against the per-name ledger; fresh application import check; descriptor identity; seven-agent parity and defect injection; every entry size and slim JS/DTS imports | 361 pairs removed, 160 retained; only four removed built-in tables unresolved in applications; identical retained behavior; ordinary services share references; slim entries import nothing |
 | 9 | 14–18 | Root `check`; revert outputs for moved rules | Pass; each revert fails its test |
 | 10 | 19 | The application check of 5.3; `npm view @rivus/agent-kit@0.20.0` | Every new error comes from 3.10; published |
 
@@ -818,7 +823,7 @@ One batch each:
 
 ### A. Names the applications use
 
-Collected from the `main` branches of agent-presence, agent-task-loop and the trace viewer on 2026-10-20. Every import comes from a public entry; none reaches into the kit's files.
+Recollected from the `main` branches of agent-presence, agent-task-loop and the trace viewer on 2026-10-22: unchanged from 2026-10-20 (107 distinct kit names). Every import comes from a public entry; none reaches into the kit's files.
 
 - `/catalog`: `builtinCodingAgents`, `isBuiltinCodingAgentId`, `CodingAgentId`, `ok`, `err`
 - `/discovery`: `detectAgents`, `builtinProbeRecipes`, `DetectAgentsOptions`, `Installation`, `ProbePath`, `ProbeProblem`, `ProbeRecipe`, `ProbeRecipes`, `versionFromOutput`

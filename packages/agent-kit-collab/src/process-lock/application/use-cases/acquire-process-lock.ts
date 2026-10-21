@@ -1,11 +1,13 @@
 import { err, ok, type Result } from "@rivus/agent-kit/catalog";
-import type { ProcessIdentity } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 
 import { tryFileLock } from "../services/file-lock.js";
 import { holderOf, newStamp, ownIdentity, type ProcessLockHolder, readStamp } from "../services/holder.js";
 import type { ProcessLockPlatform } from "../ports.js";
 import { SETTLE_MS, trySqliteLock, unlockSqlite } from "../services/sqlite-lock.js";
 import { takeTurn } from "../services/turns.js";
+
+type ProcessIdentity = Platform["process"]["self"];
 
 export interface ProcessLockOptions {
   /**

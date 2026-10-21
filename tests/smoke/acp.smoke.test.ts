@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
 import { agentEnv, connectAgent, MemorySessionBindingStoreLive, probeAgent } from "@rivus/agent-kit-acp/public";
-import { builtinAcpProfiles } from "@rivus/agent-kit/acp";
+import { builtinProviders } from "@rivus/agent-kit/providers";
 import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
 import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Effect from "effect/Effect";
@@ -18,6 +18,7 @@ import * as Stream from "effect/Stream";
 const selected = new Set((process.env.AGENT_KIT_SMOKE_AGENTS ?? "").split(",").filter(Boolean));
 const Live = Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive);
 
+const builtinAcpProfiles = Object.fromEntries(builtinProviders.flatMap(({ id, acp }) => (acp ? [[id, acp]] : [])));
 const agents = Object.entries(builtinAcpProfiles).filter(([agent]) => selected.has(agent));
 
 function textOf(parts: readonly TranscriptStreamPart[]): string {
@@ -28,7 +29,7 @@ describe.each(agents)("%s over ACP", (agent, profile) => {
   const options = () => ({
     providers: { acp: builtinAcpProfiles },
     cwd: mkdtempSync(join(tmpdir(), `agent-kit-smoke-${agent}-`)),
-    env: profile === undefined ? {} : agentEnv(profile, process.env),
+    env: agentEnv(profile, process.env),
     handshakeTimeoutMs: 120_000,
     requestTimeoutMs: 120_000,
     cancelTimeoutMs: 30_000

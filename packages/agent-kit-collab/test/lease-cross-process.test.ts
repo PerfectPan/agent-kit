@@ -2,7 +2,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
-import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -12,6 +12,8 @@ import { afterEach } from "vite-plus/test";
 import { createLeaseManager, sqliteLeaseRepository } from "../src/lease/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { startWorker, stopWorkers, type Worker, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
+
+type PlatformSqlite = NonNullable<Platform["sqlite"]>;
 
 const KEY = "task:1";
 

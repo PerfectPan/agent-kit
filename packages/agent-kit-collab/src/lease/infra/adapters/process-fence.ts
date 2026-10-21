@@ -1,5 +1,5 @@
 import type { Result } from "@rivus/agent-kit/catalog";
-import type { Platform, ProcessIdentity } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
@@ -7,6 +7,8 @@ import { ownIdentity } from "../../../process-lock/application/services/holder.j
 import { backoffMs, tryProcessLock } from "../../../process-lock/application/use-cases/acquire-process-lock.js";
 import type { LeaseRepositoryFailure } from "../../application/ports.js";
 import { repositoryFailure } from "../../application/services/repository-failure.js";
+
+type ProcessIdentity = Platform["process"]["self"];
 
 /** The first retry of a waiting fence or guard; later ones back off from it. */
 const RETRY_MS = 10;

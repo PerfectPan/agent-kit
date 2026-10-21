@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { describe, expect, it } from "@effect/vitest";
 import { isAgentKitError } from "@rivus/agent-kit/catalog";
-import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -18,13 +18,10 @@ import { TestClock } from "effect/testing";
 import { afterEach } from "vite-plus/test";
 
 import {
-  checkFence,
   createLeaseManager,
   fileLeaseRepository,
-  type FencingToken,
   type Holder,
   LeaseRepository,
-  type LeaseRepositoryShape,
   type LeaseSnapshot,
   memoryLeaseRepository,
   sqliteLeaseRepository
@@ -32,6 +29,13 @@ import {
 import { revisionConflict } from "../src/lease/application/services/repository-failure.js";
 import { manualClock, removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases } from "./support/stores.js";
+
+import { checkFence } from "../src/lease/domain/lease/policies/fence-check.js";
+
+type PlatformSqlite = NonNullable<Platform["sqlite"]>;
+
+type FencingToken = Parameters<typeof checkFence>[1];
+type LeaseRepositoryShape = Effect.Success<typeof LeaseRepository>;
 
 const KEY = "task:1";
 const TTL_MS = 300;

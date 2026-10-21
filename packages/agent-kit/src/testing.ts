@@ -8,15 +8,9 @@ import type { Provider } from "./providers/types.js";
 
 export { createMemoryPlatform, oversizedSession, sessionAdapterConformance } from "@rivus/agent-kit-testing/public";
 export type {
-  ConformanceCheck,
   ConformanceSession,
   HookDialectFixtures,
   HookDialectSample,
-  MemoryCommand,
-  MemoryFile,
-  MemoryPlatform,
-  MemoryPlatformOptions,
-  MemoryRunResult,
   ProbeRecipeSamples,
   SessionAdapterFixtures
 } from "@rivus/agent-kit-testing/public";

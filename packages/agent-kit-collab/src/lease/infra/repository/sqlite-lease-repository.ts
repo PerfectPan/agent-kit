@@ -1,4 +1,4 @@
-import type { SqliteDatabase, SqliteStatement } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -11,6 +11,9 @@ import { repositoryFailure, revisionConflict } from "../../application/services/
 import { keyFileName } from "../models/key-file-name.js";
 import { decodeHolder, decodeSnapshot, encodeHolder } from "../models/lease-record-codec.js";
 import { holdProcessLock } from "../adapters/process-fence.js";
+
+type SqliteDatabase = ReturnType<NonNullable<Platform["sqlite"]>["open"]>;
+type SqliteStatement = ReturnType<SqliteDatabase["prepare"]>;
 
 export interface SqliteLeaseRepositoryOptions {
   /**
