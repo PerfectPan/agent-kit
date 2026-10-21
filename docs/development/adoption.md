@@ -10,7 +10,7 @@ The source exports 17 agent-kit entries and three collab entries (20 in total). 
 
 | Entry                                  | Main API                                                                                                                              | Calling style                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | Plain service descriptors |
+| `@rivus/agent-kit/providers`           | `Provider`, `builtinProviders`                                                                                                         | Plain service descriptors                       |
 | `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
 | `@rivus/agent-kit/platform`            | `Platform` and port types, `splitLines`                                                                                               | Plain                                           |
 | `@rivus/agent-kit/node`                | `createNodePlatform`                                                                                                                  | Plain, Node                                     |
@@ -38,9 +38,10 @@ Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/
 `{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`. Each service merges independently;
 other services for the same id and all other agents keep their defaults. A supplied identity carries aliases and
 fallback homes. Harness `agents` filters still match exact ids, without alias or case resolution. Conflicting names
-and mismatched ids are rejected. `parseCodingAgentId(input, identities)` now needs an identity table. Use `homeFromRule(agent, rule, context)` in place of the removed `resolveHome`;
-`CodingAgentIdWithHome` is removed. The shell conformance suites bind built-ins; their optional third argument
-accepts `{ providers }` for custom host and identity facts.
+and mismatched ids are rejected. `parseCodingAgentId(input, identities)` now needs an identity table. Use
+`homeFromRule(agent, rule, context)` in place of the removed `resolveHome`; `CodingAgentIdWithHome` is removed.
+The shell conformance suites bind built-ins; their optional third argument accepts `{ providers }` for custom host
+and identity facts.
 
 ## Choose the runtime boundary
 

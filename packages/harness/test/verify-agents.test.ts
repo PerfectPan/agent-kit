@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -98,7 +97,7 @@ describe("verify agent scope", () => {
         yield* applyInstall(
           yield* planInstall(hooksBundle(), {
             agents: ["claude-code", "grok"],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         );
         const grok = { kind: "file", path: home.path(GROK_HOOKS) } as const;
@@ -113,7 +112,7 @@ describe("verify agent scope", () => {
         const report = yield* verify("demo-app", {
           agents: ["claude-code"],
           bundle: state === "ledger-behind" ? hooksBundle("2.0.0", 10) : hooksBundle(),
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
 
         expect(report.artifacts).toEqual([{ locator: claude, agents: ["claude-code"], status: "in-sync" }]);
@@ -138,7 +137,7 @@ describe("verify agent scope", () => {
       yield* applyInstall(
         yield* planInstall(hooksBundle(), {
           agents: ["claude-code", "grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       );
       advanceClaudeHooks(home);
@@ -173,7 +172,7 @@ describe("verify agent scope", () => {
       const report = yield* verify("demo-app", {
         agents: ["claude-code"],
         bundle: hooksBundle("2.0.0", 10),
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
 
       expect(changedEntry).toBeDefined();
@@ -204,7 +203,7 @@ describe("verify agent scope", () => {
       yield* applyInstall(
         yield* planInstall(bundle, {
           agents: ["claude-code", "gemini-cli", "grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       );
       const before = readFileSync(home.path(LEDGER_FILE));
@@ -212,7 +211,7 @@ describe("verify agent scope", () => {
       const report = yield* verify("demo-app", {
         agents: [agent],
         bundle,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
 
       expect(report.artifacts).toEqual([
@@ -236,7 +235,7 @@ describe("verify agent scope", () => {
         yield* applyInstall(
           yield* planInstall(bundle, {
             agents: ["gemini-cli"],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         );
         const shared = { kind: "dir", path: home.path(SHARED_SKILL) } as const;
@@ -270,7 +269,7 @@ describe("verify agent scope", () => {
         const report = yield* verify("demo-app", {
           agents: ["grok"],
           bundle: state === "in-sync" ? bundle : skillsBundle("2.0.0", desiredText),
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
 
         expect(report.artifacts).toEqual([
@@ -294,7 +293,7 @@ describe("verify agent scope", () => {
       yield* applyInstall(
         yield* planInstall(hooksBundle(), {
           agents: ["claude-code", "grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       );
       home.write(GROK_HOOKS, "{}\n");
@@ -302,7 +301,7 @@ describe("verify agent scope", () => {
 
       const report = yield* verify("demo-app", {
         bundle: hooksBundle(),
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
 
       expect(report.artifacts).toEqual([
@@ -324,7 +323,7 @@ describe("verify agent scope", () => {
       yield* applyInstall(
         yield* planInstall(hooksBundle(), {
           agents: ["claude-code", "grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       );
       home.write(GROK_HOOKS, "{}\n");
@@ -332,7 +331,7 @@ describe("verify agent scope", () => {
 
       const report = yield* verify("demo-app", {
         agents: ["claude-code"],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
 
       expect(report.artifacts).toEqual([
@@ -353,7 +352,7 @@ describe("verify agent scope", () => {
       yield* applyInstall(
         yield* planInstall(hooksBundle(), {
           agents: ["claude-code", "grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       );
       advanceClaudeHooks(home);
@@ -362,7 +361,7 @@ describe("verify agent scope", () => {
       const report = yield* verify("demo-app", {
         agents: [],
         bundle: hooksBundle("2.0.0", 10),
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
 
       expect(report).toEqual({ artifacts: [], acknowledged: [] });

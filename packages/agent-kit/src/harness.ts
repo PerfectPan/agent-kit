@@ -139,12 +139,14 @@ export function planInstall(
   bundle: Parameters<typeof contextPlanInstall>[0],
   options: PlanInstallOptions
 ): ReturnType<typeof contextPlanInstall> {
+  if (options.providers !== undefined) {
+    identityTable(options.providers);
+  }
   return contextPlanInstall(bundle, {
     ...options,
     providers: {
       install: installTable(options.providers),
-      hooks: hooksTable(options.providers),
-      identity: identityTable(options.providers)
+      hooks: hooksTable(options.providers)
     }
   });
 }
@@ -155,12 +157,14 @@ export function findLegacy(
   owner: Parameters<typeof contextFindLegacy>[0],
   options: FindLegacyOptions
 ): ReturnType<typeof contextFindLegacy> {
+  if (options.providers !== undefined) {
+    identityTable(options.providers);
+  }
   return contextFindLegacy(owner, {
     ...options,
     providers: {
       install: installTable(options.providers),
-      hooks: hooksTable(options.providers),
-      identity: identityTable(options.providers)
+      hooks: hooksTable(options.providers)
     }
   });
 }
@@ -171,12 +175,14 @@ export function verify(
   owner: Parameters<typeof contextVerify>[0],
   options: VerifyOptions = {}
 ): ReturnType<typeof contextVerify> {
+  if (options.providers !== undefined) {
+    identityTable(options.providers);
+  }
   return contextVerify(owner, {
     ...options,
     providers: {
       install: installTable(options.providers),
-      hooks: hooksTable(options.providers),
-      identity: identityTable(options.providers)
+      hooks: hooksTable(options.providers)
     }
   });
 }
@@ -187,12 +193,14 @@ export function uninstall(
   owner: Parameters<typeof contextUninstall>[0],
   options: UninstallOptions = {}
 ): ReturnType<typeof contextUninstall> {
+  if (options.providers !== undefined) {
+    identityTable(options.providers);
+  }
   return contextUninstall(owner, {
     ...options,
     providers: {
       install: installTable(options.providers),
-      hooks: hooksTable(options.providers),
-      identity: identityTable(options.providers)
+      hooks: hooksTable(options.providers)
     }
   });
 }
@@ -200,12 +208,14 @@ export function uninstall(
 export type DoctorOptions = ProviderOptions<Parameters<typeof contextDoctor>[0]>;
 
 export function doctor(options: DoctorOptions = {}): ReturnType<typeof contextDoctor> {
+  if (options.providers !== undefined) {
+    identityTable(options.providers);
+  }
   return contextDoctor({
     ...options,
     providers: {
       install: installTable(options.providers),
-      hooks: hooksTable(options.providers),
-      identity: identityTable(options.providers)
+      hooks: hooksTable(options.providers)
     }
   });
 }

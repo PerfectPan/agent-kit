@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
@@ -84,7 +83,7 @@ const recordFor = (
     const plan = yield* planInstall(installed, {
       agents: [record],
       ...(strategies === undefined ? {} : { strategies }),
-      providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      providers: { install: testInstall, hooks: testHooks }
     });
     yield* applyInstall(plan);
   });
@@ -331,7 +330,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const entries = yield* findLegacy(OWNER, {
             agents: [agent],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           const expected = expectedReplace[agent] ?? [];
           expect(asView(home, entries).toSorted((a, b) => a.file.localeCompare(b.file))).toEqual(
@@ -341,7 +340,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const plan = yield* planInstall(bundle(), {
             agents: [agent],
             ...(strategies === undefined ? {} : { strategies }),
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
         });
@@ -363,7 +362,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const entries = yield* findLegacy(OWNER, {
             agents: ["claude-code"],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(asView(home, entries)).toEqual([
             {
@@ -380,7 +379,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
             planInstall(bundle(), {
               agents: ["claude-code"],
               strategies: SHARED_CLAUDE,
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             })
           );
           expect(conflictKeys(failure)).toEqual(protectKeys(entries));
@@ -413,7 +412,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const entries = yield* findLegacy(OWNER, {
             agents: [agent],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(entries.map((entry) => [rel(home, entry.locator.path), entry.event, entry.treatment])).toEqual([
             [
@@ -430,7 +429,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
             planInstall(bundle(), {
               agents: [agent],
               ...(strategies === undefined ? {} : { strategies }),
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             })
           );
           expect(conflictKeys(failure)).toEqual(protectKeys(entries));
@@ -451,13 +450,13 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           home.write(bridge, `${home.read(bridge) ?? ""}\n// the user's edit, still carrying the demo-hook command\n`);
           const removed = yield* uninstall("demo-app", {
             agents: [agent],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(removed.kept.map((locator) => locator.path)).toEqual([home.path(bridge)]);
           const entries = yield* findLegacy(OWNER, {
             agents: [agent],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(entries.map((entry) => [rel(home, entry.locator.path), entry.kind, entry.treatment])).toEqual([
             [`/${bridge}`, "file", "protect"]
@@ -466,7 +465,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const failure = yield* Effect.flip(
             planInstall(bundle(), {
               agents: [agent],
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             })
           );
           expect(failure._tag).toBe("PlanConflict");
@@ -510,7 +509,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
       const listing = yield* findLegacy(OWNER, {
         agents: ["claude-code"],
         legacyMarkers: MARKERS,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       }).pipe(Effect.provide(minimal));
       expect(listing.map(({ treatment }) => treatment)).toEqual(["replace"]);
       expect(snapshot()).toEqual(before);
@@ -534,11 +533,11 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           const entries = yield* findLegacy(owner, {
             agents: ["grok"],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           const plan = yield* planInstall(demoBundle("2.0.0", { owner, legacyMarkers: MARKERS }), {
             agents: ["grok"],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(
             plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, rel(home, step.locator.path)])
@@ -563,19 +562,19 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
         home.write(path, edited);
         const removed = yield* uninstall(OWNER, {
           agents: ["grok"],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(removed.kept.map((locator) => locator.path)).toEqual([home.path(path)]);
         const entries = yield* findLegacy(OWNER, {
           agents: ["grok"],
           legacyMarkers: MARKERS,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(asView(home, entries)).toEqual([{ file: `/${path}`, kind: "file", treatment: "protect" }]);
         const failure = yield* Effect.flip(
           planInstall(bundle(), {
             agents: ["grok"],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         );
         expect(conflictKeys(failure)).toEqual(protectKeys(entries));
@@ -600,14 +599,14 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
         const entries = yield* findLegacy(OWNER, {
           agents: ["claude-code"],
           legacyMarkers: MARKERS,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(asView(home, entries)).toEqual([...expectedReplace["claude-code"]]);
         // The plan agrees when it is given the same markers.
         const plan = yield* planInstall(bundle(), {
           agents: ["claude-code"],
           strategies: SHARED_CLAUDE,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(replaceKeys(entries)).toEqual(legacyStepKeys(plan.steps));
       });
@@ -663,7 +662,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           yield* findLegacy(OWNER, {
             agents: ["claude-code"],
             legacyMarkers: ["legacy-demo hook"],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         ).toEqual([]);
       });
@@ -679,7 +678,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           findLegacy("Demo App", {
             agents: ["claude-code"],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         );
         expect(badOwner._tag).toBe("InvalidBundle");
@@ -687,7 +686,7 @@ describe("findLegacy: an owner's untracked legacy entries (issue #97)", () => {
           findLegacy(OWNER, {
             agents: ["claude-code"],
             legacyMarkers: [" "],
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         );
         expect(blankMarker._tag).toBe("InvalidBundle");

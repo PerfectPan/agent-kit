@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import type { SpawnSyncReturns } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -52,7 +51,7 @@ const install = (home: TestHome, bundle: Bundle, agent: "opencode" | "pi") =>
     Effect.flatMap(
       planInstall(bundle, {
         agents: [agent],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       }),
       applyInstall
     ).pipe(Effect.provide(home.layer()))

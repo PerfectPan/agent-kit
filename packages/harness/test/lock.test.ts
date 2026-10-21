@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -59,7 +58,7 @@ describe("SqliteLedgerLockLive across processes", () => {
       planInstall(demoBundle(), {
         agents: ["claude-code", "grok"],
         lockWaitMs: 5_000,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       }).pipe(Effect.provide(home.layer()))
     );
     expect(performance.now() - killedAt).toBeLessThan(1_500);
@@ -148,7 +147,7 @@ describe("applyInstall across processes", () => {
     const plan = await Effect.runPromise(
       planInstall(demoBundle(), {
         agents: ["grok"],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       }).pipe(Effect.provide(layer))
     );
     const holder = startWorker("ledger-worker", ["hold"], home.env);
@@ -177,7 +176,7 @@ describe("without SQLite", () => {
     return Effect.gen(function* () {
       const plan = yield* planInstall(demoBundle(), {
         agents: ["grok"],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       const failure = yield* Effect.flip(applyInstall(plan));
       expect(failure).toMatchObject({ _tag: "LedgerLockUnavailable" });
@@ -196,7 +195,7 @@ describe("without SQLite", () => {
     return Effect.gen(function* () {
       const plan = yield* planInstall(demoBundle(), {
         agents: ["grok"],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       yield* applyInstall(plan);
       expect(home.read(".grok/hooks/demo-app.json")).toContain(`"SessionStart"`);

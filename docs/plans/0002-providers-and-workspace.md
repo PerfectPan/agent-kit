@@ -301,7 +301,7 @@ packages/providers/claude-code/
   ```
 
   Provider packages do not import it, because they may not depend on the shell. The shell checks their parts with `satisfies` where it assembles them.
-- **Context use cases** take a required `providers` option. It holds exactly the service tables they read; for example, `planInstall` takes `{ install, hooks, identity }`, `readHookEvent` takes `{ hooks }` and `listSessions` takes `{ sessions, identity }`. A use case takes `identity` when it resolves homes or aliases.
+- **Context use cases** take a required `providers` option. It holds exactly the service tables they read; for example, `planInstall` takes `{ install, hooks }`, `readHookEvent` takes `{ hooks }` and `listSessions` takes `{ sessions, identity }`. A use case takes `identity` when it resolves homes or aliases.
 - **Shell functions** take `providers?: readonly Provider[]`. The descriptors are merged over the built-in ones by agent id, service by service: a descriptor that sets only `hooks` for an id replaces only that id's hooks. The shell then builds the tables and calls the context.
 
   ```ts

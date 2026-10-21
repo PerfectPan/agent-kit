@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { chmodSync, existsSync, statSync } from "node:fs";
 
 import { parse as parseToml } from "@decimalturn/toml-patch";
@@ -103,7 +102,7 @@ function install(testCase: ConfigCase, bundle = hooksBundle(testCase)) {
     const plan = yield* planInstall(bundle, {
       agents: [testCase.agent],
       ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies }),
-      providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+      providers: { install: testInstall, hooks: testHooks }
     });
     expect(plan.commands).toEqual([]);
     yield* applyInstall(plan);
@@ -121,14 +120,14 @@ describe("uninstall of configuration files created by install", () => {
         expect(home.read(testCase.path)).toContain("/opt/demo-app/bin/hook");
 
         const removed = yield* uninstall("demo-app", {
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(removed.kept).toEqual([]);
         expect(home.read(testCase.path)).toBeUndefined();
         expect((yield* inventory()).entries).toEqual([]);
         expect(
           (yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })).steps
         ).toEqual([]);
       }).pipe(Effect.provide(isolatedLayer(home)));
@@ -160,7 +159,7 @@ describe("uninstall of configuration files created by install", () => {
           yield* install(testCase);
           expect((yield* inventory()).entries.every((entry) => entry.preImage.existed === false)).toBe(true);
           yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(home.read(testCase.path)).toBeDefined();
           expect((yield* inventory()).entries).toEqual([]);
@@ -173,7 +172,7 @@ describe("uninstall of configuration files created by install", () => {
       home.write(testCase.path, testCase.userSeed);
       return Effect.gen(function* () {
         yield* install(testCase);
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         const remaining = home.read(testCase.path);
         expect(remaining).toBeDefined();
         if (testCase.agent === "codex") {
@@ -198,7 +197,7 @@ describe("uninstall of configuration files created by install", () => {
           home.write(testCase.path, edited);
 
           const removed = yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(removed.kept).toEqual([]);
           const remaining = home.read(testCase.path);
@@ -224,12 +223,12 @@ describe("uninstall of configuration files created by install", () => {
             const lastRemoved = firstRemoved === "first-app" ? "second-app" : "first-app";
 
             yield* uninstall(firstRemoved, {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             });
             expect(home.read(testCase.path)).toContain(`/opt/${lastRemoved}/bin/hook`);
             expect(home.read(testCase.path)).not.toContain(`/opt/${firstRemoved}/bin/hook`);
             yield* uninstall(lastRemoved, {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             });
             expect(home.read(testCase.path)).toBeUndefined();
             expect((yield* inventory()).entries).toEqual([]);
@@ -244,7 +243,7 @@ describe("uninstall of configuration files created by install", () => {
         yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
         yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop"]));
         yield* install(testCase, hooksBundle(testCase, "demo-app", ["Stop", "SessionStart"]));
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         expect(home.read(testCase.path)).toBeUndefined();
       }).pipe(Effect.provide(isolatedLayer(home)));
     });
@@ -263,11 +262,11 @@ describe("uninstall of configuration files created by install", () => {
         expect(inherited).toHaveLength(4);
         expect(inherited.every((entry) => entry.createdConfigFile === true)).toBe(true);
         yield* uninstall("second-app", {
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(
           (yield* uninstall("first-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })).kept
         ).toHaveLength(1);
         expect(home.read(testCase.path)).toContain("/opt/first-app/bin/hook");
@@ -324,7 +323,7 @@ describe("uninstall of configuration files created by install", () => {
               }
               expect(
                 (yield* uninstall("demo-app", {
-                  providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+                  providers: { install: testInstall, hooks: testHooks }
                 })).kept
               ).toEqual([]);
               const remaining = home.read(testCase.path);
@@ -361,7 +360,7 @@ describe("uninstall of configuration files created by install", () => {
         const entries = (yield* inventory()).entries;
         expect(entries).toHaveLength(2);
         expect(entries.every((entry) => entry.createdConfigFile !== true)).toBe(true);
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         const remaining = home.read(testCase.path);
         expect(remaining).toBeDefined();
         expect(remaining).not.toContain("/opt/demo-app/bin/hook");
@@ -384,7 +383,7 @@ describe("uninstall of configuration files created by install", () => {
         yield* install(testCase, bundle);
         const reinstalled = (yield* inventory()).entries;
         expect(home.read(testCase.path)).toContain("/opt/demo-app/bin/hook");
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         expect(home.read(testCase.path)).toBeUndefined();
         expect(reinstalled.every((entry) => entry.createdConfigFile === true)).toBe(true);
         expect((yield* inventory()).entries).toEqual([]);
@@ -414,7 +413,7 @@ describe("uninstall of configuration files created by install", () => {
           const plan = yield* planInstall(hooksBundle(testCase, "demo-app", ["SessionStart"]), {
             agents: [testCase.agent],
             strategies: testCase.strategies,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           const result = yield* Effect.exit(applyInstall(plan).pipe(Effect.provide(Layer.merge(base, defectiveRead))));
           expect(Exit.isFailure(result) && Cause.hasDies(result.cause)).toBe(true);
@@ -429,9 +428,7 @@ describe("uninstall of configuration files created by install", () => {
           const changed = `${JSON.stringify({ hooks: { Stop: { user: true } } }, null, 2)}\n`;
           home.write(testCase.path, changed);
           expect(
-            yield* Effect.flip(
-              uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } })
-            )
+            yield* Effect.flip(uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } }))
           ).toMatchObject({
             _tag: "UnexpectedShape",
             detail: "/hooks/Stop is not a list"
@@ -455,11 +452,11 @@ describe("uninstall of configuration files created by install", () => {
           bundle: hooksBundle(testCase, "demo-app", ["Stop"], 9),
           agents: [testCase.agent],
           ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies }),
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(report.acknowledged).toHaveLength(1);
         const acknowledged = (yield* inventory()).entries;
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         expect(home.read(testCase.path)).toBeDefined();
         expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
         expect(acknowledged.every((entry) => entry.createdConfigFile !== true)).toBe(true);
@@ -502,7 +499,7 @@ describe("uninstall of configuration files created by install", () => {
         yield* Effect.promise(() => home.platform.fs.remove(home.path(testCase.path)));
         home.write(testCase.path, replacement);
 
-        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks, identity: testIdentity } });
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         expect(home.read(testCase.path)).toBeDefined();
         expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
         expect((yield* inventory()).pending).toEqual([]);
@@ -523,7 +520,7 @@ describe("uninstall of configuration files created by install", () => {
             yield* install(testCase);
             const reinstalled = (yield* inventory()).entries;
             yield* uninstall("demo-app", {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             });
             expect(home.read(testCase.path)).toBeDefined();
             expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
@@ -547,11 +544,11 @@ describe("uninstall of configuration files created by install", () => {
               const reinstalled = (yield* inventory()).entries;
               const lastRemoved = firstRemoved === "first-app" ? "second-app" : "first-app";
               yield* uninstall(firstRemoved, {
-                providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+                providers: { install: testInstall, hooks: testHooks }
               });
               expect(home.read(testCase.path)).toBeDefined();
               yield* uninstall(lastRemoved, {
-                providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+                providers: { install: testInstall, hooks: testHooks }
               });
               expect(home.read(testCase.path)).toBeDefined();
               expect(home.read(testCase.path)).not.toContain("/bin/hook");
@@ -573,7 +570,7 @@ describe("uninstall of configuration files created by install", () => {
             home.write(testCase.path, seed);
 
             yield* uninstall("demo-app", {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             });
             expect(home.read(testCase.path)).toBe(seed);
             expect((yield* inventory()).entries).toEqual([]);
@@ -594,7 +591,7 @@ describe("uninstall of configuration files created by install", () => {
           home.write(LEDGER_PATH, `${JSON.stringify(oldLedger)}\n`);
 
           yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(home.read(testCase.path)).toBeDefined();
           expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
@@ -636,7 +633,7 @@ describe("uninstall of configuration files created by install", () => {
         yield* Effect.gen(function* () {
           expect((yield* inventory()).pending).toHaveLength(1);
           yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(home.read(testCase.path)).toBeDefined();
           expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
@@ -710,7 +707,7 @@ describe("uninstall of configuration files created by install", () => {
           const plan = yield* planInstall(bundle, {
             agents: [testCase.agent],
             ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies }),
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           const failure = yield* Effect.flip(
             applyInstall(plan).pipe(Effect.provide(Layer.merge(base, concurrentCreation)))
@@ -724,7 +721,7 @@ describe("uninstall of configuration files created by install", () => {
           expect((yield* inventory()).entries).toHaveLength(1);
           expect(home.read(LEDGER_PATH)).not.toContain('"createdConfigFile"');
           yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(home.read(testCase.path)).toBeDefined();
           expect(home.read(testCase.path)).not.toContain("/opt/demo-app/bin/hook");
@@ -745,7 +742,7 @@ describe("uninstall of configuration files created by install", () => {
               ? yield* planInstall(hooksBundle(testCase, "demo-app", ["Stop"], 9), {
                   agents: [testCase.agent],
                   ...(testCase.strategies === undefined ? {} : { strategies: testCase.strategies }),
-                  providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+                  providers: { install: testInstall, hooks: testHooks }
                 })
               : undefined;
           const path = home.path(testCase.path);
@@ -775,7 +772,7 @@ describe("uninstall of configuration files created by install", () => {
           const operation =
             plan === undefined
               ? uninstall("demo-app", {
-                  providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+                  providers: { install: testInstall, hooks: testHooks }
                 }).pipe(Effect.provide(Layer.merge(base, denyAfterPreview)))
               : applyInstall(plan);
           const failure = yield* Effect.flip(operation).pipe(Effect.ensuring(Effect.sync(() => chmodSync(path, mode))));
@@ -816,7 +813,7 @@ describe("uninstall of configuration files created by install", () => {
           const installed = home.read(testCase.path);
           const failure = yield* Effect.flip(
             uninstall("demo-app", {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             }).pipe(Effect.provide(isolatedLayer(home, failingPlatform)))
           );
           expect(failure).toMatchObject({
@@ -828,7 +825,7 @@ describe("uninstall of configuration files created by install", () => {
           yield* Effect.gen(function* () {
             expect((yield* inventory()).pending).toHaveLength(1);
             yield* uninstall("demo-app", {
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             });
             expect(home.read(testCase.path)).toBeUndefined();
             expect((yield* inventory()).entries).toEqual([]);
@@ -848,7 +845,7 @@ describe("uninstall of configuration files created by install", () => {
         home.write(testCase.path, edited);
         expect(
           (yield* uninstall("demo-app", {
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })).kept
         ).toHaveLength(4);
         expect(home.read(testCase.path)).toBe(edited);
@@ -865,7 +862,7 @@ describe("uninstall of configuration files created by install", () => {
       return Effect.gen(function* () {
         const plan = yield* planInstall(demoBundle(), {
           agents,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(plan.commands).toEqual([]);
         yield* applyInstall(plan);
@@ -875,7 +872,7 @@ describe("uninstall of configuration files created by install", () => {
             (yield* verify("demo-app", {
               bundle: demoBundle(),
               agents,
-              providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+              providers: { install: testInstall, hooks: testHooks }
             })).artifacts.map((entry) => entry.status)
           )
         ).toEqual(new Set(["in-sync"]));
@@ -883,7 +880,7 @@ describe("uninstall of configuration files created by install", () => {
         home.write(`${userDirectory}/notes.txt`, "User notes.\n");
 
         const removed = yield* uninstall("demo-app", {
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(removed.kept).toEqual([{ kind: "dir", path: home.path(userDirectory) }]);
         expect(home.read(`${userDirectory}/notes.txt`)).toBe("User notes.\n");

@@ -1,5 +1,4 @@
 import { afterEach, expect, it } from "@effect/vitest";
-import { builtinCodingAgents } from "@rivus/agent-kit-catalog";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -10,7 +9,7 @@ import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, testHome } from "./support/home.js";
 import { snapshotFiles } from "./support/snapshot.js";
 
-const providers = { install: builtinInstallAdapters, hooks: builtinHookDialects, identity: builtinCodingAgents };
+const providers = { install: builtinInstallAdapters, hooks: builtinHookDialects };
 afterEach(removeTestHomes);
 
 it.effect.each(["claude", "Claude-Code"])("planInstall rejects non-exact agent id %s", (agent) => {

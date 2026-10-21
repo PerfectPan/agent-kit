@@ -1,6 +1,5 @@
 import { builtinInstallAdapters as testInstall } from "../src/public.js";
 import { builtinHookDialects as testHooks } from "../src/events.js";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
@@ -92,12 +91,12 @@ describe("legacy source file safety", () => {
         yield* findLegacy(OWNER, {
           agents: ["grok"],
           legacyMarkers: MARKERS,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       ).toEqual([]);
       const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
         agents: ["grok"],
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       expect(plan.steps.filter((step) => step.locator.path === home.path(USER_FILE))).toEqual([]);
       expect(home.read(USER_FILE)).toBe(userHooks);
@@ -107,7 +106,7 @@ describe("legacy source file safety", () => {
 
       const removed = yield* uninstall(OWNER, {
         legacyMarkers: MARKERS,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       expect(removed.plan.steps.filter((step) => step.locator.path === home.path(USER_FILE))).toEqual([]);
       expect(removed.kept).toEqual([]);
@@ -124,7 +123,7 @@ describe("legacy source file safety", () => {
       expect((yield* inventory()).entries).toEqual([]);
       const removed = yield* uninstall(OWNER, {
         legacyMarkers: MARKERS,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       expect(removed.plan.steps).toEqual([]);
       expect(removed.steps).toEqual([]);
@@ -142,7 +141,7 @@ describe("legacy source file safety", () => {
       const removed = yield* uninstall(OWNER, {
         agents: ["grok"],
         legacyMarkers: MARKERS,
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       expect(removed.plan.steps).toEqual([]);
       expect(removed.steps).toEqual([]);
@@ -197,7 +196,7 @@ describe("legacy source file safety", () => {
         const listed = yield* findLegacy(OWNER, {
           agents: [source.agent],
           legacyMarkers: MARKERS,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(
           listed
@@ -211,7 +210,7 @@ describe("legacy source file safety", () => {
         }
         const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
           agents: [source.agent],
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(
           plan.steps
@@ -238,13 +237,13 @@ describe("legacy source file safety", () => {
           yield* findLegacy(OWNER, {
             agents: [source.agent],
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           })
         ).toEqual([]);
 
         const removed = yield* uninstall(OWNER, {
           legacyMarkers: MARKERS,
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         });
         expect(
           removed.plan.steps.filter((step) => ignored.some((path) => step.locator.path === home.path(path)))
@@ -268,7 +267,7 @@ describe("legacy source file safety", () => {
           expect((yield* inventory()).entries).toEqual([]);
           const removed = yield* uninstall(OWNER, {
             legacyMarkers: MARKERS,
-            providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+            providers: { install: testInstall, hooks: testHooks }
           });
           expect(
             removed.plan.steps

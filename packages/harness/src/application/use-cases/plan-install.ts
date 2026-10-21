@@ -121,7 +121,7 @@ export type HarnessServices =
   | ExternalOwner
   | PlatformService;
 
-/** The adapters and context of one call, after merging the caller's adapters over the built-in ones. */
+/** The explicit install and hook tables of one call with its platform context; the shell handles default merging. */
 export interface PlanSetup {
   readonly adapters: InstallAdapters;
   readonly dialects: HookDialects;

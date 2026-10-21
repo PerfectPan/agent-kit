@@ -11,6 +11,8 @@ const nodeOnly = {
 // providers, ACP, harness, events and sessions include that code, measured with the existing dependencies.
 // Packing /providers separately keeps full usage adapters out of /sessions; the resulting chunk layout also
 // changes compression of /providers and /acp, whose budgets match the isolated pack output.
+// Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
+// objects are distinct from the individual built-in exports.
 export default [
   { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38079 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with

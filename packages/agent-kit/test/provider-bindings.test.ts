@@ -171,7 +171,7 @@ const bindings: readonly {
   },
   {
     name: "planInstall",
-    services: ["install", "hooks", "identity"],
+    services: ["install", "hooks"],
     call: (providers) => {
       planInstall(bundle, { agents: ["codex"], providers });
     },
@@ -179,7 +179,7 @@ const bindings: readonly {
   },
   {
     name: "findLegacy",
-    services: ["install", "hooks", "identity"],
+    services: ["install", "hooks"],
     call: (providers) => {
       findLegacy("test-app", { agents: ["codex"], legacyMarkers: ["test"], providers });
     },
@@ -187,7 +187,7 @@ const bindings: readonly {
   },
   {
     name: "verify",
-    services: ["install", "hooks", "identity"],
+    services: ["install", "hooks"],
     call: (providers) => {
       verify("test-app", { providers });
     },
@@ -195,7 +195,7 @@ const bindings: readonly {
   },
   {
     name: "uninstall",
-    services: ["install", "hooks", "identity"],
+    services: ["install", "hooks"],
     call: (providers) => {
       uninstall("test-app", { providers });
     },
@@ -203,7 +203,7 @@ const bindings: readonly {
   },
   {
     name: "doctor",
-    services: ["install", "hooks", "identity"],
+    services: ["install", "hooks"],
     call: (providers) => {
       doctor({ providers });
     },
@@ -280,6 +280,11 @@ it.each([
   expect(() => listSessions(platform, { providers: [provider] })).toThrow(
     expect.objectContaining({ code: "invalid-identity-table" })
   );
+  for (const binding of bindings.filter((candidate) => candidate.services.includes("install"))) {
+    expect(() => binding.call([provider]), `${binding.name}`).toThrow(
+      expect.objectContaining({ code: "invalid-identity-table" })
+    );
+  }
 });
 
 it("merges repeated descriptors and treats prototype names as own ids", () => {

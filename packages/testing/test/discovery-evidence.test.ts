@@ -184,7 +184,7 @@ async function installerOnlyMachine(): Promise<ReturnType<typeof machine>> {
     Effect.gen(function* () {
       const plan = yield* planInstall(BUNDLE, {
         agents: INSTALL_TARGETS.map(({ agent }) => agent),
-        providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+        providers: { install: testInstall, hooks: testHooks }
       });
       const applied = yield* applyInstall(plan);
       expect(plan.status).toBe("applied");
@@ -285,7 +285,7 @@ describe("agent-owned discovery evidence", () => {
         planInstall(BUNDLE, {
           agents: ["codex"],
           strategies: { codex: { hooks: "native-plugin" } },
-          providers: { install: testInstall, hooks: testHooks, identity: testIdentity }
+          providers: { install: testInstall, hooks: testHooks }
         })
       ).pipe(Effect.provide(harnessLayer(platform)))
     );
