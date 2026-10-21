@@ -9,34 +9,6 @@ const ok = (stdout: string, stderr = "") => ({ code: 0, stdout, stderr });
 
 /** Outputs of the real commands, with account details replaced. */
 const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
-  "claude-code": {
-    versions: [
-      { output: ok("2.1.286 (Claude Code)\n"), version: { output: "2.1.286 (Claude Code)", number: "2.1.286" } }
-    ],
-    auth: [
-      {
-        output: ok('{\n  "loggedIn": true,\n  "authMethod": "claude.ai",\n  "email": "someone@example.invalid"\n}\n'),
-        reading: { loggedIn: true, method: "claude.ai" }
-      },
-      {
-        output: {
-          code: 1,
-          stdout: '{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}',
-          stderr: ""
-        },
-        reading: { loggedIn: false }
-      },
-      { output: { code: 1, stdout: "", stderr: "error: unknown command 'auth'" }, reading: undefined }
-    ],
-    credentialFiles: [
-      {
-        path: "~/.claude.json",
-        json: { numStartups: 3, oauthAccount: { emailAddress: "someone@example.invalid" } },
-        reading: { loggedIn: true, method: "claude.ai" }
-      },
-      { path: "~/.claude.json", json: { numStartups: 3 }, reading: { loggedIn: false } }
-    ]
-  },
   codex: {
     versions: [{ output: ok("codex-cli 0.154.0\n"), version: { output: "codex-cli 0.154.0", number: "0.154.0" } }],
     auth: [

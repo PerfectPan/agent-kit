@@ -24,7 +24,7 @@ export async function readTree(dir: string, prefix: string): Promise<Record<stri
  * repository check rejects tracked paths with a `.codex` or `tmp` segment, and Codex and Gemini CLI homes have them.
  */
 const USAGE_FIXTURES = {
-  "claude-code": { home: ".claude", source: "fixtures/usage/claude-code" },
+  "claude-code": { home: ".claude", source: "../../providers/claude-code/test/fixtures/usage" },
   codex: { home: ".codex", source: "fixtures/usage/codex" },
   "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
   grok: { home: ".grok", source: "../../providers/grok/test/fixtures/usage" },
@@ -96,58 +96,6 @@ export function nodeSqlite(): PlatformSqlite {
   return {
     open: (path, options) => new sqlite.DatabaseSync(path, { readOnly: options?.readonly ?? false })
   };
-}
-
-/** The Claude Code fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
-export function claudeCodeSessions(root: string): ConformanceSession[] {
-  const at = (path: string) => `${root}/${path}`;
-  return [
-    {
-      path: at("plain/session.jsonl"),
-      records: 7,
-      capabilities: ["requests", "usage", "durations", "reasoning", "hooks"]
-    },
-    { path: at("compaction/session.jsonl"), records: 7, capabilities: ["compaction", "compactionTokens"] },
-    {
-      path: at("subagent/session.jsonl"),
-      files: [at("subagent/session.jsonl"), at("subagent/session/subagents/agent-helper.jsonl")],
-      records: 5,
-      capabilities: ["subagents"]
-    },
-    { path: at("unknown-type/session.jsonl"), records: 6, capabilities: [] },
-    {
-      path: at("regroup/session.jsonl"),
-      files: [at("regroup/session.jsonl"), at("regroup/session/subagents/workflows/wf-demo/agent-nested.jsonl")],
-      records: 16,
-      capabilities: ["requests", "usage", "subagents"]
-    },
-    {
-      path: at("prompt-snapshot/session.jsonl"),
-      files: [at("prompt-snapshot/session.jsonl"), at("prompt-snapshot/session/subagents/agent-worker.jsonl")],
-      records: 13,
-      capabilities: ["requests", "usage", "subagents", "systemPrompt", "toolSchemas"]
-    },
-    {
-      path: at("empty-ids/session.jsonl"),
-      files: [
-        at("empty-ids/session.jsonl"),
-        at("empty-ids/session/subagents/agent-.jsonl"),
-        at("empty-ids/session/subagents/agent-mixed.jsonl")
-      ],
-      records: 9,
-      capabilities: ["requests", "usage", "subagents"]
-    },
-    {
-      path: at("summarize/session.jsonl"),
-      files: [
-        at("summarize/session.jsonl"),
-        at("summarize/session/subagents/agent-helper.jsonl"),
-        at("summarize/session/subagents/agent-fallback.jsonl")
-      ],
-      records: 11,
-      capabilities: ["requests", "usage", "durations", "subagents"]
-    }
-  ];
 }
 
 /** The Codex fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */

@@ -51,14 +51,6 @@ export type {
   SessionReadError
 } from "./application/spi.js";
 
-// Claude Code rules
-export {
-  CLAUDE_CODE_CAPABILITIES,
-  type ClaudeCodeTranslateOptions,
-  translateClaudeCodeRecords
-} from "./domain/transcript/adapters/claude-code/events.js";
-export { claudeCodeUsage } from "./domain/usage/adapters/claude-code.js";
-
 // Codex rules
 export {
   CODEX_CAPABILITIES,

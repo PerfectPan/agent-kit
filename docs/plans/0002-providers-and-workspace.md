@@ -689,6 +689,9 @@ One batch per agent, in this order:
 - Files: the same shape as batch 5. grok, claude-code and codex also move their records parsing, session listing, preview and transcript translation.
 - Provider tests consume conformance helpers from testing. Cursor's and Grok's cross-agent host-sniffing tests
   stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
+  `testing/test/hook-dialects.conformance.test.ts` also runs every agent's samples against that full table,
+  importing migrated fixtures from provider tests so foreign host markers cannot silently claim another agent's payload.
+  Its sample map requires every key in the full table; each provider keeps its own single-table conformance run.
   The same applies to unnamed session use cases and cross-agent detection: keep their full session tables in
   testing/harness. Provider tests may import generic test helpers by relative paths into `testing/test/*`;
   these tests-only imports are an accepted pattern, not production API.
@@ -717,7 +720,7 @@ One batch per agent, in this order:
   - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
     manifests and the lockfile; update adapter source links in `packages/discovery/README.md`;
   - boundary cases importing a moved adapter: keep their target resolvable so they still test the intended rule
-    (`lint-cases.ts` uses the Claude Code preview for the cross-concept adapter rejection until batch 10).
+    (`lint-cases.ts` uses the Codex preview for the cross-concept adapter rejection until batch 11).
 - Exit condition: 6.4 row 6 for each.
 
 #### Batch 12: provider closeout

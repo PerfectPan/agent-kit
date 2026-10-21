@@ -1,7 +1,6 @@
 export * from "./public.js";
 
 // Adapter building blocks, shared with sibling packages but not public until a consumer outside the kit needs them.
-export { previewClaudeCodeRecords } from "./domain/session/adapters/claude-code/preview.js";
 export { discoverSessions, type DiscoverSessionsOptions } from "./application/services/discover-sessions.js";
 export { EDGE_BYTES, edgeRecords, type FileEdges, readEdges } from "./application/services/files/edges.js";
 export { type JsonlRecords, readJsonlRecords, readJsonlStream } from "./application/services/files/jsonl.js";

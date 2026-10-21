@@ -41,7 +41,7 @@ const nodeTypes = join(packageRoot, "node_modules/@types");
 const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
   {
     agent: "claude-code",
-    fixture: "packages/testing/test/fixtures/claude-code/conformance/subagent",
+    fixture: "packages/providers/claude-code/test/fixtures/sessions/conformance/subagent",
     target: ".claude/projects/smoke"
   },
   {

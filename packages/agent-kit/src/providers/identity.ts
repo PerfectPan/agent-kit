@@ -1,3 +1,4 @@
+import { claudeCode } from "@rivus/agent-kit-provider-claude-code/identity";
 import { grok } from "@rivus/agent-kit-provider-grok/identity";
 import { opencode } from "@rivus/agent-kit-provider-opencode/identity";
 import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
@@ -8,13 +9,14 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinCodingAgents: typeof contextBuiltins & {
+  readonly "claude-code": typeof claudeCode;
   readonly grok: typeof grok;
   readonly opencode: typeof opencode;
   readonly "gemini-cli": typeof geminiCli;
   readonly cursor: typeof cursor;
   readonly pi: typeof pi;
 } = {
-  "claude-code": contextBuiltins["claude-code"],
+  "claude-code": claudeCode,
   codex: contextBuiltins.codex,
   cursor: cursor,
   "gemini-cli": geminiCli,

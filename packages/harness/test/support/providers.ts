@@ -1,3 +1,5 @@
+import { claudeCodeInstallAdapter } from "@rivus/agent-kit-provider-claude-code/install";
+import { claudeCodeHookDialect } from "@rivus/agent-kit-provider-claude-code/hooks";
 import { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";
 import { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";
 import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
@@ -12,13 +14,14 @@ import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { builtinInstallAdapters as install } from "@rivus/agent-kit-harness/public";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 export const builtinHookDialects: typeof hooks & {
+  readonly "claude-code": typeof claudeCodeHookDialect;
   readonly grok: typeof grokHookDialect;
   readonly opencode: typeof opencodeHookDialect;
   readonly "gemini-cli": typeof geminiCliHookDialect;
   readonly cursor: typeof cursorHookDialect;
   readonly pi: typeof piHookDialect;
 } = {
-  "claude-code": hooks["claude-code"],
+  "claude-code": claudeCodeHookDialect,
   codex: hooks.codex,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
@@ -27,13 +30,14 @@ export const builtinHookDialects: typeof hooks & {
   pi: piHookDialect
 };
 export const builtinInstallAdapters: typeof install & {
+  readonly "claude-code": typeof claudeCodeInstallAdapter;
   readonly grok: typeof grokInstallAdapter;
   readonly opencode: typeof opencodeInstallAdapter;
   readonly "gemini-cli": typeof geminiCliInstallAdapter;
   readonly cursor: typeof cursorInstallAdapter;
   readonly pi: typeof piInstallAdapter;
 } = {
-  "claude-code": install["claude-code"],
+  "claude-code": claudeCodeInstallAdapter,
   codex: install.codex,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
