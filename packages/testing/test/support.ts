@@ -26,7 +26,7 @@ export async function readTree(dir: string, prefix: string): Promise<Record<stri
 const USAGE_FIXTURES = {
   "claude-code": { home: ".claude", source: "fixtures/usage/claude-code" },
   codex: { home: ".codex", source: "fixtures/usage/codex" },
-  "gemini-cli": { home: ".gemini/tmp", source: "fixtures/usage/gemini-cli" },
+  "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
   grok: { home: ".grok", source: "fixtures/usage/grok" },
   opencode: { home: ".local/share/opencode", source: "fixtures/usage/opencode" },
   pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" }

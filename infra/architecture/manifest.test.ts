@@ -180,7 +180,8 @@ describe("the package manifests", () => {
         "@rivus/agent-kit",
         "@rivus/agent-kit-collab",
         "@rivus/agent-kit-provider-pi",
-        "@rivus/agent-kit-provider-cursor"
+        "@rivus/agent-kit-provider-cursor",
+        "@rivus/agent-kit-provider-gemini-cli"
       ])
     );
   });
@@ -201,7 +202,11 @@ describe("the package manifests", () => {
 
   it("accepts testsOnly in devDependencies", () => {
     const testing = packages.find((pkg) => pkg.name === "@rivus/agent-kit-testing")!;
-    for (const provider of ["@rivus/agent-kit-provider-pi", "@rivus/agent-kit-provider-cursor"]) {
+    for (const provider of [
+      "@rivus/agent-kit-provider-pi",
+      "@rivus/agent-kit-provider-cursor",
+      "@rivus/agent-kit-provider-gemini-cli"
+    ]) {
       expect(testing.devDependencies?.[provider]).toBe("workspace:*");
     }
     expect(manifestViolations(packages, onDisk)).toEqual([]);

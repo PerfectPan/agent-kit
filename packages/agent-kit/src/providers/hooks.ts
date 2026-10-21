@@ -1,3 +1,4 @@
+import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";
 import { cursorHookDialect } from "@rivus/agent-kit-provider-cursor/hooks";
 import { builtinHookDialects as contextBuiltins } from "@rivus/agent-kit-harness/public/events";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
@@ -5,13 +6,14 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinHookDialects: typeof contextBuiltins & {
+  readonly "gemini-cli": typeof geminiCliHookDialect;
   readonly cursor: typeof cursorHookDialect;
   readonly pi: typeof piHookDialect;
 } = {
   "claude-code": contextBuiltins["claude-code"],
   codex: contextBuiltins.codex,
   cursor: cursorHookDialect,
-  "gemini-cli": contextBuiltins["gemini-cli"],
+  "gemini-cli": geminiCliHookDialect,
   grok: contextBuiltins.grok,
   opencode: contextBuiltins.opencode,
   pi: piHookDialect

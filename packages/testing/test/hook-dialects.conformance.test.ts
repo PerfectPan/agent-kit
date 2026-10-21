@@ -6,14 +6,12 @@ import { type HookDialectSample, hookDialectConformance } from "../src/hook-dial
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
-import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";
 
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
   codex: codexSamples,
-  "gemini-cli": geminiCliSamples,
   grok: grokSamples,
   opencode: opencodeSamples
 };

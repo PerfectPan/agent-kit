@@ -688,7 +688,8 @@ One batch per agent, in this order:
 - Provider tests consume conformance helpers from testing. Cursor's and Grok's cross-agent host-sniffing tests
   stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
 - Per-batch sync points (update together when moving an agent):
-  - the shell's `src/providers/<service>.ts` tables and its provider devDependency;
+  - the shell's `src/providers/<service>.ts` tables and its provider devDependency; when moving the first ACP
+    profile, also re-export `builtinAcpProfiles` from shell assembly in `src/acp.ts`;
   - `packages/agent-kit/test/provider-bindings.test.ts`: keep `expectedProvider(...)` backed by the shell's complete
     tables as context tables lose their agents;
   - context tables losing the agent, including `Exclude<BuiltinCodingAgentId, ...>` in
@@ -696,6 +697,8 @@ One batch per agent, in this order:
   - harness's literal agent unions in `src/domain/lifecycle/adapters/hook-dialects.ts` and
     `src/domain/bundle/adapters/install-adapters.ts`;
   - `harness/test/support/providers.ts` and `testing/test/providers.ts`, which assemble full test tables;
+    discovery's `src/application/services/host-paths.test.ts` also needs the moved identity via `testsOnly`
+    to keep testing its home override without depending on the shrinking context table;
   - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
     `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
     cross-agent fixtures and conformance-suite self-tests stay in testing;

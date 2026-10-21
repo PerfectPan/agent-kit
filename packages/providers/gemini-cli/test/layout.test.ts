@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { isGeminiCliUsageSource } from "./gemini-cli.js";
+import { isGeminiCliUsageSource } from "../src/layout.js";
 
 describe("gemini-cli usage sources", () => {
   it("keeps a .jsonl chat, and an older .json chat only until its migrated .jsonl sibling exists", () => {

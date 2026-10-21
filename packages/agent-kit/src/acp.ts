@@ -1,11 +1,11 @@
 import { probeAgent as contextProbeAgent } from "@rivus/agent-kit-acp/public";
 import { connectAgent as contextConnectAgent } from "@rivus/agent-kit-acp/public";
+export { builtinAcpProfiles } from "./providers/acp.js";
 import { acpTable } from "./providers/acp.js";
 import type { ProviderOptions } from "./providers/types.js";
 
 export {
   agentEnv,
-  builtinAcpProfiles,
   FileSessionBindingStoreLive,
   MemorySessionBindingStoreLive,
   optionOfKind,

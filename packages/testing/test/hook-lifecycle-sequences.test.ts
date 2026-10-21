@@ -13,7 +13,7 @@ import type { HookDialectSample } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
-import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
+import { geminiCliSamples } from "../../providers/gemini-cli/test/fixtures/hooks.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";
 import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";

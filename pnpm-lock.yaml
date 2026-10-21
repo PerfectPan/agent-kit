@@ -353,6 +353,9 @@ importers:
       '@rivus/agent-kit-provider-cursor':
         specifier: workspace:*
         version: link:../providers/cursor
+      '@rivus/agent-kit-provider-gemini-cli':
+        specifier: workspace:*
+        version: link:../providers/gemini-cli
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi
@@ -488,6 +491,9 @@ importers:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+      '@rivus/agent-kit-provider-gemini-cli':
+        specifier: workspace:*
+        version: link:../providers/gemini-cli
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -534,6 +540,9 @@ importers:
       '@rivus/agent-kit-provider-cursor':
         specifier: workspace:*
         version: link:../providers/cursor
+      '@rivus/agent-kit-provider-gemini-cli':
+        specifier: workspace:*
+        version: link:../providers/gemini-cli
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi
@@ -616,6 +625,43 @@ importers:
       '@rivus/agent-kit-harness':
         specifier: workspace:*
         version: link:../../harness
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@perfectpan/lint-config':
+        specifier: 'catalog:'
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+      '@rivus/agent-kit-testing':
+        specifier: workspace:*
+        version: link:../../testing
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)
+
+  packages/providers/gemini-cli:
+    dependencies:
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../../acp
+      '@rivus/agent-kit-catalog':
+        specifier: workspace:*
+        version: link:../../catalog
+      '@rivus/agent-kit-discovery':
+        specifier: workspace:*
+        version: link:../../discovery
+      '@rivus/agent-kit-harness':
+        specifier: workspace:*
+        version: link:../../harness
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../../sessions
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -738,6 +784,9 @@ importers:
       '@rivus/agent-kit-provider-cursor':
         specifier: workspace:*
         version: link:../providers/cursor
+      '@rivus/agent-kit-provider-gemini-cli':
+        specifier: workspace:*
+        version: link:../providers/gemini-cli
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi

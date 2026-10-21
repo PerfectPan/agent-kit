@@ -111,12 +111,20 @@ const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 const ACP = "@rivus/agent-kit-acp";
+const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
   packages: {
+    [GEMINI_CLI]: {
+      providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
     [CURSOR]: {
       providerServices: ["identity", "discovery", "hooks", "install"],
       dependsOn: [],
@@ -137,7 +145,7 @@ export const boundaries: BoundaryRules = {
     // zod/mini is the only zod entry the plan allows. es-toolkit's root export is tree-shakable; its lodash-compatible
     // `es-toolkit/compat` layer is deliberately not allowed.
     [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"], spi: true },
-    [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"], spi: true },
+    [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"], spi: true, testsOnly: [GEMINI_CLI] },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
     // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform. shell-quote
@@ -147,7 +155,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE, PI, CURSOR]
+      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
@@ -165,7 +173,7 @@ export const boundaries: BoundaryRules = {
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
-      testsOnly: [PI, CURSOR],
+      testsOnly: [PI, CURSOR, GEMINI_CLI],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.
