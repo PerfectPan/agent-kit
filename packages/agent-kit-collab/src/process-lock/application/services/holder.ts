@@ -4,7 +4,7 @@ import * as z from "zod/mini";
 
 import type { ProcessLockPlatform } from "../ports.js";
 
-type ProcessIdentity = Platform["process"]["self"];
+export type ProcessIdentity = Platform["process"]["self"];
 
 /** Who holds or held a process lock, as recorded when it was acquired; it may be stale. */
 export interface ProcessLockHolder {

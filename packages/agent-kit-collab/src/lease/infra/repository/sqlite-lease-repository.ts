@@ -1,10 +1,9 @@
-import type { Platform } from "@rivus/agent-kit/platform";
 import { PlatformService } from "@rivus/agent-kit/platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schedule from "effect/Schedule";
 
-import { isSqliteBusy } from "../../../process-lock/application/services/sqlite-lock.js";
+import { isSqliteBusy, type SqliteDatabase } from "../../../process-lock/application/services/sqlite-lock.js";
 import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 import { LeaseRepository, type LeaseRepositoryFailure, type RevisionConflict } from "../../application/ports.js";
 import { repositoryFailure, revisionConflict } from "../../application/services/repository-failure.js";
@@ -12,7 +11,6 @@ import { keyFileName } from "../models/key-file-name.js";
 import { decodeHolder, decodeSnapshot, encodeHolder } from "../models/lease-record-codec.js";
 import { holdProcessLock } from "../adapters/process-fence.js";
 
-type SqliteDatabase = ReturnType<NonNullable<Platform["sqlite"]>["open"]>;
 type SqliteStatement = ReturnType<SqliteDatabase["prepare"]>;
 
 export interface SqliteLeaseRepositoryOptions {

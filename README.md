@@ -156,7 +156,30 @@ running wait in the state; a scan reports them once their file has been quiet fo
 from a state needs `since`: the state keeps a cursor per source (by an identity that survives Codex archiving) and a
 short hash of every request counted since then, about 1 MB for a busy month.
 
-For direct source decoding, select a descriptor's `usage` service and call its `discover` and `decode` methods.
+For direct source decoding, select a descriptor's `usage` service and call its `sources` and `decode` methods.
+Resolve its home with `sessionAdapterHome(usage, { home, env })`; this helper also accepts a usage service:
+
+```ts
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+import { sessionAdapterHome } from "@rivus/agent-kit/sessions";
+
+const platform = createNodePlatform();
+const usage = builtinProviders.find(({ id }) => id === "codex")?.usage;
+if (usage) {
+  const { home, env } = platform;
+  const agentHome = sessionAdapterHome(usage, { home, env });
+  for await (const source of usage.sources(platform, agentHome)) {
+    if ("error" in source) {
+      throw source.error;
+    }
+    for await (const item of usage.decode(platform, source)) {
+      console.log(item);
+    }
+  }
+}
+```
+
 The decoder's cursor continues a source; `scanUsage` manages those cursors for scans across agents.
 OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `SqliteUnavailable`.
 

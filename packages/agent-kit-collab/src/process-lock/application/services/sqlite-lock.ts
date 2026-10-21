@@ -2,7 +2,7 @@ import type { Platform } from "@rivus/agent-kit/platform";
 import * as z from "zod/mini";
 
 type PlatformSqlite = NonNullable<Platform["sqlite"]>;
-type SqliteDatabase = ReturnType<NonNullable<Platform["sqlite"]>["open"]>;
+export type SqliteDatabase = ReturnType<NonNullable<Platform["sqlite"]>["open"]>;
 
 /**
  * Two processes that try at once each take a shared lock on the way to the exclusive one; with no busy timeout both

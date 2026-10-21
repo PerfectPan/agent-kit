@@ -746,9 +746,9 @@ One batch per agent, in this order:
 #### Batch 13b: public surface pruning
 
 - Prune shell and collab entries against the per-name ledger with the two exceptions in 3.8; keep declarations required by retained signatures private. Remove unused shell forwarding exports.
-- Share `/providers` with the ordinary pack; retain isolated cost/events/usage builds. Test descriptor service reference identity against every ordinary use-case binding, with the isolated hook distinction stated explicitly.
+- Share `/providers` with the ordinary pack; retain isolated cost/events/usage builds. Test descriptor service reference identity against every ordinary use-case binding, with the isolated hook distinction stated explicitly. Run the built-output identity check from `check:package`, after the build; unit tests do not read `dist/`.
 - Migrate tests and collab's signature-only imports to retained APIs or derived types, preserving assertions. Update root/package READMEs and this plan; record one minor change for both published packages.
-- Recount base and branch runtime/declaration exports and application imports; compare seven-agent behavior through retained use cases and descriptors and prove one injected defect is caught. Measure every package-check entry, explain growth over 1%, and raise only exceeded budgets to measured sizes.
+- Recount base and branch runtime/declaration exports and application imports; compare seven-agent behavior through retained use cases and descriptors and prove one injected defect is caught. Measure every package-check entry, explain growth over 1%, raise only exceeded budgets to measured sizes, and lower budgets with more than 1% headroom to measured sizes.
 - Exit condition: 6.4 row 8b plus all check steps, boundary case runner, repository checks and PR CI. Application changes and release are later batches.
 
 #### Batches 14–18: domain model

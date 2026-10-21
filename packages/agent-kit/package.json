@@ -92,7 +92,7 @@
   },
   "scripts": {
     "build": "vp pack",
-    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts && node scripts/smoke-consumer.ts",
+    "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts && node scripts/check-provider-packing.ts && node scripts/smoke-consumer.ts",
     "lint": "vp lint 2>&1",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vp test",
