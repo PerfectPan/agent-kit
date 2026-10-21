@@ -1,10 +1,15 @@
+import { codexUsageDecoder } from "@rivus/agent-kit-provider-codex/usage";
+import { codexSessionAdapter } from "@rivus/agent-kit-provider-codex/sessions";
+import { codexInstallAdapter } from "@rivus/agent-kit-provider-codex/install";
+import { codexHookDialect } from "@rivus/agent-kit-provider-codex/hooks";
+import { codexProbe } from "@rivus/agent-kit-provider-codex/discovery";
+import { codex } from "@rivus/agent-kit-provider-codex/identity";
 import { claudeCodeUsageDecoder } from "@rivus/agent-kit-provider-claude-code/usage";
 import { claudeCodeSessionAdapter } from "@rivus/agent-kit-provider-claude-code/sessions";
 import { claudeCodeInstallAdapter } from "@rivus/agent-kit-provider-claude-code/install";
 import { claudeCodeHookDialect } from "@rivus/agent-kit-provider-claude-code/hooks";
 import { claudeCodeProbe } from "@rivus/agent-kit-provider-claude-code/discovery";
 import { claudeCode } from "@rivus/agent-kit-provider-claude-code/identity";
-import { builtinSessionAdapters as sessions } from "@rivus/agent-kit-sessions";
 import { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";
 import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
 import { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";
@@ -26,19 +31,14 @@ import { cursor } from "@rivus/agent-kit-provider-cursor/identity";
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
 import { cursorHookDialect } from "@rivus/agent-kit-provider-cursor/hooks";
 // Complete built-ins for cross-agent integration tests while providers move out of contexts.
-import { builtinCodingAgents as identity } from "@rivus/agent-kit-catalog";
 import { pi } from "@rivus/agent-kit-provider-pi/identity";
-import { builtinProbeRecipes as discovery } from "@rivus/agent-kit-discovery";
 import { piProbe } from "@rivus/agent-kit-provider-pi/discovery";
-import { builtinHookDialects as hooks } from "@rivus/agent-kit-harness";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
-import { builtinInstallAdapters as install } from "@rivus/agent-kit-harness/public";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
-import { builtinUsageDecoders as usage } from "@rivus/agent-kit-sessions";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
-  codex: identity.codex,
+  codex: codex,
   cursor: cursor,
   "gemini-cli": geminiCli,
   grok: grok,
@@ -48,7 +48,7 @@ export const builtinCodingAgents = {
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
   "claude-code": claudeCodeProbe,
-  codex: discovery.codex,
+  codex: codexProbe,
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
@@ -56,7 +56,7 @@ export const builtinProbeRecipes = {
 };
 export const builtinHookDialects = {
   "claude-code": claudeCodeHookDialect,
-  codex: hooks.codex,
+  codex: codexHookDialect,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
@@ -65,7 +65,7 @@ export const builtinHookDialects = {
 };
 export const builtinInstallAdapters = {
   "claude-code": claudeCodeInstallAdapter,
-  codex: install.codex,
+  codex: codexInstallAdapter,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,
@@ -74,7 +74,7 @@ export const builtinInstallAdapters = {
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
-  codex: usage.codex,
+  codex: codexUsageDecoder,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
@@ -83,6 +83,6 @@ export const builtinUsageDecoders = {
 
 export const builtinSessionAdapters = {
   "claude-code": claudeCodeSessionAdapter,
-  codex: sessions.codex,
+  codex: codexSessionAdapter,
   grok: grokSessionAdapter
 };

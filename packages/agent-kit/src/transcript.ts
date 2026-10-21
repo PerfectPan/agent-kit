@@ -6,8 +6,6 @@ import type { ProviderOptions } from "./providers/types.js";
 
 export {
   CAPABILITIES,
-  CODEX_CAPABILITIES,
-  codexUsage,
   foldStreamParts,
   foldTranscript,
   isPrompt,
@@ -25,13 +23,11 @@ export {
   shadowedIn,
   snapshotHasSystemPrompt,
   snapshotHasTools,
-  TRANSCRIPT_EVENT_KINDS,
-  translateCodexRecords
+  TRANSCRIPT_EVENT_KINDS
 } from "@rivus/agent-kit-sessions/public";
 export type {
   CapabilityUnsupported,
   Capability,
-  CodexTranslateOptions,
   CompactionPayload,
   HookPayload,
   Lane,
@@ -105,3 +101,6 @@ export {
   type ClaudeCodeTranslateOptions
 } from "./providers/sessions.js";
 export { claudeCodeUsage } from "./providers/usage.js";
+
+export { CODEX_CAPABILITIES, translateCodexRecords, type CodexTranslateOptions } from "./providers/sessions.js";
+export { codexUsage } from "./providers/usage.js";

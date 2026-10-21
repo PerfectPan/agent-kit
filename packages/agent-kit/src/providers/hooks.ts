@@ -1,3 +1,4 @@
+import { codexHookDialect } from "@rivus/agent-kit-provider-codex/hooks";
 import { claudeCodeHookDialect } from "@rivus/agent-kit-provider-claude-code/hooks";
 import { grokHookDialect } from "@rivus/agent-kit-provider-grok/hooks";
 import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
@@ -9,6 +10,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinHookDialects: typeof contextBuiltins & {
+  readonly codex: typeof codexHookDialect;
   readonly "claude-code": typeof claudeCodeHookDialect;
   readonly grok: typeof grokHookDialect;
   readonly opencode: typeof opencodeHookDialect;
@@ -17,7 +19,7 @@ export const builtinHookDialects: typeof contextBuiltins & {
   readonly pi: typeof piHookDialect;
 } = {
   "claude-code": claudeCodeHookDialect,
-  codex: contextBuiltins.codex,
+  codex: codexHookDialect,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,

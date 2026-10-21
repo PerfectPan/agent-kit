@@ -2,7 +2,7 @@ import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { builtinCodingAgents } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinProbeRecipes } from "../../domain/installation/adapters/index.js";
+import { codexProbe } from "@rivus/agent-kit-provider-codex/discovery";
 import type { ProbeRecipe } from "../../domain/installation/index.js";
 import { expandProbePath, findCommand, type PathCheck } from "./host-paths.js";
 
@@ -18,7 +18,7 @@ const files = (...paths: string[]) => {
 };
 
 describe("expandProbePath", () => {
-  const recipe: ProbeRecipe = { ...builtinProbeRecipes.codex, agent: "my-agent", home: { defaultPath: [".mine"] } };
+  const recipe: ProbeRecipe = { ...codexProbe, agent: "my-agent", home: { defaultPath: [".mine"] } };
 
   it("expands ~ against the home directory and keeps absolute paths", () => {
     const platform = { env: {}, home: "/u/me/" };

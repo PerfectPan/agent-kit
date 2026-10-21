@@ -1,3 +1,4 @@
+import { codexUsageDecoder } from "@rivus/agent-kit-provider-codex/usage";
 import { claudeCodeUsageDecoder } from "@rivus/agent-kit-provider-claude-code/usage";
 import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
 import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
@@ -8,6 +9,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 const builtinUsageDecoders: typeof contextBuiltins & {
+  readonly codex: typeof codexUsageDecoder;
   readonly "claude-code": typeof claudeCodeUsageDecoder;
   readonly grok: typeof grokUsageDecoder;
   readonly opencode: typeof opencodeUsageDecoder;
@@ -15,7 +17,7 @@ const builtinUsageDecoders: typeof contextBuiltins & {
   readonly pi: typeof piUsageDecoder;
 } = {
   "claude-code": claudeCodeUsageDecoder,
-  codex: contextBuiltins.codex,
+  codex: codexUsageDecoder,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
@@ -28,3 +30,5 @@ export const usageTable = (providers?: readonly Provider[]): ReturnType<typeof m
 export { grokUsage } from "@rivus/agent-kit-provider-grok/usage";
 
 export { claudeCodeUsage } from "@rivus/agent-kit-provider-claude-code/usage";
+
+export { codexUsage } from "@rivus/agent-kit-provider-codex/usage";

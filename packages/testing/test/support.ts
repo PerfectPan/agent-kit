@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 
 import type { FileKind, PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform";
 
-import type { ConformanceSession } from "../src/session-adapter-conformance.js";
-
 /** Every file under `dir`, keyed by `<prefix>/<relative path>`, for `createMemoryPlatform({ files })`. */
 export async function readTree(dir: string, prefix: string): Promise<Record<string, Uint8Array>> {
   const files: Record<string, Uint8Array> = {};
@@ -25,7 +23,7 @@ export async function readTree(dir: string, prefix: string): Promise<Record<stri
  */
 const USAGE_FIXTURES = {
   "claude-code": { home: ".claude", source: "../../providers/claude-code/test/fixtures/usage" },
-  codex: { home: ".codex", source: "fixtures/usage/codex" },
+  codex: { home: ".codex", source: "../../providers/codex/test/fixtures/usage" },
   "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
   grok: { home: ".grok", source: "../../providers/grok/test/fixtures/usage" },
   opencode: { home: ".local/share/opencode", source: "../../providers/opencode/test/fixtures/usage" },
@@ -96,22 +94,4 @@ export function nodeSqlite(): PlatformSqlite {
   return {
     open: (path, options) => new sqlite.DatabaseSync(path, { readOnly: options?.readonly ?? false })
   };
-}
-
-/** The Codex fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
-export function codexSessions(root: string): ConformanceSession[] {
-  const at = (name: string) => `${root}/rollout-${name}.jsonl`;
-  return [
-    { path: at("plain"), records: 14, capabilities: ["requests", "usage", "durations", "reasoning", "systemPrompt"] },
-    { path: at("token-count"), records: 14, capabilities: ["requests", "usage"] },
-    { path: at("compaction"), records: 11, capabilities: ["compaction", "subagents"] },
-    { path: at("subagent"), records: 9, capabilities: ["subagents"] },
-    { path: at("unknown"), records: 7, capabilities: [] },
-    { path: at("fork"), records: 20, capabilities: ["requests", "usage", "durations", "reasoning", "systemPrompt"] },
-    { path: at("fork-one-call"), records: 19, capabilities: ["requests", "usage", "durations"] },
-    { path: at("legacy"), records: 9, capabilities: ["reasoning"] },
-    { path: at("interrupted"), records: 12, capabilities: ["requests", "usage", "durations"] },
-    { path: at("duplicate-usage"), records: 5, capabilities: ["requests", "usage"] },
-    { path: at("token-delta"), records: 6, capabilities: ["requests", "usage"] }
-  ];
 }

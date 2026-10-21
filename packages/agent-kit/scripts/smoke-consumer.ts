@@ -46,7 +46,7 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
   },
   {
     agent: "codex",
-    fixture: "packages/testing/test/fixtures/codex/conformance/rollout-plain.jsonl",
+    fixture: "packages/providers/codex/test/fixtures/sessions/conformance/rollout-plain.jsonl",
     target: ".codex/sessions/2026/01/01/rollout-plain.jsonl"
   },
   {

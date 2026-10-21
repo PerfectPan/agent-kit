@@ -1,52 +1,8 @@
 import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
-import { builtinProbeRecipes } from "@rivus/agent-kit-discovery";
 import { describe, expect, it } from "vite-plus/test";
 
 import { probeRecipeConformance, type ProbeRecipeSamples } from "../src/probe-recipe-conformance.js";
-
-const ok = (stdout: string, stderr = "") => ({ code: 0, stdout, stderr });
-
-/** Outputs of the real commands, with account details replaced. */
-const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
-  codex: {
-    versions: [{ output: ok("codex-cli 0.154.0\n"), version: { output: "codex-cli 0.154.0", number: "0.154.0" } }],
-    auth: [
-      { output: ok("", "Logged in using ChatGPT\n"), reading: { loggedIn: true, method: "chatgpt" } },
-      { output: ok("", "Logged in using an API key - sk-***1234\n"), reading: { loggedIn: true, method: "api-key" } },
-      {
-        output: ok("", "Logged in using Amazon Bedrock AWS access keys\n"),
-        reading: { loggedIn: true, method: "bedrock-access-keys" }
-      },
-      { output: ok("", "Logged in using a method added later\n"), reading: { loggedIn: true } },
-      {
-        output: { code: 1, stdout: "", stderr: "WARNING: proceeding, even though...\nNot logged in\n" },
-        reading: { loggedIn: false }
-      },
-      { output: { code: 1, stdout: "", stderr: "Error checking login status: bad file" }, reading: undefined }
-    ],
-    credentialFiles: [
-      {
-        path: "~/.codex/auth.json",
-        json: { auth_mode: "chatgpt", OPENAI_API_KEY: null, tokens: { id_token: "x" } },
-        reading: { loggedIn: true, method: "chatgpt" }
-      },
-      { path: "~/.codex/auth.json", json: { OPENAI_API_KEY: "sk-x" }, reading: { loggedIn: true } },
-      { path: "~/.codex/auth.json", json: { OPENAI_API_KEY: null }, reading: { loggedIn: false } },
-      { path: "~/.codex/auth.json", json: [], reading: undefined }
-    ]
-  }
-};
-
-for (const recipe of Object.values(builtinProbeRecipes)) {
-  describe(`${recipe.agent} probe recipe conformance`, () => {
-    for (const { name, run } of probeRecipeConformance(recipe, SAMPLES[recipe.agent], testIdentity)) {
-      it(`${name}`, async () => {
-        await expect(run()).resolves.toBeUndefined();
-      });
-    }
-  });
-}
 
 describe("probe recipe conformance catches", () => {
   const good: ProbeRecipe = {

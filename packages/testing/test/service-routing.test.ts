@@ -1,9 +1,9 @@
+import { builtinSessionAdapters } from "./providers.js";
 import { err, type CodingAgent } from "@rivus/agent-kit-catalog";
 import { detectAgents } from "@rivus/agent-kit-discovery";
 import { builtinProbeRecipes } from "./providers.js";
 import { type HookDialect, readHookEvent } from "@rivus/agent-kit-harness";
 import {
-  builtinSessionAdapters,
   decodeUsage,
   listSessions,
   listUsageSources,

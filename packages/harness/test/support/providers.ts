@@ -1,3 +1,5 @@
+import { codexInstallAdapter } from "@rivus/agent-kit-provider-codex/install";
+import { codexHookDialect } from "@rivus/agent-kit-provider-codex/hooks";
 import { claudeCodeInstallAdapter } from "@rivus/agent-kit-provider-claude-code/install";
 import { claudeCodeHookDialect } from "@rivus/agent-kit-provider-claude-code/hooks";
 import { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";
@@ -9,11 +11,10 @@ import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
 import { cursorHookDialect } from "@rivus/agent-kit-provider-cursor/hooks";
 // Complete built-ins for cross-agent integration tests while providers move out of contexts.
-import { builtinHookDialects as hooks } from "@rivus/agent-kit-harness";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
-import { builtinInstallAdapters as install } from "@rivus/agent-kit-harness/public";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
-export const builtinHookDialects: typeof hooks & {
+export const builtinHookDialects: {
+  readonly codex: typeof codexHookDialect;
   readonly "claude-code": typeof claudeCodeHookDialect;
   readonly grok: typeof grokHookDialect;
   readonly opencode: typeof opencodeHookDialect;
@@ -22,14 +23,15 @@ export const builtinHookDialects: typeof hooks & {
   readonly pi: typeof piHookDialect;
 } = {
   "claude-code": claudeCodeHookDialect,
-  codex: hooks.codex,
+  codex: codexHookDialect,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
   pi: piHookDialect
 };
-export const builtinInstallAdapters: typeof install & {
+export const builtinInstallAdapters: {
+  readonly codex: typeof codexInstallAdapter;
   readonly "claude-code": typeof claudeCodeInstallAdapter;
   readonly grok: typeof grokInstallAdapter;
   readonly opencode: typeof opencodeInstallAdapter;
@@ -38,7 +40,7 @@ export const builtinInstallAdapters: typeof install & {
   readonly pi: typeof piInstallAdapter;
 } = {
   "claude-code": claudeCodeInstallAdapter,
-  codex: install.codex,
+  codex: codexInstallAdapter,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,

@@ -9,7 +9,7 @@ import { geminiCliSamples } from "../../providers/gemini-cli/test/fixtures/hooks
 import { grokSamples } from "../../providers/grok/test/fixtures/hooks.js";
 import { opencodeSamples } from "../../providers/opencode/test/fixtures/hooks.js";
 import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
-import { codexSamples } from "./fixtures/hooks/codex.js";
+import { codexSamples } from "../../providers/codex/test/fixtures/hooks.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { grokHostSamples } from "./fixtures/hooks/grok-host.js";
 
