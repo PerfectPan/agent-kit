@@ -61,7 +61,7 @@ export interface AuthProbe {
 
 /**
  * How discovery detects one agent. A recipe is data plus pure parsers; `detectAgents` does the IO. Built-in recipes
- * are in `builtinProbeRecipes`; a caller supplies its own through provider descriptors, and `/testing` has the
+ * are assembled by the shell; a caller supplies its own through provider descriptors, and `/testing` has the
  * conformance checks a recipe must pass.
  */
 export interface ProbeRecipe {

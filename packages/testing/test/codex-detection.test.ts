@@ -1,8 +1,4 @@
-import {
-  builtinSessionAdapters as testSessions,
-  builtinSessionAdapters,
-  builtinCodingAgents as testIdentity
-} from "./providers.js";
+import { builtinSessionAdapters as testSessions, builtinCodingAgents as testIdentity } from "./providers.js";
 import { fileURLToPath } from "node:url";
 import type { Result } from "@rivus/agent-kit-catalog";
 import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
@@ -67,7 +63,7 @@ describe("sessions use cases over Codex", () => {
     const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     const exported = createMemoryPlatform({ files: { "/export/session.jsonl": "{}\n" } });
     const locked = { fs: { ...exported.fs, read: () => failing(denied) } };
-    const options = { providers: { sessions: { codex: builtinSessionAdapters["codex"] }, identity: testIdentity } };
+    const options = { providers: { sessions: { codex: testSessions["codex"] }, identity: testIdentity } };
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
         ok: false,

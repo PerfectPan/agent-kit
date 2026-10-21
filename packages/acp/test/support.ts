@@ -1,4 +1,3 @@
-import { builtinAcpProfiles as testAcp } from "../src/public.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,7 +60,6 @@ export function connectFake(options: FakeOptions = {}): ReturnType<typeof connec
     ...rest,
     providers: {
       acp: {
-        ...testAcp,
         "fake-agent": fakeProfile(profile)
       }
     }

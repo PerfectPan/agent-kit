@@ -3,12 +3,11 @@ import { claudeCodeUsageDecoder } from "@rivus/agent-kit-provider-claude-code/us
 import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
 import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
 import { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";
-import { builtinUsageDecoders as contextBuiltins } from "@rivus/agent-kit-sessions/public";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-const builtinUsageDecoders: typeof contextBuiltins & {
+const builtinUsageDecoders: {
   readonly codex: typeof codexUsageDecoder;
   readonly "claude-code": typeof claudeCodeUsageDecoder;
   readonly grok: typeof grokUsageDecoder;

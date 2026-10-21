@@ -113,6 +113,7 @@ function spiProvider(copy: string, slim = false): void {
     })
   );
   writeFileSync(join(folder, "src/identity.ts"), "export const probeIdentity = true;\n");
+  writeFileSync(join(folder, "src/facts.ts"), `export const agentMarkers = ["${id}"];\n`);
   cpSync(join(copy, "packages/catalog/tsconfig.json"), join(folder, "tsconfig.json"));
   writeFileSync(
     join(folder, "vite.config.ts"),
@@ -125,7 +126,7 @@ function spiProvider(copy: string, slim = false): void {
     spiImports: [...contexts, "@rivus/agent-kit-platform"].filter(
       (context) => !slim || context !== "@rivus/agent-kit-harness"
     ),
-    ...(slim ? { providerServices: ["hooks", "usage"] } : {}),
+    ...(slim ? { providerServices: ["hooks", "usage"], providerFacts: `packages/providers/${id}/src/facts.ts` } : {}),
     typesOnly: ["@rivus/agent-kit-acp"],
     external: []
   };
@@ -212,6 +213,28 @@ async function restrictedPlugins(copy: string): Promise<Diagnostic[]> {
   }
 }
 
+/** A new provider fact must reach the context rule without updating infrastructure's marker list. */
+async function addedProviderMarker(copy: string): Promise<Diagnostic[]> {
+  const facts = join(copy, "packages/providers/pi/src/facts.ts");
+  const original = readFileSync(facts, "utf8");
+  const marker = "PROVIDER_MARKER_PROBE";
+  writeFileSync(
+    facts,
+    original.replace(
+      "export const agentMarkers: readonly string[] = [",
+      `export const agentMarkers: readonly string[] = ["${marker}",`
+    )
+  );
+  const file = join(copy, "packages/catalog/src/marker-probe.ts");
+  writeFileSync(file, `export const marker = "${marker}";\n`);
+  try {
+    return await lint(copy, "packages/catalog", ["src/marker-probe.ts"]);
+  } finally {
+    writeFileSync(facts, original);
+    rmSync(file);
+  }
+}
+
 function report(name: string, path: string, expected: readonly string[], diagnostics: Diagnostic[]): boolean {
   const reported = diagnostics.flatMap((diagnostic) => {
     const rule = ruleOf(diagnostic);
@@ -268,6 +291,14 @@ try {
       }
     }
   }
+  failures += report(
+    "agent marker: added provider fact",
+    "packages/catalog/src/marker-probe.ts",
+    ["agent-marker"],
+    await addedProviderMarker(copy)
+  )
+    ? 0
+    : 1;
   const restricted = await restrictedPlugins(copy);
   failures += report(
     "typescript-only top-level plugins: Node builtin",
@@ -311,5 +342,5 @@ try {
 }
 
 const seconds = ((performance.now() - started) / 1000).toFixed(1);
-console.log(`${cases.length + 5} cases, ${failures} failed, ${seconds} s`);
+console.log(`${cases.length + 6} cases, ${failures} failed, ${seconds} s`);
 process.exitCode = failures === 0 ? 0 : 1;

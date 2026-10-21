@@ -1,9 +1,14 @@
-import { type HomeRule } from "@rivus/agent-kit-catalog/spi";
+import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const GROK_ID = "grok";
 export const GROK_DISPLAY_NAME = "Grok";
+export const HOME_DIR = ".grok";
+export const HOME_ENV = "GROK_HOME";
 // The override names the Grok home itself.
-export const GROK_HOME: HomeRule = { envVar: "GROK_HOME", defaultPath: [".grok"] };
+export const GROK_HOME: HomeRule = {
+  envVar: HOME_ENV,
+  defaultPath: [HOME_DIR]
+};
 export const GROK_SESSIONS_DIR = "sessions";
 export const GROK_AUTH_FILE = "auth.json";
 export const GROK_API_KEY_ENV = "XAI_API_KEY";
@@ -31,3 +36,5 @@ export const GROK_ACP_ARGS: readonly string[] = ["agent", "stdio"];
 export const GROK_ACP_ENV: readonly string[] = ["GROK_*", "XAI_*"];
 export const GROK_VERSION_SIDE_EFFECT =
   "Creates ~/.grok, or $GROK_HOME, when it does not exist, as every grok run does.";
+
+export const agentMarkers: readonly string[] = [GROK_ID, HOME_DIR, HOME_ENV];

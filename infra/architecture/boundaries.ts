@@ -20,6 +20,8 @@ export interface PackageRule {
   readonly spi?: true;
   /** Private provider: one src/<service>.ts export per supported service, with no barrel. */
   readonly providerServices?: readonly string[];
+  /** Repository-relative facts path; the marker extractor reads source text without loading the module. */
+  readonly providerFacts?: string;
   /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
   readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
@@ -64,15 +66,6 @@ export interface LayerRule {
   readonly external: boolean;
 }
 
-export interface AgentMarkerRule {
-  /** Values that name one built-in agent: its id, a home directory, an environment variable. */
-  readonly markers: readonly string[];
-  /** Package-relative globs exempt in every package of `packages`: the agent adapters. */
-  readonly exempt: readonly string[];
-  /** Packages whose non-test source may not spell a marker, each with further package-relative globs it exempts. */
-  readonly packages: Readonly<Record<string, readonly string[]>>;
-}
-
 export interface BoundaryRules {
   readonly packages: Readonly<Record<string, PackageRule>>;
   /** Published shells that bind providers and re-export named public APIs. */
@@ -94,11 +87,11 @@ export interface BoundaryRules {
     readonly allowedPaths: Readonly<Record<string, readonly string[]>>;
   };
   /**
-   * Agent knowledge belongs in the agent adapters, so the contexts' other files may not spell a marker: a string
+   * Agent knowledge belongs in providers, so context source may not spell a marker: a string
    * literal or string literal type whose whole value is one, or a piece of a template literal's static text (each part
    * between expressions, split on `/`) that is one.
    */
-  readonly agentMarkers: AgentMarkerRule;
+  readonly agentMarkers: { readonly packages: readonly string[] };
 }
 
 const PLATFORM = "@rivus/agent-kit-platform";
@@ -123,6 +116,7 @@ const TESTING = "@rivus/agent-kit-testing";
 export const boundaries: BoundaryRules = {
   packages: {
     [CODEX]: {
+      providerFacts: "packages/providers/codex/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -130,6 +124,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CLAUDE_CODE]: {
+      providerFacts: "packages/providers/claude-code/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -137,6 +132,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GROK]: {
+      providerFacts: "packages/providers/grok/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -144,6 +140,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [OPENCODE]: {
+      providerFacts: "packages/providers/opencode/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -151,6 +148,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GEMINI_CLI]: {
+      providerFacts: "packages/providers/gemini-cli/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -158,6 +156,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CURSOR]: {
+      providerFacts: "packages/providers/cursor/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS],
@@ -165,6 +164,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [PI]: {
+      providerFacts: "packages/providers/pi/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
@@ -252,7 +252,7 @@ export const boundaries: BoundaryRules = {
     "src/providers/install.ts": ["./merge.js", "./types.js"],
     "src/providers/merge.ts": ["./types.js"],
     "src/providers/sessions.ts": ["./merge.js", "./types.js"],
-    "src/providers/unsupported.ts": ["./types.js"],
+    "src/providers/unsupported.ts": ["./types.js", "./identity.js"],
     "src/providers/usage.ts": ["./merge.js", "./types.js"],
     "src/providers.ts": ["./providers/types.js", "./providers/builtin.js"],
     "src/sessions.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"],
@@ -292,27 +292,6 @@ export const boundaries: BoundaryRules = {
     }
   },
   agentMarkers: {
-    markers: [
-      "claude-code",
-      "codex",
-      "cursor",
-      "gemini-cli",
-      "grok",
-      "opencode",
-      "pi",
-      ".claude",
-      "CLAUDE_CONFIG_DIR",
-      "CURSOR_VERSION"
-    ],
-    exempt: ["src/domain/*/adapters/**"],
-    // The files outside the adapters that hold agent knowledge until it moves into the provider packages.
-    packages: {
-      [CATALOG]: ["src/domain/coding-agent/value-objects/coding-agent-id.ts"],
-      [DISCOVERY]: [],
-      [SESSIONS]: ["src/application/services/session-adapters/**", "src/application/services/usage-decoders/**"],
-      [HARNESS]: [],
-      [ACP]: [],
-      [COST]: []
-    }
+    packages: [CATALOG, DISCOVERY, SESSIONS, HARNESS, ACP, COST]
   }
 };

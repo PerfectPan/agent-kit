@@ -45,7 +45,7 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24474 B" },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24476 B" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "40.4 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25622 B" },

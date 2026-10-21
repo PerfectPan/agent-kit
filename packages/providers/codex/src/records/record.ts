@@ -2,7 +2,7 @@ import { lenient, logTimestamp } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
 // Codex writes one rollout record per line. Agent logs are read leniently: a field of an unexpected type counts as
-// absent (./lenient.js), and only the record envelope decides whether the format generation is known.
+// absent (the sessions SPI's `lenient` helper), and only the record envelope decides whether the format generation is known.
 
 /**
  * A field named on one side of a schema/interface pair only — an interface typo, or a schema field the interface

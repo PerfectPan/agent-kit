@@ -12,7 +12,7 @@
  * - `boundaries/no-unknown-files` reports `src/` files of a package that the manifest does not declare.
  * - `import/no-nodejs-modules` (built in) keeps Node built-ins in the packages that declare `nodeBuiltins`.
  * - `eslint-js/no-restricted-syntax` (oxlint-plugin-eslint) rejects computed dynamic imports, the statements a shell
- *   entry may not contain, non-`.ts` sources under `src/`, and agent markers spelled outside the agent adapters.
+ *   entry may not contain, non-`.ts` sources under `src/`, and agent markers spelled in contexts.
  *
  * Rules that concern manifests rather than source files (undeclared packages, `package.json` dependencies, entry
  * files) are checked by `manifest.test.ts`. `run-lint-cases.ts` lints the cases of `lint-cases.ts`, violating and
@@ -21,7 +21,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { DependenciesPolicy, ElementDescriptor } from "eslint-plugin-boundaries";
@@ -29,6 +29,7 @@ import { escapeRegExp } from "es-toolkit";
 import type { OxlintConfig, OxlintOverride } from "vite-plus/lint";
 
 import { boundaries, type Layer, type PackageRule } from "./boundaries.ts";
+import { extractAgentMarkers } from "./agent-markers.ts";
 
 const ROOT = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
 const MANIFEST = "infra/architecture/boundaries.ts";
@@ -487,7 +488,21 @@ function policiesOf(project: Project): Policy[] {
   ];
 }
 
-const MARKERS = boundaries.agentMarkers.markers.map((marker) => escapeRegExp(marker)).join("|");
+const MARKERS = [
+  ...new Set(
+    Object.entries(boundaries.packages).flatMap(([name, rule]) => {
+      if (rule.providerServices === undefined) {
+        return [];
+      }
+      if (rule.providerFacts === undefined) {
+        throw new Error(`${MANIFEST}: ${name} is missing providerFacts`);
+      }
+      return extractAgentMarkers(rule.providerFacts, readFileSync(join(ROOT, rule.providerFacts), "utf8"));
+    })
+  )
+]
+  .map((marker) => escapeRegExp(marker))
+  .join("|");
 /** A module specifier is a Literal too; the boundary rules judge it instead. */
 const MODULE_SPECIFIERS = [
   "ImportDeclaration > Literal",
@@ -497,7 +512,7 @@ const MODULE_SPECIFIERS = [
   "TSImportType > Literal",
   "TSExternalModuleReference > Literal"
 ].join(", ");
-const AGENT_MARKER_MESSAGE = `[agent-marker] this value names one agent, and agent knowledge belongs in the agent adapters (markers in ${MANIFEST})`;
+const AGENT_MARKER_MESSAGE = `[agent-marker] this value names one agent, and agent knowledge belongs in providers (markers from their facts.ts)`;
 
 /** A rule entry at error level with the given options. */
 const error = (...options: unknown[]): ["error", ...unknown[]] => ["error", ...options];
@@ -538,7 +553,6 @@ export function boundaryLintOf(folder: string): BoundaryLint {
   const manifest = JSON.parse(readFileSync(`${ROOT}/${folder}/package.json`, "utf8")) as { name: string };
   const project = { name: manifest.name, folder };
   const rule = boundaries.packages[project.name];
-  const markerExemptions = boundaries.agentMarkers.packages[project.name];
   const base = isShell(project.name) ? [syntax.dynamicImport, ...syntax.shellEntry] : [syntax.dynamicImport];
   const policies: DependenciesPolicy[] = policiesOf(project);
   const overrides: OxlintOverride[] = [
@@ -560,12 +574,12 @@ export function boundaryLintOf(folder: string): BoundaryLint {
         "eslint-js/no-restricted-syntax": error(...base)
       }
     },
-    ...(markerExemptions === undefined
+    ...(!boundaries.agentMarkers.packages.includes(project.name)
       ? []
       : [
           {
             files: SOURCES,
-            excludeFiles: [...TESTS, DECLARATIONS, ...boundaries.agentMarkers.exempt, ...markerExemptions],
+            excludeFiles: [...TESTS, DECLARATIONS],
             rules: { "eslint-js/no-restricted-syntax": error(...base, ...syntax.agentMarker) }
           }
         ]),

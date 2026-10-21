@@ -249,6 +249,9 @@ importers:
       eslint-plugin-boundaries:
         specifier: 7.2.0
         version: 7.2.0(eslint-import-resolver-typescript@4.4.5(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0))(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0)
+      oxc-parser:
+        specifier: 'catalog:'
+        version: 0.154.0
       oxlint-plugin-eslint:
         specifier: 1.88.0
         version: 1.88.0
@@ -1019,6 +1022,9 @@ importers:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+      '@rivus/agent-kit':
+        specifier: workspace:*
+        version: link:../../packages/agent-kit
       '@rivus/agent-kit-acp':
         specifier: workspace:*
         version: link:../../packages/acp

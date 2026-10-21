@@ -3,9 +3,10 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 export const GEMINI_CLI_ID = "gemini-cli";
 export const GEMINI_CLI_DISPLAY_NAME = "Gemini CLI";
 export const GEMINI_CLI_COMMAND = "gemini";
-const HOME_DIR = ".gemini";
+export const HOME_DIR = ".gemini";
+export const HOME_ENV = "GEMINI_CLI_HOME";
 // The override names the user's home directory; the CLI appends its own directory.
-export const GEMINI_CLI_HOME: HomeRule = { envVar: "GEMINI_CLI_HOME", envSubpath: [HOME_DIR], defaultPath: [HOME_DIR] };
+export const GEMINI_CLI_HOME: HomeRule = { envVar: HOME_ENV, envSubpath: [HOME_DIR], defaultPath: [HOME_DIR] };
 export const GEMINI_CLI_SETTINGS_FILE = "settings.json";
 export const GEMINI_CLI_CREDENTIAL_FILE = "oauth_creds.json";
 export const GEMINI_CLI_API_KEY_ENV = "GEMINI_API_KEY";
@@ -23,3 +24,5 @@ export const GEMINI_CLI_CHAT_SUFFIX_PATTERN: RegExp = /\.jsonl?$/;
 export const GEMINI_CLI_MESSAGE_TYPE = "gemini";
 export const GEMINI_CLI_ACP_ARGS: readonly string[] = ["--experimental-acp"];
 export const GEMINI_CLI_ACP_ENV: readonly string[] = ["GEMINI_*", "GOOGLE_*"];
+
+export const agentMarkers: readonly string[] = [GEMINI_CLI_ID, GEMINI_CLI_COMMAND, HOME_DIR, HOME_ENV];

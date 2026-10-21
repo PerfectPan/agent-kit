@@ -5,6 +5,7 @@ user's login, so they may spend tokens; CI never runs them (the project's `test`
 
 ```bash
 pnpm install
+pnpm run build
 cd tests/smoke
 AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok pnpm run smoke
 ```

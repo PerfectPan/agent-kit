@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog";
 
 /**
  * Where a system prompt goes: under `_meta[key]` of `session/new` and `session/load`, or as a text block before the
@@ -22,3 +22,5 @@ export interface AcpProfile {
   /** Facts about this agent that are not verified against its source or documentation. */
   readonly warnings: readonly string[];
 }
+
+export type AcpProfiles = ServiceTable<AcpProfile>;

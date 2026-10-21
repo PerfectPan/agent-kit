@@ -1,11 +1,15 @@
-import { type HomeRule } from "@rivus/agent-kit-catalog/spi";
+import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const CODEX_ID = "codex";
 export const CODEX_DISPLAY_NAME = "Codex";
 export const CODEX_COMMAND: string = CODEX_ID;
 export const CODEX_HOME_DIR = ".codex";
+export const HOME_ENV = "CODEX_HOME";
 // The override names the Codex home itself.
-export const CODEX_HOME: HomeRule = { envVar: "CODEX_HOME", defaultPath: [CODEX_HOME_DIR] };
+export const CODEX_HOME: HomeRule = {
+  envVar: HOME_ENV,
+  defaultPath: [CODEX_HOME_DIR]
+};
 export const CODEX_SESSIONS_DIR = "sessions";
 export const CODEX_ARCHIVED_SESSIONS_DIR = "archived_sessions";
 export const CODEX_AUTH_FILE = "auth.json";
@@ -14,6 +18,7 @@ export const CODEX_CONFIG_FILE = "config.toml";
 export const CODEX_CONFIG_PATTERN: RegExp = /[\\/]config\.toml$/;
 export const CODEX_HOOKS_FILE = "hooks.json";
 export const CODEX_PLUGINS_DIR = "plugins";
+export const CODEX_PLUGINS_POINTER = "/plugins";
 export const CODEX_PLUGIN_CACHE_DIR: string = `${CODEX_PLUGINS_DIR}/cache`;
 export const CODEX_PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
 export const CODEX_PLUGIN_HOOKS: string = `hooks/${CODEX_HOOKS_FILE}`;
@@ -27,3 +32,5 @@ export const CODEX_SESSION_SUFFIX = ".jsonl";
 export const CODEX_SESSION_SUFFIX_PATTERN: RegExp = /\.jsonl$/;
 export const CODEX_ACP_COMMAND = "codex-acp";
 export const CODEX_ACP_ENV: readonly string[] = ["OPENAI_*", "CODEX_*", "AZURE_OPENAI_*"];
+
+export const agentMarkers: readonly string[] = [CODEX_ID, CODEX_HOME_DIR, HOME_ENV];

@@ -8,6 +8,7 @@ import type { OxlintConfig } from "vite-plus/lint";
 import { describe, expect, it } from "vite-plus/test";
 
 import { boundaries } from "./boundaries.ts";
+import { extractAgentMarkers } from "./agent-markers.ts";
 import { boundaryLintOf, withBoundaryLint, workspaceProjects } from "./lint.ts";
 
 interface WorkspacePackage extends Manifest {
@@ -322,6 +323,19 @@ describe("the package manifests", () => {
         for (const dependency of [...rule.dependsOn, ...(rule.spiImports ?? [])]) {
           expect(boundaries.packages[dependency]?.providerServices, `${name} -> ${dependency}`).toBeUndefined();
         }
+      }
+    }
+  });
+
+  it("requires every provider to supply its marker list from facts", () => {
+    for (const { name, folder } of projects) {
+      const rule = boundaries.packages[name];
+      if (rule?.providerServices !== undefined) {
+        const path = `${folder}/src/facts.ts`;
+        expect(rule.providerFacts, `facts path of ${name}`).toBe(path);
+        expect(onDisk(path), `facts file of ${name}`).toBe(true);
+        const facts = readFileSync(join(root, path), "utf8");
+        expect(extractAgentMarkers(path, facts).length, `markers of ${name}`).toBeGreaterThan(0);
       }
     }
   });

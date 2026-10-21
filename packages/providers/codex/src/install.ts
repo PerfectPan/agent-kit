@@ -3,6 +3,7 @@ import {
   CODEX_COMMAND,
   CODEX_HOME,
   CODEX_PLUGINS_DIR,
+  CODEX_PLUGINS_POINTER,
   CODEX_MARKETPLACE_MANIFEST,
   CODEX_CONFIG_FILE,
   CODEX_HOOKS_FILE,
@@ -77,7 +78,7 @@ const escapePointer = (key: string) => key.replaceAll("~", "~0").replaceAll("/",
 function registrationPointers(name: string) {
   return {
     marketplace: `/marketplaces/${escapePointer(name)}`,
-    plugin: `/${CODEX_PLUGINS_DIR}/${escapePointer(`${name}@${name}`)}`
+    plugin: `${CODEX_PLUGINS_POINTER}/${escapePointer(`${name}@${name}`)}`
   };
 }
 
@@ -104,7 +105,9 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
       recorded: { entries: [record(`/marketplaces/${marketplace}`)], copies: [] }
     };
   }
-  const id = /^\/plugins\/([^/@]+)@([^/@]+)$/.exec(pointer);
+  const id = pointer.startsWith(`${CODEX_PLUGINS_POINTER}/`)
+    ? /^([^/@]+)@([^/@]+)$/.exec(pointer.slice(CODEX_PLUGINS_POINTER.length + 1))
+    : null;
   if (id === null) {
     return undefined;
   }
@@ -114,7 +117,7 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
     register: { command: CODEX_COMMAND, args: ["plugin", "add", `${plugin}@${market}`] },
     unregister: { command: CODEX_COMMAND, args: ["plugin", "remove", `${plugin}@${market}`] },
     installedCopy: `${cache}/local/${CODEX_PLUGIN_HOOKS}`,
-    recorded: { entries: [record(`/${CODEX_PLUGINS_DIR}/${plugin}@${market}`)], copies: [cache] }
+    recorded: { entries: [record(`${CODEX_PLUGINS_POINTER}/${plugin}@${market}`)], copies: [cache] }
   };
 }
 
