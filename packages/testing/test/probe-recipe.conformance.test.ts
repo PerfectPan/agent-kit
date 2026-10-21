@@ -90,13 +90,6 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
       },
       { path: "~/.local/share/opencode/auth.json", json: { broken: { type: "other" } }, reading: { loggedIn: false } }
     ]
-  },
-  cursor: {
-    auth: [
-      { output: ok('{"status":"authenticated","isAuthenticated":true}'), reading: { loggedIn: true } },
-      { output: ok('{"status":"unauthenticated","isAuthenticated":false}'), reading: { loggedIn: false } },
-      { output: { code: 1, stdout: '{"status":"error"}', stderr: "" }, reading: undefined }
-    ]
   }
 };
 

@@ -2,7 +2,7 @@ import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialect, HookDialects } from "../index.js";
-import { builtinHookDialects } from "./hook-dialects.js";
+import { builtinHookDialects } from "../../../../test/support/providers.js";
 import { readHookEvent } from "./read-hook-event.js";
 
 const { grok, ...otherHooks } = builtinHookDialects;

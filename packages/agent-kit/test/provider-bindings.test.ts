@@ -1,3 +1,9 @@
+import { acpTable } from "../src/providers/acp.js";
+import { usageTable } from "../src/providers/usage.js";
+import { sessionsTable } from "../src/providers/sessions.js";
+import { builtinInstallAdapters } from "../src/providers/install.js";
+import { builtinHookDialects } from "../src/providers/hooks.js";
+import { builtinProbeRecipes } from "../src/providers/discovery.js";
 import { describe, expect, it, vi } from "vite-plus/test";
 import * as sessions from "@rivus/agent-kit-sessions/public";
 import * as discovery from "@rivus/agent-kit-discovery/public";
@@ -14,7 +20,7 @@ import { planInstall, findLegacy, verify, uninstall, doctor } from "../src/harne
 import { connectAgent, probeAgent } from "../src/acp.js";
 import { hookDialectConformance, probeRecipeConformance } from "../src/testing.js";
 import type { Provider } from "../src/providers.js";
-import { builtinCodingAgents } from "@rivus/agent-kit-catalog/public";
+import { builtinCodingAgents } from "../src/providers/identity.js";
 vi.mock("@rivus/agent-kit-sessions/public", async (original) => ({
   ...(await original<typeof import("@rivus/agent-kit-sessions/public")>()),
   listSessions: vi.fn<typeof sessions.listSessions>(),
@@ -55,12 +61,12 @@ vi.mock("@rivus/agent-kit-testing/public", async (original) => ({
 const expectedProvider = (id: "codex" | "grok"): Provider => ({
   id,
   identity: builtinCodingAgents[id],
-  discovery: discovery.builtinProbeRecipes[id],
-  hooks: events.builtinHookDialects[id],
-  install: harness.builtinInstallAdapters[id],
-  sessions: sessions.builtinSessionAdapters[id],
-  usage: sessions.builtinUsageDecoders[id],
-  acp: acp.builtinAcpProfiles[id]
+  discovery: builtinProbeRecipes[id],
+  hooks: builtinHookDialects[id],
+  install: builtinInstallAdapters[id],
+  sessions: sessionsTable()[id],
+  usage: usageTable()[id],
+  acp: acpTable()[id]
 });
 const builtin = expectedProvider("codex");
 const other = expectedProvider("grok");

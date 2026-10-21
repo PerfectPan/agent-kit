@@ -30,6 +30,7 @@
   "devDependencies": {
     "@perfectpan/lint-config": "catalog:",
     "@rivus/agent-kit-cost": "workspace:*",
+    "@rivus/agent-kit-provider-cursor": "workspace:*",
     "@rivus/agent-kit-provider-pi": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:",

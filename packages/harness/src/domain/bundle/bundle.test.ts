@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { builtinHookDialects } from "../lifecycle/adapters/hook-dialects.js";
+import { builtinHookDialects } from "../../../test/support/providers.js";
 import { buildInstallPlan } from "../install-plan/factories/build-install-plan.js";
 import { Ledger } from "../ledger/aggregates/ledger.js";
 import { isLegacyArtifact } from "./policies/legacy-markers.js";

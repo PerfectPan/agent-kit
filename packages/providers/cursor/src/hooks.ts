@@ -1,4 +1,12 @@
-import type { HookDialect, HookOutput } from "../index.js";
+import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
+import {
+  CURSOR_ID,
+  CURSOR_VERSION_FIELD,
+  CURSOR_VERSION_ENV,
+  CURSOR_TRANSCRIPT_ENV,
+  CURSOR_FOREIGN_AGENT,
+  CURSOR_FOREIGN_HOOK_FILES
+} from "./facts.js";
 
 // https://cursor.com/docs/hooks (events, input and output schemas, exit codes, environment) and
 // https://cursor.com/docs/reference/third-party-hooks (loading Claude Code hooks, event mapping).
@@ -37,8 +45,8 @@ function gate(fields: readonly string[]): HookOutput {
 
 export const cursorHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  hostMarkers: { payloadFields: ["cursor_version"], env: ["CURSOR_VERSION"] },
-  agent: "cursor",
+  hostMarkers: { payloadFields: [CURSOR_VERSION_FIELD], env: [CURSOR_VERSION_ENV] },
+  agent: CURSOR_ID,
   delivery: "command",
   timeout: { unit: "seconds", unverified: "The default is only called the platform default." },
   // Project hooks run only in a trusted workspace; there is no per-hook review.
@@ -50,7 +58,7 @@ export const cursorHookDialect: HookDialect = {
     sessionId: { paths: [["conversation_id"], ["session_id"]] },
     // Only shell and tool events carry cwd; every event carries the workspace roots.
     cwd: { paths: [["cwd"], ["workspace_roots", "0"]] },
-    transcriptPath: { paths: [["transcript_path"]], env: ["CURSOR_TRANSCRIPT_PATH"] },
+    transcriptPath: { paths: [["transcript_path"]], env: [CURSOR_TRANSCRIPT_ENV] },
     turnId: { paths: [["generation_id"]] },
     subagentId: { paths: [["subagent_id"]] },
     subagentType: { paths: [["subagent_type"]] },
@@ -125,10 +133,10 @@ export const cursorHookDialect: HookDialect = {
   },
   runsHooksOf: [
     {
-      agent: "claude-code",
+      agent: CURSOR_FOREIGN_AGENT,
       // "Include Third-Party Plugins, Skills, and Other Configs" in the editor, on by default; the CLI always loads
       // them. Claude Code's SubagentStart, Notification and PermissionRequest have no Cursor event.
-      files: ["~/.claude/settings.json", ".claude/settings.json", ".claude/settings.local.json"],
+      files: CURSOR_FOREIGN_HOOK_FILES,
       byDefault: true,
       events: {
         SessionStart: "sessionStart",

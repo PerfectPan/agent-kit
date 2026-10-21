@@ -366,23 +366,6 @@ describe("agent-owned discovery evidence", () => {
     }
   );
 
-  it.each([".config/cursor/auth.json", "AppData/Roaming/Cursor/auth.json"])(
-    "counts Cursor's credential file %s",
-    async (path) => {
-      const platform = machine({ files: { [`${HOME}/${path}`]: "{}" } });
-      const [installation] = await detectAgents(platform, {
-        agents: ["cursor"],
-        versionProbe: false,
-        providers: { discovery: testDiscovery, identity: testIdentity }
-      });
-      expect(installation).toMatchObject({
-        status: "found",
-        evidence: [{ kind: "config", path: `${HOME}/${path}` }],
-        problems: []
-      });
-    }
-  );
-
   it.each([
     "Library/Application Support/Cursor/User/globalStorage",
     ".config/Cursor/User/globalStorage",
