@@ -134,10 +134,3 @@ export { shortHash } from "./domain/usage/services/short-hash.js";
 export { type UsageCursor } from "./domain/usage/value-objects/usage-cursor.js";
 export { type ModelUsage, type UsageRecord } from "./domain/usage/value-objects/usage-record.js";
 export { type Usage, compactUsage } from "./domain/usage/value-objects/usage.js";
-
-export { type DiscoverSessionsOptions } from "./application/services/discover-sessions.js";
-export { edgeRecords, type FileEdges } from "./application/services/files/edges.js";
-export { type ReadOptions } from "./application/services/files/read-file.js";
-export { type WalkOptions } from "./application/services/files/walk.js";
-export { type EventFields } from "./domain/transcript/factories/transcript-event.js";
-export { type UsageDecoders } from "./application/spi.js";

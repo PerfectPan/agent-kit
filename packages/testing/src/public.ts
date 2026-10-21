@@ -20,13 +20,4 @@ export {
 } from "./session-adapter-conformance.js";
 export { probeRecipeConformance, type ProbeRecipeSamples } from "./probe-recipe-conformance.js";
 
-export { usageDecoderConformance, type UsageDecoderFixtures } from "./usage-decoder-conformance.js";
-export {
-  fixtureContentHash,
-  fixtureHash,
-  type LedgerEntryFixture,
-  ledgerEntryFixture,
-  type LedgerFixture,
-  ledgerFixture,
-  ledgerSnapshotFixture
-} from "./ledger-fixture.js";
+export { usageDecoderConformance } from "./usage-decoder-conformance.js";
