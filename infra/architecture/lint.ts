@@ -450,12 +450,13 @@ function policiesOf(project: Project): Policy[] {
     ...(rule.providerServices === undefined
       ? []
       : Object.entries({
-          hooks: ["./facts.js", "@rivus/agent-kit-harness/spi", "zod/mini"],
+          hooks: ["./facts.js", "@rivus/agent-kit-catalog/spi", "@rivus/agent-kit-harness/spi", "zod/mini"],
           usage: [
             "./facts.js",
             "./layout.js",
             "./records.js",
             "./records/**",
+            "@rivus/agent-kit-catalog/spi",
             "@rivus/agent-kit-sessions/spi",
             "zod/mini"
           ]
@@ -464,10 +465,12 @@ function policiesOf(project: Project): Policy[] {
           return [
             {
               from,
-              disallow: { to: [external(), { module: { origin: ["local", "core"] } }] },
+              disallow: {
+                to: [external(), { module: { origin: ["local", "core"] } }],
+                dependency: { source: `!${braces(sources)}` }
+              },
               message: `[provider-entry] {{dependency.source}}: ${service} must keep its slim import graph`
-            },
-            { from, allow: { to: [external(), local(project)], dependency: { source: sources } } }
+            }
           ];
         }))
   ];

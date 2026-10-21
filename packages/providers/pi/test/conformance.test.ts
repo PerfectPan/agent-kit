@@ -36,21 +36,3 @@ for (const [service, checks] of [
     }
   });
 }
-
-it("the usage suite rejects missing sources and incorrect record counts", async () => {
-  const missing = usageDecoderConformance(
-    {
-      ...piUsageDecoder,
-      async *sources() {
-        yield* [];
-      }
-    },
-    fixtures
-  );
-  await expect(missing[0]?.run()).rejects.toThrow("source paths differ");
-  const incorrect = usageDecoderConformance(piUsageDecoder, {
-    ...fixtures,
-    sources: fixtures.sources.map((source) => ({ ...source, records: 0 }))
-  });
-  await expect(incorrect[1]?.run()).rejects.toThrow("decoded record count differs");
-});

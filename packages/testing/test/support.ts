@@ -23,26 +23,20 @@ export async function readTree(dir: string, prefix: string): Promise<Record<stri
  * Where each agent's directory under `fixtures/usage` sits in a home. The fixtures cannot keep the home layout: the
  * repository check rejects tracked paths with a `.codex` or `tmp` segment, and Codex and Gemini CLI homes have them.
  */
-const USAGE_HOME_DIRS = {
-  "claude-code": ".claude",
-  codex: ".codex",
-  "gemini-cli": ".gemini/tmp",
-  grok: ".grok",
-  opencode: ".local/share/opencode",
-  pi: ".pi/agent"
+const USAGE_FIXTURES = {
+  "claude-code": { home: ".claude", source: "fixtures/usage/claude-code" },
+  codex: { home: ".codex", source: "fixtures/usage/codex" },
+  "gemini-cli": { home: ".gemini/tmp", source: "fixtures/usage/gemini-cli" },
+  grok: { home: ".grok", source: "fixtures/usage/grok" },
+  opencode: { home: ".local/share/opencode", source: "fixtures/usage/opencode" },
+  pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" }
 } as const;
 
 /** The usage fixtures at their paths in the agent homes under `home`, for `createMemoryPlatform({ files })`. */
 export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  const root = fileURLToPath(new URL("fixtures/usage", import.meta.url));
   const trees = await Promise.all(
-    Object.entries(USAGE_HOME_DIRS).map(([agent, dir]) =>
-      readTree(
-        agent === "pi"
-          ? fileURLToPath(new URL("../../providers/pi/test/fixtures/usage", import.meta.url))
-          : join(root, agent),
-        `${home}/${dir}`
-      )
+    Object.values(USAGE_FIXTURES).map((fixture) =>
+      readTree(fileURLToPath(new URL(fixture.source, import.meta.url)), `${home}/${fixture.home}`)
     )
   );
   return Object.assign({}, ...trees) as Record<string, Uint8Array>;

@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
+import { ok } from "@rivus/agent-kit-catalog/spi";
 import {
-  ok,
   sourceOf,
   timeOf,
   compactUsage,

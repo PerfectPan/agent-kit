@@ -21,7 +21,9 @@ import {
   PI_EXTENSION_SUFFIX
 } from "./facts.js";
 
-// Pi loads every .ts or .js extension in this directory without a configuration entry.
+// https://github.com/earendil-works/pi/blob/75a9972/packages/coding-agent/src/core/extensions/loader.ts: every `*.ts` or `*.js` file in
+// `~/.pi/agent/extensions/` loads as an extension, `export default function (pi) { pi.on(...) }`, and handlers get
+// `ctx.cwd` and `ctx.sessionManager.getSessionId()`.
 function piHome(context: InstallContext): string {
   return homeFromRule(PI_ID, PI_HOME, context).path;
 }
@@ -129,7 +131,7 @@ export const piInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   legacySources: (context) => [
-    { kind: "files", dir: piExtensionsDir(context), extensions: PI_EXTENSION_SUFFIXES, PI_EXTENSION_SUFFIX },
+    { kind: "files", dir: piExtensionsDir(context), extensions: PI_EXTENSION_SUFFIXES },
     {
       kind: "entries",
       format: "json",

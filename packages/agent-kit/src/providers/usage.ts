@@ -3,7 +3,7 @@ import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinUsageDecoders: typeof contextBuiltins & { readonly pi: typeof piUsageDecoder } = {
+const builtinUsageDecoders: typeof contextBuiltins & { readonly pi: typeof piUsageDecoder } = {
   ...contextBuiltins,
   pi: piUsageDecoder
 };

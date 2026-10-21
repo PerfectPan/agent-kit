@@ -52,6 +52,28 @@ export const providerCases: Case[] = [
     "package-dependency"
   ),
   allowed("pi hooks: facts", "providers/pi", "src/hooks.ts", 'export { PI_ID } from "./facts.js";'),
+  ...["hooks", "usage"].flatMap((service) => [
+    allowed(
+      `pi ${service}: catalog SPI`,
+      "providers/pi",
+      `src/${service}.ts`,
+      'export { ok } from "@rivus/agent-kit-catalog/spi";'
+    ),
+    rejects(
+      `slim ${service}: no undeclared npm specifier`,
+      "providers/slim-probe",
+      `src/${service}.ts`,
+      'export { string } from "zod/mini";',
+      "external-dependency"
+    )
+  ]),
+  rejects(
+    "slim hooks: no undeclared harness SPI",
+    "providers/slim-probe",
+    "src/hooks.ts",
+    'export { finishSelectorsOf } from "@rivus/agent-kit-harness/spi";',
+    "spi-import"
+  ),
   rejects(
     "pi hooks: no installation",
     "providers/pi",

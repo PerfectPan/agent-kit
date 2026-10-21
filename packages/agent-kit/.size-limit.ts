@@ -16,7 +16,7 @@ const nodeOnly = {
 // Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
 // objects are distinct from the individual built-in exports.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38419 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38305 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44344 B" },
@@ -29,7 +29,7 @@ export default [
   // read-only legacy listing adds the shared legacyTreatment rule and its use case. shell-quote, which reads a hook
   // command's first word for doctor, is counted with the entry. Configuration cleanup also carries the ledger
   // creation proof and its invalidation when the original entries disappear.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "81812 B" },
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "81702 B" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8392 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
@@ -49,5 +49,5 @@ export default [
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "40.4 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25522 B" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19372 B" }
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19357 B" }
 ] satisfies SizeLimitConfig;

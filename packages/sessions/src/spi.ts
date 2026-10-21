@@ -134,4 +134,3 @@ export { shortHash } from "./domain/usage/services/short-hash.js";
 export { type UsageCursor } from "./domain/usage/value-objects/usage-cursor.js";
 export { type ModelUsage, type UsageRecord } from "./domain/usage/value-objects/usage-record.js";
 export { type Usage, compactUsage } from "./domain/usage/value-objects/usage.js";
-export { ok } from "@rivus/agent-kit-catalog";
