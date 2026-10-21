@@ -12,7 +12,7 @@ import { describe, expect, it } from "vite-plus/test";
 import type { HookDialectSample } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
-import { cursorSamples } from "./fixtures/hooks/cursor.js";
+import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
 import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";

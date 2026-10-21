@@ -669,7 +669,8 @@ Pilot decisions for batch 5 (apply to later provider batches):
 - 3.9: allowed test dependencies create workspace cycles. Set `ignoreWorkspaceCycles: true` because internal
   packages export source and have no build step. Lint checks source dependency direction; manifest tests
   require `testsOnly` packages to appear only in `devDependencies` and reject cycles in the graph formed by
-  `dependencies` and `peerDependencies`. Slim entry rules only restrict imports and cannot grant SPI or npm access. Cross-agent integration tests remain in their context and assemble providers in test-only
+  `dependencies`, `peerDependencies` and `optionalDependencies`. Slim entry rules only restrict imports and cannot
+  grant SPI or npm access. Cross-agent integration tests remain in their context and assemble providers in test-only
   tables; pi-specific parsing, hook fixtures and usage fixtures move to the provider.
 
 #### Batches 6–11: the other providers
@@ -688,12 +689,16 @@ One batch per agent, in this order:
   stay in testing's or harness's tests, which assemble the full hooks table through `testsOnly`.
 - Per-batch sync points (update together when moving an agent):
   - the shell's `src/providers/<service>.ts` tables and its provider devDependency;
+  - `packages/agent-kit/test/provider-bindings.test.ts`: keep `expectedProvider(...)` backed by the shell's complete
+    tables as context tables lose their agents;
   - context tables losing the agent, including `Exclude<BuiltinCodingAgentId, ...>` in
     `catalog/src/domain/coding-agent/adapters/index.ts` and `discovery/src/domain/installation/adapters/index.ts`;
   - harness's literal agent unions in `src/domain/lifecycle/adapters/hook-dialects.ts` and
     `src/domain/bundle/adapters/install-adapters.ts`;
   - `harness/test/support/providers.ts` and `testing/test/providers.ts`, which assemble full test tables;
-  - the agent-keyed fixture source/home table in `testing/test/support.ts`;
+  - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
+    `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
+    cross-agent fixtures and conformance-suite self-tests stay in testing;
   - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
     manifests and the lockfile.
 - Exit condition: 6.4 row 6 for each.

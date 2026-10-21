@@ -1,6 +1,4 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness";
-
-import type { HookDialectSample } from "../../../src/hook-dialect-conformance.js";
+import type { HookDialectSample } from "@rivus/agent-kit-testing";
 
 // Scrubbed Cursor hook payloads (https://cursor.com/docs/hooks), one or more per event.
 
@@ -25,7 +23,7 @@ function sample(
   name: string,
   event: string,
   extra: Record<string, unknown>,
-  expected: Omit<LifecycleEvent, "agent" | "nativeEvent">
+  expected: Omit<HookDialectSample["expected"], "agent" | "nativeEvent">
 ): HookDialectSample {
   return {
     name,
@@ -176,27 +174,5 @@ export const cursorSamples: readonly HookDialectSample[] = [
       phase: "finish",
       scope: "session"
     }
-  ),
-  {
-    name: "a hook registered for Claude Code and run by Cursor names Cursor",
-    declaredAgent: "claude-code",
-    payload: { ...common, hook_event_name: "preToolUse", session_id: common.conversation_id, ...tool },
-    env: { CURSOR_VERSION: "3.13.25", CLAUDE_PROJECT_DIR: "/u/me/work" },
-    expected: { ...identity, nativeEvent: "preToolUse", phase: "activity", tool: { name: "Shell", callId: "tool-1" } }
-  },
-  {
-    name: "CURSOR_VERSION alone names Cursor, and a Claude Code event name maps to Cursor's",
-    declaredAgent: "claude-code",
-    payload: { hook_event_name: "Stop", session_id: "c0nv-cursor-1", status: "completed" },
-    env: { CURSOR_VERSION: "3.13.25", CMUX_SURFACE_ID: "5D1A-surface" },
-    expected: {
-      agent: "cursor",
-      nativeEvent: "Stop",
-      phase: "finish",
-      scope: "turn",
-      outcome: "completed",
-      sessionId: "c0nv-cursor-1",
-      terminal: { host: "cmux", paneId: "5D1A-surface" }
-    }
-  }
+  )
 ];

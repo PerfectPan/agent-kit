@@ -15,8 +15,6 @@ interface WorkspacePackage extends Manifest {
   /** Repository-relative POSIX path, such as `packages/platform`. */
   readonly folder: string;
   readonly lintScript?: string;
-  /** Dependencies declared with the `workspace:` protocol in any dependency field of `package.json`. */
-  readonly workspaceDependencies: readonly string[];
   readonly exports?: Readonly<Record<string, unknown>>;
 }
 
@@ -33,19 +31,12 @@ const root = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
 const projects = workspaceProjects(root).filter(({ folder }) => folder.startsWith("packages/"));
 const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
   const manifest = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as Manifest;
-  const dependencies = {
-    ...manifest.dependencies,
-    ...manifest.devDependencies,
-    ...manifest.peerDependencies,
-    ...manifest.optionalDependencies
-  };
   return {
     ...manifest,
     name,
     folder,
     lintScript: manifest.scripts?.lint,
-    exports: manifest.exports,
-    workspaceDependencies: Object.keys(dependencies).filter((key) => dependencies[key]?.startsWith("workspace:"))
+    exports: manifest.exports
   };
 });
 const onDisk = (path: string) => existsSync(join(root, path));
@@ -53,7 +44,10 @@ const onDisk = (path: string) => existsSync(join(root, path));
 /** Development edges may cycle; only runtime dependencies determine production build direction. */
 function productionCycles(workspace: readonly WorkspacePackage[]): string[] {
   const graph = new Map(
-    workspace.map((pkg) => [pkg.name, Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies })])
+    workspace.map((pkg) => [
+      pkg.name,
+      Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies, ...pkg.optionalDependencies })
+    ])
   );
   const visited = new Set<string>();
   const active: string[] = [];
@@ -131,7 +125,14 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
       ...entries
         .filter((entry) => !exists(`${pkg.folder}/${entry}`))
         .map((entry) => `${pkg.folder}: entry-file ${entry}`),
-      ...pkg.workspaceDependencies
+      ...Object.entries({
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+        ...pkg.peerDependencies,
+        ...pkg.optionalDependencies
+      })
+        .filter(([, version]) => version.startsWith("workspace:"))
+        .map(([dependency]) => dependency)
         .filter((dependency) => !allowed.includes(dependency))
         .map((dependency) => `${pkg.folder}: package-dependency ${dependency}`)
     ];
@@ -174,7 +175,13 @@ const SESSIONS = "@rivus/agent-kit-sessions";
 describe("the package manifests", () => {
   it("list the packages from pnpm", () => {
     expect(packages.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([SESSIONS, "@rivus/agent-kit", "@rivus/agent-kit-collab", "@rivus/agent-kit-provider-pi"])
+      expect.arrayContaining([
+        SESSIONS,
+        "@rivus/agent-kit",
+        "@rivus/agent-kit-collab",
+        "@rivus/agent-kit-provider-pi",
+        "@rivus/agent-kit-provider-cursor"
+      ])
     );
   });
 
@@ -194,25 +201,33 @@ describe("the package manifests", () => {
 
   it("accepts testsOnly in devDependencies", () => {
     const testing = packages.find((pkg) => pkg.name === "@rivus/agent-kit-testing")!;
-    expect(testing.devDependencies?.["@rivus/agent-kit-provider-pi"]).toBe("workspace:*");
+    for (const provider of ["@rivus/agent-kit-provider-pi", "@rivus/agent-kit-provider-cursor"]) {
+      expect(testing.devDependencies?.[provider]).toBe("workspace:*");
+    }
     expect(manifestViolations(packages, onDisk)).toEqual([]);
   });
 
-  it.each(["dependencies", "peerDependencies"] as const)("rejects production cycles through %s", (field) => {
-    const catalog = "@rivus/agent-kit-catalog";
-    const probe = packages.map((pkg) =>
-      pkg.name === catalog ? { ...pkg, [field]: { ...pkg[field], [SESSIONS]: "workspace:*" } } : pkg
-    );
-    expect(manifestViolations(probe, onDisk)).toEqual([`production-cycle ${catalog} -> ${SESSIONS} -> ${catalog}`]);
-  });
+  it.each(["dependencies", "peerDependencies", "optionalDependencies"] as const)(
+    "rejects production cycles through %s",
+    (field) => {
+      const catalog = "@rivus/agent-kit-catalog";
+      const probe = packages.map((pkg) =>
+        pkg.name === catalog ? { ...pkg, [field]: { ...pkg[field], [SESSIONS]: "workspace:*" } } : pkg
+      );
+      expect(manifestViolations(probe, onDisk)).toEqual([
+        `packages/catalog: package-dependency ${SESSIONS}`,
+        `production-cycle ${catalog} -> ${SESSIONS} -> ${catalog}`
+      ]);
+    }
+  );
 
   it("accepts an acyclic production graph with a development cycle", () => {
-    const probe = packages.map((pkg) =>
-      pkg.name === "@rivus/agent-kit-catalog"
-        ? { ...pkg, devDependencies: { ...pkg.devDependencies, [SESSIONS]: "workspace:*" } }
-        : pkg
-    );
-    expect(manifestViolations(probe, onDisk)).toEqual([]);
+    expect(
+      productionCycles([
+        { name: "a", folder: "packages/a", dependencies: { b: "workspace:*" } },
+        { name: "b", folder: "packages/b", devDependencies: { a: "workspace:*" } }
+      ])
+    ).toEqual([]);
   });
 
   it.each([
@@ -237,22 +252,26 @@ describe("the package manifests", () => {
   );
 
   it("reject a package under packages/ that the manifest does not declare", () => {
-    const stray = { name: "@rivus/agent-kit-stray", folder: "packages/stray", workspaceDependencies: [] };
+    const stray = { name: "@rivus/agent-kit-stray", folder: "packages/stray" };
     expect(manifestViolations([...packages, stray], onDisk)).toEqual([
       "packages/stray: undeclared-package @rivus/agent-kit-stray"
     ]);
   });
 
-  it("reject a declared workspace dependency that no source file imports", () => {
-    const withTesting = packages.map((pkg) =>
-      pkg.name === SESSIONS
-        ? { ...pkg, workspaceDependencies: [...pkg.workspaceDependencies, "@rivus/agent-kit-testing"] }
-        : pkg
-    );
-    expect(manifestViolations(withTesting, onDisk)).toEqual([
-      "packages/sessions: package-dependency @rivus/agent-kit-testing"
-    ]);
-  });
+  it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const)(
+    "rejects a forbidden workspace dependency in %s without a source import",
+    (field) => {
+      const withTesting = packages.map((pkg) =>
+        pkg.name === SESSIONS ? { ...pkg, [field]: { ...pkg[field], "@rivus/agent-kit-testing": "workspace:*" } } : pkg
+      );
+      expect(manifestViolations(withTesting, onDisk)).toEqual([
+        "packages/sessions: package-dependency @rivus/agent-kit-testing",
+        ...(field === "devDependencies"
+          ? []
+          : [`production-cycle ${SESSIONS} -> @rivus/agent-kit-testing -> ${SESSIONS}`])
+      ]);
+    }
+  );
 
   it("accepts SPI-only workspace dependencies without granting the context index", () => {
     const name = "@rivus/agent-kit-provider-probe";
@@ -272,7 +291,7 @@ describe("the package manifests", () => {
               name,
               folder: "packages/providers/probe",
               lintScript: "vp lint",
-              workspaceDependencies: [SESSIONS]
+              dependencies: { [SESSIONS]: "workspace:*" }
             }
           ],
           () => true
@@ -321,7 +340,7 @@ describe("the package manifests", () => {
   it("keep collab out of the shell's dependencies", () => {
     const withCollab = packages.map((pkg) =>
       pkg.name === "@rivus/agent-kit"
-        ? { ...pkg, workspaceDependencies: [...pkg.workspaceDependencies, "@rivus/agent-kit-collab"] }
+        ? { ...pkg, devDependencies: { ...pkg.devDependencies, "@rivus/agent-kit-collab": "workspace:*" } }
         : pkg
     );
     expect(manifestViolations(withCollab, onDisk)).toEqual([

@@ -4,7 +4,7 @@ import { builtinHookDialects } from "./providers.js";
 import { describe, expect, it } from "vite-plus/test";
 
 import { hookDialectConformance } from "../src/hook-dialect-conformance.js";
-import { cursorSamples } from "./fixtures/hooks/cursor.js";
+import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
 
 // Each broken dialect differs from the Cursor one in a single way; the named check must reject it.
 

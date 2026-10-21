@@ -1,11 +1,11 @@
 import { builtinHookDialects as testHooks } from "./providers.js";
-import { builtinHookDialects } from "@rivus/agent-kit-harness";
+import { readHookEvent, builtinHookDialects } from "@rivus/agent-kit-harness";
 import { describe, expect, it } from "vite-plus/test";
 
 import { type HookDialectSample, hookDialectConformance } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
-import { cursorSamples } from "./fixtures/hooks/cursor.js";
+import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";
@@ -13,7 +13,6 @@ import { opencodeSamples } from "./fixtures/hooks/opencode.js";
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
   codex: codexSamples,
-  cursor: cursorSamples,
   "gemini-cli": geminiCliSamples,
   grok: grokSamples,
   opencode: opencodeSamples
@@ -34,3 +33,14 @@ for (const [agent, dialect] of Object.entries(builtinHookDialects)) {
     }
   });
 }
+
+// Cross-agent host resolution needs the full table, assembled only by this test package.
+describe("Cursor running Claude Code hooks", () => {
+  for (const sample of cursorHostSamples) {
+    it(`${sample.name}`, () => {
+      expect(
+        readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })
+      ).toEqual(sample.expected);
+    });
+  }
+});

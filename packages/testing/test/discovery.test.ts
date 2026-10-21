@@ -16,8 +16,7 @@ import {
   createMemoryPlatform,
   type MemoryCommand,
   type MemoryPlatform,
-  type MemoryPlatformOptions,
-  type MemoryRunResult
+  type MemoryPlatformOptions
 } from "../src/memory-platform.js";
 
 const HOME = "/u/me";
@@ -376,22 +375,6 @@ describe("login state", () => {
     expect((await detectOne(platform, "codex", commands)).auth).toMatchObject({
       status: "logged-in",
       method: "chatgpt"
-    });
-  });
-
-  it("reads Cursor's CLI status from its output, since it exits with 0 when logged out", async () => {
-    const status = (value: string): MemoryRunResult => ({ code: 0, stdout: JSON.stringify({ status: value }) });
-    const platform = (value: string) =>
-      machine({
-        files: { "/Applications/Cursor.app/Contents/Info.plist": "" },
-        commands: { "/opt/bin/cursor-agent": (args) => (args[0] === "status" ? status(value) : { code: 2 }) }
-      });
-    expect((await detectOne(platform("unauthenticated"), "cursor", commands)).auth).toEqual({
-      status: "logged-out",
-      source: { kind: "command", command: "/opt/bin/cursor-agent", args: ["status", "--format", "json"] }
-    });
-    expect((await detectOne(platform("authenticated"), "cursor", commands)).auth).toMatchObject({
-      status: "logged-in"
     });
   });
 

@@ -1,6 +1,15 @@
 import * as z from "zod/mini";
 
-import type { AuthReading, CommandOutput, ProbeRecipe } from "../index.js";
+import type { AuthReading, CommandOutput, ProbeRecipe } from "@rivus/agent-kit-discovery/spi";
+
+import {
+  CURSOR_ID,
+  CURSOR_DISPLAY_NAME,
+  CURSOR_AGENT_COMMAND,
+  CURSOR_APP_PATH,
+  CURSOR_CONFIG_PATHS,
+  CURSOR_CREDENTIAL_PATHS
+} from "./facts.js";
 
 const Status = z.object({ status: z.string() });
 
@@ -8,7 +17,7 @@ const Status = z.object({ status: z.string() });
  * Reads `cursor-agent status --format json`. It exits with 0 whether or not anyone is logged in, so only the
  * output's `status` counts: `authenticated`, `partially-authenticated` (no refresh token yet) or `unauthenticated`.
  */
-export function parseCursorAgentStatus(output: CommandOutput): AuthReading | undefined {
+function parseCursorAgentStatus(output: CommandOutput): AuthReading | undefined {
   let json: unknown;
   try {
     json = JSON.parse(output.stdout);
@@ -32,28 +41,22 @@ export function parseCursorAgentStatus(output: CommandOutput): AuthReading | und
 
 export const cursorProbe: ProbeRecipe = {
   specificationVersion: "discovery-v1",
-  agent: "cursor",
-  displayName: "Cursor",
+  agent: CURSOR_ID,
+  displayName: CURSOR_DISPLAY_NAME,
   kind: "app",
-  commands: ["cursor", "cursor-agent"],
-  appPaths: ["/Applications/Cursor.app"],
-  configPaths: [
-    "~/Library/Application Support/Cursor/User/globalStorage",
-    "~/.config/Cursor/User/globalStorage",
-    "~/AppData/Roaming/Cursor/User/globalStorage",
-    "~/.config/cursor/auth.json",
-    "~/AppData/Roaming/Cursor/auth.json"
-  ],
+  commands: [CURSOR_ID, CURSOR_AGENT_COMMAND],
+  appPaths: [CURSOR_APP_PATH],
+  configPaths: CURSOR_CONFIG_PATHS,
   mcpConfigPaths: [],
   auth: {
     command: {
-      command: "cursor-agent",
+      command: CURSOR_AGENT_COMMAND,
       args: ["status", "--format", "json"],
       parse: parseCursorAgentStatus,
       sideEffects: ["Calls Cursor's servers to look up the account when tokens are stored."]
     },
     // The CLI's login on Linux and Windows; on macOS it is in the system keychain.
-    credentialFiles: [{ path: "~/.config/cursor/auth.json" }, { path: "~/AppData/Roaming/Cursor/auth.json" }]
+    credentialFiles: CURSOR_CREDENTIAL_PATHS.map((path) => ({ path }))
   },
   warnings: [
     "The CLI's other command name, agent, is not probed, because other agents install a command with that name.",
