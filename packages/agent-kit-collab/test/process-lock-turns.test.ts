@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import type { Platform } from "@rivus/agent-kit/platform";
 
-import { acquireProcessLock, type ProcessLock, type ProcessLockHeld } from "../src/process-lock/public.js";
+import { acquireProcessLock, type ProcessLock } from "../src/process-lock/public.js";
+type ProcessLockHeld = Extract<Awaited<ReturnType<typeof acquireProcessLock>>, { ok: false }>["error"];
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 
 type Mechanism = "sqlite" | "file";

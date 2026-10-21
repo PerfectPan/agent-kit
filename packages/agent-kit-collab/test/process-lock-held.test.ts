@@ -3,11 +3,13 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import type { Platform, PlatformSqlite } from "@rivus/agent-kit/platform";
+import type { Platform } from "@rivus/agent-kit/platform";
 
 import { acquireProcessLock, isProcessLockHeld } from "../src/process-lock/public.js";
 import { removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { startWorker, stopWorkers, WORKER_TEST_TIMEOUT_MS } from "./support/workers.js";
+
+type PlatformSqlite = NonNullable<Platform["sqlite"]>;
 
 afterEach(async () => {
   await stopWorkers();

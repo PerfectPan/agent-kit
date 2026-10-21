@@ -36,7 +36,7 @@ const nodeTypes = join(packageRoot, "node_modules/@types");
 
 /**
  * One seeded session per built-in session adapter: a repository-relative fixture and where the agent keeps it
- * under its home. The consumer fails when `builtinSessionAdapters` has an agent this list lacks.
+ * under its home. The consumer fails when `builtinProviders` has a session adapter this list lacks.
  */
 const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
   {
@@ -235,7 +235,7 @@ import { createPricing, summarize } from "${manifest.name}/cost";
 import { createNodePlatform } from "${manifest.name}/node";
 import type { Platform } from "${manifest.name}/platform";
 import { detectAgents } from "${manifest.name}/discovery";
-import { builtinSessionAdapters, isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
+import { isSessionHead, listSessions, type SessionHead } from "${manifest.name}/sessions";
 import {
   loadTranscript,
   type SourcePointer,
@@ -243,13 +243,9 @@ import {
   type TranscriptEventOf,
   type TranscriptEventPayloads
 } from "${manifest.name}/transcript";
-import {
-  addUsage,
-  isUsageRecord,
-  scanUsage,
-  type Usage,
-  type UsageRecord
-} from "${manifest.name}/transcript/usage";
+import { isUsageRecord, scanUsage, type UsageRecord } from "${manifest.name}/transcript/usage";
+import { builtinProviders } from "${manifest.name}/providers";
+type Usage = UsageRecord["usage"];
 ${companions.map((code) => code.imports).join("\n")}
 
 const work = ${JSON.stringify(work)};
@@ -257,7 +253,7 @@ const entries: Record<string, object> = {
 ${entries.join("\n")}
 };
 for (const [specifier, namespace] of Object.entries(entries)) {
-  assert.ok(Object.keys(namespace).length > 0, \`\${specifier} exports nothing at runtime\`);
+  assert.equal(Object.keys(namespace).length === 0, specifier === "${manifest.name}/platform", \`\${specifier} runtime exports\`);
 }
 
 // A third-party SessionAdapter builds its events with a function generic over the kind, as the kit's adapters do.
@@ -273,7 +269,7 @@ assert.equal(built.payload.name, "Read");
 
 const seeded: readonly string[] = ${JSON.stringify(SEEDS.map((seed) => seed.agent))};
 assert.deepEqual(
-  Object.keys(builtinSessionAdapters).toSorted(),
+  builtinProviders.filter((provider) => provider.sessions !== undefined).map((provider) => provider.id).toSorted(),
   seeded.toSorted(),
   "every built-in session adapter needs a row in SEEDS of smoke-consumer.ts"
 );
@@ -303,7 +299,13 @@ for (const agent of seeded) {
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
   const requests = transcript.value.events.filter((event) => event.kind === "request");
-  const expected = requests.reduce<Usage>((sum, event) => addUsage(sum, event.payload.usage ?? {}), {});
+  const expected: Usage = {};
+  for (const event of requests) {
+    const usage = event.payload.usage ?? {};
+    for (const key of Object.keys(usage) as (keyof Usage)[]) {
+      expected[key] = (expected[key] ?? 0) + (usage[key] ?? 0);
+    }
+  }
 
   // The zero-dependency usage entry agrees with the transcript on the same session. The seeded files were last
   // written an hour ago, so the scan treats them as complete.
@@ -314,7 +316,9 @@ for (const agent of seeded) {
       assert.equal(item.error._tag, "RootMissing", \`\${agent}: cannot scan usage at \${item.path}\`);
       continue;
     }
-    decoded = addUsage(decoded, item.usage);
+    for (const key of Object.keys(item.usage) as (keyof Usage)[]) {
+      decoded[key] = (decoded[key] ?? 0) + (item.usage[key] ?? 0);
+    }
     records.push(item);
   }
   assert.ok((decoded.totalTokens ?? 0) > 0, \`\${agent}: scanUsage found no usage\`);
@@ -408,7 +412,7 @@ ${entries.join("\n")}
 };
 const host = realpathSync(fileURLToPath(import.meta.resolve("effect/package.json")));
 for (const [specifier, namespace] of Object.entries(entries)) {
-  assert.ok(Object.keys(namespace).length > 0, \`\${specifier} exports nothing at runtime\`);
+  assert.equal(Object.keys(namespace).length === 0, specifier === "${manifest.name}/platform", \`\${specifier} runtime exports\`);
   const entryFile = fileURLToPath(import.meta.resolve(specifier));
   const kit = realpathSync(createRequire(entryFile).resolve("effect/package.json"));
   assert.equal(kit, host, \`\${specifier} resolves another copy of effect than the host\`);

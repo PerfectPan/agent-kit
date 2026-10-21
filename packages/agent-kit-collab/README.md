@@ -32,11 +32,11 @@ until removed).
 
 ## Entries
 
-| Entry                                  | Main exports                                                                                                                                                                                        | Kind     |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`, `ProcessLock`, `ProcessLockHeld`                                                                                                                         | plain TS |
-| `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository`; rules `isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness` | Effect   |
-| `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                                                                                       | Effect   |
+| Entry                                  | Main exports                                                                                                     | Kind     |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`, `ProcessLock`, `ProcessLockPlatform`                                  | plain TS |
+| `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect   |
+| `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                    | Effect   |
 
 ### Process lock
 
@@ -135,7 +135,7 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
   `Effect.tryPromise` provides and let it settle only once the write has stopped.
 - Guard plus re-read is as strong as a check by the protected resource itself only when every writer goes through
   the same repository on the same machine; a resource that can compare atomically should keep the highest token it has
-  seen and call `checkFence`.
+  seen and reject a smaller generation.
 - `sqliteLeaseRepository` compares revisions inside `BEGIN IMMEDIATE` transactions. `fileLeaseRepository` is the
   fallback without SQLite: one JSON file per key, written under a per-key lock file. `memoryLeaseRepository` serves
   one process.
@@ -143,7 +143,7 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
   and `save(key, snapshot, expectedRevision)` writes only over that revision and fails with a `RevisionConflict`
   when another writer moved the record first.
 
-Expected failures are typed values with a `_tag`: `LeaseHeld`, `LeaseLost`, `FenceRejected`, `LeaseConfigInvalid`,
+Expected failures are typed values with a `_tag`: `LeaseHeld`, `LeaseLost`, `LeaseConfigInvalid`,
 `LeaseRepositoryFailure` and the repository's `RevisionConflict`. The kit runs no Effect itself; run the program at
 your application's assembly root.
 

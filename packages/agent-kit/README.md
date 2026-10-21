@@ -21,32 +21,31 @@ The entry table describes the source API. Verify the exports of the npm version 
 
 ## Entries
 
-| Entry                               | Main exports                                                                                                         | Runs in                                  |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                 | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                       | anywhere                                 |
-| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                               | anywhere                                 |
-| `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
-| `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
-| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports     | anywhere, with `effect` and a platform   |
-| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                      | anywhere, no imports                     |
-| `@rivus/agent-kit/platform`         | `Platform` and its port types, `splitLines`                                                                          | anywhere                                 |
-| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                           | anywhere, no imports                     |
-| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                 | Node                                     |
-| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                               | anywhere, with `effect`                  |
-| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                              | Node, with `effect`                      |
-| `@rivus/agent-kit/sessions`         | `listSessions`, `isSessionHead`, `builtinSessionAdapters`, `SessionAdapter`                                          | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, `foldStreamParts`, translators, event rules  | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `decodeUsage`, `listUsageSources`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | anywhere, with a platform; no imports    |
-| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`              | Node                                     |
-| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                            | anywhere, with `effect`                  |
+| Entry                               | Main exports                                                                                                     | Runs in                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers                                   | with `effect` and a platform that spawns |
+| `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                   | anywhere                                 |
+| `@rivus/agent-kit/catalog`          | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError`                              | anywhere                                 |
+| `@rivus/agent-kit/cost`             | `createPricing`, `summarize`, `Pricing`                                                                          | anywhere, no imports                     |
+| `@rivus/agent-kit/discovery`        | `detectAgents`, `versionFromOutput`, `ProbeRecipe`                                                               | anywhere, with a platform                |
+| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports | anywhere, with `effect` and a platform   |
+| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`                                                         | anywhere, no imports                     |
+| `@rivus/agent-kit/platform`         | `Platform` (type only)                                                                                           | anywhere                                 |
+| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                       | anywhere, no imports                     |
+| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                             | Node                                     |
+| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                           | anywhere, with `effect`                  |
+| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                          | Node, with `effect`                      |
+| `@rivus/agent-kit/sessions`         | `listSessions`, `sessionAdapterHome`, `isSessionHead`, `SessionAdapter`                                          | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent`                                            | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`                                                | anywhere, with a platform; no imports    |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`          | Node                                     |
+| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                        | anywhere, with `effect`                  |
 
-Each built-in agent has a pure translator, a usage function and a capability list in `/transcript`:
-`translateClaudeCodeRecords`, `claudeCodeUsage` and `CLAUDE_CODE_CAPABILITIES`, and the same for Codex
-(`translateCodexRecords`, ...) and Grok (`translateGrokRecords`, ...). They need no platform. The event rules
-(`isPrompt`, `laneOf`, `mainAgentId`, `requestUsage`, `shadowedIn`, `latestSnapshot`, ...) interpret events without
-knowing any agent's log format. `/catalog` also exports `isBuiltinCodingAgentId`, `homeFromRule`, `ok`, `err` and
-`isAgentKitError`.
+`builtinProviders` from `/providers` exposes each agent's `identity`, `discovery`, `install`, `sessions`,
+`usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use.
+The ordinary entries share these service objects. Hook commands keep using `builtinHookDialects` from
+`/harness/events`, whose isolated build imports nothing and owns separate hook objects.
+`/catalog` retains `AgentKitError` and `isAgentKitError` so callers can recognize errors from shell functions.
 
 ## Built-in support
 
@@ -87,7 +86,7 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 
 `listSessions` reads only the head and tail of each file. `loadTranscript` reads every file of one session and
 returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. An event's `kind` types its
-`payload`: after `event.kind === "tool_call"`, `event.payload` is a `ToolCallPayload`, and a field an agent adds
+`payload`: after `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds
 beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
@@ -111,11 +110,8 @@ const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), 
 is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the agent says
 more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
 copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
-`reduceLifecycle(state, event, { ttlMs, now })` folds one session's events into `idle`, `working`, `blocked` or
-`unknown`, drops late events of older turns and falls back to `unknown` after the TTL;
-`heartbeatSignal(before, after, event)` gives the start / heartbeat / finish reading of a heartbeat-based tracker from
-the states around one `reduceLifecycle` step. `builtinHookDialects` holds each agent's hook facts: event names, the
-timeout unit, which events are permission gates and what an observing hook should print.
+`builtinHookDialects` holds each agent's hook facts: event names, the timeout unit, which events are permission
+gates and what an observing hook should print.
 
 ### Harness injection
 
@@ -153,16 +149,6 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 // Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
 ```
 
-Before planning an upgrade from a release that predates the ledger, `findLegacy(owner, { agents, legacyMarkers })`
-lists what that release left behind: every untracked entry the scan reaches whose content carries one of
-`legacyMarkers`, read without writing and without taking the ledger lock. Each `LegacyEntry` names the agent it is
-effective in, its locator and kind, the event and command of a hook entry, and whether planning would `replace` it or
-`protect` it — the user kept it on an earlier removal, or an owned hook is missing from its event, so it cannot be
-told apart from the user's own. The judgment is the plan's own rule, and an entry the ledger records is never listed,
-so an application can refuse setup while older-release entries remain and let `uninstall(owner, { legacyMarkers })`
-clear them. The scan covers the adapters' declared legacy sources and does not render the bundle, so it is not the
-plan's whole legacy set; the `/harness` spec states the exact boundary.
-
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
 and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
@@ -191,17 +177,18 @@ returns a state to pass to the next scan, which then reads only what was written
 
 ```ts
 import { createNodePlatform } from "@rivus/agent-kit/node";
-import { addUsage, isUsageRecord, scanUsage, type Usage, type UsageScanState } from "@rivus/agent-kit/transcript/usage";
+import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
+type UsageScanState = ReturnType<typeof scanUsage>["state"];
 
 const platform = createNodePlatform();
 const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
 let state: UsageScanState | undefined; // keep it between runs, as JSON
-const totals = new Map<string, Usage>(); // a continued scan yields only new records: keep totals with the state
+const records: UsageRecord[] = []; // a continued scan yields only new records: keep records with the state
 
 const scan = scanUsage(platform, { since, ...(state ? { state } : {}) });
 for await (const item of scan) {
   if (isUsageRecord(item)) {
-    totals.set(item.agent, addUsage(totals.get(item.agent) ?? {}, item.usage));
+    records.push(item);
   }
 }
 state = scan.state;
@@ -216,11 +203,32 @@ running wait in the state; a scan reports them once their file has been quiet fo
 from a state needs `since`: the state keeps a cursor per source (by an identity that survives Codex archiving) and a
 short hash of every request counted since then, about 1 MB for a busy month.
 
-`decodeUsage(platform, agent, source, { from, since, until, final })` decodes one source as a stream whose `cursor`,
-passed back as `from`, continues where it stopped; memory does not grow with the source. Without `final: true` the
-requests that may still get records where the file ends stay in the cursor. After `SourceChanged` (the file was
-rewritten) the cursor is `undefined`, so the next decode reads the file again. opencode keeps its messages in SQLite,
-which needs `platform.sqlite`; without it the decode yields `SqliteUnavailable`.
+For direct source decoding, select a descriptor's `usage` service and call its `sources` and `decode` methods.
+Resolve its home with `sessionAdapterHome(usage, { home, env })`; this helper also accepts a usage service:
+
+```ts
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+import { sessionAdapterHome } from "@rivus/agent-kit/sessions";
+
+const platform = createNodePlatform();
+const usage = builtinProviders.find(({ id }) => id === "codex")?.usage;
+if (usage) {
+  const { home, env } = platform;
+  const agentHome = sessionAdapterHome(usage, { home, env });
+  for await (const source of usage.sources(platform, agentHome)) {
+    if ("error" in source) {
+      throw source.error;
+    }
+    for await (const item of usage.decode(platform, source)) {
+      console.log(item);
+    }
+  }
+}
+```
+
+The decoder's cursor continues a source; `scanUsage` manages those cursors for scans across agents.
+OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `SqliteUnavailable`.
 
 ### Cost
 
@@ -228,7 +236,7 @@ which needs `platform.sqlite`; without it the decode yields `SqliteUnavailable`.
 computation and imports nothing.
 
 ```ts
-import { calendarWindow, createPricing, summarize } from "@rivus/agent-kit/cost";
+import { createPricing, summarize } from "@rivus/agent-kit/cost";
 import { createNodePlatform } from "@rivus/agent-kit/node";
 import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
 
@@ -236,7 +244,10 @@ const pricing = createPricing(
   { "claude-opus-4-8": { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25, cacheWrite1h: 10 } },
   { fallback: { opus: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 } } }
 );
-const week = calendarWindow(7, { now: Date.now() }); // today and the six days before, from local midnight
+const start = new Date();
+start.setHours(0, 0, 0, 0);
+start.setDate(start.getDate() - 6);
+const week = { since: start.getTime(), until: Date.now() };
 const records: UsageRecord[] = [];
 for await (const item of scanUsage(createNodePlatform(), week)) {
   if (isUsageRecord(item)) {
@@ -246,13 +257,12 @@ for await (const item of scanUsage(createNodePlatform(), week)) {
 const { total, groups } = summarize(records, pricing, { window: week, groupBy: ["agent"] });
 ```
 
-`costOf(record, pricing)` is the cost of one record: the amount the agent logged when there is one (Pi, opencode,
+`summarize` prices each record using the amount the agent logged when there is one (Pi, opencode,
 Grok), otherwise each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes,
 output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model takes its own id's entry, else
 the longest key its id contains, regardless of case; `overrides` replace a key's prices, also in part, and `fallback`
 holds entries such as family aliases. A model without a price has no cost (`undefined`, not 0), and a summary's
 `costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
-`fromLiteLLM(json)` turns LiteLLM's model price list into a table.
 
 ### Effect
 
@@ -280,22 +290,26 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 returns a connection that belongs to your Scope; closing the Scope closes its sessions and stops the process. A
 session runs one turn at a time, and `prompt` streams the turn: deltas named after AI SDK's stream parts
 (`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-available`, `tool-output-error`, `finish`) and `event` parts carrying the
-completed `TranscriptEvent`s. `foldStreamParts` rebuilds those events from the deltas alone.
+completed `TranscriptEvent`s.
 
 ```ts
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 
-import { agentEnv, builtinAcpProfiles, connectAgent, MemorySessionBindingStoreLive } from "@rivus/agent-kit/acp";
+import { agentEnv, connectAgent, MemorySessionBindingStoreLive } from "@rivus/agent-kit/acp";
 import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+
+const profile = builtinProviders.find((provider) => provider.id === "claude-code")?.acp;
+if (!profile) throw new Error("Claude Code ACP is unavailable");
 
 const turn = Effect.scoped(
   Effect.gen(function* () {
     const connection = yield* connectAgent("claude-code", {
       cwd: "/work/project",
       // Only the variables the agent reads; nothing is inherited.
-      env: agentEnv(builtinAcpProfiles["claude-code"]!, process.env),
+      env: agentEnv(profile, process.env),
       onPermission: (request) => Effect.succeed(askTheUser(request))
     });
     const session = yield* connection.newSession({ sessionKey: "chat:42", systemPrompt: "Be brief." });
@@ -316,13 +330,12 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Errors
 
-- `loadTranscript`, `summarizeSession` and `readOriginal` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
+- `loadTranscript` and `summarizeSession` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
   `error._tag` names the failure. `loadTranscript` and `summarizeSession` fail with `SessionNotFound`, `ReadFailed`,
-  `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`; `readOriginal` fails with
-  `SourceChanged`, `SessionNotFound` or `ReadFailed`.
+  `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`.
 - `detectAgents` resolves to `Installation[]`; a failed probe is recorded in that agent's `problems`.
 - `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and
-  goes on with the next one; `scanUsage`, `listUsageSources` and `decodeUsage` yield `{ agent, path, error }` items the same way.
+  goes on with the next one; `scanUsage` yields `{ agent, path, error }` items the same way.
 - When the `signal` option aborts, the call rejects with `signal.reason`.
 - `/acp` fails Effects with the same kind of `_tag` errors: `AgentUnavailable` and `HandshakeFailed` from
   `connectAgent`; `AuthRequired`, `AcpTimeout`, `AcpRequestFailed`, `ConnectionClosed`, `BindingNotFound`,
@@ -353,8 +366,11 @@ Routed functions accept `providers?: readonly Provider[]` (the type and `builtin
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
 changes only Codex hooks. Omitted services and other agents remain available; the old `adapters`, `dialects`,
 `recipes` and `profiles` options are removed. A custom `identity` supplies aliases and a fallback home rule;
-conflicting aliases or an identity whose id differs from its descriptor are rejected. `parseCodingAgentId` takes
-an explicit identity table; `homeFromRule` takes the chosen rule. `resolveHome` and `CodingAgentIdWithHome` are removed.
+conflicting aliases or an identity whose id differs from its descriptor are rejected. To display an agent name,
+find `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`. To customize discovery,
+select its `discovery` recipe and pass `providers: [{ id, discovery: { ...recipe, auth: {} } }]`.
+Option and result types without named consumers remain in signatures; derive them with `Parameters` or
+`ReturnType` (and Effect's success/error types for Effect operations).
 
 To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]` and check it with `sessionAdapterConformance` from `/testing`.
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
@@ -365,7 +381,7 @@ An adapter's event builder that is generic over the kind takes its payload as `T
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each
 recipe lists. Version probes run by default and make an agent `runnable`; `versionProbe: false` runs nothing at all.
-Commands run without a shell and with a time limit; a check that fails is reported in `problems`. `/catalog` has an identity for each of them, and a
+Commands run without a shell and with a time limit; a check that fails is reported in `problems`. `builtinProviders` has an identity for each of them, and a
 home rule for each one except Cursor.
 Configuration evidence comes from agent-owned session stores, application state or credential files. Agent homes
 and shared hook/MCP settings, plugins, extensions and skills do not count: installing hooks alone leaves an

@@ -1,41 +1,17 @@
-export { builtinProbeRecipes } from "./providers/discovery.js";
 import { detectAgents as contextDetectAgents } from "@rivus/agent-kit-discovery/public";
 import { discoveryTable } from "./providers/discovery.js";
 import { identityTable } from "./providers/identity.js";
 import type { ProviderOptions } from "./providers/types.js";
 
-export {
-  classifyInstallation,
-  DETECTION_STATUSES,
-  resolveAuthState,
-  versionFromOutput
-} from "@rivus/agent-kit-discovery/public";
+export { versionFromOutput } from "@rivus/agent-kit-discovery/public";
 export type {
-  AuthCommandProbe,
-  AuthObservation,
-  AuthProbe,
   AuthReading,
-  AuthSource,
-  AuthState,
-  AuthVariable,
-  CommandFailed,
   CommandOutput,
-  CredentialFileFailed,
-  CredentialFileProbe,
-  DetectionStatus,
-  DiscoveryErrorCode,
-  DiscoveryPlatform,
-  Evidence,
-  EvidenceKind,
   Installation,
-  InstallationKind,
   ProbePath,
   ProbeProblem,
   ProbeRecipe,
-  ProbeRecipes,
-  StatFailed,
-  Version,
-  VersionProbe
+  ProbeRecipes
 } from "@rivus/agent-kit-discovery/public";
 
 export type DetectAgentsOptions = ProviderOptions<Parameters<typeof contextDetectAgents>[1]>;

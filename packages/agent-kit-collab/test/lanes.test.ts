@@ -7,7 +7,9 @@ import * as Fiber from "effect/Fiber";
 import * as Logger from "effect/Logger";
 import { TestClock } from "effect/testing";
 
-import { type ActivationExit, createLanes, type LanesStatus } from "../src/lanes/public.js";
+import { type ActivationExit, createLanes, type Lanes } from "../src/lanes/public.js";
+
+type LanesStatus = Effect.Success<Lanes["status"]>;
 
 /**
  * Activations that wait on a gate per key until the test opens it, recording when each starts and when its Scope

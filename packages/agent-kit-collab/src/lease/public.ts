@@ -1,22 +1,16 @@
 export { fileLeaseRepository } from "./infra/repository/file-lease-repository.js";
-export type { FileLeaseRepositoryOptions } from "./infra/repository/file-lease-repository.js";
+
 export { memoryLeaseRepository } from "./infra/repository/memory-lease-repository.js";
 export { sqliteLeaseRepository } from "./infra/repository/sqlite-lease-repository.js";
-export type { SqliteLeaseRepositoryOptions } from "./infra/repository/sqlite-lease-repository.js";
+
 export { createLeaseManager } from "./application/use-cases/lease-manager.js";
-export type { AcquireOptions, LeaseConfig, LeaseHandle, LeaseManager } from "./application/use-cases/lease-manager.js";
+export type { LeaseHandle, LeaseManager } from "./application/use-cases/lease-manager.js";
 export { LeaseRepository } from "./application/ports.js";
-export type { LeaseRepositoryFailure, LeaseRepositoryShape, RevisionConflict } from "./application/ports.js";
-export { canAcquire } from "./domain/lease/policies/acquisition.js";
-export { checkFence, nextFencingToken } from "./domain/lease/policies/fence-check.js";
-export { holderLiveness } from "./domain/lease/policies/holder-liveness.js";
-export { isFresh } from "./domain/lease/policies/freshness.js";
-export type { AcquisitionView } from "./domain/lease/policies/acquisition.js";
-export type { FenceRejected } from "./domain/lease/errors/fence-rejected.js";
-export type { FencingToken } from "./domain/lease/value-objects/fencing-token.js";
-export type { Holder, HolderLiveness } from "./domain/lease/value-objects/holder.js";
+export type { LeaseRepositoryFailure } from "./application/ports.js";
+
+export type { Holder } from "./domain/lease/value-objects/holder.js";
 export type { LeaseConfigInvalid } from "./domain/lease/errors/lease-config-invalid.js";
 export type { LeaseHeld } from "./domain/lease/errors/lease-held.js";
 export type { LeaseLost } from "./domain/lease/errors/lease-lost.js";
-export type { LeaseObservation } from "./domain/lease/policies/freshness.js";
+
 export type { LeaseSnapshot } from "./domain/lease/value-objects/lease-snapshot.js";
