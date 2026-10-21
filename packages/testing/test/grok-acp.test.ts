@@ -4,7 +4,7 @@ import {
   foldStreamParts,
   type SourcedRecord,
   type TranscriptStreamPart
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { translateGrokRecords } from "@rivus/agent-kit-provider-grok/sessions";
 
 /** The parts of a list of updates and a final answer, through one translator. */

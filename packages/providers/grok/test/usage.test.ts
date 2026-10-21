@@ -1,10 +1,15 @@
 import { grokUsageDecoder } from "../src/usage.js";
 import { grok } from "../src/identity.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import { decodeUsage, type DecodeUsageOptions, isUsageRecord, type UsageRecord } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import {
+  decodeUsage,
+  type DecodeUsageOptions,
+  isUsageRecord,
+  type UsageRecord
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readUsageHome } from "./support.js";
 
 const testUsage = { grok: grokUsageDecoder };

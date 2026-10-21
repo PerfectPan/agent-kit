@@ -3,7 +3,7 @@ import { builtinHookDialects as testHooks } from "./support/providers.js";
 import { readFileSync, rmSync } from "node:fs";
 
 import { parse as parseToml } from "@decimalturn/toml-patch";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 

@@ -1,7 +1,8 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
-import type { ReadFailed, SessionNotFound } from "../../domain/session/index.js";
-import type { SourceChanged, SourcePointer } from "../../domain/transcript/index.js";
+import type { ReadFailed, SessionNotFound } from "../../domain/session/errors/session-read-error.js";
+import type { SourceChanged } from "../../domain/transcript/errors/source-changed.js";
+import type { SourcePointer } from "../../domain/transcript/value-objects/source-pointer.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import { readBytes } from "../services/files/read-file.js";
 import type { SessionPlatform } from "../spi.js";

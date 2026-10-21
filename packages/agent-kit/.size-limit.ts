@@ -10,16 +10,16 @@ const nodeOnly = {
 // The service-table bindings add merging, identity validation and catalog lookups. The exact byte budgets for
 // providers, ACP, harness, events and sessions include that code, measured with the existing dependencies.
 // Packing /providers separately keeps full usage adapters out of /sessions; the resulting chunk layout also
-// changes compression of /providers and /acp, whose budgets match the isolated pack output.
+// changes compression of /providers and /acp.
 // Provider assembly budgets include service tables and shared facts; these limits track measured output
 // without extra headroom.
 // Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
 // objects are distinct from the individual built-in exports.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38573 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38603 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
-  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44498 B" },
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44533 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
   // The LiteLLM adapter parses the price list with zod/mini, bundled into the entry: about 6.6 kB.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "7 kB" },
@@ -45,7 +45,7 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24476 B" },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24488 B" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "40.4 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25622 B" },

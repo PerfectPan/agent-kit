@@ -1,4 +1,4 @@
-import type { Usage } from "../../usage/index.js";
+import type { Usage } from "../../usage/value-objects/usage.js";
 import type { TranscriptEventBase, TranscriptEventKind, TranscriptEventOf } from "./transcript-event.js";
 
 /** The live events of the kinds in `K`: a union over the kinds, like `TranscriptEventOf`. */

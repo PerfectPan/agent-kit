@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { Strategy } from "../../bundle/value-objects/strategy.js";
 import type { ArtifactContent, ContentHash } from "../../ledger/value-objects/content-hash.js";

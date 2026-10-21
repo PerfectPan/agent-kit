@@ -1,7 +1,7 @@
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
-import type { SessionBinding } from "../domain/acp-session/index.js";
+import type { SessionBinding } from "../domain/acp-session/value-objects/session-binding.js";
 
 /** The binding store could not be used; what it holds is unknown, not changed. */
 export interface SessionBindingStoreFailure {

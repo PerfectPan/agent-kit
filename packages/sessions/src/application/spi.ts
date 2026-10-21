@@ -1,18 +1,28 @@
-import type { ServiceTable } from "@rivus/agent-kit-catalog";
-import type { AgentHome, CapabilityUnsupported, CodingAgentId, HomeRule, Result } from "@rivus/agent-kit-catalog";
-import type { PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform";
+import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
 import type {
-  ReadFailed,
+  AgentHome,
+  CapabilityUnsupported,
+  CodingAgentId,
+  HomeRule,
+  Result
+} from "@rivus/agent-kit-catalog/public";
+import type { PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform/public";
+import type { ReadFailed, SessionNotFound } from "../domain/session/errors/session-read-error.js";
+import type {
   SessionHead,
   SessionListError,
-  SessionListFailure,
-  SessionNotFound,
+  SessionListFailure
+} from "../domain/session/value-objects/session-head.js";
+import type {
   SessionPromptsOptions,
-  SessionRef,
   SessionSummaryWithPrompts
-} from "../domain/session/index.js";
-import type { Capability, SourceChanged, Transcript, UnknownFormatGeneration } from "../domain/transcript/index.js";
-import type { UsageCursor, UsageRecord } from "../domain/usage/index.js";
+} from "../domain/session/value-objects/session-summary.js";
+import type { SessionRef } from "../domain/session/value-objects/session-ref.js";
+import type { Capability, Transcript } from "../domain/transcript/value-objects/transcript.js";
+import type { SourceChanged } from "../domain/transcript/errors/source-changed.js";
+import type { UnknownFormatGeneration } from "../domain/transcript/errors/unknown-format-generation.js";
+import type { UsageCursor } from "../domain/usage/value-objects/usage-cursor.js";
+import type { UsageRecord } from "../domain/usage/value-objects/usage-record.js";
 
 /**
  * The part of Platform that reading sessions uses: listing, stat and reads, never writes. A whole Platform

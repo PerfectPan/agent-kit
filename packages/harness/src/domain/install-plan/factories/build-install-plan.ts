@@ -1,4 +1,4 @@
-import { err, type Result } from "@rivus/agent-kit-catalog";
+import { err, type Result } from "@rivus/agent-kit-catalog/public";
 
 import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";

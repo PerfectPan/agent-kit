@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, globSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -96,13 +96,20 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
       ...(rule === undefined
         ? []
         : (rule.providerServices?.map((service) => `src/${service}.ts`) ??
-          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
+          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/public.ts"])),
       ...(rule?.spi ? ["src/spi.ts"] : [])
     ];
     const allowed = isShell
       ? internal
       : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      ...(exists(`${pkg.folder}/src/index.ts`) ? [`${pkg.folder}: entry-file forbidden src/index.ts`] : []),
+      ...(rule?.providerServices === undefined &&
+      rule?.entries === undefined &&
+      !isShell &&
+      pkg.exports?.["."] !== undefined
+        ? [`${pkg.folder}: entry-export unexpected .`]
+        : []),
       ...Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies, ...pkg.optionalDependencies })
         .filter((dependency) => rule?.testsOnly?.includes(dependency))
         .map((dependency) => `${pkg.folder}: tests-only-dependency ${dependency} must be in devDependencies only`),
@@ -116,6 +123,9 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
               .filter((entry) => !rule.providerServices?.some((service) => entry === `./${service}`))
               .map((entry) => `${pkg.folder}: entry-export unexpected ${entry}`)
           ]),
+      ...(rule?.siblingEntries ?? [])
+        .filter((entry) => pkg.exports?.[`./${entry}`] === undefined)
+        .map((entry) => `${pkg.folder}: entry-export ./${entry}`),
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
       ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
@@ -279,13 +289,13 @@ describe("the package manifests", () => {
     }
   );
 
-  it("accepts SPI-only workspace dependencies without granting the context index", () => {
+  it("accepts SPI-only workspace dependencies without granting the context public entry", () => {
     const name = "@rivus/agent-kit-provider-probe";
     const original = boundaries.packages;
     Object.defineProperty(boundaries, "packages", {
       value: {
         ...original,
-        [name]: { dependsOn: [], spiImports: [SESSIONS], external: [] }
+        [name]: { siblingEntries: [], dependsOn: [], spiImports: [SESSIONS], external: [] }
       },
       configurable: true
     });
@@ -300,7 +310,7 @@ describe("the package manifests", () => {
               dependencies: { [SESSIONS]: "workspace:*" }
             }
           ],
-          () => true
+          (path) => !path.endsWith("/index.ts")
         )
       ).toEqual([]);
     } finally {
@@ -373,6 +383,39 @@ describe("the package manifests", () => {
     ]);
   });
 
+  it.each(
+    packages.flatMap((pkg) =>
+      (boundaries.packages[pkg.name]?.siblingEntries ?? []).map((entry) => ({ folder: pkg.folder, entry }))
+    )
+  )("requires $folder's declared sibling entry $entry in exports", ({ folder, entry }) => {
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder
+        ? {
+            ...pkg,
+            exports: Object.fromEntries(Object.entries(pkg.exports ?? {}).filter(([key]) => key !== `./${entry}`))
+          }
+        : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([`${folder}: entry-export ./${entry}`]);
+  });
+
+  it("forbids sibling and concept index files throughout package sources", () => {
+    expect(
+      globSync("packages/**/src/**/index.ts", { cwd: root, exclude: ["**/node_modules/**", "**/dist/**"] })
+    ).toEqual([]);
+  });
+
+  it("rejects a restored sibling index file and root export", () => {
+    const folder = "packages/sessions";
+    expect(manifestViolations(packages, (path) => path === `${folder}/src/index.ts` || onDisk(path))).toEqual([
+      `${folder}: entry-file forbidden src/index.ts`
+    ]);
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder ? { ...pkg, exports: { ...pkg.exports, ".": "./src/index.ts" } } : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([`${folder}: entry-export unexpected .`]);
+  });
+
   it.each(["catalog", "discovery", "sessions", "harness", "acp"])("requires %s's SPI entry", (context) => {
     const folder = `packages/${context}`;
     expect(manifestViolations(packages, (path) => path !== `${folder}/src/spi.ts` && onDisk(path))).toEqual([
@@ -380,7 +423,14 @@ describe("the package manifests", () => {
     ]);
     expect(
       manifestViolations(
-        packages.map((pkg) => (pkg.folder === folder ? { ...pkg, exports: {} } : pkg)),
+        packages.map((pkg) =>
+          pkg.folder === folder
+            ? {
+                ...pkg,
+                exports: Object.fromEntries(Object.entries(pkg.exports ?? {}).filter(([entry]) => entry !== "./spi"))
+              }
+            : pkg
+        ),
         onDisk
       )
     ).toEqual([`${folder}: entry-export ./spi`]);

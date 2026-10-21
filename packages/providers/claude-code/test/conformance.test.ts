@@ -5,7 +5,7 @@ import {
   probeRecipeConformance,
   usageDecoderConformance,
   type ProbeRecipeSamples
-} from "@rivus/agent-kit-testing";
+} from "@rivus/agent-kit-testing/public";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { claudeCode } from "../src/identity.js";
 import { claudeCodeProbe } from "../src/discovery.js";

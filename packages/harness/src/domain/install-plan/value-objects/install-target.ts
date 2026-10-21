@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /** Each scope has its own Ledger. */
 export type InstallScope = "user" | "project";

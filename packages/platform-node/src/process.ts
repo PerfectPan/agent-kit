@@ -11,7 +11,7 @@ import type {
   RunOptions,
   RunResult,
   SpawnOptions
-} from "@rivus/agent-kit-platform";
+} from "@rivus/agent-kit-platform/public";
 
 import { createIdentify } from "./process-identity.js";
 

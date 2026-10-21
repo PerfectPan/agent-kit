@@ -1,5 +1,5 @@
-import { AgentKitError, ok, type Result } from "@rivus/agent-kit-catalog";
-import type { Platform } from "@rivus/agent-kit-platform";
+import { AgentKitError, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -13,9 +13,9 @@ import {
   type ArtifactRead,
   type EntryChange
 } from "../../application/ports.js";
-import type { ArtifactSource } from "../../domain/bundle/index.js";
-import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/index.js";
-import type { ArtifactContent, JsonValue } from "../../domain/ledger/index.js";
+import type { ArtifactSource } from "../../domain/bundle/spi/install-adapter.js";
+import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import type { ArtifactContent, JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
 import type { Document } from "../services/document.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";

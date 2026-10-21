@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /**
  * `starting` until the agent answers `session/new` or `session/load`; `ready` between turns; `turn` while a prompt

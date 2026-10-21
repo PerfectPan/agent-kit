@@ -9,7 +9,7 @@ import {
   type LedgerSnapshot,
   locatorKey,
   type PendingOperation
-} from "@rivus/agent-kit-harness";
+} from "@rivus/agent-kit-harness/spi";
 
 /**
  * A deterministic stand-in for SHA-256 in fixtures: FNV-1a over the text's UTF-16 code units with eight seeds, as 64

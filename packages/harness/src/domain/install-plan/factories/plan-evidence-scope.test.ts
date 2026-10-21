@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../../../test/support/providers.js";

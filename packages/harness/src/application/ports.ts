@@ -1,18 +1,16 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { RunResult } from "@rivus/agent-kit-platform";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { RunResult } from "@rivus/agent-kit-platform/public";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
-import type { ArtifactSource } from "../domain/bundle/index.js";
-import type { ArtifactKind, ArtifactLocator } from "../domain/install-plan/index.js";
-import type {
-  ArtifactContent,
-  InvalidLedger,
-  LedgerBusy,
-  LedgerSnapshot,
-  LedgerVersionUnsupported
-} from "../domain/ledger/index.js";
+import type { ArtifactSource } from "../domain/bundle/spi/install-adapter.js";
+import type { ArtifactKind, ArtifactLocator } from "../domain/install-plan/value-objects/artifact-locator.js";
+import type { ArtifactContent } from "../domain/ledger/value-objects/content-hash.js";
+import type { InvalidLedger } from "../domain/ledger/errors/invalid-ledger.js";
+import type { LedgerBusy } from "../domain/ledger/errors/ledger-busy.js";
+import type { LedgerSnapshot } from "../domain/ledger/aggregates/ledger.js";
+import type { LedgerVersionUnsupported } from "../domain/ledger/errors/ledger-version-unsupported.js";
 
 /** A file or directory could not be read or changed; what is on disk may be partly changed for a write. */
 export interface ArtifactIoFailure {

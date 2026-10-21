@@ -4,7 +4,7 @@ import {
   hookDialectConformance,
   probeRecipeConformance,
   usageDecoderConformance
-} from "@rivus/agent-kit-testing";
+} from "@rivus/agent-kit-testing/public";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { pi } from "../src/identity.js";
 import { piProbe } from "../src/discovery.js";

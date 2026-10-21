@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { Result } from "@rivus/agent-kit-catalog";
+import type { Result } from "@rivus/agent-kit-catalog/public";
 import {
   listSessions,
   loadTranscript,
@@ -7,7 +7,7 @@ import {
   type SessionPlatform,
   type SessionHead,
   type SessionListFailure
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { readTree } from "./support.js";

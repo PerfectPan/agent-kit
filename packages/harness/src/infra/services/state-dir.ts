@@ -1,4 +1,4 @@
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
 /**
  * Where harness keeps its state: `$XDG_STATE_HOME/agent-kit/harness`, or `~/.local/state/agent-kit/harness` when the

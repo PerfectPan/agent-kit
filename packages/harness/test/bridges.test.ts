@@ -10,8 +10,8 @@ import * as Effect from "effect/Effect";
 import { readHookEvent } from "../src/domain/lifecycle/adapters/read-hook-event.js";
 import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
-import { finishSelectorsOf } from "../src/domain/lifecycle/index.js";
-import type { HookEventSpec } from "../src/domain/lifecycle/index.js";
+import { finishSelectorsOf } from "../src/domain/lifecycle/spi/hook-dialect.js";
+import type { HookEventSpec } from "../src/domain/lifecycle/spi/hook-dialect.js";
 import { applyInstall } from "../src/application/use-cases/apply-install.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import {
@@ -19,7 +19,7 @@ import {
   opencodeInstallAdapter
 } from "@rivus/agent-kit-provider-opencode/install";
 import { bridgeSource as piBridgeSource, piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
-import type { Bundle } from "../src/domain/bundle/index.js";
+import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
 afterEach(removeTestHomes);

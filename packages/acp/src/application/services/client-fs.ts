@@ -1,4 +1,4 @@
-import type { PlatformFs } from "@rivus/agent-kit-platform";
+import type { PlatformFs } from "@rivus/agent-kit-platform/public";
 
 import {
   type AbsolutePath,
@@ -6,7 +6,7 @@ import {
   clientPathVerdict,
   formatAbsolutePath,
   parseAbsolutePath
-} from "../../domain/acp-session/index.js";
+} from "../../domain/acp-session/policies/client-paths.js";
 import { ClientFileError, type ReadTextFile, type WriteTextFile } from "./wire.js";
 
 /** Larger files are refused rather than read whole into memory. */

@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Semaphore from "effect/Semaphore";
 
-import type { LeaseSnapshot } from "../../domain/lease/index.js";
+import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 import { LeaseRepository } from "../../application/ports.js";
 import { revisionConflict } from "../../application/services/repository-failure.js";
 

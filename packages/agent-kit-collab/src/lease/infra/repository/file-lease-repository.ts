@@ -5,7 +5,7 @@ import * as Layer from "effect/Layer";
 import * as z from "zod/mini";
 
 import { readText } from "../../../process-lock/application/services/holder.js";
-import type { LeaseSnapshot } from "../../domain/lease/index.js";
+import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 import { LeaseRepository, type LeaseRepositoryFailure } from "../../application/ports.js";
 import { repositoryFailure, revisionConflict } from "../../application/services/repository-failure.js";
 import { keyFileName } from "../models/key-file-name.js";

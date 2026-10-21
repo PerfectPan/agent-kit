@@ -1,4 +1,4 @@
-import type { Env, OperatingSystem, PlatformFs, PlatformProcess } from "@rivus/agent-kit-platform";
+import type { Env, OperatingSystem, PlatformFs, PlatformProcess } from "@rivus/agent-kit-platform/public";
 
 /**
  * The part of Platform that detection uses: `stat` to check paths, `read` for credential files, `run` for version

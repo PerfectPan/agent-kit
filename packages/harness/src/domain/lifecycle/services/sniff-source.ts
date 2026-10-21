@@ -1,4 +1,4 @@
-import { lookupService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog";
+import { lookupService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog/public";
 import { foreignHooksOf, type HookDialect } from "../spi/hook-dialect.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 import type { Env } from "../policies/payload-fields.js";

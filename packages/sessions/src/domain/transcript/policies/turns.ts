@@ -1,4 +1,4 @@
-import type { SessionPrompt, SessionPromptsOptions } from "../../session/index.js";
+import type { SessionPrompt, SessionPromptsOptions } from "../../session/value-objects/session-summary.js";
 import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 

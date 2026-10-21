@@ -1,4 +1,4 @@
-import type { Result } from "@rivus/agent-kit-catalog";
+import type { Result } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 
 /** Moves a plain `Result` into the typed error channel, where `catchTag` sees its error. */

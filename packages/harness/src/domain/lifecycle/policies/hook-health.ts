@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import { hasLegacyMarker } from "../../bundle/policies/legacy-markers.js";
 import { type ArtifactLocator, pointerTail } from "../../install-plan/value-objects/artifact-locator.js";

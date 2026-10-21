@@ -1,6 +1,6 @@
 import v8 from "node:v8";
 import vm from "node:vm";
-import type { SessionPlatform } from "@rivus/agent-kit-sessions";
+import type { SessionPlatform } from "@rivus/agent-kit-sessions/public";
 // A session whose turns are one 40 KB prompt, one request and one turn duration: memory-hungry for a reader that
 // materializes the transcript, while the summary pass's own state — the numbers per request — stays a few bytes a
 // turn. The big session is ~16 MB, the small one ~2 MB.

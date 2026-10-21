@@ -1,15 +1,24 @@
-import { lookupService } from "@rivus/agent-kit-catalog";
+import { lookupService } from "@rivus/agent-kit-catalog/public";
 import type { InstallProviders } from "../providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as z from "zod/mini";
 
-import { foreignHookFiles, type HookSource, type Owner } from "../../domain/bundle/index.js";
-import { type ArtifactLocator, isBrokenSymlink } from "../../domain/install-plan/index.js";
-import { holds, threeWayVerify } from "../../domain/ledger/index.js";
+import { foreignHookFiles } from "../../domain/bundle/services/hook-registrations.js";
+import { type HookSource } from "../../domain/bundle/spi/install-adapter.js";
+import { type Owner } from "../../domain/bundle/value-objects/owner.js";
+import { type ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { isBrokenSymlink } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { holds } from "../../domain/ledger/policies/ownership.js";
+import { threeWayVerify } from "../../domain/ledger/policies/three-way-verify.js";
 import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
-import { duplicateHooks, type HookFinding, hookHealth, type HookProblem } from "../../domain/lifecycle/index.js";
+import {
+  duplicateHooks,
+  type HookFinding,
+  hookHealth,
+  type HookProblem
+} from "../../domain/lifecycle/policies/hook-health.js";
 import { hookProgram } from "../services/hook-program.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";

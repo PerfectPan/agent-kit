@@ -9,27 +9,18 @@ import * as Ref from "effect/Ref";
 import * as Schedule from "effect/Schedule";
 import type * as Scope from "effect/Scope";
 
-import {
-  type FenceRejected,
-  type FencingToken,
-  type Holder,
-  type HolderLiveness,
-  holderExpired,
-  holderLiveness,
-  isFresh,
-  Lease,
-  type LeaseConfigInvalid,
-  type LeaseHeld,
-  type LeaseHolding,
-  type LeaseLost,
-  type LeaseObservation,
-  type LeaseSnapshot,
-  type LeaseTiming,
-  leaseTiming,
-  type LeaseTransition,
-  lossReason,
-  observe
-} from "../../domain/lease/index.js";
+import { type FenceRejected } from "../../domain/lease/errors/fence-rejected.js";
+import { type FencingToken } from "../../domain/lease/value-objects/fencing-token.js";
+import { type Holder, type HolderLiveness } from "../../domain/lease/value-objects/holder.js";
+import { holderExpired, isFresh, type LeaseObservation, observe } from "../../domain/lease/policies/freshness.js";
+import { holderLiveness } from "../../domain/lease/policies/holder-liveness.js";
+import { Lease, type LeaseTransition } from "../../domain/lease/aggregates/lease.js";
+import { type LeaseConfigInvalid } from "../../domain/lease/errors/lease-config-invalid.js";
+import { type LeaseHeld } from "../../domain/lease/errors/lease-held.js";
+import { type LeaseHolding, type LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
+import { type LeaseLost } from "../../domain/lease/errors/lease-lost.js";
+import { type LeaseTiming, leaseTiming } from "../../domain/lease/value-objects/lease-timing.js";
+import { lossReason } from "../../domain/lease/policies/loss.js";
 import { fromResult } from "../services/from-result.js";
 import { LeaseRepository, type LeaseRepositoryFailure, type LeaseRepositoryShape } from "../ports.js";
 import { repositoryFailure } from "../services/repository-failure.js";

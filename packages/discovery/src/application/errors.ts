@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /**
  * Code of the `AgentKitError` that `detectAgents` throws when the caller asks for an agent without a probe recipe,

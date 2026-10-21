@@ -1,14 +1,11 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import { isPlainObject } from "es-toolkit";
 import * as z from "zod/mini";
 
-import {
-  type ArtifactContent,
-  checkLedgerVersion,
-  type InvalidLedger,
-  type LedgerSnapshot,
-  type LedgerVersionUnsupported
-} from "../../domain/ledger/index.js";
+import { type ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
+import { checkLedgerVersion, type LedgerSnapshot } from "../../domain/ledger/aggregates/ledger.js";
+import { type InvalidLedger } from "../../domain/ledger/errors/invalid-ledger.js";
+import { type LedgerVersionUnsupported } from "../../domain/ledger/errors/ledger-version-unsupported.js";
 
 const Locator = z.object({
   kind: z.enum(["file", "dir", "symlink", "json-entry", "toml-entry", "managed-block", "cli-registration"]),

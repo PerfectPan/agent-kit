@@ -8,9 +8,9 @@ import {
 } from "../../../testing/test/memory-support.js";
 import { claudeCodeSessionAdapter } from "../src/sessions.js";
 import { claudeCode } from "../src/identity.js";
-import { type SessionPlatform, loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
+import { type SessionPlatform, loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 const testSessions = { "claude-code": claudeCodeSessionAdapter };
 const testIdentity = { "claude-code": claudeCode };
 function sessionContent(turns: number): string {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
-import { hookDialectConformance, probeRecipeConformance, type ProbeRecipeSamples } from "@rivus/agent-kit-testing";
+import {
+  hookDialectConformance,
+  probeRecipeConformance,
+  type ProbeRecipeSamples
+} from "@rivus/agent-kit-testing/public";
 import { cursor } from "../src/identity.js";
 import { cursorProbe } from "../src/discovery.js";
 import { cursorHookDialect } from "../src/hooks.js";

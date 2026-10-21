@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import { parse, patch, TomlDocument } from "@decimalturn/toml-patch";
 
 import type { DocumentInvalid, UnexpectedShape } from "../../application/ports.js";

@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { ArtifactSpec } from "./artifact-spec.js";
 import { type Owner, OWNER_PATTERN } from "./owner.js";

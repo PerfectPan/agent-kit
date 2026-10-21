@@ -1,4 +1,4 @@
-import type { FileStat, Platform } from "@rivus/agent-kit-platform";
+import type { FileStat, Platform } from "@rivus/agent-kit-platform/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { findOnPath } from "./path-lookup.js";

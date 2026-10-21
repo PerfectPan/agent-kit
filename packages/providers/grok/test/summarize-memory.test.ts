@@ -9,10 +9,10 @@ import {
 import { grokSessionAdapter } from "../src/sessions.js";
 import { grok } from "../src/identity.js";
 
-import { type SessionPlatform, loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
+import { type SessionPlatform, loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 
 const testSessions = { grok: grokSessionAdapter };
 const builtinSessionAdapters = testSessions;

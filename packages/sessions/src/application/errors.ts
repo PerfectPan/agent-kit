@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /**
  * Codes of the `AgentKitError`s that the sessions use cases throw for a caller's mistake. `capability-unsupported`:

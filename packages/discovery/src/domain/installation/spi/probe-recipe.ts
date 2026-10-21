@@ -1,5 +1,5 @@
-import type { ServiceTable } from "@rivus/agent-kit-catalog";
-import type { CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog";
+import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
+import type { CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog/public";
 
 import type { AuthReading } from "../value-objects/auth-state.js";
 import type { CommandOutput, Version } from "../value-objects/version.js";

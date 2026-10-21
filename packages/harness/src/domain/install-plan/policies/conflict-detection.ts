@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { Strategy } from "../../bundle/value-objects/strategy.js";

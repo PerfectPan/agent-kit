@@ -10,10 +10,10 @@ export const codexCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "codex: no context index",
+    "codex: no context public entry",
     "providers/codex",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -48,7 +48,7 @@ export const codexCases: Case[] = [
     "codex: testing is tests-only",
     "providers/codex",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed("codex hooks: facts", "providers/codex", "src/hooks.ts", 'export { CODEX_ID } from "./facts.js";'),
@@ -214,14 +214,14 @@ export const codexCases: Case[] = [
     "codex: no Platform types",
     "providers/codex",
     fresh("src/x"),
-    'export type { Platform } from "@rivus/agent-kit-platform";',
+    'export type { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   rejects(
     "codex: no Platform values",
     "providers/codex",
     fresh("src/x"),
-    'export { Platform } from "@rivus/agent-kit-platform";',
+    'export { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   allowed(

@@ -1,5 +1,5 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Pricing } from "../value-objects/pricing-table.js";
 import type { UsageGroup, UsageGroupKey, UsageSummary } from "../value-objects/usage-summary.js";

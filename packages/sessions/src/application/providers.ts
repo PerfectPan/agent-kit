@@ -1,4 +1,4 @@
-import type { CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog";
+import type { CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog/public";
 import type { SessionAdapter, UsageDecoder } from "./spi.js";
 
 export interface SessionProviders {

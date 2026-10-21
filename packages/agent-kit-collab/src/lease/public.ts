@@ -7,16 +7,16 @@ export { createLeaseManager } from "./application/use-cases/lease-manager.js";
 export type { AcquireOptions, LeaseConfig, LeaseHandle, LeaseManager } from "./application/use-cases/lease-manager.js";
 export { LeaseRepository } from "./application/ports.js";
 export type { LeaseRepositoryFailure, LeaseRepositoryShape, RevisionConflict } from "./application/ports.js";
-export { canAcquire, checkFence, holderLiveness, isFresh, nextFencingToken } from "./domain/lease/index.js";
-export type {
-  AcquisitionView,
-  FenceRejected,
-  FencingToken,
-  Holder,
-  HolderLiveness,
-  LeaseConfigInvalid,
-  LeaseHeld,
-  LeaseLost,
-  LeaseObservation,
-  LeaseSnapshot
-} from "./domain/lease/index.js";
+export { canAcquire } from "./domain/lease/policies/acquisition.js";
+export { checkFence, nextFencingToken } from "./domain/lease/policies/fence-check.js";
+export { holderLiveness } from "./domain/lease/policies/holder-liveness.js";
+export { isFresh } from "./domain/lease/policies/freshness.js";
+export type { AcquisitionView } from "./domain/lease/policies/acquisition.js";
+export type { FenceRejected } from "./domain/lease/errors/fence-rejected.js";
+export type { FencingToken } from "./domain/lease/value-objects/fencing-token.js";
+export type { Holder, HolderLiveness } from "./domain/lease/value-objects/holder.js";
+export type { LeaseConfigInvalid } from "./domain/lease/errors/lease-config-invalid.js";
+export type { LeaseHeld } from "./domain/lease/errors/lease-held.js";
+export type { LeaseLost } from "./domain/lease/errors/lease-lost.js";
+export type { LeaseObservation } from "./domain/lease/policies/freshness.js";
+export type { LeaseSnapshot } from "./domain/lease/value-objects/lease-snapshot.js";

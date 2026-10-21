@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 
 import { join } from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
-import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { foldStreamParts, type TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import { isAgentKitError } from "@rivus/agent-kit-catalog/public";
+import { foldStreamParts, type TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";

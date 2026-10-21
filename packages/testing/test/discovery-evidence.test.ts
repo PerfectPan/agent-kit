@@ -2,8 +2,8 @@ import { builtinInstallAdapters as testInstall } from "./providers.js";
 import { builtinHookDialects as testHooks } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { builtinProbeRecipes as testDiscovery } from "./providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import { detectAgents } from "@rivus/agent-kit-discovery";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { detectAgents } from "@rivus/agent-kit-discovery/public";
 import {
   applyInstall,
   type Bundle,
@@ -14,7 +14,7 @@ import {
   PlatformArtifactFilesLive,
   ProcessAgentCliLive
 } from "@rivus/agent-kit-harness/public";
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

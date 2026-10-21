@@ -6,7 +6,7 @@ import {
   type LifecycleStatus,
   readHookEvent,
   reduceLifecycle
-} from "@rivus/agent-kit-harness";
+} from "@rivus/agent-kit-harness/public/events";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialectSample } from "../src/hook-dialect-conformance.js";

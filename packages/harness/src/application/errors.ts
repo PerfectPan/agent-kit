@@ -1,8 +1,9 @@
-import type { ArtifactLocator, Precondition } from "../domain/install-plan/index.js";
-import type { ContentHash } from "../domain/ledger/index.js";
+import type { ArtifactLocator } from "../domain/install-plan/value-objects/artifact-locator.js";
+import type { Precondition } from "../domain/install-plan/value-objects/precondition.js";
+import type { ContentHash } from "../domain/ledger/value-objects/content-hash.js";
 import type { AgentCliFailure, ArtifactFailure, LedgerRepositoryFailure } from "./ports.js";
 
-export type { StrategyUnavailable } from "../domain/install-plan/index.js";
+export type { StrategyUnavailable } from "../domain/install-plan/errors/strategy-unavailable.js";
 
 /**
  * A target no longer holds what the plan expected, found right before writing. When it is found before anything was

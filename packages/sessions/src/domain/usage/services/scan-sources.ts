@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /** What every entry of a scan's source state carries that the rules read; a cursor or a mark rides along. */
 export interface ScanSourceEntry {

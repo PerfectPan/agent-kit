@@ -1,5 +1,5 @@
-import { lookupService } from "@rivus/agent-kit-catalog";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import { lookupService } from "@rivus/agent-kit-catalog/public";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
 import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/spi/install-adapter.js";

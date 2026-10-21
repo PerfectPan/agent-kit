@@ -372,9 +372,10 @@ interface HostMarkers {
 - Each context declares its `./spi` export with `spi: true` in the boundary manifest. An importer must list the
   target under `spiImports`; this grants no normal entry access. `dependsOn` independently grants the normal entry,
   never the SPI. This follows
-  3.1's provider-to-context direction. No current context needs a sibling's SPI, so their `spiImports` remain empty;
-  a future context use must be declared explicitly and still obey the layer and `typesOnly` restrictions. Provider-like
+  3.1's provider-to-context direction. Any SPI use outside providers must be declared explicitly and still obey
+  the layer and `typesOnly` restrictions. Provider-like
   lint fixtures exercise explicit access without registering a production provider before its batch.
+- Harness's `spi.ts` also serves testing's ledger fixtures and tests because its aggregate public entry carries Effect; testing declares this access in `spiImports`.
 - The sessions entry is derived from non-test adapter imports, including shared file and format helpers. It exports
   the SPI interfaces and their parts, then only imported context symbols; agent-specific layouts, records, tables
   and translators stay out. ACP format helpers are retained where Grok imports them. Catalog exports identity model types, `homeFromRule`, `ok`, `err`, `Result` and `AgentKitError`; built-in
@@ -725,11 +726,25 @@ One batch per agent, in this order:
   - compute the marker list from the providers' `facts.ts`, delete the constant, and end the exemptions.
 - Exit condition: 6.4 row 7.
 
-#### Batch 13: public surface
+#### Batch 13a: barrel removal
 
-- Files: the shell entries; each package's `public.ts`; delete the sibling `index.ts` files and the 14 concept `index.ts` files; rewrite imports inside packages.
-- Change: 3.8. Collect the applications' imports again (Appendix A) before removing anything.
-- Exit condition: 6.4 row 8.
+- Delete the ten sibling `index.ts` files, their bare package exports and the 14 concept `index.ts` files. Rewrite
+  package-local imports to defining files and cross-package imports to `public.ts` or an explicitly allowed `spi.ts`.
+- Add a name to a sibling entry only when another package imports it in source or tests; otherwise it stays exported
+  only from its defining file. Record each addition and its importers. Keep the shell's public export names unchanged.
+- Compare both published builds with main 8065547: normalized AST statement multisets and one-to-one chunk mappings
+  must match, and fixed-input parity for all seven providers must preserve behavior and every published entry's
+  runtime and declaration export names. Direct imports may change module/declaration order, collision suffixes,
+  chunk names and hashes; exact byte identity is not required.
+- Measure every package-check entry against main. Module order changes compression; set the two exceeded budgets
+  (`/providers` and `/acp`) to their measured sizes and record a patch changeset for both published packages.
+- Exit condition: 6.4 row 8a, plus the full check steps, boundary case runner, repository checks and PR CI pass.
+
+#### Batch 13b: public surface pruning
+
+- Files: the shell entries and each package's `public.ts`.
+- Change: 3.8. Collect the applications' imports again (Appendix A) before pruning the public surface.
+- Exit condition: 6.4 row 8b.
 
 #### Batches 14–18: domain model
 
@@ -767,7 +782,8 @@ One batch each:
 | 5 | 5 | Root `check`; pi's conformance runs; built `/harness/events` and `/transcript/usage` imports and sizes | Pass; still no imports; compare every entry against the main commit this batch is based on; growth over 1% of an entry explained in the PR |
 | 6 | 6–11 | Root `check`; each provider's conformance runs; every entry's size against the main commit that batch is based on; slim entry imports | Pass; still no imports in slim entries; growth over 1% of an entry explained in the PR |
 | 7 | 12 | The capability check; the README matrix test; marker rule over all non-test context source | Pass; no exemptions left |
-| 8 | 13 | Shell export list compared with Appendix A plus SPI and testing names; the entry files of 3.8 only | Every remaining export has a recorded consumer |
+| 8a | 13a | Normalized AST and chunk comparison; seven-provider fixed-input parity; runtime and declaration exports; every entry size against main | Equivalent statements and chunks; identical outputs and exports; measured size budgets pass |
+| 8b | 13b | Shell export list compared with Appendix A plus SPI and testing names; the entry files of 3.8 only | Every remaining export has a recorded consumer |
 | 9 | 14–18 | Root `check`; revert outputs for moved rules | Pass; each revert fails its test |
 | 10 | 19 | The application check of 5.3; `npm view @rivus/agent-kit@0.20.0` | Every new error comes from 3.10; published |
 

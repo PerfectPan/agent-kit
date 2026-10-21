@@ -1,5 +1,5 @@
 import { expect, it } from "vite-plus/test";
-import { homeFromRule } from "@rivus/agent-kit-catalog";
+import { homeFromRule } from "@rivus/agent-kit-catalog/public";
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { usageDecoderConformance } from "../src/usage-decoder-conformance.js";
 import { builtinCodingAgents, builtinUsageDecoders } from "./providers.js";

@@ -1,4 +1,4 @@
-import type { AgentHome } from "@rivus/agent-kit-catalog";
+import type { AgentHome } from "@rivus/agent-kit-catalog/public";
 import {
   isUsageRecord,
   isUsageSource,
@@ -6,7 +6,7 @@ import {
   type UsagePlatform,
   type UsageRecord,
   type UsageStream
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { isEqual } from "es-toolkit";
 
 import { check, type ConformanceCheck } from "./session-adapter-conformance.js";

@@ -102,7 +102,12 @@ function spiProvider(copy: string, slim = false): void {
   const contexts = ["catalog", "discovery", "sessions", "harness", "acp"].map(
     (context) => `@rivus/agent-kit-${context}`
   );
-  const dependsOn = [...contexts, "@rivus/agent-kit-platform"];
+  const siblingDependencies = [
+    "@rivus/agent-kit-platform",
+    "@rivus/agent-kit-platform-node",
+    "@rivus/agent-kit-testing"
+  ];
+  const dependsOn = [...contexts, ...siblingDependencies];
   mkdirSync(join(folder, "src"), { recursive: true });
   writeFileSync(
     join(folder, "package.json"),
@@ -122,7 +127,8 @@ function spiProvider(copy: string, slim = false): void {
   symlinkSync(join(ROOT, "packages/agent-kit/node_modules"), join(folder, "node_modules"));
   const manifest = join(copy, "infra/architecture/boundaries.ts");
   const rule = {
-    dependsOn: ["@rivus/agent-kit-platform"],
+    siblingEntries: [],
+    dependsOn: siblingDependencies,
     spiImports: [...contexts, "@rivus/agent-kit-platform"].filter(
       (context) => !slim || context !== "@rivus/agent-kit-harness"
     ),
@@ -187,7 +193,10 @@ async function nestedProvider(copy: string): Promise<Diagnostic[]> {
   writeFileSync(config, readFileSync(config, "utf8").replace("../../infra/", "../../../infra/"));
   writeFileSync(join(copy, folder, "src/effect.ts"), "export const providerEffect = 1;\n");
   writeFileSync(join(copy, folder, "src/plain.ts"), 'export { providerEffect } from "./effect.js";\n');
-  writeFileSync(join(copy, folder, "src/allowed.ts"), 'export { ok } from "./index.js";\n');
+  writeFileSync(
+    join(copy, folder, "src/allowed.ts"),
+    'export { ok } from "./domain/result/value-objects/result.js";\n'
+  );
   return lint(copy, folder, ["src/plain.ts", "src/allowed.ts"]);
 }
 
@@ -205,7 +214,7 @@ async function restrictedPlugins(copy: string): Promise<Diagnostic[]> {
   }
   writeFileSync(config, restricted);
   writeFileSync(join(copy, folder, "src/plugin-node.ts"), 'export { readFile } from "node:fs/promises";\n');
-  writeFileSync(join(copy, folder, "src/plugin-plain.ts"), 'export { ok } from "@rivus/agent-kit-catalog";\n');
+  writeFileSync(join(copy, folder, "src/plugin-plain.ts"), 'export { ok } from "@rivus/agent-kit-catalog/public";\n');
   try {
     return await lint(copy, folder, ["src/plugin-node.ts", "src/plugin-plain.ts"]);
   } finally {

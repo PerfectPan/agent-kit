@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { readHookEvent } from "@rivus/agent-kit-harness";
+import { readHookEvent } from "@rivus/agent-kit-harness/public/events";
 import { geminiCliHookDialect } from "../src/hooks.js";
 
 const builtinHookDialects = { "gemini-cli": geminiCliHookDialect };

@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /**
  * The caller's `sessionKey` bound to the ACP session that carries it, so a later connection can load that session.

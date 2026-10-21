@@ -1,5 +1,5 @@
-import { lookupService } from "@rivus/agent-kit-catalog";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import { lookupService } from "@rivus/agent-kit-catalog/public";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";

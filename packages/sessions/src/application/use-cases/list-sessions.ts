@@ -1,7 +1,7 @@
-import type { AgentHome, CodingAgentId, HomeContext, CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog";
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { AgentHome, CodingAgentId, HomeContext, CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog/public";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
-import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
+import type { SessionHead, SessionListFailure } from "../../domain/session/value-objects/session-head.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
 import type { SessionAdapter, SessionPlatform } from "../spi.js";
 import type { SessionProviders } from "../providers.js";

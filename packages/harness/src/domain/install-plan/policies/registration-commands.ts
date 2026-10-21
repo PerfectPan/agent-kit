@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { PlanStep } from "../value-objects/plan-step.js";

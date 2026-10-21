@@ -15,7 +15,7 @@ import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall, type PlanInstallOptions } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { verify } from "../src/application/use-cases/verify.js";
-import type { Bundle } from "../src/domain/bundle/index.js";
+import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
 import { parseJsonc } from "../src/infra/adapters/jsonc-editor.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";

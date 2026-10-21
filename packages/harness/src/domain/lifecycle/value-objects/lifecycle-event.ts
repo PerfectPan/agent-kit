@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 export type LifecyclePhase = "start" | "activity" | "blocked" | "finish" | "unknown";
 

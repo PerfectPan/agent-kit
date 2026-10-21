@@ -1,6 +1,7 @@
 import * as z from "zod/mini";
 
-import type { Holder, LeaseSnapshot } from "../../domain/lease/index.js";
+import type { Holder } from "../../domain/lease/value-objects/holder.js";
+import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 
 const holderSchema = z.object({ host: z.string(), bootId: z.string(), pid: z.number(), startTime: z.number() });
 

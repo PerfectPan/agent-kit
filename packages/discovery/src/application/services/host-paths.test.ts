@@ -2,7 +2,7 @@ import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { describe, expect, it } from "vite-plus/test";
 
 import { codexProbe } from "@rivus/agent-kit-provider-codex/discovery";
-import type { ProbeRecipe } from "../../domain/installation/index.js";
+import type { ProbeRecipe } from "../../domain/installation/spi/probe-recipe.js";
 import { expandProbePath, findCommand, type PathCheck } from "./host-paths.js";
 
 const testIdentity = { "gemini-cli": geminiCli };

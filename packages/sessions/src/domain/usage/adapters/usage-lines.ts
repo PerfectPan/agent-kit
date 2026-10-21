@@ -1,7 +1,8 @@
-import type { Result } from "@rivus/agent-kit-catalog";
+import type { Result } from "@rivus/agent-kit-catalog/public";
 
-import type { SourcedRecord, UnknownFormatGeneration } from "../../transcript/index.js";
-import type { UsageRecord } from "../index.js";
+import type { SourcedRecord } from "../../transcript/value-objects/source-pointer.js";
+import type { UnknownFormatGeneration } from "../../transcript/errors/unknown-format-generation.js";
+import type { UsageRecord } from "../value-objects/usage-record.js";
 
 /**
  * One agent's usage rules over the records of one file, fed in file order. Between records it keeps only what the

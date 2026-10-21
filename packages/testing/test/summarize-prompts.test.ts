@@ -1,7 +1,7 @@
 import { builtinSessionAdapters as testSessions } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
-import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import { type SessionPromptsOptions, summarizeSession } from "@rivus/agent-kit-sessions";
+import { isAgentKitError } from "@rivus/agent-kit-catalog/public";
+import { type SessionPromptsOptions, summarizeSession } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";

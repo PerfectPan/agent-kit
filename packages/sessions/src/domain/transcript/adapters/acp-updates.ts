@@ -5,14 +5,14 @@
 
 import * as z from "zod/mini";
 
+import { timeOf } from "../policies/event-ordering.js";
 import {
-  timeOf,
   type ToolCallPayload,
   type ToolResultPayload,
-  type TranscriptEventBody,
-  type TranscriptStreamPart
-} from "../index.js";
-import { compactUsage, type Usage } from "../../usage/index.js";
+  type TranscriptEventBody
+} from "../value-objects/transcript-event.js";
+import { type TranscriptStreamPart } from "../value-objects/stream-part.js";
+import { compactUsage, type Usage } from "../../usage/value-objects/usage.js";
 import { lenient } from "./lenient.js";
 import { logTimestamp } from "./timestamp.js";
 

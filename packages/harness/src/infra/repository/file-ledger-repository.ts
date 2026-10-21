@@ -1,4 +1,4 @@
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -11,7 +11,7 @@ import {
   type LedgerScope,
   type RevisionConflict
 } from "../../application/ports.js";
-import { checkLedgerVersion } from "../../domain/ledger/index.js";
+import { checkLedgerVersion } from "../../domain/ledger/aggregates/ledger.js";
 import { readText } from "../services/read-text.js";
 import {
   decodeLedger,

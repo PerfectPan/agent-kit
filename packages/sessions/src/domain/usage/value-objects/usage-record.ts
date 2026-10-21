@@ -1,6 +1,6 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import type { SourcePointer } from "../../transcript/index.js";
+import type { SourcePointer } from "../../transcript/value-objects/source-pointer.js";
 import type { Usage } from "./usage.js";
 
 /**

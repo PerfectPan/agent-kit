@@ -1,4 +1,4 @@
-import { holderLiveness } from "../../../lease/domain/lease/index.js";
+import { holderLiveness } from "../../../lease/domain/lease/policies/holder-liveness.js";
 import { type HolderStamp, readStamp, type StampFile } from "./holder.js";
 import type { ProcessLockPlatform } from "../ports.js";
 

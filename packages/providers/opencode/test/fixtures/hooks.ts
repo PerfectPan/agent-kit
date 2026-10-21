@@ -1,6 +1,6 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness";
+import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed opencode plugin events (https://opencode.ai/docs/plugins), as a bridge plugin forwards them: the bus
 // event with the plugin's `directory`, and tool hook inputs as `{ type, properties: input, directory }`. Each sample

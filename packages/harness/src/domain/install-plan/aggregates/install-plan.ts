@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { BundleRef } from "../../bundle/value-objects/bundle.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";

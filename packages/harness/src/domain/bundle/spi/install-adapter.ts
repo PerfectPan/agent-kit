@@ -1,5 +1,5 @@
-import type { ServiceTable } from "@rivus/agent-kit-catalog";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 import type { TrustPromptKind } from "../../install-plan/value-objects/trust-prompt.js";

@@ -1,8 +1,8 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { UnexpectedShape } from "../../application/ports.js";
-import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/index.js";
-import type { JsonValue } from "../../domain/ledger/index.js";
+import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import type { JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
 import type { Document } from "./document.js";
 import { isDocumentRecord } from "./document.js";
 

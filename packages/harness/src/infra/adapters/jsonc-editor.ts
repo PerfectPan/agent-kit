@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import {
   applyEdits,
   findNodeAtLocation,

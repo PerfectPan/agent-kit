@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 
-import type { InstallScope } from "../../domain/install-plan/index.js";
+import type { InstallScope } from "../../domain/install-plan/value-objects/install-target.js";
 import { sha256Hex } from "./content-hash.js";
 import type { LedgerScope } from "../ports.js";
 

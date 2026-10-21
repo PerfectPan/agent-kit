@@ -1,4 +1,4 @@
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
 /**
  * The first regular file named `command` in the absolute directories of the platform's `PATH`, without a shell and

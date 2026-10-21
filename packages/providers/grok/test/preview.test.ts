@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { grokSummaryFields, grokUsageSessionId, grokUsageSourceId } from "../src/layout.js";
 import { applyGrokSummary, previewGrokRecords } from "../src/sessions/preview.js";
-import type { SessionHead } from "@rivus/agent-kit-sessions";
+import type { SessionHead } from "@rivus/agent-kit-sessions/public";
 
 const summarySource = { file: "summary.json", offset: 0, length: 10, line: 1 };
 

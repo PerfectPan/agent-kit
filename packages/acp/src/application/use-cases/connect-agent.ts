@@ -1,5 +1,5 @@
-import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { Env, ExitStatus } from "@rivus/agent-kit-platform";
+import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { Env, ExitStatus } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
@@ -10,17 +10,13 @@ import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
 import type { AcpPlatform } from "../platform.js";
-import {
-  type AcpProfile,
-  AcpSession,
-  bindingFor,
-  firstPromptBlocks,
-  type McpServerConfig,
-  permissionOutcome,
-  type PromptBlock,
-  sessionMeta,
-  type SessionSetup
-} from "../../domain/acp-session/index.js";
+import { type AcpProfile } from "../../domain/acp-session/spi/acp-profile.js";
+import { AcpSession } from "../../domain/acp-session/aggregates/acp-session.js";
+import { bindingFor } from "../../domain/acp-session/value-objects/session-binding.js";
+import { firstPromptBlocks, sessionMeta, type SessionSetup } from "../../domain/acp-session/policies/session-setup.js";
+import { type McpServerConfig } from "../../domain/acp-session/value-objects/mcp-server.js";
+import { permissionOutcome } from "../../domain/acp-session/policies/permission-default.js";
+import { type PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
 import { readClientFile, sessionRoot, writeClientFile } from "../services/client-fs.js";
 import {
   type ConnectionState,

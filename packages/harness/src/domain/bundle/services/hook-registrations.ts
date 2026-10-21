@@ -1,5 +1,5 @@
-import { lookupService } from "@rivus/agent-kit-catalog";
-import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { lookupService } from "@rivus/agent-kit-catalog/public";
+import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import {
   type ForeignHooks,

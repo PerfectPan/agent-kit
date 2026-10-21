@@ -109,6 +109,7 @@ export function workspaceProjects(root: string): Project[] {
 
 /** The boundary rules cover the projects under `packages/`. */
 const projects = workspaceProjects(ROOT).filter(({ folder }) => folder.startsWith("packages/"));
+const siblingEntries = new Map(Object.entries(boundaries.packages).map(([name, rule]) => [name, rule.siblingEntries]));
 
 /** Packages that shells bundle and re-export: declared, without published entries of their own. */
 const internalNames = Object.entries(boundaries.packages)
@@ -158,7 +159,7 @@ interface Target {
 }
 
 /**
- * The internal packages a package may import and the specifiers that reach them: the package name (and its Effect
+ * The internal packages a package may import and the specifiers that reach them: the public entry (and its Effect
  * entry) for each of `dependsOn`, or the shell entries of `publicImports` mapped to the package they publish.
  */
 function targetsOf(rule: PackageRule): Map<string, Target> {
@@ -170,8 +171,9 @@ function targetsOf(rule: PackageRule): Map<string, Target> {
   };
   if (rule.publicImports === undefined) {
     for (const name of rule.dependsOn) {
-      add(name, "plain", { source: name, internalPath: null });
-      add(name, "effect", { source: name, internalPath: EFFECT_ENTRY });
+      for (const entry of siblingEntries.get(name) ?? []) {
+        add(name, entry === EFFECT_ENTRY ? "effect" : "plain", { source: name, internalPath: entry });
+      }
     }
     for (const name of rule.spiImports ?? []) {
       if (boundaries.packages[name]?.spi) {
@@ -384,16 +386,24 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
       disallow: { to: external(), dependency: { source: specifier } },
       message: `[external-dependency] {{dependency.source}}: only ${files.join(", ")} of ${project.name} may import it (${MANIFEST})`
     })),
-    {
-      from: all,
-      disallow: {
-        to: external({
-          source: workspaceNames.filter((name) => !isShell(name) && !boundaries.packages[name]?.providerServices),
-          internalPath: `!{${EFFECT_ENTRY},spi}`
-        })
-      },
-      message: "[deep-import] {{dependency.source}}: import {{to.module.source}} itself, which resolves to its index.ts"
-    },
+    ...workspaceNames
+      .filter((name) => !isShell(name) && !boundaries.packages[name]?.providerServices)
+      .flatMap((name): Policy[] => {
+        const entries = siblingEntries.get(name) ?? [];
+        const choices = [...entries, ...(boundaries.packages[name]?.spi ? ["spi"] : [])];
+        return [
+          {
+            from: all,
+            disallow: { to: external({ source: name, internalPath: null }) },
+            message: `[package-dependency] {{dependency.source}}: bare package imports are not allowed; use an explicit entry (${choices.map((entry) => `${name}/${entry}`).join(", ")}) with the required dependency or SPI access`
+          },
+          {
+            from: all,
+            disallow: { to: external({ source: name, internalPath: `!${braces([...entries, "spi"])}` }) },
+            message: `[deep-import] {{dependency.source}}: import an entry listed under the target package's siblingEntries or a declared SPI entry in ${MANIFEST}`
+          }
+        ];
+      }),
     {
       from: all,
       disallow: {
@@ -410,7 +420,11 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
         to: [
           external({ source: EFFECT_MODULES }),
           ...(rule.publicImports === undefined
-            ? [external({ source: workspaceNames, internalPath: EFFECT_ENTRY })]
+            ? [...siblingEntries].flatMap(([name, entries]) =>
+                entries
+                  .filter((entry) => entry === EFFECT_ENTRY)
+                  .map((entry) => external({ source: name, internalPath: entry }))
+              )
             : [...targets.values()].flatMap(({ effect }) => effect.map((module) => external(module)))),
           { ...local(project), file: { categories: "effect-entry" } }
         ]

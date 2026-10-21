@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { SkippedRecord } from "./source-pointer.js";
 import type { TranscriptEvent } from "./transcript-event.js";

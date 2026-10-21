@@ -9,7 +9,7 @@ import type {
   PlatformProcess,
   RunOptions,
   RunResult
-} from "@rivus/agent-kit-platform";
+} from "@rivus/agent-kit-platform/public";
 
 /** A seeded file: its content, or its content and modification time. */
 export type MemoryFile = string | Uint8Array | { readonly content: string | Uint8Array; readonly mtimeMs?: number };

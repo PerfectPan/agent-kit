@@ -1,4 +1,4 @@
-import type { Bundle } from "../../src/domain/bundle/index.js";
+import type { Bundle } from "../../src/domain/bundle/value-objects/bundle.js";
 
 /** The stable shim a hook command points at; it never runs in these tests. */
 export const SHIM = "/opt/demo/bin/demo-hook --agent {agent}";

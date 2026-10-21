@@ -19,3 +19,5 @@ export {
   type SessionAdapterFixtures
 } from "./session-adapter-conformance.js";
 export { probeRecipeConformance, type ProbeRecipeSamples } from "./probe-recipe-conformance.js";
+
+export { usageDecoderConformance } from "./usage-decoder-conformance.js";

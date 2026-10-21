@@ -1,30 +1,22 @@
 import type { InstallProviders } from "../providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 
-import {
-  type Bundle,
-  checkBundle,
-  type HookCompat,
-  type InvalidBundle,
-  type Owner
-} from "../../domain/bundle/index.js";
+import { type Bundle, checkBundle, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
+import { type HookCompat } from "../../domain/bundle/services/hook-registrations.js";
+import { type Owner } from "../../domain/bundle/value-objects/owner.js";
 import {
   type ArtifactLocator,
-  type DesiredArtifact,
   type LocatorKey,
   locatorKey
-} from "../../domain/install-plan/index.js";
-import {
-  type ContentHash,
-  holds,
-  type Ledger,
-  type LedgerEntry,
-  markAcknowledged,
-  type PendingOperations,
-  type VerifiedArtifact,
-  verifyOwner
-} from "../../domain/ledger/index.js";
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { type DesiredArtifact } from "../../domain/install-plan/value-objects/desired-artifact.js";
+import { type ContentHash } from "../../domain/ledger/value-objects/content-hash.js";
+import { holds } from "../../domain/ledger/policies/ownership.js";
+import { type Ledger } from "../../domain/ledger/aggregates/ledger.js";
+import { type LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
+import { markAcknowledged, type VerifiedArtifact, verifyOwner } from "../../domain/ledger/policies/three-way-verify.js";
+import { type PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
 import type { StrategyUnavailable } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";

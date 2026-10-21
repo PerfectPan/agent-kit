@@ -1,4 +1,4 @@
-import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { ArtifactSpec } from "../../bundle/value-objects/artifact-spec.js";
 import type { InstallAdapter } from "../../bundle/spi/install-adapter.js";

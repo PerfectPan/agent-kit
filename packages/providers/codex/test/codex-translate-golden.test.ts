@@ -2,7 +2,7 @@ import { translateCodexRecords } from "../src/sessions.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions";
+import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { describe, expect, it } from "vite-plus/test";
 
 // The translated shape of every conformance fixture and of the corners rollout, pinned: a refactor of the Codex

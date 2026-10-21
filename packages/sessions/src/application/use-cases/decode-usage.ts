@@ -1,7 +1,7 @@
-import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
-import type { Platform } from "@rivus/agent-kit-platform";
+import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
-import type { UsageRecord } from "../../domain/usage/index.js";
+import type { UsageRecord } from "../../domain/usage/value-objects/usage-record.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
 import type { SessionErrorCode } from "../errors.js";
 import type { UsageProviders } from "../providers.js";

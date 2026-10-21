@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SourcedRecord } from "@rivus/agent-kit-sessions";
-import { MAIN_LANE_ID } from "@rivus/agent-kit-sessions";
+import type { SourcedRecord } from "@rivus/agent-kit-sessions/public";
+import { MAIN_LANE_ID } from "@rivus/agent-kit-sessions/public";
 import type { GrokSubagentMeta } from "../src/layout.js";
 import { applyGrokSubagents, createGrokTranslation } from "../src/sessions/translation.js";
 

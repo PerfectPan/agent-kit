@@ -2,15 +2,11 @@ import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
-import {
-  type InvalidLedger,
-  Ledger,
-  type LedgerBusy,
-  type LedgerRecovery,
-  type LedgerTransition,
-  type LedgerVersionUnsupported,
-  type PendingProbe
-} from "../../domain/ledger/index.js";
+import { type InvalidLedger } from "../../domain/ledger/errors/invalid-ledger.js";
+import { Ledger, type LedgerRecovery, type LedgerTransition } from "../../domain/ledger/aggregates/ledger.js";
+import { type LedgerBusy } from "../../domain/ledger/errors/ledger-busy.js";
+import { type LedgerVersionUnsupported } from "../../domain/ledger/errors/ledger-version-unsupported.js";
+import { type PendingProbe } from "../../domain/ledger/entities/pending-operation.js";
 import { fromResult } from "./from-result.js";
 import { observe, type RegistrationLookup } from "./observe.js";
 import {

@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import {
   type ArtifactLocator,
   buildInstallPlan,
@@ -20,7 +20,7 @@ import {
   type StepOutcome,
   threeWayVerify,
   type VerifyStatus
-} from "@rivus/agent-kit-harness";
+} from "@rivus/agent-kit-harness/spi";
 import { isEqual } from "es-toolkit";
 import { describe, expect, it } from "vite-plus/test";
 

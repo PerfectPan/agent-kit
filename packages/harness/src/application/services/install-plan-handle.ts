@@ -1,20 +1,17 @@
-import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import {
-  type DroppedHook,
-  type BundleRef,
-  type InstallAdapters,
-  type InstallContext
-} from "../../domain/bundle/index.js";
+import { type DroppedHook } from "../../domain/bundle/services/hook-placement.js";
+import { type BundleRef } from "../../domain/bundle/value-objects/bundle.js";
+import { type InstallAdapters, type InstallContext } from "../../domain/bundle/spi/install-adapter.js";
+import type { ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type {
-  ArtifactLocator,
   InstallPlan as PlanAggregate,
   InstallPlanSnapshot,
-  PlanBasis,
-  PlanStatus,
-  PlanStep,
-  TrustPrompt
-} from "../../domain/install-plan/index.js";
+  PlanStatus
+} from "../../domain/install-plan/aggregates/install-plan.js";
+import type { PlanBasis } from "../../domain/install-plan/value-objects/plan-basis.js";
+import type { PlanStep } from "../../domain/install-plan/value-objects/plan-step.js";
+import type { TrustPrompt } from "../../domain/install-plan/value-objects/trust-prompt.js";
 import type { AgentCommand, LedgerScope } from "../ports.js";
 
 /** One file's text before and after the plan: `before` is absent for a new file, `after` for a removed one. */

@@ -9,7 +9,7 @@ import {
   homeFromRule,
   homeRuleOf,
   parseCodingAgentId
-} from "@rivus/agent-kit-catalog";
+} from "@rivus/agent-kit-catalog/public";
 
 import { capabilityUnsupported } from "../errors.js";
 
