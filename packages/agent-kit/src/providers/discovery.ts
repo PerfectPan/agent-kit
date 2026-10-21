@@ -1,3 +1,4 @@
+import { codexProbe } from "@rivus/agent-kit-provider-codex/discovery";
 import { claudeCodeProbe } from "@rivus/agent-kit-provider-claude-code/discovery";
 import { grokProbe } from "@rivus/agent-kit-provider-grok/discovery";
 import { opencodeProbe } from "@rivus/agent-kit-provider-opencode/discovery";
@@ -9,6 +10,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinProbeRecipes: typeof contextBuiltins & {
+  readonly codex: typeof codexProbe;
   readonly "claude-code": typeof claudeCodeProbe;
   readonly grok: typeof grokProbe;
   readonly opencode: typeof opencodeProbe;
@@ -18,7 +20,7 @@ export const builtinProbeRecipes: typeof contextBuiltins & {
 } = {
   opencode: opencodeProbe,
   "claude-code": claudeCodeProbe,
-  codex: contextBuiltins.codex,
+  codex: codexProbe,
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,

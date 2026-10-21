@@ -28,6 +28,7 @@
     "@perfectpan/lint-config": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
-    "@rivus/agent-kit-provider-gemini-cli": "workspace:*"
+    "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
+    "@rivus/agent-kit-provider-codex": "workspace:*"
   }
 }

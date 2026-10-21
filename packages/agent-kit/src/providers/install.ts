@@ -1,3 +1,4 @@
+import { codexInstallAdapter } from "@rivus/agent-kit-provider-codex/install";
 import { claudeCodeInstallAdapter } from "@rivus/agent-kit-provider-claude-code/install";
 import { grokInstallAdapter } from "@rivus/agent-kit-provider-grok/install";
 import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
@@ -9,6 +10,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinInstallAdapters: typeof contextBuiltins & {
+  readonly codex: typeof codexInstallAdapter;
   readonly "claude-code": typeof claudeCodeInstallAdapter;
   readonly grok: typeof grokInstallAdapter;
   readonly opencode: typeof opencodeInstallAdapter;
@@ -17,7 +19,7 @@ export const builtinInstallAdapters: typeof contextBuiltins & {
   readonly pi: typeof piInstallAdapter;
 } = {
   "claude-code": claudeCodeInstallAdapter,
-  codex: contextBuiltins.codex,
+  codex: codexInstallAdapter,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,

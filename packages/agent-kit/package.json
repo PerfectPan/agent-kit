@@ -134,7 +134,8 @@
     "typescript": "catalog:",
     "vite-plus": "catalog:",
     "@rivus/agent-kit-provider-grok": "workspace:*",
-    "@rivus/agent-kit-provider-claude-code": "workspace:*"
+    "@rivus/agent-kit-provider-claude-code": "workspace:*",
+    "@rivus/agent-kit-provider-codex": "workspace:*"
   },
   "peerDependencies": {
     "effect": "catalog:"

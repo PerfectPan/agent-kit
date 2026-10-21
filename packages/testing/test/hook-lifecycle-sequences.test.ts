@@ -11,7 +11,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialectSample } from "../src/hook-dialect-conformance.js";
 import { claudeCodeSamples } from "../../providers/claude-code/test/fixtures/hooks.js";
-import { codexSamples } from "./fixtures/hooks/codex.js";
+import { codexSamples } from "../../providers/codex/test/fixtures/hooks.js";
 import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
 import { geminiCliSamples } from "../../providers/gemini-cli/test/fixtures/hooks.js";
 import { grokSamples } from "../../providers/grok/test/fixtures/hooks.js";

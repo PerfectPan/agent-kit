@@ -241,6 +241,12 @@ const started = performance.now();
 let failures = 0;
 try {
   copyRepository(copy);
+  // Context adapter targets must resolve even after the last agent implementation moves out.
+  const adapters = join(copy, "packages/sessions/src/domain/session/adapters/probe");
+  mkdirSync(adapters, { recursive: true });
+  for (const name of ["layout", "preview"]) {
+    writeFileSync(join(adapters, `${name}.ts`), "export const probe = true;\n");
+  }
   spiProvider(copy);
   spiProvider(copy, true);
   for (const batch of batches()) {

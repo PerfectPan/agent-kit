@@ -72,7 +72,7 @@ export const cases: Case[] = [
   allowed(
     "sessions adapters: domain and kernel",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export * as s from "../../../session/index.js";\nexport { ok } from "${CATALOG}";`
   ),
   allowed(
@@ -108,7 +108,7 @@ export const cases: Case[] = [
   allowed(
     "sessions adapters: zod/mini",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export * as z from "zod/mini";`
   ),
   allowed(
@@ -223,14 +223,14 @@ export const cases: Case[] = [
   rejects(
     "Node types in an adapters file",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export type { Readable } from "node:stream";`,
     "node-builtin"
   ),
   rejects(
     "Effect in an adapters file",
     "sessions",
-    fresh("src/domain/session/adapters/codex/x"),
+    fresh("src/domain/session/adapters/probe/x"),
     `export { Effect } from "effect";`,
     "effect"
   ),
@@ -286,14 +286,14 @@ export const cases: Case[] = [
   rejects(
     "an adapters file importing application/",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export type * from "../../../../application/spi.js";`,
     "layer"
   ),
   rejects(
     "an adapters file importing a non-kernel package",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export type { Platform } from "${PLATFORM}";`,
     "layer"
   ),
@@ -301,14 +301,14 @@ export const cases: Case[] = [
     "a concept importing its own adapters/",
     "sessions",
     fresh("src/domain/session/x"),
-    `export * as c from "./adapters/codex/layout.js";`,
+    `export * as c from "./adapters/probe/layout.js";`,
     "layer"
   ),
   rejects(
     "a concept importing another concept's adapters/",
     "sessions",
     fresh("src/domain/transcript/x"),
-    `export * as g from "../session/adapters/codex/preview.js";`,
+    `export * as g from "../session/adapters/probe/preview.js";`,
     "layer"
   ),
   rejects(
@@ -363,14 +363,14 @@ export const cases: Case[] = [
   rejects(
     "zod's full entry where only zod/mini is allowed",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export { z } from "zod";`,
     "external-dependency"
   ),
   rejects(
     "another zod subpath",
     "sessions",
-    fresh("src/domain/transcript/adapters/codex/x"),
+    fresh("src/domain/transcript/adapters/probe/x"),
     `export * as z from "zod/v4/classic";`,
     "external-dependency"
   ),

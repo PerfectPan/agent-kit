@@ -260,7 +260,7 @@ packages/providers/claude-code/
 - Import limits inside a provider:
   - `hooks.ts` imports only `facts.ts`, catalog's SPI (the zero-dependency shared kernel), harness's SPI and `zod/mini`;
   - `usage.ts` imports only `facts.ts`, `layout.ts`, `records.ts`, catalog's SPI, sessions' SPI and `zod/mini`, never `sessions/`;
-  - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay (`transcript/adapters/codex/fork-replay.ts` today), which its usage decoding also uses, moves to `records/`.
+  - code that both sessions and usage need lives in `records.ts` (or a `records/` folder), never in `sessions/`. For example, Codex's fork replay is shared by transcript translation and usage decoding in its provider's `records/`.
   - these limits also apply to every allowed local helper, including nested `records/` files; `facts.ts`, shared by both entries, satisfies both limits.
 
   The hook entry `/harness/events` binds only `./hooks`. The zero-dependency entry `/transcript/usage` binds only `./usage`; it keeps `decodeUsage`, `listUsageSources` and `scanUsage`, which read files through the injected Platform. Both entries keep importing nothing at run time: `zod/mini` stays bundled into them, as `ZOD_BUNDLE_ENTRIES` in `packages/agent-kit/scripts/check-dist.ts` requires today.
@@ -710,8 +710,8 @@ One batch per agent, in this order:
     harness's `foreign-hooks.test.ts`, `plan-evidence-scope.test.ts` and `build-install-plan.test.ts` consume those
     complete tables for foreign-hook integration;
     discovery's `src/application/services/host-paths.test.ts` also needs the moved identity via `testsOnly`
-    to keep testing its home override without depending on the shrinking context table; it also reads
-    `builtinProbeRecipes.codex` from the context table, which batch 11 must replace;
+    to keep testing its home override without depending on the shrinking context table; its recipe fixture also uses the Codex provider through `testsOnly`;
+    the recipe-table key check lives in `testing/test/probe-recipes.test.ts` on the complete table once the context table is empty;
   - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
     `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
     cross-agent fixtures and conformance-suite self-tests stay in testing; session consumers there use the complete
@@ -720,7 +720,7 @@ One batch per agent, in this order:
   - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
     manifests and the lockfile; update adapter source links in `packages/discovery/README.md`;
   - boundary cases importing a moved adapter: keep their target resolvable so they still test the intended rule
-    (`lint-cases.ts` uses the Codex preview for the cross-concept adapter rejection until batch 11).
+    (`run-lint-cases.ts` creates synthetic session adapters in its temporary copy after the last agent moves).
 - Exit condition: 6.4 row 6 for each.
 
 #### Batch 12: provider closeout

@@ -1,3 +1,4 @@
+import { codexSessionAdapter } from "@rivus/agent-kit-provider-codex/sessions";
 import { claudeCodeSessionAdapter } from "@rivus/agent-kit-provider-claude-code/sessions";
 import { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";
 import { builtinSessionAdapters as contextBuiltins } from "@rivus/agent-kit-sessions/public";
@@ -5,11 +6,12 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinSessionAdapters: typeof contextBuiltins & {
+  readonly codex: typeof codexSessionAdapter;
   readonly "claude-code": typeof claudeCodeSessionAdapter;
   readonly grok: typeof grokSessionAdapter;
 } = {
   "claude-code": claudeCodeSessionAdapter,
-  codex: contextBuiltins.codex,
+  codex: codexSessionAdapter,
   grok: grokSessionAdapter
 };
 
@@ -27,3 +29,9 @@ export {
   translateClaudeCodeRecords,
   type ClaudeCodeTranslateOptions
 } from "@rivus/agent-kit-provider-claude-code/sessions";
+
+export {
+  CODEX_CAPABILITIES,
+  translateCodexRecords,
+  type CodexTranslateOptions
+} from "@rivus/agent-kit-provider-codex/sessions";

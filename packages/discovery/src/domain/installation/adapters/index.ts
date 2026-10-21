@@ -1,7 +1,6 @@
 import type { BuiltinCodingAgentId } from "@rivus/agent-kit-catalog";
 
 import type { ProbeRecipe } from "../index.js";
-import { codexProbe } from "./codex.js";
 
 /**
  * The probe recipes of the built-in agents, in report order. The shell uses these defaults and merges
@@ -9,9 +8,7 @@ import { codexProbe } from "./codex.js";
  */
 export const builtinProbeRecipes: Readonly<
   Record<
-    Exclude<BuiltinCodingAgentId, "pi" | "cursor" | "gemini-cli" | "opencode" | "grok" | "claude-code">,
+    Exclude<BuiltinCodingAgentId, "pi" | "cursor" | "gemini-cli" | "opencode" | "grok" | "claude-code" | "codex">,
     ProbeRecipe
   >
-> = {
-  codex: codexProbe
-};
+> = {};

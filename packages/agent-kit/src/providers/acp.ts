@@ -1,3 +1,4 @@
+import { codexAcpProfile } from "@rivus/agent-kit-provider-codex/acp";
 import { claudeCodeAcpProfile } from "@rivus/agent-kit-provider-claude-code/acp";
 import { grokAcpProfile } from "@rivus/agent-kit-provider-grok/acp";
 import { opencodeAcpProfile } from "@rivus/agent-kit-provider-opencode/acp";
@@ -8,7 +9,7 @@ import type { Provider } from "./types.js";
 
 export const builtinAcpProfiles: typeof contextBuiltins = {
   "claude-code": claudeCodeAcpProfile,
-  codex: contextBuiltins.codex,
+  codex: codexAcpProfile,
   "gemini-cli": geminiCliAcpProfile,
   grok: grokAcpProfile,
   opencode: opencodeAcpProfile
