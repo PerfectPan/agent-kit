@@ -1,8 +1,8 @@
 export const GEMINI_CLI_ID = "gemini-cli";
 export const GEMINI_CLI_DISPLAY_NAME = "Gemini CLI";
 export const GEMINI_CLI_COMMAND = "gemini";
-const HOME_DIR = ".gemini";
-const HOME_ENV = "GEMINI_CLI_HOME";
+export const HOME_DIR = ".gemini";
+export const HOME_ENV = "GEMINI_CLI_HOME";
 // The override names the user's home directory; the CLI appends its own directory.
 export const GEMINI_CLI_HOME: {
   readonly envVar: string;

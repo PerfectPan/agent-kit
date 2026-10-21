@@ -668,6 +668,12 @@ export const cases: Case[] = [
     'export const alias = "claude";',
     "agent-marker"
   ),
+  allowed(
+    "agent marker: standard home environment name",
+    "catalog",
+    fresh("src/domain/x"),
+    'export const home = "XDG_DATA_HOME";'
+  ),
   // the agent-marker rule
   rejects(
     "agent marker: a string literal",

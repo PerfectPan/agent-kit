@@ -113,6 +113,7 @@ function spiProvider(copy: string, slim = false): void {
     })
   );
   writeFileSync(join(folder, "src/identity.ts"), "export const probeIdentity = true;\n");
+  writeFileSync(join(folder, "src/facts.ts"), `export const agentMarkers = ["${id}"];\n`);
   cpSync(join(copy, "packages/catalog/tsconfig.json"), join(folder, "tsconfig.json"));
   writeFileSync(
     join(folder, "vite.config.ts"),
@@ -125,7 +126,7 @@ function spiProvider(copy: string, slim = false): void {
     spiImports: [...contexts, "@rivus/agent-kit-platform"].filter(
       (context) => !slim || context !== "@rivus/agent-kit-harness"
     ),
-    ...(slim ? { providerServices: ["hooks", "usage"] } : {}),
+    ...(slim ? { providerServices: ["hooks", "usage"], providerFacts: `packages/providers/${id}/src/facts.ts` } : {}),
     typesOnly: ["@rivus/agent-kit-acp"],
     external: []
   };

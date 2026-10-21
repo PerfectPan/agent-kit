@@ -1,11 +1,3 @@
-import { agentMarkers as piMarkers } from "../../packages/providers/pi/src/facts.ts";
-import { agentMarkers as cursorMarkers } from "../../packages/providers/cursor/src/facts.ts";
-import { agentMarkers as geminiCliMarkers } from "../../packages/providers/gemini-cli/src/facts.ts";
-import { agentMarkers as opencodeMarkers } from "../../packages/providers/opencode/src/facts.ts";
-import { agentMarkers as grokMarkers } from "../../packages/providers/grok/src/facts.ts";
-import { agentMarkers as claudeCodeMarkers } from "../../packages/providers/claude-code/src/facts.ts";
-import { agentMarkers as codexMarkers } from "../../packages/providers/codex/src/facts.ts";
-
 /**
  * Architecture boundary manifest: which package may import which, and what each layer inside a context package may
  * import. `lint.ts` turns it into the `vp lint` rules of every `packages/<name>/src` file and `manifest.test.ts`
@@ -28,8 +20,8 @@ export interface PackageRule {
   readonly spi?: true;
   /** Private provider: one src/<service>.ts export per supported service, with no barrel. */
   readonly providerServices?: readonly string[];
-  /** The provider facts supply these values directly; infrastructure keeps no second marker list. */
-  readonly providerMarkers?: readonly string[];
+  /** Repository-relative facts path; the marker extractor reads source text without loading the module. */
+  readonly providerFacts?: string;
   /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
   readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
@@ -124,7 +116,7 @@ const TESTING = "@rivus/agent-kit-testing";
 export const boundaries: BoundaryRules = {
   packages: {
     [CODEX]: {
-      providerMarkers: codexMarkers,
+      providerFacts: "packages/providers/codex/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -132,7 +124,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CLAUDE_CODE]: {
-      providerMarkers: claudeCodeMarkers,
+      providerFacts: "packages/providers/claude-code/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -140,7 +132,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GROK]: {
-      providerMarkers: grokMarkers,
+      providerFacts: "packages/providers/grok/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -148,7 +140,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [OPENCODE]: {
-      providerMarkers: opencodeMarkers,
+      providerFacts: "packages/providers/opencode/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -156,7 +148,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GEMINI_CLI]: {
-      providerMarkers: geminiCliMarkers,
+      providerFacts: "packages/providers/gemini-cli/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -164,7 +156,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CURSOR]: {
-      providerMarkers: cursorMarkers,
+      providerFacts: "packages/providers/cursor/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS],
@@ -172,7 +164,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [PI]: {
-      providerMarkers: piMarkers,
+      providerFacts: "packages/providers/pi/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],

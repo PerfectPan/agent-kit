@@ -2,7 +2,7 @@ export const CODEX_ID = "codex";
 export const CODEX_DISPLAY_NAME = "Codex";
 export const CODEX_COMMAND: string = CODEX_ID;
 export const CODEX_HOME_DIR = ".codex";
-const HOME_ENV = "CODEX_HOME";
+export const HOME_ENV = "CODEX_HOME";
 // The override names the Codex home itself.
 export const CODEX_HOME: { readonly envVar: string; readonly defaultPath: readonly string[] } = {
   envVar: HOME_ENV,

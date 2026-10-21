@@ -38,4 +38,4 @@ export const OPENCODE_ACP_ENV: readonly string[] = [
 export const OPENCODE_CURRENT_SESSION_FIELD = "currentSessionId";
 
 /** Agent-specific values forbidden in context source; generic path segments are deliberately excluded. */
-export const agentMarkers: readonly string[] = [OPENCODE_ID, HOME_ENV];
+export const agentMarkers: readonly string[] = [OPENCODE_ID];

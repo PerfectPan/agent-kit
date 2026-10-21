@@ -2,7 +2,7 @@ export const CLAUDE_CODE_ID = "claude-code";
 export const CLAUDE_CODE_DISPLAY_NAME = "Claude Code";
 export const CLAUDE_CODE_COMMAND = "claude";
 export const CLAUDE_CODE_HOME_DIR = ".claude";
-const HOME_ENV = "CLAUDE_CONFIG_DIR";
+export const HOME_ENV = "CLAUDE_CONFIG_DIR";
 // The override names the configuration directory itself.
 export const CLAUDE_CODE_HOME: { readonly envVar: string; readonly defaultPath: readonly string[] } = {
   envVar: HOME_ENV,

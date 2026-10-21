@@ -1,7 +1,7 @@
 export const GROK_ID = "grok";
 export const GROK_DISPLAY_NAME = "Grok";
-const HOME_DIR = ".grok";
-const HOME_ENV = "GROK_HOME";
+export const HOME_DIR = ".grok";
+export const HOME_ENV = "GROK_HOME";
 // The override names the Grok home itself.
 export const GROK_HOME: { readonly envVar: string; readonly defaultPath: readonly string[] } = {
   envVar: HOME_ENV,

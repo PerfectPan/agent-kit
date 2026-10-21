@@ -1,7 +1,7 @@
 export const PI_ID = "pi";
 export const PI_DISPLAY_NAME = "Pi";
-const HOME_DIR = ".pi";
-const HOME_ENV = "PI_CODING_AGENT_DIR";
+export const HOME_DIR = ".pi";
+export const HOME_ENV = "PI_CODING_AGENT_DIR";
 // The override names the agent directory itself, rather than its parent.
 export const PI_HOME: {
   readonly envVar: string;

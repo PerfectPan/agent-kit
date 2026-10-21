@@ -21,7 +21,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { DependenciesPolicy, ElementDescriptor } from "eslint-plugin-boundaries";
@@ -29,6 +29,7 @@ import { escapeRegExp } from "es-toolkit";
 import type { OxlintConfig, OxlintOverride } from "vite-plus/lint";
 
 import { boundaries, type Layer, type PackageRule } from "./boundaries.ts";
+import { extractAgentMarkers } from "./agent-markers.ts";
 
 const ROOT = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
 const MANIFEST = "infra/architecture/boundaries.ts";
@@ -487,8 +488,19 @@ function policiesOf(project: Project): Policy[] {
   ];
 }
 
-// Provider declarations reference their import-free facts; no build or second marker list is needed.
-const MARKERS = [...new Set(Object.values(boundaries.packages).flatMap((rule) => rule.providerMarkers ?? []))]
+const MARKERS = [
+  ...new Set(
+    Object.entries(boundaries.packages).flatMap(([name, rule]) => {
+      if (rule.providerServices === undefined) {
+        return [];
+      }
+      if (rule.providerFacts === undefined) {
+        throw new Error(`${MANIFEST}: ${name} is missing providerFacts`);
+      }
+      return extractAgentMarkers(rule.providerFacts, readFileSync(join(ROOT, rule.providerFacts), "utf8"));
+    })
+  )
+]
   .map((marker) => escapeRegExp(marker))
   .join("|");
 /** A module specifier is a Literal too; the boundary rules judge it instead. */
