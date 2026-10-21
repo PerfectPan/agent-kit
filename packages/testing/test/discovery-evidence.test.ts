@@ -1,7 +1,7 @@
-import { builtinInstallAdapters as testInstall } from "@rivus/agent-kit-harness/public";
-import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
-import { builtinProbeRecipes as testDiscovery } from "@rivus/agent-kit-discovery";
+import { builtinInstallAdapters as testInstall } from "./providers.js";
+import { builtinHookDialects as testHooks } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
+import { builtinProbeRecipes as testDiscovery } from "./providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { detectAgents } from "@rivus/agent-kit-discovery";
 import {

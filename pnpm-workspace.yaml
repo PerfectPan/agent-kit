@@ -10,6 +10,10 @@ packages:
 # catalogMode: strict only polices `pnpm add`: adding a package that is already cataloged at a version outside
 # the catalog fails the install. It does not police hand-edited package.json files or dependencies the catalog
 # does not declare — those install fine, so keep shared versions in the catalog deliberately.
+# Provider conformance and context integration tests form devDependency cycles. Internal packages export source,
+# so their tasks need no prior build; production dependency directions remain enforced by the boundary manifest.
+ignoreWorkspaceCycles: true
+
 catalogMode: strict
 catalog:
   '@agentclientprotocol/sdk': 1.8.0

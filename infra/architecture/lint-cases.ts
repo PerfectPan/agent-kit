@@ -4,6 +4,7 @@
  * in the given folder, so a case keeps the folder's layer without editing a real file.
  */
 import { allowed, rejects, fresh, type Case } from "./case.ts";
+import { providerCases } from "./provider-cases.ts";
 import { spiCases } from "./spi-cases.ts";
 
 const PLATFORM = "@rivus/agent-kit-platform";
@@ -15,6 +16,7 @@ const COLLAB = "@rivus/agent-kit-collab";
 
 export const cases: Case[] = [
   ...spiCases,
+  ...providerCases,
   allowed(
     "collab root domain: catalog value",
     "agent-kit-collab",

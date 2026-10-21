@@ -3,8 +3,9 @@ import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 
-import { builtinHookDialects } from "../src/events.js";
-import { applyInstall, builtinInstallAdapters, inventory, planInstall, uninstall } from "../src/public.js";
+import { builtinHookDialects } from "./support/providers.js";
+import { applyInstall, inventory, planInstall, uninstall } from "../src/public.js";
+import { builtinInstallAdapters } from "./support/providers.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, testHome } from "./support/home.js";
 import { snapshotFiles } from "./support/snapshot.js";

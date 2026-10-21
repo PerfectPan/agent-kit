@@ -117,6 +117,7 @@
     "@rivus/agent-kit-harness": "workspace:*",
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
+    "@rivus/agent-kit-provider-pi": "workspace:*",
     "@rivus/agent-kit-redact": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",

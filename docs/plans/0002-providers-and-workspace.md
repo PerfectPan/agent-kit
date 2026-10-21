@@ -654,6 +654,23 @@ Each batch is one PR and leaves `main` buildable. A batch that changes shipped c
 - Tests: the moved tests unchanged; the conformance suites for hooks, discovery and usage on the pi provider.
 - Exit condition: 6.4 row 5. This batch also confirms that the package layout, the SPI entries and the slim `./hooks` and `./usage` subpaths work as designed. If one does not, this plan is revised before batch 6.
 
+Pilot decisions for batch 5 (apply to later provider batches):
+
+- 3.2/3.9: `providerServices` declares flat service exports; provider packages have no `index.ts` or `public.ts`.
+  Manifest checks validate those files and exact exports. Shell lint allows each subpath only in its matching
+  service module and checks the slim hooks/usage import lists.
+- 3.3: existing published built-in table exports are assembled in the shell during migration, preserving key
+  order and data. Catalog's id union and membership check stay backed by a static list until batch 12, so moving
+  an identity does not make `isBuiltinCodingAgentId` forget it. Services retain their existing data fields and
+  resolve homes through the shell identity table; installer home lookup reads provider facts directly.
+- 3.6: usage had no conformance suite. Add an internal runner-agnostic suite in testing and run it in pi; do not
+  add a published export without a consumer. Sessions SPI also re-exports `ok` for usage's restricted imports;
+  harness SPI exposes the shared agent root alongside the shared skills directory.
+- 3.9: allowed test dependencies create workspace cycles. Set `ignoreWorkspaceCycles: true` because internal
+  packages export source and have no build step; keep production dependency direction checked in lint and
+  the manifest tests. Cross-agent integration tests remain in their context and assemble providers in test-only
+  tables; pi-specific parsing, hook fixtures and usage fixtures move to the provider.
+
 #### Batches 6–11: the other providers
 
 One batch per agent, in this order:

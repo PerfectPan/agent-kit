@@ -5,6 +5,7 @@ export {
   configHome,
   groupedHooksFile,
   jsonText,
+  sharedAgentsDir,
   sharedSkillsDir
 } from "./domain/bundle/adapters/install-files.js";
 export { type PlacedRegistration } from "./domain/bundle/services/hook-placement.js";

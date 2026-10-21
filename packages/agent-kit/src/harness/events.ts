@@ -1,9 +1,9 @@
+export { builtinHookDialects } from "../providers/hooks.js";
 import { readHookEvent as contextReadHookEvent } from "@rivus/agent-kit-harness/public/events";
 import { hooksTable } from "../providers/hooks.js";
 import type { ProviderOptions } from "../providers/types.js";
 
 export {
-  builtinHookDialects,
   heartbeatSignal,
   INITIAL_LIFECYCLE_STATE,
   lifecycleStatus,

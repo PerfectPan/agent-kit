@@ -94,7 +94,7 @@ function copyRepository(copy: string): void {
   }
 }
 
-/** A provider-shaped importer exists only in the fixture copy, before provider packages land. */
+/** A synthetic peer provider exists only in the fixture copy for SPI and inter-provider boundary cases. */
 function spiProvider(copy: string): void {
   const folder = join(copy, "packages/providers/spi-probe");
   const name = "@rivus/agent-kit-provider-spi-probe";
@@ -111,6 +111,7 @@ function spiProvider(copy: string): void {
       dependencies: Object.fromEntries(dependsOn.map((dep) => [dep, "workspace:*"]))
     })
   );
+  writeFileSync(join(folder, "src/identity.ts"), "export const probeIdentity = true;\n");
   cpSync(join(copy, "packages/catalog/tsconfig.json"), join(folder, "tsconfig.json"));
   writeFileSync(
     join(folder, "vite.config.ts"),

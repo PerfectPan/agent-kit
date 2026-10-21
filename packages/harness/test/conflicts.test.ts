@@ -1,5 +1,5 @@
-import { builtinInstallAdapters as testInstall } from "../src/public.js";
-import { builtinHookDialects as testHooks } from "../src/events.js";
+import { builtinInstallAdapters as testInstall } from "./support/providers.js";
+import { builtinHookDialects as testHooks } from "./support/providers.js";
 import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";

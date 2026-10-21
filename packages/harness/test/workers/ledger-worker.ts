@@ -1,5 +1,5 @@
-import { builtinInstallAdapters as testInstall } from "../../src/public.js";
-import { builtinHookDialects as testHooks } from "../../src/events.js";
+import { builtinInstallAdapters as testInstall } from "../support/providers.js";
+import { builtinHookDialects as testHooks } from "../support/providers.js";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node";
 import * as Effect from "effect/Effect";

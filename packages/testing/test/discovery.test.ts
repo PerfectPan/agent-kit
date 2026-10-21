@@ -1,14 +1,14 @@
-import { builtinProbeRecipes as testDiscovery } from "@rivus/agent-kit-discovery";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinProbeRecipes as testDiscovery } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import {
-  builtinProbeRecipes,
   type DetectAgentsOptions,
   detectAgents,
   type Installation,
   type ProbeRecipe,
   versionFromOutput
 } from "@rivus/agent-kit-discovery";
+import { builtinProbeRecipes } from "./providers.js";
 import type { RunOptions } from "@rivus/agent-kit-platform";
 import { describe, expect, it } from "vite-plus/test";
 

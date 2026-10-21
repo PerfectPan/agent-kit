@@ -1,5 +1,6 @@
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
-import { builtinProbeRecipes, type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
+import { type ProbeRecipe, versionFromOutput } from "@rivus/agent-kit-discovery";
+import { builtinProbeRecipes } from "@rivus/agent-kit-discovery";
 import { describe, expect, it } from "vite-plus/test";
 
 import { probeRecipeConformance, type ProbeRecipeSamples } from "../src/probe-recipe-conformance.js";

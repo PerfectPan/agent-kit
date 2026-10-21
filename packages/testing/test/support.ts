@@ -36,7 +36,14 @@ const USAGE_HOME_DIRS = {
 export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
   const root = fileURLToPath(new URL("fixtures/usage", import.meta.url));
   const trees = await Promise.all(
-    Object.entries(USAGE_HOME_DIRS).map(([agent, dir]) => readTree(join(root, agent), `${home}/${dir}`))
+    Object.entries(USAGE_HOME_DIRS).map(([agent, dir]) =>
+      readTree(
+        agent === "pi"
+          ? fileURLToPath(new URL("../../providers/pi/test/fixtures/usage", import.meta.url))
+          : join(root, agent),
+        `${home}/${dir}`
+      )
+    )
   );
   return Object.assign({}, ...trees) as Record<string, Uint8Array>;
 }

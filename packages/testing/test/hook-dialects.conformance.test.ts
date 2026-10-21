@@ -1,4 +1,4 @@
-import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
+import { builtinHookDialects as testHooks } from "./providers.js";
 import { builtinHookDialects } from "@rivus/agent-kit-harness";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -9,7 +9,6 @@ import { cursorSamples } from "./fixtures/hooks/cursor.js";
 import { geminiCliSamples } from "./fixtures/hooks/gemini-cli.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
 import { opencodeSamples } from "./fixtures/hooks/opencode.js";
-import { piSamples } from "./fixtures/hooks/pi.js";
 
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
@@ -17,8 +16,7 @@ const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSamp
   cursor: cursorSamples,
   "gemini-cli": geminiCliSamples,
   grok: grokSamples,
-  opencode: opencodeSamples,
-  pi: piSamples
+  opencode: opencodeSamples
 };
 
 for (const [agent, dialect] of Object.entries(builtinHookDialects)) {

@@ -4,7 +4,6 @@ import { codexUsageDecoder } from "./codex.js";
 import { geminiCliUsageDecoder } from "./gemini-cli.js";
 import { grokUsageDecoder } from "./grok.js";
 import { opencodeUsageDecoder } from "./opencode.js";
-import { piUsageDecoder } from "./pi.js";
 
 /** The built-in usage decoders. The shell merges `providers` descriptors with a `usage` service into these defaults. */
 export const builtinUsageDecoders: {
@@ -13,12 +12,10 @@ export const builtinUsageDecoders: {
   readonly "gemini-cli": UsageDecoder;
   readonly grok: UsageDecoder;
   readonly opencode: UsageDecoder;
-  readonly pi: UsageDecoder;
 } = {
   "claude-code": claudeCodeUsageDecoder,
   codex: codexUsageDecoder,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
-  opencode: opencodeUsageDecoder,
-  pi: piUsageDecoder
+  opencode: opencodeUsageDecoder
 };

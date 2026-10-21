@@ -1,5 +1,5 @@
-import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

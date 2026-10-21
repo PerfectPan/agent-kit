@@ -19,6 +19,23 @@ Start from the knowledge and the invariants, not from the file you want to write
 
 Packages are created in the phase that gives them content; see the plan's section 6.3.
 
+Pi's adapters now live in `packages/providers/pi`; the remaining agents still use the context adapter folders
+below until their migration. A provider exports one file per supported service, with no barrel. It imports
+contexts only through declared `spiImports`, and the shell assembles the complete tables in
+`src/providers/<service>.ts`. `providerServices` in the boundary manifest declares its service files and exports;
+the shell may import each one only from that service's assembly module. Hooks import only provider facts,
+harness SPI and `zod/mini`; usage imports only facts, layout, shared records if needed, sessions SPI and `zod/mini`.
+A provider's `facts.ts` owns its configuration constants; discovery and usage read its shared `layout.ts`.
+Shared format and file helpers remain in their context's SPI. Pi has no shared record consumer, so its schemas
+stay private in `usage.ts`, with no `records.ts` or unsupported service files.
+
+Provider tests run conformance checks from testing. Cross-agent context and testing integration tests may use
+providers through `testsOnly`; production source still cannot depend on them. These development dependencies
+form workspace cycles, so pnpm uses `ignoreWorkspaceCycles: true`. Internal packages export TypeScript source
+and have no build step, making task ordering inside these cycles unnecessary; the shell still builds before
+collab. The internal usage conformance suite checks source discovery, records, stable keys and cursor replay;
+it is not a new published API.
+
 - Knowledge used by only one context belongs to that context: hook dialects to harness, ACP launch details to acp, log layouts to sessions, probe methods to discovery. catalog stays small because every context must coordinate when it changes.
 - Code that changes because of the same upstream change belongs together. When Gemini renames its hook events, the installer and the hook parser change together, so both live in harness and share one HookDialect.
 - A package is not a new bounded context, and a pure re-export is not a second owner. The shell packages own nothing; Platform is a technical port, not a context.

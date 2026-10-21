@@ -1,8 +1,38 @@
-import { type InstallAdapter, ownerSlug } from "../../index.js";
-import { agentsOf, sharedSkillsDir } from "../install-files.js";
-import { finishSelectorsOf, type FinishSelector } from "../../../lifecycle/index.js";
-import { piHookDialect } from "../../../lifecycle/adapters/pi.js";
-import { piExtensionFile, piExtensionsDir, piHome } from "./config-files.js";
+import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
+import {
+  type InstallAdapter,
+  type InstallContext,
+  type BundleRef,
+  type FinishSelector,
+  ownerSlug,
+  agentsOf,
+  sharedSkillsDir,
+  sharedAgentsDir,
+  finishSelectorsOf
+} from "@rivus/agent-kit-harness/spi";
+import { piHookDialect } from "./hooks.js";
+import {
+  PI_ID,
+  PI_HOME,
+  PI_EXTENSIONS_DIR,
+  PI_SETTINGS_FILE,
+  PI_EXTENSIONS_POINTER,
+  PI_EXTENSION_SUFFIXES,
+  PI_EXTENSION_SUFFIX
+} from "./facts.js";
+
+// Pi loads every .ts or .js extension in this directory without a configuration entry.
+function piHome(context: InstallContext): string {
+  return homeFromRule(PI_ID, PI_HOME, context).path;
+}
+
+function piExtensionsDir(context: InstallContext): string {
+  return `${piHome(context)}/${PI_EXTENSIONS_DIR}`;
+}
+
+function piExtensionFile(context: InstallContext, bundle: BundleRef): string {
+  return `${piExtensionsDir(context)}/${ownerSlug(bundle.owner)}${PI_EXTENSION_SUFFIX}`;
+}
 
 /**
  * The extension that forwards Pi's events to the hook command, in the payload shape the Pi HookDialect reads: the
@@ -71,11 +101,12 @@ export default function (pi: any) {
 /** Hooks reach Pi through a bridge extension in its extensions directory, which Pi loads without configuration. */
 export const piInstallAdapter: InstallAdapter = {
   specificationVersion: "harness-v1",
-  agent: "pi",
+  agent: PI_ID,
   hookStrategies: ["native-plugin"],
   skillStrategies: ["scan-directory"],
-  roots: (context) => [piHome(context), `${context.home}/.agents`],
-  hookFile: (_strategy, bundle) => `~/.pi/agent/extensions/${ownerSlug(bundle.owner)}.ts`,
+  roots: (context) => [piHome(context), sharedAgentsDir(context)],
+  hookFile: (_strategy, bundle) =>
+    `${piExtensionsDir({ home: "~", env: {} })}/${ownerSlug(bundle.owner)}${PI_EXTENSION_SUFFIX}`,
   renderHooks: (strategy, registrations, bundle, context) => {
     const [first] = registrations;
     return first === undefined
@@ -98,12 +129,12 @@ export const piInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   legacySources: (context) => [
-    { kind: "files", dir: piExtensionsDir(context), extensions: [".js", ".ts"] },
+    { kind: "files", dir: piExtensionsDir(context), extensions: PI_EXTENSION_SUFFIXES, PI_EXTENSION_SUFFIX },
     {
       kind: "entries",
       format: "json",
-      path: `${piHome(context)}/settings.json`,
-      pointer: "/extensions",
+      path: `${piHome(context)}/${PI_SETTINGS_FILE}`,
+      pointer: PI_EXTENSIONS_POINTER,
       memberIn: "element"
     }
   ]

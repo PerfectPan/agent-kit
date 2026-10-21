@@ -1,5 +1,5 @@
-import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
-import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinUsageDecoders as testUsage } from "./providers.js";
+import { builtinCodingAgents as testIdentity } from "./providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import {
   addUsage,
@@ -204,38 +204,6 @@ describe("gemini-cli usage", () => {
       { sessionId: "gm-legacy", usage: { inputTokens: 400, outputTokens: 60, cacheReadTokens: 100 } }
     ]);
     expect(legacy[0]?.source).toMatchObject({ offset: 0, line: 1 });
-  });
-});
-
-describe("pi usage", () => {
-  const sessions = ".pi/agent/sessions/--u-me-work--";
-
-  it("keeps the cost Pi logged, also when it is 0, and adds the cache back into input", async () => {
-    const records = await decode("pi", `${sessions}/2026-01-01T00-00-00-000Z_pi-1.jsonl`);
-    expect(records).toMatchObject([
-      {
-        sessionId: "pi-1",
-        model: "model-test",
-        provider: "provider-test",
-        responseId: "resp-pi-1",
-        costUsd: 0,
-        costSource: "agent",
-        usage: {
-          inputTokens: 12373,
-          outputTokens: 4,
-          totalTokens: 12377,
-          cacheReadTokens: 1024,
-          cacheWriteTokens: 0,
-          reasoningTokens: 1
-        }
-      },
-      { costUsd: 0.5, usage: { inputTokens: 120, cacheWriteTokens: 20, cacheWrite1hTokens: 5 } }
-    ]);
-  });
-
-  it("skips the parent's entries that a forked session starts with", async () => {
-    const records = await decode("pi", `${sessions}/2026-01-02T00-00-00-000Z_pi-fork.jsonl`, {});
-    expect(records.map((record) => [record.sessionId, record.responseId])).toEqual([["pi-fork", "resp-pi-fork"]]);
   });
 });
 

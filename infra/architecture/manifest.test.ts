@@ -61,13 +61,24 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
     const entries = [
       ...(rule === undefined
         ? []
-        : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
+        : (rule.providerServices?.map((service) => `src/${service}.ts`) ??
+          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
       ...(rule?.spi ? ["src/spi.ts"] : [])
     ];
     const allowed = isShell
       ? internal
       : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      ...(rule?.providerServices === undefined
+        ? []
+        : [
+            ...rule.providerServices
+              .filter((service) => pkg.exports?.[`./${service}`] !== `./src/${service}.ts`)
+              .map((service) => `${pkg.folder}: entry-export ./${service}`),
+            ...Object.keys(pkg.exports ?? {})
+              .filter((entry) => !rule.providerServices?.some((service) => entry === `./${service}`))
+              .map((entry) => `${pkg.folder}: entry-export unexpected ${entry}`)
+          ]),
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
       ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
@@ -120,7 +131,7 @@ const SESSIONS = "@rivus/agent-kit-sessions";
 describe("the package manifests", () => {
   it("list the packages from pnpm", () => {
     expect(packages.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([SESSIONS, "@rivus/agent-kit", "@rivus/agent-kit-collab"])
+      expect.arrayContaining([SESSIONS, "@rivus/agent-kit", "@rivus/agent-kit-collab", "@rivus/agent-kit-provider-pi"])
     );
   });
 
@@ -194,6 +205,41 @@ describe("the package manifests", () => {
     } finally {
       Object.defineProperty(boundaries, "packages", { value: original });
     }
+  });
+
+  it("keeps provider production dependencies at context SPI entries", () => {
+    for (const [name, rule] of Object.entries(boundaries.packages)) {
+      if (rule.providerServices !== undefined) {
+        for (const dependency of rule.dependsOn) {
+          expect(dependency).toBe("@rivus/agent-kit-platform");
+          expect(rule.typesOnly).toContain(dependency);
+        }
+        for (const dependency of rule.spiImports ?? []) {
+          expect(boundaries.packages[dependency]?.spi, `${name} -> ${dependency}`).toBe(true);
+          expect(boundaries.packages[dependency]?.providerServices).toBeUndefined();
+        }
+      } else {
+        for (const dependency of [...rule.dependsOn, ...(rule.spiImports ?? [])]) {
+          expect(boundaries.packages[dependency]?.providerServices, `${name} -> ${dependency}`).toBeUndefined();
+        }
+      }
+    }
+  });
+
+  it("requires provider service exports and refuses a barrel", () => {
+    const folder = "packages/providers/pi";
+    expect(manifestViolations(packages, (path) => path !== `${folder}/src/hooks.ts` && onDisk(path))).toEqual([
+      `${folder}: entry-file src/hooks.ts`
+    ]);
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder
+        ? { ...pkg, exports: { ...pkg.exports, "./hooks": "./src/usage.ts", ".": "./src/index.ts" } }
+        : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([
+      `${folder}: entry-export ./hooks`,
+      `${folder}: entry-export unexpected .`
+    ]);
   });
 
   it("keep collab out of the shell's dependencies", () => {
