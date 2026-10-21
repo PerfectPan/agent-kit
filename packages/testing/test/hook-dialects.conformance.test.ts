@@ -3,13 +3,11 @@ import { readHookEvent, builtinHookDialects } from "@rivus/agent-kit-harness";
 import { describe, expect, it } from "vite-plus/test";
 
 import { type HookDialectSample, hookDialectConformance } from "../src/hook-dialect-conformance.js";
-import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { grokHostSamples } from "./fixtures/hooks/grok-host.js";
 
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
-  "claude-code": claudeCodeSamples,
   codex: codexSamples
 };
 

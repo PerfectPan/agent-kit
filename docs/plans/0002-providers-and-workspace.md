@@ -717,7 +717,7 @@ One batch per agent, in this order:
   - `infra/architecture/boundaries.ts` (`providerServices`, `spiImports`, `testsOnly`, marker exemptions), package
     manifests and the lockfile; update adapter source links in `packages/discovery/README.md`;
   - boundary cases importing a moved adapter: keep their target resolvable so they still test the intended rule
-    (`lint-cases.ts` uses the Claude Code preview for the cross-concept adapter rejection until batch 10).
+    (`lint-cases.ts` uses the Codex preview for the cross-concept adapter rejection until batch 11).
 - Exit condition: 6.4 row 6 for each.
 
 #### Batch 12: provider closeout

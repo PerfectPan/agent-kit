@@ -1,3 +1,9 @@
+import { claudeCodeUsageDecoder } from "@rivus/agent-kit-provider-claude-code/usage";
+import { claudeCodeSessionAdapter } from "@rivus/agent-kit-provider-claude-code/sessions";
+import { claudeCodeInstallAdapter } from "@rivus/agent-kit-provider-claude-code/install";
+import { claudeCodeHookDialect } from "@rivus/agent-kit-provider-claude-code/hooks";
+import { claudeCodeProbe } from "@rivus/agent-kit-provider-claude-code/discovery";
+import { claudeCode } from "@rivus/agent-kit-provider-claude-code/identity";
 import { builtinSessionAdapters as sessions } from "@rivus/agent-kit-sessions";
 import { grokSessionAdapter } from "@rivus/agent-kit-provider-grok/sessions";
 import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
@@ -31,7 +37,7 @@ import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import { builtinUsageDecoders as usage } from "@rivus/agent-kit-sessions";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 export const builtinCodingAgents = {
-  "claude-code": identity["claude-code"],
+  "claude-code": claudeCode,
   codex: identity.codex,
   cursor: cursor,
   "gemini-cli": geminiCli,
@@ -41,7 +47,7 @@ export const builtinCodingAgents = {
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
-  "claude-code": discovery["claude-code"],
+  "claude-code": claudeCodeProbe,
   codex: discovery.codex,
   cursor: cursorProbe,
   pi: piProbe,
@@ -49,7 +55,7 @@ export const builtinProbeRecipes = {
   grok: grokProbe
 };
 export const builtinHookDialects = {
-  "claude-code": hooks["claude-code"],
+  "claude-code": claudeCodeHookDialect,
   codex: hooks.codex,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
@@ -58,7 +64,7 @@ export const builtinHookDialects = {
   pi: piHookDialect
 };
 export const builtinInstallAdapters = {
-  "claude-code": install["claude-code"],
+  "claude-code": claudeCodeInstallAdapter,
   codex: install.codex,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
@@ -67,7 +73,7 @@ export const builtinInstallAdapters = {
   pi: piInstallAdapter
 };
 export const builtinUsageDecoders = {
-  "claude-code": usage["claude-code"],
+  "claude-code": claudeCodeUsageDecoder,
   codex: usage.codex,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
@@ -76,7 +82,7 @@ export const builtinUsageDecoders = {
 };
 
 export const builtinSessionAdapters = {
-  "claude-code": sessions["claude-code"],
+  "claude-code": claudeCodeSessionAdapter,
   codex: sessions.codex,
   grok: grokSessionAdapter
 };

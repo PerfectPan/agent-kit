@@ -1,3 +1,4 @@
+import { claudeCodeAcpProfile } from "@rivus/agent-kit-provider-claude-code/acp";
 import { grokAcpProfile } from "@rivus/agent-kit-provider-grok/acp";
 import { opencodeAcpProfile } from "@rivus/agent-kit-provider-opencode/acp";
 import { geminiCliAcpProfile } from "@rivus/agent-kit-provider-gemini-cli/acp";
@@ -6,7 +7,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinAcpProfiles: typeof contextBuiltins = {
-  "claude-code": contextBuiltins["claude-code"],
+  "claude-code": claudeCodeAcpProfile,
   codex: contextBuiltins.codex,
   "gemini-cli": geminiCliAcpProfile,
   grok: grokAcpProfile,

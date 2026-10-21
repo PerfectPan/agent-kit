@@ -1,18 +1,23 @@
+import { builtinSessionAdapters } from "./providers.js";
+import { claudeCodeSessions } from "../../providers/claude-code/test/support.js";
 import { fileURLToPath } from "node:url";
 
-import { builtinSessionAdapters, readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions";
+import { readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { oversizedSession, sessionAdapterConformance } from "../src/session-adapter-conformance.js";
-import { claudeCodeSessions, readTree } from "./support.js";
+import { readTree } from "./support.js";
 
 // Each broken adapter differs from the Claude Code one in a single way; the named check must reject it.
 
 const claude = builtinSessionAdapters["claude-code"];
 const platform = createMemoryPlatform({
   files: {
-    ...(await readTree(fileURLToPath(new URL("fixtures/claude-code/conformance", import.meta.url)), "/c")),
+    ...(await readTree(
+      fileURLToPath(new URL("../../providers/claude-code/test/fixtures/sessions/conformance", import.meta.url)),
+      "/c"
+    )),
     "/big/session.jsonl": oversizedSession('{"type":"user","sessionId":"b","message":{"content":"x"}}')
   }
 });

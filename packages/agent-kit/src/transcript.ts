@@ -6,8 +6,6 @@ import type { ProviderOptions } from "./providers/types.js";
 
 export {
   CAPABILITIES,
-  CLAUDE_CODE_CAPABILITIES,
-  claudeCodeUsage,
   CODEX_CAPABILITIES,
   codexUsage,
   foldStreamParts,
@@ -28,13 +26,11 @@ export {
   snapshotHasSystemPrompt,
   snapshotHasTools,
   TRANSCRIPT_EVENT_KINDS,
-  translateClaudeCodeRecords,
   translateCodexRecords
 } from "@rivus/agent-kit-sessions/public";
 export type {
   CapabilityUnsupported,
   Capability,
-  ClaudeCodeTranslateOptions,
   CodexTranslateOptions,
   CompactionPayload,
   HookPayload,
@@ -102,3 +98,10 @@ export function summarizeSession(
 
 export { GROK_CAPABILITIES, translateGrokRecords, type GrokTranslateOptions } from "./providers/sessions.js";
 export { grokUsage } from "./providers/usage.js";
+
+export {
+  CLAUDE_CODE_CAPABILITIES,
+  translateClaudeCodeRecords,
+  type ClaudeCodeTranslateOptions
+} from "./providers/sessions.js";
+export { claudeCodeUsage } from "./providers/usage.js";
