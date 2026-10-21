@@ -1,5 +1,5 @@
 import { appBundleMatches } from "../../domain/installation/index.js";
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 import { readSmallFile } from "./read-small-file.js";
 
 const MAX_INFO_PLIST_BYTES = 1024 * 1024;

@@ -1,7 +1,7 @@
 import { PI_SESSION_FILES, piSessionStem, piUsageRoots } from "../../../domain/session/adapters/pi.js";
 import { piUsageKey, piUsageLines } from "../../../domain/usage/adapters/pi.js";
 import { basenamePath } from "../../../domain/session/index.js";
-import type { UsageDecoder } from "../../usage-ports.js";
+import type { UsageDecoder } from "../../spi.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout, sameFile } from "./files.js";
 
 const AGENT = "pi";

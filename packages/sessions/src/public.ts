@@ -34,13 +34,14 @@ export type {
   UsageCursor,
   UsageDecodeError,
   UsageDecodeFailure,
+  UsageDecoder,
   UsagePlatform,
   UsageSource,
   UsageSourceFailure,
   UsageSourceOptions,
   UsageStream,
   UsageTarget
-} from "./application/usage-ports.js";
+} from "./application/spi.js";
 export type {
   DiscoverOptions,
   LoadOptions,
@@ -48,7 +49,7 @@ export type {
   SessionAdapters,
   SessionPlatform,
   SessionReadError
-} from "./application/ports.js";
+} from "./application/spi.js";
 
 // Claude Code rules
 export {

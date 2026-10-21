@@ -3,7 +3,7 @@ import * as z from "zod/mini";
 
 import type { ReadFailed, SessionNotFound } from "../../../domain/session/index.js";
 import { lenient } from "../../../domain/transcript/adapters/lenient.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 
 /** Errno codes of file system failures a read can meet. Any other error is a defect and is not turned into a value. */
 const FS_ERRNO = new Set([

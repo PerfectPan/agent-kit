@@ -8,7 +8,7 @@ Start from the knowledge and the invariants, not from the file you want to write
 
 | Context | Package | Kind | Owns |
 | --- | --- | --- | --- |
-| catalog | `@rivus/agent-kit-catalog` | Shared kernel | Agent identity, home directory rules, `Result` |
+| catalog | `@rivus/agent-kit-catalog` | Shared kernel | Agent identity, home directory rules, `Result`, service tables and lookups |
 | discovery | `@rivus/agent-kit-discovery` | Supporting | What is installed on this machine; probe recipes |
 | sessions | `@rivus/agent-kit-sessions` | Core | What an agent stores and how to read it: layout, preview, event translation, usage decoding |
 | cost | `@rivus/agent-kit-cost` | Supporting | Pricing formulas and summaries over injected price tables |
@@ -36,12 +36,15 @@ Every context package uses the same layout, creating only the directories it nee
     aggregates/  entities/  value-objects/  policies/  factories/  errors/  events/  services/
     adapters/           agent adapters (anti-corruption layer) for this concept's model; a
                         builtinXxx table of pure adapters may live here
+    spi/                pure provider interfaces and their parts
     index.ts            the concept's facade inside the package
   application/
     use-cases/          the public use cases, a file per use case; closely related operations may share one
                         (harness keeps `inventory` and `discardPlan` together)
     services/           coordination code shared by use cases; may call ports, holds no business rules
-    ports.ts            port shapes and injection tags (some contexts keep errors.ts or usage-ports.ts beside it)
+    spi.ts              provider interfaces that read files, with their input and result types
+    ports.ts            context-owned infrastructure ports and injection tags
+    platform.ts         the use cases' Platform requirements, where separate from the provider SPI
   infra/
     repository/         persistence implementations: aggregate repositories (ledger, leases)
                         and key-value stores such as acp's session bindings
@@ -50,6 +53,7 @@ Every context package uses the same layout, creating only the directories it nee
     factories/          Layer compositions
     services/           helpers shared by infra files
   public.ts             the public surface, re-exported by the shell package
+  spi.ts                provider interfaces and the context helpers their implementations need
   index.ts              the surface for sibling packages
 ```
 
@@ -78,7 +82,7 @@ The layer principles:
 `@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary rules treat as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
 
 - Only `@rivus/agent-kit-platform-node` may import `node:*`.
-- Cross-package imports go through the target package's `index.ts`, never into its `domain/` (including the `adapters/` folders) or `infra/`. Dependencies are declared in `package.json`; pnpm's isolated `node_modules` gives a package only what it declares, so an undeclared import does not resolve. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
+- Cross-package imports go through the target package's `index.ts`, or its `spi.ts` when the importer's `spiImports` explicitly lists that dependency; never into its `domain/` (including the `adapters/` folders) or `infra/`. Dependencies are declared in `package.json`; pnpm's isolated `node_modules` gives a package only what it declares, so an undeclared import does not resolve. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
 - Package dependencies run one way: discovery, sessions and harness depend on catalog and platform; acp also depends on sessions; cost depends on sessions for types only; platform-node depends on platform; collab uses agent-kit only through its public subpaths.
 - Contexts that are pure computation (catalog, cost, agent translation, hook event parsing) have no `application/` and export domain functions directly.
 - A concept's `adapters/` folder and `infra/` are different things. An agent adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
@@ -166,6 +170,7 @@ kept, and reopening for persistent implementations) live in the testing package'
 - Each use case declares only the ports it uses. In a plain TS context the platform part is the first parameter, typed as a `Pick`, for example `listSessions(deps: Pick<Platform, 'fs' | 'env' | 'home'>, opts)`. In an Effect context the use case takes its ports from `Context.Service` (see [Effect Rules](#effect-rules)).
 - The application layer holds no policy: trigger timing, fail-open behavior, retries, which agents to count and where to store results belong to the consuming application.
 - Use cases default to the context's `builtinXxx` adapter table and accept an `adapters` option that overrides or extends it for one call. There is no global registry. Reading data for an agent that has no adapter in the table is an expected outcome and returns a `CapabilityUnsupported` value; naming such an agent in a call's own options (for example `listSessions({ agents })`) is a programming error and throws `AgentKitError` with code `capability-unsupported`.
+- Catalog's `lookupService(agent, table)` returns `Result<T, CapabilityUnsupported>` for data; `requireService(agent, table, reason?)` throws the named-agent error. Only own, defined table entries provide a service. Identity queries take the table explicitly: `parseCodingAgentId(input, identities)` resolves aliases, and `homeRuleOf(agent, identities, own?)` gives an own rule precedence. `homeFromRule` resolves that rule against supplied home and environment values.
 - Do not add an export, a deep import or a facade to make a caller compile. Derive option and result types from the retained signatures (`Parameters`, `ReturnType`) instead.
 
 ## Make Persistence And Partial Failure Explicit
@@ -182,6 +187,7 @@ kept, and reopening for persistent implementations) live in the testing package'
 
 - Stateless operations are functions over plain data. Stateful parts are created by factory functions. The only public class is `AgentKitError` (`code` + `cause`), recognized through a `Symbol.for` brand.
 - Aggregates are exposed as handle interfaces plus read-only snapshot types, obtained only through use cases. Their classes never appear in `public.ts`.
+- `spi.ts` lists the provider interfaces and shared helpers used by adapters. Pure interfaces live in `domain/<concept>/spi/`; file-reading interfaces live in `application/spi.ts`. Shared helpers stay internal; SPI interface types are public through their service's shell entry. `spi: true` declares the entry in the boundary manifest; `dependsOn` plus `spiImports` grants access, subject to the existing layer and type-only rules. No current context imports a sibling SPI.
 - `public.ts` lists every exported name. The shell package's entry files re-export those names one by one, with no `export *`, so every change to the public surface shows up in review. `index.ts` serves sibling packages and may export more than `public.ts`.
 - An entry whose runtime profile differs from the rest of its context, such as the hook path `/harness/events`, gets its own file next to `public.ts` (harness's `src/events.ts`), exported as `<package>/public/<name>`. It imports only the layers that path needs, so its module graph does not depend on tree-shaking, and the shell entry re-exports from it.
 - Adapter interfaces carry a version literal (`specificationVersion: 'sessions-v1'`, `'harness-v1'`), so a later version can coexist with the current one.

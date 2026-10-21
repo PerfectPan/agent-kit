@@ -10,7 +10,7 @@ import type { FileStat } from "@rivus/agent-kit-platform";
 import { authProbeLists, type ProbePath, type ProbeRecipe, type StatFailed } from "../../domain/installation/index.js";
 import { abortable, errnoCode } from "./abortable.js";
 import { capabilityUnsupported } from "../errors.js";
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 
 /** `undefined` when nothing is at the path; a `StatFailed` when it could not be checked. */
 export type PathCheck = FileStat | StatFailed | undefined;

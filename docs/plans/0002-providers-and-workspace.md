@@ -358,6 +358,15 @@ interface HostMarkers {
   - the `turns`, `request-placement` and `fold-transcript` rules.
 
   The list is reviewed name by name when the entry is created.
+- Each context declares its `./spi` export with `spi: true` in the boundary manifest. An importer must list the
+  target under both `dependsOn` and `spiImports`; a dependency on the normal entry grants no SPI access. This follows
+  3.1's provider-to-context direction. No current context needs a sibling's SPI, so their `spiImports` remain empty;
+  a future context use must be declared explicitly and still obey the layer and `typesOnly` restrictions. Provider-like
+  lint fixtures exercise explicit access without registering a production provider before its batch.
+- The sessions entry is derived from non-test adapter imports, including shared file and format helpers. It exports
+  the SPI interfaces and their parts, then only imported context symbols; agent-specific layouts, records, tables
+  and translators stay out. ACP format helpers are retained where Grok imports them. Cost exports the `Price` and
+  `PricingTable` types its format adapter consumes; it has no provider service interface to invent.
 - SPI interface types are public through their service's shell entry, because the trace viewer implements its own `SessionAdapter` and runs `sessionAdapterConformance`. SPI helpers stay internal until a third-party provider needs one.
 - Pure SPI interfaces (`HookDialect`, `InstallAdapter`, `ProbeRecipe`, `AcpProfile`) live in `domain/<concept>/spi/`. Interfaces that read files (`SessionAdapter`, `UsageDecoder`) live in `application/spi.ts`. `application/ports.ts` keeps only ports that the kit's own `infra/` implements.
 - The published conformance suites take the service tables they need as parameters instead of reading built-in tables. For example, `hookDialectConformance` merges the dialect under test over a given hooks table so that host sniffing works as in use. The shell's `/testing` binds the built-in tables.

@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { FieldPath } from "../value-objects/hook-dialect.js";
+import type { FieldPath } from "../spi/hook-dialect.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 import { lenient } from "./lenient.js";
 

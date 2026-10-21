@@ -1,7 +1,7 @@
 import type { CodingAgentId, HomeRule } from "@rivus/agent-kit-catalog";
 
-import type { AuthReading } from "./auth-state.js";
-import type { CommandOutput, Version } from "./version.js";
+import type { AuthReading } from "../value-objects/auth-state.js";
+import type { CommandOutput, Version } from "../value-objects/version.js";
 
 /**
  * A path a probe checks: `~` or `~/…` under the user's home directory, an absolute path, or `path` (`/`-separated,

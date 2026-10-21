@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { InstallAdapter } from "../../bundle/value-objects/install-adapter.js";
+import type { InstallAdapter } from "../../bundle/spi/install-adapter.js";
 import type { HookSpec } from "../../bundle/value-objects/artifact-spec.js";
 import { chooseStrategy, requiredCommands, strategyRequirement, strategyUnsupported } from "./strategy-choice.js";
 

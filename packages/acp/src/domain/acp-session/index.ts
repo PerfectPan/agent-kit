@@ -27,7 +27,7 @@ export {
 } from "./policies/client-paths.js";
 export { optionOfKind, permissionOutcome } from "./policies/permission-default.js";
 export { firstPromptBlocks, sessionMeta, type SessionSetup } from "./policies/session-setup.js";
-export type { AcpProfile, SystemPromptPlacement } from "./value-objects/acp-profile.js";
+export type { AcpProfile, SystemPromptPlacement } from "./spi/acp-profile.js";
 export type { AcpSessionSnapshot, AcpSessionState, SessionCloseReason } from "./value-objects/acp-session-snapshot.js";
 export type { McpServerConfig, NameValue } from "./value-objects/mcp-server.js";
 export type {

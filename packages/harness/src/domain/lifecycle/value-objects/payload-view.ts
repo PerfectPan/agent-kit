@@ -1,4 +1,4 @@
-import type { FieldPath } from "./hook-dialect.js";
+import type { FieldPath } from "../spi/hook-dialect.js";
 
 /**
  * One hook payload, as a hook dialect reads it: each of the dialect's declared paths holds the string the payload

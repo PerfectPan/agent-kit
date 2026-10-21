@@ -41,6 +41,78 @@ const rejects = (name: string, pkg: string, path: string, source: string, rule: 
 });
 
 export const cases: Case[] = [
+  ...[
+    ["catalog", "CodingAgent"],
+    ["discovery", "ProbeRecipe"],
+    ["sessions", "SessionAdapter"],
+    ["harness", "HookDialect"],
+    ["acp", "AcpProfile"],
+    ["cost", "Price"]
+  ].map(([context, symbol]) =>
+    allowed(
+      `provider: declared ${context} SPI`,
+      "providers/spi-probe",
+      fresh("src/x"),
+      `export type { ${symbol} } from "@rivus/agent-kit-${context}/spi";`
+    )
+  ),
+  allowed(
+    "provider: SPI runtime helper",
+    "providers/spi-probe",
+    fresh("src/x"),
+    `export { readBytes } from "${SESSIONS}/spi";`
+  ),
+  rejects(
+    "provider: declared SPI does not expose deep paths",
+    "providers/spi-probe",
+    fresh("src/x"),
+    `export type { SessionAdapter } from "${SESSIONS}/application/spi";`,
+    "deep-import"
+  ),
+  rejects(
+    "provider: SPI access keeps type-only restriction",
+    "providers/spi-probe",
+    fresh("src/x"),
+    'export { Price } from "@rivus/agent-kit-cost/spi";',
+    "types-only"
+  ),
+  rejects(
+    "provider: SPI access keeps layer restriction",
+    "providers/spi-probe",
+    fresh("src/domain/probe/x"),
+    `export { readBytes } from "${SESSIONS}/spi";`,
+    "layer"
+  ),
+  rejects(
+    "provider: dependency without an SPI entry",
+    "providers/spi-probe",
+    fresh("src/x"),
+    `export type { Platform } from "${PLATFORM}/spi";`,
+    "spi-import"
+  ),
+  ...["acp", "cost"].map((pkg) =>
+    rejects(
+      `${pkg}: normal dependency grants no sibling SPI access`,
+      pkg,
+      fresh("src/x"),
+      `export type { SessionAdapter } from "${SESSIONS}/spi";`,
+      "spi-import"
+    )
+  ),
+  rejects(
+    "sessions: kernel dependency grants no SPI access",
+    "sessions",
+    fresh("src/application/x"),
+    `export type { CodingAgent } from "${CATALOG}/spi";`,
+    "spi-import"
+  ),
+  rejects(
+    "shell entry: context SPI",
+    "agent-kit",
+    fresh("src/x"),
+    `export type { SessionAdapter } from "${SESSIONS}/spi";`,
+    "shell-entry"
+  ),
   allowed(
     "collab root domain: catalog value",
     "agent-kit-collab",
@@ -115,7 +187,7 @@ export const cases: Case[] = [
     "sessions infra: application",
     "sessions",
     fresh("src/infra/repository/x"),
-    `export type * from "../../application/ports.js";`
+    `export type * from "../../application/spi.js";`
   ),
   allowed(
     "sessions root: application",
@@ -226,7 +298,7 @@ export const cases: Case[] = [
     "dynamic import with a literal",
     "sessions",
     fresh("src/application/x"),
-    `export const loaded = await import("./ports.js");`
+    `export const loaded = await import("./spi.js");`
   ),
 
   // violations in sessions
@@ -311,7 +383,7 @@ export const cases: Case[] = [
     "an adapters file importing application/",
     "sessions",
     fresh("src/domain/transcript/adapters/codex/x"),
-    `export type * from "../../../../application/ports.js";`,
+    `export type * from "../../../../application/spi.js";`,
     "layer"
   ),
   rejects(
@@ -584,21 +656,21 @@ export const cases: Case[] = [
     "a declaration file under src/",
     "sessions",
     fresh("src/domain/x", "d.ts"),
-    `export * from "../application/ports.js";`,
+    `export * from "../application/spi.js";`,
     "source-file"
   ),
   rejects(
     "a JavaScript file under src/",
     "sessions",
     fresh("src/domain/x", "js"),
-    `export * from "../application/ports.js";`,
+    `export * from "../application/spi.js";`,
     "source-file"
   ),
   rejects(
     "an .mts file under src/",
     "sessions",
     fresh("src/application/x", "mts"),
-    `export * from "./ports.js";`,
+    `export * from "./spi.js";`,
     "source-file"
   ),
   rejects(

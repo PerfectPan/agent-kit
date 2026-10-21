@@ -1,7 +1,7 @@
 // Use case
 export { detectAgents, type DetectAgentsOptions } from "./application/use-cases/detect-agents.js";
 export type { DiscoveryErrorCode } from "./application/errors.js";
-export type { DiscoveryPlatform } from "./application/ports.js";
+export type { DiscoveryPlatform } from "./application/platform.js";
 
 // Probe recipes
 export { builtinProbeRecipes } from "./domain/installation/adapters/index.js";

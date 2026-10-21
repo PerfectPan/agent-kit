@@ -17,7 +17,7 @@ import type {
 } from "../../domain/session/index.js";
 import { foldTranscript, sessionPrompts, summaryOf, type Transcript } from "../../domain/transcript/index.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
-import type { SessionAdapter, SessionAdapters, SessionPlatform, SessionReadError } from "../ports.js";
+import type { SessionAdapter, SessionAdapters, SessionPlatform, SessionReadError } from "../spi.js";
 import { builtinSessionAdapters } from "../services/session-adapters/index.js";
 
 /** A session to read. Without an `agent` (or with an id that does not parse), every adapter's `detect` decides. */

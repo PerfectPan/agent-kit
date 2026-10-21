@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { appBundleMatches } from "./app-bundle.js";
 import { installationWarnings } from "./installation-warnings.js";
 import type { ProbeProblem } from "../value-objects/probe-problem.js";
-import type { ProbeRecipe } from "../value-objects/probe-recipe.js";
+import type { ProbeRecipe } from "../spi/probe-recipe.js";
 
 const recipe: ProbeRecipe = {
   specificationVersion: "discovery-v1",

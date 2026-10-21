@@ -5,7 +5,7 @@ import {
   codexUsageSourceId
 } from "../../../domain/session/adapters/codex/layout.js";
 import { codexUsageKey, codexUsageLines } from "../../../domain/usage/adapters/codex.js";
-import type { UsageDecoder } from "../../usage-ports.js";
+import type { UsageDecoder } from "../../spi.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout, sameFile } from "./files.js";
 
 const AGENT = "codex";

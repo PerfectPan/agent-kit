@@ -1,5 +1,5 @@
 import { joinPath } from "../../../domain/session/index.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 
 /** Which files under a directory a walk returns. Symlinks are not followed, so a link cycle cannot trap it. */
 export interface WalkSpec {

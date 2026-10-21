@@ -1,6 +1,6 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
-import { type HookDialects, foreignHooksOf } from "../value-objects/hook-dialect.js";
+import { type HookDialects, foreignHooksOf } from "../spi/hook-dialect.js";
 import type { TerminalIdentity } from "../value-objects/lifecycle-event.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 import type { Env } from "./payload-fields.js";

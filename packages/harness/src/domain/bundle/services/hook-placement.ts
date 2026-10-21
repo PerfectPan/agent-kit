@@ -1,6 +1,6 @@
 import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookDialect, HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 import {
   foreignHooksIn,

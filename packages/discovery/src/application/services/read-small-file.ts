@@ -1,4 +1,4 @@
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 import { abortable, errnoCode } from "./abortable.js";
 
 /** What reading a small file gave: its text, or why there is none. */

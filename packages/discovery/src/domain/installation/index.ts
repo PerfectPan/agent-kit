@@ -18,5 +18,5 @@ export {
   type ProbeRecipe,
   type ProbeRecipes,
   type VersionProbe
-} from "./value-objects/probe-recipe.js";
+} from "./spi/probe-recipe.js";
 export { type CommandOutput, type Version, versionFromOutput } from "./value-objects/version.js";

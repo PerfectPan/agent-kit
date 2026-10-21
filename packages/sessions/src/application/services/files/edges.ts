@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 
 import { readBytes } from "./read-file.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 
 /** Listing reads at most this many bytes from each end of a session file. */
 export const EDGE_BYTES: number = 64 * 1024;

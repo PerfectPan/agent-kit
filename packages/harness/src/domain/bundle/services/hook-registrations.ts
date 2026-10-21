@@ -5,8 +5,8 @@ import {
   type HookDialect,
   type HookDialects,
   foreignHooksOf
-} from "../../lifecycle/value-objects/hook-dialect.js";
-import type { HookSource, InstallAdapters, InstallContext } from "../value-objects/install-adapter.js";
+} from "../../lifecycle/spi/hook-dialect.js";
+import type { HookSource, InstallAdapters, InstallContext } from "../spi/install-adapter.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 
 /** One hook as an agent's configuration registers it. */

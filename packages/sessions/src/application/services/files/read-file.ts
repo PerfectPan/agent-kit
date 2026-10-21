@@ -1,5 +1,5 @@
 import { type ByteRange, type Line, splitLines } from "@rivus/agent-kit-platform";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 
 export interface ReadOptions {
   readonly signal?: AbortSignal;

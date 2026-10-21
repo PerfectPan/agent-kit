@@ -1,7 +1,7 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import type { ArtifactSpec } from "../../bundle/value-objects/artifact-spec.js";
-import type { InstallAdapter } from "../../bundle/value-objects/install-adapter.js";
+import type { InstallAdapter } from "../../bundle/spi/install-adapter.js";
 import type { Strategy } from "../../bundle/value-objects/strategy.js";
 import type { StrategyUnavailable } from "../errors/strategy-unavailable.js";
 

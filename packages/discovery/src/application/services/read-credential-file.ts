@@ -1,5 +1,5 @@
 import type { AuthReading, CredentialFileFailed } from "../../domain/installation/index.js";
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 import { readSmallFile } from "./read-small-file.js";
 
 /** Credential files are small, and `~/.claude.json` stays well below this; a larger file is not one a parser knows. */

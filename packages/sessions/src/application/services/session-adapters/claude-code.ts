@@ -37,7 +37,7 @@ import { readEdges } from "../files/edges.js";
 import { readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { readBytes, type ReadProgress, readProgress } from "../files/read-file.js";
 import { walkFiles } from "../files/walk.js";
-import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
+import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../spi.js";
 
 const AGENT = "claude-code";
 

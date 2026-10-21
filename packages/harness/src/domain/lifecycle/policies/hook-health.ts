@@ -2,7 +2,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { hasLegacyMarker } from "../../bundle/policies/legacy-markers.js";
 import { type ArtifactLocator, pointerTail } from "../../install-plan/value-objects/artifact-locator.js";
-import type { HookDialect } from "../value-objects/hook-dialect.js";
+import type { HookDialect } from "../spi/hook-dialect.js";
 
 /** Why `doctor` flags a command hook: it never runs, its timeout unit looks wrong, its program is gone, or it fires twice. */
 export type HookProblem = "unknown-event" | "timeout-unit" | "stale-path" | "duplicate-hook";

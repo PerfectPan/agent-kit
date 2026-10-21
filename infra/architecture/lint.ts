@@ -170,6 +170,9 @@ function targetsOf(rule: PackageRule): Map<string, Target> {
     for (const name of rule.dependsOn) {
       add(name, "plain", { source: name, internalPath: null });
       add(name, "effect", { source: name, internalPath: EFFECT_ENTRY });
+      if (rule.spiImports?.includes(name) && boundaries.packages[name]?.spi) {
+        add(name, "plain", { source: name, internalPath: "spi" });
+      }
     }
     return targets;
   }
@@ -365,9 +368,25 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
     {
       from: all,
       disallow: {
-        to: external({ source: workspaceNames.filter((name) => !isShell(name)), internalPath: `!${EFFECT_ENTRY}` })
+        to: external({
+          source: workspaceNames.filter((name) => !isShell(name)),
+          internalPath: `!{${EFFECT_ENTRY},spi}`
+        })
       },
       message: "[deep-import] {{dependency.source}}: import {{to.module.source}} itself, which resolves to its index.ts"
+    },
+    {
+      from: all,
+      disallow: {
+        to: external({
+          source: workspaceNames.filter(
+            (name) =>
+              !rule.dependsOn.includes(name) || !rule.spiImports?.includes(name) || !boundaries.packages[name]?.spi
+          ),
+          internalPath: "spi"
+        })
+      },
+      message: `[spi-import] {{dependency.source}}: declare the dependency's SPI access under spiImports in ${MANIFEST}`
     },
     {
       from: effectPaths.length === 0 ? all : { ...all, file: { path: `!${braces(effectPaths)}` } },

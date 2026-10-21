@@ -1,6 +1,6 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
-import type { LifecycleMapping } from "./lifecycle-event.js";
+import type { LifecycleMapping } from "../value-objects/lifecycle-event.js";
 
 /** Keys from the payload root, such as `["properties", "info", "id"]`; an array index is a key too (`"0"`). */
 export type FieldPath = readonly string[];

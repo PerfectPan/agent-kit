@@ -30,6 +30,7 @@ export type {
   UsageCursor,
   UsageDecodeError,
   UsageDecodeFailure,
+  UsageDecoder,
   UsageGranularity,
   UsagePlatform,
   UsageRecord,

@@ -1,9 +1,9 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
-import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/value-objects/install-adapter.js";
+import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/spi/install-adapter.js";
 import type { Owner } from "../../bundle/value-objects/owner.js";
-import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import { holds } from "../../ledger/policies/ownership.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";

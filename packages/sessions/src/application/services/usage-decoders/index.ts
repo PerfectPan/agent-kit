@@ -1,4 +1,4 @@
-import type { UsageDecoder } from "../../usage-ports.js";
+import type { UsageDecoder } from "../../spi.js";
 import { claudeCodeUsageDecoder } from "./claude-code.js";
 import { codexUsageDecoder } from "./codex.js";
 import { geminiCliUsageDecoder } from "./gemini-cli.js";

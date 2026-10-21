@@ -5,7 +5,7 @@ import { builtinInstallAdapters } from "../../bundle/adapters/install-adapters.j
 import { droppedHooksOf, placeHooks } from "./hook-placement.js";
 import { foreignHookFiles } from "./hook-registrations.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
-import type { InstallContext } from "../value-objects/install-adapter.js";
+import type { InstallContext } from "../spi/install-adapter.js";
 
 const context: InstallContext = { home: "/u/me", env: {} };
 

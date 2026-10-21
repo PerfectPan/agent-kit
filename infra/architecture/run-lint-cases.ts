@@ -93,6 +93,42 @@ function copyRepository(copy: string): void {
   }
 }
 
+/** A provider-shaped importer exists only in the fixture copy, before provider packages land. */
+function spiProvider(copy: string): void {
+  const folder = join(copy, "packages/providers/spi-probe");
+  const name = "@rivus/agent-kit-provider-spi-probe";
+  const contexts = ["catalog", "discovery", "sessions", "harness", "acp", "cost"].map(
+    (context) => `@rivus/agent-kit-${context}`
+  );
+  const dependsOn = [...contexts, "@rivus/agent-kit-platform"];
+  mkdirSync(join(folder, "src"), { recursive: true });
+  writeFileSync(
+    join(folder, "package.json"),
+    JSON.stringify({
+      name,
+      type: "module",
+      dependencies: Object.fromEntries(dependsOn.map((dep) => [dep, "workspace:*"]))
+    })
+  );
+  cpSync(join(copy, "packages/catalog/tsconfig.json"), join(folder, "tsconfig.json"));
+  writeFileSync(
+    join(folder, "vite.config.ts"),
+    readFileSync(join(copy, "packages/catalog/vite.config.ts"), "utf8").replace("../../infra/", "../../../infra/")
+  );
+  symlinkSync(join(ROOT, "packages/agent-kit/node_modules"), join(folder, "node_modules"));
+  const manifest = join(copy, "infra/architecture/boundaries.ts");
+  const rule = {
+    dependsOn,
+    spiImports: [...contexts, "@rivus/agent-kit-platform"],
+    typesOnly: ["@rivus/agent-kit-cost"],
+    external: []
+  };
+  writeFileSync(
+    manifest,
+    readFileSync(manifest, "utf8").replace("  packages: {", `  packages: {\n    "${name}": ${JSON.stringify(rule)},`)
+  );
+}
+
 /** Writes a case into the copy and returns how to take it out again. */
 function apply(copy: string, entry: Case): () => void {
   const file = join(copy, "packages", entry.pkg, entry.path);
@@ -199,6 +235,7 @@ const started = performance.now();
 let failures = 0;
 try {
   copyRepository(copy);
+  spiProvider(copy);
   for (const batch of batches()) {
     const undo = batch.map((entry) => apply(copy, entry));
     try {

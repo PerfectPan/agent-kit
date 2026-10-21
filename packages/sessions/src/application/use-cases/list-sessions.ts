@@ -3,7 +3,7 @@ import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
-import type { SessionAdapter, SessionAdapters, SessionPlatform } from "../ports.js";
+import type { SessionAdapter, SessionAdapters, SessionPlatform } from "../spi.js";
 import { builtinSessionAdapters } from "../services/session-adapters/index.js";
 
 export interface ListSessionsOptions {

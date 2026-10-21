@@ -9,7 +9,7 @@ import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
-import type { InstallContext } from "../../bundle/value-objects/install-adapter.js";
+import type { InstallContext } from "../../bundle/spi/install-adapter.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
 import type { PlanStep } from "../value-objects/plan-step.js";
 import { planEvidenceScope } from "./plan-evidence-scope.js";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
 import { discoverSessions } from "./discover-sessions.js";
-import type { SessionPlatform } from "../ports.js";
+import type { SessionPlatform } from "../spi.js";
 
 const encoder = new TextEncoder();
 const content = encoder.encode('{"sessionId":"s"}\n');

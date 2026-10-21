@@ -9,6 +9,7 @@ import * as FiberSet from "effect/FiberSet";
 import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
+import type { AcpPlatform } from "../platform.js";
 import { type AcpProfiles, builtinAcpProfiles } from "../../domain/acp-session/adapters/index.js";
 import {
   type AcpProfile,
@@ -47,12 +48,7 @@ import {
   type LoadUnsupported
 } from "../errors.js";
 import { type AcpSessionHandle, answerPermission, deliverUpdate, sessionHandle } from "../services/live-session.js";
-import {
-  type AcpPlatform,
-  SessionBindingStore,
-  type SessionBindingStoreFailure,
-  type SessionBindingStoreShape
-} from "../ports.js";
+import { SessionBindingStore, type SessionBindingStoreFailure, type SessionBindingStoreShape } from "../ports.js";
 import {
   type AcpWire,
   type AgentFeatures,

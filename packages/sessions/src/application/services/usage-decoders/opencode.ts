@@ -29,7 +29,7 @@ import type {
   UsageSource,
   UsageSourceFailure,
   UsageStream
-} from "../../usage-ports.js";
+} from "../../spi.js";
 import { drain, usageStreamOf } from "./files.js";
 
 const AGENT = "opencode";

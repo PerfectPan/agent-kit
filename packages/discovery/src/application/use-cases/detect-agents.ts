@@ -27,7 +27,7 @@ import {
   findCommand,
   type PathCheck
 } from "../services/host-paths.js";
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 import { readCredentialFile } from "../services/read-credential-file.js";
 import { runProbe } from "../services/run-probe.js";
 

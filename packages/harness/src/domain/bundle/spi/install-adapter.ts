@@ -4,10 +4,10 @@ import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-
 import type { TrustPromptKind } from "../../install-plan/value-objects/trust-prompt.js";
 import type { ArtifactContent } from "../../ledger/value-objects/content-hash.js";
 import type { PlacedRegistration } from "../services/hook-placement.js";
-import type { SkillSpec } from "./artifact-spec.js";
-import type { BundleRef } from "./bundle.js";
-import type { Owner } from "./owner.js";
-import type { Strategy } from "./strategy.js";
+import type { SkillSpec } from "../value-objects/artifact-spec.js";
+import type { BundleRef } from "../value-objects/bundle.js";
+import type { Owner } from "../value-objects/owner.js";
+import type { Strategy } from "../value-objects/strategy.js";
 
 /** What an install adapter renders against: the user's home and environment, as the application's platform has them. */
 export interface InstallContext {

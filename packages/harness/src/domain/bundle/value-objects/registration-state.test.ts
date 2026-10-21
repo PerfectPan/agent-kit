@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { CliRegistration } from "./install-adapter.js";
+import type { CliRegistration } from "../spi/install-adapter.js";
 import { ownRecordOf, registrationContent, registrationLinkMismatch } from "./registration-state.js";
 
 const registration = (): CliRegistration => ({

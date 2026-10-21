@@ -5,7 +5,7 @@ import {
   foreignHooksOf,
   type LifecycleSwitch,
   type PayloadFields
-} from "../value-objects/hook-dialect.js";
+} from "../spi/hook-dialect.js";
 import type { LifecycleEvent, LifecycleMapping } from "../value-objects/lifecycle-event.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 

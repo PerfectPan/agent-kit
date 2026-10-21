@@ -1,4 +1,4 @@
-import type { SessionAdapter } from "../../ports.js";
+import type { SessionAdapter } from "../../spi.js";
 import { claudeCodeSessionAdapter } from "./claude-code.js";
 import { codexSessionAdapter } from "./codex.js";
 import { grokSessionAdapter } from "./grok.js";

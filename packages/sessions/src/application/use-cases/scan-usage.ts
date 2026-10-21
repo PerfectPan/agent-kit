@@ -23,7 +23,7 @@ import type {
   UsageSource,
   UsageSourceFailure,
   UsageStream
-} from "../usage-ports.js";
+} from "../spi.js";
 
 export type { UsageScanMark, UsageScanSource, UsageScanState };
 

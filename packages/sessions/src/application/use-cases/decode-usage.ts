@@ -16,7 +16,7 @@ import type {
   UsageSourceOptions,
   UsageStream,
   UsageTarget
-} from "../usage-ports.js";
+} from "../spi.js";
 
 /**
  * Streams the usage records of one source of `agent` (a file, a session directory or opencode's database) in source
