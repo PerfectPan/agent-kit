@@ -20,10 +20,28 @@ describe("given identities", () => {
   });
 
   it("reads current table entries without caching a prior call's aliases", () => {
-    const identities: Record<string, CodingAgent> = { first: identity };
+    const identities: Record<string, CodingAgent> = { [identity.id]: identity };
     expect(parseCodingAgentId("custom", identities)).toEqual({ ok: true, value: identity.id });
-    identities.second = { ...identity, id: "second-agent" };
+    delete identities[identity.id];
+    identities["second-agent"] = { ...identity, id: "second-agent" };
     expect(parseCodingAgentId("custom", identities)).toEqual({ ok: true, value: "second-agent" });
+  });
+
+  it.each([
+    { wrong: identity },
+    { [identity.id]: identity, custom: { ...identity, id: "custom", aliases: [] } },
+    { [identity.id]: identity, second: { ...identity, id: "second" } }
+  ])("rejects inconsistent keys, aliases shadowing ids, and duplicate aliases", (identities) => {
+    expect(() => parseCodingAgentId("custom", identities)).toThrow(
+      expect.objectContaining({ code: "invalid-identity-table" })
+    );
+  });
+
+  it("keeps a canonical id when its own aliases repeat it", () => {
+    expect(parseCodingAgentId(identity.id, { [identity.id]: { ...identity, aliases: [identity.id] } })).toEqual({
+      ok: true,
+      value: identity.id
+    });
   });
 
   it("takes the caller's home rule before the given identity's rule, and never falls back to built-ins", () => {
