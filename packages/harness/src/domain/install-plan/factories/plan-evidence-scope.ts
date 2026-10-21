@@ -6,7 +6,6 @@ import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bund
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
-import { holds } from "../../ledger/policies/ownership.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
 
@@ -118,19 +117,19 @@ export function planEvidenceScope(input: {
   const { owner, legacyMarkers, agents, desired, ledger, adapters, dialects, context } = input;
   const locators: ArtifactLocator[] = desired.map((artifact) => artifact.locator);
   for (const entry of ledger.entries()) {
-    if (holds(entry, owner)) {
+    if (entry.heldBy(owner)) {
       locators.push(entry.locator);
     }
   }
   const ownerHoldsHookGroup = ledger
     .entries()
-    .some((entry) => holds(entry, owner) && entry.locator.memberIn === "hook-group");
+    .some((entry) => entry.heldBy(owner) && entry.locator.memberIn === "hook-group");
   const keptHookGroup = Object.values(ledger.keptRecords()).some((kept) => kept.locator.memberIn === "hook-group");
   const scanLegacy = legacyMarkers.length > 0 || ownerHoldsHookGroup || keptHookGroup;
   const sources = scanLegacy ? legacyHookSources(owner, agents, adapters, dialects, context, input.compat ?? []) : [];
   const rootedAgents = new Set([
     ...agents,
-    ...ledger.entries().flatMap((entry) => (holds(entry, owner) ? entry.agents : []))
+    ...ledger.entries().flatMap((entry) => (entry.heldBy(owner) ? entry.agents : []))
   ]);
   const rootCandidates: string[] = [];
   for (const agent of rootedAgents) {

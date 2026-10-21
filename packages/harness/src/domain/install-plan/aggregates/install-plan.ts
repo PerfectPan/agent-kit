@@ -61,7 +61,7 @@ export class InstallPlan {
   ): Result<InstallPlan, PendingOperations | PlanStale | InvalidPlan | PlanConflict> {
     const { ledger } = evidence;
     if (ledger.pending.length > 0) {
-      return err({ _tag: "PendingOperations", operations: ledger.pending });
+      return err({ _tag: "PendingOperations", operations: ledger.toSnapshot().pending });
     }
     if (basisMoved(draft.basedOn, ledger)) {
       return err(ledgerMovedError(draft.planId, draft.basedOn, ledger));

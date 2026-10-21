@@ -135,7 +135,7 @@ export class AcpSession {
 
 ## Entities
 
-An entity is a child of one aggregate: it has a local identity inside that aggregate, but no identity outside it. It is a read-only record in the root's snapshot, it is read only through the root's methods, and it is created and changed only by the root's transitions. It has no store and no lock of its own. An entity with its own lifecycle and its own store is an aggregate; promote it rather than giving it a repository. Harness's Ledger keeps its entries, pending operations and kept artifacts as entities under `domain/ledger/entities/`: the Ledger owns their invariants, and a save writes them as part of the Ledger.
+An entity is a child of one aggregate: it has a local identity inside that aggregate, but no identity outside it. It is a read-only record in the root's snapshot, it is read only through the root's methods, and it is created and changed only by the root's transitions. It has no store and no lock of its own. An entity with its own lifecycle and its own store is an aggregate; promote it rather than giving it a repository. Harness's Ledger keeps its entries, pending operations and kept artifacts as immutable classes under `domain/ledger/entities/`. The root alone restores these children and replaces them through its transitions; each child validates its own fields, while the Ledger checks locator keys, revisions and uniqueness. Ownership and release are entry methods, and pending operations resolve crash probes. Child snapshots retain the stored record shape; inventory, pending-operation errors and the testing SPI expose those plain snapshots. A save writes the entire Ledger snapshot.
 
 ## Aggregates, Entities And Repositories
 

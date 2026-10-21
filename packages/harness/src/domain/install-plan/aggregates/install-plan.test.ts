@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { buildInstallPlan } from "../factories/build-install-plan.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";

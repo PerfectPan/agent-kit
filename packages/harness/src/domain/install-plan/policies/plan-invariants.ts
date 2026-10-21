@@ -2,7 +2,6 @@ import type { Owner } from "../../bundle/value-objects/owner.js";
 import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
-import { holds } from "../../ledger/policies/ownership.js";
 import { isContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";
 import { isWithin, locatorKey, locatorProblem, locatorsOverlap } from "../value-objects/artifact-locator.js";
@@ -85,7 +84,7 @@ function ownershipProblem(
       return "no observed evidence of an older install";
     }
   } else if (step.action === "remove") {
-    if (entry === undefined || !holds(entry, owner)) {
+    if (entry === undefined || !entry.heldBy(owner)) {
       return "the owner does not hold it";
     }
     const sole = entry.owners.length === 1 && entry.agents.every((agent) => target.agents.includes(agent));
@@ -106,7 +105,7 @@ function ownershipProblem(
     return undefined;
   }
   if (entry !== undefined) {
-    if (holds(entry, owner) || step.choice === "force") {
+    if (entry.heldBy(owner) || step.choice === "force") {
       return undefined;
     }
     return step.action === "adopt" && step.desired?.hash === entry.contentHash ? undefined : "another owner holds it";

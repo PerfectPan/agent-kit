@@ -2,8 +2,8 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { Strategy } from "../../bundle/value-objects/strategy.js";
-import { holds, release, unionAgents } from "../../ledger/policies/ownership.js";
-import { threeWayVerify } from "../../ledger/policies/three-way-verify.js";
+import { Ledger } from "../../ledger/aggregates/ledger.js";
+import { threeWayVerify } from "../../ledger/services/three-way-verify.js";
 import type { ArtifactContent, ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
@@ -125,7 +125,7 @@ function installStep(state: LocatorState, desired: DesiredState): PlanStep {
   const base: PlanStep = {
     locator: desired.locator,
     action: "noop",
-    agents: unionAgents(
+    agents: Ledger.unionAgents(
       entry === undefined ? [] : shared ? entry.agents : entry.agents.filter((agent) => !state.agents.includes(agent)),
       desired.agents
     ),
@@ -138,13 +138,13 @@ function installStep(state: LocatorState, desired: DesiredState): PlanStep {
   if (entry !== undefined && shared) {
     // Owners share an Artifact only while they want its recorded content and it is on disk to join; anything else
     // takes it from the others, which only a force does.
-    const joinable = desired.hash === entry.contentHash && (holds(entry, owner) || observed?.hash === desired.hash);
+    const joinable = desired.hash === entry.contentHash && (entry.heldBy(owner) || observed?.hash === desired.hash);
     if (!joinable) {
       // A takeover of different content leaves the owner alone with it, so only its own agents use it.
       const agents = desired.hash === entry.contentHash ? base.agents : desired.agents;
       return conflictStep(base, "other-owner", choice, () => ({ ...write, agents }));
     }
-    if (!holds(entry, owner)) {
+    if (!entry.heldBy(owner)) {
       return { ...base, action: "adopt" };
     }
   }
@@ -189,10 +189,10 @@ function removalStep(state: LocatorState): PlanStep | undefined {
         }
       : undefined;
   }
-  if (!holds(entry, owner, state.agents)) {
+  if (!entry.heldBy(owner, state.agents)) {
     return undefined;
   }
-  const { removal, agents } = release(entry, owner, state.agents);
+  const { removal, agents } = entry.release(owner, state.agents);
   const base: PlanStep = {
     locator: entry.locator,
     action: "remove",

@@ -7,7 +7,6 @@ import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import { aliasesOf } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
-import { holds } from "../../ledger/policies/ownership.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import { locatorKey } from "../value-objects/artifact-locator.js";
@@ -136,7 +135,7 @@ export function retainsForeignHook(
   const entry = ledger.entry(item.observed.locator);
   if (
     entry === undefined ||
-    !holds(entry, bundle.owner) ||
+    !entry.heldBy(bundle.owner) ||
     !bundleFiresEvent(bundle, item.runner, item.event, dialects)
   ) {
     return false;

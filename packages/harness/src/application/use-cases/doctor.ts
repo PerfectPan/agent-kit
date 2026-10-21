@@ -10,8 +10,7 @@ import { type HookSource } from "../../domain/bundle/spi/install-adapter.js";
 import { type Owner } from "../../domain/bundle/value-objects/owner.js";
 import { type ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isBrokenSymlink } from "../../domain/install-plan/value-objects/observed-artifact.js";
-import { holds } from "../../domain/ledger/policies/ownership.js";
-import { threeWayVerify } from "../../domain/ledger/policies/three-way-verify.js";
+import { threeWayVerify } from "../../domain/ledger/services/three-way-verify.js";
 import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
 import {
   duplicateHooks,
@@ -233,7 +232,7 @@ export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], 
         });
       }
       for (const entry of ledger.entries()) {
-        if (options.owner !== undefined && !holds(entry, options.owner)) {
+        if (options.owner !== undefined && !entry.heldBy(options.owner)) {
           continue;
         }
         const found = yield* Effect.result(observe(entry.locator, registrationLookup(setup.adapters, setup.context)));

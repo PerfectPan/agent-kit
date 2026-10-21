@@ -5,7 +5,7 @@ import { builtinHookDialects } from "../../../../test/support/providers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { InstallPlan } from "../aggregates/install-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
-import type { LedgerEntry } from "../entities/ledger-entry.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../entities/ledger-entry.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
 import { markAcknowledged, threeWayVerify, verifyOwner } from "./three-way-verify.js";
 

@@ -134,9 +134,9 @@ export type { ArtifactRemoved } from "./domain/ledger/events/artifact-removed.js
 export type { Drift, VerifyStatus } from "./domain/ledger/value-objects/drift.js";
 export type { InvalidLedger } from "./domain/ledger/errors/invalid-ledger.js";
 export type { LedgerBusy } from "./domain/ledger/errors/ledger-busy.js";
-export type { LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
+export type { LedgerEntrySnapshot as LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
 export type { LedgerEvent } from "./domain/ledger/aggregates/ledger.js";
 export type { LedgerVersionUnsupported } from "./domain/ledger/errors/ledger-version-unsupported.js";
-export type { PendingOperation } from "./domain/ledger/entities/pending-operation.js";
+export type { PendingOperationSnapshot as PendingOperation } from "./domain/ledger/entities/pending-operation.js";
 export type { PendingOperations } from "./domain/ledger/errors/pending-operations.js";
 export type { PreImage } from "./domain/ledger/value-objects/pre-image.js";

@@ -7,8 +7,8 @@ import { buildInstallPlan, type PlanRequest } from "../../install-plan/factories
 import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../../install-plan/value-objects/observed-artifact.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
-import type { LedgerEntry } from "../entities/ledger-entry.js";
-import type { PendingOperation } from "../entities/pending-operation.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../entities/ledger-entry.js";
+import type { PendingOperationSnapshot as PendingOperation } from "../entities/pending-operation.js";
 import { checkLedgerVersion, Ledger, type LedgerSnapshot } from "./ledger.js";
 
 const HOME = "/u/me";

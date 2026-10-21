@@ -1,5 +1,5 @@
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { ObservedArtifact } from "./observed-artifact.js";
 import type { PlanStep } from "./plan-step.js";
 import { touchesDisk } from "./plan-step.js";

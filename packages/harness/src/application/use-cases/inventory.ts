@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 
-import type { LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
-import type { PendingOperation } from "../../domain/ledger/entities/pending-operation.js";
+import type { LedgerEntrySnapshot as LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
+import type { PendingOperationSnapshot as PendingOperation } from "../../domain/ledger/entities/pending-operation.js";
 import { type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";
@@ -22,7 +22,11 @@ export interface Inventory {
 export function inventory(options: ScopeOptions = {}): Effect.Effect<Inventory, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
     const { ledger, stored } = yield* loadLedger(yield* ledgerScope(options));
-    const recorded = { revision: ledger.revision, entries: ledger.entries(), pending: ledger.pending };
+    const recorded = {
+      revision: ledger.revision,
+      entries: ledger.entries().map((entry) => entry.toSnapshot()),
+      pending: ledger.toSnapshot().pending
+    };
     return stored ? { ...recorded, lineage: ledger.lineage } : recorded;
   });
 }
