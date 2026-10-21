@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
 /** The codes of "nothing is at the path (or a parent is not a directory)". */
 const Missing = z.looseObject({ code: z.union([z.literal("ENOENT"), z.literal("ENOTDIR")]) });

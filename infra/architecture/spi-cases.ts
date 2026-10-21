@@ -31,10 +31,10 @@ export const spiCases: Case[] = [
     `export { readBytes } from "${SESSIONS}/spi";`
   ),
   rejects(
-    "provider: SPI-only access rejects the context index",
+    "provider: SPI-only access rejects the context public entry",
     "providers/spi-probe",
     fresh("src/x"),
-    `export { listSessions } from "${SESSIONS}";`,
+    `export { listSessions } from "${SESSIONS}/public";`,
     "package-dependency"
   ),
   rejects(

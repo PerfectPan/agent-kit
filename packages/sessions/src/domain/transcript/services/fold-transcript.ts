@@ -3,7 +3,7 @@ import type {
   SessionPrompt,
   SessionSummary,
   SessionSummaryWithPrompts
-} from "../../session/index.js";
+} from "../../session/value-objects/session-summary.js";
 import { capPromptText, mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
 import type { Capability, Transcript } from "../value-objects/transcript.js";
 

@@ -1,5 +1,5 @@
-import type { Result } from "@rivus/agent-kit-catalog";
-import type { ByteRange } from "@rivus/agent-kit-platform";
+import type { Result } from "@rivus/agent-kit-catalog/public";
+import type { ByteRange } from "@rivus/agent-kit-platform/public";
 import {
   CAPABILITIES,
   type Capability,
@@ -19,7 +19,7 @@ import {
   snapshotHasTools,
   summarizeSession,
   type Transcript
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { isEqual, isPlainObject } from "es-toolkit";
 
 /** One fixture session and what its files demonstrate. */

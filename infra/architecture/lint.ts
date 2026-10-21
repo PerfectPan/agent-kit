@@ -158,7 +158,7 @@ interface Target {
 }
 
 /**
- * The internal packages a package may import and the specifiers that reach them: the package name (and its Effect
+ * The internal packages a package may import and the specifiers that reach them: the public entry (and its Effect
  * entry) for each of `dependsOn`, or the shell entries of `publicImports` mapped to the package they publish.
  */
 function targetsOf(rule: PackageRule): Map<string, Target> {
@@ -170,7 +170,7 @@ function targetsOf(rule: PackageRule): Map<string, Target> {
   };
   if (rule.publicImports === undefined) {
     for (const name of rule.dependsOn) {
-      add(name, "plain", { source: name, internalPath: null });
+      add(name, "plain", { source: name, internalPath: ["public", "public/events"] });
       add(name, "effect", { source: name, internalPath: EFFECT_ENTRY });
     }
     for (const name of rule.spiImports ?? []) {
@@ -389,10 +389,10 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
       disallow: {
         to: external({
           source: workspaceNames.filter((name) => !isShell(name) && !boundaries.packages[name]?.providerServices),
-          internalPath: `!{${EFFECT_ENTRY},spi}`
+          internalPath: `!{public,public/events,${EFFECT_ENTRY},spi}`
         })
       },
-      message: "[deep-import] {{dependency.source}}: import {{to.module.source}} itself, which resolves to its index.ts"
+      message: "[deep-import] {{dependency.source}}: import {{to.module.source}}/public or a declared SPI entry"
     },
     {
       from: all,

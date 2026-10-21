@@ -1,5 +1,5 @@
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "../../../src/hook-dialect-conformance.js";
 
 // Scrubbed Grok hook payloads (user guide 10-hooks.md and xai-grok-hooks/src/event.rs in xai-org/grok-build): the
 // camelCase keys every build sends, with hookEventName as the snake_case wire name.

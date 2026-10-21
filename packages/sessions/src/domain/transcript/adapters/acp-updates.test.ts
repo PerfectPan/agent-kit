@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { foldStreamParts, type TranscriptStreamPart } from "../index.js";
+import { foldStreamParts } from "../services/fold-stream-parts.js";
+import { type TranscriptStreamPart } from "../value-objects/stream-part.js";
 import {
   acpChunkText,
   acpToolCallPayload,

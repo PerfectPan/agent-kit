@@ -1,4 +1,4 @@
-import type { PlatformSqlite } from "@rivus/agent-kit-platform";
+import type { PlatformSqlite } from "@rivus/agent-kit-platform/public";
 
 type SqliteModule = typeof import("node:sqlite");
 

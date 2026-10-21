@@ -1,17 +1,17 @@
-import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
-import type { Platform } from "@rivus/agent-kit-platform";
+import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 
+import { QUIET_MS } from "../../domain/usage/policies/quiet.js";
 import {
-  QUIET_MS,
   keylessRecordRead,
   nextMark,
-  restoreUsageWindow,
-  scanSources,
-  type UsageRecord,
   type UsageScanMark,
   type UsageScanSource,
   type UsageScanState
-} from "../../domain/usage/index.js";
+} from "../../domain/usage/value-objects/scan-state.js";
+import { restoreUsageWindow } from "../../domain/usage/services/usage-window.js";
+import { scanSources } from "../../domain/usage/services/scan-sources.js";
+import { type UsageRecord } from "../../domain/usage/value-objects/usage-record.js";
 import { decodeUsage, isUsageRecord, isUsageSource, listUsageSources } from "./decode-usage.js";
 import type { SessionErrorCode } from "../errors.js";
 import type { UsageProviders } from "../providers.js";

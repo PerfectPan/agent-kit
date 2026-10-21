@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { decodeUsage, isUsageRecord, type DecodeUsageOptions, type UsageRecord } from "@rivus/agent-kit-sessions";
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import {
+  decodeUsage,
+  isUsageRecord,
+  type DecodeUsageOptions,
+  type UsageRecord
+} from "@rivus/agent-kit-sessions/public";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { opencode } from "../src/identity.js";
 import { opencodeUsageDecoder } from "../src/usage.js";
 import { readUsageHome } from "./support.js";

@@ -4,31 +4,33 @@
 export { readHookEvent, type ReadHookEventOptions } from "./domain/lifecycle/adapters/read-hook-event.js";
 export {
   type BlockSource,
+  INITIAL_LIFECYCLE_STATE,
+  type LifecycleClock,
+  type LifecycleState,
+  type LifecycleStatus
+} from "./domain/lifecycle/value-objects/lifecycle-state.js";
+export {
   type FieldPath,
   type FieldSource,
   type ForeignHooks,
-  heartbeatSignal,
-  type HeartbeatSignal,
   type HookDialect,
   type HostMarkers,
   type HookDialects,
   type HookEventSpec,
   type HookOutput,
   type HookTimeout,
-  INITIAL_LIFECYCLE_STATE,
+  type LifecycleSwitch,
+  type PayloadFields
+} from "./domain/lifecycle/spi/hook-dialect.js";
+export { heartbeatSignal, type HeartbeatSignal } from "./domain/lifecycle/policies/heartbeat-signal.js";
+export {
   type LifecycleBlocker,
-  type LifecycleClock,
   type LifecycleEvent,
   type LifecycleMapping,
   type LifecycleOutcome,
   type LifecyclePhase,
   type LifecycleScope,
-  type LifecycleState,
-  lifecycleStatus,
-  type LifecycleStatus,
-  type LifecycleSwitch,
-  type PayloadFields,
-  reduceLifecycle,
   type TerminalHost,
   type TerminalIdentity
-} from "./domain/lifecycle/index.js";
+} from "./domain/lifecycle/value-objects/lifecycle-event.js";
+export { lifecycleStatus, reduceLifecycle } from "./domain/lifecycle/policies/reduce-lifecycle.js";

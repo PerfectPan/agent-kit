@@ -1,4 +1,4 @@
-import { requireService, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { requireService, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { HookDialect, HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";

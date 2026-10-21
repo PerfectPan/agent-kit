@@ -2,7 +2,7 @@ import { codexUsageDecoder } from "../src/usage.js";
 const testUsage = { codex: codexUsageDecoder };
 import { codex } from "../src/identity.js";
 const testIdentity = { codex };
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import {
   addUsage,
   type Usage,
@@ -10,10 +10,10 @@ import {
   type DecodeUsageOptions,
   isUsageRecord,
   type UsageRecord
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readUsageHome } from "./support.js";
 
 // Ported from presence's scanner tests, on synthetic sessions laid out as in each agent's home under `/u/me`.

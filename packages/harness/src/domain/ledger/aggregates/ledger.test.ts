@@ -1,4 +1,4 @@
-import { isAgentKitError } from "@rivus/agent-kit-catalog";
+import { isAgentKitError } from "@rivus/agent-kit-catalog/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Bundle } from "../../bundle/value-objects/bundle.js";

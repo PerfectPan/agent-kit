@@ -1,7 +1,8 @@
 import * as Effect from "effect/Effect";
 
-import type { LedgerEntry, PendingOperation } from "../../domain/ledger/index.js";
-import { type PlanStale } from "../../domain/install-plan/index.js";
+import type { LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
+import type { PendingOperation } from "../../domain/ledger/entities/pending-operation.js";
+import { type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";

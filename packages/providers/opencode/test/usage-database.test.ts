@@ -1,4 +1,4 @@
-import { usageDecoderConformance } from "@rivus/agent-kit-testing";
+import { usageDecoderConformance } from "@rivus/agent-kit-testing/public";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { opencodeUsageDecoder } from "../src/usage.js";
 import { opencode } from "../src/identity.js";
@@ -18,10 +18,10 @@ import {
   type UsageCursor,
   type UsagePlatform,
   type UsageRecord
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { createNodePlatform } from "@rivus/agent-kit-platform-node";
+import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
 
 interface MessageRow {
   id: string;

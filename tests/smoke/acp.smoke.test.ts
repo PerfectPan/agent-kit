@@ -7,10 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
-import { agentEnv, connectAgent, MemorySessionBindingStoreLive, probeAgent } from "@rivus/agent-kit-acp";
+import { agentEnv, connectAgent, MemorySessionBindingStoreLive, probeAgent } from "@rivus/agent-kit-acp/public";
 import { builtinAcpProfiles } from "@rivus/agent-kit/acp";
 import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
-import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";

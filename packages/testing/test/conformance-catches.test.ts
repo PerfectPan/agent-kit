@@ -2,7 +2,7 @@ import { builtinSessionAdapters } from "./providers.js";
 import { claudeCodeSessions } from "../../providers/claude-code/test/support.js";
 import { fileURLToPath } from "node:url";
 
-import { readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions";
+import { readText, type SessionAdapter, type Transcript } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";

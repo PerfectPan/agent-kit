@@ -1,19 +1,20 @@
 import type { InstallProviders } from "../providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import { checkOwnerMarkers, type HookCompat, type InvalidBundle, type Owner } from "../../domain/bundle/index.js";
+import { checkOwnerMarkers, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
+import { type HookCompat } from "../../domain/bundle/services/hook-registrations.js";
+import { type Owner } from "../../domain/bundle/value-objects/owner.js";
 import {
   type ArtifactKind,
   type ArtifactLocator,
-  type LegacyTreatment,
-  legacyTreatment,
   locatorKey,
-  type ObservedArtifact,
-  pointerTail,
-  planEvidenceScope
-} from "../../domain/install-plan/index.js";
+  pointerTail
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { type LegacyTreatment, legacyTreatment } from "../../domain/install-plan/policies/legacy-ownership.js";
+import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { planEvidenceScope } from "../../domain/install-plan/factories/plan-evidence-scope.js";
 import { type LegacyObservation, scanLegacy } from "../services/legacy-scan.js";
 import { fromResult } from "../services/from-result.js";
 import { type LedgerReadError, loadLedger } from "../services/ledger-session.js";

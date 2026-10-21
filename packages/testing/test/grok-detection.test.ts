@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { FileStat } from "@rivus/agent-kit-platform";
-import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import type { FileStat } from "@rivus/agent-kit-platform/public";
+import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions/public";
+import { createMemoryPlatform } from "../src/memory-platform.js";
 import { builtinCodingAgents as testIdentity, builtinSessionAdapters as testSessions } from "./providers.js";
 
 describe("cross-agent Grok detection", () => {

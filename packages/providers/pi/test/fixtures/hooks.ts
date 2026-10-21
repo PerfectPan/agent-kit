@@ -1,6 +1,6 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness";
+import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Synthetic Pi extension events (docs/extensions.md in earendil-works/pi), as a bridge extension forwards them: the
 // event object with its name as `type`, plus `sessionId` and `cwd` from the extension context.

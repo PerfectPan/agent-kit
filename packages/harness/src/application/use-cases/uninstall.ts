@@ -1,10 +1,15 @@
 import type { InstallProviders } from "../providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 
-import { checkOwnerMarkers, type InvalidBundle, legacyMarkersOf, type Owner } from "../../domain/bundle/index.js";
-import type { ArtifactLocator, InvalidPlan, PlanConflict, PlanStale } from "../../domain/install-plan/index.js";
-import { type PendingOperations, unionAgents } from "../../domain/ledger/index.js";
+import { checkOwnerMarkers, type InvalidBundle, legacyMarkersOf } from "../../domain/bundle/value-objects/bundle.js";
+import { type Owner } from "../../domain/bundle/value-objects/owner.js";
+import type { ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import type { InvalidPlan } from "../../domain/install-plan/errors/invalid-plan.js";
+import type { PlanConflict } from "../../domain/install-plan/errors/plan-conflict.js";
+import type { PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
+import { type PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
+import { unionAgents } from "../../domain/ledger/policies/ownership.js";
 import { type ApplyInstallError, applyLocked, type ApplyReport } from "./apply-install.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";

@@ -1,4 +1,4 @@
-import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog/public";
 import {
   type HookDialect,
   type HookEventSpec,
@@ -6,7 +6,7 @@ import {
   type LifecycleEvent,
   type LifecycleMapping,
   readHookEvent
-} from "@rivus/agent-kit-harness";
+} from "@rivus/agent-kit-harness/public/events";
 import { isEqual, isPlainObject } from "es-toolkit";
 
 import { check, type ConformanceCheck } from "./session-adapter-conformance.js";

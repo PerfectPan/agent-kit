@@ -1,4 +1,4 @@
-import type { CostSource } from "@rivus/agent-kit-sessions";
+import type { CostSource } from "@rivus/agent-kit-sessions/public";
 
 /**
  * An amount in USD and where it comes from, under the names a `UsageRecord` uses, so `{ ...record, ...cost }` is the

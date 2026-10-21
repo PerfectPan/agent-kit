@@ -1,4 +1,4 @@
-import type { Usage } from "../../usage/index.js";
+import type { Usage } from "../../usage/value-objects/usage.js";
 import type { SourcePointer } from "./source-pointer.js";
 
 /**

@@ -1,4 +1,4 @@
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Cursor hook payloads (https://cursor.com/docs/hooks), one or more per event.
 

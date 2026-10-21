@@ -1,4 +1,4 @@
-import type { CostSource, ModelUsage, Usage, UsageRecord } from "@rivus/agent-kit-sessions";
+import type { CostSource, ModelUsage, Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Cost } from "../value-objects/cost.js";
 import type { Price } from "../value-objects/price.js";

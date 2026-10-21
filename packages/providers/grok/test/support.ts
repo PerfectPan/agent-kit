@@ -1,4 +1,4 @@
-import type { ConformanceSession } from "@rivus/agent-kit-testing";
+import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { fileURLToPath } from "node:url";
 import { readTree } from "../../../testing/test/support.js";
 

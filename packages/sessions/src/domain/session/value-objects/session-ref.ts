@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /** The reference to a Session. It carries the CodingAgentId, so later calls reach the right adapter. */
 export interface SessionRef {

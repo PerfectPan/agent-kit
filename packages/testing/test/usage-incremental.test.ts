@@ -6,7 +6,7 @@ import { builtinCodingAgents as testIdentity } from "./providers.js";
 import { builtinSessionAdapters as testSessions } from "./providers.js";
 import { fileURLToPath } from "node:url";
 
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import {
   addUsage,
   decodeUsage,
@@ -18,7 +18,7 @@ import {
   type UsageCursor,
   type UsagePlatform,
   type UsageRecord
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryPlatform } from "../src/memory-platform.js";

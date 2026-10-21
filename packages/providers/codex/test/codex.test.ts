@@ -5,7 +5,7 @@ import { codex } from "../src/identity.js";
 const testIdentity = { codex };
 import { fileURLToPath } from "node:url";
 
-import type { Result } from "@rivus/agent-kit-catalog";
+import type { Result } from "@rivus/agent-kit-catalog/public";
 import {
   foldTranscript,
   isSessionHead,
@@ -16,10 +16,10 @@ import {
   type SessionListFailure,
   timedRecord,
   type Transcript
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform, type MemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform, type MemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readTree } from "../../../testing/test/support.js";
 
 const tree = await readTree(fileURLToPath(new URL("fixtures/sessions", import.meta.url)), "/u/me/.codex/fx");

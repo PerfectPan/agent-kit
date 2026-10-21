@@ -2,9 +2,9 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
-import { createNodePlatform } from "@rivus/agent-kit-platform-node";
+import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
 import * as Layer from "effect/Layer";
 
 import { HarnessLive } from "../../src/infra/factories/harness-live.js";

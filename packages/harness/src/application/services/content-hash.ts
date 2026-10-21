@@ -1,7 +1,11 @@
 import * as Effect from "effect/Effect";
 
-import type { ArtifactKind } from "../../domain/install-plan/index.js";
-import { type ArtifactContent, canonicalContent, type ContentHash } from "../../domain/ledger/index.js";
+import type { ArtifactKind } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import {
+  type ArtifactContent,
+  canonicalContent,
+  type ContentHash
+} from "../../domain/ledger/value-objects/content-hash.js";
 
 /** SHA-256 of UTF-8 text as 64 lowercase hex digits, with the WebCrypto digest that Node and browsers share. */
 export function sha256Hex(text: string): Effect.Effect<string> {

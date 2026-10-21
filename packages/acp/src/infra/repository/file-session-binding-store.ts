@@ -6,7 +6,7 @@ import * as z from "zod/mini";
 
 import type { AcpPlatform } from "../../application/platform.js";
 import { SessionBindingStore, type SessionBindingStoreFailure } from "../../application/ports.js";
-import type { SessionBinding } from "../../domain/acp-session/index.js";
+import type { SessionBinding } from "../../domain/acp-session/value-objects/session-binding.js";
 
 const SCHEMA_VERSION = 1;
 

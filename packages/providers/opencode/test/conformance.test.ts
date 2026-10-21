@@ -4,7 +4,7 @@ import {
   hookDialectConformance,
   probeRecipeConformance,
   usageDecoderConformance
-} from "@rivus/agent-kit-testing";
+} from "@rivus/agent-kit-testing/public";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { opencode } from "../src/identity.js";
 import { opencodeProbe } from "../src/discovery.js";

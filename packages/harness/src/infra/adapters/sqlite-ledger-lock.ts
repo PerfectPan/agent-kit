@@ -1,11 +1,11 @@
-import type { Platform, PlatformSqlite, SqliteDatabase } from "@rivus/agent-kit-platform";
+import type { Platform, PlatformSqlite, SqliteDatabase } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as z from "zod/mini";
 
 import { LedgerLock, type LedgerLockFailure, type LedgerLockShape, type LedgerScope } from "../../application/ports.js";
-import type { LedgerBusy } from "../../domain/ledger/index.js";
+import type { LedgerBusy } from "../../domain/ledger/errors/ledger-busy.js";
 import { readText } from "../services/read-text.js";
 import { harnessStateDir } from "../services/state-dir.js";
 

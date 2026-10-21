@@ -1,4 +1,8 @@
-import { createAcpPartTranslator, createStreamFolder, type TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import {
+  createAcpPartTranslator,
+  createStreamFolder,
+  type TranscriptStreamPart
+} from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -8,15 +12,15 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
+import { type AcpSessionSnapshot } from "../../domain/acp-session/value-objects/acp-session-snapshot.js";
+import { type CancelUnsettled } from "../../domain/acp-session/errors/cancel-unsettled.js";
 import {
-  type AcpSessionSnapshot,
-  type CancelUnsettled,
   type PermissionOutcome,
-  permissionOutcome,
-  type PermissionRequest,
-  type PromptBlock,
-  type SessionClosed
-} from "../../domain/acp-session/index.js";
+  type PermissionRequest
+} from "../../domain/acp-session/value-objects/permission-request.js";
+import { permissionOutcome } from "../../domain/acp-session/policies/permission-default.js";
+import { type PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
+import { type SessionClosed } from "../../domain/acp-session/errors/session-closed.js";
 import {
   type ConnectionState,
   emit,

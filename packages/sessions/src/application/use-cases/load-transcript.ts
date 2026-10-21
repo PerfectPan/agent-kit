@@ -7,15 +7,17 @@ import {
   err,
   ok,
   parseCodingAgentId
-} from "@rivus/agent-kit-catalog";
+} from "@rivus/agent-kit-catalog/public";
 
+import type { NoAdapterAccepted } from "../../domain/session/errors/session-read-error.js";
 import type {
-  NoAdapterAccepted,
   SessionPromptsOptions,
-  SessionRef,
   SessionSummaryWithPrompts
-} from "../../domain/session/index.js";
-import { foldTranscript, sessionPrompts, summaryOf, type Transcript } from "../../domain/transcript/index.js";
+} from "../../domain/session/value-objects/session-summary.js";
+import type { SessionRef } from "../../domain/session/value-objects/session-ref.js";
+import { foldTranscript, summaryOf } from "../../domain/transcript/services/fold-transcript.js";
+import { sessionPrompts } from "../../domain/transcript/policies/turns.js";
+import { type Transcript } from "../../domain/transcript/value-objects/transcript.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import type { SessionAdapter, SessionPlatform, SessionReadError } from "../spi.js";
 import type { SessionProviders } from "../providers.js";

@@ -4,12 +4,15 @@ import * as Effect from "effect/Effect";
 import {
   type CliRegistration,
   type InstallAdapters,
-  type InstallContext,
+  type InstallContext
+} from "../../domain/bundle/spi/install-adapter.js";
+import {
   ownRecordOf as ownRecordOfRule,
   registrationContent as registrationContentRule,
   registrationLinkMismatch as registrationLinkMismatchRule
-} from "../../domain/bundle/index.js";
-import { type ArtifactLocator, isWithin, type ObservedArtifact } from "../../domain/install-plan/index.js";
+} from "../../domain/bundle/value-objects/registration-state.js";
+import { type ArtifactLocator, isWithin } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
 import { hashContent } from "./content-hash.js";
 import { ArtifactFiles, type ArtifactFailure, type ArtifactRead } from "../ports.js";
 import { resolvePath } from "./resolve-path.js";

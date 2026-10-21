@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SourcedRecord } from "@rivus/agent-kit-sessions";
+import type { SourcedRecord } from "@rivus/agent-kit-sessions/public";
 import { claudeCodeUsage, claudeCodeUsageLines } from "../src/records/usage.js";
 
 describe("claudeCodeUsage", () => {

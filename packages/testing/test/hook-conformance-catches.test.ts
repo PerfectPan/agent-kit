@@ -1,5 +1,5 @@
 import { builtinHookDialects as testHooks } from "./providers.js";
-import { type HookDialect } from "@rivus/agent-kit-harness";
+import { type HookDialect } from "@rivus/agent-kit-harness/public/events";
 import { builtinHookDialects } from "./providers.js";
 import { describe, expect, it } from "vite-plus/test";
 

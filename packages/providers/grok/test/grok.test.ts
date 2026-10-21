@@ -4,8 +4,8 @@ import { grokSessionAdapter, translateGrokRecords } from "../src/sessions.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import type { Result } from "@rivus/agent-kit-catalog";
-import type { FileStat } from "@rivus/agent-kit-platform";
+import type { Result } from "@rivus/agent-kit-catalog/public";
+import type { FileStat } from "@rivus/agent-kit-platform/public";
 import {
   decodeUsage,
   foldTranscript,
@@ -18,10 +18,10 @@ import {
   type Transcript,
   type UsageCursor,
   type UsageRecord
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readTree } from "../../../testing/test/support.js";
 
 const testIdentity = { grok };

@@ -1,4 +1,4 @@
-import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { Owner } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";

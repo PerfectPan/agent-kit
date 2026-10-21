@@ -1,4 +1,4 @@
-import { type ByteRange, type Line, splitLines } from "@rivus/agent-kit-platform";
+import { type ByteRange, type Line, splitLines } from "@rivus/agent-kit-platform/public";
 import type { SessionPlatform } from "../../spi.js";
 
 export interface ReadOptions {

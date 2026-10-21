@@ -9,7 +9,7 @@ import { findLegacy } from "../src/application/use-cases/find-legacy.js";
 import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
-import type { ArtifactSource } from "../src/domain/bundle/index.js";
+import type { ArtifactSource } from "../src/domain/bundle/spi/install-adapter.js";
 import { demoBundle } from "./support/bundles.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 

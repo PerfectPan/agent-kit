@@ -1,13 +1,13 @@
 import { builtinUsageDecoders as testUsage } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import {
   decodeUsage,
   type DecodeUsageOptions,
   isUsageRecord,
   noCacheInputTokens,
   type UsageRecord
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";

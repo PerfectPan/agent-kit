@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 
-import type { ChildHandle } from "@rivus/agent-kit-platform";
+import type { ChildHandle } from "@rivus/agent-kit-platform/public";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "./create-node-platform.js";

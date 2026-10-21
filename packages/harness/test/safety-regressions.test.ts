@@ -12,7 +12,7 @@ import { inventory } from "../src/application/use-cases/inventory.js";
 import { planInstall } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { verify } from "../src/application/use-cases/verify.js";
-import { locatorKey } from "../src/domain/install-plan/index.js";
+import { locatorKey } from "../src/domain/install-plan/value-objects/artifact-locator.js";
 import { demoBundle } from "./support/bundles.js";
 import { FAKE_CODEX } from "./support/fake-codex.js";
 import { removeTestHomes, testHome } from "./support/home.js";

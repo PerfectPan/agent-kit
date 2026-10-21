@@ -2,7 +2,7 @@ import { claudeCodeSessionAdapter, translateClaudeCodeRecords } from "../src/ses
 import { claudeCode } from "../src/identity.js";
 import { fileURLToPath } from "node:url";
 
-import type { Result } from "@rivus/agent-kit-catalog";
+import type { Result } from "@rivus/agent-kit-catalog/public";
 import {
   foldTranscript,
   isSessionHead,
@@ -15,10 +15,10 @@ import {
   type SessionListFailure,
   summarizeSession,
   type Transcript
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readTree } from "../../../testing/test/support.js";
 
 const testSessions = { "claude-code": claudeCodeSessionAdapter };

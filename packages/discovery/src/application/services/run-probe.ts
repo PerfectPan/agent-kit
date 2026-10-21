@@ -1,6 +1,7 @@
 import * as z from "zod/mini";
 
-import type { CommandFailed, CommandOutput } from "../../domain/installation/index.js";
+import type { CommandFailed } from "../../domain/installation/value-objects/probe-problem.js";
+import type { CommandOutput } from "../../domain/installation/value-objects/version.js";
 import { errnoCode } from "./abortable.js";
 import type { DiscoveryPlatform } from "../platform.js";
 

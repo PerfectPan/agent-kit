@@ -1,5 +1,5 @@
-import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { ExitStatus } from "@rivus/agent-kit-platform";
+import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { ExitStatus } from "@rivus/agent-kit-platform/public";
 
 /** The agent's program could not start, for example because it is not on the `PATH` of the given environment. */
 export interface AgentUnavailable {

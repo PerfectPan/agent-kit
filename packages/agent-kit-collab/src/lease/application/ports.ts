@@ -2,7 +2,7 @@ import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
-import type { LeaseSnapshot } from "../domain/lease/index.js";
+import type { LeaseSnapshot } from "../domain/lease/value-objects/lease-snapshot.js";
 
 /**
  * Another writer wrote over the revision a `save` was conditioned on, so it wrote nothing. Declared here, next to

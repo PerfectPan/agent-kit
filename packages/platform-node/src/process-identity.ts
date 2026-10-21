@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 
-import type { OperatingSystem, ProcessIdentity } from "@rivus/agent-kit-platform";
+import type { OperatingSystem, ProcessIdentity } from "@rivus/agent-kit-platform/public";
 
 import { hasCode } from "./error-code.js";
 

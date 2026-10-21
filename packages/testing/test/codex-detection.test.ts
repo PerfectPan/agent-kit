@@ -1,7 +1,7 @@
 import { builtinSessionAdapters as testSessions, builtinCodingAgents as testIdentity } from "./providers.js";
 import { fileURLToPath } from "node:url";
-import type { Result } from "@rivus/agent-kit-catalog";
-import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
+import type { Result } from "@rivus/agent-kit-catalog/public";
+import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 import { createMemoryPlatform } from "../src/memory-platform.js";
 import { readTree } from "./support.js";

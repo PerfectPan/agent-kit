@@ -1,8 +1,8 @@
 import { builtinUsageDecoders as testUsage } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import { calendarWindow, costOf, createPricing, type Price, summarize } from "@rivus/agent-kit-cost";
-import { decodeUsage, isUsageRecord, noCacheInputTokens, type UsageRecord } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { calendarWindow, costOf, createPricing, type Price, summarize } from "@rivus/agent-kit-cost/public";
+import { decodeUsage, isUsageRecord, noCacheInputTokens, type UsageRecord } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "../src/memory-platform.js";

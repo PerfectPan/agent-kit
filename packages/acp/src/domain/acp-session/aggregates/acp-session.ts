@@ -1,4 +1,4 @@
-import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { AcpSessionInvalid } from "../errors/acp-session-invalid.js";
 import type { IllegalTransition } from "../errors/illegal-transition.js";

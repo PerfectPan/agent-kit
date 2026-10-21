@@ -1,6 +1,6 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness";
+import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Gemini CLI hook payloads (docs/hooks/reference.md in google-gemini/gemini-cli), one per event.
 

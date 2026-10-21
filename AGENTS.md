@@ -71,8 +71,8 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
   `@rivus/agent-kit` only through the public entries listed in `boundaries.ts`, as a peer (`workspace:^`). Both
   packages are the one `versioning.fixed` group in `pnpm-workspace.yaml`: one version, one tag, one release.
 - The other folders under `packages/`, such as `packages/platform`, are private internal packages named
-  `@rivus/agent-kit-<folder>`, one per bounded context, with `"private": true`. Each exports `src/index.ts`
-  for sibling packages and `src/public.ts` for the shell, straight from TypeScript source, and is a `workspace:*`
+  `@rivus/agent-kit-<folder>`, one per bounded context, with `"private": true`. Each exports `src/public.ts`
+  for sibling packages and the shell, plus `src/spi.ts` where provider helpers are needed, straight from TypeScript source, and is a `workspace:*`
   devDependency of the shell. Their tsconfig enables `isolatedDeclarations` because the shell's declaration bundler
   (Oxc) needs explicit types on exported declarations; keep exports whose type is only inferred, such as zod
   schemas, module-private.
@@ -122,7 +122,7 @@ For non-trivial changes:
 ## Repository Architecture
 
 - `docs/architecture/authoring.md` is the authority for how a context package is laid out (`domain/` with one
-  `adapters/` folder per concept, `application/`, `infra/`, `public.ts`, `index.ts`), for the plain
+  `adapters/` folder per concept, `application/`, `infra/`, `public.ts`, `spi.ts`), for the plain
   TypeScript and Effect rules, and for the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).

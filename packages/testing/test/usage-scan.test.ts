@@ -1,14 +1,14 @@
 import { builtinUsageDecoders as testUsage } from "./providers.js";
 import { builtinCodingAgents as testIdentity } from "./providers.js";
-import { isAgentKitError } from "@rivus/agent-kit-catalog";
-import type { FileStat } from "@rivus/agent-kit-platform";
+import { isAgentKitError } from "@rivus/agent-kit-catalog/public";
+import type { FileStat } from "@rivus/agent-kit-platform/public";
 import {
   isUsageRecord,
   scanUsage,
   type ScanUsageOptions,
   type UsageRecord,
   type UsageScanState
-} from "@rivus/agent-kit-sessions";
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryFile, type MemoryPlatform } from "../src/memory-platform.js";

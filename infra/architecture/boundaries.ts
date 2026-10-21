@@ -8,13 +8,13 @@
 /**
  * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at
  * `src/domain/<concept>/adapters/` (inside `domain/` but judged as their own layer), `src/application/` and
- * `src/infra/`. Entry files (`public.ts`, `index.ts`, `spi.ts`) may reach the package's layers. Sources under `src/` are plain `.ts` files:
+ * `src/infra/`. Entry files (`public.ts`, `spi.ts`) may reach the package's layers. Sources under `src/` are plain `.ts` files:
  * declaration and JavaScript files would hide imports from the check.
  */
 export type Layer = "domain" | "adapters" | "application" | "infra";
 
 export interface PackageRule {
-  /** Workspace packages this package may import by bare name, which resolves to the target's `index.ts`. */
+  /** Workspace packages this package may import through their `public` entries. */
   readonly dependsOn: readonly string[];
   /** This context exports `src/spi.ts` as `./spi` for provider implementations. */
   readonly spi?: true;
@@ -22,7 +22,7 @@ export interface PackageRule {
   readonly providerServices?: readonly string[];
   /** Repository-relative facts path; the marker extractor reads source text without loading the module. */
   readonly providerFacts?: string;
-  /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
+  /** Packages whose `./spi` entries this package may import; this grants no public entry access, and dependsOn grants no SPI access. */
   readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
   readonly typesOnly?: readonly string[];
@@ -79,7 +79,7 @@ export interface BoundaryRules {
     readonly modules: readonly string[];
     /**
      * Subpath of a workspace package's Effect entry, such as `@rivus/agent-kit-platform/effect` for its
-     * `src/effect.ts`. Siblings import it instead of the package's `index.ts`, which stays free of Effect. Importing
+     * `src/effect.ts`. Siblings import it instead of the package's plain `public.ts` entry. Importing
      * it, by name from a sibling or by a relative path inside the package, counts as importing Effect.
      */
     readonly workspaceEntry: string;
@@ -205,6 +205,7 @@ export const boundaries: BoundaryRules = {
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
+      spiImports: [HARNESS],
       testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX],
       external: ["es-toolkit"]
     },

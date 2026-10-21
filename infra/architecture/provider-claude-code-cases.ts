@@ -10,10 +10,10 @@ export const claudeCodeCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "claude-code: no context index",
+    "claude-code: no context public entry",
     "providers/claude-code",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -48,7 +48,7 @@ export const claudeCodeCases: Case[] = [
     "claude-code: testing is tests-only",
     "providers/claude-code",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed(
@@ -224,14 +224,14 @@ export const claudeCodeCases: Case[] = [
     "claude-code: no Platform types",
     "providers/claude-code",
     fresh("src/x"),
-    'export type { Platform } from "@rivus/agent-kit-platform";',
+    'export type { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   rejects(
     "claude-code: no Platform values",
     "providers/claude-code",
     fresh("src/x"),
-    'export { Platform } from "@rivus/agent-kit-platform";',
+    'export { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   allowed(

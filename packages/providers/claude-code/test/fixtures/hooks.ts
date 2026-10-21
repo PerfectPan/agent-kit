@@ -1,6 +1,6 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness";
+import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing";
+import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Claude Code hook payloads (https://code.claude.com/docs/en/hooks), one or more per event.
 

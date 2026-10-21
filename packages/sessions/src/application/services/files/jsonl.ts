@@ -1,4 +1,4 @@
-import type { SkippedRecord, SourcedRecord } from "../../../domain/transcript/index.js";
+import type { SkippedRecord, SourcedRecord } from "../../../domain/transcript/value-objects/source-pointer.js";
 import { type ReadOptions, readLines } from "./read-file.js";
 import type { SessionPlatform } from "../../spi.js";
 

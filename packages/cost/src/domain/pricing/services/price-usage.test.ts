@@ -1,4 +1,4 @@
-import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions";
+import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createPricing, type PriceOverrides, type PricingTable } from "../value-objects/pricing-table.js";

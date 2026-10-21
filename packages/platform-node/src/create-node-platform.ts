@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 
-import type { Env, OperatingSystem, Platform } from "@rivus/agent-kit-platform";
+import type { Env, OperatingSystem, Platform } from "@rivus/agent-kit-platform/public";
 
 import { nodeFs } from "./fs.js";
 import { createNodeProcess } from "./process.js";

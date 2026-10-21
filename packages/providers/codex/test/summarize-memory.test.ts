@@ -11,10 +11,10 @@ const testSessions = { codex: codexSessionAdapter };
 import { codex } from "../src/identity.js";
 const testIdentity = { codex };
 
-import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions";
+import { loadTranscript, summarizeSession } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 
 /** A Codex rollout whose turns are one 40 KB prompt, its reply and one usage record. */
 function codexSessionContent(turns: number): string {

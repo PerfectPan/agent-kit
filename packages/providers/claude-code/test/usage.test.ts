@@ -2,11 +2,16 @@ import { claudeCodeUsageDecoder } from "../src/usage.js";
 const testUsage = { "claude-code": claudeCodeUsageDecoder };
 import { claudeCode } from "../src/identity.js";
 const testIdentity = { "claude-code": claudeCode };
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import { decodeUsage, type DecodeUsageOptions, isUsageRecord, type UsageRecord } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import {
+  decodeUsage,
+  type DecodeUsageOptions,
+  isUsageRecord,
+  type UsageRecord
+} from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
 import { readUsageHome } from "./support.js";
 
 // Ported from presence's scanner tests, on synthetic sessions laid out as in each agent's home under `/u/me`.

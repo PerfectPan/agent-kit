@@ -1,5 +1,5 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { Usage } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { Usage } from "@rivus/agent-kit-sessions/public";
 
 /** What the groups of a summary are keyed by. */
 export type UsageGroupKey = "agent" | "model";

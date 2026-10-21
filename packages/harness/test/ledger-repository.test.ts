@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
 import { LedgerRepository } from "../src/application/ports.js";
-import { Ledger, LEDGER_SCHEMA_VERSION } from "../src/domain/ledger/index.js";
+import { Ledger, LEDGER_SCHEMA_VERSION } from "../src/domain/ledger/aggregates/ledger.js";
 import { removeTestHomes, testHome } from "./support/home.js";
 
 afterEach(removeTestHomes);

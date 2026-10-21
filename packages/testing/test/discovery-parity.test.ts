@@ -11,9 +11,9 @@ import {
   type ProbePath,
   type ProbeRecipe,
   versionFromOutput
-} from "@rivus/agent-kit-discovery";
+} from "@rivus/agent-kit-discovery/public";
 import { builtinProbeRecipes } from "./providers.js";
-import type { OperatingSystem } from "@rivus/agent-kit-platform";
+import type { OperatingSystem } from "@rivus/agent-kit-platform/public";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform, type MemoryCommand, type MemoryPlatform } from "../src/memory-platform.js";

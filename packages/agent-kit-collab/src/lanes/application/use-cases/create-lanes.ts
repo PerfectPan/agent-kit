@@ -4,18 +4,12 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import type * as Scope from "effect/Scope";
 
-import {
-  Lane,
-  type LaneLoad,
-  laneLimits,
-  type LaneQueueFull,
-  type LanesConfigInvalid,
-  type LaneSnapshot,
-  type LaneTransition,
-  nextToStart,
-  type WakeResult,
-  wakeResult
-} from "../../domain/lane/index.js";
+import { Lane, type LaneTransition } from "../../domain/lane/aggregates/lane.js";
+import { type LaneLoad, nextToStart, type WakeResult, wakeResult } from "../../domain/lane/policies/admission.js";
+import { laneLimits } from "../../domain/lane/value-objects/lane-limits.js";
+import { type LaneQueueFull } from "../../domain/lane/errors/lane-queue-full.js";
+import { type LanesConfigInvalid } from "../../domain/lane/errors/lanes-config-invalid.js";
+import { type LaneSnapshot } from "../../domain/lane/value-objects/lane-snapshot.js";
 import { fromResult } from "../services/from-result.js";
 
 export interface LanesConfig<E, R> {

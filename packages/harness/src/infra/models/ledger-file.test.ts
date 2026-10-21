@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { checkLedgerVersion } from "../../domain/ledger/index.js";
+import { checkLedgerVersion } from "../../domain/ledger/aggregates/ledger.js";
 import { decodePreImage, storedLedgerEnvelope } from "./ledger-file.js";
 
 describe("storedLedgerEnvelope", () => {

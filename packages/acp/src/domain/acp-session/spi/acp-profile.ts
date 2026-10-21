@@ -1,4 +1,4 @@
-import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog/public";
 
 /**
  * Where a system prompt goes: under `_meta[key]` of `session/new` and `session/load`, or as a text block before the

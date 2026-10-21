@@ -78,67 +78,65 @@ export { ProcessAgentCliLive } from "./infra/adapters/process-agent-cli.js";
 export { SqliteLedgerLockLive } from "./infra/adapters/sqlite-ledger-lock.js";
 export {
   type ArtifactSource,
-  type ArtifactSpec,
-  type Bundle,
-  type BundleRef,
   type CliRegistration,
   type CommandLine,
-  type HookCompat,
-  type HookOverlap,
-  type HookRegistration,
-  type HookSpec,
-  type HookSpecRejected,
   type InstallAdapter,
   type InstallAdapters,
   type InstallContext,
-  type InstructionSpec,
-  type InvalidBundle,
-  type InvalidHookPlacement,
-  type McpServerSpec,
-  type Owner,
   ownerSlug,
-  type PlacedRegistration,
-  type RenderedArtifact,
-  type SkillSpec,
-  type Strategy
-} from "./domain/bundle/index.js";
+  type RenderedArtifact
+} from "./domain/bundle/spi/install-adapter.js";
+export {
+  type ArtifactSpec,
+  type HookSpec,
+  type InstructionSpec,
+  type McpServerSpec,
+  type SkillSpec
+} from "./domain/bundle/value-objects/artifact-spec.js";
+export { type Bundle, type BundleRef, type InvalidBundle } from "./domain/bundle/value-objects/bundle.js";
+export {
+  type HookCompat,
+  type HookRegistration,
+  type HookSpecRejected
+} from "./domain/bundle/services/hook-registrations.js";
+export {
+  type HookOverlap,
+  type InvalidHookPlacement,
+  type PlacedRegistration
+} from "./domain/bundle/services/hook-placement.js";
+export { type Owner } from "./domain/bundle/value-objects/owner.js";
+export { type Strategy } from "./domain/bundle/value-objects/strategy.js";
 export {
   type ArtifactKind,
   type ArtifactLocator,
-  type Conflict,
-  CONFLICT_CHOICES,
-  type ConflictChoice,
-  type InstallScope,
-  type InvalidPlan,
-  type LegacyTreatment,
   type LocatorKey,
-  locatorKey,
+  locatorKey
+} from "./domain/install-plan/value-objects/artifact-locator.js";
+export { type Conflict, CONFLICT_CHOICES, type ConflictChoice } from "./domain/install-plan/value-objects/conflict.js";
+export { type InstallScope } from "./domain/install-plan/value-objects/install-target.js";
+export { type InvalidPlan } from "./domain/install-plan/errors/invalid-plan.js";
+export { type LegacyTreatment } from "./domain/install-plan/policies/legacy-ownership.js";
+export {
   type PlanAction,
-  type PlanBasis,
-  type PlanConflict,
-  type PlanStale,
-  type PlanStatus,
   type PlanStep,
-  type Precondition,
   type Removal,
-  type StepNote,
-  type TrustPrompt,
-  type TrustPromptKind
-} from "./domain/install-plan/index.js";
-export type {
-  ArtifactContent,
-  ArtifactInstalled,
-  ArtifactRemoved,
-  ContentHash,
-  Drift,
-  InvalidLedger,
-  JsonValue,
-  LedgerBusy,
-  LedgerEntry,
-  LedgerEvent,
-  LedgerVersionUnsupported,
-  PendingOperation,
-  PendingOperations,
-  PreImage,
-  VerifyStatus
-} from "./domain/ledger/index.js";
+  type StepNote
+} from "./domain/install-plan/value-objects/plan-step.js";
+export { type PlanBasis } from "./domain/install-plan/value-objects/plan-basis.js";
+export { type PlanConflict } from "./domain/install-plan/errors/plan-conflict.js";
+export { type PlanStale } from "./domain/install-plan/errors/plan-stale.js";
+export { type PlanStatus } from "./domain/install-plan/aggregates/install-plan.js";
+export { type Precondition } from "./domain/install-plan/value-objects/precondition.js";
+export { type TrustPrompt, type TrustPromptKind } from "./domain/install-plan/value-objects/trust-prompt.js";
+export type { ArtifactContent, ContentHash, JsonValue } from "./domain/ledger/value-objects/content-hash.js";
+export type { ArtifactInstalled } from "./domain/ledger/events/artifact-installed.js";
+export type { ArtifactRemoved } from "./domain/ledger/events/artifact-removed.js";
+export type { Drift, VerifyStatus } from "./domain/ledger/value-objects/drift.js";
+export type { InvalidLedger } from "./domain/ledger/errors/invalid-ledger.js";
+export type { LedgerBusy } from "./domain/ledger/errors/ledger-busy.js";
+export type { LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
+export type { LedgerEvent } from "./domain/ledger/aggregates/ledger.js";
+export type { LedgerVersionUnsupported } from "./domain/ledger/errors/ledger-version-unsupported.js";
+export type { PendingOperation } from "./domain/ledger/entities/pending-operation.js";
+export type { PendingOperations } from "./domain/ledger/errors/pending-operations.js";
+export type { PreImage } from "./domain/ledger/value-objects/pre-image.js";

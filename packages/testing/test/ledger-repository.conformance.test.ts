@@ -1,6 +1,6 @@
-import { LEDGER_SCHEMA_VERSION, type LedgerSnapshot } from "@rivus/agent-kit-harness";
+import { LEDGER_SCHEMA_VERSION, type LedgerSnapshot } from "@rivus/agent-kit-harness/spi";
 import { FileLedgerRepositoryLive, LedgerRepository, type LedgerScope } from "@rivus/agent-kit-harness/public";
-import type { Platform } from "@rivus/agent-kit-platform";
+import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

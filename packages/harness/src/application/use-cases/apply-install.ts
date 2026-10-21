@@ -1,29 +1,23 @@
-import { AgentKitError } from "@rivus/agent-kit-catalog";
+import { AgentKitError } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
+import { type ArtifactLocator, locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import {
-  type ArtifactLocator,
-  locatorKey,
   type PlanAction,
-  planClosedError,
-  type PlanStale,
   type PlanStep,
-  preconditionHolds,
   type Removal,
-  registrationCommands,
   touchesDisk
-} from "../../domain/install-plan/index.js";
-import type {
-  ArtifactContent,
-  ContentHash,
-  LedgerEntry,
-  LedgerEvent,
-  PendingOperation,
-  PendingOperations,
-  PreImage,
-  StepOutcome
-} from "../../domain/ledger/index.js";
+} from "../../domain/install-plan/value-objects/plan-step.js";
+import { planClosedError, type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
+import { preconditionHolds } from "../../domain/install-plan/value-objects/precondition.js";
+import { registrationCommands } from "../../domain/install-plan/policies/registration-commands.js";
+import type { ArtifactContent, ContentHash } from "../../domain/ledger/value-objects/content-hash.js";
+import type { LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
+import type { LedgerEvent } from "../../domain/ledger/aggregates/ledger.js";
+import type { PendingOperation, StepOutcome } from "../../domain/ledger/entities/pending-operation.js";
+import type { PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
+import type { PreImage } from "../../domain/ledger/value-objects/pre-image.js";
 import type { ApplyFailed, TargetChanged } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, type PlanRecord, recordOf } from "../services/install-plan-handle.js";

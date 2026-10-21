@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";

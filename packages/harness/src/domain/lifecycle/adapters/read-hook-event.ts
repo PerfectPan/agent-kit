@@ -1,12 +1,10 @@
-import { requireService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog";
-import {
-  type Env,
-  type HookDialect,
-  type LifecycleEvent,
-  readWithDialect,
-  sniffSource,
-  terminalIdentity
-} from "../index.js";
+import { requireService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog/public";
+import { type Env } from "../policies/payload-fields.js";
+import { type HookDialect } from "../spi/hook-dialect.js";
+import { type LifecycleEvent } from "../value-objects/lifecycle-event.js";
+import { readWithDialect } from "../services/read-with-dialect.js";
+import { sniffSource } from "../services/sniff-source.js";
+import { terminalIdentity } from "../services/terminal-identity.js";
 import { payloadView } from "./payload-shape.js";
 
 export interface ReadHookEventOptions {

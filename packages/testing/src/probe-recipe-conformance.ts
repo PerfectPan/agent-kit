@@ -1,4 +1,9 @@
-import { type CodingAgent, type ServiceTable, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import {
+  type CodingAgent,
+  type ServiceTable,
+  lookupService,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog/public";
 import {
   type AuthReading,
   classifyInstallation,
@@ -10,7 +15,7 @@ import {
   type ProbeProblem,
   type ProbeRecipe,
   type Version
-} from "@rivus/agent-kit-discovery";
+} from "@rivus/agent-kit-discovery/public";
 import { isEqual, isPlainObject } from "es-toolkit";
 
 import { createMemoryPlatform, type MemoryPlatform } from "./memory-platform.js";

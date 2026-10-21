@@ -2,7 +2,7 @@ import { builtinInstallAdapters as testInstall } from "./support/providers.js";
 import { builtinHookDialects as testHooks } from "./support/providers.js";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -18,9 +18,10 @@ import {
 } from "../src/application/use-cases/plan-install.js";
 import { uninstall } from "../src/application/use-cases/uninstall.js";
 import { LedgerRepository } from "../src/application/ports.js";
-import type { Bundle } from "../src/domain/bundle/index.js";
-import { locatorKey, type PlanStep } from "../src/domain/install-plan/index.js";
-import type { LedgerSnapshot } from "../src/domain/ledger/index.js";
+import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
+import { locatorKey } from "../src/domain/install-plan/value-objects/artifact-locator.js";
+import { type PlanStep } from "../src/domain/install-plan/value-objects/plan-step.js";
+import type { LedgerSnapshot } from "../src/domain/ledger/aggregates/ledger.js";
 import { PlatformArtifactFilesLive } from "../src/infra/adapters/platform-artifact-files.js";
 import { FileLedgerRepositoryLive } from "../src/infra/repository/file-ledger-repository.js";
 import { demoBundle, SHIM } from "./support/bundles.js";

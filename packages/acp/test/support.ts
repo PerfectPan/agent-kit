@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import type { TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import { NodePlatformLive } from "@rivus/agent-kit-platform-node/public/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

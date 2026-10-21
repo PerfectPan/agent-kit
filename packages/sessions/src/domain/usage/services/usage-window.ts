@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { UsageRecord } from "../value-objects/usage-record.js";
 import { SHORT_HASH_LENGTH, shortHash } from "./short-hash.js";

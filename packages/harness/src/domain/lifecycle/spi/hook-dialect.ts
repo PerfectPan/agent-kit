@@ -1,5 +1,5 @@
-import type { ServiceTable } from "@rivus/agent-kit-catalog";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { LifecycleMapping } from "../value-objects/lifecycle-event.js";
 

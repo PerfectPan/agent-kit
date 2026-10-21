@@ -1,4 +1,4 @@
-import { AgentKitError } from "@rivus/agent-kit-catalog";
+import { AgentKitError } from "@rivus/agent-kit-catalog/public";
 
 /**
  * A span of time in epoch milliseconds, `since` included and `until` excluded: the `since` and `until` of the usage

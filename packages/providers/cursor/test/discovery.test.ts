@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { detectAgents, type DetectAgentsOptions, type Installation } from "@rivus/agent-kit-discovery";
+import { detectAgents, type DetectAgentsOptions, type Installation } from "@rivus/agent-kit-discovery/public";
 import {
   createMemoryPlatform,
   type MemoryPlatform,
   type MemoryPlatformOptions,
   type MemoryRunResult
-} from "@rivus/agent-kit-testing";
+} from "@rivus/agent-kit-testing/public";
 import { cursor } from "../src/identity.js";
 import { cursorProbe } from "../src/discovery.js";
 

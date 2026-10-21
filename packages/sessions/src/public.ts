@@ -1,4 +1,4 @@
-export type { CapabilityUnsupported } from "@rivus/agent-kit-catalog";
+export type { CapabilityUnsupported } from "@rivus/agent-kit-catalog/public";
 
 // Use cases
 export { listSessions, type ListSessionsOptions, sessionAdapterHome } from "./application/use-cases/list-sessions.js";
@@ -53,75 +53,90 @@ export type {
 // Published language and the rules a viewer needs to interpret events
 export {
   isSessionHead,
-  type NoAdapterAccepted,
-  type ReadFailed,
-  SESSION_SUMMARY_VERSION,
   type SessionHead,
   type SessionListError,
-  type SessionListFailure,
-  type SessionNotFound,
+  type SessionListFailure
+} from "./domain/session/value-objects/session-head.js";
+export {
+  type NoAdapterAccepted,
+  type ReadFailed,
+  type SessionNotFound
+} from "./domain/session/errors/session-read-error.js";
+export {
+  SESSION_SUMMARY_VERSION,
   type SessionPromptsOptions,
   type SessionPrompt,
-  type SessionRef,
   type SessionSummary,
   type SessionSummaryWithPrompts
-} from "./domain/session/index.js";
+} from "./domain/session/value-objects/session-summary.js";
+export { type SessionRef } from "./domain/session/value-objects/session-ref.js";
 export {
   CAPABILITIES,
   type Capability,
-  type CompactionPayload,
-  foldStreamParts,
-  foldTranscript,
-  type HookPayload,
-  isPrompt,
   type Lane,
-  laneOf,
-  latestSnapshot,
-  type LiveTranscriptEvent,
-  MAIN_LANE_ID,
-  mainAgentId,
+  type Transcript,
+  type TranscriptSession
+} from "./domain/transcript/value-objects/transcript.js";
+export {
+  type CompactionPayload,
+  type HookPayload,
   type MessagePayload,
-  type ParsedTranscript,
-  promptSnapshot,
   type PromptSnapshotPayload,
-  promptStarts,
   type ReasoningPayload,
-  recordKey,
   type RequestPayload,
-  requestUsage,
-  sessionPrompts,
-  shadowedIn,
-  type SkippedRecord,
-  snapshotHasSystemPrompt,
-  snapshotHasTools,
-  type SourceChanged,
-  type SourcedRecord,
-  type SourcePointer,
-  type StampedRecord,
   type SystemPayload,
   type ToolCallPayload,
   type ToolResultPayload,
-  type Transcript,
   TRANSCRIPT_EVENT_KINDS,
   type TranscriptEvent,
   type TranscriptEventKind,
   type TranscriptEventOf,
   type TranscriptEventPayloads,
-  type TranscriptSession,
-  type TranscriptStreamPart,
-  type UnknownFormatGeneration,
   type UnknownPayload
-} from "./domain/transcript/index.js";
+} from "./domain/transcript/value-objects/transcript-event.js";
+export { foldStreamParts } from "./domain/transcript/services/fold-stream-parts.js";
+export { foldTranscript } from "./domain/transcript/services/fold-transcript.js";
 export {
-  addUsage,
-  type AiSdkUsage,
+  isPrompt,
+  laneOf,
+  MAIN_LANE_ID,
+  mainAgentId,
+  promptStarts,
+  recordKey,
+  requestUsage,
+  sessionPrompts
+} from "./domain/transcript/policies/turns.js";
+export {
+  latestSnapshot,
+  promptSnapshot,
+  snapshotHasSystemPrompt,
+  snapshotHasTools
+} from "./domain/transcript/policies/prompt-snapshot.js";
+export { type LiveTranscriptEvent, type TranscriptStreamPart } from "./domain/transcript/value-objects/stream-part.js";
+export { type ParsedTranscript } from "./domain/transcript/factories/transcript-event.js";
+export { shadowedIn } from "./domain/transcript/policies/compaction-shadowing.js";
+export {
+  type SkippedRecord,
+  type SourcedRecord,
+  type SourcePointer
+} from "./domain/transcript/value-objects/source-pointer.js";
+export { type SourceChanged } from "./domain/transcript/errors/source-changed.js";
+export { type StampedRecord } from "./domain/transcript/policies/event-ordering.js";
+export { type UnknownFormatGeneration } from "./domain/transcript/errors/unknown-format-generation.js";
+export { addUsage } from "./domain/usage/services/add-usage.js";
+export { type AiSdkUsage, toAiSdkUsage } from "./domain/usage/services/to-ai-sdk-usage.js";
+export {
   type CostSource,
   type ModelUsage,
-  noCacheInputTokens,
-  type OtelAttributeOptions,
-  toAiSdkUsage,
-  toOtelAttributes,
-  type Usage,
   type UsageGranularity,
   type UsageRecord
-} from "./domain/usage/index.js";
+} from "./domain/usage/value-objects/usage-record.js";
+export { noCacheInputTokens } from "./domain/usage/services/no-cache-input.js";
+export { type OtelAttributeOptions, toOtelAttributes } from "./domain/usage/services/to-otel-attributes.js";
+export { type Usage } from "./domain/usage/value-objects/usage.js";
+
+export { type AcpPartTranslator, createAcpPartTranslator } from "./domain/transcript/adapters/acp-updates.js";
+export { type StreamFolder, createStreamFolder } from "./domain/transcript/services/fold-stream-parts.js";
+export { mergeByTime } from "./domain/transcript/policies/event-ordering.js";
+export { timedRecord } from "./domain/transcript/adapters/record-time.js";
+export { readLines, readText } from "./application/services/files/read-file.js";

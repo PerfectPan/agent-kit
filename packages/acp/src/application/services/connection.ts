@@ -1,6 +1,6 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
-import type { ExitStatus } from "@rivus/agent-kit-platform";
-import type { AcpPartTranslator, StreamFolder, TranscriptStreamPart } from "@rivus/agent-kit-sessions";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import type { ExitStatus } from "@rivus/agent-kit-platform/public";
+import type { AcpPartTranslator, StreamFolder, TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -9,19 +9,18 @@ import * as Queue from "effect/Queue";
 import type * as Scope from "effect/Scope";
 
 import type { AcpPlatform } from "../platform.js";
+import type { AbsolutePath } from "../../domain/acp-session/policies/client-paths.js";
+import type { AcpProfile } from "../../domain/acp-session/spi/acp-profile.js";
+import type { AcpSession, AcpSessionTransition } from "../../domain/acp-session/aggregates/acp-session.js";
+import type { AcpSessionEvent } from "../../domain/acp-session/events/acp-session-events.js";
+import type { CancelUnsettled } from "../../domain/acp-session/errors/cancel-unsettled.js";
 import type {
-  AbsolutePath,
-  AcpProfile,
-  AcpSession,
-  AcpSessionEvent,
-  AcpSessionTransition,
-  CancelUnsettled,
   PermissionDecision,
-  PermissionRequest,
-  PromptBlock,
-  SessionClosed,
-  TurnInProgress
-} from "../../domain/acp-session/index.js";
+  PermissionRequest
+} from "../../domain/acp-session/value-objects/permission-request.js";
+import type { PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
+import type { SessionClosed } from "../../domain/acp-session/errors/session-closed.js";
+import type { TurnInProgress } from "../../domain/acp-session/errors/turn-in-progress.js";
 import type { AcpRequestFailed, AcpTimeout, AuthMethodInfo, AuthRequired, ConnectionClosed } from "../errors.js";
 import type { SessionBindingStoreShape } from "../ports.js";
 import { type AcpWire, type AgentFeatures, isAuthRequired, type WireFailure } from "./wire.js";

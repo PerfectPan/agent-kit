@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { AuthState } from "./auth-state.js";
 import type { DetectionStatus } from "./detection-status.js";

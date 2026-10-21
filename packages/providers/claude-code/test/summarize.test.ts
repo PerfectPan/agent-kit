@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SessionRef } from "@rivus/agent-kit-sessions";
-import type { SessionPlatform } from "@rivus/agent-kit-sessions";
+import type { SessionRef } from "@rivus/agent-kit-sessions/public";
+import type { SessionPlatform } from "@rivus/agent-kit-sessions/public";
 import { claudeCodeSessionAdapter } from "../src/sessions.js";
 
 const encoder = new TextEncoder();

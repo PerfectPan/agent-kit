@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 /**
  * Hooks that observe lifecycle events; they never decide a permission gate. Events are named per agent in that

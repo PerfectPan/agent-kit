@@ -1,4 +1,5 @@
-import type { AuthReading, CredentialFileFailed } from "../../domain/installation/index.js";
+import type { AuthReading } from "../../domain/installation/value-objects/auth-state.js";
+import type { CredentialFileFailed } from "../../domain/installation/value-objects/probe-problem.js";
 import type { DiscoveryPlatform } from "../platform.js";
 import { readSmallFile } from "./read-small-file.js";
 

@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type SessionPlatform } from "@rivus/agent-kit-sessions";
+import { type SessionPlatform } from "@rivus/agent-kit-sessions/public";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { createMemoryPlatform } from "@rivus/agent-kit-testing";
-import { oversizedSession, sessionAdapterConformance } from "@rivus/agent-kit-testing";
+import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
+import { oversizedSession, sessionAdapterConformance } from "@rivus/agent-kit-testing/public";
 import { nodeReadFs, readTree } from "../../../testing/test/support.js";
 
 const fixtures = fileURLToPath(new URL("fixtures/sessions", import.meta.url));

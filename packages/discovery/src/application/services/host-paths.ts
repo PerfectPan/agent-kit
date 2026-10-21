@@ -5,10 +5,11 @@ import {
   type ServiceTable,
   homeFromRule,
   homeRuleOf
-} from "@rivus/agent-kit-catalog";
-import type { FileStat } from "@rivus/agent-kit-platform";
+} from "@rivus/agent-kit-catalog/public";
+import type { FileStat } from "@rivus/agent-kit-platform/public";
 
-import { authProbeLists, type ProbePath, type ProbeRecipe, type StatFailed } from "../../domain/installation/index.js";
+import { authProbeLists, type ProbePath, type ProbeRecipe } from "../../domain/installation/spi/probe-recipe.js";
+import { type StatFailed } from "../../domain/installation/value-objects/probe-problem.js";
 import { abortable, errnoCode } from "./abortable.js";
 import { capabilityUnsupported } from "../errors.js";
 import type { DiscoveryPlatform } from "../platform.js";

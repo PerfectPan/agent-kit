@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { ConformanceSession } from "@rivus/agent-kit-testing";
+import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { readTree } from "../../../testing/test/support.js";
 /** The Codex fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function codexSessions(root: string): ConformanceSession[] {

@@ -1,12 +1,12 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import {
   type SessionHead,
   type SessionListError,
-  type SessionListFailure,
-  type SessionPreview,
-  sessionHead
-} from "../../domain/session/index.js";
+  type SessionListFailure
+} from "../../domain/session/value-objects/session-head.js";
+import { type SessionPreview } from "../../domain/session/value-objects/session-preview.js";
+import { sessionHead } from "../../domain/session/factories/session-head.js";
 import { edgeRecords, readEdges } from "./files/edges.js";
 import { walkFiles, type WalkSpec } from "./files/walk.js";
 import type { DiscoverOptions, SessionPlatform } from "../spi.js";

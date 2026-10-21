@@ -18,7 +18,7 @@ export const providerCases: Case[] = [
     "opencode: Node platform is tests-only",
     "providers/opencode",
     fresh("src/x"),
-    'export { createNodePlatform } from "@rivus/agent-kit-platform-node";',
+    'export { createNodePlatform } from "@rivus/agent-kit-platform-node/public";',
     "package-dependency"
   ),
   allowed(
@@ -28,10 +28,10 @@ export const providerCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "grok: no context index",
+    "grok: no context public entry",
     "providers/grok",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -66,7 +66,7 @@ export const providerCases: Case[] = [
     "grok: testing is tests-only",
     "providers/grok",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed("grok hooks: facts", "providers/grok", "src/hooks.ts", 'export { GROK_ID } from "./facts.js";'),
@@ -227,14 +227,14 @@ export const providerCases: Case[] = [
     "grok: Platform types are tests-only",
     "providers/grok",
     fresh("src/x"),
-    'export type { Platform } from "@rivus/agent-kit-platform";',
+    'export type { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   rejects(
     "grok: no Platform values",
     "providers/grok",
     fresh("src/x"),
-    'export { Platform } from "@rivus/agent-kit-platform";',
+    'export { Platform } from "@rivus/agent-kit-platform/public";',
     "package-dependency"
   ),
   allowed(
@@ -257,10 +257,10 @@ export const providerCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "opencode: no context index",
+    "opencode: no context public entry",
     "providers/opencode",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -295,7 +295,7 @@ export const providerCases: Case[] = [
     "opencode: testing is tests-only",
     "providers/opencode",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed("opencode hooks: facts", "providers/opencode", "src/hooks.ts", 'export { OPENCODE_ID } from "./facts.js";'),
@@ -409,10 +409,10 @@ export const providerCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "gemini-cli: no context index",
+    "gemini-cli: no context public entry",
     "providers/gemini-cli",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -447,7 +447,7 @@ export const providerCases: Case[] = [
     "gemini-cli: testing is tests-only",
     "providers/gemini-cli",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed(
@@ -566,10 +566,10 @@ export const providerCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "cursor: no context index",
+    "cursor: no context public entry",
     "providers/cursor",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -604,7 +604,7 @@ export const providerCases: Case[] = [
     "cursor: testing is tests-only",
     "providers/cursor",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed("cursor hooks: facts", "providers/cursor", "src/hooks.ts", 'export { CURSOR_ID } from "./facts.js";'),
@@ -668,10 +668,10 @@ export const providerCases: Case[] = [
     'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
   ),
   rejects(
-    "pi: no context index",
+    "pi: no context public entry",
     "providers/pi",
     fresh("src/x"),
-    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery/public";',
     "package-dependency"
   ),
   rejects(
@@ -699,7 +699,7 @@ export const providerCases: Case[] = [
     "pi: testing is tests-only",
     "providers/pi",
     fresh("src/x"),
-    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing/public";',
     "package-dependency"
   ),
   allowed("pi hooks: facts", "providers/pi", "src/hooks.ts", 'export { PI_ID } from "./facts.js";'),

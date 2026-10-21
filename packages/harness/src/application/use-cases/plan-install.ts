@@ -1,7 +1,7 @@
 import type { InstallProviders } from "../providers.js";
 import { isPlainObject } from "es-toolkit";
 
-import { AgentKitError, requireService, lookupService, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, requireService, lookupService, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -9,46 +9,52 @@ import {
   type Bundle,
   type BundleRef,
   checkBundle,
+  type InvalidBundle,
+  legacyMarkersOf
+} from "../../domain/bundle/value-objects/bundle.js";
+import {
   type DroppedHook,
   droppedHooksOf,
-  type HookCompat,
   type HookOverlap,
-  type HookSpecRejected,
+  type InvalidHookPlacement,
+  placeHooks
+} from "../../domain/bundle/services/hook-placement.js";
+import { type HookCompat, type HookSpecRejected } from "../../domain/bundle/services/hook-registrations.js";
+import {
   type InstallAdapter,
   type InstallAdapters,
   type InstallContext,
-  type InvalidBundle,
-  type InvalidHookPlacement,
-  legacyMarkersOf,
-  placeHooks,
-  type RenderedArtifact,
-  type Strategy
-} from "../../domain/bundle/index.js";
+  type RenderedArtifact
+} from "../../domain/bundle/spi/install-adapter.js";
+import { type Strategy } from "../../domain/bundle/value-objects/strategy.js";
 import {
   type ArtifactLocator,
-  buildInstallPlan,
-  chooseStrategy,
-  type ConflictChoice,
-  contentAfterStep,
-  type DesiredArtifact,
-  type ForeignHookObservation,
-  type InstallPlan as PlanAggregate,
-  type InvalidPlan,
   type LocatorKey,
-  locatorKey,
-  type ObservedArtifact,
-  planEvidenceScope,
-  type PlanConflict,
-  type PlanStale,
-  type PlanStep,
-  registrationCommands,
+  locatorKey
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { buildInstallPlan } from "../../domain/install-plan/factories/build-install-plan.js";
+import {
+  chooseStrategy,
   requiredCommands,
   strategyRequirement,
-  strategyUnsupported,
-  touchesDisk
-} from "../../domain/install-plan/index.js";
-import type { ArtifactContent, Ledger, PendingOperations } from "../../domain/ledger/index.js";
-import type { HookDialects } from "../../domain/lifecycle/index.js";
+  strategyUnsupported
+} from "../../domain/install-plan/policies/strategy-choice.js";
+import { type ConflictChoice } from "../../domain/install-plan/value-objects/conflict.js";
+import { contentAfterStep } from "../../domain/install-plan/value-objects/content-after.js";
+import { type DesiredArtifact } from "../../domain/install-plan/value-objects/desired-artifact.js";
+import { type ForeignHookObservation } from "../../domain/install-plan/policies/legacy-ownership.js";
+import { type InstallPlan as PlanAggregate } from "../../domain/install-plan/aggregates/install-plan.js";
+import { type InvalidPlan } from "../../domain/install-plan/errors/invalid-plan.js";
+import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { planEvidenceScope } from "../../domain/install-plan/factories/plan-evidence-scope.js";
+import { type PlanConflict } from "../../domain/install-plan/errors/plan-conflict.js";
+import { type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
+import { type PlanStep, touchesDisk } from "../../domain/install-plan/value-objects/plan-step.js";
+import { registrationCommands } from "../../domain/install-plan/policies/registration-commands.js";
+import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
+import type { Ledger } from "../../domain/ledger/aggregates/ledger.js";
+import type { PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
+import type { HookDialects } from "../../domain/lifecycle/spi/hook-dialect.js";
 import { hashContent } from "../services/content-hash.js";
 import { scanLegacy } from "../services/legacy-scan.js";
 import { observe, registrationLookup } from "../services/observe.js";

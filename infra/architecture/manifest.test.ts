@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, globSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -96,13 +96,20 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
       ...(rule === undefined
         ? []
         : (rule.providerServices?.map((service) => `src/${service}.ts`) ??
-          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
+          rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/public.ts"])),
       ...(rule?.spi ? ["src/spi.ts"] : [])
     ];
     const allowed = isShell
       ? internal
       : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      ...(exists(`${pkg.folder}/src/index.ts`) ? [`${pkg.folder}: entry-file forbidden src/index.ts`] : []),
+      ...(rule?.providerServices === undefined &&
+      rule?.entries === undefined &&
+      !isShell &&
+      pkg.exports?.["."] !== undefined
+        ? [`${pkg.folder}: entry-export unexpected .`]
+        : []),
       ...Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies, ...pkg.optionalDependencies })
         .filter((dependency) => rule?.testsOnly?.includes(dependency))
         .map((dependency) => `${pkg.folder}: tests-only-dependency ${dependency} must be in devDependencies only`),
@@ -279,7 +286,7 @@ describe("the package manifests", () => {
     }
   );
 
-  it("accepts SPI-only workspace dependencies without granting the context index", () => {
+  it("accepts SPI-only workspace dependencies without granting the context public entry", () => {
     const name = "@rivus/agent-kit-provider-probe";
     const original = boundaries.packages;
     Object.defineProperty(boundaries, "packages", {
@@ -300,7 +307,7 @@ describe("the package manifests", () => {
               dependencies: { [SESSIONS]: "workspace:*" }
             }
           ],
-          () => true
+          (path) => !path.endsWith("/index.ts")
         )
       ).toEqual([]);
     } finally {
@@ -371,6 +378,23 @@ describe("the package manifests", () => {
     expect(manifestViolations(packages, (path) => path !== "packages/sessions/src/public.ts" && onDisk(path))).toEqual([
       "packages/sessions: entry-file src/public.ts"
     ]);
+  });
+
+  it("forbids sibling and concept index files throughout package sources", () => {
+    expect(
+      globSync("packages/**/src/**/index.ts", { cwd: root, exclude: ["**/node_modules/**", "**/dist/**"] })
+    ).toEqual([]);
+  });
+
+  it("rejects a restored sibling index file and root export", () => {
+    const folder = "packages/sessions";
+    expect(manifestViolations(packages, (path) => path === `${folder}/src/index.ts` || onDisk(path))).toEqual([
+      `${folder}: entry-file forbidden src/index.ts`
+    ]);
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder ? { ...pkg, exports: { ...pkg.exports, ".": "./src/index.ts" } } : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([`${folder}: entry-export unexpected .`]);
   });
 
   it.each(["catalog", "discovery", "sessions", "harness", "acp"])("requires %s's SPI entry", (context) => {

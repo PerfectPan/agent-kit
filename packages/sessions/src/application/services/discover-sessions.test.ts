@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
+import type { SessionHead, SessionListFailure } from "../../domain/session/value-objects/session-head.js";
 import { discoverSessions } from "./discover-sessions.js";
 import type { SessionPlatform } from "../spi.js";
 

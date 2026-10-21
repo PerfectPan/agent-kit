@@ -61,19 +61,19 @@ export const cases: Case[] = [
     "sessions domain: kernel value and type",
     "sessions",
     fresh("src/domain/session/x"),
-    `import { ok } from "${CATALOG}";\nimport type { Result } from "${CATALOG}";\nexport const a = [ok] as const;\nexport type R = Result<1, 2>;`
+    `import { ok } from "${CATALOG}/public";\nimport type { Result } from "${CATALOG}/public";\nexport const a = [ok] as const;\nexport type R = Result<1, 2>;`
   ),
   allowed(
     "sessions domain: same concept",
     "sessions",
     fresh("src/domain/session/x"),
-    `export * as head from "./index.js";`
+    `export * as head from "./value-objects/session-head.js";`
   ),
   allowed(
     "sessions adapters: domain and kernel",
     "sessions",
     fresh("src/domain/transcript/adapters/probe/x"),
-    `export * as s from "../../../session/index.js";\nexport { ok } from "${CATALOG}";`
+    `export * as s from "../../../session/value-objects/session-head.js";\nexport { ok } from "${CATALOG}/public";`
   ),
   allowed(
     "sessions adapters: another concept's adapters",
@@ -85,7 +85,7 @@ export const cases: Case[] = [
     "sessions application: platform and adapters",
     "sessions",
     fresh("src/application/use-cases/x"),
-    `export { splitLines } from "${PLATFORM}";\nexport * as a from "../../domain/transcript/adapters/acp-updates.js";`
+    `export { splitLines } from "${PLATFORM}/public";\nexport * as a from "../../domain/transcript/adapters/acp-updates.js";`
   ),
   allowed(
     "sessions infra: application",
@@ -103,7 +103,7 @@ export const cases: Case[] = [
     "platform-node: Node built-ins",
     "platform-node",
     fresh("src/x"),
-    `export { readFile } from "node:fs/promises";\nexport * from "${PLATFORM}";`
+    `export { readFile } from "node:fs/promises";\nexport * from "${PLATFORM}/public";`
   ),
   allowed(
     "sessions adapters: zod/mini",
@@ -121,15 +121,15 @@ export const cases: Case[] = [
     "cost domain: type from sessions (legal)",
     "cost",
     fresh("src/domain/pricing/x"),
-    `export type { UsageRecord } from "${SESSIONS}";`
+    `export type { UsageRecord } from "${SESSIONS}/public";`
   ),
   allowed(
     "cost root: export type from sessions",
     "cost",
     fresh("src/x"),
-    `export type { UsageRecord } from "${SESSIONS}";`
+    `export type { UsageRecord } from "${SESSIONS}/public";`
   ),
-  allowed("cost root: kernel value", "cost", fresh("src/x"), `export { ok } from "${CATALOG}";`),
+  allowed("cost root: kernel value", "cost", fresh("src/x"), `export { ok } from "${CATALOG}/public";`),
   allowed(
     "harness application: Effect",
     "harness",
@@ -177,7 +177,7 @@ export const cases: Case[] = [
     "collab process-lock application: lease domain",
     "agent-kit-collab",
     fresh("src/process-lock/application/x"),
-    `export * as l from "../../lease/domain/lease/index.js";`
+    `export * as l from "../../lease/domain/lease/value-objects/holder.js";`
   ),
   allowed(
     "collab lease entry file: its application",
@@ -197,7 +197,12 @@ export const cases: Case[] = [
     "src/application/services/wire.ts",
     `export * as CaseSdk from "@agentclientprotocol/sdk";`
   ),
-  allowed("acp application: platform", "acp", fresh("src/application/x"), `export { splitLines } from "${PLATFORM}";`),
+  allowed(
+    "acp application: platform",
+    "acp",
+    fresh("src/application/x"),
+    `export { splitLines } from "${PLATFORM}/public";`
+  ),
   allowed(
     "dynamic import with a literal",
     "sessions",
@@ -252,35 +257,35 @@ export const cases: Case[] = [
     "a deep import into another package's domain/",
     "sessions",
     fresh("src/application/x"),
-    `export { id } from "${CATALOG}/src/domain/coding-agent/index.js";`,
+    `export { id } from "${CATALOG}/src/domain/coding-agent/value-objects/coding-agent-id.js";`,
     "deep-import"
   ),
   rejects(
-    "a sibling importing a public entry",
+    "a sibling importing a private source entry",
     "sessions",
     fresh("src/application/x"),
-    `export { ok } from "${CATALOG}/public";`,
+    `export { ok } from "${CATALOG}/src/public.ts";`,
     "deep-import"
   ),
   rejects(
     "a relative import into another package",
     "sessions",
     fresh("src/application/x"),
-    `export * as c from "../../../catalog/src/domain/coding-agent/index.js";`,
+    `export * as c from "../../../catalog/src/domain/coding-agent/value-objects/coding-agent-id.js";`,
     "relative-escape"
   ),
   rejects(
     "a value import from a non-kernel package in domain/",
     "sessions",
     fresh("src/domain/x"),
-    `export { splitLines } from "${PLATFORM}";`,
+    `export { splitLines } from "${PLATFORM}/public";`,
     "layer"
   ),
   rejects(
     "an inline type modifier in domain/",
     "sessions",
     fresh("src/domain/x"),
-    `import { type Platform } from "${PLATFORM}";\nexport type P = Platform;`,
+    `import { type Platform } from "${PLATFORM}/public";\nexport type P = Platform;`,
     "layer"
   ),
   rejects(
@@ -294,7 +299,7 @@ export const cases: Case[] = [
     "an adapters file importing a non-kernel package",
     "sessions",
     fresh("src/domain/transcript/adapters/probe/x"),
-    `export type { Platform } from "${PLATFORM}";`,
+    `export type { Platform } from "${PLATFORM}/public";`,
     "layer"
   ),
   rejects(
@@ -329,7 +334,7 @@ export const cases: Case[] = [
     "an undeclared package dependency",
     "sessions",
     fresh("src/application/x"),
-    `export { m } from "${TESTING}";`,
+    `export { m } from "${TESTING}/public";`,
     "package-dependency"
   ),
   rejects(
@@ -350,14 +355,14 @@ export const cases: Case[] = [
     "Platform types in domain/",
     "sessions",
     fresh("src/domain/x"),
-    `import type { Platform } from "${PLATFORM}";\nexport type P = Platform;`,
+    `import type { Platform } from "${PLATFORM}/public";\nexport type P = Platform;`,
     "layer"
   ),
   rejects(
     "a Platform type re-export in domain/",
     "sessions",
     fresh("src/domain/x"),
-    `export type { FileStat } from "${PLATFORM}";`,
+    `export type { FileStat } from "${PLATFORM}/public";`,
     "layer"
   ),
   rejects(
@@ -385,29 +390,35 @@ export const cases: Case[] = [
     "a package importing itself by name",
     "sessions",
     fresh("src/application/x"),
-    `export * from "${SESSIONS}";`,
+    `export * from "${SESSIONS}/public";`,
     "package-dependency"
   ),
   rejects(
     "cost domain: value from sessions",
     "cost",
     fresh("src/domain/pricing/x"),
-    `export { decodeUsage } from "${SESSIONS}";`,
+    `export { decodeUsage } from "${SESSIONS}/public";`,
     "layer"
   ),
   rejects(
     "cost root: value re-export from sessions",
     "cost",
     fresh("src/x"),
-    `export { decodeUsage } from "${SESSIONS}";`,
+    `export { decodeUsage } from "${SESSIONS}/public";`,
     "types-only"
   ),
-  rejects("cost root: export * from sessions", "cost", fresh("src/x"), `export * from "${SESSIONS}";`, "types-only"),
+  rejects(
+    "cost root: export * from sessions",
+    "cost",
+    fresh("src/x"),
+    `export * from "${SESSIONS}/public";`,
+    "types-only"
+  ),
   rejects(
     "cost root: inline type modifier from sessions",
     "cost",
     fresh("src/x"),
-    `import { type UsageRecord } from "${SESSIONS}";\nexport type U = UsageRecord;`,
+    `import { type UsageRecord } from "${SESSIONS}/public";\nexport type U = UsageRecord;`,
     "types-only"
   ),
   rejects(
@@ -469,9 +480,9 @@ export const cases: Case[] = [
     "effect"
   ),
   rejects(
-    "the sibling surface re-exporting it",
+    "a plain sibling helper re-exporting it",
     "platform",
-    "src/index.ts",
+    fresh("src/x"),
     `export * as CaseEffect from "./effect";`,
     "effect"
   ),
@@ -523,7 +534,7 @@ export const cases: Case[] = [
     "collab: agent-kit's internal packages",
     "agent-kit-collab",
     fresh("src/lease/application/x"),
-    `export { ok } from "${CATALOG}";`,
+    `export { ok } from "${CATALOG}/public";`,
     "package-dependency"
   ),
   rejects(
@@ -595,14 +606,14 @@ export const cases: Case[] = [
     "acp: a tests-only dependency",
     "acp",
     fresh("src/application/x"),
-    `export { createNodePlatform } from "@rivus/agent-kit-platform-node";`,
+    `export { createNodePlatform } from "@rivus/agent-kit-platform-node/public";`,
     "package-dependency"
   ),
   rejects(
     "harness: a tests-only dependency",
     "harness",
     fresh("src/application/x"),
-    `export { createNodePlatform } from "@rivus/agent-kit-platform-node";`,
+    `export { createNodePlatform } from "@rivus/agent-kit-platform-node/public";`,
     "package-dependency"
   ),
   rejects(
@@ -614,7 +625,7 @@ export const cases: Case[] = [
   ),
   rejects("shell entry: export *", "agent-kit", fresh("src/x"), `export * from "${PLATFORM}/public";`, "shell-entry"),
   rejects(
-    "shell entry: a re-export from index.ts",
+    "shell entry: a re-export from a bare package",
     "agent-kit",
     fresh("src/x"),
     `export { splitLines } from "${PLATFORM}";`,
@@ -853,14 +864,14 @@ export const cases: Case[] = [
     "an import() type of an undeclared package",
     "sessions",
     fresh("src/application/x"),
-    `export type T = typeof import("${TESTING}");`,
+    `export type T = typeof import("${TESTING}/public");`,
     "package-dependency"
   ),
   rejects(
     "an import() type of the Platform in domain/",
     "sessions",
     fresh("src/domain/x"),
-    `export type P = import("${PLATFORM}").Platform;`,
+    `export type P = import("${PLATFORM}/public").Platform;`,
     "layer"
   ),
   rejects(
@@ -874,7 +885,7 @@ export const cases: Case[] = [
     "an import() type from a declared package in domain/",
     "cost",
     fresh("src/domain/pricing/x"),
-    `export type U = import("${SESSIONS}").UsageRecord;`
+    `export type U = import("${SESSIONS}/public").UsageRecord;`
   ),
   allowed(
     "platform-node: an import() type of a prefix-only built-in",
@@ -900,8 +911,42 @@ export const cases: Case[] = [
     "import = require() of an undeclared package",
     "sessions",
     fresh("src/application/x"),
-    `import t = require("${TESTING}");\nexport const m = t;`,
+    `import t = require("${TESTING}/public");\nexport const m = t;`,
     "package-dependency"
+  ),
+
+  rejects(
+    "a sibling importing a bare package",
+    "sessions",
+    fresh("src/application/x"),
+    `export { ok } from "${CATALOG}";`,
+    "package-dependency"
+  ),
+  rejects(
+    "an import of a concept directory",
+    "sessions",
+    fresh("src/application/x"),
+    `export type { SessionHead } from "../domain/session";`,
+    "unresolved"
+  ),
+  rejects(
+    "an import of a removed concept index",
+    "sessions",
+    fresh("src/application/x"),
+    `export type { SessionHead } from "../domain/session/index.js";`,
+    "unresolved"
+  ),
+  allowed(
+    "testing: the plain harness SPI",
+    "testing",
+    fresh("src/x"),
+    'export { Ledger } from "@rivus/agent-kit-harness/spi";'
+  ),
+  allowed(
+    "testing: the plain harness events entry",
+    "testing",
+    fresh("src/x"),
+    'export { readHookEvent } from "@rivus/agent-kit-harness/public/events";'
   ),
 
   // resolution

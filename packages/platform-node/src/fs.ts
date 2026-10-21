@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs";
 import { lstat, mkdir, open, readdir, realpath, rename, rmdir, stat, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import type { ByteRange, FileKind, PlatformFs } from "@rivus/agent-kit-platform";
+import type { ByteRange, FileKind, PlatformFs } from "@rivus/agent-kit-platform/public";
 
 import { hasCode } from "./error-code.js";
 
