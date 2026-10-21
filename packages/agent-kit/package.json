@@ -121,7 +121,7 @@
     "effect": "catalog:",
     "oxc-parser": "catalog:",
     "publint": "catalog:",
-    "rolldown": "1.2.12",
+    "rolldown": "1.2.13",
     "size-limit": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
