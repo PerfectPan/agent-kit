@@ -1,3 +1,8 @@
+import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
+import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
+import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
+import { opencodeProbe } from "@rivus/agent-kit-provider-opencode/discovery";
+import { opencode } from "@rivus/agent-kit-provider-opencode/identity";
 import { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";
 import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";
 import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";
@@ -24,11 +29,11 @@ export const builtinCodingAgents = {
   cursor: cursor,
   "gemini-cli": geminiCli,
   grok: identity.grok,
-  opencode: identity.opencode,
+  opencode: opencode,
   pi: pi
 };
 export const builtinProbeRecipes = {
-  opencode: discovery.opencode,
+  opencode: opencodeProbe,
   "claude-code": discovery["claude-code"],
   codex: discovery.codex,
   cursor: cursorProbe,
@@ -42,7 +47,7 @@ export const builtinHookDialects = {
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: hooks.grok,
-  opencode: hooks.opencode,
+  opencode: opencodeHookDialect,
   pi: piHookDialect
 };
 export const builtinInstallAdapters = {
@@ -51,7 +56,7 @@ export const builtinInstallAdapters = {
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: install.grok,
-  opencode: install.opencode,
+  opencode: opencodeInstallAdapter,
   pi: piInstallAdapter
 };
 export const builtinUsageDecoders = {
@@ -59,6 +64,6 @@ export const builtinUsageDecoders = {
   codex: usage.codex,
   "gemini-cli": geminiCliUsageDecoder,
   grok: usage.grok,
-  opencode: usage.opencode,
+  opencode: opencodeUsageDecoder,
   pi: piUsageDecoder
 };

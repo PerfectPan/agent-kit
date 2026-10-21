@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 
 import { readHookEvent } from "../src/domain/lifecycle/adapters/read-hook-event.js";
-import { opencodeHookDialect } from "../src/domain/lifecycle/adapters/opencode.js";
+import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { finishSelectorsOf } from "../src/domain/lifecycle/index.js";
 import type { HookEventSpec } from "../src/domain/lifecycle/index.js";
@@ -17,7 +17,7 @@ import { planInstall } from "../src/application/use-cases/plan-install.js";
 import {
   bridgeSource as opencodeBridgeSource,
   opencodeInstallAdapter
-} from "../src/domain/bundle/adapters/opencode/strategies.js";
+} from "@rivus/agent-kit-provider-opencode/install";
 import { bridgeSource as piBridgeSource, piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import type { Bundle } from "../src/domain/bundle/index.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";

@@ -111,6 +111,7 @@ const COST = "@rivus/agent-kit-cost";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 const ACP = "@rivus/agent-kit-acp";
+const OPENCODE = "@rivus/agent-kit-provider-opencode";
 const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
@@ -118,6 +119,13 @@ const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
   packages: {
+    [OPENCODE]: {
+      providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
+      testsOnly: [TESTING, PLATFORM_NODE],
+      external: ["zod/mini"]
+    },
     [GEMINI_CLI]: {
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
@@ -155,7 +163,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI]
+      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
@@ -173,7 +181,7 @@ export const boundaries: BoundaryRules = {
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
-      testsOnly: [PI, CURSOR, GEMINI_CLI],
+      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

@@ -1,3 +1,4 @@
+import { opencode } from "@rivus/agent-kit-provider-opencode/identity";
 import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { cursor } from "@rivus/agent-kit-provider-cursor/identity";
 import { builtinCodingAgents as contextBuiltins, validateIdentities } from "@rivus/agent-kit-catalog/public";
@@ -6,6 +7,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinCodingAgents: typeof contextBuiltins & {
+  readonly opencode: typeof opencode;
   readonly "gemini-cli": typeof geminiCli;
   readonly cursor: typeof cursor;
   readonly pi: typeof pi;
@@ -15,7 +17,7 @@ export const builtinCodingAgents: typeof contextBuiltins & {
   cursor: cursor,
   "gemini-cli": geminiCli,
   grok: contextBuiltins.grok,
-  opencode: contextBuiltins.opencode,
+  opencode: opencode,
   pi: pi
 };
 

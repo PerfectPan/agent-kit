@@ -4,7 +4,6 @@ import type { AcpProfile } from "../index.js";
 import { claudeCodeAcpProfile } from "./claude-code.js";
 import { codexAcpProfile } from "./codex.js";
 import { grokAcpProfile } from "./grok.js";
-import { opencodeAcpProfile } from "./opencode.js";
 
 export type AcpProfiles = ServiceTable<AcpProfile>;
 
@@ -12,6 +11,5 @@ export type AcpProfiles = ServiceTable<AcpProfile>;
 export const builtinAcpProfiles: AcpProfiles = {
   "claude-code": claudeCodeAcpProfile,
   codex: codexAcpProfile,
-  grok: grokAcpProfile,
-  opencode: opencodeAcpProfile
+  grok: grokAcpProfile
 };

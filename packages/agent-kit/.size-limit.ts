@@ -16,10 +16,10 @@ const nodeOnly = {
 // Importing builtinProviders with /harness or /sessions duplicates built-in implementations, and its adapter
 // objects are distinct from the individual built-in exports.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38476 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38543 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
-  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44344 B" },
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44439 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "1.5 kB" },
   // The LiteLLM adapter parses the price list with zod/mini, bundled into the entry: about 6.6 kB.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "7 kB" },
@@ -48,6 +48,6 @@ export default [
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24418 B" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "40.4 kB", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "5 kB" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25581 B" },
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "25598 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19427 B" }
 ] satisfies SizeLimitConfig;

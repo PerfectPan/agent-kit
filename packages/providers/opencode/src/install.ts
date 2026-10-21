@@ -1,16 +1,47 @@
-import { type HookRegistration, type InstallAdapter, ownerSlug } from "../../index.js";
-import { agentsOf, sharedSkillsDir } from "../install-files.js";
 import {
+  type HookRegistration,
+  type InstallAdapter,
+  type BundleRef,
+  type InstallContext,
+  ownerSlug,
+  agentsOf,
+  sharedSkillsDir,
+  sharedAgentsDir,
+  configHome,
   aliasesOf,
   finishSelectorsOf,
   type FieldPath,
   type FinishSelector,
   type HookDialect,
   type HookEventSpec
-} from "../../../lifecycle/index.js";
+} from "@rivus/agent-kit-harness/spi";
+import { opencodeHookDialect } from "./hooks.js";
+import {
+  OPENCODE_CURRENT_SESSION_FIELD as opencodeCurrentSessionField,
+  OPENCODE_ID,
+  OPENCODE_PLUGINS_DIR,
+  OPENCODE_CONFIG_FILE,
+  OPENCODE_PLUGINS_POINTER,
+  OPENCODE_PLUGIN_SUFFIX,
+  OPENCODE_PLUGIN_SUFFIXES
+} from "./facts.js";
 
-import { opencodeCurrentSessionField, opencodeHookDialect } from "../../../lifecycle/adapters/opencode.js";
-import { opencodeConfigDir, opencodePluginFile, opencodePluginsDir } from "./config-files.js";
+// https://opencode.ai/docs/plugins: every `{plugin,plugins}/*.{js,ts}` file in the configuration directory loads at
+// start, and every export of a plugin module must be a plugin function. Checked against packages/opencode/src/config
+// at a697115.
+
+/** opencode's configuration directory: `$XDG_CONFIG_HOME/opencode`, or `~/.config/opencode`. */
+function opencodeConfigDir(context: InstallContext): string {
+  return `${configHome(context)}/${OPENCODE_ID}`;
+}
+
+function opencodePluginsDir(context: InstallContext): string {
+  return `${opencodeConfigDir(context)}/${OPENCODE_PLUGINS_DIR}`;
+}
+
+function opencodePluginFile(context: InstallContext, bundle: BundleRef): string {
+  return `${opencodePluginsDir(context)}/${ownerSlug(bundle.owner)}${OPENCODE_PLUGIN_SUFFIX}`;
+}
 
 /** The registered events with every spelling the dialect accepts for them. */
 export function bridgedEvents(dialect: HookDialect, registrations: readonly HookRegistration[]): readonly string[] {
@@ -145,11 +176,12 @@ export const AgentKitHooks = async ({ directory }) => {
 /** Hooks reach opencode through a bridge plugin in its plugins directory, which opencode loads without configuration. */
 export const opencodeInstallAdapter: InstallAdapter = {
   specificationVersion: "harness-v1",
-  agent: "opencode",
+  agent: OPENCODE_ID,
   hookStrategies: ["native-plugin"],
   skillStrategies: ["scan-directory"],
-  roots: (context) => [opencodeConfigDir(context), `${context.home}/.agents`],
-  hookFile: (_strategy, bundle) => `~/.config/opencode/plugins/${ownerSlug(bundle.owner)}.js`,
+  roots: (context) => [opencodeConfigDir(context), sharedAgentsDir(context)],
+  hookFile: (_strategy, bundle) =>
+    `${opencodePluginsDir({ home: "~", env: {} })}/${ownerSlug(bundle.owner)}${OPENCODE_PLUGIN_SUFFIX}`,
   renderHooks: (strategy, registrations, bundle, context) => {
     const [first] = registrations;
     return first === undefined
@@ -172,12 +204,12 @@ export const opencodeInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   legacySources: (context) => [
-    { kind: "files", dir: opencodePluginsDir(context), extensions: [".js", ".ts"] },
+    { kind: "files", dir: opencodePluginsDir(context), extensions: OPENCODE_PLUGIN_SUFFIXES },
     {
       kind: "entries",
       format: "json",
-      path: `${opencodeConfigDir(context)}/opencode.json`,
-      pointer: "/plugin",
+      path: `${opencodeConfigDir(context)}/${OPENCODE_CONFIG_FILE}`,
+      pointer: OPENCODE_PLUGINS_POINTER,
       memberIn: "element"
     }
   ]

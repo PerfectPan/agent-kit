@@ -36,13 +36,14 @@
     "@perfectpan/lint-config": "catalog:",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",
+    "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
+    "@rivus/agent-kit-provider-opencode": "workspace:*",
     "@rivus/agent-kit-provider-pi": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:",
-    "@rivus/agent-kit-provider-gemini-cli": "workspace:*"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "effect": "catalog:"

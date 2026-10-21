@@ -3,6 +3,172 @@ import { allowed, rejects, fresh, type Case } from "./case.ts";
 const PI = "@rivus/agent-kit-provider-pi";
 
 export const providerCases: Case[] = [
+  rejects(
+    "discovery: gemini-cli is tests-only",
+    "discovery",
+    fresh("src/x"),
+    'export { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";',
+    "package-dependency"
+  ),
+  rejects(
+    "opencode: Node platform is tests-only",
+    "providers/opencode",
+    fresh("src/x"),
+    'export { createNodePlatform } from "@rivus/agent-kit-platform-node";',
+    "package-dependency"
+  ),
+  allowed(
+    "opencode: context SPI",
+    "providers/opencode",
+    fresh("src/x"),
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";'
+  ),
+  rejects(
+    "opencode: no context index",
+    "providers/opencode",
+    fresh("src/x"),
+    'export { builtinProbeRecipes } from "@rivus/agent-kit-discovery";',
+    "package-dependency"
+  ),
+  rejects(
+    "opencode: no other provider",
+    "providers/opencode",
+    fresh("src/x"),
+    `export { pi } from "${PI}/identity";`,
+    "package-dependency"
+  ),
+  rejects(
+    "opencode: no peer provider by relative path",
+    "providers/opencode",
+    fresh("src/x"),
+    'export { pi } from "../../pi/src/identity.js";',
+    "relative-escape"
+  ),
+  rejects(
+    "harness: opencode is tests-only",
+    "harness",
+    fresh("src/x"),
+    'export { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";',
+    "package-dependency"
+  ),
+  rejects(
+    "testing: opencode is tests-only",
+    "testing",
+    fresh("src/x"),
+    'export { opencode } from "@rivus/agent-kit-provider-opencode/identity";',
+    "package-dependency"
+  ),
+  rejects(
+    "opencode: testing is tests-only",
+    "providers/opencode",
+    fresh("src/x"),
+    'export { createMemoryPlatform } from "@rivus/agent-kit-testing";',
+    "package-dependency"
+  ),
+  allowed("opencode hooks: facts", "providers/opencode", "src/hooks.ts", 'export { OPENCODE_ID } from "./facts.js";'),
+  allowed(
+    "opencode hooks: catalog SPI",
+    "providers/opencode",
+    "src/hooks.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "opencode hooks: harness SPI",
+    "providers/opencode",
+    "src/hooks.ts",
+    'export { finishSelectorsOf } from "@rivus/agent-kit-harness/spi";'
+  ),
+  rejects(
+    "opencode hooks: no installation",
+    "providers/opencode",
+    "src/hooks.ts",
+    'export { opencodeInstallAdapter } from "./install.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "opencode hooks: no discovery SPI",
+    "providers/opencode",
+    "src/hooks.ts",
+    'export { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "shell hooks: opencode hooks",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";'
+  ),
+  rejects(
+    "shell hooks: no opencode install",
+    "agent-kit",
+    "src/providers/hooks.ts",
+    'export { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";',
+    "shell-entry"
+  ),
+  rejects(
+    "shell usage: no opencode hooks",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";',
+    "shell-entry"
+  ),
+  allowed(
+    "opencode usage: layout",
+    "providers/opencode",
+    "src/usage.ts",
+    'export { opencodeDatabasePath } from "./layout.js";'
+  ),
+  allowed(
+    "opencode usage: catalog SPI",
+    "providers/opencode",
+    "src/usage.ts",
+    'export { ok } from "@rivus/agent-kit-catalog/spi";'
+  ),
+  allowed(
+    "opencode usage: sessions SPI",
+    "providers/opencode",
+    "src/usage.ts",
+    'export { readText } from "@rivus/agent-kit-sessions/spi";'
+  ),
+  rejects(
+    "opencode usage: no hooks",
+    "providers/opencode",
+    "src/usage.ts",
+    'export { opencodeHookDialect } from "./hooks.js";',
+    "provider-entry"
+  ),
+  rejects(
+    "opencode usage: no ACP SPI",
+    "providers/opencode",
+    "src/usage.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";',
+    "provider-entry"
+  ),
+  allowed(
+    "opencode ACP: base environment SPI",
+    "providers/opencode",
+    "src/acp.ts",
+    'export { BASE_ENV } from "@rivus/agent-kit-acp/spi";'
+  ),
+  allowed(
+    "shell ACP: opencode profile",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { opencodeAcpProfile } from "@rivus/agent-kit-provider-opencode/acp";'
+  ),
+  allowed(
+    "shell usage: opencode usage",
+    "agent-kit",
+    "src/providers/usage.ts",
+    'export { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";'
+  ),
+  rejects(
+    "shell ACP: no opencode usage",
+    "agent-kit",
+    "src/providers/acp.ts",
+    'export { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";',
+    "shell-entry"
+  ),
   allowed(
     "gemini-cli: context SPI",
     "providers/gemini-cli",

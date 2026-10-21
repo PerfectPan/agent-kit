@@ -15,7 +15,7 @@ import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorSamples } from "../../providers/cursor/test/fixtures/hooks.js";
 import { geminiCliSamples } from "../../providers/gemini-cli/test/fixtures/hooks.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
-import { opencodeSamples } from "./fixtures/hooks/opencode.js";
+import { opencodeSamples } from "../../providers/opencode/test/fixtures/hooks.js";
 import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
 
 // Real fixture payloads, read with readHookEvent and folded with reduceLifecycle in the order an agent sends them:

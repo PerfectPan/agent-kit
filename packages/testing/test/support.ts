@@ -28,7 +28,7 @@ const USAGE_FIXTURES = {
   codex: { home: ".codex", source: "fixtures/usage/codex" },
   "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
   grok: { home: ".grok", source: "fixtures/usage/grok" },
-  opencode: { home: ".local/share/opencode", source: "fixtures/usage/opencode" },
+  opencode: { home: ".local/share/opencode", source: "../../providers/opencode/test/fixtures/usage" },
   pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" }
 } as const;
 
