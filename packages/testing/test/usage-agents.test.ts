@@ -194,40 +194,6 @@ describe("grok usage", () => {
   });
 });
 
-describe("opencode usage (older JSON layout)", () => {
-  it("reads each message file of a session, with the logged cost and reasoning folded into output", async () => {
-    const records = await decode("opencode", ".local/share/opencode/storage/message/ses_legacy", {});
-    expect(records.map((record) => [record.sessionId, record.usage, record.costUsd])).toEqual([
-      [
-        "ses_legacy",
-        {
-          inputTokens: 150,
-          outputTokens: 25,
-          totalTokens: 175,
-          cacheReadTokens: 50,
-          cacheWriteTokens: 0,
-          reasoningTokens: 5
-        },
-        0.01
-      ],
-      [
-        "ses_legacy",
-        {
-          inputTokens: 3,
-          outputTokens: 0,
-          totalTokens: 3,
-          cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-          reasoningTokens: 0
-        },
-        0
-      ]
-    ]);
-    // A message the older layout left without a completion time counts at its creation time.
-    expect(records[1]?.timestamp).toBe(1767225603000);
-  });
-});
-
 describe("ccusage buckets", () => {
   // presence and ccusage price four disjoint buckets: input without cache, cache reads, cache writes and output.
   // The kit's convention has input include the cache, and `noCacheInputTokens` gives the first bucket back, so a

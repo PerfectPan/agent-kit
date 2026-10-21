@@ -198,7 +198,7 @@ const DISCOVERY_EVIDENCE = "packages/discovery/README.md";
  */
 const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string }[] = [
   // Catalog owns display names.
-  { agent: "opencode", fact: "name", source: "packages/catalog/src/domain/coding-agent/adapters/opencode.ts" },
+  { agent: "opencode", fact: "name", source: "packages/providers/opencode/src/identity.ts" },
   // Agent-owned session and credential paths replace installer-writable homes and shared MCP configuration.
   { agent: "opencode", fact: "configPaths", source: DISCOVERY_EVIDENCE },
   { agent: "opencode", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },

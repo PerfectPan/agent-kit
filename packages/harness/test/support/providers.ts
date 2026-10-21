@@ -1,3 +1,5 @@
+import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
+import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
 import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";
 import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
@@ -8,6 +10,7 @@ import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { builtinInstallAdapters as install } from "@rivus/agent-kit-harness/public";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 export const builtinHookDialects: typeof hooks & {
+  readonly opencode: typeof opencodeHookDialect;
   readonly "gemini-cli": typeof geminiCliHookDialect;
   readonly cursor: typeof cursorHookDialect;
   readonly pi: typeof piHookDialect;
@@ -17,10 +20,11 @@ export const builtinHookDialects: typeof hooks & {
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: hooks.grok,
-  opencode: hooks.opencode,
+  opencode: opencodeHookDialect,
   pi: piHookDialect
 };
 export const builtinInstallAdapters: typeof install & {
+  readonly opencode: typeof opencodeInstallAdapter;
   readonly "gemini-cli": typeof geminiCliInstallAdapter;
   readonly cursor: typeof cursorInstallAdapter;
   readonly pi: typeof piInstallAdapter;
@@ -30,6 +34,6 @@ export const builtinInstallAdapters: typeof install & {
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: install.grok,
-  opencode: install.opencode,
+  opencode: opencodeInstallAdapter,
   pi: piInstallAdapter
 };

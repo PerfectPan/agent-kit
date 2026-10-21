@@ -564,7 +564,8 @@ Publishing stays on trusted publishing with provenance, from the same workflow f
 
 ### 5.3 Compatibility checks
 
-- `/harness/events` and `/transcript/usage` still import nothing in their built files. Each provider batch compares every entry with the main commit it is based on; growth over 1% of any entry needs an explanation in its PR. Batch 2 sizes remain historical measurements.
+- `/harness/events` and `/transcript/usage` still import nothing in their built files. Each provider batch compares every entry with the main commit it is based on; growth over 1% of any entry needs an explanation in its PR, except the expected `/catalog` growth described below. Batch 2 sizes remain historical measurements.
+- Until batch 12, rolldown places each provider's whole `facts.ts` in the shared chunk imported by `/catalog`, typically adding about 20–30 bytes per provider, though compression and reused facts can offset the net entry growth. Accept and measure this growth here rather than repeating the explanation in each provider PR; keep facts together.
 - The pnpm migration changes no shipped byte: the shell's and collab's `dist/` are compared file by file with a build of 821ebcf, and the dry-run pack file lists are compared too.
 - **The application check before 0.20.0.** Each application's type check and tests run twice: against the published 0.19.1, and against the locally packed 0.20.0. Every error that appears only in the second run must come from a change listed in 3.10. Errors the first run already has come from the application's older kit version, and its upgrade PR handles them.
 
@@ -698,7 +699,8 @@ One batch per agent, in this order:
     `src/domain/bundle/adapters/install-adapters.ts`;
   - `harness/test/support/providers.ts` and `testing/test/providers.ts`, which assemble full test tables;
     discovery's `src/application/services/host-paths.test.ts` also needs the moved identity via `testsOnly`
-    to keep testing its home override without depending on the shrinking context table;
+    to keep testing its home override without depending on the shrinking context table; it also reads
+    `builtinProbeRecipes.codex` from the context table, which batch 11 must replace;
   - the agent-keyed fixture source/home table in `testing/test/support.ts`, and hook fixture imports in
     `testing/test/hook-lifecycle-sequences.test.ts` and `testing/test/hook-conformance-catches.test.ts`;
     cross-agent fixtures and conformance-suite self-tests stay in testing;

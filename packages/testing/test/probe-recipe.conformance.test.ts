@@ -79,17 +79,6 @@ const SAMPLES: Readonly<Record<string, ProbeRecipeSamples>> = {
         version: { output: "grok 1.0.46 (2765805b9442)", number: "1.0.46" }
       }
     ]
-  },
-  opencode: {
-    versions: [{ output: ok("1.18.4\n"), version: { output: "1.18.4", number: "1.18.4" } }],
-    credentialFiles: [
-      {
-        path: "~/.local/share/opencode/auth.json",
-        json: { anthropic: { type: "oauth", refresh: "r", access: "a", expires: 1 } },
-        reading: { loggedIn: true }
-      },
-      { path: "~/.local/share/opencode/auth.json", json: { broken: { type: "other" } }, reading: { loggedIn: false } }
-    ]
   }
 };
 

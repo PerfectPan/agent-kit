@@ -1,5 +1,5 @@
-import type { AcpProfile } from "../index.js";
-import { BASE_ENV } from "./base-env.js";
+import { type AcpProfile, BASE_ENV } from "@rivus/agent-kit-acp/spi";
+import { OPENCODE_ID, OPENCODE_ACP_ARGS, OPENCODE_ACP_ENV } from "./facts.js";
 
 /**
  * `opencode acp`. Version 1.18.30 has no system prompt channel. opencode reaches many model providers, so every
@@ -7,10 +7,10 @@ import { BASE_ENV } from "./base-env.js";
  */
 export const opencodeAcpProfile: AcpProfile = {
   specificationVersion: "acp-v1",
-  agent: "opencode",
-  command: "opencode",
-  args: ["acp"],
-  env: [...BASE_ENV, "OPENCODE_*", "*_API_KEY", "ANTHROPIC_*", "OPENAI_*", "AWS_*", "AZURE_*", "GOOGLE_*", "VERTEX_*"],
+  agent: OPENCODE_ID,
+  command: OPENCODE_ID,
+  args: OPENCODE_ACP_ARGS,
+  env: [...BASE_ENV, ...OPENCODE_ACP_ENV],
   systemPrompt: { in: "first-block" },
   warnings: []
 };

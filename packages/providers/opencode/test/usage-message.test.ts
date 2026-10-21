@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SourcePointer } from "../../../transcript/index.js";
-import { opencodeMessageUsage } from "./usage.js";
+import type { SourcePointer } from "@rivus/agent-kit-sessions/spi";
+import { opencodeMessageUsage } from "../src/usage.js";
 
 const source: SourcePointer = { file: "msg_a.json", offset: 0, length: 10, line: 1 };
 

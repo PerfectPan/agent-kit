@@ -1,4 +1,5 @@
-import type { FieldPath, HookDialect, PayloadFields } from "../index.js";
+import type { FieldPath, HookDialect, PayloadFields } from "@rivus/agent-kit-harness/spi";
+import { OPENCODE_ID, OPENCODE_CURRENT_SESSION_FIELD as opencodeCurrentSessionField } from "./facts.js";
 
 // https://opencode.ai/docs/plugins (plugin directories, hooks, event names). Payload shapes and which events the
 // runtime publishes are checked against github.com/anomalyco/opencode at ecc4916: packages/opencode/src/plugin and
@@ -12,9 +13,6 @@ import type { FieldPath, HookDialect, PayloadFields } from "../index.js";
 // event that plugin instance saw name one, forwarded or not, until that session is deleted. It is not persisted, and
 // with several sessions in one directory it is the latest one's. That key is not one opencode sends (`id`, `type`,
 // `properties`, `sessionID`) and not `directory`, so adding it never overwrites the event.
-
-/** The top-level key of the bridge's `currentSessionId`. */
-export const opencodeCurrentSessionField = "currentSessionId" as const;
 
 /** Message events carry the message's sessionID, part events the part's. */
 const NAMED_SESSION: readonly FieldPath[] = [
@@ -33,7 +31,7 @@ const SESSION_INFO: Omit<PayloadFields, "event"> = {
 
 export const opencodeHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  agent: "opencode",
+  agent: OPENCODE_ID,
   delivery: "plugin",
   fields: {
     event: { paths: [["type"]] },

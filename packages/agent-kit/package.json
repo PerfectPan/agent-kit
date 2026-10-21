@@ -118,6 +118,8 @@
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",
+    "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
+    "@rivus/agent-kit-provider-opencode": "workspace:*",
     "@rivus/agent-kit-provider-pi": "workspace:*",
     "@rivus/agent-kit-redact": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
@@ -130,8 +132,7 @@
     "rolldown": "1.2.13",
     "size-limit": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:",
-    "@rivus/agent-kit-provider-gemini-cli": "workspace:*"
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "effect": "catalog:"

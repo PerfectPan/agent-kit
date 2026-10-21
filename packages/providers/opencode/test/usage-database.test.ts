@@ -1,10 +1,14 @@
-import { builtinUsageDecoders as testUsage } from "./providers.js";
-import { builtinCodingAgents as testIdentity } from "./providers.js";
+import { usageDecoderConformance } from "@rivus/agent-kit-testing";
+import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
+import { opencodeUsageDecoder } from "../src/usage.js";
+import { opencode } from "../src/identity.js";
+const testUsage = { opencode: opencodeUsageDecoder };
+const testIdentity = { opencode };
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { PlatformSqlite } from "@rivus/agent-kit-platform";
+type PlatformSqlite = NonNullable<UsagePlatform["sqlite"]>;
 import {
   decodeUsage,
   type DecodeUsageOptions,
@@ -17,7 +21,7 @@ import {
 } from "@rivus/agent-kit-sessions";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { nodeReadFs, nodeSqlite } from "./support.js";
+import { createNodePlatform } from "@rivus/agent-kit-platform-node";
 
 interface MessageRow {
   id: string;
@@ -26,12 +30,11 @@ interface MessageRow {
   data: Record<string, unknown>;
 }
 
-const rows = JSON.parse(
-  await readFile(new URL("fixtures/usage/opencode-messages.json", import.meta.url), "utf8")
-) as MessageRow[];
+const rows = JSON.parse(await readFile(new URL("fixtures/messages.json", import.meta.url), "utf8")) as MessageRow[];
 const work = await mkdtemp(join(tmpdir(), "agent-kit-opencode-"));
 afterAll(() => rm(work, { recursive: true, force: true }));
-const sqlite = nodeSqlite();
+const node = createNodePlatform({ home: work, env: {} });
+const sqlite = node.sqlite!;
 let databases = 0;
 
 /** A database as opencode 1.2 creates it, under a data home of its own, holding `seed`. */
@@ -80,7 +83,7 @@ const finished = {
   time: { created: 1767225606000, completed: 1767225607000 }
 };
 
-const platform: UsagePlatform = { fs: nodeReadFs(), sqlite };
+const platform: UsagePlatform = { fs: node.fs, sqlite };
 
 async function decode(
   path: string,
@@ -241,7 +244,7 @@ describe("opencode usage (SQLite)", () => {
     const last = await decode(
       path,
       { ...(first.cursor ? { from: first.cursor } : {}), final: true },
-      { fs: nodeReadFs(), sqlite: failing }
+      { fs: node.fs, sqlite: failing }
     );
     expect(last.failures).toEqual(["ReadFailed"]);
     expect(last.cursor?.state).toMatchObject({ running: ["msg_5"] });
@@ -335,7 +338,7 @@ describe("opencode usage (SQLite)", () => {
         };
       }
     };
-    const { records } = await decode(path, {}, { fs: nodeReadFs(), sqlite: recording });
+    const { records } = await decode(path, {}, { fs: node.fs, sqlite: recording });
     expect(records).toHaveLength(1200);
     expect(statements.filter((sql) => sql.includes("ORDER BY rowid"))).toHaveLength(3);
     expect(statements.filter((sql) => sql.includes("ORDER BY time_updated")).length).toBeLessThanOrEqual(1);
@@ -343,7 +346,7 @@ describe("opencode usage (SQLite)", () => {
 
   it("returns SqliteUnavailable when the platform has no SQLite", async () => {
     const { path } = await database();
-    const { records, failures } = await decode(path, {}, { fs: nodeReadFs() });
+    const { records, failures } = await decode(path, {}, { fs: node.fs });
     expect(records).toEqual([]);
     expect(failures).toEqual(["SqliteUnavailable"]);
   });
@@ -359,4 +362,17 @@ describe("opencode usage (SQLite)", () => {
     }
     expect(sources).toEqual([path]);
   });
+});
+
+const conformanceDatabase = await database();
+describe("opencode SQLite usage conformance", () => {
+  for (const { name, run } of usageDecoderConformance(opencodeUsageDecoder, {
+    platform,
+    home: homeFromRule("opencode", opencode.home, { home: work, env: { XDG_DATA_HOME: conformanceDatabase.dataHome } }),
+    sources: [{ path: conformanceDatabase.path, records: 4 }]
+  })) {
+    it(`${name}`, async () => {
+      await expect(run()).resolves.toBeUndefined();
+    });
+  }
 });

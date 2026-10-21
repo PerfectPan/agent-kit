@@ -1,3 +1,4 @@
+import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/install";
 import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
 import { builtinInstallAdapters as contextBuiltins } from "@rivus/agent-kit-harness/public";
@@ -6,6 +7,7 @@ import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinInstallAdapters: typeof contextBuiltins & {
+  readonly opencode: typeof opencodeInstallAdapter;
   readonly "gemini-cli": typeof geminiCliInstallAdapter;
   readonly cursor: typeof cursorInstallAdapter;
   readonly pi: typeof piInstallAdapter;
@@ -15,7 +17,7 @@ export const builtinInstallAdapters: typeof contextBuiltins & {
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: contextBuiltins.grok,
-  opencode: contextBuiltins.opencode,
+  opencode: opencodeInstallAdapter,
   pi: piInstallAdapter
 };
 

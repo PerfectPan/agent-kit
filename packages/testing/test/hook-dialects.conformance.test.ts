@@ -7,13 +7,11 @@ import { claudeCodeSamples } from "./fixtures/hooks/claude-code.js";
 import { codexSamples } from "./fixtures/hooks/codex.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { grokSamples } from "./fixtures/hooks/grok.js";
-import { opencodeSamples } from "./fixtures/hooks/opencode.js";
 
 const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
   codex: codexSamples,
-  grok: grokSamples,
-  opencode: opencodeSamples
+  grok: grokSamples
 };
 
 for (const [agent, dialect] of Object.entries(builtinHookDialects)) {
