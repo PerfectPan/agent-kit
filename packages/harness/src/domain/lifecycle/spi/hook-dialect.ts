@@ -101,7 +101,10 @@ export interface ForeignHooks {
   readonly unverified?: string;
 }
 
-/** Evidence that identifies the agent actually running a hook. */
+/**
+ * Evidence that identifies the agent actually running a hook. Source detection reads marker declarations across
+ * every supplied dialect, including unrelated ones; marker access must be side-effect free.
+ */
 export interface HostMarkers {
   readonly payloadFields?: readonly string[];
   /** Environment markers apply only to agents whose hooks this dialect runs. */

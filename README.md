@@ -20,7 +20,7 @@ adoption. See [Adopting agent-kit](docs/development/adoption.md).
 
 ## Entries
 
-The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (19 in total).
+The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (20 in total).
 
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |

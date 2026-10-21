@@ -36,7 +36,7 @@ export interface LoadOptions {
 
 /**
  * How one CodingAgent stores its sessions and how to read them. Built-in adapters are in `builtinSessionAdapters`;
- * a caller passes its own through the `adapters` option of a use case, and `/testing` has the conformance checks an
+ * a shell caller passes its own as a `sessions` service in the `providers` option, and `/testing` has the checks an
  * adapter must pass. Every read goes through the platform passed to the call.
  */
 export interface SessionAdapter {

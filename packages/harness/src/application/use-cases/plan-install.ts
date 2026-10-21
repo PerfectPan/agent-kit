@@ -1,4 +1,4 @@
-import { canonicalAgents, type InstallProviders } from "../providers.js";
+import type { InstallProviders } from "../providers.js";
 import { isPlainObject } from "es-toolkit";
 
 import { AgentKitError, requireService, lookupService, type CodingAgentId } from "@rivus/agent-kit-catalog";
@@ -532,7 +532,6 @@ export function planInstall(
   bundle: Bundle,
   options: PlanInstallOptions
 ): Effect.Effect<InstallPlan, PlanInstallError, HarnessServices> {
-  options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
   return Effect.gen(function* () {
     requireUserScope(options);
     const checked = yield* fromResult(checkBundle(bundle));

@@ -1,4 +1,4 @@
-import { canonicalAgents, type InstallProviders } from "../providers.js";
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
@@ -87,7 +87,6 @@ export function findLegacy(
   owner: Owner,
   options: FindLegacyOptions
 ): Effect.Effect<readonly LegacyEntry[], FindLegacyError, FindLegacyServices> {
-  options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
   return Effect.gen(function* () {
     requireUserScope(options);
     // The owner and the markers are checked the way uninstall's are, through the same shared rule.

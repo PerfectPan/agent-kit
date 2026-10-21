@@ -1,4 +1,4 @@
-import { canonicalAgents, type InstallProviders } from "../providers.js";
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import * as Effect from "effect/Effect";
 
@@ -96,9 +96,6 @@ export function verify(
   owner: Owner,
   options: VerifyOptions
 ): Effect.Effect<VerifyReport, VerifyError, HarnessServices> {
-  if (options.agents !== undefined) {
-    options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
-  }
   return Effect.gen(function* () {
     requireUserScope(options);
     const scope = yield* ledgerScope(options);

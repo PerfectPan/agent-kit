@@ -1,5 +1,5 @@
 import { lookupService } from "@rivus/agent-kit-catalog";
-import { canonicalAgents, type InstallProviders } from "../providers.js";
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
@@ -199,9 +199,6 @@ function agentHooks(
  * and nothing else.
  */
 export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], never, HarnessServices> {
-  if (options.agents !== undefined) {
-    options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
-  }
   return Effect.gen(function* () {
     requireUserScope(options);
     const scope = yield* ledgerScope(options);

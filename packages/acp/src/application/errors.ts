@@ -86,10 +86,6 @@ export interface BindingNotFound {
  */
 export type AcpErrorCode = "capability-unsupported" | "invalid-option";
 
-export function capabilityUnsupported(agent: CodingAgentId): AgentKitError<AcpErrorCode> {
-  return new AgentKitError("capability-unsupported", `Agent "${agent}" has no ACP profile`);
-}
-
 export function invalidOption(message: string): AgentKitError<AcpErrorCode> {
   return new AgentKitError("invalid-option", message);
 }

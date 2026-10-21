@@ -1,4 +1,4 @@
-import { canonicalAgents, type InstallProviders } from "../providers.js";
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import * as Effect from "effect/Effect";
 
@@ -59,9 +59,6 @@ export function uninstall(
   owner: Owner,
   options: UninstallOptions
 ): Effect.Effect<UninstallReport, UninstallError, HarnessServices> {
-  if (options.agents !== undefined) {
-    options = { ...options, agents: canonicalAgents(options.agents, options.providers.identity) };
-  }
   return Effect.scoped(
     Effect.gen(function* () {
       requireUserScope(options);

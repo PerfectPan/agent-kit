@@ -52,8 +52,13 @@ export default defineConfig({
       // alwaysBundle matches whole import specifiers, so the pattern covers the `zod/mini` subpath.
       deps: { neverBundle: [/^node:/], alwaysBundle: [/^zod(\/|$)/], dts: { alwaysBundle: [/^zod(\/|$)/] } }
     })),
-    {
-      ...shared(Object.keys(entry).filter((name) => !ZERO_DEPENDENCY_ENTRIES.includes(name))),
+    // The aggregate provider entry needs complete usage adapters. Its own pack keeps their unused exports out of
+    // chunks reached by narrow entries such as /sessions, which need only the transcript usage helpers.
+    ...[
+      ["providers"],
+      Object.keys(entry).filter((name) => !ZERO_DEPENDENCY_ENTRIES.includes(name) && name !== "providers")
+    ].map((names): PackUserConfig => ({
+      ...shared(names),
       // The internal packages are devDependencies, so they are bundled; dependencies, peers and node:* stay external.
       // zod/mini is the exception for the Node platform chunk (see bundlePlatformZod).
       deps: {
@@ -61,6 +66,6 @@ export default defineConfig({
         alwaysBundle: bundlePlatformZod,
         dts: { alwaysBundle: bundlePlatformZod }
       }
-    }
+    }))
   ]
 });

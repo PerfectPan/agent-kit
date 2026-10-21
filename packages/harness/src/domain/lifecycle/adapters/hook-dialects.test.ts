@@ -523,7 +523,7 @@ describe("readHookEvent", () => {
     }
   });
 
-  it("never reads an unrelated adapter entry: a null or unreadable one does not affect another agent's read", () => {
+  it("ignores null dialects and reads foreign-hook relationships only after matching host markers", () => {
     const unreadable = {
       get runsHooksOf(): never {
         throw new Error("boom");

@@ -9,7 +9,7 @@ import { opencodeAcpProfile } from "./opencode.js";
 
 export type AcpProfiles = ServiceTable<AcpProfile>;
 
-/** The agents `connectAgent` can launch by id. A caller adds or overrides one through `profiles`. */
+/** The agents `connectAgent` can launch by id. A shell caller adds or overrides one through `providers` descriptors with an `acp` service. */
 export const builtinAcpProfiles: AcpProfiles = {
   "claude-code": claudeCodeAcpProfile,
   codex: codexAcpProfile,
