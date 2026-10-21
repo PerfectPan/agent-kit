@@ -102,7 +102,12 @@ function spiProvider(copy: string, slim = false): void {
   const contexts = ["catalog", "discovery", "sessions", "harness", "acp"].map(
     (context) => `@rivus/agent-kit-${context}`
   );
-  const dependsOn = [...contexts, "@rivus/agent-kit-platform"];
+  const siblingDependencies = [
+    "@rivus/agent-kit-platform",
+    "@rivus/agent-kit-platform-node",
+    "@rivus/agent-kit-testing"
+  ];
+  const dependsOn = [...contexts, ...siblingDependencies];
   mkdirSync(join(folder, "src"), { recursive: true });
   writeFileSync(
     join(folder, "package.json"),
@@ -122,7 +127,8 @@ function spiProvider(copy: string, slim = false): void {
   symlinkSync(join(ROOT, "packages/agent-kit/node_modules"), join(folder, "node_modules"));
   const manifest = join(copy, "infra/architecture/boundaries.ts");
   const rule = {
-    dependsOn: ["@rivus/agent-kit-platform"],
+    siblingEntries: [],
+    dependsOn: siblingDependencies,
     spiImports: [...contexts, "@rivus/agent-kit-platform"].filter(
       (context) => !slim || context !== "@rivus/agent-kit-harness"
     ),

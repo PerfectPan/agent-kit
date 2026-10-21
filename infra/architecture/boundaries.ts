@@ -14,7 +14,9 @@
 export type Layer = "domain" | "adapters" | "application" | "infra";
 
 export interface PackageRule {
-  /** Workspace packages this package may import through their `public` entries. */
+  /** Entries this package exposes to siblings with dependsOn access; SPI access is declared separately. */
+  readonly siblingEntries: readonly string[];
+  /** Workspace packages this package may import through their declared sibling entries. */
   readonly dependsOn: readonly string[];
   /** This context exports `src/spi.ts` as `./spi` for provider implementations. */
   readonly spi?: true;
@@ -116,6 +118,7 @@ const TESTING = "@rivus/agent-kit-testing";
 export const boundaries: BoundaryRules = {
   packages: {
     [CODEX]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/codex/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
@@ -124,6 +127,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CLAUDE_CODE]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/claude-code/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
@@ -132,6 +136,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GROK]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/grok/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
@@ -140,6 +145,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [OPENCODE]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/opencode/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
@@ -148,6 +154,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [GEMINI_CLI]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/gemini-cli/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
       dependsOn: [],
@@ -156,6 +163,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [CURSOR]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/cursor/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install"],
       dependsOn: [],
@@ -164,6 +172,7 @@ export const boundaries: BoundaryRules = {
       external: ["zod/mini"]
     },
     [PI]: {
+      siblingEntries: [],
       providerFacts: "packages/providers/pi/src/facts.ts",
       providerServices: ["identity", "discovery", "hooks", "install", "usage"],
       dependsOn: [],
@@ -171,18 +180,30 @@ export const boundaries: BoundaryRules = {
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },
-    [PLATFORM]: { dependsOn: [], external: [] },
-    [PLATFORM_NODE]: { dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
-    [CATALOG]: { dependsOn: [], external: [], spi: true },
+    [PLATFORM]: { siblingEntries: ["public", "effect"], dependsOn: [], external: [] },
+    [PLATFORM_NODE]: { siblingEntries: ["public"], dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
+    [CATALOG]: { siblingEntries: ["public"], dependsOn: [], external: [], spi: true },
     // zod/mini is the only zod entry the plan allows. es-toolkit's root export is tree-shakable; its lodash-compatible
     // `es-toolkit/compat` layer is deliberately not allowed.
-    [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"], spi: true },
-    [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"], spi: true, testsOnly: [GEMINI_CLI, CODEX] },
+    [SESSIONS]: {
+      siblingEntries: ["public"],
+      dependsOn: [CATALOG, PLATFORM],
+      external: ["zod/mini", "es-toolkit"],
+      spi: true
+    },
+    [DISCOVERY]: {
+      siblingEntries: ["public"],
+      dependsOn: [CATALOG, PLATFORM],
+      external: ["zod/mini"],
+      spi: true,
+      testsOnly: [GEMINI_CLI, CODEX]
+    },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
     // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform. shell-quote
     // reads the first word of a hook command for doctor and stays behind that one module.
     [HARNESS]: {
+      siblingEntries: ["public/events"],
       spi: true,
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
@@ -192,10 +213,16 @@ export const boundaries: BoundaryRules = {
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
     // bundles into the entry.
-    [COST]: { dependsOn: [CATALOG, SESSIONS], typesOnly: [SESSIONS], external: ["zod/mini"] },
+    [COST]: {
+      siblingEntries: ["public"],
+      dependsOn: [CATALOG, SESSIONS],
+      typesOnly: [SESSIONS],
+      external: ["zod/mini"]
+    },
     // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a
     // fake agent through the Node platform, which only applications may provide.
     [ACP]: {
+      siblingEntries: [],
       spi: true,
       dependsOn: [CATALOG, PLATFORM, SESSIONS],
       testsOnly: [PLATFORM_NODE],
@@ -204,16 +231,18 @@ export const boundaries: BoundaryRules = {
     },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
+      siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
       testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.
-    "@rivus/agent-kit-redact": { dependsOn: [], external: ["es-toolkit"] },
+    "@rivus/agent-kit-redact": { siblingEntries: [], dependsOn: [], external: ["es-toolkit"] },
     // The second published package. It reaches agent-kit only through its public entries, which are peers at
     // runtime, so a process holds one copy of the Platform types and the Result helpers.
     [COLLAB]: {
+      siblingEntries: [],
       dependsOn: [SHELL],
       external: ["zod/mini"],
       entries: ["lanes", "lease", "process-lock"],

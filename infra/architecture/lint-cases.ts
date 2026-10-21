@@ -6,6 +6,7 @@
 import { allowed, rejects, fresh, type Case } from "./case.ts";
 import { providerCases } from "./provider-cases.ts";
 import { spiCases } from "./spi-cases.ts";
+import { siblingEntryCases } from "./sibling-entry-cases.ts";
 
 const PLATFORM = "@rivus/agent-kit-platform";
 const CATALOG = "@rivus/agent-kit-catalog";
@@ -16,6 +17,7 @@ const COLLAB = "@rivus/agent-kit-collab";
 
 export const cases: Case[] = [
   ...spiCases,
+  ...siblingEntryCases,
   ...providerCases,
   allowed(
     "collab root domain: catalog value",
@@ -935,31 +937,6 @@ export const cases: Case[] = [
     fresh("src/application/x"),
     `export type { SessionHead } from "../domain/session/index.js";`,
     "unresolved"
-  ),
-  allowed(
-    "testing: the plain harness SPI",
-    "testing",
-    fresh("src/x"),
-    'export { Ledger } from "@rivus/agent-kit-harness/spi";'
-  ),
-  allowed(
-    "testing: the plain harness events entry",
-    "testing",
-    fresh("src/x"),
-    'export { readHookEvent } from "@rivus/agent-kit-harness/public/events";'
-  ),
-  allowed(
-    "testing: a declared harness public subentry",
-    "testing",
-    fresh("src/x"),
-    'export type { InstallAdapter } from "@rivus/agent-kit-harness/public/install";'
-  ),
-  rejects(
-    "a public subentry absent from the target exports",
-    "sessions",
-    fresh("src/application/x"),
-    `export { ok } from "${CATALOG}/public/events";`,
-    "deep-import"
   ),
 
   // resolution

@@ -109,22 +109,7 @@ export function workspaceProjects(root: string): Project[] {
 
 /** The boundary rules cover the projects under `packages/`. */
 const projects = workspaceProjects(ROOT).filter(({ folder }) => folder.startsWith("packages/"));
-const siblingEntries = new Map(
-  projects.map(({ name, folder }) => {
-    const manifest = JSON.parse(readFileSync(join(ROOT, folder, "package.json"), "utf8")) as {
-      exports?: Readonly<Record<string, unknown>>;
-    };
-    const entries = Object.keys(manifest.exports ?? {})
-      .filter(
-        (entry) =>
-          entry === "./public" ||
-          (entry.startsWith("./public/") && !entry.endsWith(boundaries.effect.workspaceEntry)) ||
-          entry === `./${EFFECT_ENTRY}`
-      )
-      .map((entry) => entry.slice(2));
-    return [name, entries];
-  })
-);
+const siblingEntries = new Map(Object.entries(boundaries.packages).map(([name, rule]) => [name, rule.siblingEntries]));
 
 /** Packages that shells bundle and re-export: declared, without published entries of their own. */
 const internalNames = Object.entries(boundaries.packages)
@@ -415,8 +400,7 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
           {
             from: all,
             disallow: { to: external({ source: name, internalPath: `!${braces([...entries, "spi"])}` }) },
-            message:
-              "[deep-import] {{dependency.source}}: import a public entry listed in the target package's exports or a declared SPI entry"
+            message: `[deep-import] {{dependency.source}}: import an entry listed under the target package's siblingEntries or a declared SPI entry in ${MANIFEST}`
           }
         ];
       }),

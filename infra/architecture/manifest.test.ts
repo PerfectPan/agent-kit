@@ -123,6 +123,9 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
               .filter((entry) => !rule.providerServices?.some((service) => entry === `./${service}`))
               .map((entry) => `${pkg.folder}: entry-export unexpected ${entry}`)
           ]),
+      ...(rule?.siblingEntries ?? [])
+        .filter((entry) => pkg.exports?.[`./${entry}`] === undefined)
+        .map((entry) => `${pkg.folder}: entry-export ./${entry}`),
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
       ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
@@ -292,7 +295,7 @@ describe("the package manifests", () => {
     Object.defineProperty(boundaries, "packages", {
       value: {
         ...original,
-        [name]: { dependsOn: [], spiImports: [SESSIONS], external: [] }
+        [name]: { siblingEntries: [], dependsOn: [], spiImports: [SESSIONS], external: [] }
       },
       configurable: true
     });
@@ -380,6 +383,22 @@ describe("the package manifests", () => {
     ]);
   });
 
+  it.each(
+    packages.flatMap((pkg) =>
+      (boundaries.packages[pkg.name]?.siblingEntries ?? []).map((entry) => ({ folder: pkg.folder, entry }))
+    )
+  )("requires $folder's declared sibling entry $entry in exports", ({ folder, entry }) => {
+    const probe = packages.map((pkg) =>
+      pkg.folder === folder
+        ? {
+            ...pkg,
+            exports: Object.fromEntries(Object.entries(pkg.exports ?? {}).filter(([key]) => key !== `./${entry}`))
+          }
+        : pkg
+    );
+    expect(manifestViolations(probe, onDisk)).toEqual([`${folder}: entry-export ./${entry}`]);
+  });
+
   it("forbids sibling and concept index files throughout package sources", () => {
     expect(
       globSync("packages/**/src/**/index.ts", { cwd: root, exclude: ["**/node_modules/**", "**/dist/**"] })
@@ -404,7 +423,14 @@ describe("the package manifests", () => {
     ]);
     expect(
       manifestViolations(
-        packages.map((pkg) => (pkg.folder === folder ? { ...pkg, exports: {} } : pkg)),
+        packages.map((pkg) =>
+          pkg.folder === folder
+            ? {
+                ...pkg,
+                exports: Object.fromEntries(Object.entries(pkg.exports ?? {}).filter(([entry]) => entry !== "./spi"))
+              }
+            : pkg
+        ),
         onDisk
       )
     ).toEqual([`${folder}: entry-export ./spi`]);
