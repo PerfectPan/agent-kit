@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import type { FileStat } from "@rivus/agent-kit-platform";
 import {
@@ -55,12 +57,14 @@ function platformAt(files: Record<string, MemoryFile>): { platform: MemoryPlatfo
   return { platform: createMemoryPlatform({ files, home: "/u/me", now: () => now }), at: (time) => (now = time) };
 }
 
+type WithoutProviders<T> = T extends unknown ? Omit<T, "providers"> : never;
+
 async function scan(
   platform: MemoryPlatform,
-  options: ScanUsageOptions = { since },
+  options: WithoutProviders<ScanUsageOptions> = { since },
   stop?: number
 ): Promise<{ records: UsageRecord[]; failures: string[]; state: UsageScanState }> {
-  const run = scanUsage(platform, options);
+  const run = scanUsage(platform, { ...options, providers: { usage: testUsage, identity: testIdentity } });
   const records: UsageRecord[] = [];
   const failures: string[] = [];
   for await (const item of run) {
@@ -288,7 +292,10 @@ ${text(pi)}${same}
     expect(Object.values(first.state.requests["claude-code"] ?? {}).join("")).toHaveLength(7 * 9);
     let thrown: unknown;
     try {
-      scanUsage(platform, { state: first.state } as unknown as ScanUsageOptions);
+      scanUsage(platform, {
+        ...({ state: first.state } as unknown as ScanUsageOptions),
+        providers: { usage: testUsage, identity: testIdentity }
+      });
     } catch (error) {
       thrown = error;
     }

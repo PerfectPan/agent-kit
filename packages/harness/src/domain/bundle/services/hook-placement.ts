@@ -1,6 +1,6 @@
-import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
+import { requireService, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
-import type { HookDialect, HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookDialect, HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 import {
   foreignHooksIn,
@@ -169,13 +169,7 @@ export function placeHooks(
   options: HookPlacementOptions = {}
 ): Result<readonly PlacedHooks[], HookSpecRejected | HookOverlap | InvalidHookPlacement> {
   const compat = options.compat ?? [];
-  const dialectOf = (agent: CodingAgentId): HookDialect => {
-    const dialect = Object.hasOwn(dialects, agent) ? dialects[agent] : undefined;
-    if (dialect === undefined) {
-      throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no hook dialect`);
-    }
-    return dialect;
-  };
+  const dialectOf = (agent: CodingAgentId): HookDialect => requireService(agent, dialects, "has no hook dialect");
   const own = new Map<HookPlacement, readonly HookRegistration[]>();
   for (const [index, placement] of placements.entries()) {
     const problem = placementProblem(placement, index, placements);
@@ -227,7 +221,7 @@ export function placeHooks(
     pending = pending.filter((placement) => !settled.has(placement));
   }
   for (const runner of Object.values(dialects)) {
-    if (runner !== undefined && !placements.some((placement) => placement.agent === runner.agent)) {
+    if (runner != null && !placements.some((placement) => placement.agent === runner.agent)) {
       const overlap = overlapIn(runner.agent, incomingTo(runner, sourcesOf(runner), settled, compat));
       if (overlap !== undefined) {
         return err(overlap);

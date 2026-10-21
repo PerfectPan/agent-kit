@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -53,9 +55,11 @@ describe("SqliteLedgerLockLive across processes", () => {
     holder.signal("SIGKILL");
     await holder.exited;
     const plan = await Effect.runPromise(
-      planInstall(demoBundle(), { agents: ["claude-code", "grok"], lockWaitMs: 5_000 }).pipe(
-        Effect.provide(home.layer())
-      )
+      planInstall(demoBundle(), {
+        agents: ["claude-code", "grok"],
+        lockWaitMs: 5_000,
+        providers: { install: testInstall, hooks: testHooks }
+      }).pipe(Effect.provide(home.layer()))
     );
     expect(performance.now() - killedAt).toBeLessThan(1_500);
     const after = await Effect.runPromise(inventory().pipe(Effect.provide(home.layer())));
@@ -140,7 +144,12 @@ describe("applyInstall across processes", () => {
   it("S34: an apply interrupted while it waits for the lock writes nothing, and applies once the holder is gone", async () => {
     const home = testHome();
     const layer = home.layer();
-    const plan = await Effect.runPromise(planInstall(demoBundle(), { agents: ["grok"] }).pipe(Effect.provide(layer)));
+    const plan = await Effect.runPromise(
+      planInstall(demoBundle(), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks }
+      }).pipe(Effect.provide(layer))
+    );
     const holder = startWorker("ledger-worker", ["hold"], home.env);
     await holder.next("entered", 20_000);
     await Effect.runPromise(
@@ -165,7 +174,10 @@ describe("without SQLite", () => {
     const home = testHome();
     const platform = { ...home.platform, sqlite: undefined };
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle(), { agents: ["grok"] });
+      const plan = yield* planInstall(demoBundle(), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       const failure = yield* Effect.flip(applyInstall(plan));
       expect(failure).toMatchObject({ _tag: "LedgerLockUnavailable" });
       expect(home.read(".grok/hooks/demo-app.json")).toBeUndefined();
@@ -181,7 +193,10 @@ describe("without SQLite", () => {
       holder: () => Effect.succeed(undefined as string | undefined)
     });
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle(), { agents: ["grok"] });
+      const plan = yield* planInstall(demoBundle(), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       yield* applyInstall(plan);
       expect(home.read(".grok/hooks/demo-app.json")).toContain(`"SessionStart"`);
     }).pipe(Effect.provide(Layer.merge(home.layer(platform), injected)));

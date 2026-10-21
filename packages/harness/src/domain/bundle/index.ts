@@ -52,6 +52,6 @@ export {
   type InstallContext,
   ownerSlug,
   type RenderedArtifact
-} from "./value-objects/install-adapter.js";
+} from "./spi/install-adapter.js";
 export { type Owner, OWNER_PATTERN } from "./value-objects/owner.js";
 export type { Strategy } from "./value-objects/strategy.js";

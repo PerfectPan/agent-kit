@@ -1,11 +1,7 @@
-import type { Platform } from "@rivus/agent-kit-platform";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
 import type { SessionBinding } from "../domain/acp-session/index.js";
-
-/** The parts of the platform acp uses: `process.spawn` for the agent, `fs` for client file calls, `clock` for events. */
-export type AcpPlatform = Pick<Platform, "fs" | "process" | "clock">;
 
 /** The binding store could not be used; what it holds is unknown, not changed. */
 export interface SessionBindingStoreFailure {

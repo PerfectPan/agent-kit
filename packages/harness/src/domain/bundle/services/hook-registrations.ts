@@ -1,3 +1,4 @@
+import { lookupService } from "@rivus/agent-kit-catalog";
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog";
 
 import {
@@ -5,8 +6,8 @@ import {
   type HookDialect,
   type HookDialects,
   foreignHooksOf
-} from "../../lifecycle/value-objects/hook-dialect.js";
-import type { HookSource, InstallAdapters, InstallContext } from "../value-objects/install-adapter.js";
+} from "../../lifecycle/spi/hook-dialect.js";
+import type { HookSource, InstallAdapters, InstallContext } from "../spi/install-adapter.js";
 import type { HookSpec } from "../value-objects/artifact-spec.js";
 
 /** One hook as an agent's configuration registers it. */
@@ -100,13 +101,15 @@ export function foreignHookFiles(
   context: InstallContext,
   compat: readonly HookCompat[] = []
 ): readonly ForeignHookFile[] {
-  const dialect = Object.hasOwn(dialects, runner) ? dialects[runner] : undefined;
-  if (dialect === undefined) {
+  const found = lookupService(runner, dialects);
+  if (!found.ok) {
     return [];
   }
+  const dialect = found.value;
   const files: ForeignHookFile[] = [];
   for (const foreign of foreignHooksOf(dialect)) {
-    const known = adapters[foreign.agent]?.hookSources?.(context) ?? [];
+    const adapter = lookupService(foreign.agent, adapters);
+    const known = adapter.ok ? (adapter.value.hookSources?.(context) ?? []) : [];
     for (const file of foreign.files) {
       if (!file.startsWith("~/") || foreignHooksIn(dialect, foreign.agent, file, compat) === undefined) {
         continue;

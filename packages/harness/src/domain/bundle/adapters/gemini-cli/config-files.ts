@@ -1,4 +1,4 @@
-import { resolveHome } from "@rivus/agent-kit-catalog";
+import { builtinCodingAgents, homeFromRule } from "@rivus/agent-kit-catalog";
 
 import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
@@ -9,7 +9,7 @@ import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
 /** Gemini CLI's home: `$GEMINI_CLI_HOME/.gemini`, or `~/.gemini`. */
 export function geminiHome(context: InstallContext): string {
-  return resolveHome("gemini-cli", context).path;
+  return homeFromRule("gemini-cli", builtinCodingAgents["gemini-cli"].home, context).path;
 }
 
 export function geminiSettingsFile(context: InstallContext): string {

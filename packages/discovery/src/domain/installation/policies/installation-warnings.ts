@@ -1,6 +1,6 @@
 import type { Installation } from "../value-objects/installation.js";
 import type { ProbeProblem } from "../value-objects/probe-problem.js";
-import type { ProbeRecipe } from "../value-objects/probe-recipe.js";
+import type { ProbeRecipe } from "../spi/probe-recipe.js";
 
 const SHELL_SHIM_WARNING =
   "The command is a Windows .cmd or .bat shim, which runs only through a shell; detection does not run it, so the agent is at most found.";

@@ -1,4 +1,4 @@
-import { resolveHome } from "@rivus/agent-kit-catalog";
+import { builtinCodingAgents, homeFromRule } from "@rivus/agent-kit-catalog";
 
 import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
@@ -8,7 +8,7 @@ import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
 /** Claude Code's home: `CLAUDE_CONFIG_DIR`, or `~/.claude`. */
 export function claudeHome(context: InstallContext): string {
-  return resolveHome("claude-code", context).path;
+  return homeFromRule("claude-code", builtinCodingAgents["claude-code"].home, context).path;
 }
 
 export function claudeSettingsFile(context: InstallContext): string {

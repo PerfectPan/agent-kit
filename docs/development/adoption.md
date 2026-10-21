@@ -6,11 +6,12 @@ Before adoption, select a verified npm release whose manifest exports the entrie
 
 ## Public entry inventory
 
-The source exports 16 agent-kit entries and three collab entries (19 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
+The source exports 17 agent-kit entries and three collab entries (20 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
 
 | Entry                                  | Main API                                                                                                                              | Calling style                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
+| `@rivus/agent-kit/providers`           | `Provider`, `builtinProviders`                                                                                                         | Plain service descriptors                       |
+| `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
 | `@rivus/agent-kit/platform`            | `Platform` and port types, `splitLines`                                                                                               | Plain                                           |
 | `@rivus/agent-kit/node`                | `createNodePlatform`                                                                                                                  | Plain, Node                                     |
 | `@rivus/agent-kit/platform/effect`     | `PlatformService`                                                                                                                     | Effect service                                  |
@@ -31,6 +32,16 @@ The source exports 16 agent-kit entries and three collab entries (19 in total). 
 | `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                         | Effect, process-local                           |
 
 The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node 24. Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
+
+Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/agent-kit/providers` alongside
+`builtinProviders`. Replace `adapters`, `dialects`, `recipes` and `profiles` with descriptors such as
+`{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`. Each service merges independently;
+other services for the same id and all other agents keep their defaults. A supplied identity carries aliases and
+fallback homes. Harness `agents` filters still match exact ids, without alias or case resolution. Conflicting names
+and mismatched ids are rejected. `parseCodingAgentId(input, identities)` now needs an identity table. Use
+`homeFromRule(agent, rule, context)` in place of the removed `resolveHome`; `CodingAgentIdWithHome` is removed.
+The shell conformance suites bind built-ins; their optional third argument accepts `{ providers }` for custom host
+and identity facts.
 
 ## Choose the runtime boundary
 
@@ -70,7 +81,7 @@ Bundle `/transcript/usage` and `/cost` directly, supply the needed platform port
 
 ### Agent task loop and agent-finder CLI
 
-1. Replace init, discovery, session listing and preview with `/catalog`, `/discovery`, `/sessions` and `/transcript` as needed. The agent-finder CLI calls `detectAgents`; `/discovery` now covers the kit's 7 agents, and its other agents can be supplied through the `recipes` option. Inspect recipe warnings and accept intended corrected probe facts explicitly. Use `versionProbe: false` with default file auth for an inspection that must execute no agent command.
+1. Replace init, discovery, session listing and preview with `/catalog`, `/discovery`, `/sessions` and `/transcript` as needed. The agent-finder CLI calls `detectAgents`; `/discovery` now covers the kit's 7 agents, and its other agents can be supplied through the `providers` option with `{ id, discovery: recipe }` descriptors. Inspect recipe warnings and accept intended corrected probe facts explicitly. Use `versionProbe: false` with default file auth for an inspection that must execute no agent command.
 2. Delete duplicate session root and resume knowledge from the TUI, the moved session reader package, and the MoonBit scanner after the application's tests, init smoke and preview comparison pass. Verify CI no longer needs the MoonBit toolchain.
 3. Replace TaskOccupancyService's handwritten heartbeat, AbortController and release lifecycle with `createLeaseManager` and scoped `manager.acquire`. Keep task policy in the application. Fence writes using `handle.runFenced`, and make non-cancellable writes uninterruptible or wait until their AbortSignal has stopped them.
 4. Keep room-specific orchestration and ToolServer in the application. After migration is accepted, confirm with the owner before deprecating `@rivus/agent-finder-core` and ending mooncakes module updates; those external actions are a separate completion state.

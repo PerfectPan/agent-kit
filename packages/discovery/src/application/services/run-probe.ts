@@ -2,7 +2,7 @@ import * as z from "zod/mini";
 
 import type { CommandFailed, CommandOutput } from "../../domain/installation/index.js";
 import { errnoCode } from "./abortable.js";
-import type { DiscoveryPlatform } from "../ports.js";
+import type { DiscoveryPlatform } from "../platform.js";
 
 /** The platform's code for a command that printed more than it collects. */
 const OUTPUT_LIMIT_CODE = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";

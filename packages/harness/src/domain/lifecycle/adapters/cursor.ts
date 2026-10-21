@@ -37,6 +37,7 @@ function gate(fields: readonly string[]): HookOutput {
 
 export const cursorHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
+  hostMarkers: { payloadFields: ["cursor_version"], env: ["CURSOR_VERSION"] },
   agent: "cursor",
   delivery: "command",
   timeout: { unit: "seconds", unverified: "The default is only called the platform default." },

@@ -1,9 +1,4 @@
-export {
-  builtinCodingAgents,
-  isBuiltinCodingAgentId,
-  parseCodingAgentId,
-  resolveHome
-} from "./domain/coding-agent/adapters/index.js";
+export { builtinCodingAgents, isBuiltinCodingAgentId } from "./domain/coding-agent/adapters/index.js";
 export { homeFromRule } from "./domain/coding-agent/index.js";
 export type {
   AgentHome,
@@ -11,11 +6,11 @@ export type {
   BuiltinCodingAgentId,
   CodingAgent,
   CodingAgentId,
-  CodingAgentIdWithHome,
   CodingAgentWithHome,
   HomeContext,
   HomeRule,
   InvalidCodingAgentId
 } from "./domain/coding-agent/index.js";
+export { parseCodingAgentId, validateIdentities } from "./domain/coding-agent/services/identity.js";
 export { AgentKitError, isAgentKitError, err, ok } from "./domain/result/index.js";
 export type { AgentKitErrorOptions, Result } from "./domain/result/index.js";

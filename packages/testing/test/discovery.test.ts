@@ -1,3 +1,5 @@
+import { builtinProbeRecipes as testDiscovery } from "@rivus/agent-kit-discovery";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import {
   builtinProbeRecipes,
@@ -33,9 +35,13 @@ function machine(options: MemoryPlatformOptions = {}): MemoryPlatform {
 async function detectOne(
   platform: MemoryPlatform,
   agent: string,
-  options: Omit<DetectAgentsOptions, "agents"> = {}
+  options: Omit<DetectAgentsOptions, "agents" | "providers"> = {}
 ): Promise<Installation> {
-  const [installation] = await detectAgents(platform, { ...options, agents: [agent] });
+  const [installation] = await detectAgents(platform, {
+    ...options,
+    agents: [agent],
+    providers: { discovery: testDiscovery, identity: testIdentity }
+  });
   if (installation === undefined) {
     throw new Error(`no installation for ${agent}`);
   }
@@ -62,7 +68,10 @@ describe("detectAgents", () => {
       files: { [`${HOME}/.gemini/tmp/project/chats/session.json`]: "{}" },
       commands: { "/opt/bin/codex": program("codex-cli 0.154.0") }
     });
-    const [codex, gemini] = await detectAgents(platform, { agents: ["codex", "gemini-cli"] });
+    const [codex, gemini] = await detectAgents(platform, {
+      agents: ["codex", "gemini-cli"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(codex).toMatchObject({
       agent: "codex",
       displayName: "Codex",
@@ -93,7 +102,9 @@ describe("detectAgents", () => {
   });
 
   it("reports every built-in agent in table order, all missing on an empty machine", async () => {
-    const installations = await detectAgents(machine());
+    const installations = await detectAgents(machine(), {
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(installations.map((installation) => installation.agent)).toEqual(Object.keys(builtinProbeRecipes));
     expect(new Set(installations.map((installation) => installation.status))).toEqual(new Set(["missing"]));
   });
@@ -107,15 +118,24 @@ describe("detectAgents", () => {
         "/cfg/claude/projects/project/session.jsonl": ""
       }
     });
-    const [codex, claude] = await detectAgents(platform, { agents: ["codex", "claude"] });
+    const [codex, claude] = await detectAgents(platform, {
+      agents: ["codex", "claude"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(codex?.evidence).toEqual([{ kind: "config", path: "/cfg/codex/sessions" }]);
     expect(claude?.evidence).toEqual([{ kind: "config", path: "/cfg/claude/projects" }]);
   });
 
   it("accepts aliases once each and throws capability-unsupported for an agent without a recipe", async () => {
-    const installations = await detectAgents(machine(), { agents: ["claude", "claude-code", "cursor-agent"] });
+    const installations = await detectAgents(machine(), {
+      agents: ["claude", "claude-code", "cursor-agent"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(installations.map((installation) => installation.agent)).toEqual(["claude-code", "cursor"]);
-    const error: unknown = await detectAgents(machine(), { agents: ["my-agent"] }).catch((caught: unknown) => caught);
+    const error: unknown = await detectAgents(machine(), {
+      agents: ["my-agent"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    }).catch((caught: unknown) => caught);
     expect(isAgentKitError(error)).toBe(true);
     expect(error).toMatchObject({ code: "capability-unsupported" });
   });
@@ -130,7 +150,8 @@ describe("detectAgents", () => {
     });
     const [codex, claude, gemini] = await detectAgents(platform, {
       agents: ["codex", "claude-code", "gemini-cli"],
-      timeoutMs: 20
+      timeoutMs: 20,
+      providers: { discovery: testDiscovery, identity: testIdentity }
     });
     const base = { _tag: "CommandFailed", purpose: "version", args: ["--version"] };
     expect(codex).toMatchObject({ status: "found", command: "/opt/bin/codex" });
@@ -216,11 +237,17 @@ describe("detectAgents", () => {
   it("aborting rejects with the signal's reason", async () => {
     const platform = machine({ commands: { "/opt/bin/codex": () => new Promise(() => undefined) } });
     const controller = new AbortController();
-    const detection = detectAgents(platform, { agents: ["codex"], signal: controller.signal });
+    const detection = detectAgents(platform, {
+      agents: ["codex"],
+      signal: controller.signal,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     setTimeout(() => controller.abort(new Error("stop")), 10);
     await expect(detection).rejects.toThrow("stop");
     const aborted = AbortSignal.abort(new Error("early"));
-    await expect(detectAgents(platform, { signal: aborted })).rejects.toThrow("early");
+    await expect(
+      detectAgents(platform, { signal: aborted, providers: { discovery: testDiscovery, identity: testIdentity } })
+    ).rejects.toThrow("early");
   });
 });
 
@@ -265,10 +292,10 @@ describe("login state", () => {
     const names = Object.values(builtinProbeRecipes).flatMap((recipe) => recipe.commands);
     const everything = () =>
       machine({ commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder])) });
-    await detectAgents(everything());
+    await detectAgents(everything(), { providers: { discovery: testDiscovery, identity: testIdentity } });
     expect([...calls]).toEqual(["--version"]);
     calls.clear();
-    await detectAgents(everything(), commands);
+    await detectAgents(everything(), { ...commands, providers: { discovery: testDiscovery, identity: testIdentity } });
     expect([...calls].toSorted()).toEqual(["--version", "auth status --json", "login status", "status --format json"]);
   });
 
@@ -280,7 +307,10 @@ describe("login state", () => {
     };
     const names = Object.values(builtinProbeRecipes).flatMap((recipe) => recipe.commands);
     const platform = machine({ commands: Object.fromEntries(names.map((name) => [`/opt/bin/${name}`, recorder])) });
-    const installations = await detectAgents(platform, { versionProbe: false });
+    const installations = await detectAgents(platform, {
+      versionProbe: false,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(calls).toEqual([]);
     // Every built-in command resolves, so every agent is found by its command alone; the empty machine that leaves
     // every agent missing is covered above.
@@ -289,7 +319,7 @@ describe("login state", () => {
     );
     expect(new Set(installations.map((installation) => installation.status))).toEqual(new Set(["found"]));
     expect(installations.every((installation) => installation.version === undefined)).toBe(true);
-    await detectAgents(platform);
+    await detectAgents(platform, { providers: { discovery: testDiscovery, identity: testIdentity } });
     expect(calls.length).toBeGreaterThan(0);
   });
 
@@ -372,7 +402,11 @@ describe("login state", () => {
         "/opt/bin/codex": program("codex-cli 0.154.0", { "login status": { code: 1, stderr: "Not logged in\n" } })
       }
     });
-    const [codex, gemini] = await detectAgents(platform, { agents: ["codex", "gemini-cli"], ...commands });
+    const [codex, gemini] = await detectAgents(platform, {
+      agents: ["codex", "gemini-cli"],
+      ...commands,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(codex?.auth).toEqual({
       status: "logged-out",
       source: { kind: "command", command: "/opt/bin/codex", args: ["login", "status"] }
@@ -479,7 +513,8 @@ describe("login state", () => {
       home: { envVar: "MY_AGENT_HOME", defaultPath: [".my-agent"] }
     };
     const detect = async (platform: MemoryPlatform) =>
-      (await detectAgents(platform, { recipes: { "my-agent": recipe } }))[0]?.auth;
+      (await detectAgents(platform, { providers: { discovery: { "my-agent": recipe }, identity: testIdentity } }))[0]
+        ?.auth;
     const withFile = machine({ files: { [`${HOME}/.my-agent/credentials.json`]: "{}" }, env: { MY_AGENT_KEY: "x" } });
     expect(await detect(withFile)).toEqual({
       status: "logged-in",
@@ -500,7 +535,9 @@ describe("login state", () => {
       ...builtinProbeRecipes.cursor,
       configPaths: [{ agentHome: "cursor", path: "cli-config.json" }]
     };
-    await expect(detectAgents(machine(), { recipes: { cursor: recipe } })).rejects.toMatchObject({
+    await expect(
+      detectAgents(machine(), { providers: { discovery: { cursor: recipe }, identity: testIdentity } })
+    ).rejects.toMatchObject({
       code: "capability-unsupported"
     });
   });
@@ -581,7 +618,10 @@ describe("detectAgents edge cases", () => {
         }
       }
     };
-    const [pi] = await detectAgents(platform, { agents: ["pi", "codex"] });
+    const [pi] = await detectAgents(platform, {
+      agents: ["pi", "codex"],
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(pi).toMatchObject({
       status: "unknown",
       problems: [{ _tag: "StatFailed", path: "/opt/bin/pi", code: "UNKNOWN" }]
@@ -594,7 +634,13 @@ describe("detectAgents edge cases", () => {
     const hungStat: MemoryPlatform = { ...base, fs: { ...base.fs, stat: () => hang } };
     const controller = new AbortController();
     setTimeout(() => controller.abort(new Error("stop stat")), 10);
-    await expect(detectAgents(hungStat, { agents: ["codex"], signal: controller.signal })).rejects.toThrow("stop stat");
+    await expect(
+      detectAgents(hungStat, {
+        agents: ["codex"],
+        signal: controller.signal,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      })
+    ).rejects.toThrow("stop stat");
     const hungRead: MemoryPlatform = {
       ...base,
       fs: {
@@ -607,7 +653,13 @@ describe("detectAgents edge cases", () => {
     };
     const reading = new AbortController();
     setTimeout(() => reading.abort(new Error("stop read")), 10);
-    await expect(detectAgents(hungRead, { agents: ["grok"], signal: reading.signal })).rejects.toThrow("stop read");
+    await expect(
+      detectAgents(hungRead, {
+        agents: ["grok"],
+        signal: reading.signal,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      })
+    ).rejects.toThrow("stop read");
   });
 
   it("counts an application only when its bundle id matches, and an unreadable plist by its path", async () => {
@@ -627,7 +679,9 @@ describe("detectAgents edge cases", () => {
       warnings: []
     };
     const detect = async (files: Record<string, string>) => {
-      const [installation] = await detectAgents(machine({ files }), { recipes: { "my-agent": recipe } });
+      const [installation] = await detectAgents(machine({ files }), {
+        providers: { discovery: { "my-agent": recipe }, identity: testIdentity }
+      });
       return installation;
     };
     expect((await detect({ "/Applications/Shared.app/Contents/Info.plist": plist("com.example.other") }))?.status).toBe(
@@ -640,7 +694,9 @@ describe("detectAgents edge cases", () => {
   });
 
   it.each(["constructor", "__proto__", "toString"])("throws capability-unsupported for %s", async (agent) => {
-    await expect(detectAgents(machine(), { agents: [agent] })).rejects.toMatchObject({
+    await expect(
+      detectAgents(machine(), { agents: [agent], providers: { discovery: testDiscovery, identity: testIdentity } })
+    ).rejects.toMatchObject({
       code: "capability-unsupported"
     });
   });
@@ -656,14 +712,16 @@ describe("detectAgents edge cases", () => {
       auth: { credentialFiles: [{ path: { agentHome: "no-such-agent", path: "auth.json" } }] }
     };
     await expect(
-      detectAgents(machine({ commands: { "/opt/bin/codex": recorder } }), { recipes: { codex: broken } })
+      detectAgents(machine({ commands: { "/opt/bin/codex": recorder } }), {
+        providers: { discovery: { codex: broken }, identity: testIdentity }
+      })
     ).rejects.toMatchObject({ code: "capability-unsupported" });
     expect(calls).toEqual([]);
 
     const ownHome: ProbeRecipe = { ...builtinProbeRecipes.codex, home: { defaultPath: [".codex-alt"] } };
     const [codex] = await detectAgents(machine({ files: { [`${HOME}/.codex-alt/sessions/session.jsonl`]: "" } }), {
-      recipes: { codex: ownHome },
-      versionProbe: false
+      versionProbe: false,
+      providers: { discovery: { codex: ownHome }, identity: testIdentity }
     });
     expect(codex?.evidence).toEqual([{ kind: "config", path: `${HOME}/.codex-alt/sessions` }]);
   });

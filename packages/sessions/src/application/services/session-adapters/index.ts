@@ -1,9 +1,9 @@
-import type { SessionAdapter } from "../../ports.js";
+import type { SessionAdapter } from "../../spi.js";
 import { claudeCodeSessionAdapter } from "./claude-code.js";
 import { codexSessionAdapter } from "./codex.js";
 import { grokSessionAdapter } from "./grok.js";
 
-/** The session adapters of the built-in agents. Use cases default to it; pass `adapters` to replace or extend it. */
+/** The built-in session adapters. The shell merges `providers` descriptors with a `sessions` service into these defaults. */
 export const builtinSessionAdapters: {
   readonly "claude-code": SessionAdapter;
   readonly codex: SessionAdapter;

@@ -442,7 +442,7 @@ const turn = Effect.scoped(
     const connection = yield* connectAgent("fake-agent", {
       cwd: process.cwd(),
       env: {},
-      profiles: { "fake-agent": fakeAgent }
+      providers: [{ id: "fake-agent", acp: fakeAgent }]
     });
     const session = yield* connection.newSession({ sessionKey: "smoke", systemPrompt: "be brief" });
     return yield* Stream.runCollect(session.prompt([{ type: "text", text: "echo hello" }]));

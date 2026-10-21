@@ -62,8 +62,8 @@ gh repo-checks protect --repo OWNER/REPO
 Workspace members are the folders that the globs in `pnpm-workspace.yaml` match (`packages/*`,
 `packages/providers/*`, `infra/*`, `tests/*`, `scripts`):
 
-- `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files only re-export names,
-  one by one, from internal packages' `public.ts` (or a lighter public sub-entry such as
+- `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files re-export names individually and bind routed functions to per-service provider tables,
+  importing internal packages' `public.ts` (or a lighter public sub-entry such as
   `@rivus/agent-kit-harness/public/events`); every subpath in its `exports` map is one entry in the `pack` block of
   its `vite.config.ts`, and `vp pack` bundles the internal packages and their declarations into `dist`.
 - `packages/agent-kit-collab` is `@rivus/agent-kit-collab`, the second published package, with its own code: each

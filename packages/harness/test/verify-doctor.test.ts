@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
@@ -17,7 +19,12 @@ describe("verify", () => {
     () => {
       const home = testHome();
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle("1.0.0"), { agents: ["gemini-cli", "grok"] }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle("1.0.0"), {
+            agents: ["gemini-cli", "grok"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         const before = yield* inventory();
 
         home.write(".grok/hooks/demo-app.json", "{}\n");
@@ -26,7 +33,9 @@ describe("verify", () => {
           ".gemini/extensions/demo-app/gemini-extension.json",
           `${JSON.stringify({ name: "demo-app", version: "2.0.0" }, null, 2)}\n`
         );
-        const plain = yield* verify("demo-app");
+        const plain = yield* verify("demo-app", {
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(
           plain.artifacts.map((artifact) => [artifact.locator.path.slice(home.home.length), artifact.status])
         ).toEqual([
@@ -36,7 +45,10 @@ describe("verify", () => {
         ]);
         expect(plain.acknowledged).toEqual([]);
 
-        const withBundle = yield* verify("demo-app", { bundle: demoBundle("2.0.0") });
+        const withBundle = yield* verify("demo-app", {
+          bundle: demoBundle("2.0.0"),
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(withBundle.acknowledged.map((locator) => locator.path)).toEqual([
           home.path(".gemini/extensions/demo-app")
         ]);
@@ -57,14 +69,22 @@ describe("verify", () => {
         artifacts: [{ type: "hooks", command: SHIM, timeoutSeconds: 5, events: { grok: ["Stop"] } }]
       });
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(bundle, { agents: ["grok"] }));
+        yield* applyInstall(
+          yield* planInstall(bundle, {
+            agents: ["grok"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         // Another tool recorded its own agent under the owner's entries; verify covers the ledger's agents.
         const stored = JSON.parse(home.read(".local/state/agent-kit/harness/user/ledger.json") ?? "{}");
         for (const entry of Object.values<(typeof stored.entries)[string]>(stored.entries)) {
           entry.agents = [...entry.agents, "my-agent"];
         }
         home.write(".local/state/agent-kit/harness/user/ledger.json", `${JSON.stringify(stored)}\n`);
-        const report = yield* verify("demo-app", { bundle });
+        const report = yield* verify("demo-app", {
+          bundle,
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(report.acknowledged).toEqual([]);
         expect(report.artifacts.map((artifact) => [artifact.locator.path, artifact.status])).toEqual([
           [home.path(".grok/hooks/demo-app.json"), "in-sync"]
@@ -99,11 +119,19 @@ describe("doctor", () => {
         }
       } satisfies typeof home.platform;
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(bundle, { agents: ["grok"] }));
+        yield* applyInstall(
+          yield* planInstall(bundle, {
+            agents: ["grok"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         if (state === "removed") {
           yield* Effect.promise(() => home.platform.fs.remove(program));
         }
-        const checks = yield* doctor({ agents: ["grok"] });
+        const checks = yield* doctor({
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(checks.filter((check) => check.name === "stale-path")).toEqual(
           state === "existing"
             ? []
@@ -145,7 +173,10 @@ describe("doctor", () => {
       )}\n`;
       home.write(".gemini/settings.json", settings);
       return Effect.gen(function* () {
-        const checks = yield* doctor({ agents: ["gemini-cli"] });
+        const checks = yield* doctor({
+          agents: ["gemini-cli"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         const found = (name: string) =>
           checks.filter((check) => check.name === name).map((check) => check.locator?.pointer);
         expect(checks.find((check) => check.name === "ledger")).toMatchObject({ status: "ok" });
@@ -178,7 +209,10 @@ describe("doctor", () => {
         )}\n`
       );
       return Effect.gen(function* () {
-        const checks = yield* doctor({ agents: ["gemini-cli"] });
+        const checks = yield* doctor({
+          agents: ["gemini-cli"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         const found = (name: string) =>
           checks.filter((check) => check.name === name).map((check) => check.locator?.pointer);
         expect(found("timeout-unit")).toEqual([]);
@@ -199,15 +233,27 @@ describe("doctor", () => {
       return Effect.gen(function* () {
         // Installed without the legacy markers, so the old hook stays.
         const bundle = demoBundle("1.0.0", { legacyMarkers: [] });
-        yield* applyInstall(yield* planInstall(bundle, { agents: ["claude-code", "grok"] }));
-        const checks = yield* doctor({ agents: ["claude-code", "grok"], markers: ["legacy-demo hook", "demo-hook"] });
+        yield* applyInstall(
+          yield* planInstall(bundle, {
+            agents: ["claude-code", "grok"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
+        const checks = yield* doctor({
+          agents: ["claude-code", "grok"],
+          markers: ["legacy-demo hook", "demo-hook"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(checks.filter((check) => check.name === "duplicate-hook").map((check) => check.message)).toEqual([
           "claude-code runs 2 hooks of one application for Stop",
           "grok runs 2 hooks of one application for Stop"
         ]);
-        expect(yield* doctor({ agents: ["claude-code"] })).not.toContainEqual(
-          expect.objectContaining({ name: "duplicate-hook" })
-        );
+        expect(
+          yield* doctor({
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        ).not.toContainEqual(expect.objectContaining({ name: "duplicate-hook" }));
       }).pipe(Effect.provide(home.layer()));
     }
   );
@@ -224,12 +270,20 @@ describe("doctor", () => {
       home.write(".claude/settings.local.json", settings("settings.local.json"));
       return Effect.gen(function* () {
         // Grok runs both of Claude Code's files, so the application fires twice there.
-        const grok = yield* doctor({ agents: ["grok"], markers: ["legacy-demo hook"] });
+        const grok = yield* doctor({
+          agents: ["grok"],
+          markers: ["legacy-demo hook"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(grok.filter((check) => check.name === "duplicate-hook").map((check) => check.message)).toEqual([
           "grok runs 2 hooks of one application for Stop"
         ]);
         // Claude Code's own audit reads neither file as a runner, so it sees one hook of the application.
-        const claude = yield* doctor({ agents: ["claude-code"], markers: ["legacy-demo hook"] });
+        const claude = yield* doctor({
+          agents: ["claude-code"],
+          markers: ["legacy-demo hook"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(claude.filter((check) => check.name === "duplicate-hook")).toEqual([]);
       }).pipe(Effect.provide(home.layer()));
     }
@@ -238,12 +292,20 @@ describe("doctor", () => {
   it("reports drift of owned Artifacts and a missing lock implementation", async () => {
     const home = testHome();
     await Effect.runPromise(
-      Effect.flatMap(planInstall(demoBundle(), { agents: ["grok"] }), applyInstall).pipe(Effect.provide(home.layer()))
+      Effect.flatMap(
+        planInstall(demoBundle(), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        }),
+        applyInstall
+      ).pipe(Effect.provide(home.layer()))
     );
     home.write(".grok/hooks/demo-app.json", "{}\n");
     // A run of its own: Layers built in one run are shared by the Effects of that run.
     const checks = await Effect.runPromise(
-      doctor({ agents: ["grok"] }).pipe(Effect.provide(home.layer({ ...home.platform, sqlite: undefined })))
+      doctor({ agents: ["grok"], providers: { install: testInstall, hooks: testHooks } }).pipe(
+        Effect.provide(home.layer({ ...home.platform, sqlite: undefined }))
+      )
     );
     expect(checks.filter((check) => check.status !== "ok").map((check) => [check.name, check.message])).toEqual([
       ["drift", "user-modified"],

@@ -228,7 +228,8 @@ tests/smoke/  scripts/
 Dependency rules (enforced by [3.9](#39-boundary-rules)):
 
 - The shell may depend on providers and contexts.
-- A provider may depend on catalog, platform (port types only), each context's `spi.ts` entry and `zod/mini`.
+- A provider may depend on catalog's `spi` entry, platform (port types only), each other context's `spi` entry and `zod/mini`.
+  `spiImports` grants only the SPI entry; `dependsOn` independently grants the normal index.
 - A context may not depend on any provider.
 - A provider may not depend on another provider.
 - testing's sources may not depend on providers. testing's and the contexts' tests may use providers through `testsOnly`.
@@ -276,6 +277,13 @@ packages/providers/claude-code/
   - two lookups: one returns `Result<T, CapabilityUnsupported>`, for data that names an agent without a provider; the other throws `AgentKitError` with code `capability-unsupported`, for options in which the caller named such an agent;
   - `CapabilityUnsupported`, moved from sessions.
 
+  The lookup names are `lookupService(agent, table)` and `requireService(agent, table, reason?)`. Only own,
+  non-null entries count; inherited properties, `null` and `undefined` are missing. The throwing lookup accepts a
+  reason so each use case can keep a service-specific message. The lookups, `ServiceTable`, and `homeRuleOf` are
+  sibling-context exports, not new shell exports. Identity table queries accept third-party ids too.
+  Part A introduces these foundations and passes the current built-in identity table at existing callers; Part B
+  switches the routing sites and shell bindings.
+
   Every routing site in 1.1 uses them.
 - **The `Provider` descriptor** is declared in the shell, because it names the SPI types of every context:
 
@@ -293,7 +301,7 @@ packages/providers/claude-code/
   ```
 
   Provider packages do not import it, because they may not depend on the shell. The shell checks their parts with `satisfies` where it assembles them.
-- **Context use cases** take a required `providers` option. It holds exactly the service tables they read; for example, `planInstall` takes `{ install, hooks, identity }`, `readHookEvent` takes `{ hooks }` and `listSessions` takes `{ sessions, identity }`. A use case takes `identity` when it resolves homes or aliases.
+- **Context use cases** take a required `providers` option. It holds exactly the service tables they read; for example, `planInstall` takes `{ install, hooks }`, `readHookEvent` takes `{ hooks }` and `listSessions` takes `{ sessions, identity }`. A use case takes `identity` when it resolves homes or aliases.
 - **Shell functions** take `providers?: readonly Provider[]`. The descriptors are merged over the built-in ones by agent id, service by service: a descriptor that sets only `hooks` for an id replaces only that id's hooks. The shell then builds the tables and calls the context.
 
   ```ts
@@ -302,7 +310,13 @@ packages/providers/claude-code/
     sessions.listSessions(platform, { ...options, providers: tablesFor(["sessions", "identity"], options.providers) })
   ```
 
-  This ends the rule that shell entries only re-export names; `authoring.md` changes with it.
+  This ends the rule that shell entries only re-export names; `authoring.md` changes with it. Local shell imports
+  are declared per file in `boundaries.shellImports`, so the hooks entry cannot import the complete descriptor list.
+  `/providers` exports `Provider` and `builtinProviders`. Related public operations (`verify`, `uninstall`, `doctor`,
+  `probeAgent`, `summarizeSession`, `sessionAdapterHome`) bind the same tables as the use cases they call. Existing
+  individual built-in table exports remain until provider closeout; the old override options do not.
+  Descriptor types use the narrow `acp/public/profiles` and `harness/public/install` type entries: importing their
+  aggregate public entries makes declaration bundling carry Effect into the plain and zero-dependency entries.
 - **The built-in tables** are built in `packages/agent-kit/src/providers/<service>.ts`, one module per service, each importing that service's subpath from every provider. `builtinProviders` (all descriptors) is assembled in its own module.
 - **Unsupported services**: `packages/agent-kit/src/providers/unsupported.ts` records, for each built-in agent and service it does not provide, the reason.
 - **The capability check** requires each built-in agent to either provide each service or have a recorded reason. The README support matrix is written in the same batch, and a test keeps it equal to the tables.
@@ -313,6 +327,9 @@ packages/providers/claude-code/
 - The functions that read the table take it as a parameter:
   - `parseCodingAgentId(input, identities)` resolves aliases from the given table;
   - `homeRuleOf(agent, identities, own?)` keeps today's precedence: the caller's own rule, then the table's.
+- Identity tables reject keys differing from `identity.id` and names shared by different identities. Canonical ids
+  are registered before aliases; the shell validates its merged identity table with `validateIdentities`, also used
+  by catalog parsing.
 - `resolveHome` and `CodingAgentIdWithHome` are removed. They have no consumer outside the kit, and `homeFromRule` with the table's rule does the same. Inside the kit, harness's install adapters call `resolveHome` in five places (`harness/src/domain/bundle/adapters/*/config-files.ts`); they take the home from their provider's facts instead.
 - `BuiltinCodingAgentId` and `isBuiltinCodingAgentId` leave the catalog package in batch 12, together with the identity table. Until then the contexts' built-in tables are still typed with the union, and a context may not depend on the shell, so catalog keeps it. From batch 12 the shell derives both from its provider list and still exports them from `/catalog`. The shell also exports `sessionAdapterHome(adapter, context)` bound to the built-in identities, because the trace viewer uses it for its own adapter. A bound one-argument `parseCodingAgentId` is exported only if batch 13 finds a consumer for it.
 - A provider's service objects that need a home carry the home rule from its `facts.ts`. Contexts fall back to the identity table only for adapters that bring no rule, which keeps a third-party adapter for a built-in agent working as it does today.
@@ -351,6 +368,16 @@ interface HostMarkers {
   - the `turns`, `request-placement` and `fold-transcript` rules.
 
   The list is reviewed name by name when the entry is created.
+- Each context declares its `./spi` export with `spi: true` in the boundary manifest. An importer must list the
+  target under `spiImports`; this grants no normal entry access. `dependsOn` independently grants the normal entry,
+  never the SPI. This follows
+  3.1's provider-to-context direction. No current context needs a sibling's SPI, so their `spiImports` remain empty;
+  a future context use must be declared explicitly and still obey the layer and `typesOnly` restrictions. Provider-like
+  lint fixtures exercise explicit access without registering a production provider before its batch.
+- The sessions entry is derived from non-test adapter imports, including shared file and format helpers. It exports
+  the SPI interfaces and their parts, then only imported context symbols; agent-specific layouts, records, tables
+  and translators stay out. ACP format helpers are retained where Grok imports them. Catalog exports identity model types, `homeFromRule`, `ok`, `err`, `Result` and `AgentKitError`; built-in
+  tables and their id union stay out of SPI. Cost has no provider consumer and therefore no SPI entry.
 - SPI interface types are public through their service's shell entry, because the trace viewer implements its own `SessionAdapter` and runs `sessionAdapterConformance`. SPI helpers stay internal until a third-party provider needs one.
 - Pure SPI interfaces (`HookDialect`, `InstallAdapter`, `ProbeRecipe`, `AcpProfile`) live in `domain/<concept>/spi/`. Interfaces that read files (`SessionAdapter`, `UsageDecoder`) live in `application/spi.ts`. `application/ports.ts` keeps only ports that the kit's own `infra/` implements.
 - The published conformance suites take the service tables they need as parameters instead of reading built-in tables. For example, `hookDialectConformance` merges the dialect under test over a given hooks table so that host sniffing works as in use. The shell's `/testing` binds the built-in tables.
@@ -375,6 +402,9 @@ interface HostMarkers {
   public.ts           application interface
   spi.ts              entry for providers
 ```
+
+A Platform slice named by an SPI interface lives in `application/spi.ts` (sessions); a slice needed only by
+use cases lives in `application/platform.ts` (discovery and acp). `ports.ts` holds only infrastructure ports.
 
 The domain folders no longer have `adapters/`, so the name no longer clashes with `infra/adapters/`.
 

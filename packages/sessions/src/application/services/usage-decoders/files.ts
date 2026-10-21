@@ -7,7 +7,7 @@ import { decodeIsFinal, type UsageRecord } from "../../../domain/usage/index.js"
 import { guardIo } from "../files/io-failure.js";
 import { readBytes, readLines } from "../files/read-file.js";
 import { walkFiles, type WalkSpec } from "../files/walk.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 import type {
   UsageCursor,
   UsageDecodeError,
@@ -19,7 +19,7 @@ import type {
   UsageSourceOptions,
   UsageStream,
   UsageTarget
-} from "../../usage-ports.js";
+} from "../../spi.js";
 
 function readFailed(path: string, cause: unknown): SessionListError {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };

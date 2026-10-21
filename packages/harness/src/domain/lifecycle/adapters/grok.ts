@@ -36,6 +36,7 @@ const CLAUDE_EVENTS = [
 
 export const grokHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
+  hostMarkers: { payloadFields: ["hookEventName"] },
   agent: "grok",
   delivery: "command",
   // Seconds. 5 for most events in the public docs; newer source raises Stop, SubagentStop and PostToolUse to 600,

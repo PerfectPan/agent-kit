@@ -1,4 +1,4 @@
-import type { AcpProfile } from "../value-objects/acp-profile.js";
+import type { AcpProfile } from "../spi/acp-profile.js";
 
 function matches(pattern: string, name: string): boolean {
   const star = pattern.indexOf("*");

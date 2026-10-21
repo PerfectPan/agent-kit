@@ -24,7 +24,8 @@ The entry table describes the source API. Verify the exports of the npm version 
 | Entry                               | Main exports                                                                                                         | Runs in                                  |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `SessionBindingStore` and its Layers                 | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `resolveHome`, `Result`, `AgentKitError`                                | anywhere                                 |
+| `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                       | anywhere                                 |
+| `@rivus/agent-kit/catalog`          | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                               | anywhere                                 |
 | `@rivus/agent-kit/cost`             | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                              | anywhere, no imports                     |
 | `@rivus/agent-kit/discovery`        | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `ProbeRecipe`                                         | anywhere, with a platform                |
 | `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports     | anywhere, with `effect` and a platform   |
@@ -336,8 +337,14 @@ Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and open
 facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the table except
 Cursor (added after 0.1.0).
 
-To read another agent, pass your own `SessionAdapter` through the `adapters` option
-(`{ ...builtinSessionAdapters, "my-agent": adapter }`) and check it with `sessionAdapterConformance` from `/testing`.
+Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
+`@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
+changes only Codex hooks. Omitted services and other agents remain available; the old `adapters`, `dialects`,
+`recipes` and `profiles` options are removed. A custom `identity` supplies aliases and a fallback home rule;
+conflicting aliases or an identity whose id differs from its descriptor are rejected. `parseCodingAgentId` takes
+an explicit identity table; `homeFromRule` takes the chosen rule. `resolveHome` and `CodingAgentIdWithHome` are removed.
+
+To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]` and check it with `sessionAdapterConformance` from `/testing`.
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 

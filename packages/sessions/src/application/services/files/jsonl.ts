@@ -1,6 +1,6 @@
 import type { SkippedRecord, SourcedRecord } from "../../../domain/transcript/index.js";
 import { type ReadOptions, readLines } from "./read-file.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 
 export interface JsonlRecords {
   records: SourcedRecord[];

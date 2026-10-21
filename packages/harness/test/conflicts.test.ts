@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -23,15 +25,24 @@ describe("conflicts and foreign owners", () => {
       const home = testHome();
       home.write(".claude/skills/demo-skill/SKILL.md", "the user's own skill\n");
       return Effect.gen(function* () {
-        const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"] }));
+        const failure = yield* Effect.flip(
+          planInstall(demoBundle(), {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         expect(failure._tag).toBe("PlanConflict");
         const conflict = failure._tag === "PlanConflict" ? failure.conflicts[0] : undefined;
         expect(conflict).toMatchObject({ step: { conflict: "unmanaged-exists" }, choices: ["adopt", "backup"] });
         const key = locatorKey(conflict!.step.locator);
-        const plan = yield* planInstall(demoBundle(), { agents: ["claude-code"], choices: { [key]: "backup" } });
+        const plan = yield* planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          choices: { [key]: "backup" },
+          providers: { install: testInstall, hooks: testHooks }
+        });
         yield* applyInstall(plan);
         expect(home.read(".claude/skills/demo-skill/SKILL.md")).toContain("name: demo-skill");
-        yield* uninstall("demo-app");
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         expect(home.read(".claude/skills/demo-skill/SKILL.md")).toBe("the user's own skill\n");
       }).pipe(Effect.provide(home.layer()));
     }
@@ -40,9 +51,16 @@ describe("conflicts and foreign owners", () => {
   it.effect("S33: uninstall keeps an Artifact the user changed and reports it", () => {
     const home = testHome();
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["grok"] }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       home.write(".grok/hooks/demo-app.json", '{ "hooks": {} }\n');
-      const removed = yield* uninstall("demo-app");
+      const removed = yield* uninstall("demo-app", {
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(removed.kept.map((locator) => locator.path)).toEqual([home.path(".grok/hooks/demo-app.json")]);
       expect(home.read(".grok/hooks/demo-app.json")).toBe('{ "hooks": {} }\n');
       expect(home.read(".agents/skills/demo-skill/SKILL.md")).toBeUndefined();
@@ -55,13 +73,25 @@ describe("conflicts and foreign owners", () => {
     () => {
       const home = testHome();
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["claude-code"],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         const settings = home.read(".claude/settings.json") ?? "";
         home.write(".claude/settings.json", settings.replaceAll('"timeout": 5', '"timeout": 9'));
-        yield* uninstall("demo-app");
+        yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
         // The command is unchanged, so the kept hook sits at the locator the bundle still wants; the plan lists it
         // once, as preserved and unresolvable — never again as an adoptable unmanaged file.
-        const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+        const failure = yield* Effect.flip(
+          planInstall(demoBundle(), {
+            agents: ["claude-code"],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         expect(failure._tag).toBe("PlanConflict");
         const conflicts = failure._tag === "PlanConflict" ? failure.conflicts : [];
         expect(conflicts).toHaveLength(3);
@@ -85,18 +115,33 @@ describe("conflicts and foreign owners", () => {
       const markers = ["demo-hook --agent"];
       const plugin = ".config/opencode/plugins/demo-app.js";
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["opencode"] }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["opencode"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         home.write(plugin, `${home.read(plugin) ?? ""}// the user's change\n`);
         const edited = home.read(plugin);
-        const first = yield* uninstall("demo-app", { legacyMarkers: markers });
+        const first = yield* uninstall("demo-app", {
+          legacyMarkers: markers,
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(first.kept.map((locator) => locator.path)).toEqual([home.path(plugin)]);
         expect((yield* inventory()).entries).toEqual([]);
 
-        const second = yield* uninstall("demo-app", { agents: ["opencode"], legacyMarkers: markers });
+        const second = yield* uninstall("demo-app", {
+          agents: ["opencode"],
+          legacyMarkers: markers,
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(second.plan.steps).toEqual([]);
         expect(home.read(plugin)).toBe(edited);
         const reinstall = yield* Effect.flip(
-          planInstall(demoBundle("1.0.0", { legacyMarkers: markers }), { agents: ["opencode"] })
+          planInstall(demoBundle("1.0.0", { legacyMarkers: markers }), {
+            agents: ["opencode"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
         );
         expect(reinstall).toMatchObject({
           _tag: "PlanConflict",
@@ -112,7 +157,13 @@ describe("conflicts and foreign owners", () => {
     mkdirSync(home.path(".claude"));
     symlinkSync(home.path("dotfiles/claude-settings.json"), home.path(".claude/settings.json"));
     return Effect.gen(function* () {
-      const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          ...sharedConfig,
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(failure).toMatchObject({ _tag: "PlanConflict" });
       expect(
         failure._tag === "PlanConflict" && failure.conflicts.map(({ step, choices }) => [step.conflict, choices])
@@ -122,7 +173,12 @@ describe("conflicts and foreign owners", () => {
         ["symlinked-target", []]
       ]);
       // The skills-dir plugin needs no write to the linked file.
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code"] }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(home.read("dotfiles/claude-settings.json")).toBe(fixture("claude-settings.json"));
     }).pipe(Effect.provide(home.layer()));
   });
@@ -132,7 +188,10 @@ describe("conflicts and foreign owners", () => {
     mkdirSync(home.path("dotfiles/claude"), { recursive: true });
     symlinkSync(home.path("dotfiles/claude"), home.path(".claude"));
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle(), { agents: ["claude-code"] });
+      const plan = yield* planInstall(demoBundle(), {
+        agents: ["claude-code"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(plan.steps.every((step) => step.locator.path.startsWith(home.path("dotfiles/claude/")))).toBe(true);
       yield* applyInstall(plan);
       expect(home.read("dotfiles/claude/skills/demo-app/hooks/hooks.json")).toContain(
@@ -149,7 +208,13 @@ describe("conflicts and foreign owners", () => {
       `if (process.argv[2] === "managed") console.log(${JSON.stringify(home.path(".claude/settings.json"))});`
     );
     return Effect.gen(function* () {
-      const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          ...sharedConfig,
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(
         failure._tag === "PlanConflict" && failure.conflicts.map(({ step, choices }) => [step.conflict, choices])
       ).toEqual([
@@ -171,7 +236,13 @@ describe("chezmoi behind a symlinked agent home", () => {
       `if (process.argv[2] === "managed") console.log(${JSON.stringify(home.path(".claude/settings.json"))});`
     );
     return Effect.gen(function* () {
-      const failure = yield* Effect.flip(planInstall(demoBundle(), { agents: ["claude-code"], ...sharedConfig }));
+      const failure = yield* Effect.flip(
+        planInstall(demoBundle(), {
+          agents: ["claude-code"],
+          ...sharedConfig,
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(failure._tag === "PlanConflict" && failure.conflicts.map(({ step }) => step.conflict)).toEqual([
         "dotfiles-managed",
         "dotfiles-managed",
@@ -198,7 +269,11 @@ describe("agents that run other agents' hooks", () => {
       ]
     });
     return Effect.gen(function* () {
-      const plan = yield* planInstall(bundle, { agents: ["claude-code", "grok", "cursor"], ...sharedConfig });
+      const plan = yield* planInstall(bundle, {
+        agents: ["claude-code", "grok", "cursor"],
+        ...sharedConfig,
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(
         plan.droppedHooks.map(({ agent, firedBy }) => `${agent} ${firedBy.agent} ${firedBy.event}`).toSorted()
       ).toEqual([
@@ -217,7 +292,10 @@ describe("agents that run other agents' hooks", () => {
         ["/hooks/Stop", ["claude-code", "cursor", "grok"]]
       ]);
       // Uninstalling for Grok alone releases its use of the registrations; they stay for the others.
-      const partial = yield* uninstall("demo-app", { agents: ["grok"] });
+      const partial = yield* uninstall("demo-app", {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(partial.plan.steps.map((step) => step.removal)).toEqual(["release", "release"]);
       expect(home.read(".claude/settings.json")).toContain("demo-hook --agent claude-code");
     }).pipe(Effect.provide(home.layer()));
@@ -231,7 +309,13 @@ describe("agents that run other agents' hooks", () => {
         artifacts: [{ type: "hooks", command: SHIM, events: { "claude-code": ["PreToolUse"] } }]
       });
       return Effect.gen(function* () {
-        const failure = yield* Effect.flip(planInstall(bundle, { agents: ["claude-code"], ...sharedConfig }));
+        const failure = yield* Effect.flip(
+          planInstall(bundle, {
+            agents: ["claude-code"],
+            ...sharedConfig,
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         expect(failure).toMatchObject({
           _tag: "HookSpecRejected",
           agent: "claude-code",
@@ -240,7 +324,12 @@ describe("agents that run other agents' hooks", () => {
           runBy: { agent: "cursor", event: "preToolUse" }
         });
         // In the skills-dir plugin, which Cursor does not run, it is only Claude Code's own PreToolUse.
-        yield* applyInstall(yield* planInstall(bundle, { agents: ["claude-code"] }));
+        yield* applyInstall(
+          yield* planInstall(bundle, {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         expect(home.read(".claude/skills/demo-app/hooks/hooks.json")).toContain('"PreToolUse"');
       }).pipe(Effect.provide(home.layer()));
     }

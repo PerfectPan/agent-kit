@@ -1,3 +1,5 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import {
   addUsage,
@@ -27,7 +29,12 @@ async function decode(
 ): Promise<UsageRecord[]> {
   const records: UsageRecord[] = [];
   // The fixture sessions are complete, so their last open requests are reported too.
-  for await (const item of decodeUsage(platform, agent, { path: `/u/me/${path}` }, { ...options, final: true })) {
+  for await (const item of decodeUsage(
+    platform,
+    agent,
+    { path: `/u/me/${path}` },
+    { ...options, final: true, providers: { usage: testUsage, identity: testIdentity } }
+  )) {
     if (!isUsageRecord(item)) {
       throw new Error(`${path}: ${JSON.stringify(item.error)}`);
     }
@@ -139,7 +146,12 @@ describe("codex usage", () => {
     const lines = [settings({ service_tier: "priority" }), usage("r1"), settings({ model: "gpt-test" }), usage("r2")];
     const local = createMemoryPlatform({ files: { [path]: `${lines.join("\n")}\n` } });
     const multipliers: (number | undefined)[] = [];
-    for await (const item of decodeUsage(local, "codex", { path }, { final: true })) {
+    for await (const item of decodeUsage(
+      local,
+      "codex",
+      { path },
+      { final: true, providers: { usage: testUsage, identity: testIdentity } }
+    )) {
       multipliers.push(isUsageRecord(item) ? item.pricingMultiplier : -1);
     }
     expect(multipliers).toEqual([2, undefined]);

@@ -4,7 +4,8 @@ import * as Layer from "effect/Layer";
 import * as Semaphore from "effect/Semaphore";
 import * as z from "zod/mini";
 
-import { type AcpPlatform, SessionBindingStore, type SessionBindingStoreFailure } from "../../application/ports.js";
+import type { AcpPlatform } from "../../application/platform.js";
+import { SessionBindingStore, type SessionBindingStoreFailure } from "../../application/ports.js";
 import type { SessionBinding } from "../../domain/acp-session/index.js";
 
 const SCHEMA_VERSION = 1;

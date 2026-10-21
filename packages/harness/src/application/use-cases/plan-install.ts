@@ -1,11 +1,10 @@
+import type { InstallProviders } from "../providers.js";
 import { isPlainObject } from "es-toolkit";
 
-import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog";
+import { AgentKitError, requireService, lookupService, type CodingAgentId } from "@rivus/agent-kit-catalog";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import { builtinHookDialects } from "../../domain/lifecycle/adapters/hook-dialects.js";
-import { builtinInstallAdapters } from "../../domain/bundle/adapters/install-adapters.js";
 import {
   type Bundle,
   type BundleRef,
@@ -94,10 +93,7 @@ export interface PlanInstallOptions extends ScopeOptions {
   >;
   /** What the application read about runners of other agents' hooks, such as Grok's `[compat.claude] hooks = false`. */
   readonly compat?: readonly HookCompat[];
-  /** Install adapters for this call, merged over `builtinInstallAdapters`. */
-  readonly adapters?: InstallAdapters;
-  /** Hook dialects for this call, merged over `builtinHookDialects`. */
-  readonly dialects?: HookDialects;
+  readonly providers: InstallProviders;
   /** How long to wait for the LedgerLock when an earlier change left operations to recover; 10 s by default. */
   readonly lockWaitMs?: number;
 }
@@ -125,7 +121,7 @@ export type HarnessServices =
   | ExternalOwner
   | PlatformService;
 
-/** The adapters and context of one call, after merging the caller's adapters over the built-in ones. */
+/** The explicit install and hook tables of one call with its platform context; the shell handles default merging. */
 export interface PlanSetup {
   readonly adapters: InstallAdapters;
   readonly dialects: HookDialects;
@@ -133,25 +129,20 @@ export interface PlanSetup {
 }
 
 export function planSetup(options: {
-  readonly adapters?: InstallAdapters;
-  readonly dialects?: HookDialects;
+  readonly providers: InstallProviders;
 }): Effect.Effect<PlanSetup, never, PlatformService> {
   return Effect.gen(function* () {
     const platform = yield* PlatformService;
     return {
-      adapters: { ...builtinInstallAdapters, ...options.adapters },
-      dialects: { ...builtinHookDialects, ...options.dialects },
+      adapters: options.providers.install,
+      dialects: options.providers.hooks,
       context: { home: platform.home, env: platform.env }
     };
   });
 }
 
 export function adapterOf(setup: PlanSetup, agent: CodingAgentId): InstallAdapter {
-  const adapter = Object.hasOwn(setup.adapters, agent) ? setup.adapters[agent] : undefined;
-  if (adapter === undefined) {
-    throw new AgentKitError("capability-unsupported", `Agent "${agent}" has no install adapter`);
-  }
-  return adapter;
+  return requireService(agent, setup.adapters, "has no install adapter");
 }
 
 /** Only the user scope has built-in adapters; a project scope needs adapters that know project paths. */
@@ -174,17 +165,18 @@ export function probeCommands(
     const cli = yield* AgentCli;
     const available = new Map<CodingAgentId, Set<string>>();
     for (const agent of agents) {
-      const adapter = Object.hasOwn(setup.adapters, agent) ? setup.adapters[agent] : undefined;
-      if (adapter === undefined) {
+      const found = lookupService(agent, setup.adapters);
+      if (!found.ok) {
         continue;
       }
-      const found = new Set<string>();
+      const adapter = found.value;
+      const commands = new Set<string>();
       for (const command of requiredCommands(adapter)) {
         if (yield* cli.available(command)) {
-          found.add(command);
+          commands.add(command);
         }
       }
-      available.set(agent, found);
+      available.set(agent, commands);
     }
     return available;
   });

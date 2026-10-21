@@ -1,4 +1,4 @@
-import { resolveHome } from "@rivus/agent-kit-catalog";
+import { builtinCodingAgents, homeFromRule } from "@rivus/agent-kit-catalog";
 
 import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
@@ -8,7 +8,7 @@ import { type BundleRef, type InstallContext, ownerSlug } from "../../index.js";
 
 /** Pi's agent directory: `PI_CODING_AGENT_DIR`, or `~/.pi/agent`. */
 export function piHome(context: InstallContext): string {
-  return resolveHome("pi", context).path;
+  return homeFromRule("pi", builtinCodingAgents["pi"].home, context).path;
 }
 
 export function piExtensionsDir(context: InstallContext): string {

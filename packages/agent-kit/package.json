@@ -75,7 +75,11 @@
       "types": "./dist/transcript/usage.d.ts",
       "default": "./dist/transcript/usage.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "default": "./dist/providers.js"
+    }
   },
   "files": [
     "dist"
@@ -91,7 +95,7 @@
     "check:package": "publint --strict --pack npm && attw --pack . --profile esm-only && size-limit 2>&1 && node scripts/check-dist.ts && node scripts/smoke-consumer.ts",
     "lint": "vp lint 2>&1",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "",
+    "test": "vp test",
     "format": "vp fmt .",
     "format:check": "vp fmt --check ."
   },

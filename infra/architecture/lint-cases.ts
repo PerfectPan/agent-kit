@@ -3,7 +3,8 @@
  * id each must report and allowed cases that must report nothing. Paths are package-relative; `fresh` names a new file
  * in the given folder, so a case keeps the folder's layer without editing a real file.
  */
-import { dirname } from "node:path";
+import { allowed, rejects, fresh, type Case } from "./case.ts";
+import { spiCases } from "./spi-cases.ts";
 
 const PLATFORM = "@rivus/agent-kit-platform";
 const CATALOG = "@rivus/agent-kit-catalog";
@@ -12,35 +13,8 @@ const TESTING = "@rivus/agent-kit-testing";
 const SHELL = "@rivus/agent-kit";
 const COLLAB = "@rivus/agent-kit-collab";
 
-export interface Case {
-  readonly name: string;
-  /** Package folder under `packages/`. */
-  readonly pkg: string;
-  /** Package-relative path. A file that exists gets the source appended. */
-  readonly path: string;
-  readonly source: string;
-  readonly expected: readonly string[];
-}
-
-let counter = 0;
-/** A new file in the directory of `path`, so that the case keeps its layer without touching real files. */
-const fresh = (path: string, extension = "ts"): string => `${dirname(path)}/case-${(counter += 1)}.${extension}`;
-const allowed = (name: string, pkg: string, path: string, source: string): Case => ({
-  name,
-  pkg,
-  path,
-  source,
-  expected: []
-});
-const rejects = (name: string, pkg: string, path: string, source: string, rule: string): Case => ({
-  name,
-  pkg,
-  path,
-  source,
-  expected: [rule]
-});
-
 export const cases: Case[] = [
+  ...spiCases,
   allowed(
     "collab root domain: catalog value",
     "agent-kit-collab",
@@ -115,7 +89,7 @@ export const cases: Case[] = [
     "sessions infra: application",
     "sessions",
     fresh("src/infra/repository/x"),
-    `export type * from "../../application/ports.js";`
+    `export type * from "../../application/spi.js";`
   ),
   allowed(
     "sessions root: application",
@@ -226,7 +200,7 @@ export const cases: Case[] = [
     "dynamic import with a literal",
     "sessions",
     fresh("src/application/x"),
-    `export const loaded = await import("./ports.js");`
+    `export const loaded = await import("./spi.js");`
   ),
 
   // violations in sessions
@@ -311,7 +285,7 @@ export const cases: Case[] = [
     "an adapters file importing application/",
     "sessions",
     fresh("src/domain/transcript/adapters/codex/x"),
-    `export type * from "../../../../application/ports.js";`,
+    `export type * from "../../../../application/spi.js";`,
     "layer"
   ),
   rejects(
@@ -584,21 +558,21 @@ export const cases: Case[] = [
     "a declaration file under src/",
     "sessions",
     fresh("src/domain/x", "d.ts"),
-    `export * from "../application/ports.js";`,
+    `export * from "../application/spi.js";`,
     "source-file"
   ),
   rejects(
     "a JavaScript file under src/",
     "sessions",
     fresh("src/domain/x", "js"),
-    `export * from "../application/ports.js";`,
+    `export * from "../application/spi.js";`,
     "source-file"
   ),
   rejects(
     "an .mts file under src/",
     "sessions",
     fresh("src/application/x", "mts"),
-    `export * from "./ports.js";`,
+    `export * from "./spi.js";`,
     "source-file"
   ),
   rejects(
@@ -651,11 +625,31 @@ export const cases: Case[] = [
     `export { z } from "zod/mini";`,
     "shell-entry"
   ),
-  rejects(
-    "shell entry: local code",
+  allowed(
+    "shell entry: binding code",
     "agent-kit",
     fresh("src/x"),
-    `import { splitLines } from "${PLATFORM}/public";\nexport const split = splitLines;`,
+    `import { splitLines } from "${PLATFORM}/public";\nexport const split = splitLines;`
+  ),
+
+  allowed(
+    "shell: declared hooks binding",
+    "agent-kit",
+    "src/harness/events.ts",
+    'export { hooksTable as hookTableProbe } from "../providers/hooks.js";'
+  ),
+  rejects(
+    "shell: hooks entry cannot load all providers",
+    "agent-kit",
+    "src/harness/events.ts",
+    'export { builtinProviders as allProvidersProbe } from "../providers/builtin.js";',
+    "shell-entry"
+  ),
+  rejects(
+    "shell: undeclared local import",
+    "agent-kit",
+    fresh("src/x"),
+    'export { hooksTable } from "./providers/hooks.js";',
     "shell-entry"
   ),
 
@@ -793,11 +787,12 @@ export const cases: Case[] = [
     fresh("src/application/services/usage-decoders/x"),
     `export const id = "gemini-cli";`
   ),
-  allowed(
-    "agent marker: harness host-sniffing.ts",
+  rejects(
+    "agent marker: no host-sniffing exemption",
     "harness",
-    "src/domain/lifecycle/policies/host-sniffing.ts",
-    `export const caseHost = "opencode";`
+    "src/domain/lifecycle/services/sniff-source.ts",
+    `export const caseHost = "opencode";`,
+    "agent-marker"
   ),
   allowed(
     "agent marker: catalog's id unions",
@@ -819,12 +814,7 @@ export const cases: Case[] = [
     `export const id = "codex";`,
     "agent-marker"
   ),
-  allowed(
-    "agent marker: a test file",
-    "sessions",
-    `src/application/case-${(counter += 1)}.test.ts`,
-    `export const id = "codex";`
-  ),
+  allowed("agent marker: a test file", "sessions", fresh("src/application/x", "test.ts"), `export const id = "codex";`),
   allowed(
     "agent marker: a package outside the six contexts",
     "testing",

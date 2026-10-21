@@ -1,7 +1,7 @@
 import { err, type Result } from "@rivus/agent-kit-catalog";
 
 import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
-import type { HookDialects } from "../../lifecycle/value-objects/hook-dialect.js";
+import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
 import { unionAgents } from "../../ledger/policies/ownership.js";

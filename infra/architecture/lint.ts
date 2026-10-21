@@ -171,6 +171,11 @@ function targetsOf(rule: PackageRule): Map<string, Target> {
       add(name, "plain", { source: name, internalPath: null });
       add(name, "effect", { source: name, internalPath: EFFECT_ENTRY });
     }
+    for (const name of rule.spiImports ?? []) {
+      if (boundaries.packages[name]?.spi) {
+        add(name, "plain", { source: name, internalPath: "spi" });
+      }
+    }
     return targets;
   }
   for (const [specifier, published] of Object.entries(rule.publicImports)) {
@@ -202,12 +207,16 @@ function shellPolicies(project: Project): Policy[] {
     {
       from: element(project, "src"),
       disallow: { to: [external(), { module: { origin: ["local", "core"] } }] },
-      message: `[shell-entry] {{dependency.source}}: re-export from an internal package's public entry, "<package>/public[/<name>]"`
+      message: `[shell-entry] {{dependency.source}}: import an internal package's public entry or a declared local binding, "<package>/public[/<name>]"`
     },
     {
       from: element(project, "src"),
       allow: { to: external({ source: internalNames, internalPath: ["public", "public/+([a-z0-9-])"] }) }
-    }
+    },
+    ...Object.entries(boundaries.shellImports).map(([file, sources]): Policy => ({
+      from: { ...element(project, "src"), file: { path: `${project.folder}/${file}` } },
+      allow: { to: local(project), dependency: { source: [...sources] } }
+    }))
   ];
 }
 
@@ -365,9 +374,22 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
     {
       from: all,
       disallow: {
-        to: external({ source: workspaceNames.filter((name) => !isShell(name)), internalPath: `!${EFFECT_ENTRY}` })
+        to: external({
+          source: workspaceNames.filter((name) => !isShell(name)),
+          internalPath: `!{${EFFECT_ENTRY},spi}`
+        })
       },
       message: "[deep-import] {{dependency.source}}: import {{to.module.source}} itself, which resolves to its index.ts"
+    },
+    {
+      from: all,
+      disallow: {
+        to: external({
+          source: workspaceNames.filter((name) => !rule.spiImports?.includes(name) || !boundaries.packages[name]?.spi),
+          internalPath: "spi"
+        })
+      },
+      message: `[spi-import] {{dependency.source}}: declare the dependency's SPI access under spiImports in ${MANIFEST}`
     },
     {
       from: effectPaths.length === 0 ? all : { ...all, file: { path: `!${braces(effectPaths)}` } },
@@ -438,14 +460,6 @@ const syntax = {
       "[dynamic-import] dynamic import() needs a string literal specifier so that the import graph can be checked"
   },
   shellEntry: [
-    {
-      selector: "Program > :not(ExportNamedDeclaration, ExportAllDeclaration)",
-      message: '[shell-entry] shell entries only re-export names: export { … } from "<internal package>/public"'
-    },
-    {
-      selector: "ExportNamedDeclaration:not([source])",
-      message: '[shell-entry] shell entries only re-export names: export { … } from "<internal package>/public"'
-    },
     { selector: "ExportAllDeclaration", message: "[shell-entry] list re-exported names instead of export *" }
   ],
   // A string literal or literal type whose whole value is a marker, and a piece of a template literal's static text

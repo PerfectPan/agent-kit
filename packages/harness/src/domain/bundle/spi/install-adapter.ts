@@ -1,13 +1,14 @@
+import type { ServiceTable } from "@rivus/agent-kit-catalog";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 
 import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 import type { TrustPromptKind } from "../../install-plan/value-objects/trust-prompt.js";
 import type { ArtifactContent } from "../../ledger/value-objects/content-hash.js";
 import type { PlacedRegistration } from "../services/hook-placement.js";
-import type { SkillSpec } from "./artifact-spec.js";
-import type { BundleRef } from "./bundle.js";
-import type { Owner } from "./owner.js";
-import type { Strategy } from "./strategy.js";
+import type { SkillSpec } from "../value-objects/artifact-spec.js";
+import type { BundleRef } from "../value-objects/bundle.js";
+import type { Owner } from "../value-objects/owner.js";
+import type { Strategy } from "../value-objects/strategy.js";
 
 /** What an install adapter renders against: the user's home and environment, as the application's platform has them. */
 export interface InstallContext {
@@ -130,8 +131,8 @@ export interface InstallAdapter {
   cliRegistration?(locator: ArtifactLocator, context: InstallContext): CliRegistration | undefined;
 }
 
-/** Install adapters by agent id; the use cases default to `builtinInstallAdapters`. */
-export type InstallAdapters = Readonly<Partial<Record<CodingAgentId, InstallAdapter>>>;
+/** Install adapters by agent id; supplied to installation use cases. */
+export type InstallAdapters = ServiceTable<InstallAdapter>;
 
 /**
  * The file and directory name for an owner's own Artifacts, such as its plugin directory: `@scope/app` becomes

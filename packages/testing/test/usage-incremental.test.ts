@@ -1,3 +1,6 @@
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
 import { fileURLToPath } from "node:url";
 
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
@@ -36,7 +39,12 @@ async function decodeAll(
   path: string,
   options: DecodeUsageOptions = {}
 ): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
-  const stream = decodeUsage(platform, agent, { path }, options);
+  const stream = decodeUsage(
+    platform,
+    agent,
+    { path },
+    { ...options, providers: { usage: testUsage, identity: testIdentity } }
+  );
   const records: UsageRecord[] = [];
   for await (const item of stream) {
     if (!isUsageRecord(item)) {
@@ -134,7 +142,11 @@ describe("usage decoded while a file grows equals one decode of the whole file",
 describe("decodeUsage and loadTranscript agree", () => {
   const platform = createMemoryPlatform({ files: tree, home: "/u/me" });
   it.each(sessions)("%s %s", async (agent, path, files) => {
-    const transcript = await loadTranscript(platform, { agent, path });
+    const transcript = await loadTranscript(
+      platform,
+      { agent, path },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
     if (!transcript.ok) {
       throw new Error(`${path}: ${transcript.error._tag}`);
     }
@@ -208,7 +220,11 @@ describe("claude-code requests across cursors", () => {
     });
     const records = (await decodeAll(platform, "claude-code", path, { final: true })).records;
     expect(records).toHaveLength(11);
-    const transcript = await loadTranscript(platform, { agent: "claude-code", path });
+    const transcript = await loadTranscript(
+      platform,
+      { agent: "claude-code", path },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
     expect(transcript.ok && transcript.value.events.filter((event) => event.kind === "request")).toHaveLength(11);
   });
 });

@@ -1,16 +1,15 @@
-import type { AgentHome, CodingAgentId, HomeContext } from "@rivus/agent-kit-catalog";
+import type { AgentHome, CodingAgentId, HomeContext, CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog";
 import type { Platform } from "@rivus/agent-kit-platform";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/index.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
-import type { SessionAdapter, SessionAdapters, SessionPlatform } from "../ports.js";
-import { builtinSessionAdapters } from "../services/session-adapters/index.js";
+import type { SessionAdapter, SessionPlatform } from "../spi.js";
+import type { SessionProviders } from "../providers.js";
 
 export interface ListSessionsOptions {
-  /** Agents to list, by id or alias; defaults to every agent in `adapters`. */
+  /** Agents to list, by id or alias; defaults to every agent in `providers.sessions`. */
   readonly agents?: readonly CodingAgentId[];
-  /** Replaces `builtinSessionAdapters` for this call; spread it to extend it. */
-  readonly adapters?: SessionAdapters;
+  readonly providers: SessionProviders;
   readonly signal?: AbortSignal;
   /** Called with the running total of session files each time another root has been listed. */
   readonly onTotal?: (files: number) => void;
@@ -21,8 +20,12 @@ export interface ListSessionsOptions {
  * Throws `capability-unsupported` when there is neither. For a caller that walks an adapter's roots itself, for
  * example to report progress per root, instead of through `listSessions`.
  */
-export function sessionAdapterHome(adapter: Pick<SessionAdapter, "agent" | "home">, context: HomeContext): AgentHome {
-  return adapterHome(adapter, context, "session adapter");
+export function sessionAdapterHome(
+  adapter: Pick<SessionAdapter, "agent" | "home">,
+  context: HomeContext,
+  identities: ServiceTable<CodingAgent>
+): AgentHome {
+  return adapterHome(adapter, context, "session adapter", identities);
 }
 
 /**
@@ -32,17 +35,22 @@ export function sessionAdapterHome(adapter: Pick<SessionAdapter, "agent" | "home
  */
 export async function* listSessions(
   platform: SessionPlatform & Pick<Platform, "env" | "home">,
-  options: ListSessionsOptions = {}
+  options: ListSessionsOptions
 ): AsyncGenerator<SessionHead | SessionListFailure, void, undefined> {
-  const table: SessionAdapters = options.adapters ?? builtinSessionAdapters;
-  const adapters = selectAdapters(table, options.agents ?? Object.keys(table), "session adapter");
+  const table = options.providers.sessions;
+  const adapters = selectAdapters(
+    table,
+    options.agents ?? Object.keys(table),
+    "session adapter",
+    options.providers.identity
+  );
   let total = 0;
   const onTotal = (files: number): void => {
     total += files;
     options.onTotal?.(total);
   };
   for (const adapter of adapters) {
-    for (const root of adapter.roots(sessionAdapterHome(adapter, platform))) {
+    for (const root of adapter.roots(sessionAdapterHome(adapter, platform, options.providers.identity))) {
       options.signal?.throwIfAborted();
       yield* adapter.discover(platform, root, { ...(options.signal ? { signal: options.signal } : {}), onTotal });
     }

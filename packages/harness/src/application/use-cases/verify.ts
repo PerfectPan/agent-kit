@@ -1,3 +1,4 @@
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import * as Effect from "effect/Effect";
 
@@ -5,7 +6,6 @@ import {
   type Bundle,
   checkBundle,
   type HookCompat,
-  type InstallAdapters,
   type InvalidBundle,
   type Owner
 } from "../../domain/bundle/index.js";
@@ -25,7 +25,6 @@ import {
   type VerifiedArtifact,
   verifyOwner
 } from "../../domain/ledger/index.js";
-import type { HookDialects } from "../../domain/lifecycle/index.js";
 import type { StrategyUnavailable } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
@@ -65,8 +64,7 @@ export interface VerifyOptions extends ScopeOptions {
   /** The strategies the bundle was installed with, when they were not the adapters' preference. */
   readonly strategies?: PlanInstallOptions["strategies"];
   readonly compat?: readonly HookCompat[];
-  readonly adapters?: InstallAdapters;
-  readonly dialects?: HookDialects;
+  readonly providers: InstallProviders;
   readonly lockWaitMs?: number;
 }
 
@@ -96,7 +94,7 @@ export type VerifyError =
  */
 export function verify(
   owner: Owner,
-  options: VerifyOptions = {}
+  options: VerifyOptions
 ): Effect.Effect<VerifyReport, VerifyError, HarnessServices> {
   return Effect.gen(function* () {
     requireUserScope(options);

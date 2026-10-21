@@ -8,7 +8,9 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./public": "./src/public.ts"
+    "./public": "./src/public.ts",
+    "./spi": "./src/spi.ts",
+    "./public/profiles": "./src/public/profiles.ts"
   },
   "scripts": {
     "build": "",

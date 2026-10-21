@@ -8,7 +8,7 @@ import {
   claudeCodeUsageTarget
 } from "../../../domain/session/adapters/claude-code/layout.js";
 import { claudeCodeUsageKey, claudeCodeUsageLines } from "../../../domain/usage/adapters/claude-code.js";
-import type { UsageDecoder } from "../../usage-ports.js";
+import type { UsageDecoder } from "../../spi.js";
 import { decodeJsonlUsage, fileSources, type JsonlUsageLayout } from "./files.js";
 
 const AGENT = "claude-code";

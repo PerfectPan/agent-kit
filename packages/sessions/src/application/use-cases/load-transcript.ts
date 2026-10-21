@@ -1,7 +1,15 @@
-import { AgentKitError, type CodingAgentId, err, ok, parseCodingAgentId, type Result } from "@rivus/agent-kit-catalog";
+import {
+  AgentKitError,
+  type CapabilityUnsupported,
+  type CodingAgentId,
+  type Result,
+  lookupService,
+  err,
+  ok,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog";
 
 import type {
-  CapabilityUnsupported,
   NoAdapterAccepted,
   SessionPromptsOptions,
   SessionRef,
@@ -9,8 +17,8 @@ import type {
 } from "../../domain/session/index.js";
 import { foldTranscript, sessionPrompts, summaryOf, type Transcript } from "../../domain/transcript/index.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
-import type { SessionAdapter, SessionAdapters, SessionPlatform, SessionReadError } from "../ports.js";
-import { builtinSessionAdapters } from "../services/session-adapters/index.js";
+import type { SessionAdapter, SessionPlatform, SessionReadError } from "../spi.js";
+import type { SessionProviders } from "../providers.js";
 
 /** A session to read. Without an `agent` (or with an id that does not parse), every adapter's `detect` decides. */
 export interface SessionTarget {
@@ -20,8 +28,7 @@ export interface SessionTarget {
 }
 
 export interface LoadTranscriptOptions {
-  /** Replaces `builtinSessionAdapters` for this call; spread it to extend it. */
-  readonly adapters?: SessionAdapters;
+  readonly providers: SessionProviders;
   readonly signal?: AbortSignal;
   /** Called with the running total of bytes read across the session's files. */
   readonly onProgress?: (bytes: number) => void;
@@ -33,9 +40,9 @@ export type LoadTranscriptError = SessionReadError | NoAdapterAccepted | Capabil
 async function resolveTarget(
   platform: SessionPlatform,
   target: SessionTarget,
-  options: { readonly adapters?: SessionAdapters; readonly signal?: AbortSignal }
+  options: LoadTranscriptOptions
 ): Promise<Result<{ adapter: SessionAdapter; ref: SessionRef }, LoadTranscriptError>> {
-  const table: SessionAdapters = options.adapters ?? builtinSessionAdapters;
+  const table = options.providers.sessions;
   options.signal?.throwIfAborted();
   const info = await catchIoFailure(platform, target.path, options.signal, (guarded) =>
     guarded.fs.stat(target.path, { followSymlinks: true })
@@ -51,12 +58,10 @@ async function resolveTarget(
     path: target.path,
     ...(target.sessionId === undefined ? {} : { sessionId: target.sessionId })
   });
-  const named = target.agent === undefined ? undefined : parseCodingAgentId(target.agent);
+  const named = target.agent === undefined ? undefined : parseCodingAgentId(target.agent, options.providers.identity);
   if (named?.ok) {
-    const adapter = table[named.value];
-    return adapter
-      ? ok({ adapter, ref: ref(adapter.agent) })
-      : err({ _tag: "CapabilityUnsupported", agent: named.value });
+    const found = lookupService(named.value, table);
+    return found.ok ? ok({ adapter: found.value, ref: ref(found.value.agent) }) : found;
   }
   for (const adapter of Object.values(table)) {
     options.signal?.throwIfAborted();
@@ -85,7 +90,7 @@ async function resolveTarget(
 export async function loadTranscript(
   platform: SessionPlatform,
   target: SessionTarget,
-  options: LoadTranscriptOptions = {}
+  options: LoadTranscriptOptions
 ): Promise<Result<Transcript, LoadTranscriptError>> {
   const resolved = await resolveTarget(platform, target, options);
   if (!resolved.ok) {
@@ -132,7 +137,7 @@ function promptsOption(options: { readonly prompts?: SessionPromptsOptions }): S
 export async function summarizeSession(
   platform: SessionPlatform,
   target: SessionTarget,
-  options: Omit<LoadTranscriptOptions, "onProgress"> & { readonly prompts?: SessionPromptsOptions } = {}
+  options: Omit<LoadTranscriptOptions, "onProgress"> & { readonly prompts?: SessionPromptsOptions }
 ): Promise<Result<SessionSummaryWithPrompts, LoadTranscriptError>> {
   const prompts = promptsOption(options);
   const resolved = await resolveTarget(platform, target, options);

@@ -1,4 +1,4 @@
-import { builtinCodingAgents, isBuiltinCodingAgentId, parseCodingAgentId } from "@rivus/agent-kit-catalog";
+import { type CodingAgent, type ServiceTable, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog";
 import {
   type AuthReading,
   classifyInstallation,
@@ -107,11 +107,12 @@ function checkReading(reading: AuthReading | undefined, input: unknown): void {
  */
 function installedMachine(
   recipe: ProbeRecipe,
+  identities: ServiceTable<CodingAgent>,
   samples: ProbeRecipeSamples,
   versionOutput: CommandOutput,
   sampleFor: (path: ProbePath) => { readonly json: unknown } | undefined
 ): MemoryPlatform {
-  const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe);
+  const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe, identities);
   const credentials = new Map(
     (recipe.auth?.credentialFiles ?? []).map((file) => [
       expand(file.path),
@@ -206,16 +207,22 @@ function checkNoCanary(reading: AuthReading | undefined, input: unknown): void {
  * `for (const { name, run } of probeRecipeConformance(recipe, samples)) it(name, run)`. `samples` adds the recipe's
  * own outputs; without them, the checks use outputs any version parser should read.
  */
-export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipeSamples = {}): ConformanceCheck[] {
+export function probeRecipeConformance(
+  recipe: ProbeRecipe,
+  samples: ProbeRecipeSamples = {},
+  identities: ServiceTable<CodingAgent>
+): ConformanceCheck[] {
   const versionOutput =
     samples.versions?.find((sample) => sample.version !== undefined)?.output ?? DEFAULT_VERSION_OUTPUT;
   const credentialFiles = recipe.auth?.credentialFiles ?? [];
   const sampleFor = (path: ProbePath) =>
-    samples.credentialFiles?.find((sample) => sample.path === expandProbePath(path, { env: {}, home: "~" }, recipe));
-  const machine = () => installedMachine(recipe, samples, versionOutput, sampleFor);
+    samples.credentialFiles?.find(
+      (sample) => sample.path === expandProbePath(path, { env: {}, home: "~" }, recipe, identities)
+    );
+  const machine = () => installedMachine(recipe, identities, samples, versionOutput, sampleFor);
   const detect = async (platform: MemoryPlatform): Promise<Installation> => {
     const [installation] = await detectAgents(platform, {
-      recipes: { [recipe.agent]: recipe },
+      providers: { discovery: { [recipe.agent]: recipe }, identity: identities },
       timeoutMs: 1_000,
       authProbe: "commands"
     });
@@ -230,10 +237,11 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
         // A conformance suite judges the recipe as given, and a JS adapter can author one that ignores ProbeRecipe.
         // oxlint-disable-next-line no-unnecessary-condition
         check(recipe.specificationVersion === "discovery-v1", `specificationVersion is ${recipe.specificationVersion}`);
-        const parsed = parseCodingAgentId(recipe.agent);
+        const parsed = parseCodingAgentId(recipe.agent, identities);
         check(parsed.ok && parsed.value === recipe.agent, `${recipe.agent} is not a canonical agent id`);
-        if (isBuiltinCodingAgentId(recipe.agent)) {
-          const { displayName } = builtinCodingAgents[recipe.agent];
+        const identity = lookupService(recipe.agent, identities);
+        if (identity.ok) {
+          const { displayName } = identity.value;
           check(recipe.displayName === displayName, `display name ${recipe.displayName}, catalog says ${displayName}`);
         } else {
           check(recipe.displayName.trim() !== "", "a third-party recipe needs a display name");
@@ -289,7 +297,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
             path.path === undefined || !/^[/\\]|(?:^|[/\\])\.\.(?:[/\\]|$)/.test(path.path),
             `${path.path} must stay under the home of ${path.agentHome}`
           );
-          expandProbePath(path, { env: {}, home: HOME }, recipe);
+          expandProbePath(path, { env: {}, home: HOME }, recipe, identities);
         }
       }
     },
@@ -324,7 +332,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
         }
         for (const { path, json, reading } of samples.credentialFiles ?? []) {
           const file = credentialFiles.find(
-            (candidate) => expandProbePath(candidate.path, { env: {}, home: "~" }, recipe) === path
+            (candidate) => expandProbePath(candidate.path, { env: {}, home: "~" }, recipe, identities) === path
           );
           check(file?.parse !== undefined, `no credential file ${path} with a parser`);
           const read = file.parse(json);
@@ -336,7 +344,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
       name: "never returns a credential value from its login inputs",
       run: async () => {
         const rendered = (file: (typeof credentialFiles)[number]) =>
-          expandProbePath(file.path, { env: {}, home: "~" }, recipe);
+          expandProbePath(file.path, { env: {}, home: "~" }, recipe, identities);
         check(
           recipe.auth?.command === undefined || (samples.auth ?? []).length > 0,
           "a login command needs at least one login sample"
@@ -376,7 +384,7 @@ export function probeRecipeConformance(recipe: ProbeRecipe, samples: ProbeRecipe
         const problems = installation.problems.filter((problem) => !isAuthProblem(problem));
         check(problems.length === 0, `problems: ${JSON.stringify(problems)}`);
         const reported = new Set(installation.evidence.map((item) => `${item.kind} ${item.path}`));
-        const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe);
+        const expand = (path: ProbePath) => expandProbePath(path, { env: {}, home: HOME }, recipe, identities);
         for (const [kind, paths] of [
           ["config", recipe.configPaths],
           ["mcp-config", recipe.mcpConfigPaths]

@@ -1,4 +1,4 @@
-import type { FieldSource } from "../value-objects/hook-dialect.js";
+import type { FieldSource } from "../spi/hook-dialect.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
 
 export type Env = Readonly<Record<string, string | undefined>>;

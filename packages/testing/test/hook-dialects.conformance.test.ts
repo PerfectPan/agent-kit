@@ -1,3 +1,4 @@
+import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
 import { builtinHookDialects } from "@rivus/agent-kit-harness";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -22,9 +23,13 @@ const samples: Record<keyof typeof builtinHookDialects, readonly HookDialectSamp
 
 for (const [agent, dialect] of Object.entries(builtinHookDialects)) {
   describe(`${agent} hook dialect conformance`, () => {
-    for (const { name, run } of hookDialectConformance(dialect, {
-      samples: samples[dialect.agent as keyof typeof samples]
-    })) {
+    for (const { name, run } of hookDialectConformance(
+      dialect,
+      {
+        samples: samples[dialect.agent as keyof typeof samples]
+      },
+      testHooks
+    )) {
       it(`${name}`, async () => {
         await expect(run()).resolves.toBeUndefined();
       });

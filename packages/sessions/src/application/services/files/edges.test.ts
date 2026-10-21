@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 import { EDGE_BYTES, edgeRecords, readEdges } from "./edges.js";
 
 function bytesPlatform(file: Uint8Array, reads: { start: number; end: number }[] = []): SessionPlatform {

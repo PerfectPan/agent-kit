@@ -14,7 +14,7 @@ import type { UsageRecord } from "../../../domain/usage/index.js";
 import { belowRoot } from "../../../domain/session/index.js";
 import { guardIo } from "../files/io-failure.js";
 import { readText } from "../files/read-file.js";
-import type { DecodeUsageOptions, UsageDecoder, UsagePlatform, UsageStream, UsageTarget } from "../../usage-ports.js";
+import type { DecodeUsageOptions, UsageDecoder, UsagePlatform, UsageStream, UsageTarget } from "../../spi.js";
 import { decodeJsonlUsage, drain, fileSources, type JsonlUsageLayout, sameFile, usageStreamOf } from "./files.js";
 
 const AGENT = "gemini-cli";

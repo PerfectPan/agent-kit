@@ -3,7 +3,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { AuthState } from "./auth-state.js";
 import type { DetectionStatus } from "./detection-status.js";
 import type { Evidence } from "./evidence.js";
-import type { InstallationKind } from "./probe-recipe.js";
+import type { InstallationKind } from "../spi/probe-recipe.js";
 import type { ProbeProblem } from "./probe-problem.js";
 import type { Version } from "./version.js";
 

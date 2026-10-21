@@ -1,11 +1,14 @@
+import { probeAgent as contextProbeAgent } from "@rivus/agent-kit-acp/public";
+import { connectAgent as contextConnectAgent } from "@rivus/agent-kit-acp/public";
+import { acpTable } from "./providers/acp.js";
+import type { ProviderOptions } from "./providers/types.js";
+
 export {
   agentEnv,
   builtinAcpProfiles,
-  connectAgent,
   FileSessionBindingStoreLive,
   MemorySessionBindingStoreLive,
   optionOfKind,
-  probeAgent,
   SessionBindingStore
 } from "@rivus/agent-kit-acp/public";
 export type {
@@ -26,7 +29,6 @@ export type {
   AuthRequired,
   BindingNotFound,
   CancelUnsettled,
-  ConnectAgentOptions,
   ConnectError,
   ConnectionClosed,
   HandshakeFailed,
@@ -56,3 +58,19 @@ export type {
 } from "@rivus/agent-kit-acp/public";
 export { foldStreamParts } from "@rivus/agent-kit-sessions/public";
 export type { LiveTranscriptEvent, TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
+
+export type ConnectAgentOptions = ProviderOptions<Parameters<typeof contextConnectAgent>[1]>;
+
+export function connectAgent(
+  agent: Parameters<typeof contextConnectAgent>[0],
+  options: ConnectAgentOptions
+): ReturnType<typeof contextConnectAgent> {
+  return contextConnectAgent(agent, { ...options, providers: { acp: acpTable(options.providers) } });
+}
+
+export function probeAgent(
+  agent: Parameters<typeof contextProbeAgent>[0],
+  options: ConnectAgentOptions
+): ReturnType<typeof contextProbeAgent> {
+  return contextProbeAgent(agent, { ...options, providers: { acp: acpTable(options.providers) } });
+}

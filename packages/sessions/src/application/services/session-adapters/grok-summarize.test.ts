@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { SessionRef } from "../../../domain/session/index.js";
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 import { grokSessionAdapter } from "./grok.js";
 
 const encoder = new TextEncoder();

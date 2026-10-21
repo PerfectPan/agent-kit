@@ -1,3 +1,5 @@
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog";
@@ -32,7 +34,13 @@ function value<T>(result: Result<T, unknown>): T {
 }
 
 const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "codex", path: rollout(name) }));
+  value(
+    await loadTranscript(
+      platform,
+      { agent: "codex", path: rollout(name) },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    )
+  );
 const requests = (transcript: Pick<Transcript, "events">) =>
   transcript.events.filter((event) => event.kind === "request");
 
@@ -496,7 +504,13 @@ describe("codex translation", () => {
 
   it("returns an unknown format generation as a tagged failure, from the load and from the translation", async () => {
     const path = "/u/me/.codex/fx/unknown-generation/rollout-bad.jsonl";
-    expect(await loadTranscript(platform, { agent: "codex", path })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "codex", path },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "UnknownFormatGeneration", agent: "codex", file: path, line: 1 }
     });
@@ -509,7 +523,13 @@ describe("codex translation", () => {
 
 describe("sessions use cases over Codex", () => {
   it("returns a missing or unreadable rollout as a tagged failure", async () => {
-    expect(await loadTranscript(platform, { agent: "codex", path: rollout("gone") })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "codex", path: rollout("gone") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "SessionNotFound", path: rollout("gone") }
     });
@@ -522,7 +542,13 @@ describe("sessions use cases over Codex", () => {
         }
       }
     };
-    expect(await loadTranscript(locked, { agent: "codex", path: rollout("plain") })).toEqual({
+    expect(
+      await loadTranscript(
+        locked,
+        { agent: "codex", path: rollout("plain") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "ReadFailed", path: rollout("plain"), message: denied.message, cause: denied }
     });
@@ -530,7 +556,10 @@ describe("sessions use cases over Codex", () => {
 
   async function list(on: MemoryPlatform): Promise<(SessionHead | SessionListFailure)[]> {
     const items: (SessionHead | SessionListFailure)[] = [];
-    for await (const item of listSessions(on, { agents: ["codex"] })) {
+    for await (const item of listSessions(on, {
+      agents: ["codex"],
+      providers: { sessions: testSessions, identity: testIdentity }
+    })) {
       items.push(item);
     }
     return items;
@@ -571,8 +600,24 @@ describe("sessions use cases over Codex", () => {
 
   it("detects a Codex session without a named agent and summarizes it like folding its transcript", async () => {
     const copy = createMemoryPlatform({ files: { "/x/session.jsonl": tree[rollout("plain")]! } });
-    expect(value(await loadTranscript(copy, { path: "/x/session.jsonl" })).agent).toBe("codex");
-    expect(value(await summarizeSession(platform, { agent: "codex", path: rollout("plain") }))).toEqual({
+    expect(
+      value(
+        await loadTranscript(
+          copy,
+          { path: "/x/session.jsonl" },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
+      ).agent
+    ).toBe("codex");
+    expect(
+      value(
+        await summarizeSession(
+          platform,
+          { agent: "codex", path: rollout("plain") },
+          { providers: { sessions: testSessions, identity: testIdentity } }
+        )
+      )
+    ).toEqual({
       turns: 1,
       requests: 2,
       inputTokens: 32,
@@ -589,7 +634,7 @@ describe("sessions use cases over Codex", () => {
     const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     const exported = createMemoryPlatform({ files: { "/export/session.jsonl": "{}\n" } });
     const locked = { fs: { ...exported.fs, read: () => failing(denied) } };
-    const options = { adapters: { codex: builtinSessionAdapters["codex"] } };
+    const options = { providers: { sessions: { codex: builtinSessionAdapters["codex"] }, identity: testIdentity } };
     for (const run of [loadTranscript, summarizeSession]) {
       expect(await run(locked, { path: "/export/session.jsonl" }, options)).toEqual({
         ok: false,

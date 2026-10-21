@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { SessionPlatform } from "../../ports.js";
+import type { SessionPlatform } from "../../spi.js";
 import { catchIoFailure } from "./io-failure.js";
 
 /** A platform whose every file system call throws the error a case builds. */

@@ -443,7 +443,9 @@ export function sessionAdapterConformance(
       run: async () => {
         await eachTranscript(async (transcript, session) => {
           const summary = value(
-            await summarizeSession(platform, refOf(session), { adapters: { [adapter.agent]: adapter } }),
+            await summarizeSession(platform, refOf(session), {
+              providers: { sessions: { [adapter.agent]: adapter }, identity: {} }
+            }),
             `summarize ${session.path}`
           );
           check(
@@ -461,7 +463,10 @@ export function sessionAdapterConformance(
         await eachTranscript(async (transcript, session) => {
           const summarize = async (prompts: SessionPromptsOptions): Promise<unknown> =>
             value(
-              await summarizeSession(platform, refOf(session), { adapters: { [adapter.agent]: adapter }, prompts }),
+              await summarizeSession(platform, refOf(session), {
+                providers: { sessions: { [adapter.agent]: adapter }, identity: {} },
+                prompts
+              }),
               `summarize ${session.path}`
             );
           for (const prompts of [generous, capped]) {
@@ -474,7 +479,9 @@ export function sessionAdapterConformance(
             );
           }
           const plain = value(
-            await summarizeSession(platform, refOf(session), { adapters: { [adapter.agent]: adapter } }),
+            await summarizeSession(platform, refOf(session), {
+              providers: { sessions: { [adapter.agent]: adapter }, identity: {} }
+            }),
             `summarize ${session.path}`
           );
           check(!("prompts" in plain), `${session.path}: prompts are present without the option`);

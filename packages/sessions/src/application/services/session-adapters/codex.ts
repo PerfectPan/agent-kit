@@ -26,7 +26,7 @@ import { readEdges } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { readProgress } from "../files/read-file.js";
-import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
+import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../spi.js";
 
 const AGENT = "codex";
 

@@ -2,33 +2,72 @@ import { isAgentKitError } from "@rivus/agent-kit-catalog";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { HookDialect, HookDialects } from "../index.js";
-import { builtinHookDialects, readHookEvent } from "./hook-dialects.js";
+import { builtinHookDialects } from "./hook-dialects.js";
+import { readHookEvent } from "./read-hook-event.js";
+
+const { grok, ...otherHooks } = builtinHookDialects;
+const testHooks = { grok, ...otherHooks };
 
 describe("readHookEvent", () => {
   it("S30: names the agent that really ran a hook registered for Claude Code", () => {
     const payload = { hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash" };
-    expect(readHookEvent("claude-code", payload, {}).agent).toBe("claude-code");
-    expect(readHookEvent("claude-code", { ...payload, hookEventName: "pre_tool_use" }, {}).agent).toBe("grok");
-    expect(readHookEvent("claude-code", { ...payload, cursor_version: "3.13.25" }, {}).agent).toBe("cursor");
-    expect(readHookEvent("claude-code", payload, { CURSOR_VERSION: "3.13.25" }).agent).toBe("cursor");
-    expect(readHookEvent("claude-code", payload, { GROK_SESSION_ID: "" }).agent).toBe("claude-code");
+    expect(readHookEvent("claude-code", payload, {}, { providers: { hooks: testHooks } }).agent).toBe("claude-code");
+    expect(
+      readHookEvent(
+        "claude-code",
+        { ...payload, hookEventName: "pre_tool_use" },
+        {},
+        { providers: { hooks: testHooks } }
+      ).agent
+    ).toBe("grok");
+    expect(
+      readHookEvent("claude-code", { ...payload, cursor_version: "3.13.25" }, {}, { providers: { hooks: testHooks } })
+        .agent
+    ).toBe("cursor");
+    expect(
+      readHookEvent("claude-code", payload, { CURSOR_VERSION: "3.13.25" }, { providers: { hooks: testHooks } }).agent
+    ).toBe("cursor");
+    expect(
+      readHookEvent("claude-code", payload, { GROK_SESSION_ID: "" }, { providers: { hooks: testHooks } }).agent
+    ).toBe("claude-code");
   });
 
   it("S30: lets payload evidence decide; GROK_SESSION_ID never names Grok, CURSOR_VERSION only for agents Cursor runs", () => {
     const codex = { hook_event_name: "PreToolUse", session_id: "c1", turn_id: "t1", tool_name: "Bash" };
-    expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }).agent).toBe("codex");
-    expect(readHookEvent("codex", codex, { CURSOR_VERSION: "3.13.25" }).agent).toBe("codex");
-    expect(readHookEvent("gemini-cli", { hook_event_name: "BeforeTool" }, { CURSOR_VERSION: "3.13.25" }).agent).toBe(
-      "gemini-cli"
+    expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }, { providers: { hooks: testHooks } }).agent).toBe(
+      "codex"
     );
+    expect(
+      readHookEvent("codex", codex, { CURSOR_VERSION: "3.13.25" }, { providers: { hooks: testHooks } }).agent
+    ).toBe("codex");
+    expect(
+      readHookEvent(
+        "gemini-cli",
+        { hook_event_name: "BeforeTool" },
+        { CURSOR_VERSION: "3.13.25" },
+        { providers: { hooks: testHooks } }
+      ).agent
+    ).toBe("gemini-cli");
     const fromCursor = { hook_event_name: "preToolUse", cursor_version: "3.13.25", conversation_id: "x" };
-    expect(readHookEvent("claude-code", fromCursor, { GROK_SESSION_ID: "g1" }).agent).toBe("cursor");
-    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { GROK_SESSION_ID: "g1" }).agent).toBe(
-      "claude-code"
-    );
-    expect(readHookEvent("claude-code", { hook_event_name: "Stop" }, { CURSOR_VERSION: "3.13.25" }).agent).toBe(
-      "cursor"
-    );
+    expect(
+      readHookEvent("claude-code", fromCursor, { GROK_SESSION_ID: "g1" }, { providers: { hooks: testHooks } }).agent
+    ).toBe("cursor");
+    expect(
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop" },
+        { GROK_SESSION_ID: "g1" },
+        { providers: { hooks: testHooks } }
+      ).agent
+    ).toBe("claude-code");
+    expect(
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop" },
+        { CURSOR_VERSION: "3.13.25" },
+        { providers: { hooks: testHooks } }
+      ).agent
+    ).toBe("cursor");
   });
 
   it("reads Cursor's rename of a Claude Code event as Cursor's event", () => {
@@ -37,7 +76,8 @@ describe("readHookEvent", () => {
       { hook_event_name: "UserPromptSubmit", generation_id: "g2" },
       {
         CURSOR_VERSION: "3.13.25"
-      }
+      },
+      { providers: { hooks: testHooks } }
     );
     expect(event).toEqual({
       agent: "cursor",
@@ -50,16 +90,27 @@ describe("readHookEvent", () => {
 
   it("S43: returns the terminal pane apart from the session, preferring the host over tmux", () => {
     const payload = { hook_event_name: "Stop", session_id: "s1" };
-    expect(readHookEvent("claude-code", payload, { TMUX_PANE: "%4" }).terminal).toEqual({ host: "tmux", paneId: "%4" });
-    expect(readHookEvent("claude-code", payload, { TMUX_PANE: "%4", SUPERSET_TERMINAL_ID: "t-9" }).terminal).toEqual({
+    expect(
+      readHookEvent("claude-code", payload, { TMUX_PANE: "%4" }, { providers: { hooks: testHooks } }).terminal
+    ).toEqual({ host: "tmux", paneId: "%4" });
+    expect(
+      readHookEvent(
+        "claude-code",
+        payload,
+        { TMUX_PANE: "%4", SUPERSET_TERMINAL_ID: "t-9" },
+        { providers: { hooks: testHooks } }
+      ).terminal
+    ).toEqual({
       host: "superset",
       paneId: "t-9"
     });
-    expect(readHookEvent("claude-code", payload, { CMUX_PANEL_ID: "p-1" }).terminal).toEqual({
+    expect(
+      readHookEvent("claude-code", payload, { CMUX_PANEL_ID: "p-1" }, { providers: { hooks: testHooks } }).terminal
+    ).toEqual({
       host: "cmux",
       paneId: "p-1"
     });
-    expect(readHookEvent("claude-code", payload, {}).terminal).toBeUndefined();
+    expect(readHookEvent("claude-code", payload, {}, { providers: { hooks: testHooks } }).terminal).toBeUndefined();
   });
 
   it("S41: reads unknown shapes as phase unknown without throwing", () => {
@@ -74,12 +125,14 @@ describe("readHookEvent", () => {
       { hook_event_name: "constructor" }
     ]) {
       for (const agent of Object.keys(builtinHookDialects)) {
-        const event = readHookEvent(agent, payload, {});
+        const event = readHookEvent(agent, payload, {}, { providers: { hooks: testHooks } });
         expect(event.phase).toBe("unknown");
         expect(event.agent).toBe(agent);
       }
     }
-    expect(readHookEvent("claude-code", { hook_event_name: "TeammateIdle" }, {})).toEqual({
+    expect(
+      readHookEvent("claude-code", { hook_event_name: "TeammateIdle" }, {}, { providers: { hooks: testHooks } })
+    ).toEqual({
       agent: "claude-code",
       nativeEvent: "TeammateIdle",
       phase: "unknown"
@@ -87,13 +140,28 @@ describe("readHookEvent", () => {
   });
 
   it("reads a field of an unexpected type as absent, at the payload root and along a nested path", () => {
-    const numberSession = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: 7 }, {});
+    const numberSession = readHookEvent(
+      "claude-code",
+      { hook_event_name: "Stop", session_id: 7 },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(numberSession.phase).toBe("finish");
     expect(numberSession.sessionId).toBeUndefined();
-    const nested = readHookEvent("opencode", { type: "session.idle", properties: { info: { sessionID: 9 } } }, {});
+    const nested = readHookEvent(
+      "opencode",
+      { type: "session.idle", properties: { info: { sessionID: 9 } } },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(nested.phase).toBe("finish");
     expect(nested.sessionId).toBeUndefined();
-    const deep = readHookEvent("opencode", { type: "session.idle", properties: "not a record" }, {});
+    const deep = readHookEvent(
+      "opencode",
+      { type: "session.idle", properties: "not a record" },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(deep.phase).toBe("finish");
     expect(deep.sessionId).toBeUndefined();
   });
@@ -107,7 +175,8 @@ describe("readHookEvent", () => {
         directory: "/u/me/work",
         currentSessionId: "A"
       },
-      {}
+      {},
+      { providers: { hooks: testHooks } }
     );
     expect(remembered.sessionId).toBe("A");
     const named = readHookEvent(
@@ -118,13 +187,15 @@ describe("readHookEvent", () => {
         directory: "/u/me/work",
         currentSessionId: "A"
       },
-      {}
+      {},
+      { providers: { hooks: testHooks } }
     );
     expect(named.sessionId).toBe("B");
   });
 
   it("S113: reads opencode's info.id as the session id only where info is a Session", () => {
-    const sessionOf = (payload: object) => readHookEvent("opencode", payload, {}).sessionId;
+    const sessionOf = (payload: object) =>
+      readHookEvent("opencode", payload, {}, { providers: { hooks: testHooks } }).sessionId;
     expect(sessionOf({ type: "message.updated", properties: { info: { id: "msg_1" } } })).toBeUndefined();
     expect(sessionOf({ type: "pty.created", properties: { info: { id: "pty_1" } } })).toBeUndefined();
     expect(sessionOf({ type: "pty.updated", properties: { info: { id: "pty_1" } }, currentSessionId: "A" })).toBe("A");
@@ -145,7 +216,7 @@ describe("readHookEvent", () => {
         own: { lifecycle: { phase: "activity" }, aliases: ["own_alias"], fields: { sessionId: { paths: [["other"]] } } }
       }
     };
-    const options = { adapters: { "my-agent": mine } };
+    const options = { providers: { hooks: { ...testHooks, "my-agent": mine } } };
     const sessionOf = (payload: object) => readHookEvent("my-agent", payload, {}, options).sessionId;
     expect(sessionOf({ kind: "plain", sid: "s", other: "o" })).toBe("s");
     expect(sessionOf({ kind: "own", sid: "s", other: "o" })).toBe("o");
@@ -155,7 +226,7 @@ describe("readHookEvent", () => {
 
   it("reads inherited keys as absent", () => {
     const inherited: unknown = Object.create({ hook_event_name: "Stop", session_id: "proto" });
-    const event = readHookEvent("claude-code", inherited, {});
+    const event = readHookEvent("claude-code", inherited, {}, { providers: { hooks: testHooks } });
     expect(event.phase).toBe("unknown");
     expect(event.sessionId).toBeUndefined();
   });
@@ -163,7 +234,7 @@ describe("readHookEvent", () => {
   it("reads a key polluted onto Object.prototype as absent", () => {
     Object.defineProperty(Object.prototype, "session_id", { value: "polluted", configurable: true });
     try {
-      const event = readHookEvent("claude-code", { hook_event_name: "Stop" }, {});
+      const event = readHookEvent("claude-code", { hook_event_name: "Stop" }, {}, { providers: { hooks: testHooks } });
       expect(event.phase).toBe("finish");
       expect(event.sessionId).toBeUndefined();
     } finally {
@@ -177,7 +248,12 @@ describe("readHookEvent", () => {
         return "getter";
       }
     }
-    const event = readHookEvent("claude-code", Object.assign(new Holder(), { hook_event_name: "Stop" }), {});
+    const event = readHookEvent(
+      "claude-code",
+      Object.assign(new Holder(), { hook_event_name: "Stop" }),
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(event.phase).toBe("finish");
     expect(event.sessionId).toBeUndefined();
   });
@@ -195,28 +271,48 @@ describe("readHookEvent", () => {
         }
       }
     );
-    const event = readHookEvent("claude-code", throwing, {});
+    const event = readHookEvent("claude-code", throwing, {}, { providers: { hooks: testHooks } });
     expect(event.phase).toBe("finish");
   });
 
   it("reads a promise on a payload path as absent instead of throwing", () => {
     for (const agent of Object.keys(builtinHookDialects)) {
-      const event = readHookEvent(agent, { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {});
+      const event = readHookEvent(
+        agent,
+        { hook_event_name: "Stop", session_id: Promise.resolve("s") },
+        {},
+        { providers: { hooks: testHooks } }
+      );
       expect(event.sessionId).toBeUndefined();
     }
     expect(
-      readHookEvent("claude-code", { hook_event_name: "Stop", session_id: Promise.resolve("s") }, {}).nativeEvent
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop", session_id: Promise.resolve("s") },
+        {},
+        { providers: { hooks: testHooks } }
+      ).nativeEvent
     ).toBe("Stop");
   });
 
   it("reads a promise on the sniffing path as no evidence", () => {
-    const event = readHookEvent("claude-code", { hookEventName: Promise.resolve("pre_tool_use") }, {});
+    const event = readHookEvent(
+      "claude-code",
+      { hookEventName: Promise.resolve("pre_tool_use") },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(event.agent).toBe("claude-code");
     expect(event.phase).toBe("unknown");
   });
 
   it("reads a promise on a dialect path as absent instead of throwing", () => {
-    const event = readHookEvent("cursor", { cursor_version: "1", workspace_roots: Promise.resolve(["/w"]) }, {});
+    const event = readHookEvent(
+      "cursor",
+      { cursor_version: "1", workspace_roots: Promise.resolve(["/w"]) },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     expect(event.agent).toBe("cursor");
     expect(event.cwd).toBeUndefined();
   });
@@ -234,14 +330,15 @@ describe("readHookEvent", () => {
         }
       }
     );
-    expect(() => readHookEvent("claude-code", throwing, {})).toThrow("boom");
+    expect(() => readHookEvent("claude-code", throwing, {}, { providers: { hooks: testHooks } })).toThrow("boom");
   });
 
   it("S42: only keeps the tool's name and call id, never its arguments", () => {
     const event = readHookEvent(
       "codex",
       { hook_event_name: "PreToolUse", tool_name: "Bash", tool_use_id: "c1", tool_input: { command: "cat secret" } },
-      {}
+      {},
+      { providers: { hooks: testHooks } }
     );
     expect(event.tool).toEqual({ name: "Bash", callId: "c1" });
     expect(JSON.stringify(event)).not.toContain("secret");
@@ -255,7 +352,21 @@ describe("readHookEvent", () => {
       fields: { event: { paths: [["kind"]] } },
       events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
     };
-    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters: { "my-agent": mine } })).toEqual({
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done" },
+        {},
+        {
+          providers: {
+            hooks: {
+              ...testHooks,
+              "my-agent": mine
+            }
+          }
+        }
+      )
+    ).toEqual({
       agent: "my-agent",
       nativeEvent: "done",
       phase: "finish",
@@ -263,7 +374,7 @@ describe("readHookEvent", () => {
     });
     let thrown: unknown;
     try {
-      readHookEvent("my-agent", { kind: "done" }, {});
+      readHookEvent("my-agent", { kind: "done" }, {}, { providers: { hooks: testHooks } });
     } catch (error) {
       thrown = error;
     }
@@ -278,7 +389,14 @@ describe("readHookEvent", () => {
         "my-agent",
         { hook_event_name: "Stop", session_id: "s" },
         {},
-        { adapters: { "my-agent": inherited as HookDialect } }
+        {
+          providers: {
+            hooks: {
+              ...testHooks,
+              "my-agent": inherited as HookDialect
+            }
+          }
+        }
       )
     ).toEqual({
       agent: "my-agent",
@@ -308,7 +426,21 @@ describe("readHookEvent", () => {
         return { done: { lifecycle: { phase: "finish", scope: "turn" } } };
       }
     }
-    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters: { "my-agent": new Foreign() } })).toEqual({
+    expect(
+      readHookEvent(
+        "my-agent",
+        { kind: "done" },
+        {},
+        {
+          providers: {
+            hooks: {
+              ...testHooks,
+              "my-agent": new Foreign()
+            }
+          }
+        }
+      )
+    ).toEqual({
       agent: "my-agent",
       phase: "finish",
       scope: "turn",
@@ -325,14 +457,18 @@ describe("readHookEvent", () => {
       events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
     };
     const adapters = { "my-agent": mine };
-    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters })).toEqual({
+    expect(
+      readHookEvent("my-agent", { kind: "done" }, {}, { providers: { hooks: { ...testHooks, ...adapters } } })
+    ).toEqual({
       agent: "my-agent",
       phase: "finish",
       scope: "turn",
       nativeEvent: "done"
     });
     mine.events = { done: { lifecycle: { phase: "start", scope: "session" } } };
-    expect(readHookEvent("my-agent", { kind: "done" }, {}, { adapters })).toEqual({
+    expect(
+      readHookEvent("my-agent", { kind: "done" }, {}, { providers: { hooks: { ...testHooks, ...adapters } } })
+    ).toEqual({
       agent: "my-agent",
       phase: "start",
       scope: "session",
@@ -349,16 +485,20 @@ describe("readHookEvent", () => {
       events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
     };
     const adapters = { "my-agent": mine };
-    readHookEvent("my-agent", { kind: "done" }, {}, { adapters });
+    readHookEvent("my-agent", { kind: "done" }, {}, { providers: { hooks: { ...testHooks, ...adapters } } });
     mine.runsHooksOf = [{ agent: "claude-code", files: [], byDefault: true, events: { Halt: "done" } }];
-    expect(readHookEvent("my-agent", { kind: "Halt" }, {}, { adapters })).toEqual({
+    expect(
+      readHookEvent("my-agent", { kind: "Halt" }, {}, { providers: { hooks: { ...testHooks, ...adapters } } })
+    ).toEqual({
       agent: "my-agent",
       phase: "finish",
       scope: "turn",
       nativeEvent: "Halt"
     });
     delete mine.runsHooksOf;
-    expect(readHookEvent("my-agent", { kind: "Halt" }, {}, { adapters })).toEqual({
+    expect(
+      readHookEvent("my-agent", { kind: "Halt" }, {}, { providers: { hooks: { ...testHooks, ...adapters } } })
+    ).toEqual({
       agent: "my-agent",
       nativeEvent: "Halt",
       phase: "unknown"
@@ -370,7 +510,9 @@ describe("readHookEvent", () => {
     const events = claudeCode.events;
     claudeCode.events = { ...events, Hooked: { lifecycle: { phase: "start", scope: "session" } } };
     try {
-      expect(readHookEvent("claude-code", { hook_event_name: "Hooked" }, {})).toEqual({
+      expect(
+        readHookEvent("claude-code", { hook_event_name: "Hooked" }, {}, { providers: { hooks: testHooks } })
+      ).toEqual({
         agent: "claude-code",
         phase: "start",
         scope: "session",
@@ -381,15 +523,27 @@ describe("readHookEvent", () => {
     }
   });
 
-  it("never reads an unrelated adapter entry: a null or unreadable one does not affect another agent's read", () => {
+  it("ignores null dialects and reads foreign-hook relationships only after matching host markers", () => {
     const unreadable = {
       get runsHooksOf(): never {
         throw new Error("boom");
       }
     } as unknown as HookDialect;
-    const plain = readHookEvent("claude-code", { hook_event_name: "Stop", session_id: "s" }, {});
+    const plain = readHookEvent(
+      "claude-code",
+      { hook_event_name: "Stop", session_id: "s" },
+      {},
+      { providers: { hooks: testHooks } }
+    );
     const adapters = { codex: null, "gemini-cli": unreadable } as unknown as HookDialects;
-    expect(readHookEvent("claude-code", { hook_event_name: "Stop", session_id: "s" }, {}, { adapters })).toEqual(plain);
+    expect(
+      readHookEvent(
+        "claude-code",
+        { hook_event_name: "Stop", session_id: "s" },
+        {},
+        { providers: { hooks: { ...testHooks, ...adapters } } }
+      )
+    ).toEqual(plain);
   });
 
   it('reads a dialect keyed "__proto__" in the adapters table as its own entry', () => {
@@ -408,7 +562,12 @@ describe("readHookEvent", () => {
       writable: true
     });
     expect(
-      readHookEvent("__proto__" as never, { kind: "Stop" }, {}, { adapters: adapters as unknown as HookDialects })
+      readHookEvent(
+        "__proto__" as never,
+        { kind: "Stop" },
+        {},
+        { providers: { hooks: { ...testHooks, ...(adapters as unknown as HookDialects) } } }
+      )
     ).toEqual({
       agent: "__proto__",
       phase: "idle",
@@ -424,8 +583,8 @@ describe("readHookEvent", () => {
       fields: { event: { paths: [["kind"]] } },
       events: { done: { lifecycle: { phase: "finish", scope: "turn" } } }
     };
-    const adaptersOf = (dialect: unknown): { adapters: HookDialects } => ({
-      adapters: { "my-agent": dialect } as unknown as HookDialects
+    const adaptersOf = (dialect: unknown): { providers: { hooks: HookDialects } } => ({
+      providers: { hooks: { ...testHooks, "my-agent": dialect } as unknown as HookDialects }
     });
     expect(readHookEvent("my-agent", { kind: "done" }, {}, adaptersOf({ ...base, runsHooksOf: null }))).toEqual({
       agent: "my-agent",
@@ -482,11 +641,9 @@ describe("readHookEvent", () => {
         "claude-code",
         { hook_event_name: "Stop" },
         { CURSOR_VERSION: "1" },
-        {
-          adapters: { cursor: null } as unknown as HookDialects
-        }
+        { providers: { hooks: { ...testHooks, ...({ cursor: null } as unknown as HookDialects) } } }
       )
-    ).toEqual(readHookEvent("claude-code", { hook_event_name: "Stop" }, {}));
+    ).toEqual(readHookEvent("claude-code", { hook_event_name: "Stop" }, {}, { providers: { hooks: testHooks } }));
   });
 });
 
@@ -524,7 +681,9 @@ describe("hook dialect facts", () => {
       ].toSorted()
     );
     for (const claudeOnly of ["UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"]) {
-      expect(readHookEvent("gemini-cli", { hook_event_name: claudeOnly }, {}).phase).toBe("unknown");
+      expect(
+        readHookEvent("gemini-cli", { hook_event_name: claudeOnly }, {}, { providers: { hooks: testHooks } }).phase
+      ).toBe("unknown");
     }
   });
 

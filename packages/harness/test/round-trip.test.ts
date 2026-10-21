@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import { readFileSync, rmSync } from "node:fs";
 
 import { parse as parseToml } from "@decimalturn/toml-patch";
@@ -154,7 +156,11 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
     const strategies =
       testCase.strategies === undefined ? {} : { strategies: { [testCase.agent]: testCase.strategies } };
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle(), { agents: [testCase.agent], ...strategies });
+      const plan = yield* planInstall(demoBundle(), {
+        agents: [testCase.agent],
+        ...strategies,
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(plan.status).toBe("ready");
       expect(plan.changes.length).toBeGreaterThan(0);
       for (const change of plan.changes) {
@@ -172,15 +178,26 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
       expect(ledger.entries.length).toBe(plan.steps.length);
       expect(ledger.entries.every((entry) => entry.owners.includes("demo-app"))).toBe(true);
 
-      const verified = yield* verify("demo-app", { bundle: demoBundle(), agents: [testCase.agent], ...strategies });
+      const verified = yield* verify("demo-app", {
+        bundle: demoBundle(),
+        agents: [testCase.agent],
+        ...strategies,
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(new Set(verified.artifacts.map((artifact) => artifact.status))).toEqual(new Set(["in-sync"]));
 
       // Planning the same bundle again changes nothing.
-      const again = yield* planInstall(demoBundle(), { agents: [testCase.agent], ...strategies });
+      const again = yield* planInstall(demoBundle(), {
+        agents: [testCase.agent],
+        ...strategies,
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(new Set(again.steps.map((step) => step.action))).toEqual(new Set(["noop"]));
       expect(again.changes).toEqual([]);
 
-      const removed = yield* uninstall("demo-app");
+      const removed = yield* uninstall("demo-app", {
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(removed.kept).toEqual([]);
       expect(snapshotFiles(home.home)).toEqual(before);
       expect((yield* inventory()).entries).toEqual([]);
@@ -194,7 +211,10 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
       home.command("codex", FAKE_CODEX);
       home.write(".codex/config.toml", fixture("codex-config.toml"));
       return Effect.gen(function* () {
-        const plan = yield* planInstall(demoBundle(), { agents: ["codex"] });
+        const plan = yield* planInstall(demoBundle(), {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         const marketplace = `${home.home}/.codex/plugins/demo-app`;
         expect(plan.commands.map(({ command, args, purpose }) => [command, ...args, purpose])).toEqual([
           ["codex", "plugin", "marketplace", "add", marketplace, "register"],
@@ -214,14 +234,23 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
         expect(home.read(".codex/plugins/demo-app/plugins/demo-app/hooks/hooks.json")).toContain(
           "/opt/demo/bin/demo-hook --agent codex"
         );
-        const verified = yield* verify("demo-app", { bundle: demoBundle(), agents: ["codex"] });
+        const verified = yield* verify("demo-app", {
+          bundle: demoBundle(),
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(new Set(verified.artifacts.map((artifact) => artifact.status))).toEqual(new Set(["in-sync"]));
         // An upgrade of the application changes nothing Codex reviews, so it asks for no trust again.
-        const upgrade = yield* planInstall(demoBundle("2.0.0"), { agents: ["codex"] });
+        const upgrade = yield* planInstall(demoBundle("2.0.0"), {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(new Set(upgrade.steps.map((step) => step.action))).toEqual(new Set(["noop"]));
         expect(upgrade.expectedTrustPrompts).toEqual([]);
 
-        const removed = yield* uninstall("demo-app");
+        const removed = yield* uninstall("demo-app", {
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(removed.plan.commands.map(({ args }) => args.join(" "))).toEqual([
           "plugin remove demo-app@demo-app",
           "plugin marketplace remove demo-app"
@@ -250,23 +279,39 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
     const home = testHome();
     home.command("codex", FAKE_CODEX);
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["codex"] }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(cachedHooks(home)).not.toContain("PostToolUse");
 
       const changed = codexEvents(["SessionStart", "PostToolUse"]);
-      const plan = yield* planInstall(changed, { agents: ["codex"] });
+      const plan = yield* planInstall(changed, {
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(plan.commands.map(({ args, purpose }) => `${purpose} ${args.join(" ")}`)).toEqual([
         "unregister plugin remove demo-app@demo-app",
         "register plugin add demo-app@demo-app"
       ]);
       yield* applyInstall(plan);
       expect(JSON.parse(cachedHooks(home) ?? "{}")).toMatchObject({ hooks: { PostToolUse: [{}], SessionStart: [{}] } });
-      const verified = yield* verify("demo-app", { bundle: changed, agents: ["codex"] });
+      const verified = yield* verify("demo-app", {
+        bundle: changed,
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(new Set(verified.artifacts.map((artifact) => artifact.status))).toEqual(new Set(["in-sync"]));
 
       // A cache that no longer holds what was added reads as changed.
       home.write(".codex/plugins/cache/demo-app/demo-app/local/hooks/hooks.json", "{}\n");
-      const stale = yield* verify("demo-app", { bundle: changed, agents: ["codex"] });
+      const stale = yield* verify("demo-app", {
+        bundle: changed,
+        agents: ["codex"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(stale.artifacts.filter((artifact) => artifact.status !== "in-sync").map((a) => a.locator.pointer)).toEqual(
         ["/plugins/demo-app@demo-app"]
       );
@@ -278,11 +323,18 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
     home.command("codex", FAKE_CODEX);
     home.write(".codex/config.toml", fixture("codex-config.toml"));
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["claude-code", "codex", "grok"] }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle(), {
+          agents: ["claude-code", "codex", "grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       expect(cachedHooks(home)).toBeDefined();
       rmSync(home.path("bin/codex"));
 
-      const removed = yield* uninstall("demo-app");
+      const removed = yield* uninstall("demo-app", {
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(removed.kept).toEqual([]);
       expect(parseToml(home.read(".codex/config.toml") ?? "")).toEqual(parseToml(fixture("codex-config.toml")));
       expect(cachedHooks(home)).toBeUndefined();
@@ -298,9 +350,19 @@ describe("S90, S93: plan → apply → verify → uninstall in a temporary home"
       const home = testHome();
       home.command("codex", FAKE_CODEX);
       return Effect.gen(function* () {
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["codex"] }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["codex"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         rmSync(home.path("bin/codex"));
-        yield* applyInstall(yield* planInstall(demoBundle(), { agents: ["codex"] }));
+        yield* applyInstall(
+          yield* planInstall(demoBundle(), {
+            agents: ["codex"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
         const config = parseToml(home.read(".codex/config.toml") ?? "") as Record<string, Record<string, unknown[]>>;
         expect(config.plugins).toBeUndefined();
         expect(config.marketplaces).toBeUndefined();

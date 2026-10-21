@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import type { SpawnSyncReturns } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -5,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Effect from "effect/Effect";
 
-import { readHookEvent } from "../src/domain/lifecycle/adapters/hook-dialects.js";
+import { readHookEvent } from "../src/domain/lifecycle/adapters/read-hook-event.js";
 import { opencodeHookDialect } from "../src/domain/lifecycle/adapters/opencode.js";
 import { piHookDialect } from "../src/domain/lifecycle/adapters/pi.js";
 import { finishSelectorsOf } from "../src/domain/lifecycle/index.js";
@@ -46,7 +48,13 @@ async function payloads(home: TestHome, count: number): Promise<unknown[]> {
 
 const install = (home: TestHome, bundle: Bundle, agent: "opencode" | "pi") =>
   Effect.runPromise(
-    Effect.flatMap(planInstall(bundle, { agents: [agent] }), applyInstall).pipe(Effect.provide(home.layer()))
+    Effect.flatMap(
+      planInstall(bundle, {
+        agents: [agent],
+        providers: { install: testInstall, hooks: testHooks }
+      }),
+      applyInstall
+    ).pipe(Effect.provide(home.layer()))
   );
 
 describe("S109: bridge plugins forward events in the payload shape their HookDialect reads", () => {
@@ -79,7 +87,9 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
     await hooks.event!({ event: { type: "message.updated", properties: {} } });
     await hooks["tool.execute.before"]!({ tool: "bash", sessionID: "ses_1", callID: "call_1" });
     // Each event spawns the command on its own, so the payloads can arrive in any order.
-    const events = (await payloads(home, 2)).map((payload) => readHookEvent("opencode", payload, {}));
+    const events = (await payloads(home, 2)).map((payload) =>
+      readHookEvent("opencode", payload, {}, { providers: { hooks: testHooks } })
+    );
     expect(events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ phase: "start", scope: "session", sessionId: "ses_1", cwd: "/u/me/work" }),
@@ -111,7 +121,9 @@ describe("S109: bridge plugins forward events in the payload shape their HookDia
     const ctx = { cwd: "/u/me/work", sessionManager: { getSessionId: () => "pi-1" } };
     await handlers.get("agent_start")!({ type: "agent_start" }, ctx);
     await handlers.get("session_shutdown")!({ type: "session_shutdown" }, ctx);
-    const events = (await payloads(home, 2)).map((payload) => readHookEvent("pi", payload, {}));
+    const events = (await payloads(home, 2)).map((payload) =>
+      readHookEvent("pi", payload, {}, { providers: { hooks: testHooks } })
+    );
     expect(events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ phase: "start", scope: "turn", sessionId: "pi-1", cwd: "/u/me/work" }),
@@ -265,9 +277,9 @@ describe("S111: the opencode bridge carries the current session id", () => {
     await other.event({ event: { type: "file.edited", properties: { file: "/u/me/other/c.ts" } } });
 
     const [before, created, edited, errored, named, after, elsewhere] = log.payloads;
-    expect(readHookEvent("opencode", before, {}).sessionId).toBeUndefined();
+    expect(readHookEvent("opencode", before, {}, { providers: { hooks: testHooks } }).sessionId).toBeUndefined();
     expect(before).not.toHaveProperty("currentSessionId");
-    expect(readHookEvent("opencode", created, {})).toEqual(
+    expect(readHookEvent("opencode", created, {}, { providers: { hooks: testHooks } })).toEqual(
       expect.objectContaining({ phase: "start", scope: "session", sessionId: "A", cwd: "/u/me/work" })
     );
     expect(created).toEqual({
@@ -275,25 +287,25 @@ describe("S111: the opencode bridge carries the current session id", () => {
       properties: { info: { id: "A", directory: "/u/me/work" } },
       directory: "/u/me/work"
     });
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("A");
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("A");
     expect(edited).toEqual({
       type: "file.edited",
       properties: { file: "/u/me/work/a.ts" },
       directory: "/u/me/work",
       currentSessionId: "A"
     });
-    expect(readHookEvent("opencode", errored, {})).toEqual(
+    expect(readHookEvent("opencode", errored, {}, { providers: { hooks: testHooks } })).toEqual(
       expect.objectContaining({ phase: "finish", scope: "turn", outcome: "failed", sessionId: "A" })
     );
-    expect(readHookEvent("opencode", named, {}).sessionId).toBe("B");
+    expect(readHookEvent("opencode", named, {}, { providers: { hooks: testHooks } }).sessionId).toBe("B");
     expect(named).toEqual({
       type: "message.updated",
       properties: { info: { id: "msg_1", sessionID: "B" } },
       directory: "/u/me/work"
     });
-    expect(readHookEvent("opencode", after, {}).sessionId).toBe("B");
+    expect(readHookEvent("opencode", after, {}, { providers: { hooks: testHooks } }).sessionId).toBe("B");
     expect(after).toMatchObject({ currentSessionId: "B" });
-    expect(readHookEvent("opencode", elsewhere, {}).sessionId).toBeUndefined();
+    expect(readHookEvent("opencode", elsewhere, {}, { providers: { hooks: testHooks } }).sessionId).toBeUndefined();
     expect(elsewhere).not.toHaveProperty("currentSessionId");
   });
 
@@ -331,9 +343,9 @@ describe("S111: the opencode bridge carries the current session id", () => {
 
     const [created, edited] = log.payloads;
     expect(log.payloads).toHaveLength(2);
-    expect(readHookEvent("opencode", created, {}).sessionId).toBe("A");
+    expect(readHookEvent("opencode", created, {}, { providers: { hooks: testHooks } }).sessionId).toBe("A");
     expect(created).not.toHaveProperty("currentSessionId");
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("B");
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("B");
     expect(edited).toMatchObject({ type: "file.edited", currentSessionId: "B" });
   });
 
@@ -349,7 +361,7 @@ describe("S111: the opencode bridge carries the current session id", () => {
 
     expect(log.payloads).toHaveLength(1);
     const [edited] = log.payloads;
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("A");
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("A");
     expect(edited).toMatchObject({ type: "file.edited", currentSessionId: "A" });
   });
 
@@ -363,7 +375,7 @@ describe("S111: the opencode bridge carries the current session id", () => {
 
     expect(log.payloads).toHaveLength(1);
     const [edited] = log.payloads;
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("C");
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("C");
     expect(edited).toMatchObject({ currentSessionId: "C" });
   });
 });
@@ -383,8 +395,8 @@ describe("S113: the opencode bridge remembers only session ids and forgets a del
     expect(log.payloads).toHaveLength(2);
     const [edited, errored] = log.payloads;
     expect(edited).toMatchObject({ type: "file.edited", currentSessionId: "ses_A" });
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("ses_A");
-    expect(readHookEvent("opencode", errored, {})).toEqual(
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("ses_A");
+    expect(readHookEvent("opencode", errored, {}, { providers: { hooks: testHooks } })).toEqual(
       expect.objectContaining({ phase: "finish", outcome: "failed", sessionId: "ses_A" })
     );
   });
@@ -401,7 +413,7 @@ describe("S113: the opencode bridge remembers only session ids and forgets a del
     await work.event({ event: { type: "file.edited", properties: { file: "/u/me/work/a.ts" } } });
 
     const [edited] = log.payloads;
-    expect(readHookEvent("opencode", edited, {}).sessionId).toBe("ses_B");
+    expect(readHookEvent("opencode", edited, {}, { providers: { hooks: testHooks } }).sessionId).toBe("ses_B");
   });
 
   it("forgets the remembered session when it is deleted, and keeps it when another one is", async () => {
@@ -422,15 +434,15 @@ describe("S113: the opencode bridge remembers only session ids and forgets a del
     await edit();
 
     const [deletedA, editedB, deletedB, editedNone] = log.payloads;
-    expect(readHookEvent("opencode", deletedA, {})).toEqual(
+    expect(readHookEvent("opencode", deletedA, {}, { providers: { hooks: testHooks } })).toEqual(
       expect.objectContaining({ phase: "finish", scope: "session", sessionId: "A" })
     );
-    expect(readHookEvent("opencode", editedB, {}).sessionId).toBe("B");
-    expect(readHookEvent("opencode", deletedB, {})).toEqual(
+    expect(readHookEvent("opencode", editedB, {}, { providers: { hooks: testHooks } }).sessionId).toBe("B");
+    expect(readHookEvent("opencode", deletedB, {}, { providers: { hooks: testHooks } })).toEqual(
       expect.objectContaining({ phase: "finish", scope: "session", sessionId: "B" })
     );
     expect(editedNone).not.toHaveProperty("currentSessionId");
-    expect(readHookEvent("opencode", editedNone, {}).sessionId).toBeUndefined();
+    expect(readHookEvent("opencode", editedNone, {}, { providers: { hooks: testHooks } }).sessionId).toBeUndefined();
   });
 });
 
@@ -515,10 +527,9 @@ export function spawnSync(command, options) {
     await hooks.event!({ event: { type: "session.idle", properties: {} } });
     await hooks.event!({ event: { type: "session.created", properties: { info: { id: "ses_1" } } } });
     const events = await payloads(home, 2);
-    expect(events.map((payload) => readHookEvent("opencode", payload, {}).nativeEvent)).toEqual([
-      "session.idle",
-      "session.created"
-    ]);
+    expect(
+      events.map((payload) => readHookEvent("opencode", payload, {}, { providers: { hooks: testHooks } }).nativeEvent)
+    ).toEqual(["session.idle", "session.created"]);
   });
 
   it("Pi: agent_end reaches the command before a session_start that follows it", async () => {
@@ -549,10 +560,9 @@ export function spawnSync(command, options) {
     await handlers.get("agent_end")!({ type: "agent_end" }, ctx);
     await handlers.get("session_start")!({ type: "session_start" }, ctx);
     const events = await payloads(home, 2);
-    expect(events.map((payload) => readHookEvent("pi", payload, {}).nativeEvent)).toEqual([
-      "agent_end",
-      "session_start"
-    ]);
+    expect(
+      events.map((payload) => readHookEvent("pi", payload, {}, { providers: { hooks: testHooks } }).nativeEvent)
+    ).toEqual(["agent_end", "session_start"]);
   });
 
   it("derives each event's finish selector from its dialect, every spelling included", () => {
@@ -644,13 +654,11 @@ export function spawnSync(command, options) {
     // A payload without the switch field reads as the `otherwise` mapping, which is not finish here.
     await work.event({ event: { type: "session.status", properties: {} } });
     expect(log.vias).toEqual(["spawn", "spawnSync", "spawn", "spawn", "spawn"]);
-    expect(log.payloads.map((payload) => readHookEvent("opencode", payload, {}).nativeEvent)).toEqual([
-      "file.edited",
-      "session.status",
-      "session.status",
-      "session.status",
-      "session.status"
-    ]);
+    expect(
+      log.payloads.map(
+        (payload) => readHookEvent("opencode", payload, {}, { providers: { hooks: testHooks } }).nativeEvent
+      )
+    ).toEqual(["file.edited", "session.status", "session.status", "session.status", "session.status"]);
   });
 
   it("Pi: forwards a non-finish event asynchronously and a finish one synchronously", async () => {

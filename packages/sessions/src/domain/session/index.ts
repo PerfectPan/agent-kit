@@ -1,9 +1,4 @@
-export type {
-  CapabilityUnsupported,
-  NoAdapterAccepted,
-  ReadFailed,
-  SessionNotFound
-} from "./errors/session-read-error.js";
+export type { NoAdapterAccepted, ReadFailed, SessionNotFound } from "./errors/session-read-error.js";
 export { basenamePath, belowRoot, dirnamePath, joinPath } from "./policies/paths.js";
 export {
   isSessionHead,

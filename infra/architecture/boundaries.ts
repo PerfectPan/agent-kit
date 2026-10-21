@@ -8,14 +8,18 @@
 /**
  * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at
  * `src/domain/<concept>/adapters/` (inside `domain/` but judged as their own layer), `src/application/` and
- * `src/infra/`. Other files (`public.ts`, `index.ts`) are unrestricted. Sources under `src/` are plain `.ts` files:
+ * `src/infra/`. Entry files (`public.ts`, `index.ts`, `spi.ts`) may reach the package's layers. Sources under `src/` are plain `.ts` files:
  * declaration and JavaScript files would hide imports from the check.
  */
 export type Layer = "domain" | "adapters" | "application" | "infra";
 
 export interface PackageRule {
-  /** Workspace packages this package may import, always by bare name, which resolves to the target's `index.ts`. */
+  /** Workspace packages this package may import by bare name, which resolves to the target's `index.ts`. */
   readonly dependsOn: readonly string[];
+  /** This context exports `src/spi.ts` as `./spi` for provider implementations. */
+  readonly spi?: true;
+  /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
+  readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
   readonly typesOnly?: readonly string[];
   /**
@@ -69,8 +73,10 @@ export interface AgentMarkerRule {
 
 export interface BoundaryRules {
   readonly packages: Readonly<Record<string, PackageRule>>;
-  /** Published packages whose `src/<entry>.ts` files only re-export names from internal packages' `public.ts`. */
+  /** Published shells that bind providers and re-export named public APIs. */
   readonly shells: readonly string[];
+  /** Explicit local imports for shell bindings and per-service assembly; all other local imports are refused. */
+  readonly shellImports: Readonly<Record<string, readonly string[]>>;
   readonly sharedKernel: string;
   readonly layers: Readonly<Record<Layer, LayerRule>>;
   readonly effect: {
@@ -109,16 +115,17 @@ export const boundaries: BoundaryRules = {
   packages: {
     [PLATFORM]: { dependsOn: [], external: [] },
     [PLATFORM_NODE]: { dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
-    [CATALOG]: { dependsOn: [], external: [] },
+    [CATALOG]: { dependsOn: [], external: [], spi: true },
     // zod/mini is the only zod entry the plan allows. es-toolkit's root export is tree-shakable; its lodash-compatible
     // `es-toolkit/compat` layer is deliberately not allowed.
-    [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"] },
-    [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"] },
+    [SESSIONS]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini", "es-toolkit"], spi: true },
+    [DISCOVERY]: { dependsOn: [CATALOG, PLATFORM], external: ["zod/mini"], spi: true },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
     // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform. shell-quote
     // reads the first word of a hook command for doctor and stays behind that one module.
     [HARNESS]: {
+      spi: true,
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
@@ -131,6 +138,7 @@ export const boundaries: BoundaryRules = {
     // The ACP SDK is an internal dependency kept behind one module, so no SDK type reaches public.ts. The tests spawn a
     // fake agent through the Node platform, which only applications may provide.
     [ACP]: {
+      spi: true,
       dependsOn: [CATALOG, PLATFORM, SESSIONS],
       testsOnly: [PLATFORM_NODE],
       external: ["zod/mini", "@agentclientprotocol/sdk"],
@@ -157,6 +165,41 @@ export const boundaries: BoundaryRules = {
     }
   },
   shells: [SHELL],
+  shellImports: {
+    "src/acp.ts": ["./providers/acp.js", "./providers/types.js"],
+    "src/discovery.ts": ["./providers/discovery.js", "./providers/identity.js", "./providers/types.js"],
+    "src/harness/events.ts": ["../providers/hooks.js", "../providers/types.js"],
+    "src/harness.ts": [
+      "./providers/install.js",
+      "./providers/hooks.js",
+      "./providers/identity.js",
+      "./providers/types.js"
+    ],
+    "src/providers/acp.ts": ["./merge.js", "./types.js"],
+    "src/providers/builtin.ts": [
+      "./types.js",
+      "./identity.js",
+      "./discovery.js",
+      "./hooks.js",
+      "./install.js",
+      "./sessions.js",
+      "./usage.js",
+      "./acp.js"
+    ],
+    "src/providers/discovery.ts": ["./merge.js", "./types.js"],
+    "src/providers/hooks.ts": ["./merge.js", "./types.js"],
+    "src/providers/identity.ts": ["./merge.js", "./types.js"],
+    "src/providers/install.ts": ["./merge.js", "./types.js"],
+    "src/providers/merge.ts": ["./types.js"],
+    "src/providers/sessions.ts": ["./merge.js", "./types.js"],
+    "src/providers/unsupported.ts": ["./types.js"],
+    "src/providers/usage.ts": ["./merge.js", "./types.js"],
+    "src/providers.ts": ["./providers/types.js", "./providers/builtin.js"],
+    "src/sessions.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"],
+    "src/testing.ts": ["./providers/hooks.js", "./providers/identity.js", "./providers/types.js"],
+    "src/transcript/usage.ts": ["../providers/usage.js", "../providers/identity.js", "../providers/types.js"],
+    "src/transcript.ts": ["./providers/sessions.js", "./providers/identity.js", "./providers/types.js"]
+  },
   sharedKernel: CATALOG,
   layers: {
     // The domain does no IO, so it never sees the Platform port, not even its types, and never reaches the agent
@@ -202,7 +245,7 @@ export const boundaries: BoundaryRules = {
       [CATALOG]: ["src/domain/coding-agent/value-objects/coding-agent-id.ts"],
       [DISCOVERY]: [],
       [SESSIONS]: ["src/application/services/session-adapters/**", "src/application/services/usage-decoders/**"],
-      [HARNESS]: ["src/domain/lifecycle/policies/host-sniffing.ts"],
+      [HARNESS]: [],
       [ACP]: [],
       [COST]: []
     }

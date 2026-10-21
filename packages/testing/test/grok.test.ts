@@ -1,3 +1,6 @@
+import { builtinSessionAdapters as testSessions } from "@rivus/agent-kit-sessions";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinUsageDecoders as testUsage } from "@rivus/agent-kit-sessions";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -42,7 +45,13 @@ function value<T>(result: Result<T, unknown>): T {
 }
 
 const load = async (name: string): Promise<Transcript> =>
-  value(await loadTranscript(platform, { agent: "grok", path: session(name) }));
+  value(
+    await loadTranscript(
+      platform,
+      { agent: "grok", path: session(name) },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    )
+  );
 
 function grokRecord(update: Record<string, unknown>, line: number) {
   return {
@@ -184,7 +193,10 @@ describe("grok translation", () => {
 
   it("takes the discover title from summary.json and skips an injected chunk", async () => {
     const heads: SessionHead[] = [];
-    for await (const item of listSessions(platform, { agents: ["grok"] })) {
+    for await (const item of listSessions(platform, {
+      agents: ["grok"],
+      providers: { sessions: testSessions, identity: testIdentity }
+    })) {
       if (isSessionHead(item) && item.ref.path.endsWith("/subagent/updates.jsonl")) {
         heads.push(item);
       }
@@ -204,12 +216,24 @@ describe("grok translation", () => {
     const transcript = await load("conformance/unknown-type");
     expect(transcript.events[0]?.payload.type).toBe("widget");
     const path = session("unknown-generation");
-    expect(await loadTranscript(platform, { agent: "grok", path })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "grok", path },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "UnknownFormatGeneration", agent: "grok", file: path, line: 1 }
     });
     const summary = "/u/me/.grok/sessions/bad-summary/summary.json";
-    expect(await loadTranscript(platform, { agent: "grok", path: session("bad-summary") })).toEqual({
+    expect(
+      await loadTranscript(
+        platform,
+        { agent: "grok", path: session("bad-summary") },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    ).toEqual({
       ok: false,
       error: { _tag: "UnknownFormatGeneration", agent: "grok", file: summary, line: 1 }
     });
@@ -226,7 +250,13 @@ describe("grok translation", () => {
       },
       home: "/u/me"
     });
-    const transcript = value(await loadTranscript(broken, { agent: "grok", path: `${dir}/updates.jsonl` }));
+    const transcript = value(
+      await loadTranscript(
+        broken,
+        { agent: "grok", path: `${dir}/updates.jsonl` },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      )
+    );
     expect(transcript.skipped.map((skip) => skip.reason)).toEqual(["invalid-json", "invalid-json"]);
     expect(transcript.skipped.map((skip) => skip.source.file)).toEqual([
       `${dir}/summary.json`,
@@ -401,7 +431,11 @@ describe("grok translation", () => {
     const seen: unknown[] = [];
     await expect(
       (async () => {
-        for await (const item of listSessions(platform, { agents: ["grok"], signal: controller.signal })) {
+        for await (const item of listSessions(platform, {
+          agents: ["grok"],
+          signal: controller.signal,
+          providers: { sessions: testSessions, identity: testIdentity }
+        })) {
           seen.push(item);
         }
       })()
@@ -580,10 +614,26 @@ describe("grok translation", () => {
         }
       }
     };
-    const named = await loadTranscript(platform, { agent: "grok", path: updates });
-    const detected = await loadTranscript(platform, { path: updates });
-    const namedSummary = await summarizeSession(platform, { agent: "grok", path: updates });
-    const detectedSummary = await summarizeSession(platform, { path: updates });
+    const named = await loadTranscript(
+      platform,
+      { agent: "grok", path: updates },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
+    const detected = await loadTranscript(
+      platform,
+      { path: updates },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
+    const namedSummary = await summarizeSession(
+      platform,
+      { agent: "grok", path: updates },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
+    const detectedSummary = await summarizeSession(
+      platform,
+      { path: updates },
+      { providers: { sessions: testSessions, identity: testIdentity } }
+    );
     expect(named).toEqual(detected);
     expect(namedSummary).toEqual(named);
     expect(detectedSummary).toEqual(named);
@@ -795,7 +845,12 @@ describe("grok decoder cursor state", () => {
     path: string,
     options: DecodeUsageOptions
   ): Promise<{ records: UsageRecord[]; cursor: UsageCursor | undefined }> {
-    const stream = decodeUsage(platform, "grok", { path }, options);
+    const stream = decodeUsage(
+      platform,
+      "grok",
+      { path },
+      { ...options, providers: { usage: testUsage, identity: testIdentity } }
+    );
     const records: UsageRecord[] = [];
     for await (const item of stream) {
       if (!isUsageRecord(item)) {

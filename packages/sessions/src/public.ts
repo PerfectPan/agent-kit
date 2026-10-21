@@ -1,3 +1,5 @@
+export type { CapabilityUnsupported } from "@rivus/agent-kit-catalog";
+
 // Use cases
 export { listSessions, type ListSessionsOptions, sessionAdapterHome } from "./application/use-cases/list-sessions.js";
 export {
@@ -32,13 +34,14 @@ export type {
   UsageCursor,
   UsageDecodeError,
   UsageDecodeFailure,
+  UsageDecoder,
   UsagePlatform,
   UsageSource,
   UsageSourceFailure,
   UsageSourceOptions,
   UsageStream,
   UsageTarget
-} from "./application/usage-ports.js";
+} from "./application/spi.js";
 export type {
   DiscoverOptions,
   LoadOptions,
@@ -46,7 +49,7 @@ export type {
   SessionAdapters,
   SessionPlatform,
   SessionReadError
-} from "./application/ports.js";
+} from "./application/spi.js";
 
 // Claude Code rules
 export {
@@ -74,7 +77,6 @@ export { grokUsage } from "./domain/usage/adapters/grok.js";
 
 // Published language and the rules a viewer needs to interpret events
 export {
-  type CapabilityUnsupported,
   isSessionHead,
   type NoAdapterAccepted,
   type ReadFailed,
@@ -148,3 +150,5 @@ export {
   type UsageGranularity,
   type UsageRecord
 } from "./domain/usage/index.js";
+
+export { builtinUsageDecoders } from "./application/services/usage-decoders/index.js";

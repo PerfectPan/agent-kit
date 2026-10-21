@@ -1,3 +1,5 @@
+import { builtinInstallAdapters as testInstall } from "../src/public.js";
+import { builtinHookDialects as testHooks } from "../src/events.js";
 import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
@@ -70,7 +72,10 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     const home = testHome();
     home.write(".claude/settings.json", fixture("legacy-claude-settings.json"));
     return Effect.gen(function* () {
-      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["claude-code"] });
+      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+        agents: ["claude-code"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(
         plan.steps.filter((step) => step.legacy === true).map((step) => [step.action, step.locator.pointer])
       ).toEqual([
@@ -102,7 +107,10 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
       );
       return Effect.gen(function* () {
         const failure = yield* Effect.flip(
-          planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["claude-code"] })
+          planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
         );
         expect(
           failure._tag === "PlanConflict" &&
@@ -111,7 +119,11 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
           ["/hooks/SessionStart", "dotfiles-managed", []],
           ["/hooks/Stop", "dotfiles-managed", []]
         ]);
-        const removed = yield* uninstall("demo-app", { agents: ["claude-code"], legacyMarkers: MARKERS });
+        const removed = yield* uninstall("demo-app", {
+          agents: ["claude-code"],
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(removed.plan.notes.map(({ note }) => note)).toEqual(["dotfiles-managed", "dotfiles-managed"]);
         expect(home.read(".claude/settings.json")).toBe(fixture("legacy-claude-settings.json"));
       }).pipe(Effect.provide(home.layer()));
@@ -124,7 +136,8 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     return Effect.gen(function* () {
       const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
         agents: ["claude-code"],
-        strategies: { "claude-code": { hooks: "shared-config" } }
+        strategies: { "claude-code": { hooks: "shared-config" } },
+        providers: { install: testInstall, hooks: testHooks }
       });
       yield* applyInstall(plan);
       const runs = claudeRuns(home);
@@ -140,11 +153,16 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     const old = `[[hooks.Stop]]\n\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "npx --yes legacy-demo hook --event Stop"\n`;
     home.write(".codex/config.toml", `model = "gpt-5.5"\n\n${old}\n${user}`);
     return Effect.gen(function* () {
-      yield* applyInstall(yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["codex"] }));
+      yield* applyInstall(
+        yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+          agents: ["codex"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       const text = home.read(".codex/config.toml") ?? "";
       expect(text).toContain(user);
       expect(text).not.toContain("legacy-demo hook");
-      yield* uninstall("demo-app");
+      yield* uninstall("demo-app", { providers: { install: testInstall, hooks: testHooks } });
       expect(home.read(".codex/config.toml")).toBe(`model = "gpt-5.5"\n\n${user}`);
     }).pipe(Effect.provide(home.layer()));
   });
@@ -155,7 +173,10 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     home.write(".config/opencode/opencode.json", fixture("legacy-opencode.json"));
     return Effect.gen(function* () {
       yield* applyInstall(
-        yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["opencode"] })
+        yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+          agents: ["opencode"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
       );
       expect(home.read(".config/opencode/plugins/legacy-demo.js")).toBeUndefined();
       expect(parse(home.read(".config/opencode/opencode.json") ?? "")).toEqual({
@@ -173,7 +194,10 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     home.write(path, content);
     return Effect.gen(function* () {
       const failure = yield* Effect.flip(
-        planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] })
+        planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
       );
       expect(failure._tag).toBe("PlanConflict");
       if (failure._tag === "PlanConflict") {
@@ -193,12 +217,26 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
         owner: "other-app",
         artifacts: [{ type: "hooks", command: "legacy-demo hook", events: { grok: ["Stop"] } }]
       });
-      yield* applyInstall(yield* planInstall(other, { agents: ["grok"] }));
+      yield* applyInstall(
+        yield* planInstall(other, {
+          agents: ["grok"],
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      );
       const content = home.read(path);
       expect(content).toContain("legacy-demo hook");
       const before = (yield* inventory()).entries;
-      expect(yield* findLegacy("demo-app", { agents: ["grok"], legacyMarkers: MARKERS })).toEqual([]);
-      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["grok"] });
+      expect(
+        yield* findLegacy("demo-app", {
+          agents: ["grok"],
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      ).toEqual([]);
+      const plan = yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+        agents: ["grok"],
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(plan.steps.filter((step) => step.locator.path === home.path(path))).toEqual([]);
       yield* applyInstall(plan);
       expect(home.read(path)).toBe(content);
@@ -212,7 +250,10 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
     home.write(".config/opencode/plugins/legacy-demo.js", fixture("legacy-opencode-plugin.js"));
     return Effect.gen(function* () {
       expect((yield* inventory()).entries).toEqual([]);
-      const removed = yield* uninstall("demo-app", { legacyMarkers: MARKERS });
+      const removed = yield* uninstall("demo-app", {
+        legacyMarkers: MARKERS,
+        providers: { install: testInstall, hooks: testHooks }
+      });
       expect(removed.steps.map((step) => step.locator.path.slice(home.home.length)).toSorted()).toEqual([
         "/.claude/settings.json",
         "/.claude/settings.json",
@@ -231,13 +272,19 @@ describe("hooks an older version installed without a ledger (plan 3.10)", () => 
       home.write(".claude/settings.json", fixture("legacy-claude-settings.json"));
       return Effect.gen(function* () {
         yield* applyInstall(
-          yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), { agents: ["claude-code"] })
+          yield* planInstall(demoBundle("2.0.0", { legacyMarkers: MARKERS }), {
+            agents: ["claude-code"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
         );
         // Running the old setup now, without uninstalling, would fire both the plugin's hook and the old one.
         const skipped = claudeRuns(home);
         expect(ours(skipped, "Stop")).toHaveLength(1);
 
-        const removed = yield* uninstall("demo-app", { legacyMarkers: MARKERS });
+        const removed = yield* uninstall("demo-app", {
+          legacyMarkers: MARKERS,
+          providers: { install: testInstall, hooks: testHooks }
+        });
         expect(removed.kept).toEqual([]);
         expect(home.read(".claude/skills/demo-app/hooks/hooks.json")).toBeUndefined();
         expect((yield* inventory()).entries).toEqual([]);

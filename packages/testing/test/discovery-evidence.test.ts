@@ -1,3 +1,7 @@
+import { builtinInstallAdapters as testInstall } from "@rivus/agent-kit-harness/public";
+import { builtinHookDialects as testHooks } from "@rivus/agent-kit-harness";
+import { builtinCodingAgents as testIdentity } from "@rivus/agent-kit-catalog";
+import { builtinProbeRecipes as testDiscovery } from "@rivus/agent-kit-discovery";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import { detectAgents } from "@rivus/agent-kit-discovery";
 import {
@@ -178,7 +182,10 @@ async function installerOnlyMachine(): Promise<ReturnType<typeof machine>> {
   await platform.fs.mkdir(HOME);
   await Effect.runPromise(
     Effect.gen(function* () {
-      const plan = yield* planInstall(BUNDLE, { agents: INSTALL_TARGETS.map(({ agent }) => agent) });
+      const plan = yield* planInstall(BUNDLE, {
+        agents: INSTALL_TARGETS.map(({ agent }) => agent),
+        providers: { install: testInstall, hooks: testHooks }
+      });
       const applied = yield* applyInstall(plan);
       expect(plan.status).toBe("applied");
       expect(applied.steps.length).toBeGreaterThan(0);
@@ -260,7 +267,10 @@ const SHARED_PATHS: readonly { readonly agent: CodingAgentId; readonly paths: re
 describe("agent-owned discovery evidence", () => {
   it("S117: reports every agent missing with only default bundle artifacts installed for all seven agents and an empty PATH", async () => {
     const platform = await installerOnlyMachine();
-    const installations = await detectAgents(platform, { versionProbe: false });
+    const installations = await detectAgents(platform, {
+      versionProbe: false,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(
       installations.map(({ agent, status, evidence, problems }) => ({ agent, status, evidence, problems }))
     ).toEqual(installations.map(({ agent }) => ({ agent, status: "missing", evidence: [], problems: [] })));
@@ -271,9 +281,13 @@ describe("agent-owned discovery evidence", () => {
     const platform = machine();
     await platform.fs.mkdir(HOME);
     const failure = await Effect.runPromise(
-      Effect.flip(planInstall(BUNDLE, { agents: ["codex"], strategies: { codex: { hooks: "native-plugin" } } })).pipe(
-        Effect.provide(harnessLayer(platform))
-      )
+      Effect.flip(
+        planInstall(BUNDLE, {
+          agents: ["codex"],
+          strategies: { codex: { hooks: "native-plugin" } },
+          providers: { install: testInstall, hooks: testHooks }
+        })
+      ).pipe(Effect.provide(harnessLayer(platform)))
     );
     expect(failure).toEqual({
       _tag: "StrategyUnavailable",
@@ -290,7 +304,10 @@ describe("agent-owned discovery evidence", () => {
     async ({ agent, home, store }) => {
       const platform = await installerOnlyMachine();
       await platform.fs.mkdir(`${home}/${store}`);
-      const installations = await detectAgents(platform, { versionProbe: false });
+      const installations = await detectAgents(platform, {
+        versionProbe: false,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      });
       expect(installations.map((installation) => [installation.agent, installation.status])).toEqual(
         installations.map((installation) => [installation.agent, installation.agent === agent ? "found" : "missing"])
       );
@@ -304,7 +321,11 @@ describe("agent-owned discovery evidence", () => {
   it.each(EVIDENCE)("counts $agent $path as configuration evidence", async ({ agent, home, path, kind }) => {
     const platform = machine();
     await seed(platform, `${home}/${path}`, kind);
-    const [installation] = await detectAgents(platform, { agents: [agent], versionProbe: false });
+    const [installation] = await detectAgents(platform, {
+      agents: [agent],
+      versionProbe: false,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(installation).toMatchObject({
       status: "found",
       evidence: [{ kind: "config", path: `${home}/${path}` }],
@@ -318,7 +339,11 @@ describe("agent-owned discovery evidence", () => {
     async ({ agent, override, overrideHome, path, kind }) => {
       const platform = machine({ env: override });
       await seed(platform, `${overrideHome}/${path}`, kind);
-      const [installation] = await detectAgents(platform, { agents: [agent], versionProbe: false });
+      const [installation] = await detectAgents(platform, {
+        agents: [agent],
+        versionProbe: false,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      });
       expect(installation).toMatchObject({
         status: "found",
         evidence: [{ kind: "config", path: `${overrideHome}/${path}` }],
@@ -332,7 +357,11 @@ describe("agent-owned discovery evidence", () => {
     async ({ agent, home, override, path, kind }) => {
       const platform = machine({ env: override });
       await seed(platform, `${home}/${path}`, kind);
-      const [installation] = await detectAgents(platform, { agents: [agent], versionProbe: false });
+      const [installation] = await detectAgents(platform, {
+        agents: [agent],
+        versionProbe: false,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      });
       expect(installation).toMatchObject({ status: "missing", evidence: [], problems: [] });
     }
   );
@@ -341,7 +370,11 @@ describe("agent-owned discovery evidence", () => {
     "counts Cursor's credential file %s",
     async (path) => {
       const platform = machine({ files: { [`${HOME}/${path}`]: "{}" } });
-      const [installation] = await detectAgents(platform, { agents: ["cursor"], versionProbe: false });
+      const [installation] = await detectAgents(platform, {
+        agents: ["cursor"],
+        versionProbe: false,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      });
       expect(installation).toMatchObject({
         status: "found",
         evidence: [{ kind: "config", path: `${HOME}/${path}` }],
@@ -357,7 +390,10 @@ describe("agent-owned discovery evidence", () => {
   ])("finds only Cursor with desktop user data at %s and no command or application", async (path) => {
     const platform = machine();
     await platform.fs.mkdir(`${HOME}/${path}`);
-    const installations = await detectAgents(platform, { versionProbe: false });
+    const installations = await detectAgents(platform, {
+      versionProbe: false,
+      providers: { discovery: testDiscovery, identity: testIdentity }
+    });
     expect(installations.map((installation) => [installation.agent, installation.status])).toEqual(
       installations.map((installation) => [installation.agent, installation.agent === "cursor" ? "found" : "missing"])
     );
@@ -378,7 +414,11 @@ describe("agent-owned discovery evidence", () => {
     async ({ agent, path }) => {
       const platform = machine();
       await seed(platform, `${HOME}/${path}`, /\.(?:jsonc?|toml|md|js|ts)$/.test(path) ? "file" : "dir");
-      const [installation] = await detectAgents(platform, { agents: [agent], versionProbe: false });
+      const [installation] = await detectAgents(platform, {
+        agents: [agent],
+        versionProbe: false,
+        providers: { discovery: testDiscovery, identity: testIdentity }
+      });
       expect(installation).toMatchObject({ status: "missing", evidence: [], problems: [] });
     }
   );

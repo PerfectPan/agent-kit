@@ -1,8 +1,12 @@
+import { detectAgents as contextDetectAgents } from "@rivus/agent-kit-discovery/public";
+import { discoveryTable } from "./providers/discovery.js";
+import { identityTable } from "./providers/identity.js";
+import type { ProviderOptions } from "./providers/types.js";
+
 export {
   builtinProbeRecipes,
   classifyInstallation,
   DETECTION_STATUSES,
-  detectAgents,
   resolveAuthState,
   versionFromOutput
 } from "@rivus/agent-kit-discovery/public";
@@ -18,7 +22,6 @@ export type {
   CommandOutput,
   CredentialFileFailed,
   CredentialFileProbe,
-  DetectAgentsOptions,
   DetectionStatus,
   DiscoveryErrorCode,
   DiscoveryPlatform,
@@ -34,3 +37,15 @@ export type {
   Version,
   VersionProbe
 } from "@rivus/agent-kit-discovery/public";
+
+export type DetectAgentsOptions = ProviderOptions<Parameters<typeof contextDetectAgents>[1]>;
+
+export function detectAgents(
+  platform: Parameters<typeof contextDetectAgents>[0],
+  options: DetectAgentsOptions = {}
+): ReturnType<typeof contextDetectAgents> {
+  return contextDetectAgents(platform, {
+    ...options,
+    providers: { discovery: discoveryTable(options.providers), identity: identityTable(options.providers) }
+  });
+}

@@ -8,6 +8,7 @@ import type * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import type * as Scope from "effect/Scope";
 
+import type { AcpPlatform } from "../platform.js";
 import type {
   AbsolutePath,
   AcpProfile,
@@ -22,7 +23,7 @@ import type {
   TurnInProgress
 } from "../../domain/acp-session/index.js";
 import type { AcpRequestFailed, AcpTimeout, AuthMethodInfo, AuthRequired, ConnectionClosed } from "../errors.js";
-import type { AcpPlatform, SessionBindingStoreShape } from "../ports.js";
+import type { SessionBindingStoreShape } from "../ports.js";
 import { type AcpWire, type AgentFeatures, isAuthRequired, type WireFailure } from "./wire.js";
 
 /** How a turn's stream can fail. */

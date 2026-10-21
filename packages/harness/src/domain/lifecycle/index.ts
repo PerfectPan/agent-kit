@@ -1,23 +1,25 @@
 export { heartbeatSignal, type HeartbeatSignal } from "./policies/heartbeat-signal.js";
 export { duplicateHooks, type HookFinding, hookHealth, type HookProblem } from "./policies/hook-health.js";
-export { sniffSource, terminalIdentity } from "./policies/host-sniffing.js";
+export { sniffSource } from "./services/sniff-source.js";
+export { terminalIdentity } from "./services/terminal-identity.js";
 export type { Env } from "./policies/payload-fields.js";
 export { lifecycleStatus, reduceLifecycle } from "./policies/reduce-lifecycle.js";
 export { readWithDialect } from "./services/read-with-dialect.js";
-export { aliasesOf, finishSelectorsOf } from "./value-objects/hook-dialect.js";
+export { aliasesOf, finishSelectorsOf } from "./spi/hook-dialect.js";
 export type {
   FieldPath,
   FieldSource,
   FinishSelector,
   ForeignHooks,
   HookDialect,
+  HostMarkers,
   HookDialects,
   HookEventSpec,
   HookOutput,
   HookTimeout,
   LifecycleSwitch,
   PayloadFields
-} from "./value-objects/hook-dialect.js";
+} from "./spi/hook-dialect.js";
 export type { PayloadView } from "./value-objects/payload-view.js";
 export type {
   LifecycleBlocker,

@@ -36,7 +36,7 @@ import { EDGE_BYTES } from "../files/edges.js";
 import { catchIoFailure } from "../files/io-failure.js";
 import { type JsonlRecords, readJsonlRecords, readJsonlStream } from "../files/jsonl.js";
 import { type ReadProgress, readProgress, readText } from "../files/read-file.js";
-import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../ports.js";
+import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../spi.js";
 
 const AGENT = "grok";
 

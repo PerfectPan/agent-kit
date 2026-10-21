@@ -17,9 +17,11 @@ interface WorkspacePackage {
   readonly lintScript?: string;
   /** Dependencies declared with the `workspace:` protocol in any dependency field of `package.json`. */
   readonly workspaceDependencies: readonly string[];
+  readonly exports?: Readonly<Record<string, unknown>>;
 }
 
 interface Manifest {
+  exports?: Record<string, unknown>;
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -35,6 +37,7 @@ const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
     name,
     folder,
     lintScript: manifest.scripts?.lint,
+    exports: manifest.exports,
     workspaceDependencies: Object.keys(dependencies).filter((key) => dependencies[key]?.startsWith("workspace:"))
   };
 });
@@ -55,12 +58,17 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
     if (rule === undefined && !isShell) {
       return [`${pkg.folder}: undeclared-package ${pkg.name}`];
     }
-    const entries =
-      rule === undefined
+    const entries = [
+      ...(rule === undefined
         ? []
-        : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"]);
-    const allowed = isShell ? internal : [...(rule?.dependsOn ?? []), ...(rule?.testsOnly ?? [])];
+        : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
+      ...(rule?.spi ? ["src/spi.ts"] : [])
+    ];
+    const allowed = isShell
+      ? internal
+      : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
+      ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
       ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
         pkg.lintScript ?? ""
@@ -159,6 +167,35 @@ describe("the package manifests", () => {
     ]);
   });
 
+  it("accepts SPI-only workspace dependencies without granting the context index", () => {
+    const name = "@rivus/agent-kit-provider-probe";
+    const original = boundaries.packages;
+    Object.defineProperty(boundaries, "packages", {
+      value: {
+        ...original,
+        [name]: { dependsOn: [], spiImports: [SESSIONS], external: [] }
+      },
+      configurable: true
+    });
+    try {
+      expect(
+        manifestViolations(
+          [
+            {
+              name,
+              folder: "packages/providers/probe",
+              lintScript: "vp lint",
+              workspaceDependencies: [SESSIONS]
+            }
+          ],
+          () => true
+        )
+      ).toEqual([]);
+    } finally {
+      Object.defineProperty(boundaries, "packages", { value: original });
+    }
+  });
+
   it("keep collab out of the shell's dependencies", () => {
     const withCollab = packages.map((pkg) =>
       pkg.name === "@rivus/agent-kit"
@@ -174,6 +211,19 @@ describe("the package manifests", () => {
     expect(manifestViolations(packages, (path) => path !== "packages/sessions/src/public.ts" && onDisk(path))).toEqual([
       "packages/sessions: entry-file src/public.ts"
     ]);
+  });
+
+  it.each(["catalog", "discovery", "sessions", "harness", "acp"])("requires %s's SPI entry", (context) => {
+    const folder = `packages/${context}`;
+    expect(manifestViolations(packages, (path) => path !== `${folder}/src/spi.ts` && onDisk(path))).toEqual([
+      `${folder}: entry-file src/spi.ts`
+    ]);
+    expect(
+      manifestViolations(
+        packages.map((pkg) => (pkg.folder === folder ? { ...pkg, exports: {} } : pkg)),
+        onDisk
+      )
+    ).toEqual([`${folder}: entry-export ./spi`]);
   });
 });
 

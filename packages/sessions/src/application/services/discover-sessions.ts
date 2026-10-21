@@ -9,7 +9,7 @@ import {
 } from "../../domain/session/index.js";
 import { edgeRecords, readEdges } from "./files/edges.js";
 import { walkFiles, type WalkSpec } from "./files/walk.js";
-import type { DiscoverOptions, SessionPlatform } from "../ports.js";
+import type { DiscoverOptions, SessionPlatform } from "../spi.js";
 
 export interface DiscoverSessionsOptions extends DiscoverOptions {
   /** Which files under the root are sessions. */

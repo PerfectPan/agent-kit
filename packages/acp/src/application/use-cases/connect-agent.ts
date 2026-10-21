@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { Env, ExitStatus } from "@rivus/agent-kit-platform";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Cause from "effect/Cause";
@@ -9,7 +9,7 @@ import * as FiberSet from "effect/FiberSet";
 import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 
-import { type AcpProfiles, builtinAcpProfiles } from "../../domain/acp-session/adapters/index.js";
+import type { AcpPlatform } from "../platform.js";
 import {
   type AcpProfile,
   AcpSession,
@@ -40,19 +40,13 @@ import {
   type AuthMethodInfo,
   type AuthRequired,
   type BindingNotFound,
-  capabilityUnsupported,
   type ConnectionClosed,
   type HandshakeFailed,
   invalidOption,
   type LoadUnsupported
 } from "../errors.js";
 import { type AcpSessionHandle, answerPermission, deliverUpdate, sessionHandle } from "../services/live-session.js";
-import {
-  type AcpPlatform,
-  SessionBindingStore,
-  type SessionBindingStoreFailure,
-  type SessionBindingStoreShape
-} from "../ports.js";
+import { SessionBindingStore, type SessionBindingStoreFailure, type SessionBindingStoreShape } from "../ports.js";
 import {
   type AcpWire,
   type AgentFeatures,
@@ -77,8 +71,7 @@ export interface ConnectAgentOptions {
    * Off by default: agents read and write files themselves.
    */
   readonly fileSystem?: { readonly read?: boolean; readonly write?: boolean };
-  /** Profiles that replace or add to `builtinAcpProfiles` for this call. */
-  readonly profiles?: AcpProfiles;
+  readonly providers: { readonly acp: ServiceTable<AcpProfile> };
   readonly clientInfo?: { readonly name: string; readonly version: string };
   /** How long the agent may take to start and answer `initialize`; 30 s by default. */
   readonly handshakeTimeoutMs?: number;
@@ -145,14 +138,6 @@ const CLOSE_WAIT_MS = 10_000;
 const EXIT_STATUS_WAIT_MS = 1_000;
 const STDERR_TAIL_CHARS = 8 * 1024;
 const CLIENT_INFO = { name: "@rivus/agent-kit", version: "1" } as const;
-
-function profileOf(agent: CodingAgentId, profiles: AcpProfiles | undefined): AcpProfile {
-  const profile = profiles?.[agent] ?? builtinAcpProfiles[agent];
-  if (profile === undefined) {
-    throw capabilityUnsupported(agent);
-  }
-  return profile;
-}
 
 /** Reads a stream to its end, keeping its last characters, so a chatty agent never blocks on a full pipe. */
 function drainTail(stream: ReadableStream<Uint8Array>): () => string {
@@ -610,7 +595,7 @@ export function connectAgent(
   options: ConnectAgentOptions
 ): Effect.Effect<AcpConnection, ConnectError, PlatformService | Scope.Scope> {
   return Effect.gen(function* () {
-    const profile = yield* Effect.sync(() => profileOf(agent, options.profiles));
+    const profile = yield* Effect.sync(() => requireService(agent, options.providers.acp, "has no ACP profile"));
     const timeouts = yield* Effect.sync(() => timeoutsOf(options));
     const platform = yield* PlatformService;
     const bindings = yield* Effect.serviceOption(SessionBindingStore);

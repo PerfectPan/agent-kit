@@ -1,6 +1,5 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog";
+import type { CodingAgentId, ServiceTable } from "@rivus/agent-kit-catalog";
 import {
-  builtinHookDialects,
   type HookDialect,
   type HookEventSpec,
   type HookOutput,
@@ -108,13 +107,17 @@ function outputProblem(output: HookOutput): string | undefined {
 
 /**
  * The checks every hook dialect must pass, independent of a test runner: wire each into the runner, for example
- * `for (const { name, run } of hookDialectConformance(dialect, fixtures)) it(name, run)`. Samples are read through
- * `readHookEvent` with this dialect merged over the built-in ones, so sniffing to another agent works as in use.
+ * `for (const { name, run } of hookDialectConformance(dialect, fixtures, hooks)) it(name, run)`. Samples are read through
+ * `readHookEvent` with this dialect merged over the given hooks table, so sniffing to another agent works as in use.
  */
-export function hookDialectConformance(dialect: HookDialect, fixtures: HookDialectFixtures): ConformanceCheck[] {
-  const adapters = { ...builtinHookDialects, [dialect.agent]: dialect };
+export function hookDialectConformance(
+  dialect: HookDialect,
+  fixtures: HookDialectFixtures,
+  hooks: ServiceTable<HookDialect>
+): ConformanceCheck[] {
+  const adapters = { ...hooks, [dialect.agent]: dialect };
   const read = (agent: CodingAgentId, payload: unknown, env: Readonly<Record<string, string>> = {}) =>
-    readHookEvent(agent, payload, env, { adapters });
+    readHookEvent(agent, payload, env, { providers: { hooks: adapters } });
   const events = Object.entries(dialect.events);
 
   return [

@@ -1,6 +1,6 @@
 import type { ArtifactContent } from "../../ledger/value-objects/content-hash.js";
 import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
-import type { CliRegistration } from "./install-adapter.js";
+import type { CliRegistration } from "../spi/install-adapter.js";
 
 /** The installed-copy read the use case made; `isFile` distinguishes a readable copy from a directory or nothing. */
 export interface InstalledCopyRead {

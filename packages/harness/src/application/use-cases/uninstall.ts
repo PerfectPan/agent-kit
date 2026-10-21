@@ -1,13 +1,8 @@
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import * as Effect from "effect/Effect";
 
-import {
-  checkOwnerMarkers,
-  type InstallAdapters,
-  type InvalidBundle,
-  legacyMarkersOf,
-  type Owner
-} from "../../domain/bundle/index.js";
+import { checkOwnerMarkers, type InvalidBundle, legacyMarkersOf, type Owner } from "../../domain/bundle/index.js";
 import type { ArtifactLocator, InvalidPlan, PlanConflict, PlanStale } from "../../domain/install-plan/index.js";
 import { type PendingOperations, unionAgents } from "../../domain/ledger/index.js";
 import { type ApplyInstallError, applyLocked, type ApplyReport } from "./apply-install.js";
@@ -30,7 +25,7 @@ export interface UninstallOptions extends ScopeOptions {
    * removed too.
    */
   readonly legacyMarkers?: readonly string[];
-  readonly adapters?: InstallAdapters;
+  readonly providers: InstallProviders;
   readonly lockWaitMs?: number;
 }
 
@@ -62,7 +57,7 @@ export type UninstallError =
  */
 export function uninstall(
   owner: Owner,
-  options: UninstallOptions = {}
+  options: UninstallOptions
 ): Effect.Effect<UninstallReport, UninstallError, HarnessServices> {
   return Effect.scoped(
     Effect.gen(function* () {

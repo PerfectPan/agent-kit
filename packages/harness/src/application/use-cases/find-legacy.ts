@@ -1,14 +1,9 @@
+import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
-import {
-  checkOwnerMarkers,
-  type HookCompat,
-  type InstallAdapters,
-  type InvalidBundle,
-  type Owner
-} from "../../domain/bundle/index.js";
+import { checkOwnerMarkers, type HookCompat, type InvalidBundle, type Owner } from "../../domain/bundle/index.js";
 import {
   type ArtifactKind,
   type ArtifactLocator,
@@ -19,7 +14,6 @@ import {
   pointerTail,
   planEvidenceScope
 } from "../../domain/install-plan/index.js";
-import type { HookDialects } from "../../domain/lifecycle/index.js";
 import { type LegacyObservation, scanLegacy } from "../services/legacy-scan.js";
 import { fromResult } from "../services/from-result.js";
 import { type LedgerReadError, loadLedger } from "../services/ledger-session.js";
@@ -37,10 +31,7 @@ export interface FindLegacyOptions extends ScopeOptions {
    * markers never match, by the shared rule.
    */
   readonly legacyMarkers: readonly string[];
-  /** Install adapters for this call, merged over `builtinInstallAdapters`. */
-  readonly adapters?: InstallAdapters;
-  /** Hook dialects for this call, merged over `builtinHookDialects`. */
-  readonly dialects?: HookDialects;
+  readonly providers: InstallProviders;
   /** What the application read about runners of other agents' hooks, such as Grok's `[compat.claude] hooks = false`. */
   readonly compat?: readonly HookCompat[];
 }
