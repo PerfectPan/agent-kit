@@ -250,8 +250,8 @@ importers:
         specifier: 7.2.0
         version: 7.2.0(eslint-import-resolver-typescript@4.4.5(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0))(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0)
       oxlint-plugin-eslint:
-        specifier: 1.87.0
-        version: 1.87.0
+        specifier: 1.88.0
+        version: 1.88.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -2851,8 +2851,8 @@ packages:
       vite-plus:
         optional: true
 
-  oxlint-plugin-eslint@1.87.0:
-    resolution: {integrity: sha512-EiIglWDc5jqP56sRSHWusLvAoEDWL8vi00WvkMaZYKi9ofF5BtQ4iaBa6DU+cXT4oY89xIgUZ3k8li4IO1JMVQ==}
+  oxlint-plugin-eslint@1.88.0:
+    resolution: {integrity: sha512-S67hB1/w+sRb8Qa7EBU9nSoopjZ8a/vY1pqHYBYm9rFm9H60ovpGodxPdqxI/p/OGpmPUY2ARLKPx43l5BxwGg==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
   oxlint-tsgolint@7.0.2003:
@@ -5200,7 +5200,7 @@ snapshots:
       '@oxfmt/binding-win32-x64-msvc': 0.73.0
       vite-plus: 1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)
 
-  oxlint-plugin-eslint@1.87.0: {}
+  oxlint-plugin-eslint@1.88.0: {}
 
   oxlint-tsgolint@7.0.2003:
     optionalDependencies:
