@@ -7,8 +7,8 @@ import { buildInstallPlan, type PlanRequest } from "../../install-plan/factories
 import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../../install-plan/value-objects/observed-artifact.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
-import type { LedgerEntry } from "../entities/ledger-entry.js";
-import type { PendingOperation } from "../entities/pending-operation.js";
+import type { LedgerEntrySnapshot } from "../entities/ledger-entry.js";
+import type { PendingOperationSnapshot } from "../entities/pending-operation.js";
 import { checkLedgerVersion, Ledger, type LedgerSnapshot } from "./ledger.js";
 
 const HOME = "/u/me";
@@ -18,7 +18,7 @@ const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")
 const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
 const BUNDLE: Bundle = { owner: OWNER, version: "2.0.0", digest: "d2", artifacts: [] };
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
+function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -34,7 +34,10 @@ function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): 
   };
 }
 
-function snapshot(entries: readonly LedgerEntry[] = [], overrides: Partial<LedgerSnapshot> = {}): LedgerSnapshot {
+function snapshot(
+  entries: readonly LedgerEntrySnapshot[] = [],
+  overrides: Partial<LedgerSnapshot> = {}
+): LedgerSnapshot {
   return {
     schemaVersion: 1,
     lineage: "lineage-1",
@@ -91,7 +94,7 @@ function applied(ledger: Ledger, plan: InstallPlan): Ledger {
 }
 
 /** The pending operation of a plan's first step, as `begin` records it. */
-function pendingOf(plan: InstallPlan): PendingOperation {
+function pendingOf(plan: InstallPlan): PendingOperationSnapshot {
   const [step] = plan.steps;
   if (step === undefined || step.action === "conflict") {
     throw new Error("no step");

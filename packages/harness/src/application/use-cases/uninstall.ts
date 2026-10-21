@@ -9,7 +9,7 @@ import type { InvalidPlan } from "../../domain/install-plan/errors/invalid-plan.
 import type { PlanConflict } from "../../domain/install-plan/errors/plan-conflict.js";
 import type { PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
 import { type PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
-import { unionAgents } from "../../domain/ledger/policies/ownership.js";
+import { Ledger } from "../../domain/ledger/aggregates/ledger.js";
 import { type ApplyInstallError, applyLocked, type ApplyReport } from "./apply-install.js";
 import { fromResult } from "../services/from-result.js";
 import { type InstallPlan, recordOf } from "../services/install-plan-handle.js";
@@ -76,7 +76,7 @@ export function uninstall(
       });
       // Legacy Artifacts are in no ledger entry, so with markers every agent with an adapter is searched.
       const searched = legacyMarkersOf(bundle).length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
-      const agents = options.agents ?? unionAgents(loaded.ledger.agentsOf(owner), searched);
+      const agents = options.agents ?? Ledger.unionAgents(loaded.ledger.agentsOf(owner), searched);
       const plan = yield* buildPlan(scope, loaded, { bundle, agents, setup, desired: [], droppedHooks: [] });
       const report = yield* applyLocked(recordOf(plan), loaded);
       return { ...report, plan, kept: recordOf(plan).aggregate.kept };

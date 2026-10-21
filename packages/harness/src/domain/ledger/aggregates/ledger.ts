@@ -15,12 +15,16 @@ import type { LedgerVersionUnsupported } from "../errors/ledger-version-unsuppor
 import type { PendingOperations } from "../errors/pending-operations.js";
 import type { ArtifactInstalled } from "../events/artifact-installed.js";
 import type { ArtifactRemoved } from "../events/artifact-removed.js";
-import { agentsOfEntries, holds, recordOperation } from "../policies/ownership.js";
-import { reconcilePending } from "../policies/reconcile.js";
-import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
-import type { LedgerEntry } from "../entities/ledger-entry.js";
-import type { PendingOperation, PendingProbe, PendingResolution, StepOutcome } from "../entities/pending-operation.js";
-import type { KeptArtifact } from "../entities/kept-artifact.js";
+import { type ContentHash } from "../value-objects/content-hash.js";
+import { LedgerEntry, type LedgerEntrySnapshot } from "../entities/ledger-entry.js";
+import {
+  PendingOperation,
+  type PendingOperationSnapshot,
+  type PendingProbe,
+  type PendingResolution,
+  type StepOutcome
+} from "../entities/pending-operation.js";
+import { KeptArtifact, type KeptArtifactSnapshot } from "../entities/kept-artifact.js";
 import type { PreImage } from "../value-objects/pre-image.js";
 
 export const LEDGER_SCHEMA_VERSION = 1;
@@ -31,11 +35,11 @@ export interface LedgerSnapshot {
   readonly lineage: string;
   /** Increases by one with every change, so a repository can refuse a write based on an older revision. */
   readonly revision: number;
-  readonly entries: Readonly<Record<LocatorKey, LedgerEntry>>;
+  readonly entries: Readonly<Record<LocatorKey, LedgerEntrySnapshot>>;
   /** Written before any target is touched and cleared once each step's outcome is known. */
-  readonly pending: readonly PendingOperation[];
+  readonly pending: readonly PendingOperationSnapshot[];
   /** Artifacts kept on removal as the user's, by locator key; absent in a ledger that has none. */
-  readonly kept?: Readonly<Record<LocatorKey, KeptArtifact>>;
+  readonly kept?: Readonly<Record<LocatorKey, KeptArtifactSnapshot>>;
 }
 
 export type LedgerEvent = ArtifactInstalled | ArtifactRemoved;
@@ -73,90 +77,25 @@ export function checkLedgerVersion(stored: {
     : err({ _tag: "LedgerVersionUnsupported", schemaVersion, supported: [LEDGER_SCHEMA_VERSION] });
 }
 
-const isRevision = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
+const samePreImage = (a: PreImage, b: PreImage): boolean =>
+  a.existed ? b.existed && a.hash === b.hash && a.blobRef === b.blobRef : !b.existed;
 
-const isPreImage = (preImage: PreImage): boolean =>
-  !preImage.existed ||
-  (isContentHash(preImage.hash) && typeof preImage.blobRef === "string" && preImage.blobRef !== "");
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
 
-function pendingProblem(op: PendingOperation): string | undefined {
-  const { precondition } = op;
-  const invalid =
-    locatorProblem(op.locator) !== undefined ||
-    (op.resultHash !== undefined && !isContentHash(op.resultHash)) ||
-    (op.preImage !== undefined && !isPreImage(op.preImage)) ||
-    ("hash" in precondition && !isContentHash(precondition.hash)) ||
-    ("ownedAt" in precondition && !isRevision(precondition.ownedAt));
-  return invalid ? "pending operation has an invalid locator, hash, pre-image or precondition" : undefined;
-}
-
-function entryProblem(key: string, entry: LedgerEntry, revision: number): string | undefined {
-  const locatorIssue = locatorProblem(entry.locator);
-  if (locatorIssue !== undefined) {
-    return locatorIssue;
-  }
-  if (key !== locatorKey(entry.locator)) {
-    return "entry is not keyed by its locator";
-  }
-  if (entry.owners.length === 0 || new Set(entry.owners).size !== entry.owners.length) {
-    return "entry owners are empty or repeated";
-  }
-  if (!entry.owners.includes(entry.activeOwner)) {
-    return "entry's active owner is not one of its owners";
-  }
-  if (entry.agents.length === 0) {
-    return "entry has no agents";
-  }
-  if (!isContentHash(entry.contentHash) || !isPreImage(entry.preImage)) {
-    return "entry has an invalid content hash or pre-image";
-  }
-  return isRevision(entry.entryRevision) && entry.entryRevision <= revision
-    ? undefined
-    : "entry revision is not between 0 and the ledger revision";
-}
-
-/** `kept` as a record. A snapshot that omits it, because it holds none, reads as empty. */
-function keptRecordsOf(snapshot: LedgerSnapshot): Readonly<Record<LocatorKey, KeptArtifact>> {
-  return snapshot.kept ?? {};
-}
-
-function snapshotProblem(snapshot: LedgerSnapshot): InvalidLedger | undefined {
-  const invalid = (reason: string, key?: LocatorKey): InvalidLedger =>
-    key === undefined ? { _tag: "InvalidLedger", reason } : { _tag: "InvalidLedger", reason, key };
-  if (typeof snapshot.lineage !== "string" || snapshot.lineage === "") {
-    return invalid("lineage is empty");
-  }
-  if (!isRevision(snapshot.revision)) {
-    return invalid("revision is not a non-negative integer");
-  }
-  // decodeLedger's zod schema rejects `entries: null` from the file repository, but LedgerRepository is a public
-  // port: an implementation written outside this package (in JS, or over untyped storage) can hand restore null,
-  // and `typeof null` is "object", which slips past the typeof check on this line into Object.entries.
-  // oxlint-disable-next-line no-unnecessary-condition
-  if (typeof snapshot.entries !== "object" || snapshot.entries === null || !Array.isArray(snapshot.pending)) {
-    return invalid("entries or pending are missing");
-  }
-  for (const [key, entry] of Object.entries(snapshot.entries)) {
-    const problem = entryProblem(key, entry, snapshot.revision);
-    if (problem !== undefined) {
-      return invalid(problem, key);
-    }
-  }
-  for (const op of snapshot.pending) {
-    const problem = pendingProblem(op);
-    if (problem !== undefined) {
-      return invalid(problem, locatorKey(op.locator));
-    }
-  }
-  for (const [key, kept] of Object.entries(keptRecordsOf(snapshot))) {
-    if (locatorProblem(kept.locator) !== undefined || key !== locatorKey(kept.locator) || kept.owner === "") {
-      return invalid("a kept Artifact has an invalid locator or no owner", key);
-    }
-  }
-  const pendingKeys = snapshot.pending.map((op) => locatorKey(op.locator));
-  return new Set(pendingKeys).size === pendingKeys.length
-    ? undefined
-    : invalid("two pending operations on one locator");
+/** Equal except for when and at which revision it was recorded. */
+function sameRecord(a: LedgerEntrySnapshot, b: LedgerEntrySnapshot): boolean {
+  return (
+    a.locator.kind === b.locator.kind &&
+    locatorKey(a.locator) === locatorKey(b.locator) &&
+    sameList(a.owners, b.owners) &&
+    a.activeOwner === b.activeOwner &&
+    sameList(a.agents, b.agents) &&
+    a.bundleVersion === b.bundleVersion &&
+    a.contentHash === b.contentHash &&
+    a.createdConfigFile === b.createdConfigFile &&
+    samePreImage(a.preImage, b.preImage)
+  );
 }
 
 /** Deep-freeze helper: snapshots retain no mutable descendants. */
@@ -169,6 +108,7 @@ function freeze<T>(value: T): T {
   }
   return value;
 }
+const isRevision = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
 /**
  * The local record of what harness installed in one scope. Every change returns a new Ledger one revision ahead; a
@@ -180,7 +120,14 @@ export class Ledger {
   static create(lineage: string): Result<Ledger, InvalidLedger> {
     return lineage === ""
       ? err({ _tag: "InvalidLedger", reason: "lineage is empty" })
-      : ok(new Ledger({ schemaVersion: LEDGER_SCHEMA_VERSION, lineage, revision: 0, entries: {}, pending: [] }));
+      : ok(
+          new Ledger(
+            { schemaVersion: LEDGER_SCHEMA_VERSION, lineage, revision: 0, entries: {}, pending: [] },
+            {},
+            [],
+            {}
+          )
+        );
   }
 
   static restore(snapshot: LedgerSnapshot): Result<Ledger, LedgerVersionUnsupported | InvalidLedger> {
@@ -188,18 +135,82 @@ export class Ledger {
     if (!version.ok) {
       return version;
     }
-    const problem = snapshotProblem(snapshot);
-    return problem === undefined ? ok(new Ledger(snapshot)) : err(problem);
+    const invalid = (reason: string, key?: LocatorKey): Result<never, InvalidLedger> =>
+      err(key === undefined ? { _tag: "InvalidLedger", reason } : { _tag: "InvalidLedger", reason, key });
+    if (snapshot.lineage === "") {
+      return invalid("lineage is empty");
+    }
+    if (!isRevision(snapshot.revision)) {
+      return invalid("revision is not a non-negative integer");
+    }
+    const entries: Record<LocatorKey, LedgerEntry> = {};
+    for (const [key, value] of Object.entries(snapshot.entries)) {
+      const locatorIssue = locatorProblem(value.locator);
+      if (locatorIssue !== undefined) {
+        return invalid(locatorIssue, key);
+      }
+      if (key !== locatorKey(value.locator)) {
+        return invalid("entry is not keyed by its locator", key);
+      }
+      const entry = LedgerEntry.restore(value);
+      if (!entry.ok) {
+        return invalid(entry.error.reason, key);
+      }
+      if (entry.value.entryRevision > snapshot.revision) {
+        return invalid("entry revision is not between 0 and the ledger revision", key);
+      }
+      entries[key] = entry.value;
+    }
+    const pending: PendingOperation[] = [];
+    for (const value of snapshot.pending) {
+      const op = PendingOperation.restore(value);
+      if (!op.ok) {
+        return invalid(op.error.reason, locatorKey(value.locator));
+      }
+      pending.push(op.value);
+    }
+    const kept: Record<LocatorKey, KeptArtifact> = {};
+    for (const [key, value] of Object.entries(snapshot.kept ?? {})) {
+      const artifact = KeptArtifact.restore(value);
+      if (!artifact.ok) {
+        return invalid(artifact.error.reason, key);
+      }
+      if (key !== locatorKey(value.locator)) {
+        return invalid("a kept Artifact has an invalid locator or no owner", key);
+      }
+      kept[key] = artifact.value;
+    }
+    if (new Set(pending.map((op) => locatorKey(op.locator))).size !== pending.length) {
+      return invalid("two pending operations on one locator");
+    }
+    return ok(new Ledger(snapshot, entries, pending, kept));
+  }
+
+  /** The union of two agent lists, sorted so that equal sets compare equal. */
+  static unionAgents(a: readonly CodingAgentId[], b: readonly CodingAgentId[]): readonly CodingAgentId[] {
+    return [...new Set([...a, ...b])].toSorted();
+  }
+
+  /** Every agent these entries name, without repeats and sorted. */
+  private static agentsOfEntries(entries: readonly LedgerEntry[]): readonly CodingAgentId[] {
+    return [...new Set(entries.flatMap((entry) => entry.agents))].toSorted();
   }
 
   private readonly snapshot: LedgerSnapshot;
-
-  /** The snapshot's kept artifacts. Empty when the stored snapshot omits `kept`. */
+  private readonly entriesByKey: Readonly<Record<LocatorKey, LedgerEntry>>;
+  private readonly pendingOperations: readonly PendingOperation[];
   private readonly keptByKey: Readonly<Record<LocatorKey, KeptArtifact>>;
 
-  private constructor(snapshot: LedgerSnapshot) {
+  private constructor(
+    snapshot: LedgerSnapshot,
+    entries: Readonly<Record<LocatorKey, LedgerEntry>>,
+    pending: readonly PendingOperation[],
+    kept: Readonly<Record<LocatorKey, KeptArtifact>>
+  ) {
     this.snapshot = freeze(snapshot);
-    this.keptByKey = freeze(keptRecordsOf(this.snapshot));
+    this.entriesByKey = freeze(entries);
+    this.pendingOperations = freeze(pending);
+    this.keptByKey = freeze(kept);
     Object.freeze(this);
   }
 
@@ -212,26 +223,26 @@ export class Ledger {
   }
 
   get pending(): readonly PendingOperation[] {
-    return this.snapshot.pending;
+    return this.pendingOperations;
   }
 
   entry(locator: ArtifactLocator): LedgerEntry | undefined {
     const key = locatorKey(locator);
-    return Object.hasOwn(this.snapshot.entries, key) ? this.snapshot.entries[key] : undefined;
+    return Object.hasOwn(this.entriesByKey, key) ? this.entriesByKey[key] : undefined;
   }
 
   entries(): readonly LedgerEntry[] {
-    return Object.values(this.snapshot.entries);
+    return Object.values(this.entriesByKey);
   }
 
   /** The entries whose owners include `owner`, in ledger order. */
   entriesOf(owner: Owner): readonly LedgerEntry[] {
-    return this.entries().filter((entry) => holds(entry, owner));
+    return this.entries().filter((entry) => entry.heldBy(owner));
   }
 
   /** Every agent the owner's entries name, without repeats and sorted; the default agents a change covers. */
   agentsOf(owner: Owner): readonly CodingAgentId[] {
-    return agentsOfEntries(this.entriesOf(owner));
+    return Ledger.agentsOfEntries(this.entriesOf(owner));
   }
 
   /** Artifacts kept on removal, keyed by locator. Empty when the snapshot omits `kept`. */
@@ -272,9 +283,9 @@ export class Ledger {
       return err(ledgerMovedError(planId, basedOn, this));
     }
     if (this.pending.length > 0) {
-      return err({ _tag: "PendingOperations", operations: this.pending });
+      return err({ _tag: "PendingOperations", operations: this.snapshot.pending });
     }
-    const pending = plan.steps.map((step): PendingOperation => {
+    const pending = plan.steps.map((step): PendingOperationSnapshot => {
       const key = locatorKey(step.locator);
       if (step.action === "conflict") {
         throw new AgentKitError("unresolved-conflict", `Plan step ${key} is an unresolved conflict`);
@@ -335,7 +346,7 @@ export class Ledger {
       byKey.delete(locatorKey(op.locator));
       const resolution: PendingResolution | undefined =
         status === "done" ? "completed" : status === "skipped" ? "not-started" : undefined;
-      return { op, resolution };
+      return { op: op.toSnapshot(), resolution };
     });
     const [stray] = byKey.keys();
     if (stray !== undefined) {
@@ -354,8 +365,8 @@ export class Ledger {
       const probe = byKey.get(locatorKey(op.locator));
       // A matching entry cannot prove who created its file between pending and recovery. Only already committed
       // provenance may survive; recordOperation retains it from the existing entry.
-      const { createdConfigFile: _unconfirmed, ...recovered } = op;
-      return { op: recovered, resolution: probe === undefined ? undefined : reconcilePending(op, probe.hash) };
+      const { createdConfigFile: _unconfirmed, ...recovered } = op.toSnapshot();
+      return { op: recovered, resolution: probe === undefined ? undefined : op.resolve(probe.hash) };
     });
     return {
       ...this.settle(resolved, context.at, true),
@@ -374,7 +385,7 @@ export class Ledger {
     context: { readonly at: string }
   ): Result<LedgerTransition, PendingOperations> {
     if (this.pending.length > 0) {
-      return err({ _tag: "PendingOperations", operations: this.pending });
+      return err({ _tag: "PendingOperations", operations: this.snapshot.pending });
     }
     const revision = this.revision + 1;
     const entries = { ...this.snapshot.entries };
@@ -386,7 +397,7 @@ export class Ledger {
       }
       if (entry.contentHash !== contentHash) {
         // Observing new content proves no file creation; only unchanged entries can keep that proof.
-        const { createdConfigFile: _unconfirmed, ...unproven } = entry;
+        const { createdConfigFile: _unconfirmed, ...unproven } = entry.toSnapshot();
         entries[locatorKey(locator)] = { ...unproven, contentHash, appliedAt: context.at, entryRevision: revision };
         changed = true;
       }
@@ -400,7 +411,7 @@ export class Ledger {
 
   /** Clears resolved operations and writes the records of completed ones; without any resolution nothing changes. */
   private settle(
-    resolved: readonly { readonly op: PendingOperation; readonly resolution: PendingResolution | undefined }[],
+    resolved: readonly { readonly op: PendingOperationSnapshot; readonly resolution: PendingResolution | undefined }[],
     at: string,
     recovering = false
   ): LedgerTransition {
@@ -408,8 +419,8 @@ export class Ledger {
       return { state: this, events: [] };
     }
     const revision = this.revision + 1;
-    const entries: Record<LocatorKey, LedgerEntry> = { ...this.snapshot.entries };
-    const kept: Record<LocatorKey, KeptArtifact> = { ...this.snapshot.kept };
+    const entries: Record<LocatorKey, LedgerEntrySnapshot> = { ...this.snapshot.entries };
+    const kept: Record<LocatorKey, KeptArtifactSnapshot> = { ...this.snapshot.kept };
     const events: LedgerEvent[] = [];
     for (const { op, resolution } of resolved) {
       if (resolution !== "completed") {
@@ -427,7 +438,7 @@ export class Ledger {
         const { createdConfigFile: _unconfirmed, ...unproven } = previous;
         previous = unproven;
       }
-      const recorded = recordOperation(previous, op, revision, at);
+      const recorded = this.recordOperation(previous, op, revision, at);
       if (recorded.entry === undefined) {
         delete entries[key];
       } else {
@@ -453,9 +464,9 @@ export class Ledger {
    * `restore` would refuse, which would leave the scope unusable; bad input from the caller is a defect.
    */
   private next(
-    entries: Readonly<Record<LocatorKey, LedgerEntry>>,
-    pending: readonly PendingOperation[],
-    kept: Readonly<Record<LocatorKey, KeptArtifact>> = this.keptByKey
+    entries: Readonly<Record<LocatorKey, LedgerEntrySnapshot>>,
+    pending: readonly PendingOperationSnapshot[],
+    kept: Readonly<Record<LocatorKey, KeptArtifactSnapshot>> = this.snapshot.kept ?? {}
   ): Ledger {
     const { kept: _previous, ...rest } = this.snapshot;
     const snapshot: LedgerSnapshot = {
@@ -465,12 +476,81 @@ export class Ledger {
       pending,
       ...(Object.keys(kept).length === 0 ? {} : { kept })
     };
-    const problem = snapshotProblem(snapshot);
-    if (problem !== undefined) {
-      throw new AgentKitError("invalid-ledger-state", `A ledger transition would record: ${problem.reason}`, {
-        cause: problem
-      });
+    const restored = Ledger.restore(snapshot);
+    if (!restored.ok) {
+      throw new AgentKitError(
+        "invalid-ledger-state",
+        `A ledger transition would record: ${restored.error._tag === "InvalidLedger" ? restored.error.reason : "unsupported version"}`,
+        {
+          cause: restored.error
+        }
+      );
     }
-    return new Ledger(snapshot);
+    return restored.value;
+  }
+  /**
+   * The entry after a completed operation. The first pre-image stays for the entry's whole life, so uninstall restores
+   * what was there before any owner. Owners share only the recorded content: an operation that keeps it adds its owner
+   * to the others, one that records different content (such as a forced takeover) leaves its owner as the only one,
+   * because the others' content is gone. An operation that changes nothing returns the entry as it was.
+   */
+  private recordOperation(
+    entry: LedgerEntrySnapshot | undefined,
+    op: PendingOperationSnapshot,
+    revision: number,
+    at: string
+  ): { readonly entry: LedgerEntrySnapshot | undefined; readonly event?: LedgerEvent } {
+    if (op.action === "remove") {
+      const event: ArtifactRemoved = {
+        _tag: "ArtifactRemoved",
+        owner: op.owner,
+        locator: op.locator,
+        removal: op.removal ?? "delete",
+        revision
+      };
+      if (op.removal !== "release" || entry === undefined) {
+        return { entry: undefined, event };
+      }
+      const owners = entry.owners.length > 1 ? entry.owners.filter((owner) => owner !== op.owner) : entry.owners;
+      const activeOwner = owners.includes(entry.activeOwner) ? entry.activeOwner : (owners[0] ?? entry.activeOwner);
+      return {
+        entry: { ...entry, owners, activeOwner, agents: op.agents, appliedAt: at, entryRevision: revision },
+        event
+      };
+    }
+    if (op.resultHash === undefined) {
+      return { entry };
+    }
+    const unchanged = entry !== undefined && entry.contentHash === op.resultHash;
+    const activeOwner = unchanged ? entry.activeOwner : op.owner;
+    const next: LedgerEntrySnapshot = {
+      locator: op.locator,
+      owners: unchanged ? [...new Set([...entry.owners, op.owner])].toSorted() : [op.owner],
+      activeOwner,
+      agents: op.agents,
+      bundleVersion: activeOwner === op.owner ? op.bundleVersion : (entry?.bundleVersion ?? op.bundleVersion),
+      toolVersion: unchanged ? entry.toolVersion : op.toolVersion,
+      contentHash: op.resultHash,
+      preImage: entry?.preImage ?? op.preImage ?? { existed: false },
+      ...(entry?.createdConfigFile === true || op.createdConfigFile === true ? { createdConfigFile: true } : {}),
+      appliedAt: at,
+      entryRevision: revision
+    };
+    if (entry !== undefined && sameRecord(entry, next)) {
+      return { entry };
+    }
+    return op.action === "noop"
+      ? { entry: next }
+      : {
+          entry: next,
+          event: {
+            _tag: "ArtifactInstalled",
+            owner: op.owner,
+            locator: op.locator,
+            action: op.action,
+            contentHash: op.resultHash,
+            revision
+          }
+        };
   }
 }

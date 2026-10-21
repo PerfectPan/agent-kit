@@ -5,7 +5,7 @@ import { builtinHookDialects } from "../../../../test/support/providers.js";
 import { builtinInstallAdapters } from "../../../../test/support/providers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
@@ -62,7 +62,7 @@ const emptyLedger = (): Ledger => {
 };
 
 const ledgerWithEntry = (locator: ArtifactLocator): Ledger => {
-  const entry: LedgerEntry = {
+  const entry: LedgerEntrySnapshot = {
     locator,
     owners: [OWNER],
     activeOwner: OWNER,

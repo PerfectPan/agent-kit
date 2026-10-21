@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import { Ledger } from "../../ledger/aggregates/ledger.js";
+import { locatorKey } from "../value-objects/artifact-locator.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
 import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
 import type { PlanStep } from "../value-objects/plan-step.js";
@@ -24,7 +26,33 @@ const step = (locator: ArtifactLocator, overrides: Partial<PlanStep> = {}): Plan
   ...overrides
 });
 
-const entryWithAgents = (agents: readonly string[]): LedgerEntry => ({ agents }) as unknown as LedgerEntry;
+function entryWithAgents(agents: readonly string[]): LedgerEntry {
+  const locator = { kind: "file", path: "/u/me/x" } as const;
+  const restored = Ledger.restore({
+    schemaVersion: 1,
+    lineage: "fixture",
+    revision: 1,
+    pending: [],
+    entries: {
+      [locatorKey(locator)]: {
+        locator,
+        owners: ["app"],
+        activeOwner: "app",
+        agents,
+        bundleVersion: "1",
+        toolVersion: "1",
+        contentHash: hash(1),
+        preImage: { existed: false },
+        appliedAt: "t0",
+        entryRevision: 1
+      }
+    }
+  });
+  if (!restored.ok) {
+    throw new Error(restored.error._tag);
+  }
+  return restored.value.entries()[0]!;
+}
 
 describe("registrationCommands", () => {
   it("registers what is absent and re-registers what exists with other content", () => {

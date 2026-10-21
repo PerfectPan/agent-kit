@@ -8,7 +8,7 @@ import {
 import type { LedgerEntry } from "../entities/ledger-entry.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
 import type { VerifyStatus } from "../value-objects/drift.js";
-import { unionAgents } from "./ownership.js";
+import { Ledger } from "../aggregates/ledger.js";
 
 export interface VerifyInput {
   /** The LedgerEntry's contentHash; absent when the ledger has no entry. */
@@ -88,7 +88,11 @@ export function verifyOwner(
   for (const want of desired) {
     const key = locatorKey(want.locator);
     const known = wanted.get(key);
-    wanted.set(key, { locator: want.locator, hash: want.hash, agents: unionAgents(known?.agents ?? [], [want.agent]) });
+    wanted.set(key, {
+      locator: want.locator,
+      hash: want.hash,
+      agents: Ledger.unionAgents(known?.agents ?? [], [want.agent])
+    });
   }
   const held = new Set(entries.map((entry) => locatorKey(entry.locator)));
   const artifacts: VerifiedArtifact[] = [];

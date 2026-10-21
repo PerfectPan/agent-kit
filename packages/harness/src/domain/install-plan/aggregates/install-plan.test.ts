@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
 import { buildInstallPlan } from "../factories/build-install-plan.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
 import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
@@ -14,7 +14,7 @@ const OWNER = "agent-presence";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
 const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
+function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -30,7 +30,7 @@ function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): 
   };
 }
 
-function ledger(entries: readonly LedgerEntry[] = []): Ledger {
+function ledger(entries: readonly LedgerEntrySnapshot[] = []): Ledger {
   const restored = Ledger.restore({
     schemaVersion: 1,
     lineage: "lineage-1",
@@ -69,7 +69,7 @@ const observedFor = (steps: readonly PlanStep[]): ObservedArtifact[] =>
 
 const create = (
   steps: readonly PlanStep[],
-  entries: readonly LedgerEntry[] = [],
+  entries: readonly LedgerEntrySnapshot[] = [],
   observed: readonly ObservedArtifact[] = observedFor(steps)
 ) => InstallPlan.create(draft(steps), { ledger: ledger(entries), observed, legacyMarkers: ["@rivus/agent-presence"] });
 

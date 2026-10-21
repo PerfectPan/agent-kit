@@ -12,10 +12,9 @@ import {
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { type DesiredArtifact } from "../../domain/install-plan/value-objects/desired-artifact.js";
 import { type ContentHash } from "../../domain/ledger/value-objects/content-hash.js";
-import { holds } from "../../domain/ledger/policies/ownership.js";
 import { type Ledger } from "../../domain/ledger/aggregates/ledger.js";
 import { type LedgerEntry } from "../../domain/ledger/entities/ledger-entry.js";
-import { markAcknowledged, type VerifiedArtifact, verifyOwner } from "../../domain/ledger/policies/three-way-verify.js";
+import { markAcknowledged, type VerifiedArtifact, verifyOwner } from "../../domain/ledger/services/three-way-verify.js";
 import { type PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
 import type { StrategyUnavailable } from "../errors.js";
 import { fromResult } from "../services/from-result.js";
@@ -107,7 +106,7 @@ export function verify(
     const entriesInScope = (state: Ledger): readonly LedgerEntry[] =>
       state
         .entriesOf(owner)
-        .filter((entry) => holds(entry, owner, options.agents) || desiredKeys.has(locatorKey(entry.locator)));
+        .filter((entry) => entry.heldBy(owner, options.agents) || desiredKeys.has(locatorKey(entry.locator)));
 
     /** The disk's hashes at every held locator and at every desired one the owner does not hold. */
     const watch = Effect.fnUntraced(function* (entries: readonly LedgerEntry[]) {

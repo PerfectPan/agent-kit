@@ -51,9 +51,12 @@ export {
   type LedgerSnapshot,
   checkLedgerVersion
 } from "./domain/ledger/aggregates/ledger.js";
-export { type LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
+export { type LedgerEntrySnapshot as LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
 export { locatorKey, isWithin, locatorsOverlap } from "./domain/install-plan/value-objects/artifact-locator.js";
-export { type PendingOperation, type StepOutcome } from "./domain/ledger/entities/pending-operation.js";
+export {
+  type PendingOperationSnapshot as PendingOperation,
+  type StepOutcome
+} from "./domain/ledger/entities/pending-operation.js";
 export { buildInstallPlan } from "./domain/install-plan/factories/build-install-plan.js";
 export { type Bundle } from "./domain/bundle/value-objects/bundle.js";
 export { CONFLICT_CHOICES, type ConflictChoice } from "./domain/install-plan/value-objects/conflict.js";
@@ -61,5 +64,5 @@ export { type DesiredArtifact } from "./domain/install-plan/value-objects/desire
 export { isLegacyArtifact } from "./domain/bundle/policies/legacy-markers.js";
 export { type ObservedArtifact } from "./domain/install-plan/value-objects/observed-artifact.js";
 export { type PreImage } from "./domain/ledger/value-objects/pre-image.js";
-export { threeWayVerify } from "./domain/ledger/policies/three-way-verify.js";
+export { threeWayVerify } from "./domain/ledger/services/three-way-verify.js";
 export { type VerifyStatus } from "./domain/ledger/value-objects/drift.js";

@@ -1,4 +1,4 @@
-import type { ContentHash } from "./content-hash.js";
+import { type ContentHash, isContentHash } from "./content-hash.js";
 
 /**
  * What was at an Artifact's location before harness first wrote it. Uninstall restores it from `blobRef`, which names
@@ -7,3 +7,6 @@ import type { ContentHash } from "./content-hash.js";
 export type PreImage =
   | { readonly existed: false }
   | { readonly existed: true; readonly hash: ContentHash; readonly blobRef: string };
+
+export const isPreImage = (preImage: PreImage): boolean =>
+  !preImage.existed || (isContentHash(preImage.hash) && preImage.blobRef !== "");

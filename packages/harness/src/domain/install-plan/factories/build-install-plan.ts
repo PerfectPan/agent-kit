@@ -2,9 +2,8 @@ import { err, type Result } from "@rivus/agent-kit-catalog/public";
 
 import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
-import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../ledger/errors/pending-operations.js";
-import { unionAgents } from "../../ledger/policies/ownership.js";
+import { Ledger } from "../../ledger/aggregates/ledger.js";
 import { InstallPlan } from "../aggregates/install-plan.js";
 import type { InvalidPlan } from "../errors/invalid-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
@@ -90,7 +89,7 @@ export function buildInstallPlan(
         content: artifact.content,
         hash: artifact.hash,
         strategy: known?.state.strategy ?? artifact.strategy,
-        agents: unionAgents(known?.state.agents ?? [], [artifact.agent])
+        agents: Ledger.unionAgents(known?.state.agents ?? [], [artifact.agent])
       },
       trust: [...(known?.trust ?? []), ...trust]
     });

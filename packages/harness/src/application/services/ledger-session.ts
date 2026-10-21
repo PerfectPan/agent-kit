@@ -1,6 +1,7 @@
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
+import { isPlainObject } from "es-toolkit";
 
 import { type InvalidLedger } from "../../domain/ledger/errors/invalid-ledger.js";
 import { Ledger, type LedgerRecovery, type LedgerTransition } from "../../domain/ledger/aggregates/ledger.js";
@@ -50,6 +51,10 @@ export function loadLedger(
     const snapshot = yield* (yield* LedgerRepository).load(scope);
     if (snapshot === undefined) {
       return { ledger: yield* fromResult(Ledger.create(lineage ?? crypto.randomUUID())), stored: false };
+    }
+    // An external repository implementation can return invalid containers despite the port's declared type.
+    if (!isPlainObject(snapshot) || !isPlainObject(snapshot.entries) || !Array.isArray(snapshot.pending)) {
+      return yield* Effect.fail({ _tag: "InvalidLedger", reason: "entries or pending are missing" } as const);
     }
     return { ledger: yield* fromResult(Ledger.restore(snapshot)), stored: true };
   });

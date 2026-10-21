@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
-import type { LedgerEntry } from "../entities/ledger-entry.js";
+import type { LedgerEntry, LedgerEntrySnapshot } from "../entities/ledger-entry.js";
+import { Ledger } from "../aggregates/ledger.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
 import { markAcknowledged, threeWayVerify, verifyOwner } from "./three-way-verify.js";
 
@@ -29,8 +30,8 @@ describe("threeWayVerify", () => {
 
 const at = (path: string): ArtifactLocator => ({ kind: "file", path: `/u/me/${path}` });
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
-  return {
+function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntry {
+  const snapshot: LedgerEntrySnapshot = {
     locator,
     owners: ["app"],
     activeOwner: "app",
@@ -43,6 +44,17 @@ function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): 
     entryRevision: 1,
     ...overrides
   };
+  const restored = Ledger.restore({
+    schemaVersion: 1,
+    lineage: "fixture",
+    revision: 1,
+    entries: { [locatorKey(locator)]: snapshot },
+    pending: []
+  });
+  if (!restored.ok) {
+    throw new Error(restored.error._tag);
+  }
+  return restored.value.entries()[0]!;
 }
 
 describe("verifyOwner", () => {

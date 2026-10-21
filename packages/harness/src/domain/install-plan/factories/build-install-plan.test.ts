@@ -5,7 +5,7 @@ import { builtinHookDialects } from "../../../../test/support/providers.js";
 import type { Bundle } from "../../bundle/value-objects/bundle.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
+import type { LedgerEntrySnapshot } from "../../ledger/entities/ledger-entry.js";
 import type { InstallPlan } from "../aggregates/install-plan.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
 import { type ArtifactLocator, locatorKey } from "../value-objects/artifact-locator.js";
@@ -38,7 +38,7 @@ const BUNDLE: Bundle = {
 };
 const TARGET: InstallTarget = { scope: "user", agents: ["claude-code"], roots: [`${HOME}/.claude`, `${HOME}/.agents`] };
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): LedgerEntry {
+function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -54,7 +54,7 @@ function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntry> = {}): 
   };
 }
 
-function ledger(entries: readonly LedgerEntry[] = []): Ledger {
+function ledger(entries: readonly LedgerEntrySnapshot[] = []): Ledger {
   const restored = Ledger.restore({
     schemaVersion: 1,
     lineage: "lineage-1",
