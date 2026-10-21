@@ -18,7 +18,7 @@ export interface PackageRule {
   readonly dependsOn: readonly string[];
   /** This context exports `src/spi.ts` as `./spi` for provider implementations. */
   readonly spi?: true;
-  /** Dependencies whose `./spi` entries this package may import; normal entry access alone does not grant this. */
+  /** Packages whose `./spi` entries this package may import; this grants no index access, and dependsOn grants no SPI access. */
   readonly spiImports?: readonly string[];
   /** Packages of `dependsOn` that every file of this package may only use through `import type` / `export type`. */
   readonly typesOnly?: readonly string[];

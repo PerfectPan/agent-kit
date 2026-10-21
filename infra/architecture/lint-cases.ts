@@ -63,6 +63,13 @@ export const cases: Case[] = [
     `export { readBytes } from "${SESSIONS}/spi";`
   ),
   rejects(
+    "provider: SPI-only access rejects the context index",
+    "providers/spi-probe",
+    fresh("src/x"),
+    `export { listSessions } from "${SESSIONS}";`,
+    "package-dependency"
+  ),
+  rejects(
     "provider: declared SPI does not expose deep paths",
     "providers/spi-probe",
     fresh("src/x"),

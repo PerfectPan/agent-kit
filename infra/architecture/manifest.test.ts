@@ -64,7 +64,9 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
         : (rule.entries?.map((entry) => `src/${entry}/public.ts`) ?? ["src/index.ts", "src/public.ts"])),
       ...(rule?.spi ? ["src/spi.ts"] : [])
     ];
-    const allowed = isShell ? internal : [...(rule?.dependsOn ?? []), ...(rule?.testsOnly ?? [])];
+    const allowed = isShell
+      ? internal
+      : [...(rule?.dependsOn ?? []), ...(rule?.spiImports ?? []), ...(rule?.testsOnly ?? [])];
     return [
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
@@ -163,6 +165,35 @@ describe("the package manifests", () => {
     expect(manifestViolations(withTesting, onDisk)).toEqual([
       "packages/sessions: package-dependency @rivus/agent-kit-testing"
     ]);
+  });
+
+  it("accepts SPI-only workspace dependencies without granting the context index", () => {
+    const name = "@rivus/agent-kit-provider-probe";
+    const original = boundaries.packages;
+    Object.defineProperty(boundaries, "packages", {
+      value: {
+        ...original,
+        [name]: { dependsOn: [], spiImports: [SESSIONS], external: [] }
+      },
+      configurable: true
+    });
+    try {
+      expect(
+        manifestViolations(
+          [
+            {
+              name,
+              folder: "packages/providers/probe",
+              lintScript: "vp lint",
+              workspaceDependencies: [SESSIONS]
+            }
+          ],
+          () => true
+        )
+      ).toEqual([]);
+    } finally {
+      Object.defineProperty(boundaries, "packages", { value: original });
+    }
   });
 
   it("keep collab out of the shell's dependencies", () => {

@@ -170,7 +170,9 @@ function targetsOf(rule: PackageRule): Map<string, Target> {
     for (const name of rule.dependsOn) {
       add(name, "plain", { source: name, internalPath: null });
       add(name, "effect", { source: name, internalPath: EFFECT_ENTRY });
-      if (rule.spiImports?.includes(name) && boundaries.packages[name]?.spi) {
+    }
+    for (const name of rule.spiImports ?? []) {
+      if (boundaries.packages[name]?.spi) {
         add(name, "plain", { source: name, internalPath: "spi" });
       }
     }
@@ -379,10 +381,7 @@ function restricted(project: Project, rule: PackageRule, targets: Map<string, Ta
       from: all,
       disallow: {
         to: external({
-          source: workspaceNames.filter(
-            (name) =>
-              !rule.dependsOn.includes(name) || !rule.spiImports?.includes(name) || !boundaries.packages[name]?.spi
-          ),
+          source: workspaceNames.filter((name) => !rule.spiImports?.includes(name) || !boundaries.packages[name]?.spi),
           internalPath: "spi"
         })
       },

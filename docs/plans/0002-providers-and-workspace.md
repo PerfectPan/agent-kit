@@ -228,7 +228,8 @@ tests/smoke/  scripts/
 Dependency rules (enforced by [3.9](#39-boundary-rules)):
 
 - The shell may depend on providers and contexts.
-- A provider may depend on catalog, platform (port types only), each context's `spi.ts` entry and `zod/mini`.
+- A provider may depend on catalog's `spi` entry, platform (port types only), each other context's `spi` entry and `zod/mini`.
+  `spiImports` grants only the SPI entry; `dependsOn` independently grants the normal index.
 - A context may not depend on any provider.
 - A provider may not depend on another provider.
 - testing's sources may not depend on providers. testing's and the contexts' tests may use providers through `testsOnly`.
@@ -359,7 +360,8 @@ interface HostMarkers {
 
   The list is reviewed name by name when the entry is created.
 - Each context declares its `./spi` export with `spi: true` in the boundary manifest. An importer must list the
-  target under both `dependsOn` and `spiImports`; a dependency on the normal entry grants no SPI access. This follows
+  target under `spiImports`; this grants no normal entry access. `dependsOn` independently grants the normal entry,
+  never the SPI. This follows
   3.1's provider-to-context direction. No current context needs a sibling's SPI, so their `spiImports` remain empty;
   a future context use must be declared explicitly and still obey the layer and `typesOnly` restrictions. Provider-like
   lint fixtures exercise explicit access without registering a production provider before its batch.

@@ -118,7 +118,7 @@ function spiProvider(copy: string): void {
   symlinkSync(join(ROOT, "packages/agent-kit/node_modules"), join(folder, "node_modules"));
   const manifest = join(copy, "infra/architecture/boundaries.ts");
   const rule = {
-    dependsOn,
+    dependsOn: ["@rivus/agent-kit-platform"],
     spiImports: [...contexts, "@rivus/agent-kit-platform"],
     typesOnly: ["@rivus/agent-kit-cost"],
     external: []
