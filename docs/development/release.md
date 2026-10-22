@@ -262,11 +262,10 @@ Run it after `pnpm run check` so `dist` exists.
 
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned
-  with the oxlint version bundled by vite-plus; it shares the Vite+ toolchain group so reviewers check them together,
-  but grouping alone does not enforce matching versions. This rule is separate from the workspace's one-day
-  `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when upgrading: that interface is alpha
-  and outside semver. Run the allowed/violating boundary fixtures, whole-repository lint and the manifest tests,
-  and record CI duration.
+  with the oxlint version bundled by vite-plus; `scripts/toolchain.test.ts` enforces matching versions. This rule is
+  separate from the workspace's one-day `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when
+  upgrading: that interface is alpha and outside semver. Run the allowed/violating boundary fixtures,
+  whole-repository lint and the manifest tests, and record CI duration.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
   repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`). Close PRs that touch `review.yml` or another file
