@@ -6,7 +6,7 @@ import * as z from "zod/mini";
 
 import type { AcpPlatform } from "../../application/platform.js";
 import { SessionBindingStore, type SessionBindingStoreFailure } from "../../application/ports.js";
-import type { SessionBinding } from "../../domain/acp-session/value-objects/session-binding.js";
+import type { SessionBindingSnapshot } from "../../domain/acp-session/value-objects/session-binding.js";
 
 const SCHEMA_VERSION = 1;
 
@@ -19,7 +19,7 @@ const BindingFile = z.object({
   )
 });
 
-type Bindings = Map<string, SessionBinding>;
+type Bindings = Map<string, SessionBindingSnapshot>;
 
 function failure(
   reason: SessionBindingStoreFailure["reason"],

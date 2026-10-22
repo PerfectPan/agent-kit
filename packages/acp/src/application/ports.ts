@@ -1,7 +1,7 @@
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
-import type { SessionBinding } from "../domain/acp-session/value-objects/session-binding.js";
+import type { SessionBindingSnapshot } from "../domain/acp-session/value-objects/session-binding.js";
 
 /** The binding store could not be used; what it holds is unknown, not changed. */
 export interface SessionBindingStoreFailure {
@@ -26,8 +26,8 @@ export interface SessionBindingStoreFailure {
  *   processes.
  */
 export interface SessionBindingStoreShape {
-  get(sessionKey: string): Effect.Effect<SessionBinding | undefined, SessionBindingStoreFailure>;
-  set(binding: SessionBinding): Effect.Effect<void, SessionBindingStoreFailure>;
+  get(sessionKey: string): Effect.Effect<SessionBindingSnapshot | undefined, SessionBindingStoreFailure>;
+  set(binding: SessionBindingSnapshot): Effect.Effect<void, SessionBindingStoreFailure>;
   remove(sessionKey: string, sessionId: string): Effect.Effect<boolean, SessionBindingStoreFailure>;
 }
 

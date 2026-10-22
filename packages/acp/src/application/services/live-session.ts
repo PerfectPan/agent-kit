@@ -18,8 +18,8 @@ import {
   type PermissionOutcome,
   type PermissionRequest
 } from "../../domain/acp-session/value-objects/permission-request.js";
-import { permissionOutcome } from "../../domain/acp-session/policies/permission-default.js";
-import { type PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
+import { permissionOutcome } from "../../domain/acp-session/services/permission-default.js";
+import { type PromptBlock } from "../../domain/acp-session/spi/prompt-block.js";
 import { type SessionClosed } from "../../domain/acp-session/errors/session-closed.js";
 import {
   type ConnectionState,

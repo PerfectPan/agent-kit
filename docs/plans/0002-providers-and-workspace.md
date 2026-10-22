@@ -422,7 +422,8 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 - **Where today's `policies/` and `services/` functions go** is listed in [Appendix B](#b-destinations-of-policies-and-services). The write-side value objects that become classes, by batch:
   - install-plan: the 10 files under `install-plan/value-objects/` (`ArtifactLocator`, `PlanStep`, `Precondition`, `Conflict`, ...);
   - bundle: `Bundle`, `ArtifactSpec`, `Owner`, `RegistrationState`, `Strategy`;
-  - acp: `McpServer`, `PromptBlock`, `SessionBinding`, and the new `AbsolutePath`;
+  - acp: `SessionBinding` and `AbsolutePath`; `McpServerConfig` (the planned `McpServer`) and `PromptBlock`
+    are plain ACP request data in `spi/`, with no value-owned rule to move;
   - collab: `FencingToken`, `Holder`, `LeaseTiming`, `LaneLimits`.
 
   Each batch confirms its list file by file. A type moves to another folder when it turns out to be a snapshot or an SPI interface.

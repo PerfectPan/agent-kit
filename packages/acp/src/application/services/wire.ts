@@ -5,12 +5,12 @@ import * as acp from "@agentclientprotocol/sdk";
 import * as Effect from "effect/Effect";
 import * as z from "zod/mini";
 
-import type { McpServerConfig } from "../../domain/acp-session/value-objects/mcp-server.js";
+import type { McpServerConfig } from "../../domain/acp-session/spi/mcp-server.js";
 import type {
   PermissionOutcome,
   PermissionRequest
 } from "../../domain/acp-session/value-objects/permission-request.js";
-import type { PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
+import type { PromptBlock } from "../../domain/acp-session/spi/prompt-block.js";
 import type { AuthMethodInfo } from "../errors.js";
 
 /** Why a request failed: the agent answered with an error, or the connection ended before it answered. */

@@ -39,18 +39,18 @@ export {
   type AcpSessionState,
   type SessionCloseReason
 } from "./domain/acp-session/value-objects/acp-session-snapshot.js";
-export { agentEnv } from "./domain/acp-session/policies/agent-env.js";
+export { agentEnv } from "./domain/acp-session/services/agent-env.js";
 export { type CancelUnsettled } from "./domain/acp-session/errors/cancel-unsettled.js";
-export { type McpServerConfig, type NameValue } from "./domain/acp-session/value-objects/mcp-server.js";
-export { optionOfKind } from "./domain/acp-session/policies/permission-default.js";
+export { type McpServerConfig, type NameValue } from "./domain/acp-session/spi/mcp-server.js";
+export { optionOfKind } from "./domain/acp-session/services/permission-default.js";
 export {
   type PermissionDecision,
   type PermissionOption,
   type PermissionOptionKind,
   type PermissionRequest
 } from "./domain/acp-session/value-objects/permission-request.js";
-export { type PromptBlock } from "./domain/acp-session/value-objects/prompt-block.js";
-export { type SessionBinding } from "./domain/acp-session/value-objects/session-binding.js";
+export { type PromptBlock } from "./domain/acp-session/spi/prompt-block.js";
+export { type SessionBindingSnapshot as SessionBinding } from "./domain/acp-session/value-objects/session-binding.js";
 export { type SessionClosed } from "./domain/acp-session/errors/session-closed.js";
-export { type SessionSetup } from "./domain/acp-session/policies/session-setup.js";
+export { type SessionSetup } from "./domain/acp-session/services/session-setup.js";
 export { type TurnInProgress } from "./domain/acp-session/errors/turn-in-progress.js";

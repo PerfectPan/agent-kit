@@ -1,5 +1,5 @@
 import type { AcpProfile } from "../spi/acp-profile.js";
-import type { PromptBlock } from "../value-objects/prompt-block.js";
+import type { PromptBlock } from "../spi/prompt-block.js";
 
 /** What a caller gives a new or loaded session besides its directory and MCP servers. */
 export interface SessionSetup {
