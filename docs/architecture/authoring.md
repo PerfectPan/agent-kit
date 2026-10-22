@@ -96,7 +96,7 @@ The layer principles:
 Catalog home resolution, discovery classification, harness lifecycle and session/transcript/usage rules live in
 `services/`; their read models remain plain data. Context `lib/` folders hold time conversion, own-property lookup,
 JSON formatting (with its `JsonValue` type), bounded key retention and the existing short hash. Schema helpers use
-only `zod/mini`. The repository lint configuration disables `promise/valid-params` for TypeScript files: TypeScript
+only `zod/mini`. The shared `@perfectpan/lint-config` disables `promise/valid-params`: TypeScript
 checks Promise method arity, while that rule misreads `z.catch(schema, fallback)` as a Promise method. Source files
 keep the direct schema call without local disable comments. Keep lenient parsing local to each context: sessions
 wraps an optional schema and falls back to absence, while cost, discovery and harness take an explicit fallback. Sharing them would add cross-context parsing

@@ -21,7 +21,7 @@ catalog:
   '@decimalturn/toml-patch': ^3.3.0
   '@effect/tsgo': 0.52.0
   '@effect/vitest': 4.0.3
-  '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.6.0
+  '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.6.1
   '@size-limit/preset-small-lib': 14.1.0
   '@types/node': 24.19.2
   effect: 4.0.4

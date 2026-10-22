@@ -572,11 +572,6 @@ export function boundaryLintOf(folder: string): BoundaryLint {
   const policies: DependenciesPolicy[] = policiesOf(project);
   const overrides: OxlintOverride[] = [
     {
-      files: ["**/*.ts"],
-      // TypeScript checks Promise method arity; this rule misreads zod/mini z.catch(schema, fallback).
-      rules: { "promise/valid-params": "off" }
-    },
-    {
       files: SOURCES,
       excludeFiles: [...TESTS, DECLARATIONS],
       // A package may replace the top-level plugin list; the Node boundary rule still needs its built-in plugin.
