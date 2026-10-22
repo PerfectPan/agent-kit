@@ -1,5 +1,15 @@
 # Change Log - @rivus/agent-kit
 
+## 0.21.0
+
+### Minor Changes
+
+- Require the exact optional Effect peer 4.0.5. Hosts pinning effect 4.0.4 fail to install under npm; update the host to 4.0.5 alongside these packages.
+
+### Patch Changes
+
+- Rebuild with Vite+ 1.3.0; no API change
+
 ## 0.20.0
 
 ### Minor Changes
