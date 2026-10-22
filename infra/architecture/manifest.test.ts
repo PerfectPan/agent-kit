@@ -405,6 +405,12 @@ describe("the package manifests", () => {
     ).toEqual([]);
   });
 
+  it("forbids policies folders throughout the repository", () => {
+    expect(globSync("**/policies", { cwd: root, exclude: ["**/node_modules/**", "**/dist/**", ".git/**"] })).toEqual(
+      []
+    );
+  });
+
   it("rejects a restored sibling index file and root export", () => {
     const folder = "packages/sessions";
     expect(manifestViolations(packages, (path) => path === `${folder}/src/index.ts` || onDisk(path))).toEqual([

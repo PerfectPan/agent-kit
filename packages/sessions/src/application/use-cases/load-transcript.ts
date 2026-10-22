@@ -16,7 +16,7 @@ import type {
 } from "../../domain/session/value-objects/session-summary.js";
 import type { SessionRef } from "../../domain/session/value-objects/session-ref.js";
 import { foldTranscript, summaryOf } from "../../domain/transcript/services/fold-transcript.js";
-import { sessionPrompts } from "../../domain/transcript/policies/turns.js";
+import { sessionPrompts } from "../../domain/transcript/services/turns.js";
 import { type Transcript } from "../../domain/transcript/value-objects/transcript.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import type { SessionAdapter, SessionPlatform, SessionReadError } from "../spi.js";

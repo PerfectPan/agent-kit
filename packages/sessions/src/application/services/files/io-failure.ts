@@ -2,7 +2,7 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 
 import type { ReadFailed, SessionNotFound } from "../../../domain/session/errors/session-read-error.js";
-import { lenient } from "../../../domain/transcript/adapters/lenient.js";
+import { lenient } from "../../../lib/lenient.js";
 import type { SessionPlatform } from "../../spi.js";
 
 /** Errno codes of file system failures a read can meet. Any other error is a defect and is not turned into a value. */

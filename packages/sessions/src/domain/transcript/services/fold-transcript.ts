@@ -4,7 +4,7 @@ import type {
   SessionSummary,
   SessionSummaryWithPrompts
 } from "../../session/value-objects/session-summary.js";
-import { capPromptText, mainAgentId, promptStarts, requestUsage } from "../policies/turns.js";
+import { capPromptText, mainAgentId, promptStarts, requestUsage } from "./turns.js";
 import type { Capability, Transcript } from "../value-objects/transcript.js";
 
 const CONTEXT_SHAPE_POINTS = 120;

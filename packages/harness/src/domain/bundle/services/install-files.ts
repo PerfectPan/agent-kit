@@ -3,12 +3,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { HookRegistration } from "./hook-registrations.js";
 import type { InstallContext } from "../spi/install-adapter.js";
 import type { PlacedRegistration } from "./hook-placement.js";
-import type { JsonValue } from "../../ledger/value-objects/content-hash.js";
-
-/** JSON as the kit writes whole files: two-space indentation and a final newline. */
-export function jsonText(value: JsonValue): string {
-  return `${JSON.stringify(value, null, 2)}\n`;
-}
+import type { JsonValue } from "../../../lib/json.js";
 
 /** One hook as Claude Code's settings files and the agents that copy their format (Codex, Gemini CLI, Grok) list it. */
 export function commandHook(registration: HookRegistration): JsonValue {

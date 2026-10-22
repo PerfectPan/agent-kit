@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 
 import type { Price } from "../value-objects/price.js";
-import { lenient } from "./lenient.js";
+import { lenient } from "../../../lib/lenient.js";
 import type { PricingTable } from "../value-objects/pricing-table.js";
 
 /** The entry of LiteLLM's list that documents the fields instead of pricing a model. */

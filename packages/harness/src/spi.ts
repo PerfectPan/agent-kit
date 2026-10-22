@@ -4,10 +4,10 @@ export {
   commandHook,
   configHome,
   groupedHooksFile,
-  jsonText,
   sharedAgentsDir,
   sharedSkillsDir
 } from "./domain/bundle/services/install-files.js";
+export { jsonText } from "./lib/json.js";
 export { type PlacedRegistration } from "./domain/bundle/services/hook-placement.js";
 export { type HookRegistration } from "./domain/bundle/services/hook-registrations.js";
 export {
@@ -29,7 +29,8 @@ export {
   locatorPointer
 } from "./domain/install-plan/value-objects/artifact-locator.js";
 export { type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
-export { type ArtifactContent, type JsonValue } from "./domain/ledger/value-objects/content-hash.js";
+export { type ArtifactContent } from "./domain/ledger/value-objects/content-hash.js";
+export { type JsonValue } from "./lib/json.js";
 export {
   type FieldPath,
   type FieldSource,

@@ -1,6 +1,6 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import { basenamePath } from "../../session/policies/paths.js";
+import { basenamePath } from "../../../lib/paths.js";
 import { type SkippedRecord, type SourcedRecord, sourceOf } from "../value-objects/source-pointer.js";
 import type {
   TranscriptEvent,

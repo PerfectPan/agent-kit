@@ -18,7 +18,8 @@ import {
   type ArtifactLocatorSnapshot,
   locatorPointer
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import type { ArtifactContent, JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
+import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
+import type { JsonValue } from "../../lib/json.js";
 import type { Document } from "../services/document.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";

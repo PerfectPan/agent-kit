@@ -3,7 +3,7 @@ import { type CodingAgentId, ok, type Result } from "@rivus/agent-kit-catalog/pu
 import type { UsageFile, UsageLineDecoder } from "../../../domain/usage/adapters/usage-lines.js";
 import type { SessionListError } from "../../../domain/session/value-objects/session-head.js";
 import type { SourceChanged } from "../../../domain/transcript/errors/source-changed.js";
-import { decodeIsFinal } from "../../../domain/usage/policies/quiet.js";
+import { decodeIsFinal } from "../../../domain/usage/services/quiet.js";
 import { type UsageRecord } from "../../../domain/usage/value-objects/usage-record.js";
 import { guardIo } from "../files/io-failure.js";
 import { readBytes, readLines } from "../files/read-file.js";

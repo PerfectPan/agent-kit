@@ -29,7 +29,7 @@ non-secret authentication facts.
 Pi remains session-only: the kit has no Pi authentication probe or documented authentication file.
 
 [Provider home rules](../agent-kit/src/providers/identity.ts) and
-[`homeFromRule`](../catalog/src/domain/coding-agent/policies/home-from-rule.ts) own override resolution.
+[`homeFromRule`](../catalog/src/domain/coding-agent/services/home-from-rule.ts) own override resolution.
 [Usage source tests](../testing/test/usage-sources.test.ts) cover all six default layouts and overrides using
 the providers’ usage fixtures: [Claude Code](../providers/claude-code/test/fixtures/usage),
 [Codex](../providers/codex/test/fixtures/usage), [Gemini CLI](../providers/gemini-cli/test/fixtures/usage),

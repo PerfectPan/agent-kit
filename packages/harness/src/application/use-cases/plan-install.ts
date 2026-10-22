@@ -334,17 +334,17 @@ export interface PlanInput {
   readonly compat?: readonly HookCompat[];
 }
 
-/** The executor resolves a restored pre-image from its blob reference. */
-type StepContentAfter = ReturnType<PlanStep["contentAfter"]>;
-
-/** The content a step leaves at its target, or `undefined` when it leaves nothing or does not write there. */
+/**
+ * The content a step leaves at its target, or `undefined` when it leaves nothing or does not write there.
+ * The executor resolves a restored pre-image from its blob reference.
+ */
 export function contentAfter(
   scope: LedgerScope,
   step: PlanStep,
   ledger: Ledger
 ): Effect.Effect<ArtifactContent | undefined, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
-    const after: StepContentAfter = step.contentAfter(ledger.entry(step.locator)?.preImage);
+    const after = step.contentAfter(ledger.entry(step.locator)?.preImage);
     if (after === undefined || "desired" in after) {
       return after?.desired;
     }

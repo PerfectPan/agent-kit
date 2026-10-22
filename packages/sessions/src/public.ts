@@ -105,23 +105,23 @@ export {
   recordKey,
   requestUsage,
   sessionPrompts
-} from "./domain/transcript/policies/turns.js";
+} from "./domain/transcript/services/turns.js";
 export {
   latestSnapshot,
   promptSnapshot,
   snapshotHasSystemPrompt,
   snapshotHasTools
-} from "./domain/transcript/policies/prompt-snapshot.js";
+} from "./domain/transcript/services/prompt-snapshot.js";
 export { type LiveTranscriptEvent, type TranscriptStreamPart } from "./domain/transcript/value-objects/stream-part.js";
 export { type ParsedTranscript } from "./domain/transcript/factories/transcript-event.js";
-export { shadowedIn } from "./domain/transcript/policies/compaction-shadowing.js";
+export { shadowedIn } from "./domain/transcript/services/compaction-shadowing.js";
 export {
   type SkippedRecord,
   type SourcedRecord,
   type SourcePointer
 } from "./domain/transcript/value-objects/source-pointer.js";
 export { type SourceChanged } from "./domain/transcript/errors/source-changed.js";
-export { type StampedRecord } from "./domain/transcript/policies/event-ordering.js";
+export { type StampedRecord } from "./domain/transcript/services/event-ordering.js";
 export { type UnknownFormatGeneration } from "./domain/transcript/errors/unknown-format-generation.js";
 export { addUsage } from "./domain/usage/services/add-usage.js";
 export { type AiSdkUsage, toAiSdkUsage } from "./domain/usage/services/to-ai-sdk-usage.js";

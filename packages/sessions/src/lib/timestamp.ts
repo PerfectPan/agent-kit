@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import { timeOf } from "../policies/event-ordering.js";
+import { timeOf } from "./time.js";
 import { lenient } from "./lenient.js";
 
 /**

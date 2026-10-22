@@ -6,7 +6,8 @@ const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678
 /**
  * A 54-bit hash of a key in 9 base64url characters (the public-domain cyrb53 mixing), so a cursor or a scan state can
  * remember request ids compactly. Two of n keys collide with a chance of about n² / 2^55: for the 75 000 requests of a
- * busy month, one in 6 million; for a million, one in 36 000.
+ * busy month, one in 6 million; for a million, one in 36 000. No small library preserves this encoding, so keep
+ * the pure cyrb53 implementation to retain existing cursor hashes.
  */
 export function shortHash(key: string): string {
   let h1 = 0xde_ad_be_ef;

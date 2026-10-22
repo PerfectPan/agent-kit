@@ -1,4 +1,5 @@
-import { type Env, ownValue, readField } from "../policies/payload-fields.js";
+import { type Env, readField } from "./payload-fields.js";
+import { ownValue } from "../../../lib/own-value.js";
 import {
   type HookDialect,
   type HookEventSpec,

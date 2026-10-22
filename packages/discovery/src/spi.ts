@@ -1,5 +1,5 @@
 /** Interfaces and shared helpers for provider implementations. */
-export { lenient } from "./domain/installation/adapters/lenient.js";
+export { lenient } from "./lib/lenient.js";
 export { VERSION_FLAG } from "./domain/installation/adapters/version-flag.js";
 export {
   type AuthCommandProbe,

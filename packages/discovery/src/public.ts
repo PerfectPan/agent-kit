@@ -21,7 +21,7 @@ export {
   type AuthSource,
   type AuthState
 } from "./domain/installation/value-objects/auth-state.js";
-export { classifyInstallation } from "./domain/installation/policies/classify-installation.js";
+export { classifyInstallation } from "./domain/installation/services/classify-installation.js";
 export {
   type CommandFailed,
   type CredentialFileFailed,
@@ -32,6 +32,6 @@ export { type CommandOutput, type Version, versionFromOutput } from "./domain/in
 export { DETECTION_STATUSES, type DetectionStatus } from "./domain/installation/value-objects/detection-status.js";
 export { type Evidence, type EvidenceKind } from "./domain/installation/value-objects/evidence.js";
 export { type Installation } from "./domain/installation/value-objects/installation.js";
-export { resolveAuthState } from "./domain/installation/policies/resolve-auth-state.js";
+export { resolveAuthState } from "./domain/installation/services/resolve-auth-state.js";
 
 export { expandProbePath } from "./application/services/host-paths.js";

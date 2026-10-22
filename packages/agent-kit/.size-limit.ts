@@ -44,8 +44,8 @@ export default [
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24488 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22824 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22858 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24617 B" },
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24645 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19127 B" }
 ] satisfies SizeLimitConfig;

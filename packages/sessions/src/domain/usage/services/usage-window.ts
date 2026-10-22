@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { UsageRecord } from "../value-objects/usage-record.js";
-import { SHORT_HASH_LENGTH, shortHash } from "./short-hash.js";
+import { SHORT_HASH_LENGTH, shortHash } from "../../../lib/short-hash.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

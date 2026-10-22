@@ -1,4 +1,4 @@
-export { homeFromRule } from "./domain/coding-agent/policies/home-from-rule.js";
+export { homeFromRule } from "./domain/coding-agent/services/home-from-rule.js";
 export type {
   AgentHome,
   AgentHomeSource,

@@ -180,8 +180,8 @@ catalogs:
       specifier: 4.0.3
       version: 4.0.3
     '@perfectpan/lint-config':
-      specifier: github:PerfectPan/lint-config#v0.6.0
-      version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0
+      specifier: github:PerfectPan/lint-config#v0.6.1
+      version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279
     '@size-limit/preset-small-lib':
       specifier: 14.1.0
       version: 14.1.0
@@ -233,7 +233,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -285,7 +285,7 @@ importers:
         version: 4.0.3(effect@4.0.4)(vitest@5.0.4)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -331,7 +331,7 @@ importers:
         version: 0.18.5
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-acp':
         specifier: workspace:*
         version: link:../acp
@@ -425,7 +425,7 @@ importers:
         version: 4.0.3(effect@4.0.4)(vitest@5.0.4)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../agent-kit
@@ -461,7 +461,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -483,7 +483,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -505,7 +505,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-provider-codex':
         specifier: workspace:*
         version: link:../providers/codex
@@ -551,7 +551,7 @@ importers:
         version: 4.0.3(effect@4.0.4)(vitest@5.0.4)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -599,7 +599,7 @@ importers:
         version: 0.52.0
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       effect:
         specifier: 'catalog:'
         version: 4.0.4
@@ -627,7 +627,7 @@ importers:
         version: 4.0.3(effect@4.0.4)(vitest@5.0.4)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -667,7 +667,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -704,7 +704,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -735,7 +735,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -772,7 +772,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -809,7 +809,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform':
         specifier: workspace:*
         version: link:../../platform
@@ -849,7 +849,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../../platform-node
@@ -886,7 +886,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -908,7 +908,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -930,7 +930,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -961,7 +961,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-cost':
         specifier: workspace:*
         version: link:../cost
@@ -1003,7 +1003,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -1021,7 +1021,7 @@ importers:
         version: 4.0.3(effect@4.0.4)(vitest@5.0.4)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../../packages/agent-kit
@@ -1922,9 +1922,9 @@ packages:
     resolution: {integrity: sha512-G2xbfWTrbqYRhR/vfeKNMQf/sS3/ti0iKJAAkRxHuXWZH/hne/dyIb9QKk5LuR6cJLARxsL6FMoAYmfspd74MQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0':
-    resolution: {gitHosted: true, integrity: sha512-Q1pr0n4JHApZ7tSVtP/eXkZT5vCk6f/ndbXzeGZb/FBFBj08XI4xPPEziTt3pW3+ej1FX2D8Eud4QiRATeq05g==, tarball: https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0}
-    version: 0.6.0
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279':
+    resolution: {gitHosted: true, integrity: sha512-u/mf1/DjwOecrOcC7qCVaDNGtX84L2wa169usT+hFj/9OcYSfx8hhEUMEUgyn/F1QtZ2cHS52yiQjYHxnzUm1w==, tarball: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279}
+    version: 0.6.1
     peerDependencies:
       oxfmt: '>=0.57.0'
       oxlint: '>=1.79.0'
@@ -4103,7 +4103,7 @@ snapshots:
 
   '@oxlint/plugins@1.88.0': {}
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
     optionalDependencies:
       oxfmt: 0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       oxlint: 1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
@@ -4111,7 +4111,7 @@ snapshots:
       typescript: 7.0.2
       vite-plus: 1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.0)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
     optionalDependencies:
       oxfmt: 0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       oxlint: 1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
@@ -4119,7 +4119,7 @@ snapshots:
       typescript: 7.0.2
       vite-plus: 1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.1)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
     optionalDependencies:
       oxfmt: 0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       oxlint: 1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
@@ -4127,7 +4127,7 @@ snapshots:
       typescript: 7.0.2
       vite-plus: 1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/28be8c1e152dde6a44fce9e43fdb282957959cc0(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))':
     optionalDependencies:
       oxfmt: 0.71.0(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))
       oxlint: 1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.2.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.4)(publint@0.3.25)(typescript@7.0.2))

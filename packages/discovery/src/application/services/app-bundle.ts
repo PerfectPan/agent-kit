@@ -1,4 +1,4 @@
-import { appBundleMatches } from "../../domain/installation/policies/app-bundle.js";
+import { appBundleMatches } from "../../domain/installation/services/app-bundle.js";
 import type { DiscoveryPlatform } from "../platform.js";
 import { readSmallFile } from "./read-small-file.js";
 

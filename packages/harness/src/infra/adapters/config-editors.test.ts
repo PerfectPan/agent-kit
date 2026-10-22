@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import type { JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
+import type { JsonValue } from "../../lib/json.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";
 import { editToml, parseToml } from "./toml-editor.js";
