@@ -2,7 +2,50 @@
   dir: packages/agent-kit-collab
   intents:
     - olive-hats-sort
+"@rivus/agent-kit-collab@0.20.0":
+  dir: packages/agent-kit-collab
+  intents:
+    - curly-jokes-ring
+    - curly-pumas-brake
+    - effect-4-0-4-peer
+    - lazy-geese-lie
+    - modern-bears-play
+    - nice-geese-promise
+    - proud-tools-clean
+    - proud-walls-repeat
+    - service-tables
+    - shiny-eagles-occur
+    - smooth-books-smash
+    - smooth-dodos-jam
+    - strong-rice-sell
+    - sweet-pears-notice
+    - thick-beds-hear
+    - thin-books-doubt
+    - tidy-tools-repeat
+    - wide-crabs-carry
 "@rivus/agent-kit@0.19.1":
   dir: packages/agent-kit
   intents:
     - olive-hats-sort
+"@rivus/agent-kit@0.20.0":
+  dir: packages/agent-kit
+  intents:
+    - curly-jokes-ring
+    - curly-pumas-brake
+    - effect-4-0-4-peer
+    - lazy-geese-lie
+    - modern-bears-play
+    - nice-geese-promise
+    - proud-tools-clean
+    - proud-walls-repeat
+    - service-tables
+    - shiny-eagles-occur
+    - shiny-teeth-shop
+    - smooth-books-smash
+    - smooth-dodos-jam
+    - strong-rice-sell
+    - sweet-pears-notice
+    - thick-beds-hear
+    - thin-books-doubt
+    - tidy-tools-repeat
+    - wide-crabs-carry

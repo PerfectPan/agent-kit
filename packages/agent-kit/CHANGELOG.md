@@ -1,5 +1,72 @@
 # Change Log - @rivus/agent-kit
 
+## 0.20.0
+
+### Minor Changes
+
+- Update the exact optional Effect peer to effect 4.0.4. Hosts pinning effect 4.0.3 fail to install under npm; upgrade the host to effect 4.0.4 when updating either package.
+
+- Add `Provider` and `builtinProviders` through `/providers`. Routed APIs now accept provider descriptors merged by agent id and service; this replaces the `adapters`, `dialects`, `recipes` and `profiles` override options. Provider interfaces are available through scoped SPI entries.
+
+  Provider identities with conflicting names or mismatched ids are rejected. Remove `resolveHome` and `CodingAgentIdWithHome`; resolve a session or usage service's home with `sessionAdapterHome`. Hook host detection reads dialect marker declarations, and the `/testing` conformance suites that read service tables bind the built-in ones.
+
+- Narrow the public API to recorded application, provider SPI and testing consumers. Replace individual built-in tables with provider descriptors, while retaining `builtinHookDialects` on `/harness/events` and `AgentKitError` / `isAgentKitError` on `/catalog`. `/providers` shares the ordinary pack; `/cost`, `/harness/events` and `/transcript/usage` remain isolated.
+
+  Select optional services from `builtinProviders`; hook commands keep their hooks-only table. Remove the following named exports; declarations needed by retained signatures remain available through inferred types, `Parameters`, `ReturnType` and indexed access.
+
+  - `@rivus/agent-kit/acp`: `AcpErrorCode`, `AcpProfiles`, `AcpRequestFailed`, `AcpSessionSnapshot`, `AcpSessionState`, `AcpTimeout`, `AgentFeatures`, `AgentInfo`, `AgentProbe`, `AgentUnavailable`, `AuthMethodInfo`, `AuthRequired`, `BindingNotFound`, `CancelUnsettled`, `ConnectAgentOptions`, `ConnectionClosed`, `HandshakeFailed`, `LiveTranscriptEvent`, `LoadSessionError`, `LoadSessionTarget`, `LoadUnsupported`, `NameValue`, `NewSessionOptions`, `PermissionOption`, `PermissionOptionKind`, `SessionBinding`, `SessionBindingStoreFailure`, `SessionBindingStoreShape`, `SessionCloseReason`, `SessionClosed`, `SessionOptions`, `SessionSetup`, `SystemPromptPlacement`, `TurnInProgress`, `builtinAcpProfiles`, `foldStreamParts`, `optionOfKind`.
+  - `@rivus/agent-kit/catalog`: `AgentHomeSource`, `AgentKitErrorOptions`, `InvalidCodingAgentId`, `builtinCodingAgents`, `homeFromRule`, `parseCodingAgentId`.
+  - `@rivus/agent-kit/cost`: `CalendarWindow`, `CalendarWindowOptions`, `Cost`, `CostErrorCode`, `Price`, `PriceOverrides`, `PricingOptions`, `PricingTable`, `SummarizeOptions`, `UsageGroup`, `UsageGroupKey`, `UsageSummary`, `UsageTotals`, `calendarWindow`, `costOf`, `fromLiteLLM`.
+  - `@rivus/agent-kit/discovery`: `AuthCommandProbe`, `AuthObservation`, `AuthProbe`, `AuthSource`, `AuthState`, `AuthVariable`, `CommandFailed`, `CredentialFileFailed`, `CredentialFileProbe`, `DETECTION_STATUSES`, `DetectionStatus`, `DiscoveryErrorCode`, `DiscoveryPlatform`, `Evidence`, `EvidenceKind`, `InstallationKind`, `StatFailed`, `Version`, `VersionProbe`, `builtinProbeRecipes`, `classifyInstallation`, `resolveAuthState`.
+  - `@rivus/agent-kit/harness`: `AgentCliFailure`, `AgentCliShape`, `AppliedStep`, `ApplyFailed`, `ApplyInstallError`, `ApplyInstallOptions`, `ApplyReport`, `ArtifactFailure`, `ArtifactFilesShape`, `ArtifactInstalled`, `ArtifactIoFailure`, `ArtifactKind`, `ArtifactRead`, `ArtifactRemoved`, `ArtifactSource`, `ArtifactSpec`, `Check`, `ChezmoiExternalOwnerLive`, `CommandLine`, `Conflict`, `ContentHash`, `DoctorOptions`, `DocumentInvalid`, `Drift`, `DroppedHook`, `EntryChange`, `ExternalOwnerShape`, `FindLegacyError`, `FindLegacyOptions`, `FindLegacyServices`, `HookCompat`, `HookOverlap`, `HookSpecRejected`, `InstallAdapters`, `InstallScope`, `InstructionSpec`, `InvalidBundle`, `InvalidHookPlacement`, `InvalidLedger`, `InvalidPlan`, `Inventory`, `LedgerBusy`, `LedgerEntry`, `LedgerEvent`, `LedgerLock`, `LedgerLockError`, `LedgerLockFailure`, `LedgerLockOptions`, `LedgerLockShape`, `LedgerLockUnavailable`, `LedgerReadError`, `LedgerRepositoryFailure`, `LedgerRepositoryShape`, `LedgerVersionUnsupported`, `LegacyEntry`, `LegacyTreatment`, `LocatorKey`, `McpServerSpec`, `Owner`, `PendingOperation`, `PendingOperations`, `PlacedRegistration`, `PlanAction`, `PlanBasis`, `PlanInstallError`, `PlanInstallOptions`, `PlanStale`, `PlanStatus`, `PlanStep`, `PlannedCommand`, `PlannedFileChange`, `PreImage`, `Precondition`, `ProcessAgentCliLive`, `Removal`, `RenderedArtifact`, `RevisionConflict`, `ScopeOptions`, `SkillSpec`, `StepNote`, `Strategy`, `StrategyUnavailable`, `TargetChanged`, `TrustPromptKind`, `UnexpectedShape`, `UninstallError`, `UninstallOptions`, `UninstallReport`, `VerifiedArtifact`, `VerifyError`, `VerifyOptions`, `VerifyReport`, `VerifyStatus`, `builtinInstallAdapters`, `findLegacy`, `ownerSlug`.
+  - `@rivus/agent-kit/harness/events`: `BlockSource`, `FieldSource`, `ForeignHooks`, `HeartbeatSignal`, `HookDialects`, `HookTimeout`, `HostMarkers`, `INITIAL_LIFECYCLE_STATE`, `LifecycleBlocker`, `LifecycleClock`, `LifecycleMapping`, `LifecycleOutcome`, `LifecyclePhase`, `LifecycleScope`, `LifecycleState`, `LifecycleStatus`, `LifecycleSwitch`, `ReadHookEventOptions`, `TerminalHost`, `TerminalIdentity`, `heartbeatSignal`, `lifecycleStatus`, `reduceLifecycle`.
+  - `@rivus/agent-kit/node`: `NodePlatformOptions`.
+  - `@rivus/agent-kit/platform`: `ByteRange`, `ChildHandle`, `DirEntry`, `Env`, `ExitStatus`, `FileKind`, `FileStat`, `Line`, `OperatingSystem`, `PlatformClock`, `PlatformFs`, `PlatformProcess`, `PlatformSqlite`, `ProcessIdentity`, `RunOptions`, `RunResult`, `SpawnOptions`, `SplitLinesOptions`, `SqliteDatabase`, `SqliteRunResult`, `SqliteStatement`, `SqliteValue`, `splitLines`.
+  - `@rivus/agent-kit/redact`: `RedactOptions`.
+  - `@rivus/agent-kit/sessions`: `DiscoverOptions`, `ListSessionsOptions`, `LoadOptions`, `ReadFailed`, `SessionErrorCode`, `SessionListFailure`, `SessionNotFound`, `SessionReadError`, `builtinSessionAdapters`.
+  - `@rivus/agent-kit/testing`: `ConformanceCheck`, `MemoryCommand`, `MemoryFile`, `MemoryPlatform`, `MemoryPlatformOptions`, `MemoryRunResult`.
+  - `@rivus/agent-kit/transcript`: `CAPABILITIES`, `CLAUDE_CODE_CAPABILITIES`, `CODEX_CAPABILITIES`, `CapabilityUnsupported`, `ClaudeCodeTranslateOptions`, `CodexTranslateOptions`, `CompactionPayload`, `GROK_CAPABILITIES`, `GrokTranslateOptions`, `HookPayload`, `LiveTranscriptEvent`, `LoadTranscriptOptions`, `MAIN_LANE_ID`, `MessagePayload`, `NoAdapterAccepted`, `ParsedTranscript`, `ReadFailed`, `ReadOriginalError`, `ReasoningPayload`, `RequestPayload`, `SessionNotFound`, `SessionPrompt`, `SessionPromptsOptions`, `SessionReadError`, `SessionSummaryWithPrompts`, `SkippedRecord`, `SourceChanged`, `SourcedRecord`, `StampedRecord`, `SystemPayload`, `TRANSCRIPT_EVENT_KINDS`, `ToolCallPayload`, `ToolResultPayload`, `TranscriptStreamPart`, `UnknownFormatGeneration`, `UnknownPayload`, `Usage`, `claudeCodeUsage`, `codexUsage`, `foldStreamParts`, `foldTranscript`, `grokUsage`, `isPrompt`, `laneOf`, `latestSnapshot`, `mainAgentId`, `promptSnapshot`, `promptStarts`, `readOriginal`, `recordKey`, `requestUsage`, `sessionPrompts`, `shadowedIn`, `snapshotHasSystemPrompt`, `snapshotHasTools`, `translateClaudeCodeRecords`, `translateCodexRecords`, `translateGrokRecords`.
+  - `@rivus/agent-kit/transcript/usage`: `AiSdkUsage`, `CapabilityUnsupported`, `CostSource`, `DecodeUsageOptions`, `ListUsageSourcesOptions`, `ModelUsage`, `OtelAttributeOptions`, `ReadFailed`, `ScanUsageOptions`, `SessionErrorCode`, `SessionListError`, `SessionNotFound`, `SourceChanged`, `SourcePointer`, `SqliteUnavailable`, `UnknownFormatGeneration`, `Usage`, `UsageCursor`, `UsageDecodeError`, `UsageDecodeFailure`, `UsageGranularity`, `UsageScan`, `UsageScanSource`, `UsageScanState`, `UsageSource`, `UsageSourceFailure`, `UsageSourceOptions`, `UsageStream`, `UsageTarget`, `addUsage`, `decodeUsage`, `isUsageSource`, `listUsageSources`, `toAiSdkUsage`, `toOtelAttributes`.
+  - `@rivus/agent-kit-collab/lease`: `AcquireOptions`, `AcquisitionView`, `FenceRejected`, `FencingToken`, `FileLeaseRepositoryOptions`, `HolderLiveness`, `LeaseConfig`, `LeaseObservation`, `LeaseRepositoryShape`, `RevisionConflict`, `SqliteLeaseRepositoryOptions`, `canAcquire`, `checkFence`, `holderLiveness`, `isFresh`, `nextFencingToken`.
+  - `@rivus/agent-kit-collab/lanes`: `ActivationInterruptReason`, `LaneQueueFull`, `LaneSnapshot`, `LaneState`, `LanesClosed`, `LanesConfig`, `LanesConfigInvalid`, `LanesStatus`, `WakeResult`.
+  - `@rivus/agent-kit-collab/process-lock`: `ProcessLockHeld`, `ProcessLockHolder`, `ProcessLockOptions`.
+
+### Patch Changes
+
+- Move Cursor services into its provider package without changing behavior.
+
+- Move Codex services into their provider package without changing public behavior.
+
+- Move Grok services into a dedicated provider package without changing behavior.
+
+- Close out provider ownership of built-in services and identities, preserving the seven built-in ids, with no further API change. Context-derived public signatures now use string ids; the catalog entry retains CodingAgentId completion for built-ins. Keep support documentation checked against shipped capabilities and share the Codex plugin registration pointer between installation and removal.
+
+- Move Gemini CLI services into a dedicated provider package without changing behavior.
+
+- Update dependencies.
+
+- Move the pi adapter into its own internal package; no API change.
+
+- Remove internal barrel files; no API change.
+
+- Clarify the own-property helper documentation in bundled code.
+
+- Internal domain model; no API change.
+
+  Reject array-valued ledger entries returned by an external repository as `InvalidLedger`; the file repository already rejects them.
+
+- Internal domain model; no API change.
+
+- Internal domain model; no API change.
+
+- Internal domain model; no API change.
+
+- Move OpenCode services into their provider package without changing behavior.
+
+- Move Claude Code services into an isolated provider package without changing behavior.
+
+- Internal domain model; no API change.
+
 ## 0.19.1
 
 ### Patch Changes
