@@ -1,0 +1,202 @@
+name: Renovate Changesets
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - "**/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-changesets-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'renovate/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      generated: ${{ steps.generate.outputs.generated }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      EXCLUDE_DEVDEPS: "true"
+      SORT_CHANGESETS: "true"
+      SKIP_COMMIT: "true"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          # The tool compares HEAD with its parent, not the PR merge commit.
+          fetch-depth: 2
+          token: ${{ github.token }}
+          persist-credentials: false
+      - name: Record generation head
+        run: |
+          mkdir -p "$RUNNER_TEMP/renovate-changesets/.changeset"
+          git rev-parse HEAD > "$RUNNER_TEMP/renovate-changesets/head-sha"
+      - uses: pnpm/setup@v3
+        with:
+          node-version-file: .node-version
+          install: false
+      - name: Install changesets-renovate
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/changesets-renovate"
+          --ignore-scripts --no-audit --no-fund --no-package-lock
+          --registry https://registry.npmjs.org/
+          @scaleway/changesets-renovate@4.0.5
+      - name: Generate changesets
+        id: generate
+        run: |
+          # The pinned CLI catches errors and exits 0. Await its run entry so errors fail the job.
+          node --input-type=module <<'JS'
+          import { pathToFileURL } from 'node:url';
+          const entry = `${process.env.RUNNER_TEMP}/changesets-renovate/node_modules/@scaleway/changesets-renovate/dist/generateChangeset.mjs`;
+          const { run } = await import(pathToFileURL(entry));
+          await run();
+          JS
+          mapfile -t files < <(git ls-files --others --exclude-standard -- '.changeset/renovate-*.md')
+          if (( ${#files[@]} == 0 )); then
+            echo 'generated=false' >> "$GITHUB_OUTPUT"
+            echo 'No changeset generated (no eligible dependency change, or a changeset already exists).' >> "$GITHUB_STEP_SUMMARY"
+          else
+            node scripts/filter-renovate-changesets.ts "${files[@]}"
+            for file in "${files[@]}"; do
+              printf '\n### %s\n\n```markdown\n' "$file" >> "$GITHUB_STEP_SUMMARY"
+              cat "$file" >> "$GITHUB_STEP_SUMMARY"
+              printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+              cp -- "$file" "$RUNNER_TEMP/renovate-changesets/.changeset/"
+            done
+            echo 'generated=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v7
+        id: upload
+        if: steps.generate.outputs.generated == 'true'
+        with:
+          name: renovate-changesets-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/renovate-changesets
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # A fresh runner keeps the PAT away from npm code and anything it can leave on disk or in the environment.
+  push:
+    needs: generate
+    if: needs.generate.outputs.generated == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
+    env:
+      GIT_AUTHOR_NAME: agent-kit-changeset-bot
+      GIT_AUTHOR_EMAIL: agent-kit-changeset-bot@users.noreply.invalid
+      GIT_COMMITTER_NAME: agent-kit-changeset-bot
+      GIT_COMMITTER_EMAIL: agent-kit-changeset-bot@users.noreply.invalid
+    steps:
+      - name: Check push token
+        id: token
+        env:
+          CHANGESET_TOKEN: ${{ secrets.RENOVATE_CHANGESET_TOKEN }}
+        run: |
+          if [[ -z "$CHANGESET_TOKEN" ]]; then
+            echo 'RENOVATE_CHANGESET_TOKEN is absent: dry run only; nothing committed or pushed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo 'available=true' >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        id: checkout
+        if: steps.token.outputs.available == 'true'
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.RENOVATE_CHANGESET_TOKEN }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        if: steps.token.outputs.available == 'true'
+        with:
+          artifact-ids: ${{ needs.generate.outputs.artifact-id }}
+          path: ${{ runner.temp }}/renovate-download
+      - name: Validate artifact and generation head
+        id: validate
+        if: steps.token.outputs.available == 'true'
+        run: |
+          # Treat the other runner's artifact only as data; never execute repository or artifact code here.
+          python3 -I <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+          import subprocess
+
+          artifact = Path(os.environ['RUNNER_TEMP']) / 'renovate-download'
+          files = []
+          for path in artifact.rglob('*'):
+              name = path.relative_to(artifact).as_posix()
+              if path.is_symlink():
+                  raise SystemExit(f'Artifact symlink rejected: {name}')
+              if name == '.changeset' and path.is_dir():
+                  continue
+              if not path.is_file():
+                  raise SystemExit(f'Artifact entry rejected: {name}')
+              if name == 'head-sha':
+                  continue
+              if not re.fullmatch(r'\.changeset/renovate-[0-9a-f]+\.md', name):
+                  raise SystemExit(f'Artifact path rejected: {name}')
+              files.append(path)
+          expected = (artifact / 'head-sha').read_text().strip()
+          if not re.fullmatch(r'[0-9a-f]{40}', expected) or not files:
+              raise SystemExit('Artifact must contain a head SHA and generated changesets')
+          actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if actual != expected:
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write('Branch moved since generation; skipped. The newer run handles it.\n')
+              raise SystemExit(0)
+          destination = Path('.changeset')
+          if destination.is_symlink():
+              raise SystemExit('Changeset directory symlink rejected')
+          destination.mkdir(exist_ok=True)
+          targets = []
+          for source in files:
+              target = destination / source.name
+              if target.exists() or target.is_symlink():
+                  raise SystemExit(f'Existing changeset rejected: {target}')
+              shutil.copyfile(source, target)
+              targets.append(str(target))
+          subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', 'add', '--', *targets], check=True)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('current=true\n')
+          PY
+      - name: Commit and push changesets
+        if: steps.validate.outputs.current == 'true'
+        env:
+          CHANGESET_TOKEN: ${{ secrets.RENOVATE_CHANGESET_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          git -c core.hooksPath=/dev/null commit -m 'chore(deps): add Renovate changeset'
+          auth="$(printf 'x-access-token:%s' "$CHANGESET_TOKEN" | base64 -w0)"
+          echo "::add-mask::$auth"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.${GITHUB_SERVER_URL}/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          if git -c core.hooksPath=/dev/null push origin "HEAD:$HEAD_REF"; then
+            echo 'Changeset committed and pushed; the token-authenticated push triggers CI.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Push failed: check RENOVATE_CHANGESET_TOKEN expiry and Contents write access, or whether the branch moved. Nothing was force-pushed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - name: Report checkout failure
+        if: failure() && steps.checkout.outcome == 'failure'
+        run: |
+          echo 'Checkout failed: check token expiry/access and whether the branch was deleted or moved. No changeset was pushed.' >> "$GITHUB_STEP_SUMMARY"

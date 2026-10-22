@@ -13,11 +13,14 @@
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
   "prBodyNotes": [
-    "When a published package's runtime dependencies change, add a changeset as described in [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+    "Changeset automation covers published runtime dependencies only. If this PR changes built output, add a patch changeset per [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["* 0-6 1 * *"]
+    "schedule": ["* 0-6 1 * *"],
+    "prBodyNotes": [
+      "The changeset automation does not cover lock-file-only updates. Check whether a bundled dependency (for example zod/mini) changed the built output and add a patch changeset if so; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+    ]
   },
   "packageRules": [
     {
@@ -46,7 +49,7 @@
       "matchPackageNames": ["effect", "@effect/vitest"],
       "groupName": "effect",
       "prBodyNotes": [
-        "Updating the exact optional effect peer requires only one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab; its summary must name the new version and say that hosts pinning the old one fail to install under npm. Documentation refers to peerDependencies.effect and needs no version edits; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+        "The changeset automation does not detect optional effect peer updates. Add one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab, explaining the new peer version and npm install failure for hosts pinning the old version. Keep the optional peer aligned with the catalog devDependency. Documentation refers to peerDependencies.effect and needs no version edits; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
       ]
     },
     {
@@ -79,5 +82,6 @@
   ],
   "vulnerabilityAlerts": {
     "rangeStrategy": "bump"
-  }
+  },
+  "gitIgnoredAuthors": ["agent-kit-changeset-bot@users.noreply.invalid"]
 }
