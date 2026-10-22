@@ -11,4 +11,3 @@ Shared decisions follow [CONTRIBUTING](../../CONTRIBUTING.md#change-design-gate)
 ## Active Plans
 
 - [0001: agent-kit](0001-agent-kit.md): the shared foundation for agent projects, from the package layout to the phased execution plan (P0–P6). Paired with [Spec 0001](../specs/0001-agent-kit.md).
-- [0002: provider packages, a service directory and a pnpm workspace](0002-providers-and-workspace.md): one package per coding agent behind a service directory, the DDD cleanup of the model, a narrower public surface, boundary rules as lint rules, and the move from Rush to a pnpm workspace.

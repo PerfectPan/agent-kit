@@ -17,10 +17,8 @@ Start from the knowledge and the invariants, not from the file you want to write
 | lease, lanes | `@rivus/agent-kit-collab` | Generic | Mutual exclusion and scheduling between agents |
 | redact | `@rivus/agent-kit-redact` | Utility module | Pure redaction functions; no domain model |
 
-Packages are created in the phase that gives them content; see the plan's section 6.3.
-
 Providers own their agent's identity, probe recipes, hook dialects, install adapters, log layouts and decoding,
-and ACP launch details. All seven built-in agents live in `packages/providers/`, following [plan 0002](../plans/0002-providers-and-workspace.md#32-provider-packages).
+and ACP launch details. Built-in agents live in private packages under `packages/providers/`.
 Providers implement context SPI interfaces; contexts own the service models, shared helpers and use cases.
 The shell assembles the built-in service tables and derives its built-in id union from the provider identities.
 Contexts contain no agent knowledge or built-in tables; they read the service tables supplied by their callers.
@@ -61,42 +59,118 @@ Every context package uses the same layout, creating only the directories it nee
   spi.ts                provider interfaces and the context helpers their implementations need
 ```
 
-Each provider groups its agent's service implementations, shared facts, layout and record parsing under
-`packages/providers/<agent>/src/`. Its service subpaths implement the context SPI; it has no barrel. The shell
-owns every built-in table, including the identity table. Contexts keep shared format adapters, such as sessions'
-translation of ACP `session/update` streams, under the concept whose model they read and write. Those shared
-adapters may import other adapters, but contain no agent-specific rules.
+Agent-specific code lives in providers. A domain `adapters/` folder holds only shared external-format readers
+and renderers. The five such folders are harness lifecycle (hook payloads), sessions transcript (ACP updates),
+sessions usage (usage lines), cost pricing (LiteLLM price lists) and discovery installation (version output).
+They are pure. The `layer` rule prevents the model layer from importing them. They are the only domain layer allowed schema dependencies such as `zod/mini`.
 
-The layer principles:
-
-- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may import pure utilities in `lib/`, but no `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
-- `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
-- `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
-- Every layer may use `lib/`; a utility may import only other utilities in its context and the shared kernel, with no domain, application, infrastructure or Platform dependencies. The only allowed external specifier is package-declared `zod/mini`, for pure schema helpers.
-
-| Layer | Contents | May import |
+| Layer | Responsibility | Boundary enforcement |
 | --- | --- | --- |
-| `domain/` | Value objects, aggregates, their child entities, factories, errors, domain events, stateless domain services | Any concept folder of this context, but no `adapters/` folder — its own or another concept's — plus catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
-| `domain/<concept>/adapters/` | Shared external-format readers and renderers; agent-specific translation lives in providers. Pure functions, no IO | Any concept folder, also of other concepts, other concepts' `adapters/` folders, catalog, and the external packages the package allows, such as `zod/mini` |
-| `application/` | `use-cases/` coordinate supplied service tables and ports; `services/` is code shared by use cases; `ports.ts` declares infrastructure ports; Platform slices named by provider interfaces live in `spi.ts`, and use-case-only slices in `platform.ts` | Domain, the `adapters/` folders and ports |
-| `infra/` | Implementations of ports the kit declares: persistence implementations under `repository/` (aggregate repositories and key-value stores such as acp's session bindings), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
+| `domain/` | Pure model rules, aggregates, entities, values and services; no IO or Platform | `layer`, `types-only`, `external-dependency`, `effect` |
+| `domain/<concept>/adapters/` | Shared external-format readers and renderers; no agent-specific rules or IO | Separate `adapters` layer in `boundaries.layers`; `external-dependency`, `effect` |
+| `application/` | Use cases and shared coordination through service tables and ports | `layer`, `package-dependency`, `effect` |
+| `infra/` | Port implementations, stored formats and Layer compositions; outside access through Platform | `layer`, `node-builtin`, `effect` |
+| `lib/` | Pure helpers with no domain meaning or Node capability | `layer`; `external-dependency` permits only package-declared `zod/mini` |
+
+The exact import matrix and npm specifiers live in `boundaries.ts`, not a second allowlist here. See
+[Boundary Rules](#boundary-rules) for the checks and their fixtures.
 
 `@rivus/agent-kit-collab` is a published package that keeps its own code, so it nests this layout under each public entry: `src/lease/domain/lease/`, `src/lease/application/`, `src/lease/infra/`, `src/process-lock/application/`, each entry's file being `src/<entry>/public.ts` (`entries` in `boundaries.ts`). The layer rules apply across the entry folders as within one context: the plain process lock judges holders with lease's domain rules, and lease's infra uses the process lock for its fences. collab reaches agent-kit only through the public entries listed under `publicImports` (`/catalog`, `/platform`, `/platform/effect`), which the boundary rules treat as the shared kernel, the Platform port and its Effect entry; agent-kit is a peer, so a process holds one copy of each.
 
-- Only `@rivus/agent-kit-platform-node` may import `node:*`.
 - Cross-package imports go through the target package's `public.ts`, or its `spi.ts` when the importer's `spiImports` explicitly lists that dependency; never into its `domain/` (including the `adapters/` folders) or `infra/`. Dependencies are declared in `package.json`; pnpm's isolated `node_modules` gives a package only what it declares, so an undeclared import does not resolve. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
 - Sibling access requires the importer's `dependsOn` and the target's explicit `siblingEntries` in `boundaries.ts`. Each listed entry must exist in the target's `exports`; adding an export alone grants no sibling access. Lists contain only entries used by siblings: harness lists `public/events`, never its aggregate `public` entry. Bare package imports must name an explicit entry; `public/effect` stays shell-only, and siblings use the declared `effect` entry. SPI access remains governed separately by `spiImports`.
-- Package dependencies run one way: discovery, sessions and harness depend on catalog and platform; acp also depends on sessions; cost depends on sessions for types only; platform-node depends on platform; collab uses agent-kit only through its public subpaths.
 - Contexts that are pure computation (catalog, cost, agent translation, hook event parsing) have no `application/` and export domain functions directly.
-- A concept's `adapters/` folder and `infra/` are different things. An agent adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
+- A concept's `adapters/` folder and `infra/` are different things. A shared format adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
 - A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. Its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
+
+## Provider Packages
+
+A provider is a private `@rivus/agent-kit-provider-<agent>` package bundled into the shell. It creates only the
+service files it supports:
+
+```text
+packages/providers/<agent>/
+  src/
+    facts.ts       identity, home rules, paths, commands, environment names and agentMarkers
+    layout.ts      storage layout shared by discovery, sessions and usage, when needed
+    records.ts     shared record parsing; records/ may hold several related modules
+    identity.ts    CodingAgent
+    discovery.ts   ProbeRecipe
+    hooks.ts       HookDialect
+    install.ts     InstallAdapter
+    sessions.ts    SessionAdapter; sessions/ holds listing and transcript implementation
+    usage.ts       UsageDecoder
+    acp.ts         AcpProfile
+  test/            agent-specific fixtures, behavior and service conformance tests
+```
+
+`providerServices` in the boundary manifest declares each service subpath. The manifest test
+`requires provider service exports and refuses a barrel` checks the package exports. The
+`package-dependency`, `spi-import` and `relative-escape` rules enforce the provider-to-context direction:
+providers use context SPI entries, without importing the shell, another provider or a context's implementation.
+Contexts and testing source do not import providers; integration tests use declared `testsOnly` access.
+Provider interfaces supply Platform slices through the context SPI, so provider code needs no direct Platform import.
+
+The `provider-entry` rule keeps hooks and usage, including their transitive local helpers, within their slim import
+sets. Its lists live in `infra/architecture/lint.ts`, with allowed and rejected cases in `provider-cases.ts` and
+its agent-specific case files. Keep parsing shared by sessions and usage in `records.ts` or `records/`, not in
+`sessions/`; `facts.ts` must satisfy both slim paths. These restrictions do not grant otherwise undeclared SPI or
+npm access. The `shell-entry` rule binds each service subpath only from its matching shell table module.
+
+Relations between agents are data: a HookDialect names `foreignHooks` by agent id rather than importing another
+provider. Formats used by several agents belong to their context's SPI: ACP update translation in sessions,
+command-hook configuration and shared skills-directory rendering in harness, and base ACP environment rules in acp.
+Add an SPI helper only when a provider imports it. Agent layouts, records and translators stay in the provider;
+cost has no provider consumer and no SPI entry.
+
+Unsupported services and the README support matrix are checked by `packages/agent-kit/test/provider-tables.test.ts`.
+Every built-in agent/service pair has either an implementation or a reason in `src/providers/unsupported.ts`.
+Cross-agent conformance stays in testing and harness with complete test tables; provider-local suites use their own
+services. Generic helpers under `testing/test/` may be imported by relative path from provider tests and are not
+production API. Development dependency cycles are permitted by `ignoreWorkspaceCycles`; `testsOnly` dependencies
+and the acyclic production graph are enforced by `manifest.test.ts`.
+
+## Service Tables And Routing
+
+The shell owns the `Provider` descriptor: an id and optional implementations of identity, discovery, hooks,
+install, sessions, usage and ACP. Each `src/providers/<service>.ts` assembles one built-in service table; the
+separate `builtin.ts` assembles complete descriptors. Providers implement context interfaces without importing
+this shell type. Catalog owns `ServiceTable<T>`, a read-only partial record keyed by agent id.
+
+Context use cases require exactly the service tables they read, including identity when resolving aliases or
+homes. Routed shell calls accept `providers?: readonly Provider[]`. Each supplied service replaces that service
+for the same id; omitted services and other agents keep their defaults. Later descriptors win when they supply
+the same service for the same id. There is no global registry. `provider-bindings.test.ts` covers the bindings and
+`provider-tables.test.ts` covers repeated descriptors and the built-in tables.
+
+Every capability lookup uses catalog's `lookupService(agent, table)` or `requireService(agent, table, reason?)`.
+The first returns `Result<T, CapabilityUnsupported>` when data names an unsupported agent; the second throws
+`AgentKitError` with code `capability-unsupported` when the caller explicitly requests one. Only own, non-null
+entries count. `service-table.test.ts` covers these cases. A supplied service's agent id must match its descriptor.
+
+Identity queries take the table explicitly. `parseCodingAgentId(input, identities)` resolves aliases;
+`homeRuleOf(agent, identities, own?)` prefers the service's own rule to the identity fallback, and `homeFromRule`
+resolves it with supplied home and environment values. `identity.test.ts` covers canonical ids before aliases,
+key/id mismatches and name conflicts; the shell validates merged identities. Providers carry their home rules
+from `facts.ts`, while third-party adapters may use the identity fallback. Catalog's id type is a string; the
+shell's `BuiltinCodingAgentId` and membership guard derive from its identity table, and its public `CodingAgentId`
+retains completion for built-ins while accepting third-party ids.
+
+### Host Markers
+
+A HookDialect's `hostMarkers` declares top-level payload fields and environment variables that identify the agent
+actually running a hook. `sniffSource` checks all payload markers before any environment marker, in hooks-table
+order within each kind. An environment marker applies only when the declared agent is listed in that dialect's
+`foreignHooks`. The shell puts Grok before Cursor, covered by `provider-tables.test.ts`; cross-agent samples run in
+`testing/test/hook-dialects.conformance.test.ts`. Terminal identity is separate from coding-agent identity and
+belongs to harness lifecycle services.
 
 ## Read-Side Services And Utilities
 
 Catalog home resolution, discovery classification, harness lifecycle and session/transcript/usage rules live in
 `services/`; their read models remain plain data. Context `lib/` folders hold time conversion, own-property lookup,
-JSON formatting (with its `JsonValue` type), bounded key retention and the existing short hash. Schema helpers use
-only `zod/mini`. The shared `@perfectpan/lint-config` disables `promise/valid-params`: TypeScript
+JSON formatting (with its `JsonValue` type), bounded key retention and the short hash. Schema helpers use
+only `zod/mini`. The shared `@perfectpan/lint-config` (v0.6.1) disables `promise/valid-params`: TypeScript
 checks Promise method arity, while that rule misreads `z.catch(schema, fallback)` as a Promise method. Source files
 keep the direct schema call without local disable comments. Keep lenient parsing local to each context: sessions
 wraps an optional schema and falls back to absence, while cost, discovery and harness take an explicit fallback. Sharing them would add cross-context parsing
@@ -104,9 +178,8 @@ dependencies or expand catalog beyond its shared identity model.
 
 Sessions' path helpers deliberately preserve spelling. Homes, session refs and POSIX filenames may contain
 backslashes, repeated separators or dot segments, and usage ids depend on those exact strings. `pathe` normalizes
-these inputs, so it cannot replace these helpers for their accepted input domain. Providers keep the existing SPI.
-`deepFreeze` freezes its argument; value factories copy retained data first, while `Ledger.restore` continues to
-freeze the supplied snapshot in place.
+these inputs, so it cannot replace these helpers for their accepted input domain. Providers access these helpers through the sessions SPI.
+`deepFreeze` freezes its argument; value factories copy retained data first, while `Ledger.restore` freezes the supplied snapshot in place.
 
 ## Aggregate Or Value Object
 
@@ -121,6 +194,24 @@ Use the lifecycle as the criterion. A concept is an aggregate when it keeps one 
 | Lane (collab) | An in-memory state machine (idle, queued, running, with a pending activation while queued or woken again while running) with at most one activation per key |
 
 Read-only contexts have no aggregates. sessions, discovery, cost and catalog only project data that agents wrote; their models are plain value objects and domain services such as `foldTranscript`. Do not invent an aggregate to make a read-only context look like the others.
+
+## Model Boundaries
+
+| Side | Scope | Value objects | Boundary data |
+| --- | --- | --- | --- |
+| Write | harness bundle, install-plan and ledger; acp; collab lease and lanes | Immutable classes with value-owned rules | Plain snapshots through `toSnapshot()` and `restore()` where values cross a boundary |
+| Read | sessions, discovery, cost, catalog and harness lifecycle | Plain data, with behavior in domain services | The data itself |
+
+Keep aggregate snapshot types beside their aggregate, and provider interfaces in `spi/` or `application/spi.ts`,
+not among value objects. A separate DTO is needed only when the public shape must differ from a snapshot. Plain
+request and response data with no value-owned rule stays plain; the write-side sections below identify those cases.
+Sessions are read-side values: `SessionRef` identifies an agent's conversation, while `SessionHead` and
+`SessionSummary` describe moments of it. The kit does not maintain their lifecycle or its own session index.
+
+A rule about one value belongs to that value, a rule spanning objects belongs in `services/`, and a pure helper
+without domain meaning belongs in `lib/`. The manifest test `forbids policies folders throughout the repository`
+enforces the directory rule. Code needing a Node capability belongs in application services or infra, accessed
+through Platform; add a missing port capability with both platform-node and memory-platform implementations.
 
 ## Aggregate Shape
 
@@ -165,19 +256,18 @@ retains the validated spec snapshots. RegistrationState copies its record and in
 and directory observations keep the read content until a value object retains it. Values and aggregates share the
 pure `lib/deep-freeze.ts` helper. A `PlanStep` owns its field invariants, disk-write decision, precondition checks and
 resulting content. `InstallPlan` checks cross-step and ledger evidence, then stores validated steps; it orders installation before reverse-order
-removal. Root containment and ledger-basis comparisons retain their existing aggregate error reasons and ordering.
+removal. The install-plan aggregate owns root containment and ledger-basis comparisons; its tests cover rejection reasons and ordering.
 
 Public and persisted data stay plain. Explicit `Snapshot` types name those shapes internally; public and testing
-SPI exports retain their existing names. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
+SPI exports expose the plain shapes. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
 `InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, the `StepContentAfter`
 result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
 rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
 `StepContentAfter` is local to the application executor. `Strategy` lives with the bundle SPI. Registration
 observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
-the existing plain snapshots.
+plain snapshots.
 
-No `policies/` folder is allowed in the repository; the architecture manifest test enforces this. Cross-object
-conflict choices, legacy ownership, registration commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
+Cross-object conflict choices, legacy ownership, registration commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
 install-file rendering also lives in bundle `services/`, retaining its provider SPI exports. Legacy command content
 is parsed with `zod/mini` in the application layer before the domain receives text evidence keyed by each observation;
 locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
@@ -190,13 +280,12 @@ until the Platform resolves links; rejecting relative input still returns `undef
 return immutable paths. The value stays inside the application and domain, so it needs no snapshot type.
 `SessionBinding` copies its typed input and selects the agent that owns it, without adding field validation.
 `SessionBindingSnapshot` retains the plain store and public shape; application writes explicitly call `toSnapshot()`.
-The file store keeps its existing schema validation and serialization.
+The file store validates and serializes the persisted shape.
 
 `McpServerConfig`, `NameValue` and `PromptBlock` remain plain ACP request data in `value-objects/`; SDK conversion
 belongs to the wire adapter. Session setup, permission selection, client-path verdicts and environment filtering
 span several inputs and live in `services/`. `spi/` holds provider interfaces and their parts; the provider environment
-defaults live beside the ACP profile there, retaining their existing SPI export. ACP has no domain `policies/` or
-`adapters/` folder.
+defaults live beside the ACP profile there. ACP has no shared external-format domain adapter.
 
 ## Collab Write-Side Values
 
@@ -206,14 +295,13 @@ fencing generation through Results and checks a resource's highest accepted toke
 identity and judges liveness without rejecting nonfinite numbers; repository codecs validate persisted identities.
 `LeaseTiming` validates durations and judges the holder's renewal deadline. `LaneLimits` validates capacity and timeouts and owns admission and FIFO
 selection. Lease owns observation, freshness, acquisition and loss; Lane derives wake results from its events.
-Neither concept has a `policies/` folder.
 
 `HolderSnapshot` and `FencingTokenSnapshot` name boundary data internally; the public `Holder` export remains the
 plain identity shape. Lease snapshots, held errors and handle tokens contain plain data, with explicit conversion
 from values. Lease copies its retained holder before freezing the snapshot, and Lane freezes its own snapshot;
 caller inputs stay untouched. Timing and limits stay inside the application/domain and need no snapshot type.
 Record restoration keeps the key, generation, revision, holder/id and renewal-time validation order.
-Loss classification accepts a raw snapshot so a missing record or inconsistent holder/id pair still has the existing diagnostic meaning. Repository read failures are mapped in the application.
+Loss classification accepts a raw snapshot to report missing records and inconsistent holder/id pairs. Repository read failures are mapped in the application.
 
 ## Aggregates, Entities And Repositories
 
@@ -234,9 +322,8 @@ An aggregate's repository port — `LedgerRepository`, `LeaseRepository` — off
 Each context declares its own `RevisionConflict` next to its port; the type is not shared across contexts. Its
 fields are named alike in every context — the context's id field (`scope` for the ledger, `key` for the lease),
 plus `expectedRevision` and `storedRevision`.
-`SessionBindingStore` (acp) stores value objects, not an aggregate: it stays a key-value store with its current
-names, and its documentation says so. `LedgerLock` is unchanged by these rules: mutual exclusion is its own port
-beside the repository.
+`SessionBindingStore` (acp) stores value objects as a key-value store. `LedgerLock` supplies mutual exclusion as
+a separate port beside the repository.
 
 The generic conformance cases for this shape (`load` of a missing id, the first `save`, a stale revision refused
 with `RevisionConflict` and nothing changed, strictly increasing revisions, an unknown `schemaVersion` refused and
@@ -249,8 +336,6 @@ kept, and reopening for persistent implementations) live in the testing package'
 - Each use case declares only the ports it uses. In a plain TS context the platform part is the first parameter, typed as a `Pick`, for example `listSessions(deps: Pick<Platform, 'fs' | 'env' | 'home'>, opts)`. In an Effect context the use case takes its ports from `Context.Service` (see [Effect Rules](#effect-rules)).
 - Harness validates the containers returned by `LedgerRepository.load` in `loadLedger` before restoring the domain model. A stored snapshot and its `entries` must be plain objects, and `pending` must be an array; invalid containers fail with `InvalidLedger`. This also rejects array-valued `entries` from external repositories, as the file repository's schema already does.
 - The application layer holds no policy: trigger timing, fail-open behavior, retries, which agents to count and where to store results belong to the consuming application.
-- Context use cases require a `providers` object containing exactly the service tables they read, plus identity when resolving aliases or homes. Shell bindings accept `providers?: readonly Provider[]` and merge each service independently over built-ins by id. There is no global registry. Reading data for an agent that has no adapter in the table is an expected outcome and returns a `CapabilityUnsupported` value; naming such an agent in a call's own options (for example `listSessions({ agents })`) is a programming error and throws `AgentKitError` with code `capability-unsupported`.
-- Catalog's `lookupService(agent, table)` returns `Result<T, CapabilityUnsupported>` for data; `requireService(agent, table, reason?)` throws the named-agent error. Only own, non-null table entries provide a service. Identity queries take the table explicitly: `parseCodingAgentId(input, identities)` resolves aliases, and `homeRuleOf(agent, identities, own?)` gives an own rule precedence. `homeFromRule` resolves that rule against supplied home and environment values. The shell validates merged identities: keys must match ids, and names may not belong to distinct identities. A service supplied by a descriptor must use that descriptor's id.
 - Do not add an export, a deep import or a facade to make a caller compile. Derive option and result types from the retained signatures (`Parameters`, `ReturnType`) instead.
 
 ## Make Persistence And Partial Failure Explicit
@@ -265,11 +350,12 @@ kept, and reopening for persistent implementations) live in the testing package'
 
 ## Expose A Small Public Surface
 
-- Stateless operations are functions over plain data. Stateful parts are created by factory functions. The only public class is `AgentKitError` (`code` + `cause`), recognized through a `Symbol.for` brand.
+- Stateless operations are functions over plain data. Stateful parts are created by factory functions. The public error class `AgentKitError` (`code` + `cause`) is recognized through a `Symbol.for` brand.
 - Aggregates are exposed as handle interfaces plus read-only snapshot types, obtained only through use cases. Their classes never appear in `public.ts`.
-- `spi.ts` lists the provider interfaces and shared helpers used by adapters. Pure interfaces live in `domain/<concept>/spi/`; file-reading interfaces live in `application/spi.ts`. Shared helpers stay internal; SPI interface types are public through their service's shell entry. `spi: true` declares the entry in the boundary manifest; `spiImports` grants SPI access independently of `dependsOn` public entry access, subject to the existing layer and type-only rules. Testing imports harness's plain SPI for ledger fixtures; its hook conformance uses `public/events` to avoid the aggregate Effect entry.
-- `public.ts` lists every exported name. The shell re-exports unchanged names one by one and binds routed functions to the per-service modules under `src/providers/`. Each entry imports only the services it binds; `/harness/events` reads only the hooks table. `builtinProviders` is assembled for consumers that need all services and shares the ordinary pack, so its service objects are the ones those use cases bind. `/cost`, `/harness/events` and `/transcript/usage` stay isolated; hooks retain their own `builtinHookDialects` export and separate objects. Local shell imports are declared in `boundaries.shellImports`; `export *` stays forbidden. Internal `public.ts` names do not become shell exports automatically. Within a package, import the defining file directly; sibling and concept `index.ts` barrels and bare internal package imports are forbidden.
+- `spi.ts` lists the provider interfaces and shared helpers used by providers. Pure interfaces and their parts live in `domain/<concept>/spi/`; file-reading interfaces and their Platform slices live in `application/spi.ts`. `application/ports.ts` holds ports implemented by the kit's own infra. Shared helpers stay internal until a third-party provider needs them; SPI interface types are public through their service's shell entry. `spi: true` declares the entry in the boundary manifest; `spiImports` grants SPI access independently of `dependsOn` public entry access, subject to the existing layer and type-only rules. Testing imports harness's plain SPI for ledger fixtures; its hook conformance uses `public/events` to avoid the aggregate Effect entry.
+- `public.ts` lists every exported name. The shell re-exports unchanged names one by one and binds routed functions to the per-service modules under `src/providers/`. Each entry imports only the services it binds; `/harness/events` reads only the hooks table. `builtinProviders` is assembled for consumers that need all services and shares the ordinary pack, so its service objects are the ones those use cases bind. `/cost`, `/harness/events` and `/transcript/usage` stay isolated; hooks retain their own `builtinHookDialects` export and separate objects. The `shell-entry` rule enforces `boundaries.shellImports` and named exports. Internal `public.ts` names do not become shell exports automatically. Within a package, import the defining file directly; `manifest.test.ts` rejects sibling and concept `index.ts` barrels, and `public-entry` checks entry access.
 - A published name needs an application, provider SPI or testing consumer. Unconsumed option/result types stay in signatures without named exports; derive them with `Parameters`, `ReturnType`, indexed access or Effect success/error types. `/catalog` retains `AgentKitError` and `isAgentKitError` for recognizing shell errors. Individual built-in tables other than `builtinHookDialects`, per-agent transcript exports and unbound `parseCodingAgentId` are not shell API.
+- Descriptor types use the narrow `acp/public/profiles` and `harness/public/install` entries so declaration bundling does not pull aggregate Effect dependencies into plain entries. A sibling entry is not automatically a published entry: keep only names imported by sibling source or tests.
 - An entry whose runtime profile differs from the rest of its context, such as the hook path `/harness/events`, gets its own file next to `public.ts` (harness's `src/events.ts`), exported as `<package>/public/<name>`. It imports only the layers that path needs, so its module graph does not depend on tree-shaking, and the shell entry imports its context function from that entry to bind the needed service tables.
 - Adapter interfaces carry a version literal (`specificationVersion: 'sessions-v1'`, `'harness-v1'`), so a later version can coexist with the current one.
 - Versioning: correcting an agent fact is a patch; a new agent, event type or capability is a minor; dropping a Node LTS is a major. Unstable APIs go under `/experimental/*`.
@@ -354,8 +440,59 @@ The assembly root lives in each consuming application, not in the kit.
 | SessionBindingStore (a key-value store, not an aggregate) | — | Read, write, delete; the conflict semantics of two writes for one `sessionKey`; bindings survive reopening |
 
 - A rule that a repository cannot judge belongs to the use case tests of its owner. For example, "invalidate the binding when a cancel does not settle" is an AcpSession rule, tested in acp by simulating an unsettled cancel and asserting that the binding is removed.
-- When ownership or dependencies change, update `infra/architecture/boundaries.ts`; the boundary rules are generated from it. `infra/architecture/lint.ts` turns it into `vp lint` rules, which every package's `vite.config.ts` applies through `withBoundaryLint`: eslint-plugin-boundaries for imports between packages and layers, Effect and npm specifiers; oxlint's `import/no-nodejs-modules` for Node built-ins; `no-restricted-syntax` for computed `import()`, shell entries, non-`.ts` sources and agent markers. Generated diagnostics carry their rule id in brackets, such as `[layer]`; the built-in Node rule and parser keep their own diagnostics. `manifest.test.ts` checks what has no source file to lint: every package under `packages/` is declared, its `workspace:` dependencies are allowed, its entry files exist, sibling and concept `index.ts` files and private root export mappings are absent, its lint script runs whole-package `vp lint`, and its `vite.config.ts` applies the rules. Lint scripts may add `2>&1` and the existing `&& effect-tsgo diagnostics --project … --strict` commands. The manifest test requires the generated overrides last and in order, accepts only `dist/**` in top-level `ignorePatterns`, and requires the top-level `boundaries/` and `import/` settings to match the generator exactly, including their keys. The generated source override explicitly enables the `import` plugin even when the top-level plugin list omits it. `run-lint-cases.ts`, part of `pnpm run test`, lints the cases of `lint-cases.ts` in a temporary copy of the repository: a legal import (such as cost's domain importing a type from sessions) must report nothing, and a violating one (`node:*` in a domain file, `effect` in a plain context, a deep import into another package's `domain/`) must report its rule. A new rule or exemption comes with its cases.
-- Agent knowledge stays in providers. The non-test source of catalog, discovery, sessions, harness, acp and cost may not spell an agent marker (an agent id, a home directory such as `.claude`, an environment variable such as `CLAUDE_CONFIG_DIR`) as a whole string literal or literal type, or as a `/`-separated piece of a template literal's static text. A marker is a value that names exactly one agent; standard environment names such as `XDG_DATA_HOME`, generic path segments and plain file names are not markers. Each provider's `facts.ts` supplies markers as literals or references to exported string-literal constants. `boundaries.ts` records the facts path, and `lint.ts` parses its text with `oxc-parser` to compute the combined set without a build. There are no source-path exemptions. The lint cannot see agent knowledge without a marker, such as branching on Claude's `notification_type` field; review checks for it.
+### Boundary Rules
+
+[`boundaries.ts`](../../infra/architecture/boundaries.ts) owns package dependencies, sibling and SPI access, layers,
+external specifiers, Effect paths and the contexts covered by agent-marker checks. Update it with a new package or
+dependency. [`lint.ts`](../../infra/architecture/lint.ts) generates each package's rules through `withBoundaryLint`;
+`manifest.test.ts` verifies that every package runs whole-package `vp lint` with the generated configuration intact.
+
+| Check | Authority and evidence |
+| --- | --- |
+| `layer`, `package-dependency`, `types-only`, `external-dependency`, `deep-import`, `relative-escape`, `public-entry`, `spi-import`, `effect` | Boundary manifest and generated import policies; `lint-cases.ts`, `spi-cases.ts`, `sibling-entry-cases.ts`, `lib-cases.ts` |
+| `provider-entry`, `shell-entry` | `lint.ts`; provider cases and shell cases in `lint-cases.ts` |
+| `node-builtin`, `dynamic-import`, `source-file`, `parse`, `unresolved` | Built-in Node rule, syntax selectors, parser and resolver; `lint-cases.ts` |
+| `undeclared-package`, entry files/exports, workspace dependencies, test-only dependencies, production cycles, forbidden barrels and policies folders | `manifest.test.ts`; unknown source packages also fail lint |
+| `agent-marker` | `agent-markers.ts`, `agent-markers.test.ts` and marker cases in `lint-cases.ts` |
+
+Generated diagnostics name the rule in brackets; built-in rules and the parser keep their own diagnostics.
+`run-lint-cases.ts` runs allowed and violating cases in a temporary repository copy and checks exact rule ids.
+Keep targets resolvable: the boundaries plugin can skip an unresolved dependency as external. The TypeScript
+resolver handles source `.js` specifiers and declaration-level type imports. New rules or exemptions need both
+allowed and rejected cases; run these cases when upgrading the lint plugins too.
+
+An agent marker is a value naming exactly one agent: its id, alias, home directory or environment variable.
+Generic file names, path segments and shared environment names are not markers. Each provider's `facts.ts` exports
+`agentMarkers`; `providerFacts` points to it. The extractor parses source text without executing provider code and
+rejects unsupported declarations. Marker values have one authority in those facts. The `agent-marker` rule covers
+exact literals and slash-separated template pieces in non-test context source, with no source-path exemptions.
+
+Review also checks **agent knowledge without a marker**, such as a conditional on one agent's
+`notification_type` field. Move that behavior to its provider or express it through the SPI; a clean lint run
+cannot establish that this review item passed. Keep fixtures synthetic and free of private paths or names.
+
+### Compatibility And Size Evidence
+
+For a behavior-preserving refactor, compare fixed inputs through all supported providers and retained use cases.
+Compare runtime and declaration exports against the intended public surface, and demonstrate that the parity
+check detects an injected defect. For import-only changes, compare normalized AST statements and mapped chunks;
+module ordering, chunk hashes and declaration ordering may differ without changing behavior.
+
+Run the full check steps from [CONTRIBUTING](../../CONTRIBUTING.md#required-checks). Provider tests run their service
+conformance suites; moved model rules retain behavioral assertions, with a reverted-rule failure demonstrating
+coverage. The built-output identity check (`scripts/check-provider-packing.ts` in the shell) runs from
+`check:package` after build, not from unit tests. It checks descriptor reference identity in ordinary entries;
+isolated hook objects are intentionally separate. `check-dist.ts` checks the slim runtime and declaration graphs.
+
+Compare every size-limit entry in both published packages with the main commit the change starts from. Explain
+growth over 1% in the PR. Raise only exceeded budgets to measured sizes and lower budgets with more than 1%
+headroom to measured sizes; do not hide growth with spare budget. Keep identity facts together even when an
+unbundled catalog chunk contains unused facts: assess the tree-shaken entry as well as its chunk. Record CI duration
+when changing workspace structure or lint tooling.
+
+Breaking releases also require the [application comparison](../development/adoption.md#application-comparison-before-release)
+before the release PR is merged. Publication and application adoption remain separate checks in the
+[release runbook](../development/release.md).
 
 ## What Not To Build
 

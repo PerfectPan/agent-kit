@@ -8,28 +8,28 @@ Before adoption, select a verified npm release whose manifest exports the entrie
 
 The source exports 17 agent-kit entries and three collab entries (20 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
 
-| Entry                                  | Main API                                                                                                                              | Calling style                                   |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `@rivus/agent-kit/providers`           | `Provider`, `builtinProviders`                                                                                                         | Plain service descriptors                       |
-| `@rivus/agent-kit/catalog`             | `builtinCodingAgents`, `parseCodingAgentId`, `homeFromRule`, `Result`, `AgentKitError`                                                 | Plain, pure                                     |
-| `@rivus/agent-kit/platform`            | `Platform` and port types, `splitLines`                                                                                               | Plain                                           |
-| `@rivus/agent-kit/node`                | `createNodePlatform`                                                                                                                  | Plain, Node                                     |
-| `@rivus/agent-kit/platform/effect`     | `PlatformService`                                                                                                                     | Effect service                                  |
-| `@rivus/agent-kit/node/effect`         | `NodePlatformLive`                                                                                                                    | Effect Layer, Node                              |
-| `@rivus/agent-kit/sessions`            | `listSessions`, `isSessionHead`, `builtinSessionAdapters`                                                                             | Plain, platform argument                        |
-| `@rivus/agent-kit/transcript`          | `loadTranscript`, `summarizeSession`, `readOriginal`, `foldTranscript`, `foldStreamParts`, translators and event rules                | Plain; IO takes a platform                      |
-| `@rivus/agent-kit/transcript/usage`    | `scanUsage`, `decodeUsage`, `listUsageSources`, `isUsageRecord`, `addUsage`, `noCacheInputTokens`, `toAiSdkUsage`, `toOtelAttributes` | Plain, no external imports; IO takes a platform |
-| `@rivus/agent-kit/cost`                | `createPricing`, `costOf`, `calendarWindow`, `summarize`, `fromLiteLLM`                                                               | Plain, pure, no imports                         |
-| `@rivus/agent-kit/discovery`           | `detectAgents`, `builtinProbeRecipes`, `classifyInstallation`, `resolveAuthState`                                                     | Plain, platform argument                        |
-| `@rivus/agent-kit/harness/events`      | `readHookEvent`, `reduceLifecycle`, `lifecycleStatus`, `heartbeatSignal`, `builtinHookDialects`                                       | Plain, synchronous, no IO or imports            |
-| `@rivus/agent-kit/harness`             | `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `discardPlan`, `HarnessLive` and individual port Layers  | Effect                                          |
-| `@rivus/agent-kit/acp`                 | `connectAgent`, `probeAgent`, `builtinAcpProfiles`, `agentEnv`, `optionOfKind`, binding store Layers, `foldStreamParts`               | Effect; connections and turns use caller Scopes |
-| `@rivus/agent-kit/redact`              | `redact`, `redactText`                                                                                                                | Plain, pure                                     |
-| `@rivus/agent-kit/testing`             | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`                               | Test helpers, Node                              |
-| `@rivus/agent-kit/testing/effect`      | `aggregateRepositoryConformance`                                                                                                      | Test helpers, Effect                            |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld`                                                                                             | Plain, platform argument                        |
-| `@rivus/agent-kit-collab/lease`        | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository`, fencing rules       | Effect                                          |
-| `@rivus/agent-kit-collab/lanes`        | `createLanes`                                                                                                                         | Effect, process-local                           |
+| Entry | Main API | Calling style |
+| --- | --- | --- |
+| `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | Plain service descriptors |
+| `@rivus/agent-kit/catalog` | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError` | Plain, pure |
+| `@rivus/agent-kit/platform` | `Platform` (type only) | Plain |
+| `@rivus/agent-kit/node` | `createNodePlatform` | Plain, Node |
+| `@rivus/agent-kit/platform/effect` | `PlatformService` | Effect service |
+| `@rivus/agent-kit/node/effect` | `NodePlatformLive` | Effect Layer, Node |
+| `@rivus/agent-kit/sessions` | `listSessions`, `isSessionHead`, `sessionAdapterHome`, `SessionAdapter` | Plain, platform argument |
+| `@rivus/agent-kit/transcript` | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent` | Plain; IO takes a platform |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord` | Plain, no imports; IO takes a platform |
+| `@rivus/agent-kit/cost` | `createPricing`, `summarize`, `Pricing` | Plain, pure, no imports |
+| `@rivus/agent-kit/discovery` | `detectAgents`, `versionFromOutput`, `ProbeRecipe` | Plain, platform argument |
+| `@rivus/agent-kit/harness/events` | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent` | Plain, synchronous, no IO or imports |
+| `@rivus/agent-kit/harness` | `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `discardPlan`, `HarnessLive` and port Layers | Effect |
+| `@rivus/agent-kit/acp` | `connectAgent`, `probeAgent`, `agentEnv`, binding store Layers | Effect; connections and turns use caller Scopes |
+| `@rivus/agent-kit/redact` | `redact`, `redactText` | Plain, pure |
+| `@rivus/agent-kit/testing` | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance` | Test helpers, Node |
+| `@rivus/agent-kit/testing/effect` | `aggregateRepositoryConformance` | Test helpers, Effect |
+| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld` | Plain, platform argument |
+| `@rivus/agent-kit-collab/lease` | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect |
+| `@rivus/agent-kit-collab/lanes` | `createLanes` | Effect, process-local |
 
 The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node 24. Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
 
@@ -38,10 +38,52 @@ Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/
 `{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`. Each service merges independently;
 other services for the same id and all other agents keep their defaults. A supplied identity carries aliases and
 fallback homes. Harness `agents` filters still match exact ids, without alias or case resolution. Conflicting names
-and mismatched ids are rejected. `parseCodingAgentId(input, identities)` now needs an identity table. Use
-`homeFromRule(agent, rule, context)` in place of the removed `resolveHome`; `CodingAgentIdWithHome` is removed.
+and mismatched identity ids are rejected. Resolve a session or usage service's home with
+`sessionAdapterHome(service, { home, env }, { providers })`; it uses the service's own home rule or the merged
+identity fallback. Omit the third argument for built-in identities.
 The shell conformance suites bind built-ins; their optional third argument accepts `{ providers }` for custom host
 and identity facts.
+
+## Provider API Upgrade
+
+The 0.20 API uses descriptors without a compatibility layer. The inventory above is the supported source API;
+option and result types without named consumers are derived from retained signatures with `Parameters`,
+`ReturnType`, indexed access or Effect success/error types.
+
+| Earlier API | Current API or required change |
+| --- | --- |
+| `builtinCodingAgents`, `builtinProbeRecipes`, `builtinInstallAdapters`, `builtinSessionAdapters`, `builtinAcpProfiles` | Select the corresponding optional service from `builtinProviders` by id |
+| `adapters`, `dialects`, `recipes`, `profiles` override options | `providers` descriptors; omit the option for defaults |
+| Per-agent translators and constants | Use `loadTranscript` / `summarizeSession` or the descriptor's service |
+| `decodeUsage`, `listUsageSources` | Call a descriptor's `usage.decode` / `usage.sources`, or use `scanUsage` |
+| `resolveHome`, `CodingAgentIdWithHome`, unbound `parseCodingAgentId` | No shell export; use service home rules through `sessionAdapterHome`, and resolve application aliases from descriptor identities |
+| Lease rule functions (`isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness`) | Use lease manager and handle operations; the rules belong to internal values and aggregates |
+| Other names without a consumer | Use the retained public entries; do not deep-import an internal replacement |
+
+`builtinHookDialects` stays on `/harness/events` for the no-import hook path. `BuiltinCodingAgentId` and
+`isBuiltinCodingAgentId` stay on `/catalog`, together with the branded error and its guard. Ordinary entries share
+service objects with `/providers`; isolated hook objects are separate. SPI interface types retain their domain
+names and are imported from their service's public entry. Conformance suites bind built-in service tables and
+accept provider overrides for custom identities and host markers.
+
+| Application | Upgrade obligations |
+| --- | --- |
+| agent-presence | Select identity/display names and discovery recipes from descriptors. Preserve agent filters and version-probe options when overriding discovery. Retain hook-path dialect reads, event-name and alias assertions. |
+| agent-task-loop | Select identity/discovery for catalog and recipe presentation; preserve local recipe maps and id guards. Resolve aliases from descriptor identities. Select ACP profiles and pass edits as providers, retaining command aliases and lease/lanes behavior. |
+| The trace viewer | Project descriptors with sessions into a local adapter map for root enumeration and conformance. Use defaults without overrides; map custom adapters to `{ id, sessions }` for list/load/summarize. Preserve restrictions, custom adapter types, progress, prompt and fixture assertions. |
+
+### Application Comparison Before Release
+
+Before merging the 0.20.0 release PR, run each application's typecheck and tests against published 0.19.1 and
+again against local tarballs of the candidate release. Use the same application revision, inputs and commands for
+both runs. Applications on older kit versions may already fail against the baseline: record those failures
+separately. Every candidate-only error must be explained by the API changes above; investigate any other difference
+before releasing. Capture exact revisions, package inputs, commands and outcomes in the release evidence.
+
+For later breaking releases, use the preceding published release and the candidate in the same comparison.
+After publication is verified, open the applications' upgrade PRs and wait for their own CI. Passing kit checks,
+retiring a design document and publishing a release do not establish application adoption. The
+[release runbook](release.md#cutting-a-release) keeps the order of these gates.
 
 ## Choose the runtime boundary
 

@@ -17,6 +17,15 @@ The id of a CodingAgent, such as `claude-code` or `codex`. Documented aliases, s
 The configuration and data root of a CodingAgent, including its overrides such as `CLAUDE_CONFIG_DIR` and `CODEX_HOME`.
 _Avoid_: home on its own, which means the user's home directory
 
+**HomeRule**:
+The data that resolves an AgentHome from the caller's home and environment. A service's own rule takes precedence over its identity's fallback rule.
+
+**Service table**:
+A `ServiceTable<T>`: a read-only partial record of one service, keyed by CodingAgentId. Context use cases receive their tables from the caller; the shell assembles built-in tables from providers.
+
+**CapabilityUnsupported**:
+The expected result when data names an agent with no implementation of the required service. Explicitly requesting an unsupported agent instead throws `AgentKitError` with code `capability-unsupported`.
+
 **Result**:
 The value `{ ok: true, value } | { ok: false, error }` that plain TS functions return for expected outcomes; `error` carries a `_tag`. It is the only type shared by every context.
 
@@ -142,7 +151,7 @@ One installed thing: a file, directory, symlink, JSON or TOML entry, managed blo
 How an Artifact reaches the agent: launch-time injection, native plugin, scanned directory, shared configuration edit. Each agent's InstallAdapter declares the Strategies it supports in its own order of preference; the flow chooses a caller override the adapter declares, otherwise the first declared strategy whose required executable is on `PATH` — launch-time injection included, whenever an adapter declares it (none of the built-in ones does).
 
 **InstallAdapter**:
-One agent's install knowledge (`harness-v1`): which Strategies it supports for hooks and skills, in order of preference, and how each renders a Bundle into Artifacts at that agent's paths. Pure; `builtinInstallAdapters` holds one per agent with a HookDialect.
+One agent's install knowledge (`harness-v1`): which Strategies it supports for hooks and skills, in order of preference, and how each renders a Bundle into Artifacts at that agent's paths. A pure service supplied by a provider alongside its HookDialect.
 
 **InstallPlan**:
 The immutable result of comparing a Bundle with the Ledger and the files on disk: the steps, diffs, agent commands and expected TrustPrompts. It is refused when the Ledger changed after it was built, and rejected as a whole on an unresolved conflict.
@@ -179,6 +188,12 @@ A confirmation the agent will ask the user for after installation, such as revie
 
 **HookDialect**:
 One agent's hook facts: event names, timeout unit, permission semantics and response format per event, and how it records trust. It is the only source of these facts.
+
+**Host marker**:
+A HookDialect declaration (`hostMarkers`) that identifies the coding agent actually running a hook from payload fields or environment variables. It is runtime evidence, distinct from an agent marker used by lint.
+
+**Foreign hooks**:
+A HookDialect's `foreignHooks` declaration: hooks belonging to another agent that this agent also runs. The relation names the other agent by id.
 
 **LifecycleEvent**:
 A hook payload translated into orthogonal fields: `phase` (`start`, `activity`, `blocked`, `finish`, `unknown`), optional `scope`, `outcome`, `blocker`, `turnId`, `subagent`, `tool`, and identity fields. `agent` is the real source after sniffing.
@@ -281,7 +296,32 @@ The port through which the kit reaches files, processes, environment variables, 
 A utility module of pure functions that remove home path spellings and secret keys from values and text. It has no domain model.
 
 **Agent adapter**:
-The per-agent implementation of a context's adapter interface, under the `adapters/` of the domain concept whose model it produces (`domain/<concept>/adapters/`). It translates the agent's external format into that concept's model and is registered in a `builtinXxx` table — in the concept's `adapters/` when the table's entries are pure, in `application/services/` when they need Platform.
+A provider's implementation of a context SPI interface, translating the agent's external format into the context model or supplying its agent-specific behavior. It lives in `packages/providers/<agent>/`, not in a context's domain adapters.
+
+**Provider**:
+One agent's service implementations and facts, grouped in a private package named `@rivus/agent-kit-provider-<agent>`. Built-in provider packages are bundled into the shell.
+
+**Provider descriptor**:
+A `Provider` value exported through `/providers`: an id and the optional service implementations it supplies. `builtinProviders` contains the built-in descriptors; routed calls accept descriptors in their `providers` option.
+
+**Service**:
+One capability a provider implements: identity, discovery, hooks, install, sessions, usage or ACP. A context owns the model and use cases; a service is the unit of routing.
+_Avoid_: confusing a provider service with a domain service or an Effect `Context.Service`
+
+**SPI entry**:
+A context's `spi.ts`, exposed as `./spi`: provider interface types and the shared helpers their implementations use. Access is granted separately from sibling entry access in the boundary manifest.
+
+**Sibling entry**:
+An internal package entry explicitly allowed for other workspace packages, such as `public` or `public/events`. It is listed in `siblingEntries`; the importer declares `dependsOn`. It need not be published by the shell.
+
+**Shared format adapter**:
+A pure external-format reader or renderer in a context's `domain/<concept>/adapters/`. It has no agent-specific knowledge and does not implement an IO port.
+
+**Agent marker**:
+An agent-specific id, alias, home directory or environment name declared in a provider's `agentMarkers`. Boundary lint uses these values to detect agent facts in context source.
+
+**Snapshot**:
+The plain data representing an aggregate, entity or value at a boundary. Write-side classes expose it through `toSnapshot()` and restore it where needed; it carries no methods.
 
 **Repository**:
 The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).
@@ -293,7 +333,7 @@ An implementation, under `infra/`, of a port the kit declares itself, such as a 
 A public subpath of a published package, such as `@rivus/agent-kit/sessions`.
 
 **Shell package**:
-The published package `@rivus/agent-kit`, whose entries only re-export names from the internal packages' public surface; the internal packages are bundled into it at build time. `@rivus/agent-kit-collab` is published too, in the same lockstep version, but keeps its own code under `src/<entry>/`.
+The published package `@rivus/agent-kit`, whose entries re-export selected internal public names and bind routed functions to provider service tables; internal contexts and providers are bundled into it at build time. `@rivus/agent-kit-collab` is published too, in the same lockstep version, but keeps its own code under `src/<entry>/`.
 
 **Conformance test**:
 A test suite, exported from `/testing` (the aggregate-repository suite from `/testing/effect`), that checks an agent adapter or a repository against a context's interface definition. Built-in and third-party adapters run the same suite.
@@ -310,7 +350,7 @@ A test suite, exported from `/testing` (the aggregate-repository suite from `/te
 | Lane | In sessions, a subagent's execution line; in lanes, a scheduling unit serialized by key | Each context keeps its own meaning; the two are never mixed |
 | Generation | In lease, the fencing token | In sessions, a format generation of an agent's logs |
 | Revision | The Ledger's revision (per apply or uninstall) and a lease record's revision (per write) | Each counter belongs to its own record |
-| Adapter | An agent adapter (a concept's `adapters/`) or a port adapter (`infra/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
+| Adapter | An agent adapter (a provider), a shared format adapter (domain `adapters/`) or a port adapter (`infra/`) | An ACP adapter: an agent's ACP server program, such as claude-agent-acp |
 | Scope | An install scope (`user` / `project`); `LifecycleEvent.scope` (`session` / `turn`) | An Effect `Scope`, which owns long-lived resources |
 | Event | TranscriptEvent (recorded activity) and LifecycleEvent (hook signal) | Domain events returned by aggregate transitions; ACP `session/update` notifications |
 | Lock | LedgerLock (harness), ProcessLock and Lease (collab) | harness cannot depend on collab, so the LedgerLock and the ProcessLock are separate implementations of the same technique |
