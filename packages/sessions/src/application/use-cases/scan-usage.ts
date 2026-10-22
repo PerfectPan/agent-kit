@@ -1,7 +1,7 @@
 import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { Platform } from "@rivus/agent-kit-platform/public";
 
-import { QUIET_MS } from "../../domain/usage/policies/quiet.js";
+import { QUIET_MS } from "../../domain/usage/services/quiet.js";
 import {
   keylessRecordRead,
   nextMark,

@@ -8,7 +8,5 @@ import * as z from "zod/mini";
  * `undefined`s, as the opencode settlement's cursor state does.
  */
 export function lenient<S extends z.core.$ZodType>(schema: S): z.ZodMiniCatch<z.ZodMiniOptional<S>> {
-  // zod's `catch` wraps a schema with a fallback value; it is not a Promise handler, so the second argument is one.
-  // oxlint-disable-next-line promise/valid-params
   return z.catch(z.optional(schema), undefined);
 }

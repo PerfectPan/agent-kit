@@ -5,10 +5,10 @@ import {
   commandHook,
   configHome,
   groupedHooksFile,
-  jsonText,
   sharedAgentsDir,
   sharedSkillsDir
 } from "./install-files.js";
+import { jsonText } from "../../../lib/json.js";
 
 const context = { home: "/u/example", env: {} };
 

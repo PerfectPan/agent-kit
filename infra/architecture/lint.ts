@@ -297,12 +297,13 @@ function allowed(project: Project, rule: PackageRule, targets: Map<string, Targe
     });
   });
   const everywhere = rule.external.filter((specifier) => rule.externalOnlyIn?.[specifier] === undefined);
-  const npm = kinds
-    .filter((kind) => everywhere.length > 0 && (kind === "src" || boundaries.layers[kind].external))
-    .map((kind): Policy => ({
-      from: element(project, kind),
-      allow: { to: external(), dependency: { source: everywhere } }
-    }));
+  const npm = kinds.flatMap((kind): Policy[] => {
+    const layer = kind === "src" ? true : boundaries.layers[kind].external;
+    const sources = everywhere.filter((specifier) => layer === true || (layer !== false && layer.includes(specifier)));
+    return sources.length === 0
+      ? []
+      : [{ from: element(project, kind), allow: { to: external(), dependency: { source: sources } } }];
+  });
   const effectPaths = effectPathsOf(project);
   return [
     { from: element(project, "src"), allow: { to: local(project) } },
@@ -570,6 +571,11 @@ export function boundaryLintOf(folder: string): BoundaryLint {
   const base = isShell(project.name) ? [syntax.dynamicImport, ...syntax.shellEntry] : [syntax.dynamicImport];
   const policies: DependenciesPolicy[] = policiesOf(project);
   const overrides: OxlintOverride[] = [
+    {
+      files: ["**/*.ts"],
+      // TypeScript checks Promise method arity; this rule misreads zod/mini z.catch(schema, fallback).
+      rules: { "promise/valid-params": "off" }
+    },
     {
       files: SOURCES,
       excludeFiles: [...TESTS, DECLARATIONS],

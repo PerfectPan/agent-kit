@@ -39,7 +39,7 @@ export {
 } from "./application/spi.js";
 export { type ReadFailed } from "./domain/session/errors/session-read-error.js";
 export { SESSION_TITLE_MAX } from "./domain/session/factories/session-head.js";
-export { basenamePath, belowRoot, dirnamePath, joinPath } from "./domain/session/policies/paths.js";
+export { basenamePath, belowRoot, dirnamePath, joinPath } from "./lib/paths.js";
 export { type SessionHead, type SessionListError } from "./domain/session/value-objects/session-head.js";
 export { type SessionPreview } from "./domain/session/value-objects/session-preview.js";
 export { type SessionRef } from "./domain/session/value-objects/session-ref.js";
@@ -61,9 +61,9 @@ export {
   mergeAcpToolStatus,
   mergeAcpToolUpdate
 } from "./domain/transcript/adapters/acp-updates.js";
-export { lenient } from "./domain/transcript/adapters/lenient.js";
+export { lenient } from "./lib/lenient.js";
 export { recordTime, timedRecord } from "./domain/transcript/adapters/record-time.js";
-export { logTimestamp, timeOfValue } from "./domain/transcript/adapters/timestamp.js";
+export { logTimestamp, timeOfValue } from "./lib/timestamp.js";
 export { type SourceChanged } from "./domain/transcript/errors/source-changed.js";
 export {
   type UnknownFormatGeneration,
@@ -76,25 +76,25 @@ export {
   lineId,
   skipRecord
 } from "./domain/transcript/factories/transcript-event.js";
-export { shadowBefore } from "./domain/transcript/policies/compaction-shadowing.js";
+export { shadowBefore } from "./domain/transcript/services/compaction-shadowing.js";
 export {
   type StampedRecord,
   type TimedRecord,
   assignSeq,
   inheritTimes,
   mergeByTime,
-  mergeByTimeStream,
-  timeOf
-} from "./domain/transcript/policies/event-ordering.js";
+  mergeByTimeStream
+} from "./domain/transcript/services/event-ordering.js";
+export { timeOf } from "./lib/time.js";
 export {
   latestSnapshot,
   promptSnapshot,
   snapshotHasSystemPrompt,
   snapshotHasTools
-} from "./domain/transcript/policies/prompt-snapshot.js";
-export { OUTPUT_KINDS, placeRequest } from "./domain/transcript/policies/request-placement.js";
-export { markOrphanToolResults } from "./domain/transcript/policies/tool-result-pairing.js";
-export { MAIN_LANE_ID, isPrompt, requestUsage } from "./domain/transcript/policies/turns.js";
+} from "./domain/transcript/services/prompt-snapshot.js";
+export { OUTPUT_KINDS, placeRequest } from "./domain/transcript/services/request-placement.js";
+export { markOrphanToolResults } from "./domain/transcript/services/tool-result-pairing.js";
+export { MAIN_LANE_ID, isPrompt, requestUsage } from "./domain/transcript/services/turns.js";
 export {
   addRequest,
   addTurnDuration,
@@ -128,9 +128,10 @@ export {
   type Transcript,
   type TranscriptSession
 } from "./domain/transcript/value-objects/transcript.js";
-export { type UsageFile, type UsageLineDecoder, rememberKey } from "./domain/usage/adapters/usage-lines.js";
-export { decodeIsFinal } from "./domain/usage/policies/quiet.js";
-export { shortHash } from "./domain/usage/services/short-hash.js";
+export { type UsageFile, type UsageLineDecoder } from "./domain/usage/adapters/usage-lines.js";
+export { rememberKey } from "./lib/remember-key.js";
+export { decodeIsFinal } from "./domain/usage/services/quiet.js";
+export { shortHash } from "./lib/short-hash.js";
 export { type UsageCursor } from "./domain/usage/value-objects/usage-cursor.js";
 export { type ModelUsage, type UsageRecord } from "./domain/usage/value-objects/usage-record.js";
 export { type Usage, compactUsage } from "./domain/usage/value-objects/usage.js";

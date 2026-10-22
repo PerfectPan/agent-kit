@@ -5,7 +5,7 @@ import {
   type ArtifactLocatorSnapshot,
   locatorPointer
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import type { JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
+import type { JsonValue } from "../../lib/json.js";
 import type { Document } from "./document.js";
 import { isDocumentRecord } from "./document.js";
 

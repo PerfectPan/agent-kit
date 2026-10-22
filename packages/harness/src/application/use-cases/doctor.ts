@@ -11,13 +11,13 @@ import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
 import { type ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isBrokenSymlink } from "../../domain/install-plan/services/observation.js";
 import { threeWayVerify } from "../../domain/ledger/services/three-way-verify.js";
-import { lenient } from "../../domain/lifecycle/adapters/lenient.js";
+import { lenient } from "../../lib/lenient.js";
 import {
   duplicateHooks,
   type HookFinding,
   hookHealth,
   type HookProblem
-} from "../../domain/lifecycle/policies/hook-health.js";
+} from "../../domain/lifecycle/services/hook-health.js";
 import { hookProgram } from "../services/hook-program.js";
 import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
 import { loadLedger } from "../services/ledger-session.js";

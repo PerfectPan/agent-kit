@@ -1,7 +1,7 @@
 import { lookupService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog/public";
 import { foreignHooksOf, type HookDialect } from "../spi/hook-dialect.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
-import type { Env } from "../policies/payload-fields.js";
+import type { Env } from "./payload-fields.js";
 
 const present = (value: string | undefined): boolean => value !== undefined && value !== "";
 

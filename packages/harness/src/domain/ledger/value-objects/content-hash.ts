@@ -1,6 +1,5 @@
 import type { ArtifactKind } from "../../install-plan/value-objects/artifact-locator.js";
-
-export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [key: string]: JsonValue };
+import type { JsonValue } from "../../../lib/json.js";
 
 /**
  * What an Artifact holds: the text of a file or managed block, a symlink's target, a directory's files as

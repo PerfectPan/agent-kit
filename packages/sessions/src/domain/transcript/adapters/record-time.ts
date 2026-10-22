@@ -1,6 +1,6 @@
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
-import { type TimedRecord } from "../policies/event-ordering.js";
-import { timeOfValue } from "./timestamp.js";
+import { type TimedRecord } from "../services/event-ordering.js";
+import { timeOfValue } from "../../../lib/timestamp.js";
 
 /** A record's own time in epoch milliseconds, `undefined` when the log carries none this kit can read. */
 export function recordTime(record: SourcedRecord): number | undefined {

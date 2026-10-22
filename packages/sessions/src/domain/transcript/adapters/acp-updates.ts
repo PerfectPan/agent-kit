@@ -5,7 +5,7 @@
 
 import * as z from "zod/mini";
 
-import { timeOf } from "../policies/event-ordering.js";
+import { timeOf } from "../../../lib/time.js";
 import {
   type ToolCallPayload,
   type ToolResultPayload,
@@ -13,8 +13,8 @@ import {
 } from "../value-objects/transcript-event.js";
 import { type TranscriptStreamPart } from "../value-objects/stream-part.js";
 import { compactUsage, type Usage } from "../../usage/value-objects/usage.js";
-import { lenient } from "./lenient.js";
-import { logTimestamp } from "./timestamp.js";
+import { lenient } from "../../../lib/lenient.js";
+import { logTimestamp } from "../../../lib/timestamp.js";
 
 /** The body fields `AcpUpdate` parses, as a plain type: adapters that repeat the fields in their own schema assert
  * their set against this one. */

@@ -7,10 +7,10 @@ import {
 } from "@rivus/agent-kit-catalog/public";
 
 import { type AuthObservation, type AuthState } from "../../domain/installation/value-objects/auth-state.js";
-import { classifyInstallation } from "../../domain/installation/policies/classify-installation.js";
-import { envReading, probesAuth, resolveAuthState } from "../../domain/installation/policies/resolve-auth-state.js";
+import { classifyInstallation } from "../../domain/installation/services/classify-installation.js";
+import { envReading, probesAuth, resolveAuthState } from "../../domain/installation/services/resolve-auth-state.js";
 import { type Evidence } from "../../domain/installation/value-objects/evidence.js";
-import { installationWarnings } from "../../domain/installation/policies/installation-warnings.js";
+import { installationWarnings } from "../../domain/installation/services/installation-warnings.js";
 import { type Installation } from "../../domain/installation/value-objects/installation.js";
 import { type ProbeProblem } from "../../domain/installation/value-objects/probe-problem.js";
 import { type ProbeRecipe, type ProbeRecipes, authProbeLists } from "../../domain/installation/spi/probe-recipe.js";

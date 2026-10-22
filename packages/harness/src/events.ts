@@ -22,7 +22,7 @@ export {
   type LifecycleSwitch,
   type PayloadFields
 } from "./domain/lifecycle/spi/hook-dialect.js";
-export { heartbeatSignal, type HeartbeatSignal } from "./domain/lifecycle/policies/heartbeat-signal.js";
+export { heartbeatSignal, type HeartbeatSignal } from "./domain/lifecycle/services/heartbeat-signal.js";
 export {
   type LifecycleBlocker,
   type LifecycleEvent,
@@ -33,4 +33,4 @@ export {
   type TerminalHost,
   type TerminalIdentity
 } from "./domain/lifecycle/value-objects/lifecycle-event.js";
-export { lifecycleStatus, reduceLifecycle } from "./domain/lifecycle/policies/reduce-lifecycle.js";
+export { lifecycleStatus, reduceLifecycle } from "./domain/lifecycle/services/reduce-lifecycle.js";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { sessionPrompts } from "../policies/turns.js";
+import { sessionPrompts } from "./turns.js";
 import type { TranscriptEvent, TranscriptEventKind, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 import { emptyPrompts, foldTranscript } from "./fold-transcript.js";

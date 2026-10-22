@@ -2,7 +2,7 @@ import * as z from "zod/mini";
 
 import type { FieldPath } from "../spi/hook-dialect.js";
 import type { PayloadView } from "../value-objects/payload-view.js";
-import { lenient } from "./lenient.js";
+import { lenient } from "../../../lib/lenient.js";
 
 /**
  * What one payload path may hold: any string, including an empty one, or nothing. A path that is absent or holds

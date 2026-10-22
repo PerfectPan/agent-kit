@@ -429,14 +429,16 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
 
   Each batch confirms its list file by file. A type moves to another folder when it turns out to be a snapshot or an SPI interface.
 - **`lib/`** holds only pure functions:
-  - `lenient` (three copies today);
+  - `lenient`, kept per context: cost, discovery and harness use explicit fallbacks; sessions treats rejected or missing fields as absent. Sharing these would add cross-context dependencies or put schema parsing in catalog;
   - `timeOf`, `logTimestamp`, `timeOfValue`;
   - `ownValue`, `rememberKey`, `jsonText`;
-  - `deepFreeze`, shared by harness values and aggregates; callers copy the data they retain before freezing;
+  - `deepFreeze`, shared by harness values and aggregates; value factories copy retained input before freezing; `Ledger.restore` retains its existing ownership behavior and freezes the supplied snapshot in place;
   - `shortHash`, a hand-written cyrb53 hash kept because no small library fits; its comment says so.
 
+  `lib/` may use only the package-declared `zod/mini` external dependency for pure schema helpers. Other npm dependencies remain forbidden; `JsonValue` lives beside `jsonText` so the helper has no domain dependency.
+
   Code that needs a Node capability is not `lib/`. It takes the capability through the Platform port (a `Pick<Platform, ...>` first parameter in plain contexts, `PlatformService` in Effect contexts) and lives in `application/services/` or `infra/`. A missing capability is added to Platform and implemented by platform-node and the memory platform, as `fs.mkdir` was.
-- **Paths.** `joinPath`, `basenamePath` and `dirnamePath` exist only because the domain cannot import `node:path`. They are replaced by `pathe` 2.0.3 (pure, no dependencies); `belowRoot` becomes `pathe`'s `relative` plus a prefix check.
+- **Paths.** The four literal path helpers stay in sessions `lib/`, exposed through its existing SPI. Comparison with `pathe` 2.0.3 disproves replacement equivalence: it normalizes dot segments, repeated separators and backslashes, changes trailing-separator basenames and drive spellings, and resolves paths for `relative`. Callers accept home overrides, session refs and POSIX filenames without excluding these inputs. Preserve the existing strings in session refs, usage source ids and downstream locators; no provider switches and no unused runtime dependency is added.
 
 ### 3.8 Public surface
 
@@ -762,7 +764,7 @@ One batch each:
 2. harness install-plan and bundle: value objects become classes; `planProblem` and `orderSteps` move into InstallPlan's creation, and `planStep` into its factory;
 3. collab lease and lanes;
 4. acp: `AbsolutePath` and the session value objects;
-5. read side: the remaining `policies/` move to `services/` and `lib/`; `pathe` replaces the path helpers; the three `lenient` copies are merged or kept, decided in this batch.
+5. read side: the remaining `policies/` move to `services/` and `lib/`; retain the literal path helpers where `pathe` is not equivalent; keep the four context-local `lenient` helpers and allow only package-declared `zod/mini` in `lib/`.
 
 - Change: 3.7 and Appendix B.
 - Tests: existing tests unchanged in what they assert. Each moved rule comes with the output of its test failing when the change is reverted.
@@ -858,8 +860,8 @@ Recollected from the `main` branches of agent-presence, agent-task-loop and the 
 | sessions transcript rules (compaction shadowing, tool-result pairing, turns, request placement, prompt snapshots, `inheritTimes`, `mergeByTime`) and usage `QUIET_MS`, `decodeIsFinal` | `services/` |
 | cost `portionsOf`, `costOf`, `summarize` | `services/` |
 | acp `permissionOutcome`, `optionOfKind`, `clientPathVerdict`, `sessionMeta`, `firstPromptBlocks`, `agentEnv` | `services/` |
-| `lenient`, `timeOf`, `logTimestamp`, `timeOfValue`, `ownValue`, `rememberKey`, `jsonText`, `shortHash` | `lib/` |
-| `joinPath`, `basenamePath`, `dirnamePath`, `belowRoot` | `pathe` |
+| `lenient`, `timeOf`, `logTimestamp`, `timeOfValue`, `ownValue`, `rememberKey`, `jsonText`, `deepFreeze`, `shortHash` | `lib/` |
+| `joinPath`, `basenamePath`, `dirnamePath`, `belowRoot` | sessions `lib/`; `pathe` is not equivalent for the accepted input domain |
 
 A function not listed here is placed by the same test: it belongs to one type, it spans several objects, or it has no domain meaning.
 

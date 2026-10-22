@@ -137,7 +137,8 @@ export { type PlanStatus } from "./domain/install-plan/aggregates/install-plan.j
 export { type PreconditionSnapshot as Precondition } from "./domain/install-plan/value-objects/precondition.js";
 export { type TrustPrompt } from "./domain/install-plan/value-objects/trust-prompt.js";
 export { type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
-export type { ArtifactContent, ContentHash, JsonValue } from "./domain/ledger/value-objects/content-hash.js";
+export type { ArtifactContent, ContentHash } from "./domain/ledger/value-objects/content-hash.js";
+export type { JsonValue } from "./lib/json.js";
 export type { ArtifactInstalled } from "./domain/ledger/events/artifact-installed.js";
 export type { ArtifactRemoved } from "./domain/ledger/events/artifact-removed.js";
 export type { Drift, VerifyStatus } from "./domain/ledger/value-objects/drift.js";

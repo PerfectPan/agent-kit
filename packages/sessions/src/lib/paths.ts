@@ -1,4 +1,5 @@
-// Session paths use `/`. Node accepts it on Windows too, and agent homes from catalog are spelled with it.
+// Preserve literal spellings in session refs and usage ids: pathe normalizes dots, separators and backslashes.
+// Homes and POSIX filenames may contain those characters, so none of these helpers is equivalent to pathe.
 
 export function joinPath(dir: string, name: string): string {
   if (!dir) {

@@ -1,5 +1,5 @@
 import { requireService, type CodingAgentId, type ServiceTable } from "@rivus/agent-kit-catalog/public";
-import { type Env } from "../policies/payload-fields.js";
+import { type Env } from "../services/payload-fields.js";
 import { type HookDialect } from "../spi/hook-dialect.js";
 import { type LifecycleEvent } from "../value-objects/lifecycle-event.js";
 import { readWithDialect } from "../services/read-with-dialect.js";

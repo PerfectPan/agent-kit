@@ -39,7 +39,7 @@ Every context package uses the same layout, creating only the directories it nee
 ```text
 <context>/src/
   domain/<concept>/
-    aggregates/  entities/  value-objects/  policies/  factories/  errors/  events/  services/
+    aggregates/  entities/  value-objects/  factories/  errors/  events/  services/
     adapters/           shared format readers and renderers for this concept's model
     spi/                pure provider interfaces and their parts
   application/
@@ -72,11 +72,11 @@ The layer principles:
 - `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may import pure utilities in `lib/`, but no `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
 - `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
 - `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
-- Every layer may use `lib/`; a utility may import only other utilities in its context and the shared kernel, with no domain, application, infrastructure, Platform or external-package dependencies.
+- Every layer may use `lib/`; a utility may import only other utilities in its context and the shared kernel, with no domain, application, infrastructure or Platform dependencies. The only allowed external specifier is package-declared `zod/mini`, for pure schema helpers.
 
 | Layer | Contents | May import |
 | --- | --- | --- |
-| `domain/` | Value objects, aggregates, their child entities, policies (rules), factories, errors, domain events, stateless domain services | Any concept folder of this context, but no `adapters/` folder — its own or another concept's — plus catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
+| `domain/` | Value objects, aggregates, their child entities, factories, errors, domain events, stateless domain services | Any concept folder of this context, but no `adapters/` folder — its own or another concept's — plus catalog, and `import type` from upstream packages declared as dependencies (for example cost's domain imports the UsageRecord type from sessions). No IO, no Platform, no external packages, no effect |
 | `domain/<concept>/adapters/` | Shared external-format readers and renderers; agent-specific translation lives in providers. Pure functions, no IO | Any concept folder, also of other concepts, other concepts' `adapters/` folders, catalog, and the external packages the package allows, such as `zod/mini` |
 | `application/` | `use-cases/` coordinate supplied service tables and ports; `services/` is code shared by use cases; `ports.ts` declares infrastructure ports; Platform slices named by provider interfaces live in `spi.ts`, and use-case-only slices in `platform.ts` | Domain, the `adapters/` folders and ports |
 | `infra/` | Implementations of ports the kit declares: persistence implementations under `repository/` (aggregate repositories and key-value stores such as acp's session bindings), stored formats (`models/`), format-preserving configuration editors and other port implementations (`adapters/`), Layer compositions (`factories/`) | Domain and application; reaches the outside only through Platform; never `node:*` |
@@ -91,6 +91,23 @@ The layer principles:
 - A concept's `adapters/` folder and `infra/` are different things. An agent adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
 - A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. Its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
 
+## Read-Side Services And Utilities
+
+Catalog home resolution, discovery classification, harness lifecycle and session/transcript/usage rules live in
+`services/`; their read models remain plain data. Context `lib/` folders hold time conversion, own-property lookup,
+JSON formatting (with its `JsonValue` type), bounded key retention and the existing short hash. Schema helpers use
+only `zod/mini`. The repository lint configuration disables `promise/valid-params` for TypeScript files: TypeScript
+checks Promise method arity, while that rule misreads `z.catch(schema, fallback)` as a Promise method. Source files
+keep the direct schema call without local disable comments. Keep lenient parsing local to each context: sessions
+wraps an optional schema and falls back to absence, while cost, discovery and harness take an explicit fallback. Sharing them would add cross-context parsing
+dependencies or expand catalog beyond its shared identity model.
+
+Sessions' path helpers deliberately preserve spelling. Homes, session refs and POSIX filenames may contain
+backslashes, repeated separators or dot segments, and usage ids depend on those exact strings. `pathe` normalizes
+these inputs, so it cannot replace these helpers for their accepted input domain. Providers keep the existing SPI.
+`deepFreeze` freezes its argument; value factories copy retained data first, while `Ledger.restore` continues to
+freeze the supplied snapshot in place.
+
 ## Aggregate Or Value Object
 
 Use the lifecycle as the criterion. A concept is an aggregate when it keeps one identity across state changes and invariants must hold across those changes: transitions can be legal or illegal depending on the current state. A concept that is created once and then only read, compared or recomputed is a value object, however large it is.
@@ -103,7 +120,7 @@ Use the lifecycle as the criterion. A concept is an aggregate when it keeps one 
 | Lease (collab) | One holder at a time; the generation never decreases, including across release and takeover |
 | Lane (collab) | An in-memory state machine (idle, queued, running, with a pending activation while queued or woken again while running) with at most one activation per key |
 
-Read-only contexts have no aggregates. sessions, discovery, cost and catalog only project data that agents wrote; their models are value objects, policies and domain services such as `foldTranscript`. Do not invent an aggregate to make a read-only context look like the others.
+Read-only contexts have no aggregates. sessions, discovery, cost and catalog only project data that agents wrote; their models are plain value objects and domain services such as `foldTranscript`. Do not invent an aggregate to make a read-only context look like the others.
 
 ## Aggregate Shape
 
@@ -159,8 +176,8 @@ rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the pl
 observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
 the existing plain snapshots.
 
-Neither of these concepts has a `policies/` folder. Cross-object conflict choices, legacy ownership, registration
-commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
+No `policies/` folder is allowed in the repository; the architecture manifest test enforces this. Cross-object
+conflict choices, legacy ownership, registration commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
 install-file rendering also lives in bundle `services/`, retaining its provider SPI exports. Legacy command content
 is parsed with `zod/mini` in the application layer before the domain receives text evidence keyed by each observation;
 locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching

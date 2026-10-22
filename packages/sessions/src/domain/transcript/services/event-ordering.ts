@@ -1,20 +1,6 @@
 import type { SourcedRecord } from "../value-objects/source-pointer.js";
 import type { TranscriptEvent } from "../value-objects/transcript-event.js";
 
-/** Epoch milliseconds from a record's time field: seconds or milliseconds, or an ISO string. Missing is `undefined`. */
-export function timeOf(value: number | string | undefined): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value < 1e12 ? value * 1000 : value;
-  }
-  if (typeof value === "string" && value) {
-    const ms = Date.parse(value);
-    if (!Number.isNaN(ms)) {
-      return ms;
-    }
-  }
-  return undefined;
-}
-
 /**
  * Times in file order: a gap takes the previous known time, a leading gap the first known one, and a file with no
  * time at all gets 1, so no event has `ts` 0.

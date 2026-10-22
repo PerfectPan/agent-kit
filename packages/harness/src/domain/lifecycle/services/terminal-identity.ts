@@ -1,5 +1,5 @@
 import type { TerminalIdentity } from "../value-objects/lifecycle-event.js";
-import type { Env } from "../policies/payload-fields.js";
+import type { Env } from "./payload-fields.js";
 
 /**
  * Pane variables of terminal hosts that track agents, most specific first: a host can run inside tmux, so tmux's

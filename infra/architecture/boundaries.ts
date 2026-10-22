@@ -65,7 +65,8 @@ export interface LayerRule {
   readonly workspace: "any" | "kernel" | "kernel-and-types";
   /** Workspace packages this layer may not import at all, not even their types. */
   readonly hidden?: readonly string[];
-  readonly external: boolean;
+  /** True allows the package allowlist; a list further restricts it for this layer. */
+  readonly external: boolean | readonly string[];
 }
 
 export interface BoundaryRules {
@@ -312,7 +313,7 @@ export const boundaries: BoundaryRules = {
     application: { layers: ["domain", "adapters", "application", "lib"], workspace: "any", external: true },
     infra: { layers: ["domain", "application", "infra", "lib"], workspace: "any", external: true },
     // Pure utilities have no domain or IO dependencies, even when their callers do.
-    lib: { layers: ["lib"], workspace: "kernel", external: false }
+    lib: { layers: ["lib"], workspace: "kernel", external: ["zod/mini"] }
   },
   effect: {
     modules: ["effect", "@effect/*"],
