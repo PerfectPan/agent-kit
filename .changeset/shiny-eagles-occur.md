@@ -3,4 +3,4 @@
 "@rivus/agent-kit-collab": patch
 ---
 
-remove internal barrel files; no API change
+Remove internal barrel files; no API change.
