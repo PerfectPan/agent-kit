@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
@@ -23,7 +24,7 @@ function toolchainMismatches(catalog: Readonly<Record<string, string>>, vitePlus
 }
 
 describe("toolchain versions", () => {
-  it("use the catalog's vite-plus and its required vitest and vite alias versions", () => {
+  it("keep vite, vitest and oxlint-plugin-eslint aligned with the catalog's vite-plus", () => {
     const root = findRepositoryRoot();
     const catalog = JSON.parse(
       execFileSync("pnpm", ["config", "get", "catalog", "--json"], { cwd: root, encoding: "utf8" })
@@ -37,5 +38,17 @@ describe("toolchain versions", () => {
       );
     }
     expect(toolchainMismatches(catalog, vitePlus)).toEqual([]);
+
+    const architecture = JSON.parse(
+      readFileSync(join(root, "infra/architecture/package.json"), "utf8")
+    ) as PackageManifest;
+    const required = vitePlus.dependencies?.oxlint?.replace(/^=/u, "") ?? "(none)";
+    const actual = architecture.devDependencies?.["oxlint-plugin-eslint"] ?? "(missing)";
+    if (actual !== required) {
+      throw new Error(
+        `infra/architecture/package.json oxlint-plugin-eslint is "${actual}", but the installed vite-plus ${vitePlus.version} ` +
+          `depends on oxlint "${required}"; set oxlint-plugin-eslint to "${required}" and run pnpm install`
+      );
+    }
   });
 });
