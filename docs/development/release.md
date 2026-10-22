@@ -171,8 +171,8 @@ the run fails at it with an authentication error. Configure the publisher and re
    newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
    PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
    with that bump.
-3. Before merging the 0.20.0 release PR, complete the [application comparison](adoption.md#application-comparison-before-release)
-   against 0.19.1 for all three consuming applications. Review the version and changelog diff, then select
+3. For a release with breaking changes, follow the [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
+   Review the version and changelog diff, then select
    **Ready for review**. Pull requests created with the
    workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
    reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, pass a GitHub App
@@ -189,8 +189,6 @@ the run fails at it with an authentication error. Configure the publisher and re
    `npm view @rivus/agent-kit-collab@X.Y.Z` and a clean `npm install @rivus/agent-kit @rivus/agent-kit-collab` in a
    scratch project. Registry reads can lag the publish by a minute; retry the read, not the
    publish. The npm package page shows a provenance badge linking to the workflow run.
-6. Open the consuming applications' upgrade PRs after publication is verified. Each application owns its CI and
-   adoption acceptance; publication alone does not complete that work.
 
 `pnpm run publish:dry-run` runs the same `pnpm publish -r` command with `--dry-run --json`: it does everything a
 publish would do except uploading, and prints, per package a publish would upload, the version and the file list.

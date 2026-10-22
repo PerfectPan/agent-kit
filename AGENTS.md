@@ -77,8 +77,8 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
   (Oxc) needs explicit types on exported declarations; keep exports whose type is only inferred, such as zod
   schemas, module-private.
 - `infra/architecture` is the private `architecture-boundaries` project: `boundaries.ts` declares allowed package
-  dependencies, layer rules, npm and Node built-in allowlists, the Effect allowlist and the agent markers; `lint.ts`
-  turns them into `vp lint` rules that every package's `vite.config.ts` applies through `withBoundaryLint`. Its tests
+  dependencies, layer rules, npm and Node built-in allowlists, the Effect allowlist and the provider facts paths used
+  by the agent-marker rule; `lint.ts` turns them into `vp lint` rules that every package's `vite.config.ts` applies through `withBoundaryLint`. Its tests
   check the package manifests against `boundaries.ts` and lint violating and allowed cases of every rule.
 - `scripts/` is the private `repo-scripts` project for repository automation written in TypeScript and run directly
   by Node.
@@ -121,9 +121,8 @@ For non-trivial changes:
 
 ## Repository Architecture
 
-- `docs/architecture/authoring.md` is the authority for how a context package is laid out (`domain/` with one
-  `adapters/` folder per concept, `application/`, `infra/`, `public.ts`, `spi.ts`), for the plain
-  TypeScript and Effect rules, and for the ban on hand-written shape guards;
+- `docs/architecture/authoring.md` is the authority for context and provider layouts, shared external-format adapters,
+  plain TypeScript and Effect rules, and the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
 - Organize code by domain boundaries, layer boundaries, and test boundaries before mechanical one-file-per-export preferences.

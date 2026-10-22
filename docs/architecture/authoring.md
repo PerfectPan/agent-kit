@@ -79,7 +79,7 @@ The exact import matrix and npm specifiers live in `boundaries.ts`, not a second
 
 - Cross-package imports go through the target package's `public.ts`, or its `spi.ts` when the importer's `spiImports` explicitly lists that dependency; never into its `domain/` (including the `adapters/` folders) or `infra/`. Dependencies are declared in `package.json`; pnpm's isolated `node_modules` gives a package only what it declares, so an undeclared import does not resolve. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
 - Sibling access requires the importer's `dependsOn` and the target's explicit `siblingEntries` in `boundaries.ts`. Each listed entry must exist in the target's `exports`; adding an export alone grants no sibling access. Lists contain only entries used by siblings: harness lists `public/events`, never its aggregate `public` entry. Bare package imports must name an explicit entry; `public/effect` stays shell-only, and siblings use the declared `effect` entry. SPI access remains governed separately by `spiImports`.
-- Contexts that are pure computation (catalog, cost, agent translation, hook event parsing) have no `application/` and export domain functions directly.
+- Pure contexts such as catalog and cost export domain functions directly and need no `application/`. Shared format parsing stays in domain `adapters/`; agent-specific translation lives in providers.
 - A concept's `adapters/` folder and `infra/` are different things. A shared format adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
 - A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. Its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
 
@@ -479,7 +479,7 @@ check detects an injected defect. For import-only changes, compare normalized AS
 module ordering, chunk hashes and declaration ordering may differ without changing behavior.
 
 Run the full check steps from [CONTRIBUTING](../../CONTRIBUTING.md#required-checks). Provider tests run their service
-conformance suites; moved model rules retain behavioral assertions, with a reverted-rule failure demonstrating
+conformance suites; model rules have behavioral assertions, with a reverted-rule failure demonstrating
 coverage. The built-output identity check (`scripts/check-provider-packing.ts` in the shell) runs from
 `check:package` after build, not from unit tests. It checks descriptor reference identity in ordinary entries;
 isolated hook objects are intentionally separate. `check-dist.ts` checks the slim runtime and declaration graphs.
@@ -489,10 +489,6 @@ growth over 1% in the PR. Raise only exceeded budgets to measured sizes and lowe
 headroom to measured sizes; do not hide growth with spare budget. Keep identity facts together even when an
 unbundled catalog chunk contains unused facts: assess the tree-shaken entry as well as its chunk. Record CI duration
 when changing workspace structure or lint tooling.
-
-The 0.20.0 release requires the [application comparison](../development/adoption.md#application-comparison-before-release)
-before its release PR is merged. Publication and application adoption remain separate checks in the
-[release runbook](../development/release.md).
 
 ## What Not To Build
 
