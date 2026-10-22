@@ -171,7 +171,11 @@ the run fails at it with an authentication error. Configure the publisher and re
    newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
    PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
    with that bump.
-3. Review the version and changelog diff, then select **Ready for review**. Pull requests created with the
+3. A breaking release is one whose change records remove or change a public export or a documented behavior.
+   In 0.x, such a change is recorded as `minor`. For these releases, follow the
+   [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
+   Review the version and changelog diff, then select
+   **Ready for review**. Pull requests created with the
    workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
    reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, pass a GitHub App
    token or a fine-grained PAT to the action's `github-token` input, never through the `GITHUB_TOKEN` environment
@@ -226,6 +230,11 @@ Run it after `pnpm run check` so `dist` exists.
     version and says that hosts pinning the old one fail to install under npm. Update the version written in
     `README.md`, both package READMEs, `docs/development/adoption.md` and `docs/specs/0001-agent-kit.md`
     (`git grep` the old version outside the `CHANGELOG` files).
+- **Boundary-tool upgrades**: keep `oxlint-plugin-eslint` aligned with the oxlint version bundled by vite-plus.
+  Otherwise select boundary-tool versions published at least 14 days earlier. This review rule is separate from
+  the workspace's one-day `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when upgrading:
+  that interface is alpha and outside semver. Run the allowed/violating boundary fixtures, whole-repository lint
+  and the manifest tests, and record CI duration.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
   repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`). Close PRs that touch `review.yml` or another file
