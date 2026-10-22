@@ -35,6 +35,11 @@ updates:
       - dependency-name: "vitest"
       - dependency-name: "vite"
       - dependency-name: "@voidzero-dev/vite-plus-core"
+      # On pnpm 12, grouped updates still resolve each package separately. The size-limit family has exact
+      # peer requirements, so either half fails alone. Update both catalog pins together, then install
+      # and run the package checks; procedure: docs/development/release.md#bot-pull-requests.
+      - dependency-name: "size-limit"
+      - dependency-name: "@size-limit/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

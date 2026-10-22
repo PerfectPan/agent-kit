@@ -219,6 +219,21 @@ Run it after `pnpm run check` so `dist` exists.
   3. Commit the catalog and lockfile changes.
   4. Push the branch.
 
+  **Size-limit updates** are manual: Dependabot ignores `size-limit` and `@size-limit/*`. The presets and their
+  plugins require the matching exact `size-limit` version. Dependabot resolves each dependency separately even
+  inside a group on pnpm 12, so updating either the preset or `size-limit` alone fails strict peer checks. A
+  [group](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups)
+  combines updates into a PR; it does not make those installs atomic. Keep `strictPeerDependencies: true`.
+
+  1. Select a matching `size-limit` and `@size-limit/preset-small-lib` release published at least seven days ago,
+     and check their peer requirements with `npm view <package>@<version> peerDependencies`.
+  2. Change both pins in the `pnpm-workspace.yaml` catalog before running
+     `pnpm install --registry https://registry.npmjs.org/`.
+  3. Run `pnpm run check`. Compare every entry's size against main; raise a budget only to the measured size.
+     Compare the built `dist` files and add a changeset only if shipped files changed.
+  4. Commit the catalog, lockfile and any measured budget changes in one PR. Revisit the ignores when Dependabot
+     supports resolving this family together under the repository's pnpm version.
+
   For other npm updates, check out the branch, run `pnpm install`, commit the lockfile, and push.
 
   Add changesets as appropriate for all npm dependency updates:
