@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vite-plus/test";
+import type { Result } from "@rivus/agent-kit/catalog";
 
 import { type LeaseTimingInput, LeaseTiming } from "../value-objects/lease-timing.js";
 import { Holder, type HolderSnapshot } from "../value-objects/holder.js";
 import type { LeaseSnapshot } from "../value-objects/lease-snapshot.js";
 import { Lease, type LeaseClaim } from "./lease.js";
 
-import { FencingToken } from "../value-objects/fencing-token.js";
+import { FencingToken, type FencingTokenSnapshot } from "../value-objects/fencing-token.js";
+
+function valueOf<T>(result: Result<T, { readonly message: string }>): T {
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+  return result.value;
+}
+
+function fencingToken(snapshot: FencingTokenSnapshot): FencingToken {
+  return valueOf(FencingToken.create(snapshot));
+}
+
+const createLease = (claim: LeaseClaim) => valueOf(Lease.create(claim));
 
 function restored(snapshot: LeaseSnapshot): Lease {
   const result = Lease.restore(snapshot);
@@ -37,7 +51,7 @@ const alive = { fresh: true, liveness: "alive" } as const;
 
 describe("Lease", () => {
   it("S37: never moves the generation back: release leaves a tombstone and the next holder goes one further", () => {
-    const created = Lease.create(claim(holderA, "a1"));
+    const created = createLease(claim(holderA, "a1"));
     expect(created.state.toSnapshot()).toMatchObject({ generation: 1, revision: 1, holderId: "a1" });
 
     const released = created.state.release({ holderId: "a1", generation: 1 }, 5);
@@ -58,7 +72,7 @@ describe("Lease", () => {
   });
 
   it("refuses a live, fresh holder and takes over a dead or silent one, moving the generation on", () => {
-    const lease = Lease.create(claim(holderA, "a1")).state;
+    const lease = createLease(claim(holderA, "a1")).state;
     expect(lease.acquire(claim(holderB, "b1"), alive)).toEqual({
       ok: false,
       error: { _tag: "LeaseHeld", key: KEY, generation: 1, holder: holderA, holderId: "a1" }
@@ -77,7 +91,7 @@ describe("Lease", () => {
   });
 
   it("renews and releases only for the holding acquisition, and says why it was lost", () => {
-    const lease = Lease.create(claim(holderA, "a1")).state;
+    const lease = createLease(claim(holderA, "a1")).state;
     const holding = { holderId: "a1", generation: 1 };
     expect(lease.holds(holding)).toBe(true);
     expect(lease.lossOf(holding)).toBeUndefined();
@@ -170,19 +184,19 @@ describe("lease rules", () => {
   });
 
   it("S62: hands out the next generation and lets a resource refuse an older token", () => {
-    expect(FencingToken.next(KEY).toSnapshot()).toEqual({ key: KEY, generation: 1 });
-    expect(FencingToken.next(KEY, new FencingToken(record(7))).toSnapshot()).toEqual({ key: KEY, generation: 2 });
-    const lastSeen = new FencingToken({ key: KEY, generation: 3 });
-    expect(new FencingToken({ key: KEY, generation: 1 }).checkFence(undefined)).toEqual({
+    expect(valueOf(FencingToken.next(KEY)).toSnapshot()).toEqual({ key: KEY, generation: 1 });
+    expect(valueOf(FencingToken.next(KEY, fencingToken(record(7)))).toSnapshot()).toEqual({ key: KEY, generation: 2 });
+    const lastSeen = fencingToken({ key: KEY, generation: 3 });
+    expect(fencingToken({ key: KEY, generation: 1 }).checkFence(undefined)).toEqual({
       ok: true,
       value: { key: KEY, generation: 1 }
     });
-    expect(new FencingToken({ key: KEY, generation: 3 }).checkFence(lastSeen).ok).toBe(true);
-    expect(new FencingToken({ key: KEY, generation: 4 }).checkFence(lastSeen)).toEqual({
+    expect(fencingToken({ key: KEY, generation: 3 }).checkFence(lastSeen).ok).toBe(true);
+    expect(fencingToken({ key: KEY, generation: 4 }).checkFence(lastSeen)).toEqual({
       ok: true,
       value: { key: KEY, generation: 4 }
     });
-    expect(new FencingToken({ key: KEY, generation: 1 }).checkFence(lastSeen)).toEqual({
+    expect(fencingToken({ key: KEY, generation: 1 }).checkFence(lastSeen)).toEqual({
       ok: false,
       error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
     });
@@ -229,7 +243,7 @@ describe("lease value ownership", () => {
     const identity = { ...holderA };
     const holder = new Holder(identity);
     const tokenData = { key: KEY, generation: 2 };
-    const token = new FencingToken(tokenData);
+    const token = fencingToken(tokenData);
     expect(Object.isFrozen(identity)).toBe(false);
     expect(Object.isFrozen(tokenData)).toBe(false);
     expect(Object.isFrozen(holder)).toBe(true);
@@ -270,7 +284,7 @@ describe("lease value ownership", () => {
   });
 
   it("keeps the existing record validation order and reasons", () => {
-    const valid = Lease.create(claim(holderA, "a")).state.toSnapshot();
+    const valid = createLease(claim(holderA, "a")).state.toSnapshot();
     for (const [fields, message] of [
       [{ key: "", generation: 0 }, "the key is empty"],
       [{ generation: 0, revision: -1 }, "generation 0 is not a positive integer"],
@@ -292,24 +306,55 @@ describe("lease value ownership", () => {
       { key: KEY, generation: 0 },
       { key: KEY, generation: 1.5 }
     ]) {
-      expect(() => new FencingToken(data)).toThrow(/the key is empty|is not a positive integer/);
+      expect(FencingToken.create(data)).toMatchObject({
+        ok: false,
+        error: {
+          _tag: "LeaseRecordInvalid",
+          message: expect.stringMatching(/the key is empty|is not a positive integer/)
+        }
+      });
       expect(Object.isFrozen(data)).toBe(false);
     }
+  });
+
+  it("preserves typed nonfinite identity values without freezing caller data", () => {
     for (const fields of [{ pid: Number.NaN }, { startTime: Number.POSITIVE_INFINITY }]) {
       const data = { ...holderA, ...fields };
-      expect(() => new Holder(data)).toThrow("holder pid and startTime must be finite numbers");
+      expect(new Holder(data).toSnapshot()).toEqual(data);
       expect(Object.isFrozen(data)).toBe(false);
     }
-    const invalid = {
-      ...Lease.create(claim(holderA, "a")).state.toSnapshot(),
+    const nonfinite = {
+      ...createLease(claim(holderA, "a")).state.toSnapshot(),
       holder: { ...holderA, pid: Number.NaN }
     };
-    expect(Lease.restore(invalid)).toMatchObject({ ok: false, error: { _tag: "LeaseRecordInvalid" } });
+    expect(Lease.restore(nonfinite).ok).toBe(true);
+  });
+
+  it("rejects generation exhaustion without changing the lease or masking a live holder", () => {
+    const snapshot = {
+      key: KEY,
+      generation: Number.MAX_SAFE_INTEGER,
+      revision: Number.MAX_SAFE_INTEGER,
+      holder: holderA,
+      holderId: "a",
+      renewedAt: 0
+    };
+    const lease = restored(snapshot);
+    expect(lease.acquire(claim(holderB, "b"), alive)).toMatchObject({ ok: false, error: { _tag: "LeaseHeld" } });
+    expect(lease.acquire(claim(holderB, "b"), { fresh: true, liveness: "dead" })).toEqual({
+      ok: false,
+      error: { _tag: "LeaseRecordInvalid", key: KEY, message: "generation 9007199254740992 is not a positive integer" }
+    });
+    expect(lease.toSnapshot()).toEqual(snapshot);
+    expect(Lease.create({ ...claim(holderA, "a"), key: "" })).toEqual({
+      ok: false,
+      error: { _tag: "LeaseRecordInvalid", key: "", message: "the key is empty" }
+    });
   });
 
   it("compares fencing generations only for the same key", () => {
-    const token = new FencingToken({ key: "other", generation: 1 });
-    expect(token.checkFence(new FencingToken({ key: KEY, generation: 5 }))).toEqual({ ok: true, value: token });
+    const token = fencingToken({ key: "other", generation: 1 });
+    expect(token.checkFence(fencingToken({ key: KEY, generation: 5 }))).toEqual({ ok: true, value: token });
   });
 
   it("freezes timing without retaining or freezing the caller's configuration", () => {

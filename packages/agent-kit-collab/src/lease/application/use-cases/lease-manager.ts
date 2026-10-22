@@ -10,7 +10,7 @@ import * as Schedule from "effect/Schedule";
 import type * as Scope from "effect/Scope";
 
 import { type FenceRejected } from "../../domain/lease/errors/fence-rejected.js";
-import { FencingToken, type FencingTokenSnapshot } from "../../domain/lease/value-objects/fencing-token.js";
+import { type FencingTokenSnapshot } from "../../domain/lease/value-objects/fencing-token.js";
 import { Holder, type HolderLiveness } from "../../domain/lease/value-objects/holder.js";
 import { Lease, type LeaseTransition, type LeaseObservation } from "../../domain/lease/aggregates/lease.js";
 import { type LeaseConfigInvalid } from "../../domain/lease/errors/lease-config-invalid.js";
@@ -58,7 +58,7 @@ export interface LeaseHandle {
    * interrupted fiber ends at once, though, while a Promise it started (`Effect.tryPromise`) keeps running: put a
    * write that cannot be cancelled in `Effect.uninterruptible`, which keeps the fence until the write settles, or pass
    * it the AbortSignal `tryPromise` provides and settle only after the write has stopped. A resource that can compare
-   * atomically should also keep the highest token it has seen and refuse older ones with `checkFence`.
+   * atomically should also store the highest generation per token key and reject smaller generations in that write.
    */
   runFenced<A, E, R>(
     work: (token: FencingTokenSnapshot) => Effect.Effect<A, E, R>
@@ -109,7 +109,9 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
         const claim = { key, holder: self(), holderId, now: platform.clock.now() };
         let transition: LeaseTransition;
         if (record === undefined) {
-          transition = Lease.create(claim);
+          transition = yield* fromResult(Lease.create(claim)).pipe(
+            Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
+          );
         } else {
           const lease = yield* fromResult(Lease.restore(record)).pipe(
             Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
@@ -121,7 +123,11 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
           // Liveness matters only for a fresh record: a stale one or a tombstone can be taken whoever holds it.
           const { holder } = lease;
           const liveness = fresh && holder !== null ? yield* judge(holder, claim.holder) : "unknown";
-          transition = yield* fromResult(lease.acquire(claim, { fresh, liveness }));
+          transition = yield* fromResult(lease.acquire(claim, { fresh, liveness })).pipe(
+            Effect.mapError((error) =>
+              error._tag === "LeaseRecordInvalid" ? repositoryFailure(key, "invalid-record", error.message) : error
+            )
+          );
         }
         const next = transition.state.toSnapshot();
         // A conflict is a lost race that the next turn re-reads; a defect or another failure keeps its own channel
@@ -202,7 +208,7 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
     }).pipe(Effect.ignore);
 
   const handle = (key: string, holding: LeaseHolding, lost: Deferred.Deferred<never, LeaseLost>): LeaseHandle => {
-    const token = new FencingToken({ key, generation: holding.generation }).toSnapshot();
+    const token: FencingTokenSnapshot = { key, generation: holding.generation };
     return {
       key,
       token,

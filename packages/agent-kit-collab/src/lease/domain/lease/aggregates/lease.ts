@@ -42,20 +42,13 @@ function acquired(snapshot: LeaseSnapshot, previousHolderId: string | null): Lea
 }
 
 function invalidity(snapshot: LeaseSnapshot): string | undefined {
-  const tokenProblem = FencingToken.problem(snapshot);
-  if (tokenProblem !== undefined) {
-    return tokenProblem;
-  }
   if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision < snapshot.generation) {
     return `revision ${snapshot.revision} is not an integer at least as large as the generation`;
   }
   if ((snapshot.holder === null) !== (snapshot.holderId === null)) {
     return "a holder and a holder id come together";
   }
-  if (!Number.isFinite(snapshot.renewedAt)) {
-    return "renewedAt is not a number";
-  }
-  return snapshot.holder === null ? undefined : Holder.problem(snapshot.holder);
+  return Number.isFinite(snapshot.renewedAt) ? undefined : "renewedAt is not a number";
 }
 
 /**
@@ -65,25 +58,36 @@ function invalidity(snapshot: LeaseSnapshot): string | undefined {
  */
 export class Lease {
   /** The first acquisition of a key that has no record. */
-  static create(claim: LeaseClaim): LeaseTransition {
-    const { generation } = FencingToken.next(claim.key);
-    const state = new Lease({
-      key: claim.key,
-      generation,
-      revision: 1,
-      holder: claim.holder.toSnapshot(),
-      holderId: claim.holderId,
-      renewedAt: claim.now
-    });
-    return { state, events: [acquired(state.snapshot, null)] };
+  static create(claim: LeaseClaim): Result<LeaseTransition, LeaseRecordInvalid> {
+    const token = FencingToken.next(claim.key);
+    if (!token.ok) {
+      return token;
+    }
+    const { generation } = token.value;
+    const state = new Lease(
+      {
+        key: claim.key,
+        generation,
+        revision: 1,
+        holder: claim.holder.toSnapshot(),
+        holderId: claim.holderId,
+        renewedAt: claim.now
+      },
+      token.value
+    );
+    return ok({ state, events: [acquired(state.snapshot, null)] });
   }
 
   static restore(snapshot: LeaseSnapshot): Result<Lease, LeaseRecordInvalid> {
+    const token = FencingToken.create(snapshot);
+    if (!token.ok) {
+      return token;
+    }
     const problem = invalidity(snapshot);
     if (problem !== undefined) {
       return err({ _tag: "LeaseRecordInvalid", key: snapshot.key, message: problem });
     }
-    return ok(new Lease(snapshot));
+    return ok(new Lease(snapshot, token.value));
   }
 
   private readonly snapshot: LeaseSnapshot;
@@ -92,8 +96,8 @@ export class Lease {
 
   // A plain field instead of a parameter property: Node runs this file without a compile step in the cross-process
   // tests, and its type stripping supports only erasable syntax.
-  private constructor(snapshot: LeaseSnapshot) {
-    this.token = new FencingToken(snapshot);
+  private constructor(snapshot: LeaseSnapshot, token: FencingToken) {
+    this.token = token;
     this.holder = snapshot.holder === null ? null : new Holder(snapshot.holder);
     this.snapshot = Object.freeze({
       ...snapshot,
@@ -103,19 +107,26 @@ export class Lease {
   }
 
   /** Takes the lease when `canAcquire` allows it; the generation moves to the next fencing token. */
-  acquire(claim: LeaseClaim, view: AcquisitionView): Result<LeaseTransition, LeaseHeld> {
+  acquire(claim: LeaseClaim, view: AcquisitionView): Result<LeaseTransition, LeaseHeld | LeaseRecordInvalid> {
     const { holder, holderId, generation, key } = this.snapshot;
     if (holder !== null && holderId !== null && !Lease.canAcquire(this, view)) {
       return err({ _tag: "LeaseHeld", key, generation, holder, holderId });
     }
-    const state = new Lease({
-      key,
-      generation: FencingToken.next(key, this.token).generation,
-      revision: this.snapshot.revision + 1,
-      holder: claim.holder.toSnapshot(),
-      holderId: claim.holderId,
-      renewedAt: claim.now
-    });
+    const token = FencingToken.next(key, this.token);
+    if (!token.ok) {
+      return token;
+    }
+    const state = new Lease(
+      {
+        key,
+        generation: token.value.generation,
+        revision: this.snapshot.revision + 1,
+        holder: claim.holder.toSnapshot(),
+        holderId: claim.holderId,
+        renewedAt: claim.now
+      },
+      token.value
+    );
     return ok({ state, events: [acquired(state.snapshot, holderId)] });
   }
 
@@ -125,7 +136,7 @@ export class Lease {
     if (lost !== undefined) {
       return err(lost);
     }
-    const state = new Lease({ ...this.snapshot, revision: this.snapshot.revision + 1, renewedAt: now });
+    const state = new Lease({ ...this.snapshot, revision: this.snapshot.revision + 1, renewedAt: now }, this.token);
     const { key, generation, revision } = state.snapshot;
     return ok({ state, events: [{ _tag: "LeaseRenewed", key, generation, revision }] });
   }
@@ -136,13 +147,16 @@ export class Lease {
     if (lost !== undefined) {
       return err(lost);
     }
-    const state = new Lease({
-      ...this.snapshot,
-      revision: this.snapshot.revision + 1,
-      holder: null,
-      holderId: null,
-      renewedAt: now
-    });
+    const state = new Lease(
+      {
+        ...this.snapshot,
+        revision: this.snapshot.revision + 1,
+        holder: null,
+        holderId: null,
+        renewedAt: now
+      },
+      this.token
+    );
     const { key, generation } = state.snapshot;
     return ok({ state, events: [{ _tag: "LeaseReleased", key, generation, holderId: holding.holderId }] });
   }

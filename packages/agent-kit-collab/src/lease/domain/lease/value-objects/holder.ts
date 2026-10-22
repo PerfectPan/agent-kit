@@ -13,22 +13,13 @@ export interface HolderSnapshot {
 export type HolderLiveness = "alive" | "dead" | "unknown";
 
 export class Holder {
-  static problem(snapshot: HolderSnapshot): string | undefined {
-    return !Number.isFinite(snapshot.pid) || !Number.isFinite(snapshot.startTime)
-      ? "holder pid and startTime must be finite numbers"
-      : undefined;
-  }
-
   readonly host: string;
   readonly bootId: string;
   readonly pid: number;
   readonly startTime: number;
 
+  // Typed process identities retain their numeric values; persisted data is validated by the repository codecs.
   constructor(snapshot: HolderSnapshot) {
-    const problem = Holder.problem(snapshot);
-    if (problem !== undefined) {
-      throw new Error(problem);
-    }
     this.host = snapshot.host;
     this.bootId = snapshot.bootId;
     this.pid = snapshot.pid;
