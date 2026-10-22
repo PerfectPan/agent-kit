@@ -166,6 +166,23 @@ is parsed with `zod/mini` in the application layer before the domain receives te
 locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
 itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
 
+## Collab Write-Side Values
+
+Lease and lane rules live on immutable classes. `FencingToken` validates its key and generation, advances the
+fencing generation and checks a resource's highest accepted token. `Holder` copies a process identity, requires
+finite pid/start-time values as the stored format does, and judges liveness. `LeaseTiming` validates durations and
+judges the holder's renewal deadline. `LaneLimits` validates capacity and timeouts and owns admission and FIFO
+selection. Lease owns observation, freshness, acquisition and loss; Lane derives wake results from its events.
+Neither concept has a `policies/` folder.
+
+`HolderSnapshot` and `FencingTokenSnapshot` name boundary data internally; the public `Holder` export remains the
+plain identity shape. Lease snapshots, held errors and handle tokens contain plain data, with explicit conversion
+from values. Lease copies its retained holder before freezing the snapshot, and Lane freezes its own snapshot;
+caller inputs stay untouched. Timing and limits stay inside the application/domain and need no snapshot type.
+Record restoration keeps the key, generation, revision, holder/id and renewal-time validation order before checking
+the holder's finite numbers. Loss classification accepts a raw snapshot so a missing record or inconsistent
+holder/id pair still has the existing diagnostic meaning. Repository read failures are mapped in the application.
+
 ## Aggregates, Entities And Repositories
 
 - `application/ports.ts` declares a port, `infra/` implements it, and the assembly injects the implementation. Neither the aggregate nor its entities ever hold a repository, a port or a Platform.

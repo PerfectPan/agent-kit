@@ -4,9 +4,8 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import type * as Scope from "effect/Scope";
 
-import { Lane, type LaneTransition } from "../../domain/lane/aggregates/lane.js";
-import { type LaneLoad, nextToStart, type WakeResult, wakeResult } from "../../domain/lane/policies/admission.js";
-import { laneLimits } from "../../domain/lane/value-objects/lane-limits.js";
+import { Lane, type LaneTransition, type WakeResult } from "../../domain/lane/aggregates/lane.js";
+import { LaneLimits, type LaneLoad } from "../../domain/lane/value-objects/lane-limits.js";
 import { type LaneQueueFull } from "../../domain/lane/errors/lane-queue-full.js";
 import { type LanesConfigInvalid } from "../../domain/lane/errors/lanes-config-invalid.js";
 import { type LaneSnapshot } from "../../domain/lane/value-objects/lane-snapshot.js";
@@ -106,7 +105,7 @@ export function createLanes<E = never, R = never>(
   config: LanesConfig<E, R>
 ): Effect.Effect<Lanes, LanesConfigInvalid, R | Scope.Scope> {
   return Effect.gen(function* () {
-    const limits = yield* fromResult(laneLimits(config));
+    const limits = yield* fromResult(LaneLimits.create(config));
     const context = yield* Effect.context<Exclude<R, Scope.Scope>>();
     const { activate, onExit } = config;
     // Lanes that are not idle, the activations that run, and the keys that wait for a slot. Every change happens in
@@ -167,9 +166,9 @@ export function createLanes<E = never, R = never>(
       const started: Activation[] = [];
       const load = (): LaneLoad => ({ running: activations.size, queued: queue.length });
       for (
-        let key = nextToStart(queue, load(), limits, closed);
+        let key = limits.nextToStart(queue, load(), closed);
         key !== undefined;
-        key = nextToStart(queue, load(), limits, closed)
+        key = limits.nextToStart(queue, load(), closed)
       ) {
         started.push(...apply(laneOf(key).start()));
       }
@@ -303,7 +302,7 @@ export function createLanes<E = never, R = never>(
             if (!woken.ok) {
               return Effect.fail(woken.error);
             }
-            return Effect.as(fork(apply(woken.value)), wakeResult(woken.value.events));
+            return Effect.as(fork(apply(woken.value)), Lane.wakeResult(woken.value.events));
           })
         ),
       cancel: (key) =>

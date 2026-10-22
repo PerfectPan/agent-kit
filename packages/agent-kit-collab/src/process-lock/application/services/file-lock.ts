@@ -1,4 +1,4 @@
-import { holderLiveness } from "../../../lease/domain/lease/policies/holder-liveness.js";
+import { Holder } from "../../../lease/domain/lease/value-objects/holder.js";
 import { type HolderStamp, readStamp, type StampFile } from "./holder.js";
 import type { ProcessLockPlatform } from "../ports.js";
 
@@ -24,7 +24,10 @@ async function abandoned(platform: ProcessLockPlatform, path: string, observed: 
     return stat !== undefined && platform.clock.now() - stat.mtimeMs > UNSTAMPED_GRACE_MS;
   }
   const { self } = platform.process;
-  return holderLiveness(stamp, self, platform.process.identify(stamp.pid)) === "dead";
+  const current = platform.process.identify(stamp.pid);
+  return (
+    new Holder(stamp).liveness(new Holder(self), current === undefined ? undefined : new Holder(current)) === "dead"
+  );
 }
 
 /** Removes the abandoned lock file while holding `<path>.stale`; `false` when another reclaimer holds that. */

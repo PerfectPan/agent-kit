@@ -190,14 +190,14 @@ export const cases: Case[] = [
   allowed(
     "collab lease domain: shell catalog value",
     "agent-kit-collab",
-    fresh("src/lease/domain/lease/policies/x"),
+    fresh("src/lease/domain/lease/aggregates/x"),
     `export { ok } from "${SHELL}/catalog";`
   ),
   allowed(
     "collab lease domain: catalog type and same concept",
     "agent-kit-collab",
     fresh("src/lease/domain/lease/x"),
-    `export type { Result } from "${SHELL}/catalog";\nexport * as l from "./policies/loss.js";`
+    `export type { Result } from "${SHELL}/catalog";\nexport * as l from "./aggregates/lease.js";`
   ),
   allowed(
     "collab lease application: platform Effect entry and Effect",

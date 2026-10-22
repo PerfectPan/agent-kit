@@ -2,9 +2,14 @@ import { err, ok, type Result } from "@rivus/agent-kit/catalog";
 
 import type { LaneQueueFull } from "../errors/lane-queue-full.js";
 import type { LaneEvent } from "../events/lane-events.js";
-import { admit, type LaneLoad } from "../policies/admission.js";
-import type { LaneLimits } from "../value-objects/lane-limits.js";
+import type { LaneLimits, LaneLoad } from "../value-objects/lane-limits.js";
 import type { LaneSnapshot } from "../value-objects/lane-snapshot.js";
+
+/**
+ * `started`: an activation started; `queued`: the lane waits for a free slot; `coalesced`: an activation that has not
+ * started yet serves this wake (the queued one, or the one that follows the running one).
+ */
+export type WakeResult = "started" | "queued" | "coalesced";
 
 export type LaneTransition = { readonly state: Lane; readonly events: readonly LaneEvent[] };
 
@@ -21,7 +26,7 @@ export class Lane {
   private readonly snapshot: LaneSnapshot;
 
   private constructor(snapshot: LaneSnapshot) {
-    this.snapshot = snapshot;
+    this.snapshot = Object.freeze({ ...snapshot });
     Object.freeze(this);
   }
 
@@ -34,7 +39,7 @@ export class Lane {
     if (state !== "idle") {
       return ok(this.to({ key, state, pending: true }, { _tag: "WakeCoalesced", key }));
     }
-    switch (admit(load, limits)) {
+    switch (limits.admit(load)) {
       case "start":
         return ok(this.to({ key, state: "running", pending: false }, { _tag: "ActivationStarted", key }));
       case "queue":
@@ -95,5 +100,13 @@ export class Lane {
       throw new Error(`lane ${this.snapshot.key} is ${this.snapshot.state}, not ${state}`);
     }
     return this.snapshot;
+  }
+  /** Reads how a wake ended from the events its transition produced. */
+  static wakeResult(events: readonly LaneEvent[]): WakeResult {
+    return events.some(({ _tag }) => _tag === "ActivationStarted")
+      ? "started"
+      : events.some(({ _tag }) => _tag === "LaneQueued")
+        ? "queued"
+        : "coalesced";
   }
 }
