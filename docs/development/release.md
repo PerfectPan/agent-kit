@@ -199,19 +199,33 @@ Run it after `pnpm run check` so `dist` exists.
 ## Bot Pull Requests
 
 - **Release PR**: see step 3 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
-- **Dependabot npm PRs**: one weekly PR carries every minor and patch npm update, and a second one every major.
-  Dependabot officially supports pnpm 7–10; on pnpm 12 its support is limited (dependabot-core#16397), so a PR may
-  edit `package.json` files or the catalog in `pnpm-workspace.yaml` without regenerating the root `pnpm-lock.yaml`.
+- **Renovate npm PRs**: `renovate.json` enables only the npm manager; GitHub Actions stay with Dependabot.
+  Renovate checks on Mondays from 00:00 to 06:59 in Asia/Shanghai, waits seven days after a release, and opens at
+  most five concurrent version-update PRs. The waiting period stays above the workspace's one-day install policy.
+  `rangeStrategy: "bump"` updates declared ranges and regenerates the pnpm lockfile through `pnpm install`.
+  `ignorePaths` excludes only `node_modules`, so the smoke-test workspace is included.
+
+  The catch-all groups separate minor/patch updates from majors. Later rules give `size-limit` and
+  `@size-limit/*` their own group, the `packages:vitePlus` preset plus `oxlint-plugin-eslint` a Vite+ toolchain
+  group, `effect` and `@effect/vitest` an effect group, and the root `packageManager` pin a pnpm group.
+  `@effect/vitest` requires a minimum `effect` version, so they must move together to satisfy strict peer checks;
+  `@effect/tsgo` has no effect peer and stays in the catch-all group. Renovate updates both size-limit catalog
+  pins together only when both releases have passed the seven-day wait in the same run. Different release dates
+  can leave only one eligible, so review their exact peer requirements before merging. Keep
+  `strictPeerDependencies: true`; compare every entry's size against main, and raise a budget only to the measured size.
+
+  Node upgrades remain deliberate: `engines`, `devEngines.runtime`, `.node-version` and major `@types/node`
+  updates are disabled. `@perfectpan/lint-config` stays disabled because it is a Git dependency whose upgrades
+  need accompanying code fixes.
+
   `vitest` and the `vite` alias (`npm:@voidzero-dev/vite-plus-core`) must equal `vite-plus`'s exact dependencies.
   The `vite@*` override supplies the core alias to Vitest's `vite` peer; a different `vitest` gives `@effect/vitest`
-  a second copy whose runner never starts ("Cannot read properties of undefined (reading 'config')"). Dependabot
-  therefore ignores `vitest`, the catalog key `vite`, and the real package name `@voidzero-dev/vite-plus-core`,
-  while `vite-plus` stays
-  updatable. Both the `vite` and `@voidzero-dev/vite-plus-core` ignore entries are defensive because Dependabot
-  currently skips npm aliases. `scripts/toolchain.test.ts`, part of `pnpm run check`, first checks that installed
+  a second copy whose runner never starts ("Cannot read properties of undefined (reading 'config')"). Grouping
+  does not guarantee alignment: members can finish their release waiting periods on different days, leaving only
+  part of the toolchain eligible. `scripts/toolchain.test.ts`, part of `pnpm run check`, first checks that installed
   `vite-plus` matches the catalog (otherwise it asks for `pnpm install`), then checks its two dependencies.
 
-  Check out a Dependabot `vite-plus` PR's branch, then:
+  If a toolchain PR drifts, check out its branch, then:
 
   1. Change the `vitest` and `vite` alias catalog entries to the versions the new `vite-plus` requires
      (`npm view vite-plus@<version> dependencies`).
@@ -219,37 +233,40 @@ Run it after `pnpm run check` so `dist` exists.
   3. Commit the catalog and lockfile changes.
   4. Push the branch.
 
-  **Size-limit updates** are manual: Dependabot ignores `size-limit` and `@size-limit/*`. The presets and their
-  plugins require the matching exact `size-limit` version. Dependabot resolves each dependency separately even
-  inside a group, so updating either the preset or `size-limit` alone fails strict peer checks. A
-  [group](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--)
-  combines updates into a PR; it does not make those installs atomic. Keep `strictPeerDependencies: true`.
+  **Lock-file maintenance** runs on the first day of each month from 00:00 to 06:59 in Asia/Shanghai. Review the
+  regenerated lockfile, confirm it retains both documents and `packageManagerDependencies`, and run
+  `pnpm install --frozen-lockfile` and `pnpm run check`.
 
-  1. Select a matching `size-limit` and `@size-limit/preset-small-lib` release published at least seven days ago,
-     and check their peer requirements with `npm view <package>@<version> peerDependencies`.
-  2. Change both pins in the `pnpm-workspace.yaml` catalog before running
-     `pnpm install --registry https://registry.npmjs.org/`.
-  3. Run `pnpm run check`. Compare every entry's size against main; raise a budget only to the measured size.
-     Compare the built `dist` files and add a changeset only if shipped files changed.
-  4. Commit the catalog, lockfile and any measured budget changes in one PR. Revisit the ignores when Dependabot
-     can update packages with exact peer requirements together.
+  GitHub's dependency graph cannot read this repository's two-document lockfile, so npm security findings come
+  from Renovate's OSV checks (`osvVulnerabilityAlerts: true`), not Dependabot alerts. OSV support is experimental
+  and covers direct dependencies; `vulnerabilityAlerts.rangeStrategy: "bump"` keeps security fixes on the tested
+  `pnpm install` path, including in-range fixes. Security PRs can bypass release-age and schedule limits and update
+  a toolchain member alone, so apply the same alignment checks and repair procedure.
 
-  For other npm updates, check out the branch, run `pnpm install`, commit the lockfile, and push.
+  Renovate opens a **Dependency Dashboard** issue through `config:recommended`. Use its checkboxes to retry or
+  recreate an update and request a pending PR; see the [dashboard controls](https://docs.renovatebot.com/key-concepts/dashboard/).
+  To pause updates, set `"enabled": false` in `renovate.json`. In Renovate 44.x, the next run closes its open PRs
+  and deletes its branches but leaves the Dependency Dashboard open. Remove the setting or set it to `true` to
+  resume. Keep the config file: deleting it under the hosted app opens a new "Configure Renovate" onboarding PR
+  on the next run.
 
-  Add changesets as appropriate for all npm dependency updates:
+  Every npm PR body reminds the reviewer to add changesets when published runtime dependencies change:
 
   - For each published package whose runtime dependencies changed:
     `pnpm change <name> --bump patch --summary "Update dependencies."`.
-  - When the PR moves the exact optional `effect` peer (Dependabot moves it together with the devDependency), one
+  - When the PR moves the exact optional `effect` peer, update it together with the catalog devDependency. Add one
     `minor` changeset naming both `@rivus/agent-kit` and `@rivus/agent-kit-collab`, whose summary names the new
     version and says that hosts pinning the old one fail to install under npm. Update the version written in
     `README.md`, both package READMEs, `docs/development/adoption.md` and `docs/specs/0001-agent-kit.md`
-    (`git grep` the old version outside the `CHANGELOG` files).
-- **Boundary-tool upgrades**: keep `oxlint-plugin-eslint` aligned with the oxlint version bundled by vite-plus.
-  Otherwise select boundary-tool versions published at least 14 days earlier. This review rule is separate from
-  the workspace's one-day `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when upgrading:
-  that interface is alpha and outside semver. Run the allowed/violating boundary fixtures, whole-repository lint
-  and the manifest tests, and record CI duration.
+    (`git grep` the old version outside the `CHANGELOG` files). The effect group's PR body repeats this requirement.
+
+- **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
+  `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned
+  with the oxlint version bundled by vite-plus; it shares the Vite+ toolchain group so reviewers check them together,
+  but grouping alone does not enforce matching versions. This rule is separate from the workspace's one-day
+  `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when upgrading: that interface is alpha
+  and outside semver. Run the allowed/violating boundary fixtures, whole-repository lint and the manifest tests,
+  and record CI duration.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
   repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`). Close PRs that touch `review.yml` or another file
