@@ -250,15 +250,34 @@ Run it after `pnpm run check` so `dist` exists.
   resume. Keep the config file: deleting it under the hosted app opens a new "Configure Renovate" onboarding PR
   on the next run.
 
-  Every npm PR body reminds the reviewer to add changesets when published runtime dependencies change:
+  **Changeset automation**: `.github/workflows/renovate-changesets.yml` runs on `pull_request` opened,
+  synchronized and reopened events affecting `pnpm-lock.yaml`, `pnpm-workspace.yaml` or a `package.json`. It accepts
+  only PRs authored by `renovate[bot]` from a `renovate/` branch in this repository. It runs
+  [`@scaleway/changesets-renovate@4.0.5`](https://github.com/scaleway/scaleway-lib/tree/f92a76abe38e010c9a00cfe1b26d4378778116d0/packages/changesets-renovate)
+  with `EXCLUDE_DEVDEPS=true` and `SORT_CHANGESETS=true`. The tool compares the head with its parent, reads manifest
+  and default pnpm catalog changes, and generates a sorted patch changeset for affected published packages. If that
+  commit already changes `.changeset/`, it skips generation. `.changeset/config.json` is only for this tool and
+  excludes private packages; pnpm still owns `pnpm change`, versioning, changelogs and the ledger through
+  `pnpm-workspace.yaml`.
 
-  - For each published package whose runtime dependencies changed:
-    `pnpm change <name> --bump patch --summary "Update dependencies."`.
-  - When the PR moves the exact optional `effect` peer, update it together with the catalog devDependency. Add one
-    `minor` changeset naming both `@rivus/agent-kit` and `@rivus/agent-kit-collab`, whose summary names the new
-    version and says that hosts pinning the old one fail to install under npm. Update the version written in
-    `README.md`, both package READMEs, `docs/development/adoption.md` and `docs/specs/0001-agent-kit.md`
-    (`git grep` the old version outside the `CHANGELOG` files). The effect group's PR body repeats this requirement.
+  Store a fine-grained personal access token as `RENOVATE_CHANGESET_TOKEN`, limited to the repositories that use
+  it, with **Contents: read and write**. Checkout uses it without retaining credentials during tool installation;
+  only the final push step receives it again. The bot commits only generated changesets, and its email is in
+  `gitIgnoredAuthors` so Renovate can still rebase the branch. This token's pushes trigger CI; `GITHUB_TOKEN`
+  pushes would not. Without the secret, the job generates a preview in its summary and exits successfully without
+  committing or pushing. An expired or revoked token fails checkout or push, stops delivery and is reported in
+  the job summary; replace the secret and rerun the job.
+
+  Two cases still need a person, with reminders in the corresponding Renovate PR bodies:
+
+  - **Exact optional `effect` peer**: the tool does not inspect peer dependencies, and its devDependency is
+    excluded, so it generates no changeset. Add one `minor` changeset naming both `@rivus/agent-kit` and
+    `@rivus/agent-kit-collab`, whose summary names the new version and says that hosts pinning the old one fail to
+    install under npm. Keep the optional peer aligned with the catalog and review README and documentation
+    references to the peer version.
+  - **Lock-file maintenance**: the tool does not inspect lockfile resolutions. Compare the built output with the
+    PR base; if a bundled dependency such as `zod/mini` changes it, add a patch changeset for the affected published
+    packages. A `packageManager`-only update also generates no changeset.
 
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned

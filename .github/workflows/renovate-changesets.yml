@@ -1,0 +1,106 @@
+name: Renovate Changesets
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - "**/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-changesets-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  changeset:
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'renovate/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
+    env:
+      EXCLUDE_DEVDEPS: "true"
+      SORT_CHANGESETS: "true"
+      # Generate first; only the final step can commit or push.
+      SKIP_COMMIT: "true"
+      GIT_AUTHOR_NAME: agent-kit-changeset-bot
+      GIT_AUTHOR_EMAIL: agent-kit-changeset-bot@users.noreply.invalid
+      GIT_COMMITTER_NAME: agent-kit-changeset-bot
+      GIT_COMMITTER_EMAIL: agent-kit-changeset-bot@users.noreply.invalid
+    steps:
+      - uses: actions/checkout@v7
+        id: checkout
+        with:
+          ref: ${{ github.head_ref }}
+          # The tool compares HEAD with its parent, not the PR merge commit.
+          fetch-depth: 2
+          token: ${{ secrets.RENOVATE_CHANGESET_TOKEN || github.token }}
+          persist-credentials: false
+      - uses: pnpm/setup@v3
+        with:
+          node-version-file: .node-version
+          install: false
+      - name: Install changesets-renovate
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/changesets-renovate"
+          --ignore-scripts --no-audit --no-fund --no-package-lock
+          --registry https://registry.npmjs.org/
+          @scaleway/changesets-renovate@4.0.5
+      - name: Generate changesets
+        run: |
+          # The pinned CLI catches errors and exits 0. Await its run entry so errors fail the job.
+          node --input-type=module <<'JS'
+          import { pathToFileURL } from 'node:url';
+          const entry = `${process.env.RUNNER_TEMP}/changesets-renovate/node_modules/@scaleway/changesets-renovate/dist/generateChangeset.mjs`;
+          const { run } = await import(pathToFileURL(entry));
+          await run();
+          JS
+          mapfile -t files < <(git ls-files --others --exclude-standard -- '.changeset/renovate-*.md')
+          if (( ${#files[@]} == 0 )); then
+            echo 'No changeset generated (no eligible dependency change, or a changeset already exists).' >> "$GITHUB_STEP_SUMMARY"
+          else
+            for file in "${files[@]}"; do
+              printf '\n### %s\n\n```markdown\n' "$file" >> "$GITHUB_STEP_SUMMARY"
+              cat "$file" >> "$GITHUB_STEP_SUMMARY"
+              printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+            done
+          fi
+      - name: Commit and push changesets
+        env:
+          CHANGESET_TOKEN: ${{ secrets.RENOVATE_CHANGESET_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          if [[ -z "$CHANGESET_TOKEN" ]]; then
+            echo 'RENOVATE_CHANGESET_TOKEN is absent: dry run only; nothing committed or pushed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mapfile -t files < <(git ls-files --others --exclude-standard -- '.changeset/renovate-*.md')
+          if (( ${#files[@]} == 0 )); then
+            exit 0
+          fi
+          git add -- "${files[@]}"
+          git commit -m 'chore(deps): add Renovate changeset'
+          auth="$(printf 'x-access-token:%s' "$CHANGESET_TOKEN" | base64 -w0)"
+          echo "::add-mask::$auth"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.${GITHUB_SERVER_URL}/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          if git push origin "HEAD:$HEAD_REF"; then
+            echo 'Changeset committed and pushed; the token-authenticated push triggers CI.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Push failed: check RENOVATE_CHANGESET_TOKEN expiry and Contents write access, or whether the branch moved. Nothing was force-pushed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - name: Report checkout failure
+        if: failure() && steps.checkout.outcome == 'failure'
+        run: |
+          echo 'Checkout failed; no changeset was pushed. If RENOVATE_CHANGESET_TOKEN has expired or lost access, replace it and rerun the job.' >> "$GITHUB_STEP_SUMMARY"

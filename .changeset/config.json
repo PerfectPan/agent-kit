@@ -1,0 +1,4 @@
+{
+  "$comment": "Only changesets-renovate reads this file. pnpm native versioning is configured in pnpm-workspace.yaml.",
+  "privatePackages": false
+}
