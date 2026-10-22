@@ -1,4 +1,4 @@
-import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
 
 /**
  * A plan that breaks an invariant. `invalid-locator`: a path that is not absolute and normalized, or a pointer or
@@ -16,6 +16,6 @@ export interface InvalidPlan {
     | "invalid-step"
     | "not-owned"
     | "conflicting-desired";
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly detail?: string;
 }

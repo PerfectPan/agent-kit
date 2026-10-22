@@ -87,13 +87,17 @@ export {
   type RenderedArtifact
 } from "./domain/bundle/spi/install-adapter.js";
 export {
-  type ArtifactSpec,
+  type ArtifactSpecSnapshot as ArtifactSpec,
   type HookSpec,
   type InstructionSpec,
   type McpServerSpec,
   type SkillSpec
 } from "./domain/bundle/value-objects/artifact-spec.js";
-export { type Bundle, type BundleRef, type InvalidBundle } from "./domain/bundle/value-objects/bundle.js";
+export {
+  type BundleSnapshot as Bundle,
+  type BundleRef,
+  type InvalidBundle
+} from "./domain/bundle/value-objects/bundle.js";
 export {
   type HookCompat,
   type HookRegistration,
@@ -104,30 +108,35 @@ export {
   type InvalidHookPlacement,
   type PlacedRegistration
 } from "./domain/bundle/services/hook-placement.js";
-export { type Owner } from "./domain/bundle/value-objects/owner.js";
-export { type Strategy } from "./domain/bundle/value-objects/strategy.js";
+export { type OwnerSnapshot as Owner } from "./domain/bundle/value-objects/owner.js";
+export { type Strategy } from "./domain/bundle/spi/strategy.js";
 export {
   type ArtifactKind,
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot as ArtifactLocator,
   type LocatorKey,
   locatorKey
 } from "./domain/install-plan/value-objects/artifact-locator.js";
-export { type Conflict, CONFLICT_CHOICES, type ConflictChoice } from "./domain/install-plan/value-objects/conflict.js";
+export {
+  type ConflictSnapshot as Conflict,
+  CONFLICT_CHOICES,
+  type ConflictChoice
+} from "./domain/install-plan/value-objects/conflict.js";
 export { type InstallScope } from "./domain/install-plan/value-objects/install-target.js";
 export { type InvalidPlan } from "./domain/install-plan/errors/invalid-plan.js";
-export { type LegacyTreatment } from "./domain/install-plan/policies/legacy-ownership.js";
+export { type LegacyTreatment } from "./domain/install-plan/services/legacy-ownership.js";
 export {
   type PlanAction,
-  type PlanStep,
+  type PlanStepSnapshot as PlanStep,
   type Removal,
   type StepNote
 } from "./domain/install-plan/value-objects/plan-step.js";
-export { type PlanBasis } from "./domain/install-plan/value-objects/plan-basis.js";
+export { type PlanBasisSnapshot as PlanBasis } from "./domain/install-plan/value-objects/plan-basis.js";
 export { type PlanConflict } from "./domain/install-plan/errors/plan-conflict.js";
 export { type PlanStale } from "./domain/install-plan/errors/plan-stale.js";
 export { type PlanStatus } from "./domain/install-plan/aggregates/install-plan.js";
-export { type Precondition } from "./domain/install-plan/value-objects/precondition.js";
-export { type TrustPrompt, type TrustPromptKind } from "./domain/install-plan/value-objects/trust-prompt.js";
+export { type PreconditionSnapshot as Precondition } from "./domain/install-plan/value-objects/precondition.js";
+export { type TrustPrompt } from "./domain/install-plan/value-objects/trust-prompt.js";
+export { type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
 export type { ArtifactContent, ContentHash, JsonValue } from "./domain/ledger/value-objects/content-hash.js";
 export type { ArtifactInstalled } from "./domain/ledger/events/artifact-installed.js";
 export type { ArtifactRemoved } from "./domain/ledger/events/artifact-removed.js";

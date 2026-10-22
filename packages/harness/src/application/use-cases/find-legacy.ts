@@ -1,3 +1,4 @@
+import { legacyText } from "../services/legacy-artifact.js";
 import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
@@ -5,15 +6,15 @@ import * as Effect from "effect/Effect";
 
 import { checkOwnerMarkers, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
 import { type HookCompat } from "../../domain/bundle/services/hook-registrations.js";
-import { type Owner } from "../../domain/bundle/value-objects/owner.js";
+import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
 import {
   type ArtifactKind,
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot,
   locatorKey,
   pointerTail
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import { type LegacyTreatment, legacyTreatment } from "../../domain/install-plan/policies/legacy-ownership.js";
-import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { type LegacyTreatment, legacyTreatment } from "../../domain/install-plan/services/legacy-ownership.js";
+import { type ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 import { planEvidenceScope } from "../../domain/install-plan/factories/plan-evidence-scope.js";
 import { type LegacyObservation, scanLegacy } from "../services/legacy-scan.js";
 import { fromResult } from "../services/from-result.js";
@@ -42,7 +43,7 @@ export interface LegacyEntry {
   /** The agent the entry is effective in: whose legacy source found it, or that runs the file holding it. */
   readonly agent: CodingAgentId;
   /** Where the entry sits: the file or directory, and for an entry in a document its position as the kit addresses it. */
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   /** What the locator addresses: a file, directory, or an entry inside a configuration document. */
   readonly kind: ArtifactKind;
   /** For a hook entry, the event that fires it, as `agent` names it. */
@@ -59,12 +60,15 @@ export type FindLegacyError = InvalidBundle | ArtifactFailure | LedgerReadError;
 export type FindLegacyServices = ArtifactFiles | LedgerRepository | PlatformService;
 
 /** Whether a locator addresses one hook of a configuration file's hook events, rather than another kind of entry. */
-function isHookLocator(locator: ArtifactLocator): boolean {
+function isHookLocator(locator: ArtifactLocatorSnapshot): boolean {
   return locator.memberIn === "hook-group" || (locator.pointer?.startsWith("/hooks/") ?? false);
 }
 
 /** The event and command of a hook entry, with the event as the agent names it, or `undefined` for another entry. */
-function hookOf(locator: ArtifactLocator, observation: LegacyObservation): { readonly event: string } | undefined {
+function hookOf(
+  locator: ArtifactLocatorSnapshot,
+  observation: LegacyObservation
+): { readonly event: string } | undefined {
   if (!isHookLocator(locator)) {
     return undefined;
   }
@@ -85,7 +89,7 @@ function hookOf(locator: ArtifactLocator, observation: LegacyObservation): { rea
  * (see the `/harness` spec for the boundary).
  */
 export function findLegacy(
-  owner: Owner,
+  owner: OwnerSnapshot,
   options: FindLegacyOptions
 ): Effect.Effect<readonly LegacyEntry[], FindLegacyError, FindLegacyServices> {
   return Effect.gen(function* () {
@@ -129,9 +133,14 @@ export function findLegacy(
         }
         listed.add(key);
         observed.set(key, observation.observed);
-        const treatment = legacyTreatment(observation.observed, owner, options.legacyMarkers, ledger, [
-          ...observed.values()
-        ]);
+        const treatment = legacyTreatment(
+          observation.observed,
+          owner,
+          options.legacyMarkers,
+          ledger,
+          [...observed.values()],
+          legacyText(observation.observed.content)
+        );
         if (treatment === undefined) {
           continue;
         }

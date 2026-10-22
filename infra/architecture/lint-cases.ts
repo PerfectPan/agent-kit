@@ -19,6 +19,42 @@ export const cases: Case[] = [
   ...spiCases,
   ...siblingEntryCases,
   ...providerCases,
+  ...["domain", "application", "infra", "lib"].map((layer) =>
+    allowed(
+      `harness ${layer}: pure lib helper`,
+      "harness",
+      fresh(`src/${layer}/x`),
+      'export { deepFreeze } from "../lib/deep-freeze.js";'
+    )
+  ),
+  rejects(
+    "harness lib: no domain dependency",
+    "harness",
+    fresh("src/lib/x"),
+    'export { Bundle } from "../domain/bundle/value-objects/bundle.js";',
+    "layer"
+  ),
+  rejects(
+    "harness lib: no application dependency",
+    "harness",
+    fresh("src/lib/x"),
+    'export { observe } from "../application/services/observe.js";',
+    "layer"
+  ),
+  rejects(
+    "harness lib: no infra dependency",
+    "harness",
+    fresh("src/lib/x"),
+    'export { encodeLedger } from "../infra/models/ledger-file.js";',
+    "layer"
+  ),
+  rejects(
+    "harness lib: no Platform dependency",
+    "harness",
+    fresh("src/lib/x"),
+    `export type { Platform } from "${PLATFORM}/public";`,
+    "layer"
+  ),
   allowed(
     "collab root domain: catalog value",
     "agent-kit-collab",

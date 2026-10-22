@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { builtinHookDialects } from "../../../test/support/providers.js";
-import { buildInstallPlan } from "../install-plan/factories/build-install-plan.js";
+import { buildInstallPlan } from "../../application/services/build-install-plan.js";
 import { Ledger } from "../ledger/aggregates/ledger.js";
-import { isLegacyArtifact } from "./policies/legacy-markers.js";
+import { isLegacyArtifact } from "../../application/services/legacy-artifact.js";
 import { placeHooks } from "./services/hook-placement.js";
 import { hookRegistrations, runnersOf } from "./services/hook-registrations.js";
 import type { HookSpec } from "./value-objects/artifact-spec.js";
-import { type Bundle, checkBundle } from "./value-objects/bundle.js";
+import { type BundleSnapshot, Bundle } from "./value-objects/bundle.js";
 
-const bundle = (overrides: Partial<Bundle>): Bundle => ({
+const bundle = (overrides: Partial<BundleSnapshot>): BundleSnapshot => ({
   owner: "agent-presence",
   version: "2.0.0",
   digest: "d",
@@ -28,13 +28,18 @@ describe("checkBundle", () => {
         { type: "hooks", command: "/u/me/.local/bin/presence-hook", events: { codex: ["Stop"] }, timeoutSeconds: 5 }
       ]
     });
-    expect(checkBundle(valid)).toEqual({ ok: true, value: valid });
+    const checked = Bundle.restore(valid);
+    expect(checked.ok ? { ok: true, value: checked.value.toSnapshot() } : checked).toEqual({ ok: true, value: valid });
   });
 
   it("reads absent or null legacy markers as none", () => {
     const unmarked = bundle({});
     (unmarked as { legacyMarkers?: readonly string[] | null }).legacyMarkers = null;
-    expect(checkBundle(unmarked)).toEqual({ ok: true, value: unmarked });
+    const checked = Bundle.restore(unmarked);
+    expect(checked.ok ? { ok: true, value: checked.value.toSnapshot() } : checked).toEqual({
+      ok: true,
+      value: unmarked
+    });
   });
 
   it.each([
@@ -81,7 +86,7 @@ describe("checkBundle", () => {
       'MCP server name "-" does not start with a letter or "_" followed by letters, digits, "_" or "-"'
     ]
   ] as const)("rejects %o", (overrides, reason) => {
-    expect(checkBundle(bundle(overrides as Partial<Bundle>))).toEqual({
+    expect(Bundle.restore(bundle(overrides as Partial<BundleSnapshot>))).toEqual({
       ok: false,
       error: { _tag: "InvalidBundle", reason }
     });

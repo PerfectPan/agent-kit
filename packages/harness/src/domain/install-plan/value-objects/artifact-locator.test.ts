@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { isWithin, locatorKey, locatorProblem, locatorsOverlap, pointerTail } from "./artifact-locator.js";
-import type { ArtifactLocator } from "./artifact-locator.js";
+import { isWithin, locatorKey, ArtifactLocator, locatorsOverlap, pointerTail } from "./artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "./artifact-locator.js";
 
 describe("artifact locators", () => {
   it("accepts absolute normalized paths with the pointer their kind needs", () => {
-    expect(locatorProblem({ kind: "file", path: "/u/me/.claude/skills/x/SKILL.md" })).toBeUndefined();
-    expect(locatorProblem({ kind: "dir", path: "C:\\Users\\me\\.codex\\plugins\\x" })).toBeUndefined();
+    expect(ArtifactLocator.problem({ kind: "file", path: "/u/me/.claude/skills/x/SKILL.md" })).toBeUndefined();
+    expect(ArtifactLocator.problem({ kind: "dir", path: "C:\\Users\\me\\.codex\\plugins\\x" })).toBeUndefined();
     expect(
-      locatorProblem({ kind: "json-entry", path: "/u/me/.claude/settings.json", pointer: "/hooks/Stop", member: "x" })
+      ArtifactLocator.problem({
+        kind: "json-entry",
+        path: "/u/me/.claude/settings.json",
+        pointer: "/hooks/Stop",
+        member: "x"
+      })
     ).toBeUndefined();
-    expect(locatorProblem({ kind: "managed-block", path: "/p/AGENTS.md", pointer: "presence" })).toBeUndefined();
+    expect(
+      ArtifactLocator.problem({ kind: "managed-block", path: "/p/AGENTS.md", pointer: "presence" })
+    ).toBeUndefined();
   });
 
   it.each([
@@ -35,12 +42,12 @@ describe("artifact locators", () => {
     [{ kind: "file", path: "/x", member: "a" }, "file takes no member"],
     [{ kind: "json-entry", path: "/x", pointer: "/hooks/Stop", memberIn: "hook-group" }, "memberIn without a member"]
   ] as const)("rejects %o", (locator, problem) => {
-    expect(locatorProblem(locator)).toBe(problem);
+    expect(ArtifactLocator.problem(locator)).toBe(problem);
   });
 
   it("reads a null pointer as absent instead of throwing", () => {
-    const locator = { kind: "json-entry", path: "/x", pointer: null } as unknown as ArtifactLocator;
-    expect(locatorProblem(locator)).toBe("pointer is not a JSON pointer to an entry");
+    const locator = { kind: "json-entry", path: "/x", pointer: null } as unknown as ArtifactLocatorSnapshot;
+    expect(ArtifactLocator.problem(locator)).toBe("pointer is not a JSON pointer to an entry");
     expect(pointerTail(locator.pointer)).toBeUndefined();
   });
 
@@ -52,9 +59,11 @@ describe("artifact locators", () => {
       member: "/u/me/bin/shim Stop",
       memberIn: "hook-group"
     } as const;
-    expect(locatorProblem(hook)).toBeUndefined();
+    expect(ArtifactLocator.problem(hook)).toBeUndefined();
     expect(locatorKey(hook)).toBe(JSON.stringify(["/x", "/hooks/Stop", "/u/me/bin/shim Stop"]));
-    expect(locatorProblem({ kind: "json-entry", path: "/x", pointer: "/mcpServers/presence_2048" })).toBeUndefined();
+    expect(
+      ArtifactLocator.problem({ kind: "json-entry", path: "/x", pointer: "/mcpServers/presence_2048" })
+    ).toBeUndefined();
   });
 
   it("identifies an array element by its member, so the user's edits around it do not change its key", () => {

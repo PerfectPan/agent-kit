@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 
 export type RegistrationPurpose = "register" | "unregister";
 
@@ -22,7 +22,10 @@ export interface RegistrationCommands {
  * Callers pass only steps that change something on disk (`touchesDisk`): a `release` or `keep` removal changes the
  * ledger alone, and this rule answers only for a command line something actually runs.
  */
-export function registrationCommands(step: PlanStep, entry: LedgerEntry | undefined): RegistrationCommands | undefined {
+export function registrationCommands(
+  step: PlanStepSnapshot,
+  entry: LedgerEntry | undefined
+): RegistrationCommands | undefined {
   if (step.locator.kind !== "cli-registration") {
     return undefined;
   }

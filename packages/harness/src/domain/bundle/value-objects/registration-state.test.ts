@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { CliRegistration } from "../spi/install-adapter.js";
-import { ownRecordOf, registrationContent, registrationLinkMismatch } from "./registration-state.js";
+import { ownRecordOf, registrationLinkMismatch } from "../services/registration-record.js";
+import { RegistrationState } from "./registration-state.js";
 
 const registration = (): CliRegistration => ({
   register: { command: "codex", args: ["plugin", "register", "/u/me/presence"] },
@@ -16,23 +17,29 @@ const registration = (): CliRegistration => ({
 describe("registrationContent", () => {
   it("reads an enabled registration as its installed copy's text, so an outdated copy is planned again", () => {
     expect(
-      registrationContent(true, { installedCopy: "/u/me/copy", copy: { isFile: true, content: "copy text" } })
+      RegistrationState.observe(true, {
+        installedCopy: "/u/me/copy",
+        copy: { isFile: true, content: "copy text" }
+      }).content()
     ).toBe("copy text");
-    expect(registrationContent(true, { installedCopy: "/u/me/copy", copy: { isFile: false, content: null } })).toBe(
-      true
-    );
-    expect(registrationContent(true, {})).toBe(true);
+    expect(
+      RegistrationState.observe(true, { installedCopy: "/u/me/copy", copy: { isFile: false, content: null } }).content()
+    ).toBe(true);
+    expect(RegistrationState.observe(true, {}).content()).toBe(true);
   });
 
   it("keeps an explicitly disabled registration as false even with a matching copy", () => {
-    expect(registrationContent(false, { installedCopy: "/u/me/copy", copy: { isFile: true, content: "copy" } })).toBe(
-      false
-    );
+    expect(
+      RegistrationState.observe(false, {
+        installedCopy: "/u/me/copy",
+        copy: { isFile: true, content: "copy" }
+      }).content()
+    ).toBe(false);
   });
 
   it("reads as the record itself without an installed copy", () => {
-    expect(registrationContent(true, {})).toBe(true);
-    expect(registrationContent(undefined, {})).toBeUndefined();
+    expect(RegistrationState.observe(true, {}).content()).toBe(true);
+    expect(RegistrationState.observe(undefined, {}).content()).toBeUndefined();
   });
 });
 

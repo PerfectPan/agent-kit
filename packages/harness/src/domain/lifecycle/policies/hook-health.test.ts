@@ -1,11 +1,11 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 import type { HookDialect } from "../spi/hook-dialect.js";
 import { duplicateHooks, hookHealth, type HookProblem } from "./hook-health.js";
 
-const at = (pointer: string, member = "~/bin/hook.sh"): ArtifactLocator => ({
+const at = (pointer: string, member = "~/bin/hook.sh"): ArtifactLocatorSnapshot => ({
   kind: "json-entry",
   path: "/u/me/.gemini/settings.json",
   pointer,

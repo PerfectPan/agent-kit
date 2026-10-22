@@ -4,20 +4,20 @@ import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { Ledger } from "../../ledger/aggregates/ledger.js";
 import { locatorKey } from "../value-objects/artifact-locator.js";
 import type { ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 import { registrationCommands } from "./registration-commands.js";
 
 const hash = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
 
-const registration: ArtifactLocator = {
+const registration: ArtifactLocatorSnapshot = {
   kind: "cli-registration",
   path: "/u/me/.codex/config.toml",
   pointer: "/plugins/presence"
 };
-const file: ArtifactLocator = { kind: "file", path: "/u/me/x" };
+const file: ArtifactLocatorSnapshot = { kind: "file", path: "/u/me/x" };
 
-const step = (locator: ArtifactLocator, overrides: Partial<PlanStep> = {}): PlanStep => ({
+const step = (locator: ArtifactLocatorSnapshot, overrides: Partial<PlanStepSnapshot> = {}): PlanStepSnapshot => ({
   locator,
   action: "create",
   agents: ["codex"],

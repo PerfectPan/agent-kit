@@ -1,9 +1,9 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
-import { locatorProblem } from "../../install-plan/value-objects/artifact-locator.js";
-import type { Owner } from "../../bundle/value-objects/owner.js";
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
+import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 
 /**
  * An Artifact an owner let go of on removal because the user had changed it: it stays on disk as the user's. No later
@@ -15,20 +15,20 @@ import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-
  * The exact record goes once something is recorded at its locator again.
  */
 export interface KeptArtifactSnapshot {
-  readonly locator: ArtifactLocator;
-  readonly owner: Owner;
+  readonly locator: ArtifactLocatorSnapshot;
+  readonly owner: OwnerSnapshot;
   readonly keptAt: string;
 }
 
 /** A validated, immutable child of the Ledger; only the root restores or replaces it. */
 export class KeptArtifact {
-  declare readonly locator: ArtifactLocator;
-  declare readonly owner: Owner;
+  declare readonly locator: ArtifactLocatorSnapshot;
+  declare readonly owner: OwnerSnapshot;
   declare readonly keptAt: string;
 
   static restore(snapshot: KeptArtifactSnapshot): Result<KeptArtifact, InvalidLedger> {
     const reason =
-      locatorProblem(snapshot.locator) !== undefined || snapshot.owner === ""
+      ArtifactLocator.problem(snapshot.locator) !== undefined || snapshot.owner === ""
         ? "a kept Artifact has an invalid locator or no owner"
         : undefined;
     return reason === undefined ? ok(new KeptArtifact(snapshot)) : err({ _tag: "InvalidLedger", reason });

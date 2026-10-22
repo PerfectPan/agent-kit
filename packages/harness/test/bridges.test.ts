@@ -19,7 +19,7 @@ import {
   opencodeInstallAdapter
 } from "@rivus/agent-kit-provider-opencode/install";
 import { bridgeSource as piBridgeSource, piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
-import type { Bundle } from "../src/domain/bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../src/domain/bundle/value-objects/bundle.js";
 import { removeTestHomes, type TestHome, testHome } from "./support/home.js";
 
 afterEach(removeTestHomes);
@@ -46,7 +46,7 @@ async function payloads(home: TestHome, count: number): Promise<unknown[]> {
   throw new Error(`expected ${count} payloads, got: ${home.read("payloads.log")}`);
 }
 
-const install = (home: TestHome, bundle: Bundle, agent: "opencode" | "pi") =>
+const install = (home: TestHome, bundle: BundleSnapshot, agent: "opencode" | "pi") =>
   Effect.runPromise(
     Effect.flatMap(
       planInstall(bundle, {

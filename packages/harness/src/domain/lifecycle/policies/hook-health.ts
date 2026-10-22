@@ -1,7 +1,7 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import { hasLegacyMarker } from "../../bundle/policies/legacy-markers.js";
-import { type ArtifactLocator, pointerTail } from "../../install-plan/value-objects/artifact-locator.js";
+import { hasLegacyMarker } from "../../bundle/services/legacy-markers.js";
+import { type ArtifactLocatorSnapshot, pointerTail } from "../../install-plan/value-objects/artifact-locator.js";
 import type { HookDialect } from "../spi/hook-dialect.js";
 
 /** Why `doctor` flags a command hook: it never runs, its timeout unit looks wrong, its program is gone, or it fires twice. */
@@ -15,20 +15,20 @@ export type HookProblem = "unknown-event" | "timeout-unit" | "stale-path" | "dup
 export type HookFinding =
   | {
       readonly problem: "unknown-event";
-      readonly locator: ArtifactLocator;
+      readonly locator: ArtifactLocatorSnapshot;
       readonly agent: CodingAgentId;
       readonly event: string;
     }
   | {
       readonly problem: "timeout-unit";
-      readonly locator: ArtifactLocator;
+      readonly locator: ArtifactLocatorSnapshot;
       readonly agent: CodingAgentId;
       readonly timeout: number;
     }
-  | { readonly problem: "stale-path"; readonly locator: ArtifactLocator; readonly program: string }
+  | { readonly problem: "stale-path"; readonly locator: ArtifactLocatorSnapshot; readonly program: string }
   | {
       readonly problem: "duplicate-hook";
-      readonly locator: ArtifactLocator;
+      readonly locator: ArtifactLocatorSnapshot;
       readonly agent: CodingAgentId;
       readonly event: string;
       readonly markedCount?: number;
@@ -38,11 +38,11 @@ export type HookFinding =
 export interface CommandHook {
   readonly event: string;
   readonly command: string;
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
 }
 
 /** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
-const eventOf = (locator: ArtifactLocator): string => pointerTail(locator.pointer) ?? "";
+const eventOf = (locator: ArtifactLocatorSnapshot): string => pointerTail(locator.pointer) ?? "";
 
 /**
  * Problems with one hook registration: an event its dialect does not know, under none of its alias spellings either,
@@ -53,7 +53,7 @@ const eventOf = (locator: ArtifactLocator): string => pointerTail(locator.pointe
  */
 export function hookHealth(
   dialect: HookDialect | undefined,
-  locator: ArtifactLocator,
+  locator: ArtifactLocatorSnapshot,
   hook: { readonly timeout?: number },
   exists: (path: string) => boolean,
   program?: string

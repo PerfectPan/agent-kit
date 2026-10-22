@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import type { ArtifactSource } from "../../domain/bundle/spi/install-adapter.js";
 import { type LegacyHookSource } from "../../domain/install-plan/factories/plan-evidence-scope.js";
 import { pointerTail } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import type { ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import type { ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 import { ArtifactFiles, type ArtifactFailure } from "../ports.js";
 import { observation } from "./observe.js";
 import { resolvePath } from "./resolve-path.js";

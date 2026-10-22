@@ -56,6 +56,7 @@ Every context package uses the same layout, creating only the directories it nee
     adapters/           other port implementations (editors, CLI runners, fences)
     factories/          Layer compositions
     services/           helpers shared by infra files
+  lib/                  pure utilities with no domain or IO dependencies
   public.ts             names used by sibling contexts and selected by the shell package
   spi.ts                provider interfaces and the context helpers their implementations need
 ```
@@ -68,9 +69,10 @@ adapters may import other adapters, but contain no agent-specific rules.
 
 The layer principles:
 
-- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may not import any `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
+- `domain/` is pure: no IO, it never sees Platform, and it does not import `effect`. A concept folder may import pure utilities in `lib/`, but no `adapters/` folder, its own or another concept's. The adapters folders are the only domain folders that may use external packages, such as `zod` for payload validation.
 - `application/` holds `use-cases/` (the public use cases), `services/` (coordination code shared by use cases; it may call ports but owns no business rules) and `ports.ts` (port shapes and injection tags).
 - `infra/` implements the ports and reaches the outside only through Platform. `@rivus/agent-kit-platform-node` is the only package that may import `node:*`.
+- Every layer may use `lib/`; a utility may import only other utilities in its context and the shared kernel, with no domain, application, infrastructure, Platform or external-package dependencies.
 
 | Layer | Contents | May import |
 | --- | --- | --- |
@@ -136,6 +138,33 @@ export class AcpSession {
 ## Entities
 
 An entity is a child of one aggregate: it has a local identity inside that aggregate, but no identity outside it. It is a read-only record in the root's snapshot, it is read only through the root's methods, and it is created and changed only by the root's transitions. It has no store and no lock of its own. An entity with its own lifecycle and its own store is an aggregate; promote it rather than giving it a repository. Harness's Ledger keeps its entries, pending operations and kept artifacts as immutable classes under `domain/ledger/entities/`. The root alone restores these children and replaces them through its transitions; each child validates its own fields, while the Ledger checks locator keys, revisions and uniqueness. Ownership and release are entry methods, and pending operations resolve crash probes. Child snapshots retain the stored record shape; inventory, pending-operation errors and the testing SPI expose those plain snapshots. A save writes the entire Ledger snapshot.
+
+## Harness Write-Side Values
+
+Install-plan and bundle keep their own rules on immutable classes: `ArtifactLocator`, `PlanStep`, `Precondition`,
+`Conflict`, `InstallTarget`, `PlanBasis`, `Bundle`, `ArtifactSpec`, `Owner` and `RegistrationState`. Construction keeps
+caller input untouched, including rejected input. ArtifactSpec copies each spec once; Bundle copies its metadata and
+retains the validated spec snapshots. RegistrationState copies its record and installed-copy inputs; ordinary file
+and directory observations keep the read content until a value object retains it. Values and aggregates share the
+pure `lib/deep-freeze.ts` helper. A `PlanStep` owns its field invariants, disk-write decision, precondition checks and
+resulting content. `InstallPlan` checks cross-step and ledger evidence, then stores validated steps; it orders installation before reverse-order
+removal. Root containment and ledger-basis comparisons retain their existing aggregate error reasons and ordering.
+
+Public and persisted data stay plain. Explicit `Snapshot` types name those shapes internally; public and testing
+SPI exports retain their existing names. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
+`InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, the `StepContentAfter`
+result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
+rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
+`StepContentAfter` is local to the application executor. `Strategy` lives with the bundle SPI. Registration
+observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
+the existing plain snapshots.
+
+Neither of these concepts has a `policies/` folder. Cross-object conflict choices, legacy ownership, registration
+commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
+install-file rendering also lives in bundle `services/`, retaining its provider SPI exports. Legacy command content
+is parsed with `zod/mini` in the application layer before the domain receives text evidence keyed by each observation;
+locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
+itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
 
 ## Aggregates, Entities And Repositories
 

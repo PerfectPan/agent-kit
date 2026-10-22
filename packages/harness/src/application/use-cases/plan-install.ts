@@ -6,11 +6,10 @@ import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
 import {
-  type Bundle,
+  type BundleSnapshot,
   type BundleRef,
-  checkBundle,
-  type InvalidBundle,
-  legacyMarkersOf
+  Bundle,
+  type InvalidBundle
 } from "../../domain/bundle/value-objects/bundle.js";
 import {
   type DroppedHook,
@@ -26,31 +25,30 @@ import {
   type InstallContext,
   type RenderedArtifact
 } from "../../domain/bundle/spi/install-adapter.js";
-import { type Strategy } from "../../domain/bundle/value-objects/strategy.js";
+import { type Strategy } from "../../domain/bundle/spi/strategy.js";
 import {
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot,
   type LocatorKey,
   locatorKey
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import { buildInstallPlan } from "../../domain/install-plan/factories/build-install-plan.js";
+import { buildInstallPlan } from "../services/build-install-plan.js";
 import {
   chooseStrategy,
   requiredCommands,
   strategyRequirement,
   strategyUnsupported
-} from "../../domain/install-plan/policies/strategy-choice.js";
+} from "../../domain/install-plan/services/strategy-choice.js";
 import { type ConflictChoice } from "../../domain/install-plan/value-objects/conflict.js";
-import { contentAfterStep } from "../../domain/install-plan/value-objects/content-after.js";
-import { type DesiredArtifact } from "../../domain/install-plan/value-objects/desired-artifact.js";
-import { type ForeignHookObservation } from "../../domain/install-plan/policies/legacy-ownership.js";
+import { type DesiredArtifact } from "../../domain/install-plan/spi/desired-artifact.js";
+import { type ForeignHookObservation } from "../../domain/install-plan/services/legacy-ownership.js";
 import { type InstallPlan as PlanAggregate } from "../../domain/install-plan/aggregates/install-plan.js";
 import { type InvalidPlan } from "../../domain/install-plan/errors/invalid-plan.js";
-import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+import { type ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 import { planEvidenceScope } from "../../domain/install-plan/factories/plan-evidence-scope.js";
 import { type PlanConflict } from "../../domain/install-plan/errors/plan-conflict.js";
 import { type PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
-import { type PlanStep, touchesDisk } from "../../domain/install-plan/value-objects/plan-step.js";
-import { registrationCommands } from "../../domain/install-plan/policies/registration-commands.js";
+import { PlanStep } from "../../domain/install-plan/value-objects/plan-step.js";
+import { registrationCommands } from "../../domain/install-plan/services/registration-commands.js";
 import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
 import type { Ledger } from "../../domain/ledger/aggregates/ledger.js";
 import type { PendingOperations } from "../../domain/ledger/errors/pending-operations.js";
@@ -212,7 +210,8 @@ export function renderBundle(
   return Effect.gen(function* () {
     const rendered: Rendered[] = [];
     const droppedHooks: DroppedHook[] = [];
-    for (const spec of bundle.artifacts) {
+    for (const artifactSpec of bundle.artifacts) {
+      const spec = artifactSpec.toSnapshot();
       // No adapter installs a spec other than hooks or skills (`strategyRequirement` says `unsupported` for every
       // agent), reported against the first selected one; with none selected nothing renders.
       const unsupported = agents.find((agent) => strategyRequirement(spec, agent) === "unsupported");
@@ -234,7 +233,7 @@ export function renderBundle(
               available: options.available.get(agent) ?? new Set<string>()
             })
           );
-          placements.push({ agent, file: adapter.hookFile(strategy, bundle), strategy });
+          placements.push({ agent, file: adapter.hookFile(strategy, bundle.toSnapshot()), strategy });
         }
         const placed = yield* fromResult(
           placeHooks(
@@ -247,7 +246,12 @@ export function renderBundle(
         for (const [index, hooks] of placed.entries()) {
           const { strategy } = placements[index] ?? { strategy: "native-plugin" as const };
           const adapter = adapterOf(setup, hooks.agent);
-          for (const artifact of adapter.renderHooks(strategy, hooks.registrations, bundle, setup.context)) {
+          for (const artifact of adapter.renderHooks(
+            strategy,
+            hooks.registrations,
+            bundle.toSnapshot(),
+            setup.context
+          )) {
             rendered.push({ agent: hooks.agent, artifact });
           }
         }
@@ -321,7 +325,7 @@ function linkedPaths(
 }
 
 export interface PlanInput {
-  readonly bundle: Bundle;
+  readonly bundle: BundleSnapshot;
   readonly agents: readonly CodingAgentId[];
   readonly setup: PlanSetup;
   readonly desired: readonly DesiredArtifact[];
@@ -330,6 +334,9 @@ export interface PlanInput {
   readonly compat?: readonly HookCompat[];
 }
 
+/** The executor resolves a restored pre-image from its blob reference. */
+type StepContentAfter = ReturnType<PlanStep["contentAfter"]>;
+
 /** The content a step leaves at its target, or `undefined` when it leaves nothing or does not write there. */
 export function contentAfter(
   scope: LedgerScope,
@@ -337,7 +344,7 @@ export function contentAfter(
   ledger: Ledger
 ): Effect.Effect<ArtifactContent | undefined, LedgerReadError, LedgerRepository> {
   return Effect.gen(function* () {
-    const after = contentAfterStep(step, ledger.entry(step.locator)?.preImage);
+    const after: StepContentAfter = step.contentAfter(ledger.entry(step.locator)?.preImage);
     if (after === undefined || "desired" in after) {
       return after?.desired;
     }
@@ -368,10 +375,10 @@ function describePlan(
     const commands: PlannedCommand[] = [];
     const entryChanges = new Map<
       string,
-      { format: "json" | "toml"; changes: { locator: ArtifactLocator; content: ArtifactContent | undefined }[] }
+      { format: "json" | "toml"; changes: { locator: ArtifactLocatorSnapshot; content: ArtifactContent | undefined }[] }
     >();
     for (const step of aggregate.steps) {
-      if (!touchesDisk(step)) {
+      if (!step.touchesDisk()) {
         continue;
       }
       const { locator } = step;
@@ -403,7 +410,7 @@ function describePlan(
           break;
         }
         case "cli-registration": {
-          const commandsForStep = registrationCommands(step, ledger.entry(locator));
+          const commandsForStep = registrationCommands(step.toSnapshot(), ledger.entry(locator));
           if (commandsForStep === undefined || commandsForStep.purposes.length === 0) {
             break;
           }
@@ -464,7 +471,7 @@ export function buildPlan(
     const { ledger } = loaded;
     const evidenceScope = planEvidenceScope({
       owner: bundle.owner,
-      legacyMarkers: legacyMarkersOf(bundle),
+      legacyMarkers: bundle.legacyMarkers ?? [],
       agents,
       desired: input.desired,
       ledger,
@@ -473,7 +480,7 @@ export function buildPlan(
       context: setup.context,
       ...(input.compat === undefined ? {} : { compat: input.compat })
     });
-    const locators = new Map<LocatorKey, ArtifactLocator>();
+    const locators = new Map<LocatorKey, ArtifactLocatorSnapshot>();
     for (const locator of evidenceScope.locators) {
       locators.set(locatorKey(locator), locator);
     }
@@ -535,12 +542,12 @@ export function buildPlan(
  * takes the LedgerLock long enough to probe and settle them first.
  */
 export function planInstall(
-  bundle: Bundle,
+  bundle: BundleSnapshot,
   options: PlanInstallOptions
 ): Effect.Effect<InstallPlan, PlanInstallError, HarnessServices> {
   return Effect.gen(function* () {
     requireUserScope(options);
-    const checked = yield* fromResult(checkBundle(bundle));
+    const checked = yield* fromResult(Bundle.restore(bundle));
     const setup = yield* planSetup(options);
     for (const agent of options.agents) {
       adapterOf(setup, agent);
@@ -559,7 +566,7 @@ export function planInstall(
     });
     const desired = yield* desiredArtifacts(rendered);
     return yield* buildPlan(scope, loaded, {
-      bundle: checked,
+      bundle: checked.toSnapshot(),
       agents: options.agents,
       setup,
       desired,

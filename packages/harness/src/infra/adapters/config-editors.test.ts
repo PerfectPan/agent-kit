@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
 import { editJsonc, parseJsonc } from "./jsonc-editor.js";
 import { editToml, parseToml } from "./toml-editor.js";
 
-const hook = (event: string, command: string): ArtifactLocator => ({
+const hook = (event: string, command: string): ArtifactLocatorSnapshot => ({
   kind: "json-entry",
   path: "/u/me/.claude/settings.json",
   pointer: `/hooks/${event}`,
@@ -14,7 +14,7 @@ const hook = (event: string, command: string): ArtifactLocator => ({
   memberIn: "hook-group"
 });
 
-function jsonc(text: string | undefined, locator: ArtifactLocator, value: JsonValue | undefined): string {
+function jsonc(text: string | undefined, locator: ArtifactLocatorSnapshot, value: JsonValue | undefined): string {
   const data = text === undefined ? undefined : parseJsonc(text);
   const edits = entryEdits(data?.ok === true ? data.value : undefined, locator, value);
   if (!edits.ok) {
@@ -23,7 +23,7 @@ function jsonc(text: string | undefined, locator: ArtifactLocator, value: JsonVa
   return editJsonc(text, edits.value);
 }
 
-function toml(text: string, locator: ArtifactLocator, value: JsonValue | undefined): string {
+function toml(text: string, locator: ArtifactLocatorSnapshot, value: JsonValue | undefined): string {
   const data = parseToml(text);
   const edits = entryEdits(data.ok ? data.value : undefined, locator, value);
   if (!edits.ok || !data.ok) {
@@ -63,7 +63,7 @@ describe("document values", () => {
 
   it("edits a TOML document that holds a big integer, and keeps it", () => {
     const text = 'big = 9223372036854775807\nmodel = "gpt"\n';
-    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
+    const locator: ArtifactLocatorSnapshot = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
     const edited = toml(text, locator, "o4");
     expect(edited).toContain("big = 9223372036854775807");
     expect(edited).toContain('model = "o4"');
@@ -85,7 +85,7 @@ describe("document values", () => {
       throw new Error("no document");
     }
     expect(Object.hasOwn(parsed.value, "__proto__")).toBe(true);
-    const locator: ArtifactLocator = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
+    const locator: ArtifactLocatorSnapshot = { kind: "toml-entry", path: "/codex/config.toml", pointer: "/model" };
     expect(toml(text, locator, "o4")).toContain('"__proto__" = "x"');
   });
 });
@@ -131,7 +131,7 @@ describe("JSONC entries", () => {
   });
 
   it("starts a missing file as an object and edits list elements by identity", () => {
-    const plugins: ArtifactLocator = {
+    const plugins: ArtifactLocatorSnapshot = {
       kind: "json-entry",
       path: "/p/opencode.json",
       pointer: "/plugin",
@@ -176,7 +176,7 @@ command = "docs-mcp" # keep me
 `;
 
 describe("TOML entries", () => {
-  const stop: ArtifactLocator = {
+  const stop: ArtifactLocatorSnapshot = {
     kind: "toml-entry",
     path: "/u/me/.codex/config.toml",
     pointer: "/hooks/Stop",

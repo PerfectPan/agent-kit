@@ -14,7 +14,10 @@ import {
   type EntryChange
 } from "../../application/ports.js";
 import type { ArtifactSource } from "../../domain/bundle/spi/install-adapter.js";
-import { type ArtifactLocator, locatorPointer } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import {
+  type ArtifactLocatorSnapshot,
+  locatorPointer
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { ArtifactContent, JsonValue } from "../../domain/ledger/value-objects/content-hash.js";
 import type { Document } from "../services/document.js";
 import { entryEdits, entryValue, listEntries } from "../services/config-entries.js";
@@ -93,7 +96,7 @@ async function pruneEmpty(platform: FilesPlatform, dir: string): Promise<void> {
   }
 }
 
-function formatOf(locator: ArtifactLocator): Format {
+function formatOf(locator: ArtifactLocatorSnapshot): Format {
   return locator.kind === "toml-entry" ? "toml" : "json";
 }
 
@@ -105,7 +108,7 @@ function editDocument(
   format: Format,
   text: string | undefined,
   data: Document | undefined,
-  locator: ArtifactLocator,
+  locator: ArtifactLocatorSnapshot,
   value: JsonValue | undefined
 ): Result<string, ArtifactFailure> {
   const edits = entryEdits(data, locator, value);
@@ -115,7 +118,7 @@ function editDocument(
   return format === "toml" ? editToml(text, data, edits.value) : ok(editJsonc(text, edits.value));
 }
 
-function unsupported(locator: ArtifactLocator): never {
+function unsupported(locator: ArtifactLocatorSnapshot): never {
   throw new AgentKitError("capability-unsupported", `ArtifactFiles does not handle ${locator.kind} Artifacts`);
 }
 
@@ -153,7 +156,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
       return { text, data };
     });
 
-  const read = (locator: ArtifactLocator): Effect.Effect<ArtifactRead | undefined, ArtifactFailure> =>
+  const read = (locator: ArtifactLocatorSnapshot): Effect.Effect<ArtifactRead | undefined, ArtifactFailure> =>
     Effect.gen(function* () {
       const { path } = locator;
       const { stat, symlinkTarget } = yield* inspect(path);
@@ -205,7 +208,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
       await fs.writeAtomic(path, text);
     });
 
-  const write = (locator: ArtifactLocator, content: ArtifactContent): Effect.Effect<void, ArtifactFailure> =>
+  const write = (locator: ArtifactLocatorSnapshot, content: ArtifactContent): Effect.Effect<void, ArtifactFailure> =>
     Effect.gen(function* () {
       const { path } = locator;
       switch (locator.kind) {
@@ -313,7 +316,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
   const scan = (source: ArtifactSource) =>
     Effect.gen(function* () {
       if (source.kind === "file") {
-        const locator: ArtifactLocator = { kind: "file", path: source.path };
+        const locator: ArtifactLocatorSnapshot = { kind: "file", path: source.path };
         const found = yield* read(locator);
         return found === undefined ? [] : [{ locator, read: found }];
       }
@@ -332,7 +335,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
             continue;
           }
           if (entry.kind === "file" || entry.kind === "symlink") {
-            const locator: ArtifactLocator = { kind: "file", path: `${dir}/${entry.name}` };
+            const locator: ArtifactLocatorSnapshot = { kind: "file", path: `${dir}/${entry.name}` };
             const found = yield* read(locator);
             if (found?.kind === "file") {
               files.push({ locator, read: found });
@@ -346,7 +349,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
       const { data } = yield* document(path, format);
       const kind = format === "toml" ? "toml-entry" : "json-entry";
       return listEntries(data, pointer, memberIn).map((entry) => ({
-        locator: { kind, path, ...entry.locator } as ArtifactLocator,
+        locator: { kind, path, ...entry.locator } as ArtifactLocatorSnapshot,
         read: {
           kind,
           content: entry.value,

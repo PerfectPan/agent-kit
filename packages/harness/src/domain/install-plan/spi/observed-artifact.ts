@@ -1,5 +1,5 @@
 import type { ArtifactContent, ContentHash } from "../../ledger/value-objects/content-hash.js";
-import type { ArtifactLocator } from "./artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
 
 /**
  * What is at one locator now, as the application read it; the locator's kind says what was found there. A locator
@@ -7,7 +7,7 @@ import type { ArtifactLocator } from "./artifact-locator.js";
  * a symlink at the Artifact is reported here rather than resolved away.
  */
 export interface ObservedArtifact {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   /** SHA-256 of `canonicalContent(locator.kind, content)`; something that cannot be read still gets a hash. */
   readonly hash: ContentHash;
   /**
@@ -19,9 +19,4 @@ export interface ObservedArtifact {
   readonly managedBy?: string;
   /** The content itself, needed only where an older version of the owner may have installed it. */
   readonly content?: ArtifactContent;
-}
-
-/** Whether the symlink at the locator points nowhere: the link is there, what it names is not. */
-export function isBrokenSymlink(observed: ObservedArtifact): boolean {
-  return observed.symlinkTarget !== undefined && observed.locator.kind === "symlink" && observed.content === "";
 }

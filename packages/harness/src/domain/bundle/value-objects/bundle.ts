@@ -1,15 +1,15 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
-import type { ArtifactSpec } from "./artifact-spec.js";
-import { type Owner, OWNER_PATTERN } from "./owner.js";
+import { ArtifactSpec, type ArtifactSpecSnapshot } from "./artifact-spec.js";
+import { Owner, type OwnerSnapshot } from "./owner.js";
 
 /** What one Owner wants installed into the agents' harnesses. */
-export interface Bundle {
-  readonly owner: Owner;
+export interface BundleSnapshot {
+  readonly owner: OwnerSnapshot;
   readonly version: string;
   /** Identifies the artifacts' content, such as a hash the owner computes over them. */
   readonly digest: string;
-  readonly artifacts: readonly ArtifactSpec[];
+  readonly artifacts: readonly ArtifactSpecSnapshot[];
   /**
    * Substrings by which the owner recognizes what its older versions installed without a ledger, such as their hook
    * command lines. Such artifacts are replaced or removed instead of being installed a second time.
@@ -17,98 +17,82 @@ export interface Bundle {
   readonly legacyMarkers?: readonly string[];
 }
 
-export type BundleRef = Pick<Bundle, "owner" | "version" | "digest">;
-
-/**
- * The substrings by which the owner recognizes what its older versions installed. A bundle is caller data, so the
- * optional list is read live through this one accessor at every site: a bundle that names none — or names `null` —
- * has none.
- */
-export function legacyMarkersOf(bundle: Bundle): readonly string[] {
-  return bundle.legacyMarkers ?? [];
-}
+export type BundleRef = Pick<BundleSnapshot, "owner" | "version" | "digest">;
 
 export interface InvalidBundle {
   readonly _tag: "InvalidBundle";
   readonly reason: string;
 }
 
-const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-/** Starts with a letter or `_`, so that as a JSON pointer segment it never reads as an array index (`0`, `-`). */
-const MCP_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+export class Bundle {
+  readonly #snapshot: BundleSnapshot;
+  readonly #owner: Owner;
+  readonly #artifacts: readonly ArtifactSpec[];
 
-/** A relative `/`-separated path that cannot leave its directory. */
-const isRelativeFile = (path: string): boolean =>
-  !path.includes("\\") && path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+  private constructor(input: BundleSnapshot, owner: Owner, artifacts: readonly ArtifactSpec[]) {
+    const { artifacts: _artifacts, ...metadata } = input;
+    const snapshot = structuredClone(metadata);
+    this.#owner = owner;
+    this.#artifacts = Object.freeze([...artifacts]);
+    this.#snapshot = Object.freeze({
+      ...snapshot,
+      owner: owner.toSnapshot(),
+      artifacts: Object.freeze(this.#artifacts.map((spec) => spec.toSnapshot())),
+      ...(snapshot.legacyMarkers === undefined ? {} : { legacyMarkers: Object.freeze(snapshot.legacyMarkers) })
+    });
+    Object.freeze(this);
+  }
 
-function artifactProblem(artifact: ArtifactSpec): string | undefined {
-  switch (artifact.type) {
-    case "hooks":
-      if (artifact.command.trim() === "") {
-        return "hook command is empty";
+  get owner(): Owner {
+    return this.#owner;
+  }
+  get artifacts(): readonly ArtifactSpec[] {
+    return this.#artifacts;
+  }
+  legacyMarkers(): readonly string[] {
+    return this.#snapshot.legacyMarkers ?? [];
+  }
+  toSnapshot(): BundleSnapshot {
+    return this.#snapshot;
+  }
+
+  static restore(bundle: BundleSnapshot): Result<Bundle, InvalidBundle> {
+    const invalid = (reason: string) => err<InvalidBundle>({ _tag: "InvalidBundle", reason });
+    const owner = Owner.restore(bundle.owner);
+    if (!owner.ok) {
+      return owner;
+    }
+    if (bundle.version === "" || bundle.digest === "") {
+      return invalid("version and digest must not be empty");
+    }
+    if ((bundle.legacyMarkers ?? []).some((marker) => marker.trim() === "")) {
+      return invalid("an empty legacy marker would match everything");
+    }
+    const seen = new Set<string>();
+    const artifacts: ArtifactSpec[] = [];
+    for (const artifact of bundle.artifacts) {
+      const restored = ArtifactSpec.restore(artifact);
+      if (!restored.ok) {
+        return restored;
       }
-      if (
-        artifact.timeoutSeconds !== undefined &&
-        !(Number.isFinite(artifact.timeoutSeconds) && artifact.timeoutSeconds > 0)
-      ) {
-        return "hook timeout is not a positive number of seconds";
+      artifacts.push(restored.value);
+      const name = artifact.type === "hooks" ? "" : artifact.type === "instructions" ? artifact.id : artifact.name;
+      if (seen.has(`${artifact.type}:${name}`)) {
+        return invalid(artifact.type === "hooks" ? "more than one hook spec" : `duplicate ${artifact.type} "${name}"`);
       }
-      return Object.values(artifact.events).some((events) => events?.some((event) => event === ""))
-        ? "hook event name is empty"
-        : undefined;
-    case "skill":
-      if (!NAME.test(artifact.name) || artifact.name.length > 64) {
-        return `skill name "${artifact.name}" is not lowercase letters, digits and hyphens`;
-      }
-      if (!Object.hasOwn(artifact.files, "SKILL.md")) {
-        return `skill "${artifact.name}" has no SKILL.md`;
-      }
-      return Object.keys(artifact.files).every(isRelativeFile)
-        ? undefined
-        : `skill "${artifact.name}" has a file path that leaves its directory`;
-    case "mcp-server":
-      return MCP_NAME.test(artifact.name)
-        ? undefined
-        : `MCP server name "${artifact.name}" does not start with a letter or "_" followed by letters, digits, "_" or "-"`;
-    case "instructions":
-      return NAME.test(artifact.id)
-        ? undefined
-        : `instructions id "${artifact.id}" is not lowercase letters, digits and hyphens`;
+      seen.add(`${artifact.type}:${name}`);
+    }
+    return ok(new Bundle(bundle, owner.value, artifacts));
   }
 }
-
-/** Checks what strategies rely on: names usable as file names and block ids, unique per type, one hook spec. */
-export function checkBundle(bundle: Bundle): Result<Bundle, InvalidBundle> {
-  const invalid = (reason: string) => err<InvalidBundle>({ _tag: "InvalidBundle", reason });
-  if (!OWNER_PATTERN.test(bundle.owner)) {
-    return invalid(`owner "${bundle.owner}" is not a package-style name`);
-  }
-  if (bundle.version === "" || bundle.digest === "") {
-    return invalid("version and digest must not be empty");
-  }
-  if (legacyMarkersOf(bundle).some((marker) => marker.trim() === "")) {
-    return invalid("an empty legacy marker would match everything");
-  }
-  const seen = new Set<string>();
-  for (const artifact of bundle.artifacts) {
-    const problem = artifactProblem(artifact);
-    if (problem !== undefined) {
-      return invalid(problem);
-    }
-    const name = artifact.type === "hooks" ? "" : artifact.type === "instructions" ? artifact.id : artifact.name;
-    if (seen.has(`${artifact.type}:${name}`)) {
-      return invalid(artifact.type === "hooks" ? "more than one hook spec" : `duplicate ${artifact.type} "${name}"`);
-    }
-    seen.add(`${artifact.type}:${name}`);
-  }
-  return ok(bundle);
-}
-
 /**
  * The inputs of an operation that works for one owner without a bundle (`uninstall`, the read-only legacy listing),
- * checked through `checkBundle` with an artifact-less bundle: the owner is a package-style name and no marker is
+ * checked through `Bundle.restore` with an artifact-less bundle: the owner is a package-style name and no marker is
  * blank, which would match everything. The returned bundle carries nothing else an operation needs.
  */
-export function checkOwnerMarkers(owner: Owner, legacyMarkers: readonly string[]): Result<Bundle, InvalidBundle> {
-  return checkBundle({ owner, version: "uninstall", digest: "uninstall", artifacts: [], legacyMarkers });
+export function checkOwnerMarkers(
+  owner: OwnerSnapshot,
+  legacyMarkers: readonly string[]
+): Result<Bundle, InvalidBundle> {
+  return Bundle.restore({ owner, version: "uninstall", digest: "uninstall", artifacts: [], legacyMarkers });
 }

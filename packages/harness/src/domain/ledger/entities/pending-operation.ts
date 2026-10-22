@@ -1,12 +1,12 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
-import { locatorProblem } from "../../install-plan/value-objects/artifact-locator.js";
+import { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
 
-import type { Owner } from "../../bundle/value-objects/owner.js";
-import type { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
+import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 import type { PlanAction, Removal } from "../../install-plan/value-objects/plan-step.js";
-import type { Precondition } from "../../install-plan/value-objects/precondition.js";
+import type { PreconditionSnapshot } from "../../install-plan/value-objects/precondition.js";
 import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
 import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
 
@@ -16,13 +16,13 @@ import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
  */
 export interface PendingOperationSnapshot {
   readonly planId: string;
-  readonly owner: Owner;
+  readonly owner: OwnerSnapshot;
   readonly bundleVersion: string;
   readonly toolVersion: string;
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly action: Exclude<PlanAction, "conflict">;
   readonly agents: readonly CodingAgentId[];
-  readonly precondition: Precondition;
+  readonly precondition: PreconditionSnapshot;
   /** The hash the target has once the step is done; absent on a removal and on a noop that keeps a user's change. */
   readonly resultHash?: ContentHash;
   readonly removal?: Removal;
@@ -40,13 +40,13 @@ export interface PendingOperationSnapshot {
  * pending, to be probed.
  */
 export interface StepOutcome {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly status: "done" | "skipped" | "failed";
 }
 
 /** What is at a pending operation's target after a crash: its hash, or none when nothing is there. */
 export interface PendingProbe {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly hash?: ContentHash;
 }
 
@@ -60,7 +60,7 @@ export type PendingResolution = "completed" | "not-started" | "unknown";
 function pendingProblem(op: PendingOperationSnapshot): string | undefined {
   const { precondition } = op;
   const invalid =
-    locatorProblem(op.locator) !== undefined ||
+    ArtifactLocator.problem(op.locator) !== undefined ||
     (op.resultHash !== undefined && !isContentHash(op.resultHash)) ||
     (op.preImage !== undefined && !isPreImage(op.preImage)) ||
     ("hash" in precondition && !isContentHash(precondition.hash)) ||
@@ -71,13 +71,13 @@ function pendingProblem(op: PendingOperationSnapshot): string | undefined {
 /** A validated, immutable child of the Ledger; only the root restores or replaces it. */
 export class PendingOperation {
   declare readonly planId: string;
-  declare readonly owner: Owner;
+  declare readonly owner: OwnerSnapshot;
   declare readonly bundleVersion: string;
   declare readonly toolVersion: string;
-  declare readonly locator: ArtifactLocator;
+  declare readonly locator: ArtifactLocatorSnapshot;
   declare readonly action: Exclude<PlanAction, "conflict">;
   declare readonly agents: readonly CodingAgentId[];
-  declare readonly precondition: Precondition;
+  declare readonly precondition: PreconditionSnapshot;
   declare readonly resultHash?: ContentHash;
   declare readonly removal?: Removal;
   declare readonly preImage?: PreImage;

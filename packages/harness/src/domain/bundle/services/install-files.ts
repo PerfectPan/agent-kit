@@ -1,8 +1,8 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import type { HookRegistration } from "../services/hook-registrations.js";
+import type { HookRegistration } from "./hook-registrations.js";
 import type { InstallContext } from "../spi/install-adapter.js";
-import type { PlacedRegistration } from "../services/hook-placement.js";
+import type { PlacedRegistration } from "./hook-placement.js";
 import type { JsonValue } from "../../ledger/value-objects/content-hash.js";
 
 /** JSON as the kit writes whole files: two-space indentation and a final newline. */

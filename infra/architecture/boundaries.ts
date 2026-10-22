@@ -8,10 +8,10 @@
 /**
  * Layer directories of a context package: `src/domain/<concept>/`, the agent adapters at
  * `src/domain/<concept>/adapters/` (inside `domain/` but judged as their own layer), `src/application/` and
- * `src/infra/`. Entry files (`public.ts`, `spi.ts`) may reach the package's layers. Sources under `src/` are plain `.ts` files:
+ * `src/infra/`, and pure utilities in `src/lib/`. Entry files (`public.ts`, `spi.ts`) may reach the package's layers. Sources under `src/` are plain `.ts` files:
  * declaration and JavaScript files would hide imports from the check.
  */
-export type Layer = "domain" | "adapters" | "application" | "infra";
+export type Layer = "domain" | "adapters" | "application" | "infra" | "lib";
 
 export interface PackageRule {
   /** Entries this package exposes to siblings with dependsOn access; SPI access is declared separately. */
@@ -299,13 +299,20 @@ export const boundaries: BoundaryRules = {
   layers: {
     // The domain does no IO, so it never sees the Platform port, not even its types, and never reaches the agent
     // adapters inside it: domain/<concept>/ may not import any adapters/ folder, its own or another concept's.
-    domain: { layers: ["domain"], workspace: "kernel-and-types", hidden: [PLATFORM, PLATFORM_NODE], external: false },
+    domain: {
+      layers: ["domain", "lib"],
+      workspace: "kernel-and-types",
+      hidden: [PLATFORM, PLATFORM_NODE],
+      external: false
+    },
     // The agent adapters translate external formats into the domain model, one folder per concept whose model they
     // produce. They may use every domain concept, also across concepts, and need the shared kernel because adapter
     // tables are keyed by CodingAgentId.
-    adapters: { layers: ["domain", "adapters"], workspace: "kernel", external: true },
-    application: { layers: ["domain", "adapters", "application"], workspace: "any", external: true },
-    infra: { layers: ["domain", "application", "infra"], workspace: "any", external: true }
+    adapters: { layers: ["domain", "adapters", "lib"], workspace: "kernel", external: true },
+    application: { layers: ["domain", "adapters", "application", "lib"], workspace: "any", external: true },
+    infra: { layers: ["domain", "application", "infra", "lib"], workspace: "any", external: true },
+    // Pure utilities have no domain or IO dependencies, even when their callers do.
+    lib: { layers: ["lib"], workspace: "kernel", external: false }
   },
   effect: {
     modules: ["effect", "@effect/*"],

@@ -2,9 +2,9 @@ import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 
-import { checkOwnerMarkers, type InvalidBundle, legacyMarkersOf } from "../../domain/bundle/value-objects/bundle.js";
-import { type Owner } from "../../domain/bundle/value-objects/owner.js";
-import type { ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { checkOwnerMarkers, type InvalidBundle } from "../../domain/bundle/value-objects/bundle.js";
+import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
+import type { ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { InvalidPlan } from "../../domain/install-plan/errors/invalid-plan.js";
 import type { PlanConflict } from "../../domain/install-plan/errors/plan-conflict.js";
 import type { PlanStale } from "../../domain/install-plan/errors/plan-stale.js";
@@ -38,7 +38,7 @@ export interface UninstallReport extends ApplyReport {
   /** The plan that was applied, with every step and note. */
   readonly plan: InstallPlan;
   /** Artifacts the user changed: they stay as the user's, without ownership entries but with protection records. */
-  readonly kept: readonly ArtifactLocator[];
+  readonly kept: readonly ArtifactLocatorSnapshot[];
 }
 
 export type UninstallError =
@@ -61,7 +61,7 @@ export type UninstallError =
  * through a symlink; such steps are notes of the plan.
  */
 export function uninstall(
-  owner: Owner,
+  owner: OwnerSnapshot,
   options: UninstallOptions
 ): Effect.Effect<UninstallReport, UninstallError, HarnessServices> {
   return Effect.scoped(
@@ -75,9 +75,15 @@ export function uninstall(
         registrations: registrationLookup(setup.adapters, setup.context)
       });
       // Legacy Artifacts are in no ledger entry, so with markers every agent with an adapter is searched.
-      const searched = legacyMarkersOf(bundle).length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
+      const searched = bundle.legacyMarkers().length > 0 ? (Object.keys(setup.adapters) as CodingAgentId[]) : [];
       const agents = options.agents ?? Ledger.unionAgents(loaded.ledger.agentsOf(owner), searched);
-      const plan = yield* buildPlan(scope, loaded, { bundle, agents, setup, desired: [], droppedHooks: [] });
+      const plan = yield* buildPlan(scope, loaded, {
+        bundle: bundle.toSnapshot(),
+        agents,
+        setup,
+        desired: [],
+        droppedHooks: []
+      });
       const report = yield* applyLocked(recordOf(plan), loaded);
       return { ...report, plan, kept: recordOf(plan).aggregate.kept };
     })

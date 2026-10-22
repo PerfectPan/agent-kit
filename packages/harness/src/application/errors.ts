@@ -1,5 +1,5 @@
-import type { ArtifactLocator } from "../domain/install-plan/value-objects/artifact-locator.js";
-import type { Precondition } from "../domain/install-plan/value-objects/precondition.js";
+import type { ArtifactLocatorSnapshot } from "../domain/install-plan/value-objects/artifact-locator.js";
+import type { PreconditionSnapshot } from "../domain/install-plan/value-objects/precondition.js";
 import type { ContentHash } from "../domain/ledger/value-objects/content-hash.js";
 import type { AgentCliFailure, ArtifactFailure, LedgerRepositoryFailure } from "./ports.js";
 
@@ -13,8 +13,8 @@ export type { StrategyUnavailable } from "../domain/install-plan/errors/strategy
 export interface TargetChanged {
   readonly _tag: "TargetChanged";
   readonly planId: string;
-  readonly locator: ArtifactLocator;
-  readonly expected: Precondition;
+  readonly locator: ArtifactLocatorSnapshot;
+  readonly expected: PreconditionSnapshot;
   readonly actual?: ContentHash;
   readonly completed: number;
 }
@@ -26,7 +26,7 @@ export interface TargetChanged {
 export interface ApplyFailed {
   readonly _tag: "ApplyFailed";
   readonly planId: string;
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly cause: ArtifactFailure | AgentCliFailure | LedgerRepositoryFailure;
   readonly completed: number;
 }

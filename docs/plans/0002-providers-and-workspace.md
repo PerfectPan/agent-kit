@@ -430,6 +430,7 @@ The domain folders no longer have `adapters/`, so the name no longer clashes wit
   - `lenient` (three copies today);
   - `timeOf`, `logTimestamp`, `timeOfValue`;
   - `ownValue`, `rememberKey`, `jsonText`;
+  - `deepFreeze`, shared by harness values and aggregates; callers copy the data they retain before freezing;
   - `shortHash`, a hand-written cyrb53 hash kept because no small library fits; its comment says so.
 
   Code that needs a Node capability is not `lib/`. It takes the capability through the Platform port (a `Pick<Platform, ...>` first parameter in plain contexts, `PlatformService` in Effect contexts) and lives in `application/services/` or `infra/`. A missing capability is added to Platform and implemented by platform-node and the memory platform, as `fs.mkdir` was.

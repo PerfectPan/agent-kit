@@ -1,8 +1,8 @@
 import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
-import type { ArtifactSpec } from "../../bundle/value-objects/artifact-spec.js";
+import type { ArtifactSpecSnapshot } from "../../bundle/value-objects/artifact-spec.js";
 import type { InstallAdapter } from "../../bundle/spi/install-adapter.js";
-import type { Strategy } from "../../bundle/value-objects/strategy.js";
+import type { Strategy } from "../../bundle/spi/strategy.js";
 import type { StrategyUnavailable } from "../errors/strategy-unavailable.js";
 
 export type StrategyArtifactKind = "hooks" | "skill";
@@ -21,7 +21,7 @@ export interface StrategyChoice {
  * Whether the agent takes this Artifact at all: a hook spec that names none of the agent's events needs no strategy,
  * while MCP servers and instructions have no built-in strategy for any agent.
  */
-export function strategyRequirement(spec: ArtifactSpec, agent: CodingAgentId): StrategyRequirement {
+export function strategyRequirement(spec: ArtifactSpecSnapshot, agent: CodingAgentId): StrategyRequirement {
   if (spec.type === "skill") {
     return "skill";
   }
@@ -62,7 +62,7 @@ export function chooseStrategy(
 }
 
 /** The failure for an Artifact kind no adapter installs, reported against the first selected agent. */
-export function strategyUnsupported(agent: CodingAgentId, spec: ArtifactSpec): StrategyUnavailable {
+export function strategyUnsupported(agent: CodingAgentId, spec: ArtifactSpecSnapshot): StrategyUnavailable {
   return { _tag: "StrategyUnavailable", agent, artifact: spec.type, missing: [] };
 }
 

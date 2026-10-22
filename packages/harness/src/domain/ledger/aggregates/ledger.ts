@@ -1,14 +1,15 @@
+import { deepFreeze } from "../../../lib/deep-freeze.js";
 import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
-import type { Owner } from "../../bundle/value-objects/owner.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
 import { ledgerMovedError, planClosedError, type PlanStale } from "../../install-plan/errors/plan-stale.js";
-import { basisMoved } from "../../install-plan/value-objects/plan-basis.js";
+import { PlanBasis } from "../../install-plan/value-objects/plan-basis.js";
 import {
-  type ArtifactLocator,
+  type ArtifactLocatorSnapshot,
   type LocatorKey,
   locatorKey,
-  locatorProblem
+  ArtifactLocator
 } from "../../install-plan/value-objects/artifact-locator.js";
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
 import type { LedgerVersionUnsupported } from "../errors/ledger-version-unsupported.js";
@@ -47,7 +48,10 @@ export type LedgerEvent = ArtifactInstalled | ArtifactRemoved;
 export type LedgerTransition = { readonly state: Ledger; readonly events: readonly LedgerEvent[] };
 
 export type LedgerRecovery = LedgerTransition & {
-  readonly resolutions: readonly { readonly locator: ArtifactLocator; readonly resolution: PendingResolution }[];
+  readonly resolutions: readonly {
+    readonly locator: ArtifactLocatorSnapshot;
+    readonly resolution: PendingResolution;
+  }[];
 };
 
 export interface BeginContext {
@@ -98,16 +102,6 @@ function sameRecord(a: LedgerEntrySnapshot, b: LedgerEntrySnapshot): boolean {
   );
 }
 
-/** Deep-freeze helper: snapshots retain no mutable descendants. */
-function freeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const inner of Object.values(value)) {
-      freeze(inner);
-    }
-  }
-  return value;
-}
 const isRevision = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
 /**
@@ -145,7 +139,7 @@ export class Ledger {
     }
     const entries: Record<LocatorKey, LedgerEntry> = {};
     for (const [key, value] of Object.entries(snapshot.entries)) {
-      const locatorIssue = locatorProblem(value.locator);
+      const locatorIssue = ArtifactLocator.problem(value.locator);
       if (locatorIssue !== undefined) {
         return invalid(locatorIssue, key);
       }
@@ -207,10 +201,10 @@ export class Ledger {
     pending: readonly PendingOperation[],
     kept: Readonly<Record<LocatorKey, KeptArtifact>>
   ) {
-    this.snapshot = freeze(snapshot);
-    this.entriesByKey = freeze(entries);
-    this.pendingOperations = freeze(pending);
-    this.keptByKey = freeze(kept);
+    this.snapshot = deepFreeze(snapshot);
+    this.entriesByKey = deepFreeze(entries);
+    this.pendingOperations = deepFreeze(pending);
+    this.keptByKey = deepFreeze(kept);
     Object.freeze(this);
   }
 
@@ -226,7 +220,7 @@ export class Ledger {
     return this.pendingOperations;
   }
 
-  entry(locator: ArtifactLocator): LedgerEntry | undefined {
+  entry(locator: ArtifactLocatorSnapshot): LedgerEntry | undefined {
     const key = locatorKey(locator);
     return Object.hasOwn(this.entriesByKey, key) ? this.entriesByKey[key] : undefined;
   }
@@ -236,12 +230,12 @@ export class Ledger {
   }
 
   /** The entries whose owners include `owner`, in ledger order. */
-  entriesOf(owner: Owner): readonly LedgerEntry[] {
+  entriesOf(owner: OwnerSnapshot): readonly LedgerEntry[] {
     return this.entries().filter((entry) => entry.heldBy(owner));
   }
 
   /** Every agent the owner's entries name, without repeats and sorted; the default agents a change covers. */
-  agentsOf(owner: Owner): readonly CodingAgentId[] {
+  agentsOf(owner: OwnerSnapshot): readonly CodingAgentId[] {
     return Ledger.agentsOfEntries(this.entriesOf(owner));
   }
 
@@ -251,7 +245,7 @@ export class Ledger {
   }
 
   /** The record of an Artifact an owner let go of because the user changed it, if this locator has one. */
-  kept(locator: ArtifactLocator, owner?: Owner): KeptArtifact | undefined {
+  kept(locator: ArtifactLocatorSnapshot, owner?: OwnerSnapshot): KeptArtifact | undefined {
     const key = locatorKey(locator);
     const kept = this.keptByKey;
     if (Object.hasOwn(kept, key) && (owner === undefined || kept[key]?.owner === owner)) {
@@ -279,14 +273,15 @@ export class Ledger {
     if (closed !== undefined) {
       return err(closed);
     }
-    if (basisMoved(basedOn, this)) {
+    if (PlanBasis.restore(basedOn).moved(this)) {
       return err(ledgerMovedError(planId, basedOn, this));
     }
     if (this.pending.length > 0) {
       return err({ _tag: "PendingOperations", operations: this.snapshot.pending });
     }
-    const pending = plan.steps.map((step): PendingOperationSnapshot => {
-      const key = locatorKey(step.locator);
+    const pending = plan.steps.map((value): PendingOperationSnapshot => {
+      const step = value.toSnapshot();
+      const key = value.key();
       if (step.action === "conflict") {
         throw new AgentKitError("unresolved-conflict", `Plan step ${key} is an unresolved conflict`);
       }
@@ -381,7 +376,7 @@ export class Ledger {
    * hash. Unknown locators are a caller error.
    */
   acknowledge(
-    updates: readonly { readonly locator: ArtifactLocator; readonly contentHash: ContentHash }[],
+    updates: readonly { readonly locator: ArtifactLocatorSnapshot; readonly contentHash: ContentHash }[],
     context: { readonly at: string }
   ): Result<LedgerTransition, PendingOperations> {
     if (this.pending.length > 0) {

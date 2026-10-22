@@ -7,7 +7,7 @@ export {
   jsonText,
   sharedAgentsDir,
   sharedSkillsDir
-} from "./domain/bundle/adapters/install-files.js";
+} from "./domain/bundle/services/install-files.js";
 export { type PlacedRegistration } from "./domain/bundle/services/hook-placement.js";
 export { type HookRegistration } from "./domain/bundle/services/hook-registrations.js";
 export {
@@ -22,10 +22,13 @@ export {
 } from "./domain/bundle/spi/install-adapter.js";
 export { type SkillSpec } from "./domain/bundle/value-objects/artifact-spec.js";
 export { type BundleRef } from "./domain/bundle/value-objects/bundle.js";
-export { type Owner } from "./domain/bundle/value-objects/owner.js";
-export { type Strategy } from "./domain/bundle/value-objects/strategy.js";
-export { type ArtifactLocator, locatorPointer } from "./domain/install-plan/value-objects/artifact-locator.js";
-export { type TrustPromptKind } from "./domain/install-plan/value-objects/trust-prompt.js";
+export { type OwnerSnapshot as Owner } from "./domain/bundle/value-objects/owner.js";
+export { type Strategy } from "./domain/bundle/spi/strategy.js";
+export {
+  type ArtifactLocatorSnapshot as ArtifactLocator,
+  locatorPointer
+} from "./domain/install-plan/value-objects/artifact-locator.js";
+export { type TrustPromptKind } from "./domain/install-plan/spi/trust-prompt.js";
 export { type ArtifactContent, type JsonValue } from "./domain/ledger/value-objects/content-hash.js";
 export {
   type FieldPath,
@@ -57,12 +60,12 @@ export {
   type PendingOperationSnapshot as PendingOperation,
   type StepOutcome
 } from "./domain/ledger/entities/pending-operation.js";
-export { buildInstallPlan } from "./domain/install-plan/factories/build-install-plan.js";
-export { type Bundle } from "./domain/bundle/value-objects/bundle.js";
+export { buildInstallPlan } from "./application/services/build-install-plan.js";
+export { type BundleSnapshot as Bundle } from "./domain/bundle/value-objects/bundle.js";
 export { CONFLICT_CHOICES, type ConflictChoice } from "./domain/install-plan/value-objects/conflict.js";
-export { type DesiredArtifact } from "./domain/install-plan/value-objects/desired-artifact.js";
-export { isLegacyArtifact } from "./domain/bundle/policies/legacy-markers.js";
-export { type ObservedArtifact } from "./domain/install-plan/value-objects/observed-artifact.js";
+export { type DesiredArtifact } from "./domain/install-plan/spi/desired-artifact.js";
+export { isLegacyArtifact } from "./application/services/legacy-artifact.js";
+export { type ObservedArtifact } from "./domain/install-plan/spi/observed-artifact.js";
 export { type PreImage } from "./domain/ledger/value-objects/pre-image.js";
 export { threeWayVerify } from "./domain/ledger/services/three-way-verify.js";
 export { type VerifyStatus } from "./domain/ledger/value-objects/drift.js";

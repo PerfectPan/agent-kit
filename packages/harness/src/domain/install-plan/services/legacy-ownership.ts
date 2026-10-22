@@ -1,17 +1,17 @@
 import { lookupService } from "@rivus/agent-kit-catalog/public";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
-import { isLegacyArtifact } from "../../bundle/policies/legacy-markers.js";
-import { type Bundle, legacyMarkersOf } from "../../bundle/value-objects/bundle.js";
-import type { Owner } from "../../bundle/value-objects/owner.js";
+import { hasLegacyMarker } from "../../bundle/services/legacy-markers.js";
+import { type BundleSnapshot } from "../../bundle/value-objects/bundle.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import { aliasesOf } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
 import type { PlanConflict } from "../errors/plan-conflict.js";
-import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
 import { locatorKey } from "../value-objects/artifact-locator.js";
-import type { ObservedArtifact } from "../value-objects/observed-artifact.js";
-import type { PlanStep } from "../value-objects/plan-step.js";
+import type { ObservedArtifact } from "../spi/observed-artifact.js";
+import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 
 /** A foreign hook observed in a file a selected runner executes, with the runner and the event it fires it as. */
 export interface ForeignHookObservation {
@@ -22,8 +22,8 @@ export interface ForeignHookObservation {
 }
 
 function missingOwnedHook(
-  locator: ArtifactLocator,
-  owner: Owner,
+  locator: ArtifactLocatorSnapshot,
+  owner: OwnerSnapshot,
   ledger: Ledger,
   observed: readonly ObservedArtifact[]
 ): boolean {
@@ -44,8 +44,8 @@ function missingOwnedHook(
 
 /** A renamed hook cannot be distinguished from a deleted hook followed by a user's hook in the same event. */
 export function protectedLegacy(
-  locator: ArtifactLocator,
-  owner: Owner,
+  locator: ArtifactLocatorSnapshot,
+  owner: OwnerSnapshot,
   ledger: Ledger,
   observed: readonly ObservedArtifact[]
 ): boolean {
@@ -68,16 +68,18 @@ export type LegacyTreatment = "replace" | "protect";
  */
 export function legacyTreatment(
   seen: ObservedArtifact,
-  owner: Owner,
+  owner: OwnerSnapshot,
   markers: readonly string[],
   ledger: Ledger,
-  observed: readonly ObservedArtifact[]
+  observed: readonly ObservedArtifact[],
+  legacyText: string | undefined
 ): LegacyTreatment | undefined {
   const key = locatorKey(seen.locator);
   if (
     ledger.entry(seen.locator) !== undefined ||
     ledger.pending.some((op) => locatorKey(op.locator) === key) ||
-    !isLegacyArtifact(markers, seen.content)
+    legacyText === undefined ||
+    !hasLegacyMarker(markers, legacyText)
   ) {
     return undefined;
   }
@@ -87,15 +89,16 @@ export function legacyTreatment(
 /** Kept hooks remain protected from every owner's cleanup; only a related replacement is blocked. */
 export function protectedReplacement(
   seen: ObservedArtifact,
-  bundle: Bundle,
+  bundle: BundleSnapshot,
   agents: readonly CodingAgentId[],
   ledger: Ledger,
-  observed: readonly ObservedArtifact[]
+  observed: readonly ObservedArtifact[],
+  legacyText: string | undefined
 ): boolean {
   return (
     ledger.kept(seen.locator, bundle.owner) !== undefined ||
     missingOwnedHook(seen.locator, bundle.owner, ledger, observed) ||
-    isLegacyArtifact(legacyMarkersOf(bundle), seen.content) ||
+    (legacyText !== undefined && hasLegacyMarker(bundle.legacyMarkers ?? [], legacyText)) ||
     bundle.artifacts.some(
       (spec) =>
         spec.type === "hooks" &&
@@ -108,7 +111,12 @@ export function protectedReplacement(
 }
 
 /** Whether the runner installs a hook for the same event, under the event's own name or one of its dialect aliases. */
-function bundleFiresEvent(bundle: Bundle, runner: CodingAgentId, event: string, dialects: HookDialects): boolean {
+function bundleFiresEvent(
+  bundle: BundleSnapshot,
+  runner: CodingAgentId,
+  event: string,
+  dialects: HookDialects
+): boolean {
   const dialect = lookupService(runner, dialects);
   const aliases = new Set(aliasesOf(dialect.ok ? dialect.value.events : undefined, event));
   return bundle.artifacts.some(
@@ -125,10 +133,10 @@ function bundleFiresEvent(bundle: Bundle, runner: CodingAgentId, event: string, 
 export function retainsForeignHook(
   item: ForeignHookObservation,
   context: {
-    readonly bundle: Bundle;
+    readonly bundle: BundleSnapshot;
     readonly dialects: HookDialects;
     readonly ledger: Ledger;
-    readonly steps: readonly PlanStep[];
+    readonly steps: readonly PlanStepSnapshot[];
   }
 ): boolean {
   const { bundle, dialects, ledger, steps } = context;
@@ -149,10 +157,10 @@ export function retainedForeignConflict(
   planId: string,
   items: readonly ForeignHookObservation[],
   context: {
-    readonly bundle: Bundle;
+    readonly bundle: BundleSnapshot;
     readonly dialects: HookDialects;
     readonly ledger: Ledger;
-    readonly steps: readonly PlanStep[];
+    readonly steps: readonly PlanStepSnapshot[];
   }
 ): PlanConflict | undefined {
   const conflicts = items.flatMap((item) => {

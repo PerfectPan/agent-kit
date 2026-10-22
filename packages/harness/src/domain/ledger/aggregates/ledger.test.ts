@@ -1,11 +1,11 @@
 import { isAgentKitError } from "@rivus/agent-kit-catalog/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { Bundle } from "../../bundle/value-objects/bundle.js";
+import type { BundleSnapshot } from "../../bundle/value-objects/bundle.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
-import { buildInstallPlan, type PlanRequest } from "../../install-plan/factories/build-install-plan.js";
-import { type ArtifactLocator, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
-import type { ObservedArtifact } from "../../install-plan/value-objects/observed-artifact.js";
+import { buildInstallPlan, type PlanRequest } from "../../../application/services/build-install-plan.js";
+import { type ArtifactLocatorSnapshot, locatorKey } from "../../install-plan/value-objects/artifact-locator.js";
+import type { ObservedArtifact } from "../../install-plan/spi/observed-artifact.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
 import type { LedgerEntrySnapshot } from "../entities/ledger-entry.js";
 import type { PendingOperationSnapshot } from "../entities/pending-operation.js";
@@ -15,10 +15,13 @@ const HOME = "/u/me";
 const OWNER = "agent-presence";
 const AT = "2026-10-08T00:00:00.000Z";
 const h = (n: number): ContentHash => `sha256:${n.toString(16).padStart(64, "0")}`;
-const file = (name: string): ArtifactLocator => ({ kind: "file", path: `${HOME}/.claude/skills/${name}/SKILL.md` });
-const BUNDLE: Bundle = { owner: OWNER, version: "2.0.0", digest: "d2", artifacts: [] };
+const file = (name: string): ArtifactLocatorSnapshot => ({
+  kind: "file",
+  path: `${HOME}/.claude/skills/${name}/SKILL.md`
+});
+const BUNDLE: BundleSnapshot = { owner: OWNER, version: "2.0.0", digest: "d2", artifacts: [] };
 
-function entry(locator: ArtifactLocator, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
+function entry(locator: ArtifactLocatorSnapshot, overrides: Partial<LedgerEntrySnapshot> = {}): LedgerEntrySnapshot {
   return {
     locator,
     owners: [OWNER],
@@ -78,7 +81,7 @@ function planOn(
   return built.value;
 }
 
-const want = (locator: ArtifactLocator, n: number) =>
+const want = (locator: ArtifactLocatorSnapshot, n: number) =>
   ({ agent: "claude-code", locator, content: `content ${n}`, hash: h(n), strategy: "native-plugin" }) as const;
 
 /** Begins the plan and reports every step done. */
@@ -126,8 +129,8 @@ describe("Ledger", () => {
     "revokes %s file proof for every owner before completion or recovery can inherit it",
     (kind) => {
       const path = `${HOME}/.claude/settings`;
-      const own: ArtifactLocator = { kind, path, pointer: "/own" };
-      const other: ArtifactLocator = { kind, path, pointer: "/other" };
+      const own: ArtifactLocatorSnapshot = { kind, path, pointer: "/own" };
+      const other: ArtifactLocatorSnapshot = { kind, path, pointer: "/other" };
       const ledger = restore(
         snapshot([
           entry(own, { createdConfigFile: true }),
@@ -163,8 +166,8 @@ describe("Ledger", () => {
     "records new %s file proof while revoking the removed file's old proof",
     (kind) => {
       const path = `${HOME}/.claude/settings`;
-      const own: ArtifactLocator = { kind, path, pointer: "/own" };
-      const other: ArtifactLocator = { kind, path, pointer: "/other" };
+      const own: ArtifactLocatorSnapshot = { kind, path, pointer: "/own" };
+      const other: ArtifactLocatorSnapshot = { kind, path, pointer: "/other" };
       const ledger = restore(
         snapshot([
           entry(own, { createdConfigFile: true }),
@@ -198,8 +201,8 @@ describe("Ledger", () => {
     "carries %s file proof without granting it to a command-line registration on the same path",
     (kind) => {
       const path = `${HOME}/.claude/settings`;
-      const config: ArtifactLocator = { kind, path, pointer: "/hooks" };
-      const cli: ArtifactLocator = { kind: "cli-registration", path, pointer: "/plugin" };
+      const config: ArtifactLocatorSnapshot = { kind, path, pointer: "/hooks" };
+      const cli: ArtifactLocatorSnapshot = { kind: "cli-registration", path, pointer: "/plugin" };
       const ledger = restore(snapshot([entry(cli)]));
       const plan = planOn(ledger, [{ locator: cli, hash: h(1) }], { desired: [want(config, 2), want(cli, 1)] });
       const begun = ledger.begin(plan, { at: AT, toolVersion: "0.2.0", createdConfigFiles: [path] });

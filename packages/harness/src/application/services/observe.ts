@@ -1,3 +1,4 @@
+import { RegistrationState } from "../../domain/bundle/value-objects/registration-state.js";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -8,18 +9,17 @@ import {
 } from "../../domain/bundle/spi/install-adapter.js";
 import {
   ownRecordOf as ownRecordOfRule,
-  registrationContent as registrationContentRule,
   registrationLinkMismatch as registrationLinkMismatchRule
-} from "../../domain/bundle/value-objects/registration-state.js";
-import { type ArtifactLocator, isWithin } from "../../domain/install-plan/value-objects/artifact-locator.js";
-import { type ObservedArtifact } from "../../domain/install-plan/value-objects/observed-artifact.js";
+} from "../../domain/bundle/services/registration-record.js";
+import { type ArtifactLocatorSnapshot, isWithin } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import { type ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 import { hashContent } from "./content-hash.js";
 import { ArtifactFiles, type ArtifactFailure, type ArtifactRead } from "../ports.js";
 import { resolvePath } from "./resolve-path.js";
 
 /** The command lines behind a `cli-registration` locator, from whichever adapter renders it. */
 export type RegistrationLookup = (
-  locator: ArtifactLocator
+  locator: ArtifactLocatorSnapshot
 ) => (CliRegistration & { readonly roots: readonly string[] }) | undefined;
 
 export function registrationLookup(adapters: InstallAdapters, context: InstallContext): RegistrationLookup {
@@ -36,7 +36,7 @@ export function registrationLookup(adapters: InstallAdapters, context: InstallCo
 
 /** Resolve declared agent homes, never a link below them: the command line also writes those descendant paths. */
 export function registrationState(
-  locator: ArtifactLocator,
+  locator: ArtifactLocatorSnapshot,
   registrations?: RegistrationLookup
 ): Effect.Effect<
   { readonly registration?: CliRegistration; readonly copy?: ArtifactRead; readonly symlinkTarget?: string },
@@ -77,8 +77,11 @@ export function registrationState(
     const files = yield* ArtifactFiles;
     for (const target of [
       { kind: "file" as const, path: locator.path },
-      ...(normalized.recorded?.entries ?? []).map((entry): ArtifactLocator => ({ kind: "file", path: entry.path })),
-      ...(normalized.recorded?.copies ?? []).map((path): ArtifactLocator => ({ kind: "dir", path }))
+      ...(normalized.recorded?.entries ?? []).map((entry): ArtifactLocatorSnapshot => ({
+        kind: "file",
+        path: entry.path
+      })),
+      ...(normalized.recorded?.copies ?? []).map((path): ArtifactLocatorSnapshot => ({ kind: "dir", path }))
     ]) {
       symlinkTarget ??= (yield* files.read(target))?.symlinkTarget;
     }
@@ -96,7 +99,7 @@ export function registrationState(
 }
 
 /** What was found at a locator, as the domain observes it: the kind found, its hash and its content. */
-export function observation(locator: ArtifactLocator, read: ArtifactRead): Effect.Effect<ObservedArtifact> {
+export function observation(locator: ArtifactLocatorSnapshot, read: ArtifactRead): Effect.Effect<ObservedArtifact> {
   const kind = locator.kind === "file" || locator.kind === "dir" ? read.kind : locator.kind;
   return Effect.map(hashContent(read.kind, read.content), (hash) => ({
     locator: kind === locator.kind ? locator : { ...locator, kind },
@@ -112,7 +115,7 @@ export function observation(locator: ArtifactLocator, read: ArtifactRead): Effec
  * reads as `false`. Without a copy, an active registration reads as `true`.
  */
 export function observe(
-  locator: ArtifactLocator,
+  locator: ArtifactLocatorSnapshot,
   registrations?: RegistrationLookup
 ): Effect.Effect<ObservedArtifact | undefined, ArtifactFailure, ArtifactFiles | PlatformService> {
   return Effect.gen(function* () {
@@ -124,11 +127,14 @@ export function observe(
         ? undefined
         : yield* observation(locator, { kind: locator.kind, content: "", symlinkTarget: state.symlinkTarget });
     }
-    const planned = registrationContentRule(read.content, {
-      installedCopy: state.registration?.installedCopy,
-      copy: state.copy === undefined ? undefined : { isFile: state.copy.kind === "file", content: state.copy.content }
-    });
-    const content = planned ?? read.content;
+    const content =
+      locator.kind === "cli-registration"
+        ? (RegistrationState.observe(read.content, {
+            installedCopy: state.registration?.installedCopy,
+            copy:
+              state.copy === undefined ? undefined : { isFile: state.copy.kind === "file", content: state.copy.content }
+          }).content() ?? read.content)
+        : read.content;
     const symlinkTarget = read.symlinkTarget ?? state.symlinkTarget;
     return yield* observation(locator, { ...read, content, ...(symlinkTarget === undefined ? {} : { symlinkTarget }) });
   });

@@ -22,7 +22,7 @@ const PreImage = z.union([
   z.object({ existed: z.literal(true), hash: Hash, blobRef: z.string() })
 ]);
 
-const Precondition = z.union([
+const PreconditionSnapshot = z.union([
   z.object({ absent: z.literal(true) }),
   z.object({ hash: Hash }),
   z.object({ ownedAt: z.number() })
@@ -50,7 +50,7 @@ const Pending = z.object({
   locator: Locator,
   action: z.enum(["create", "update", "adopt", "remove", "noop"]),
   agents: z.array(z.string()),
-  precondition: Precondition,
+  precondition: PreconditionSnapshot,
   resultHash: z.optional(Hash),
   removal: z.optional(z.enum(["delete", "restore-pre-image", "release", "keep"])),
   preImage: z.optional(PreImage),

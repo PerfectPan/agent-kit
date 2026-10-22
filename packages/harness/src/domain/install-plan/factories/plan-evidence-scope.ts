@@ -3,11 +3,11 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import { type ForeignHookFile, foreignHookFiles, type HookCompat } from "../../bundle/services/hook-registrations.js";
 import type { ArtifactSource, InstallAdapters, InstallContext } from "../../bundle/spi/install-adapter.js";
-import type { Owner } from "../../bundle/value-objects/owner.js";
+import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import type { Ledger } from "../../ledger/aggregates/ledger.js";
-import type { ArtifactLocator } from "../value-objects/artifact-locator.js";
-import type { DesiredArtifact } from "../value-objects/desired-artifact.js";
+import type { ArtifactLocatorSnapshot } from "../value-objects/artifact-locator.js";
+import type { DesiredArtifact } from "../spi/desired-artifact.js";
 
 /** A place older versions may have left hooks, optionally one a selected runner executes under renamed events. */
 export interface LegacyHookSource {
@@ -59,7 +59,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
  * file is one source per runner event, its pointer naming the JSON-escaped event.
  */
 export function legacyHookSources(
-  owner: Owner,
+  owner: OwnerSnapshot,
   agents: readonly CodingAgentId[],
   adapters: InstallAdapters,
   dialects: HookDialects,
@@ -82,7 +82,7 @@ export function legacyHookSources(
 /** What the use case must read before a plan can be built: the locators to observe, whether legacy is scanned, roots. */
 export interface PlanEvidenceScope {
   /** Desired locators and every locator the owner already holds. */
-  readonly locators: readonly ArtifactLocator[];
+  readonly locators: readonly ArtifactLocatorSnapshot[];
   /** Whether legacy sources must be scanned: markers, an owner-held hook group, or a kept hook group. */
   readonly scanLegacy: boolean;
   /**
@@ -103,7 +103,7 @@ export interface PlanEvidenceScope {
  * listing calls this with the markers its caller supplies, without a bundle.
  */
 export function planEvidenceScope(input: {
-  readonly owner: Owner;
+  readonly owner: OwnerSnapshot;
   /** The owner's legacy markers; often empty for planning, whose markers ride in on the bundle. */
   readonly legacyMarkers: readonly string[];
   readonly agents: readonly CodingAgentId[];
@@ -115,7 +115,7 @@ export function planEvidenceScope(input: {
   readonly compat?: readonly HookCompat[];
 }): PlanEvidenceScope {
   const { owner, legacyMarkers, agents, desired, ledger, adapters, dialects, context } = input;
-  const locators: ArtifactLocator[] = desired.map((artifact) => artifact.locator);
+  const locators: ArtifactLocatorSnapshot[] = desired.map((artifact) => artifact.locator);
   for (const entry of ledger.entries()) {
     if (entry.heldBy(owner)) {
       locators.push(entry.locator);

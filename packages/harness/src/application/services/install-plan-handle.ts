@@ -3,14 +3,14 @@ import { AgentKitError, type CodingAgentId } from "@rivus/agent-kit-catalog/publ
 import { type DroppedHook } from "../../domain/bundle/services/hook-placement.js";
 import { type BundleRef } from "../../domain/bundle/value-objects/bundle.js";
 import { type InstallAdapters, type InstallContext } from "../../domain/bundle/spi/install-adapter.js";
-import type { ArtifactLocator } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import type { ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type {
   InstallPlan as PlanAggregate,
   InstallPlanSnapshot,
   PlanStatus
 } from "../../domain/install-plan/aggregates/install-plan.js";
-import type { PlanBasis } from "../../domain/install-plan/value-objects/plan-basis.js";
-import type { PlanStep } from "../../domain/install-plan/value-objects/plan-step.js";
+import type { PlanBasisSnapshot } from "../../domain/install-plan/value-objects/plan-basis.js";
+import type { PlanStepSnapshot } from "../../domain/install-plan/value-objects/plan-step.js";
 import type { TrustPrompt } from "../../domain/install-plan/value-objects/trust-prompt.js";
 import type { AgentCommand, LedgerScope } from "../ports.js";
 
@@ -24,7 +24,7 @@ export interface PlannedFileChange {
 /** An agent command line the plan runs, registering or removing the Artifact at `locator`. */
 export interface PlannedCommand extends AgentCommand {
   readonly purpose: "register" | "unregister";
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
 }
 
 /**
@@ -44,9 +44,9 @@ export interface InstallPlan {
   readonly planId: string;
   readonly bundle: BundleRef;
   readonly agents: readonly CodingAgentId[];
-  readonly basedOn: PlanBasis;
+  readonly basedOn: PlanBasisSnapshot;
   /** In execution order. */
-  readonly steps: readonly PlanStep[];
+  readonly steps: readonly PlanStepSnapshot[];
   readonly changes: readonly PlannedFileChange[];
   readonly commands: readonly PlannedCommand[];
   readonly expectedTrustPrompts: readonly TrustPrompt[];

@@ -5,7 +5,7 @@ import type * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
 import type { ArtifactSource } from "../domain/bundle/spi/install-adapter.js";
-import type { ArtifactKind, ArtifactLocator } from "../domain/install-plan/value-objects/artifact-locator.js";
+import type { ArtifactKind, ArtifactLocatorSnapshot } from "../domain/install-plan/value-objects/artifact-locator.js";
 import type { ArtifactContent } from "../domain/ledger/value-objects/content-hash.js";
 import type { InvalidLedger } from "../domain/ledger/errors/invalid-ledger.js";
 import type { LedgerBusy } from "../domain/ledger/errors/ledger-busy.js";
@@ -47,7 +47,7 @@ export interface ArtifactRead {
 
 /** One entry edit for a preview: the content the entry gets, or `undefined` for its removal. */
 export interface EntryChange {
-  readonly locator: ArtifactLocator;
+  readonly locator: ArtifactLocatorSnapshot;
   readonly content: ArtifactContent | undefined;
 }
 
@@ -65,20 +65,23 @@ export interface EntryChange {
  *   leave empty.
  */
 export interface ArtifactFilesShape {
-  read(locator: ArtifactLocator): Effect.Effect<ArtifactRead | undefined, ArtifactFailure>;
-  write(locator: ArtifactLocator, content: ArtifactContent): Effect.Effect<void, ArtifactFailure>;
+  read(locator: ArtifactLocatorSnapshot): Effect.Effect<ArtifactRead | undefined, ArtifactFailure>;
+  write(locator: ArtifactLocatorSnapshot, content: ArtifactContent): Effect.Effect<void, ArtifactFailure>;
   /**
    * Entry removal may delete its containing file only with positive creation provenance, when it actually removes
    * the entry and leaves just whitespace or the empty root object. Comments and unrelated empty structures count
    * as user content.
    */
   remove(
-    locator: ArtifactLocator,
+    locator: ArtifactLocatorSnapshot,
     options?: { readonly removeEmptyFile?: boolean }
   ): Effect.Effect<void, ArtifactFailure>;
   scan(
     source: ArtifactSource
-  ): Effect.Effect<readonly { readonly locator: ArtifactLocator; readonly read: ArtifactRead }[], ArtifactFailure>;
+  ): Effect.Effect<
+    readonly { readonly locator: ArtifactLocatorSnapshot; readonly read: ArtifactRead }[],
+    ArtifactFailure
+  >;
   /** A file's text before and after the entry changes, without writing; `undefined` where there is no file. */
   preview(
     path: string,

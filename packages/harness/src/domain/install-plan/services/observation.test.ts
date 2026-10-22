@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ObservedArtifact } from "./observed-artifact.js";
-import { isBrokenSymlink } from "./observed-artifact.js";
+import type { ObservedArtifact } from "../spi/observed-artifact.js";
+import { isBrokenSymlink } from "./observation.js";
 
 const seen = (overrides: Partial<ObservedArtifact>): ObservedArtifact => ({
   locator: { kind: "symlink", path: "/u/me/.agents/skills/demo" },
