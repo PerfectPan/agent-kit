@@ -30,11 +30,18 @@ import { revisionConflict } from "../src/lease/application/services/repository-f
 import { manualClock, removeTempDirs, tempDir, testPlatform } from "./support/platform.js";
 import { storeCases } from "./support/stores.js";
 
-import { checkFence } from "../src/lease/domain/lease/policies/fence-check.js";
+import { FencingToken, type FencingTokenSnapshot } from "../src/lease/domain/lease/value-objects/fencing-token.js";
+
+function fencingToken(snapshot: FencingTokenSnapshot): FencingToken {
+  const token = FencingToken.create(snapshot);
+  if (!token.ok) {
+    throw new Error(token.error.message);
+  }
+  return token.value;
+}
 
 type PlatformSqlite = NonNullable<Platform["sqlite"]>;
 
-type FencingToken = Parameters<typeof checkFence>[1];
 type LeaseRepositoryShape = Effect.Success<typeof LeaseRepository>;
 
 const KEY = "task:1";
@@ -308,11 +315,11 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
     const { layer } = make();
     return withTestClock(platform, () =>
       Effect.gen(function* () {
-        let lastSeen: FencingToken | undefined;
-        const write = (token: FencingToken) =>
+        let lastSeen: FencingTokenSnapshot | undefined;
+        const write = (token: FencingTokenSnapshot) =>
           Effect.sync(() => {
-            const checked = checkFence(lastSeen, token);
-            lastSeen = checked.ok ? checked.value : lastSeen;
+            const checked = fencingToken(token).checkFence(lastSeen === undefined ? undefined : fencingToken(lastSeen));
+            lastSeen = checked.ok ? checked.value.toSnapshot() : lastSeen;
             return checked.ok;
           });
         const leases = yield* createLeaseManager(config);
@@ -333,10 +340,12 @@ describe.each(storeCases)("lease with the $name repository", ({ make, persistent
         expect(again.token.generation).toBe(3);
         expect(yield* again.runFenced(write)).toBe(true);
         expect(failureOf(yield* Effect.exit(old.runFenced(write)))).toMatchObject({ _tag: "LeaseLost", generation: 1 });
-        expect(checkFence(lastSeen, old.token)).toEqual({
-          ok: false,
-          error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
-        });
+        expect(fencingToken(old.token).checkFence(lastSeen === undefined ? undefined : fencingToken(lastSeen))).toEqual(
+          {
+            ok: false,
+            error: { _tag: "FenceRejected", key: KEY, generation: 1, current: 3 }
+          }
+        );
       })
     ).pipe(Effect.scoped, Effect.provide(layer));
   });

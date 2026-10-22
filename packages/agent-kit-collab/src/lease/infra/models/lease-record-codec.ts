@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 
-import type { Holder } from "../../domain/lease/value-objects/holder.js";
+import type { HolderSnapshot } from "../../domain/lease/value-objects/holder.js";
 import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 
 const holderSchema = z.object({ host: z.string(), bootId: z.string(), pid: z.number(), startTime: z.number() });
@@ -20,7 +20,7 @@ export function decodeSnapshot(value: unknown): LeaseSnapshot | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-export function decodeHolder(json: string | null): Holder | null | undefined {
+export function decodeHolder(json: string | null): HolderSnapshot | null | undefined {
   if (json === null) {
     return null;
   }
@@ -33,7 +33,7 @@ export function decodeHolder(json: string | null): Holder | null | undefined {
 }
 
 /** Only the identity fields, whatever else the platform's `ProcessIdentity` carries. */
-export function encodeHolder(holder: Holder | null): string | null {
+export function encodeHolder(holder: HolderSnapshot | null): string | null {
   if (holder === null) {
     return null;
   }

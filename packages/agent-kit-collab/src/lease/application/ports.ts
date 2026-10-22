@@ -23,7 +23,8 @@ export interface LeaseRepositoryFailure {
   readonly key: string;
   /**
    * `busy`: other writers kept the repository locked; `invalid-record`: a stored record is unreadable or breaks the
-   * invariants and is left as it is; `unsupported-schema`: the repository was written by a newer version;
+   * invariants, or its next generation cannot be represented, and it is left as it is;
+   * `unsupported-schema`: the repository was written by a newer version;
    * `unavailable`: the platform lacks what the repository needs; `io`: any other failure.
    */
   readonly reason: "busy" | "io" | "invalid-record" | "unsupported-schema" | "unavailable";
@@ -45,7 +46,8 @@ export interface LeaseRepositoryFailure {
  *
  * The lease's `runFenced` takes the guard and re-reads the holder before the work starts. That is equivalent to the
  * protected resource checking the fencing token itself only when every writer of the resource goes through the same
- * repository on the same machine; a resource that can compare atomically should also run `checkFence`.
+ * repository on the same machine. In a `LeaseHandle.runFenced` callback, a resource that can compare atomically should
+ * also store the token's highest generation per key and reject smaller generations as part of its write.
  */
 export interface LeaseRepositoryShape {
   load(key: string): Effect.Effect<LeaseSnapshot | undefined, LeaseRepositoryFailure>;

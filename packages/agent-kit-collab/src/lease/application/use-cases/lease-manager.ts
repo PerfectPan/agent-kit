@@ -10,17 +10,14 @@ import * as Schedule from "effect/Schedule";
 import type * as Scope from "effect/Scope";
 
 import { type FenceRejected } from "../../domain/lease/errors/fence-rejected.js";
-import { type FencingToken } from "../../domain/lease/value-objects/fencing-token.js";
-import { type Holder, type HolderLiveness } from "../../domain/lease/value-objects/holder.js";
-import { holderExpired, isFresh, type LeaseObservation, observe } from "../../domain/lease/policies/freshness.js";
-import { holderLiveness } from "../../domain/lease/policies/holder-liveness.js";
-import { Lease, type LeaseTransition } from "../../domain/lease/aggregates/lease.js";
+import { type FencingTokenSnapshot } from "../../domain/lease/value-objects/fencing-token.js";
+import { Holder, type HolderLiveness } from "../../domain/lease/value-objects/holder.js";
+import { Lease, type LeaseTransition, type LeaseObservation } from "../../domain/lease/aggregates/lease.js";
 import { type LeaseConfigInvalid } from "../../domain/lease/errors/lease-config-invalid.js";
 import { type LeaseHeld } from "../../domain/lease/errors/lease-held.js";
 import { type LeaseHolding, type LeaseSnapshot } from "../../domain/lease/value-objects/lease-snapshot.js";
 import { type LeaseLost } from "../../domain/lease/errors/lease-lost.js";
-import { type LeaseTiming, leaseTiming } from "../../domain/lease/value-objects/lease-timing.js";
-import { lossReason } from "../../domain/lease/policies/loss.js";
+import { LeaseTiming } from "../../domain/lease/value-objects/lease-timing.js";
 import { fromResult } from "../services/from-result.js";
 import { LeaseRepository, type LeaseRepositoryFailure, type LeaseRepositoryShape } from "../ports.js";
 import { repositoryFailure } from "../services/repository-failure.js";
@@ -46,7 +43,7 @@ export interface AcquireOptions {
 /** A held lease. It belongs to the Scope `acquire` ran in: closing the Scope stops the heartbeat and releases it. */
 export interface LeaseHandle {
   readonly key: string;
-  readonly token: FencingToken;
+  readonly token: FencingTokenSnapshot;
   /**
    * Fails with `LeaseLost` once the heartbeat finds the lease taken over, released or missing, or cannot confirm a
    * renewal within the TTL; it never succeeds. Race other work against it to stop that work on loss.
@@ -61,10 +58,10 @@ export interface LeaseHandle {
    * interrupted fiber ends at once, though, while a Promise it started (`Effect.tryPromise`) keeps running: put a
    * write that cannot be cancelled in `Effect.uninterruptible`, which keeps the fence until the write settles, or pass
    * it the AbortSignal `tryPromise` provides and settle only after the write has stopped. A resource that can compare
-   * atomically should also keep the highest token it has seen and refuse older ones with `checkFence`.
+   * atomically should also store the highest generation per token key and reject smaller generations in that write.
    */
   runFenced<A, E, R>(
-    work: (token: FencingToken) => Effect.Effect<A, E, R>
+    work: (token: FencingTokenSnapshot) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | LeaseLost | FenceRejected | LeaseRepositoryFailure, Exclude<R, Scope.Scope>>;
 }
 
@@ -91,13 +88,16 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
   const now = () => platform.clock.monotonic();
   const self = (): Holder => {
     const { host, bootId, pid, startTime } = platform.process.self;
-    return { host, bootId, pid, startTime };
+    return new Holder({ host, bootId, pid, startTime });
   };
 
   /** A holder that cannot be looked up (the platform failed to identify the pid) is judged by its TTL alone. */
   const judge = (holder: Holder, observer: Holder): Effect.Effect<HolderLiveness> =>
     Effect.try({
-      try: () => holderLiveness(holder, observer, platform.process.identify(holder.pid)),
+      try: () => {
+        const current = platform.process.identify(holder.pid);
+        return holder.liveness(observer, current === undefined ? undefined : new Holder(current));
+      },
       catch: (cause) => cause
     }).pipe(Effect.orElseSucceed(() => "unknown" as const));
 
@@ -109,19 +109,25 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
         const claim = { key, holder: self(), holderId, now: platform.clock.now() };
         let transition: LeaseTransition;
         if (record === undefined) {
-          transition = Lease.create(claim);
+          transition = yield* fromResult(Lease.create(claim)).pipe(
+            Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
+          );
         } else {
           const lease = yield* fromResult(Lease.restore(record)).pipe(
             Effect.mapError((invalid) => repositoryFailure(key, "invalid-record", invalid.message))
           );
           const at = now();
-          const observation = observe(observations.get(key), record, at);
+          const observation = lease.observe(observations.get(key), at);
           observations.set(key, observation);
-          const fresh = isFresh(record, observation, at, timing.ttlMs);
+          const fresh = lease.isFresh(observation, at, timing.ttlMs);
           // Liveness matters only for a fresh record: a stale one or a tombstone can be taken whoever holds it.
-          const { holder } = record;
+          const { holder } = lease;
           const liveness = fresh && holder !== null ? yield* judge(holder, claim.holder) : "unknown";
-          transition = yield* fromResult(lease.acquire(claim, { fresh, liveness }));
+          transition = yield* fromResult(lease.acquire(claim, { fresh, liveness })).pipe(
+            Effect.mapError((error) =>
+              error._tag === "LeaseRecordInvalid" ? repositoryFailure(key, "invalid-record", error.message) : error
+            )
+          );
         }
         const next = transition.state.toSnapshot();
         // A conflict is a lost race that the next turn re-reads; a defect or another failure keeps its own channel
@@ -142,7 +148,7 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
     Effect.gen(function* () {
       const read = yield* Effect.exit(store.load(key));
       // A read that failed is classified like a lost race, not like a vanished record; that mapping stays here.
-      const reason: LeaseLost["reason"] = Exit.isSuccess(read) ? lossReason(read.value) : "taken-over";
+      const reason: LeaseLost["reason"] = Exit.isSuccess(read) ? Lease.lossReason(read.value) : "taken-over";
       return { _tag: "LeaseLost", key, generation: holding.generation, reason } satisfies LeaseLost;
     });
 
@@ -176,7 +182,7 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
             return yield* Effect.fail(yield* lostBy(key, holding));
           }
           confirmedAt = now();
-        } else if (holderExpired(confirmedAt, now(), timing.ttlMs)) {
+        } else if (timing.holderExpired(confirmedAt, now())) {
           return yield* Effect.fail<LeaseLost>({
             _tag: "LeaseLost",
             key,
@@ -202,7 +208,7 @@ function makeManager(timing: LeaseTiming, store: LeaseRepositoryShape, platform:
     }).pipe(Effect.ignore);
 
   const handle = (key: string, holding: LeaseHolding, lost: Deferred.Deferred<never, LeaseLost>): LeaseHandle => {
-    const token: FencingToken = { key, generation: holding.generation };
+    const token: FencingTokenSnapshot = { key, generation: holding.generation };
     return {
       key,
       token,
@@ -283,7 +289,7 @@ export function createLeaseManager(
   config: LeaseConfig
 ): Effect.Effect<LeaseManager, LeaseConfigInvalid, LeaseRepository | PlatformService> {
   return Effect.gen(function* () {
-    const timing = yield* fromResult(leaseTiming(config));
+    const timing = yield* fromResult(LeaseTiming.create(config));
     return makeManager(timing, yield* LeaseRepository, yield* PlatformService);
   });
 }

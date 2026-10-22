@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { admit, nextToStart, wakeResult } from "../policies/admission.js";
-import { type LaneLimits, laneLimits } from "../value-objects/lane-limits.js";
+import { LaneLimits } from "../value-objects/lane-limits.js";
 import { Lane, type LaneTransition } from "./lane.js";
 
 const KEY = "room:1";
-const limits: LaneLimits = { maxConcurrent: 2, maxQueued: 1, turnTimeoutMs: undefined };
 const free = { running: 0, queued: 0 };
 const busy = { running: 2, queued: 0 };
 
@@ -15,6 +13,8 @@ function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: unknown 
   }
   return result.value;
 }
+
+const limits = unwrap(LaneLimits.create({ maxConcurrent: 2, maxQueued: 1 }));
 
 const tags = ({ events }: LaneTransition) => events.map(({ _tag }) => _tag);
 
@@ -36,10 +36,12 @@ describe("Lane", () => {
   });
 
   it("does not let a newcomer pass a lane that already waits, even when a slot is free", () => {
-    expect(admit({ running: 1, queued: 1 }, { ...limits, maxQueued: 2 })).toBe("queue");
-    expect(admit({ running: 1, queued: 0 }, limits)).toBe("start");
-    expect(admit({ running: 2, queued: 1 }, limits)).toBe("full");
-    expect(admit({ running: 2, queued: 1000 }, { ...limits, maxQueued: Number.POSITIVE_INFINITY })).toBe("queue");
+    expect(unwrap(LaneLimits.create({ maxConcurrent: 2, maxQueued: 2 })).admit({ running: 1, queued: 1 })).toBe(
+      "queue"
+    );
+    expect(limits.admit({ running: 1, queued: 0 })).toBe("start");
+    expect(limits.admit({ running: 2, queued: 1 })).toBe("full");
+    expect(unwrap(LaneLimits.create({ maxConcurrent: 2 })).admit({ running: 2, queued: 1000 })).toBe("queue");
   });
 
   it("coalesces wakes of a queued or running lane into one pending activation, whatever the queue holds", () => {
@@ -94,11 +96,11 @@ describe("Lane", () => {
 
 describe("laneLimits", () => {
   it("S105: accepts a positive capacity, a non-negative queue bound and a positive turn timeout", () => {
-    expect(laneLimits({ maxConcurrent: 1 })).toEqual({
+    expect(LaneLimits.create({ maxConcurrent: 1 })).toEqual({
       ok: true,
       value: { maxConcurrent: 1, maxQueued: Number.POSITIVE_INFINITY, turnTimeoutMs: undefined }
     });
-    expect(laneLimits({ maxConcurrent: 3, maxQueued: 0, turnTimeoutMs: 500 })).toEqual({
+    expect(LaneLimits.create({ maxConcurrent: 3, maxQueued: 0, turnTimeoutMs: 500 })).toEqual({
       ok: true,
       value: { maxConcurrent: 3, maxQueued: 0, turnTimeoutMs: 500 }
     });
@@ -111,31 +113,60 @@ describe("laneLimits", () => {
       { maxConcurrent: 1, turnTimeoutMs: 0 },
       { maxConcurrent: 1, turnTimeoutMs: Number.NaN }
     ]) {
-      expect(laneLimits(input)).toMatchObject({ ok: false, error: { _tag: "LanesConfigInvalid" } });
+      expect(LaneLimits.create(input)).toMatchObject({ ok: false, error: { _tag: "LanesConfigInvalid" } });
     }
   });
 });
 
 describe("admission across lanes", () => {
   it("gives a free slot to the head of the queue while the lanes are open, and to nobody otherwise", () => {
-    const limits: LaneLimits = { maxConcurrent: 2, maxQueued: 5, turnTimeoutMs: undefined };
+    const limits = unwrap(LaneLimits.create({ maxConcurrent: 2, maxQueued: 5 }));
     const load = { running: 1, queued: 2 };
-    expect(nextToStart(["b", "a"], load, limits, false)).toBe("b");
-    expect(nextToStart([], load, limits, false)).toBeUndefined();
-    expect(nextToStart(["b", "a"], { running: 2, queued: 2 }, limits, false)).toBeUndefined();
-    expect(nextToStart(["b", "a"], load, limits, true)).toBeUndefined();
+    expect(limits.nextToStart(["b", "a"], load, false)).toBe("b");
+    expect(limits.nextToStart([], load, false)).toBeUndefined();
+    expect(limits.nextToStart(["b", "a"], { running: 2, queued: 2 }, false)).toBeUndefined();
+    expect(limits.nextToStart(["b", "a"], load, true)).toBeUndefined();
   });
 
   it("reads a wake from its events: started, queued, or served by an activation that has not begun", () => {
-    expect(wakeResult([{ _tag: "ActivationStarted", key: KEY }])).toBe("started");
-    expect(wakeResult([{ _tag: "LaneQueued", key: KEY }])).toBe("queued");
-    expect(wakeResult([{ _tag: "WakeCoalesced", key: KEY }])).toBe("coalesced");
+    expect(Lane.wakeResult([{ _tag: "ActivationStarted", key: KEY }])).toBe("started");
+    expect(Lane.wakeResult([{ _tag: "LaneQueued", key: KEY }])).toBe("queued");
+    expect(Lane.wakeResult([{ _tag: "WakeCoalesced", key: KEY }])).toBe("coalesced");
     // Starting wins over queueing: a queued lane that got its slot started.
     expect(
-      wakeResult([
+      Lane.wakeResult([
         { _tag: "LaneQueued", key: KEY },
         { _tag: "ActivationStarted", key: KEY }
       ])
     ).toBe("started");
+  });
+});
+
+describe("lane value ownership", () => {
+  it("freezes limits without retaining or freezing the caller's configuration", () => {
+    const input = { maxConcurrent: 2, maxQueued: 1 };
+    const value = unwrap(LaneLimits.create(input));
+    expect(Object.isFrozen(input)).toBe(false);
+    expect(Object.isFrozen(value)).toBe(true);
+    input.maxConcurrent = 10;
+    expect(value.maxConcurrent).toBe(2);
+    const broken = { maxConcurrent: 0, maxQueued: -1 };
+    expect(LaneLimits.create(broken)).toEqual({
+      ok: false,
+      error: {
+        _tag: "LanesConfigInvalid",
+        message: "maxConcurrent must be a positive integer, got 0"
+      }
+    });
+    expect(Object.isFrozen(broken)).toBe(false);
+  });
+
+  it("keeps immutable lane snapshots across transitions", () => {
+    const idle = Lane.create(KEY);
+    const started = unwrap(idle.wake(free, limits)).state;
+    expect(Object.isFrozen(idle.toSnapshot())).toBe(true);
+    expect(Object.isFrozen(started.toSnapshot())).toBe(true);
+    expect(idle.toSnapshot()).toEqual({ key: KEY, state: "idle", pending: false });
+    expect(started.toSnapshot()).toEqual({ key: KEY, state: "running", pending: false });
   });
 });
