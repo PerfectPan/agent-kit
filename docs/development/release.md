@@ -255,20 +255,26 @@ Run it after `pnpm run check` so `dist` exists.
   only PRs authored by `renovate[bot]` from a `renovate/` branch in this repository. It runs
   [`@scaleway/changesets-renovate@4.0.5`](https://github.com/scaleway/scaleway-lib/tree/f92a76abe38e010c9a00cfe1b26d4378778116d0/packages/changesets-renovate)
   with `EXCLUDE_DEVDEPS=true` and `SORT_CHANGESETS=true`. The tool compares the head with its parent, reads manifest
-  and default pnpm catalog changes, and generates a sorted patch changeset for affected published packages. If that
-  commit already changes `.changeset/`, it skips generation. `.changeset/config.json` is only for this tool and
-  excludes private packages; pnpm still owns `pnpm change`, versioning, changelogs and the ledger through
+  and default pnpm catalog changes, and generates a sorted patch changeset for affected published packages. The
+  workflow filters catalog summary lines to dependencies, optional dependencies and peers of non-private workspace
+  packages; if none would remain, it preserves the original file. If the commit already changes `.changeset/`, the
+  tool skips generation. `.changeset/config.json` is only for this tool and excludes private packages; pnpm still
+  owns `pnpm change`, versioning, changelogs and the ledger through
   `pnpm-workspace.yaml`.
 
   Store a fine-grained personal access token as `RENOVATE_CHANGESET_TOKEN`, limited to the repositories that use
-  it, with **Contents: read and write**. Checkout uses it without retaining credentials during tool installation;
-  only the final push step receives it again. The bot commits only generated changesets, and its email is in
-  `gitIgnoredAuthors` so Renovate can still rebase the branch. This token's pushes trigger CI; `GITHUB_TOKEN`
-  pushes would not. Without the secret, the job generates a preview in its summary and exits successfully without
-  committing or pushing. An expired or revoked token fails checkout or push, stops delivery and is reported in
-  the job summary; replace the secret and rerun the job.
+  it, with **Contents: read and write**. The `generate` job uses only the read-only `GITHUB_TOKEN`, without persisted
+  checkout credentials, and has no access to the PAT. It runs the npm tool and filter, writes a summary preview, and
+  uploads generated changesets plus the generation head SHA as an artifact retained for one day. The `push` job
+  uses a fresh runner and the PAT without executing npm packages or repository scripts. It downloads the artifact
+  outside the checkout, accepts only the SHA metadata and `.changeset/renovate-<hex>.md` files, and rejects symlinks
+  and existing destination files. It skips a moved branch, otherwise commits with Git hooks disabled and pushes
+  without force. The bot email is in `gitIgnoredAuthors` so Renovate can still rebase the branch. Token-authenticated
+  pushes trigger CI; `GITHUB_TOKEN` pushes would not. Without the secret, `push` reports "dry run only" and exits
+  successfully without committing or pushing. Checkout or push failures report token expiry/access and deleted
+  or moved branches as possible causes; resolve the cause and rerun the job.
 
-  Two cases still need a person, with reminders in the corresponding Renovate PR bodies:
+  Three cases still need a person, with reminders in Renovate PR bodies:
 
   - **Exact optional `effect` peer**: the tool does not inspect peer dependencies, and its devDependency is
     excluded, so it generates no changeset. Add one `minor` changeset naming both `@rivus/agent-kit` and
@@ -280,6 +286,8 @@ Run it after `pnpm run check` so `dist` exists.
   - **Lock-file maintenance**: the tool does not inspect lockfile resolutions. Compare the built output with the
     PR base; if a bundled dependency such as `zod/mini` changes it, add a patch changeset for the affected published
     packages. A `packageManager`-only update also generates no changeset.
+  - **Toolchain or devDependency upgrades**: automation covers published runtime dependencies only. If an upgrade
+    such as vite-plus or rolldown changes the built output, add a patch changeset for the affected published packages.
 
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned
@@ -289,8 +297,9 @@ Run it after `pnpm run check` so `dist` exists.
   whole-repository lint and the manifest tests, and record CI duration.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
-  repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`). Close PRs that touch `review.yml` or another file
-  synced from [PerfectPan/project-template](https://github.com/PerfectPan/project-template), with a comment that the
+  repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`, `renovate-changesets.yml`). Close
+  PRs that touch `review.yml` or another file synced from
+  [PerfectPan/project-template](https://github.com/PerfectPan/project-template), with a comment that the
   bump comes from upstream, and sync the file once upstream has it. Dependabot cannot ignore an action per file, so
   these PRs keep appearing.
 

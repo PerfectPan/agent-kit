@@ -12,6 +12,9 @@
   "semanticCommits": "enabled",
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
+  "prBodyNotes": [
+    "Changeset automation covers published runtime dependencies only. If this PR changes built output, add a patch changeset per [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+  ],
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["* 0-6 1 * *"],
