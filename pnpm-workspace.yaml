@@ -19,10 +19,10 @@ catalog:
   '@agentclientprotocol/sdk': 1.8.0
   '@arethetypeswrong/cli': 0.18.5
   '@decimalturn/toml-patch': ^3.3.0
-  '@effect/tsgo': 0.52.0
-  '@effect/vitest': 4.0.3
+  '@effect/tsgo': 0.53.0
+  '@effect/vitest': 4.0.4
   '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.6.1
-  '@size-limit/preset-small-lib': 14.1.0
+  '@size-limit/preset-small-lib': 14.2.0
   '@types/node': 24.19.2
   effect: 4.0.4
   es-toolkit: ^1.52.0
@@ -30,7 +30,7 @@ catalog:
   oxc-parser: 0.154.0
   publint: 0.3.25
   shell-quote: ^1.12.0
-  size-limit: 14.1.0
+  size-limit: 14.2.0
   typescript: 7.0.2
   # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
   vite: npm:@voidzero-dev/vite-plus-core@1.2.0
