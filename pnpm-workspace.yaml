@@ -20,11 +20,11 @@ catalog:
   '@arethetypeswrong/cli': 0.18.5
   '@decimalturn/toml-patch': ^3.3.0
   '@effect/tsgo': 0.53.0
-  '@effect/vitest': 4.0.4
+  '@effect/vitest': 4.0.5
   '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.6.1
   '@size-limit/preset-small-lib': 14.2.0
   '@types/node': 24.19.2
-  effect: 4.0.4
+  effect: 4.0.5
   es-toolkit: ^1.52.0
   jsonc-parser: ^3.3.1
   oxc-parser: 0.154.0
