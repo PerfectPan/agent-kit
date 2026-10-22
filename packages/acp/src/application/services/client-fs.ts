@@ -1,12 +1,7 @@
 import type { PlatformFs } from "@rivus/agent-kit-platform/public";
 
-import {
-  type AbsolutePath,
-  type ClientPathRefusal,
-  clientPathVerdict,
-  formatAbsolutePath,
-  parseAbsolutePath
-} from "../../domain/acp-session/policies/client-paths.js";
+import { type ClientPathRefusal, clientPathVerdict } from "../../domain/acp-session/services/client-paths.js";
+import { AbsolutePath } from "../../domain/acp-session/value-objects/absolute-path.js";
 import { ClientFileError, type ReadTextFile, type WriteTextFile } from "./wire.js";
 
 /** Larger files are refused rather than read whole into memory. */
@@ -14,9 +9,9 @@ const MAX_READ_BYTES = 16 * 1024 * 1024;
 
 /** The session directory with its links resolved, or `undefined` when it does not exist. */
 export async function sessionRoot(fs: Pick<PlatformFs, "realpath">, cwd: string): Promise<AbsolutePath | undefined> {
-  const parsed = parseAbsolutePath(cwd);
-  const real = parsed === undefined ? undefined : await fs.realpath(formatAbsolutePath(parsed));
-  return real === undefined ? undefined : parseAbsolutePath(real);
+  const parsed = AbsolutePath.parse(cwd);
+  const real = parsed === undefined ? undefined : await fs.realpath(parsed.format());
+  return real === undefined ? undefined : AbsolutePath.parse(real);
 }
 
 const REFUSED: Record<ClientPathRefusal, string> = {
@@ -35,11 +30,11 @@ async function resolveInside(
   root: AbsolutePath,
   target: string
 ): Promise<string> {
-  const path = parseAbsolutePath(target);
+  const path = AbsolutePath.parse(target);
   if (path === undefined) {
     throw new ClientFileError("refused", `${target} is not an absolute path`);
   }
-  const spelling = formatAbsolutePath(path);
+  const spelling = path.format();
   const realpaths = new Map<string, string>();
   let targetIsSymlink = false;
   const self = await fs.realpath(spelling);
@@ -48,7 +43,7 @@ async function resolveInside(
     targetIsSymlink = (await fs.stat(spelling))?.kind === "symlink";
     // The verdict judges a missing target by its nearest existing parent, so stop at the first that resolves.
     for (let size = path.parts.length - 1; size >= 0 && realpaths.size === 0; size -= 1) {
-      const prefix = formatAbsolutePath({ root: path.root, parts: path.parts.slice(0, size) });
+      const prefix = path.prefix(size).format();
       const real = await fs.realpath(prefix);
       if (real !== undefined) {
         realpaths.set(prefix, real);

@@ -2,13 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { PermissionRequest } from "../value-objects/permission-request.js";
 import { agentEnv } from "./agent-env.js";
-import {
-  type AbsolutePath,
-  clientPathVerdict,
-  formatAbsolutePath,
-  isWithin,
-  parseAbsolutePath
-} from "./client-paths.js";
+import { AbsolutePath } from "../value-objects/absolute-path.js";
+import { clientPathVerdict } from "./client-paths.js";
 import { optionOfKind, permissionOutcome } from "./permission-default.js";
 import { firstPromptBlocks, sessionMeta } from "./session-setup.js";
 
@@ -76,33 +71,9 @@ describe("agentEnv", () => {
   });
 });
 
-describe("client paths", () => {
-  it("keeps .. for the platform to resolve and compares resolved paths by parts", () => {
-    const root = parseAbsolutePath("/work/project");
-    const inside = parseAbsolutePath("/work/project/./src//a.txt");
-    const unresolved = parseAbsolutePath("/work/project/src/../a.txt");
-    const prefix = parseAbsolutePath("/work/project-2/a.txt");
-    const dots = parseAbsolutePath("/work/project/..notes");
-    expect(root && inside && isWithin(root, inside)).toBe(true);
-    expect(unresolved && formatAbsolutePath(unresolved)).toBe("/work/project/src/../a.txt");
-    expect(root && unresolved && isWithin(root, unresolved)).toBe(false);
-    expect(root && prefix && isWithin(root, prefix)).toBe(false);
-    expect(root && dots && isWithin(root, dots)).toBe(true);
-    expect(inside && formatAbsolutePath(inside)).toBe("/work/project/src/a.txt");
-    expect(parseAbsolutePath("relative/a.txt")).toBeUndefined();
-  });
-
-  it("reads Windows drive paths with either separator", () => {
-    const root = parseAbsolutePath("c:\\work\\project");
-    const inside = parseAbsolutePath("C:/work/project/a.txt");
-    expect(root && inside && isWithin(root, inside)).toBe(true);
-    expect(inside && formatAbsolutePath(inside)).toBe("C:\\work\\project\\a.txt");
-  });
-});
-
 describe("clientPathVerdict", () => {
-  const root = parseAbsolutePath("/work/project") as AbsolutePath;
-  const target = (path: string) => parseAbsolutePath(path) as AbsolutePath;
+  const root = AbsolutePath.parse("/work/project") as AbsolutePath;
+  const target = (path: string) => AbsolutePath.parse(path) as AbsolutePath;
   /** The platform's answers for a target inside the tree: the file and every parent prefix resolve to themselves. */
   const insideTree = (file: string) =>
     new Map([file, "/work/project/data", "/work/project", "/work", "/"].map((prefix) => [prefix, prefix] as const));

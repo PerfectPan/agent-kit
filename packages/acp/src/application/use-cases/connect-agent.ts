@@ -12,10 +12,10 @@ import * as Scope from "effect/Scope";
 import type { AcpPlatform } from "../platform.js";
 import { type AcpProfile } from "../../domain/acp-session/spi/acp-profile.js";
 import { AcpSession } from "../../domain/acp-session/aggregates/acp-session.js";
-import { bindingFor } from "../../domain/acp-session/value-objects/session-binding.js";
-import { firstPromptBlocks, sessionMeta, type SessionSetup } from "../../domain/acp-session/policies/session-setup.js";
+import { SessionBinding } from "../../domain/acp-session/value-objects/session-binding.js";
+import { firstPromptBlocks, sessionMeta, type SessionSetup } from "../../domain/acp-session/services/session-setup.js";
 import { type McpServerConfig } from "../../domain/acp-session/value-objects/mcp-server.js";
-import { permissionOutcome } from "../../domain/acp-session/policies/permission-default.js";
+import { permissionOutcome } from "../../domain/acp-session/services/permission-default.js";
 import { type PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
 import { readClientFile, sessionRoot, writeClientFile } from "../services/client-fs.js";
 import {
@@ -336,7 +336,7 @@ function newSession(
     );
     if (store !== undefined && sessionKey !== undefined) {
       yield* store
-        .set({ sessionKey, agent: conn.agent, sessionId, cwd })
+        .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
         .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
     }
     return sessionHandle(conn, live);
@@ -358,7 +358,7 @@ function loadSession(
       sessionId = target.sessionId;
     } else {
       const stored = yield* store?.get(target.sessionKey) ?? Effect.succeed(undefined);
-      const binding = bindingFor(conn.agent, stored);
+      const binding = stored == null ? undefined : SessionBinding.restore(stored).forAgent(conn.agent);
       if (binding === undefined) {
         return yield* Effect.fail<BindingNotFound>({
           _tag: "BindingNotFound",
@@ -376,7 +376,9 @@ function loadSession(
     if (store !== undefined && sessionKey !== undefined) {
       // A session that is already open on this connection is shared, so a failed write keeps it open.
       if ("sessionId" in target) {
-        yield* store.set({ sessionKey, agent: conn.agent, sessionId, cwd: live.cwd });
+        yield* store.set(
+          SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd: live.cwd }).toSnapshot()
+        );
       }
       live.keys.add(sessionKey);
     }

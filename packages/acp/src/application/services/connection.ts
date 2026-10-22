@@ -9,7 +9,7 @@ import * as Queue from "effect/Queue";
 import type * as Scope from "effect/Scope";
 
 import type { AcpPlatform } from "../platform.js";
-import type { AbsolutePath } from "../../domain/acp-session/policies/client-paths.js";
+import type { AbsolutePath } from "../../domain/acp-session/value-objects/absolute-path.js";
 import type { AcpProfile } from "../../domain/acp-session/spi/acp-profile.js";
 import type { AcpSession, AcpSessionTransition } from "../../domain/acp-session/aggregates/acp-session.js";
 import type { AcpSessionEvent } from "../../domain/acp-session/events/acp-session-events.js";

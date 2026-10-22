@@ -166,6 +166,21 @@ is parsed with `zod/mini` in the application layer before the domain receives te
 locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
 itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
 
+## ACP Write-Side Values
+
+`AbsolutePath` parses an absolute spelling, formats it and checks containment by path parts. It preserves `..`
+until the Platform resolves links; rejecting relative input still returns `undefined`. Prefix and append operations
+return immutable paths. The value stays inside the application and domain, so it needs no snapshot type.
+`SessionBinding` copies its typed input and selects the agent that owns it, without adding field validation.
+`SessionBindingSnapshot` retains the plain store and public shape; application writes explicitly call `toSnapshot()`.
+The file store keeps its existing schema validation and serialization.
+
+`McpServerConfig`, `NameValue` and `PromptBlock` remain plain ACP request data in `value-objects/`; SDK conversion
+belongs to the wire adapter. Session setup, permission selection, client-path verdicts and environment filtering
+span several inputs and live in `services/`. `spi/` holds provider interfaces and their parts; the provider environment
+defaults live beside the ACP profile there, retaining their existing SPI export. ACP has no domain `policies/` or
+`adapters/` folder.
+
 ## Collab Write-Side Values
 
 Lease and lane rules live on immutable classes. `FencingToken` validates its key and generation, advances the
