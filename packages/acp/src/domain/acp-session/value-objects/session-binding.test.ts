@@ -8,7 +8,6 @@ describe("SessionBinding", () => {
   it("hands a binding to the agent that made it, and to no other", () => {
     expect(binding.forAgent("claude-code")).toBe(binding);
     expect(binding.forAgent("codex")).toBeUndefined();
-    expect((undefined as SessionBinding | undefined)?.forAgent("claude-code")).toBeUndefined();
   });
 
   it("retains the accepted string values without adding validation", () => {

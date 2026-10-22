@@ -14,9 +14,9 @@ import { type AcpProfile } from "../../domain/acp-session/spi/acp-profile.js";
 import { AcpSession } from "../../domain/acp-session/aggregates/acp-session.js";
 import { SessionBinding } from "../../domain/acp-session/value-objects/session-binding.js";
 import { firstPromptBlocks, sessionMeta, type SessionSetup } from "../../domain/acp-session/services/session-setup.js";
-import { type McpServerConfig } from "../../domain/acp-session/spi/mcp-server.js";
+import { type McpServerConfig } from "../../domain/acp-session/value-objects/mcp-server.js";
 import { permissionOutcome } from "../../domain/acp-session/services/permission-default.js";
-import { type PromptBlock } from "../../domain/acp-session/spi/prompt-block.js";
+import { type PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
 import { readClientFile, sessionRoot, writeClientFile } from "../services/client-fs.js";
 import {
   type ConnectionState,

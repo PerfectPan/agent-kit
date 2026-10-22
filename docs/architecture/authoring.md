@@ -175,10 +175,11 @@ return immutable paths. The value stays inside the application and domain, so it
 `SessionBindingSnapshot` retains the plain store and public shape; application writes explicitly call `toSnapshot()`.
 The file store keeps its existing schema validation and serialization.
 
-`McpServerConfig` and `PromptBlock` remain plain ACP request data in `spi/`; SDK conversion belongs to the wire
-adapter. Session setup, permission selection, client-path verdicts and environment filtering span several inputs
-and live in `services/`. The provider environment defaults live beside the ACP profile in `spi/`, retaining their
-existing SPI export. ACP has no domain `policies/` or `adapters/` folder.
+`McpServerConfig`, `NameValue` and `PromptBlock` remain plain ACP request data in `value-objects/`; SDK conversion
+belongs to the wire adapter. Session setup, permission selection, client-path verdicts and environment filtering
+span several inputs and live in `services/`. `spi/` holds provider interfaces and their parts; the provider environment
+defaults live beside the ACP profile there, retaining their existing SPI export. ACP has no domain `policies/` or
+`adapters/` folder.
 
 ## Collab Write-Side Values
 

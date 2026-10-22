@@ -18,7 +18,7 @@ import type {
   PermissionDecision,
   PermissionRequest
 } from "../../domain/acp-session/value-objects/permission-request.js";
-import type { PromptBlock } from "../../domain/acp-session/spi/prompt-block.js";
+import type { PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
 import type { SessionClosed } from "../../domain/acp-session/errors/session-closed.js";
 import type { TurnInProgress } from "../../domain/acp-session/errors/turn-in-progress.js";
 import type { AcpRequestFailed, AcpTimeout, AuthMethodInfo, AuthRequired, ConnectionClosed } from "../errors.js";
