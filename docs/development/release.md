@@ -256,10 +256,10 @@ Run it after `pnpm run check` so `dist` exists.
   [`@scaleway/changesets-renovate@4.0.5`](https://github.com/scaleway/scaleway-lib/tree/f92a76abe38e010c9a00cfe1b26d4378778116d0/packages/changesets-renovate)
   with `EXCLUDE_DEVDEPS=true` and `SORT_CHANGESETS=true`. The tool compares the head with its parent, reads manifest
   and default pnpm catalog changes, and generates a sorted patch changeset for affected published packages. The
-  workflow filters catalog summary lines to dependencies, optional dependencies and peers of non-private workspace
-  packages; if none would remain, it preserves the original file. If the commit already changes `.changeset/`, the
-  tool skips generation. `.changeset/config.json` is only for this tool and excludes private packages; pnpm still
-  owns `pnpm change`, versioning, changelogs and the ledger through
+  workflow filters every `Updated dependency` line, from manifests or catalogs, to dependencies, optional
+  dependencies and peers of non-private workspace packages; if none would remain, it preserves the original file.
+  If the commit already changes `.changeset/`, the tool skips generation. `.changeset/config.json` is only for this
+  tool and excludes private packages; pnpm still owns `pnpm change`, versioning, changelogs and the ledger through
   `pnpm-workspace.yaml`.
 
   Store a fine-grained personal access token as `RENOVATE_CHANGESET_TOKEN`, limited to the repositories that use
@@ -267,12 +267,15 @@ Run it after `pnpm run check` so `dist` exists.
   checkout credentials, and has no access to the PAT. It runs the npm tool and filter, writes a summary preview, and
   uploads generated changesets plus the generation head SHA as an artifact retained for one day. The `push` job
   uses a fresh runner and the PAT without executing npm packages or repository scripts. It downloads the artifact
-  outside the checkout, accepts only the SHA metadata and `.changeset/renovate-<hex>.md` files, and rejects symlinks
+  by ID outside the checkout, accepts only the SHA metadata and `.changeset/renovate-<hex>.md` files, and rejects symlinks
   and existing destination files. It skips a moved branch, otherwise commits with Git hooks disabled and pushes
   without force. The bot email is in `gitIgnoredAuthors` so Renovate can still rebase the branch. Token-authenticated
   pushes trigger CI; `GITHUB_TOKEN` pushes would not. Without the secret, `push` reports "dry run only" and exits
   successfully without committing or pushing. Checkout or push failures report token expiry/access and deleted
-  or moved branches as possible causes; resolve the cause and rerun the job.
+  or moved branches as possible causes; resolve the cause and rerun the failed job while its artifact is retained,
+  or rerun all jobs after the artifact expires. A compromised `generate` job can still choose the entire changeset
+  content (including bump types and package names) and recorded head SHA; its effect is limited to new changeset
+  files visible in the PR diff and subject to human review before merge.
 
   Three cases still need a person, with reminders in Renovate PR bodies:
 

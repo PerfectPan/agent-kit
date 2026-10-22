@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       generated: ${{ steps.generate.outputs.generated }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     defaults:
       run:
         shell: bash
@@ -79,9 +80,11 @@ jobs:
             echo 'generated=true' >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/upload-artifact@v7
+        id: upload
         if: steps.generate.outputs.generated == 'true'
         with:
-          name: renovate-changesets-${{ github.run_id }}-${{ github.run_attempt }}
+          name: renovate-changesets-${{ github.run_id }}
+          overwrite: true
           path: ${{ runner.temp }}/renovate-changesets
           include-hidden-files: true
           if-no-files-found: error
@@ -122,7 +125,7 @@ jobs:
       - uses: actions/download-artifact@v8
         if: steps.token.outputs.available == 'true'
         with:
-          name: renovate-changesets-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.generate.outputs.artifact-id }}
           path: ${{ runner.temp }}/renovate-download
       - name: Validate artifact and generation head
         id: validate
