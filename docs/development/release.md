@@ -171,7 +171,9 @@ the run fails at it with an authentication error. Configure the publisher and re
    newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
    PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
    with that bump.
-3. For a release with breaking changes, follow the [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
+3. A breaking release is one whose change records remove or change a public export or a documented behavior.
+   In 0.x, such a change is recorded as `minor`. For these releases, follow the
+   [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
    Review the version and changelog diff, then select
    **Ready for review**. Pull requests created with the
    workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
