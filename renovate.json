@@ -46,7 +46,7 @@
       "matchPackageNames": ["effect", "@effect/vitest"],
       "groupName": "effect",
       "prBodyNotes": [
-        "Updating the exact optional effect peer requires one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab, plus README and documentation version updates; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+        "Updating the exact optional effect peer requires only one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab; its summary must name the new version and say that hosts pinning the old one fail to install under npm. Documentation refers to peerDependencies.effect and needs no version edits; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
       ]
     },
     {

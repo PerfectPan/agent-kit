@@ -95,7 +95,7 @@ requirements describe fields or results reachable through those exports; derive 
 
 - Exports `NodePlatformLive`.
 - `NodePlatformLive` is a Layer that provides `PlatformService` with `createNodePlatform()`, called when the Layer is built. An application that needs another `env` or `home` provides `Layer.succeed(PlatformService, createNodePlatform({ env, home }))`.
-- Both Effect platform entries require the host to install `effect` itself, at the exact version of the kit's optional peer (4.0.4). The kit resolves the host's copy and ships none of its own.
+- Both Effect platform entries require the host to install `effect` at exactly the version in `peerDependencies.effect`, read with `npm view @rivus/agent-kit peerDependencies.effect`. The kit resolves the host's copy and ships none of its own.
 
 ### `/sessions`
 
@@ -151,7 +151,7 @@ requirements describe fields or results reachable through those exports; derive 
 
 - Exports `AgentCli`, `AgentCommand`, `ArtifactContent`, `ArtifactFiles`, `ArtifactLocator`, `Bundle`, `BundleRef`, `CONFLICT_CHOICES`, `CliRegistration`, `ConflictChoice`, `ExternalOwner`, `FileLedgerRepositoryLive`, `HarnessLive`, `HarnessServices`, `HookRegistration`, `HookSpec`, `InstallAdapter`, `InstallContext`, `InstallPlan`, `JsonValue`, `LedgerRepository`, `LedgerScope`, `PlanConflict`, `PlatformArtifactFilesLive`, `SqliteLedgerLockLive`, `TrustPrompt`, `applyInstall`, `discardPlan`, `doctor`, `inventory`, `locatorKey`, `planInstall`, `uninstall`, `verify`.
 - Use cases read `PlatformService`, as do the port Layers. Provide the platform with `Layer.provideMerge`, for example `HarnessLive.pipe(Layer.provideMerge(NodePlatformLive))`. Ports use class-style `Context.Service` tags; `HarnessLive` composes the built-in implementations.
-An Effect entry (it needs `effect` 4.0.4, like `/platform/effect`). It installs what an application wants into the agents' harnesses and removes it again, keeping a ledger of what it wrote.
+An Effect entry: like `/platform/effect`, it needs the host to install `effect` at exactly the version in `peerDependencies.effect`, read with `npm view @rivus/agent-kit peerDependencies.effect`. It installs what an application wants into the agents' harnesses and removes it again, keeping a ledger of what it wrote.
 
 - Harness `agents` options match exact ids. Aliases and case variants are not resolved: `planInstall` rejects an unsupported id, and `uninstall` leaves entries for other ids alone.
 - `LedgerRepository` is a `Context.Service` keyed `@rivus/agent-kit/harness/LedgerRepository/v1` and follows the kit's repository shape: `load(scope)` is the stored snapshot or `undefined`; `save(scope, snapshot, expectedRevision)` writes only over that revision and fails with a `RevisionConflict` (`{ _tag, scope, expectedRevision, storedRevision }`) instead of writing when another writer moved the ledger; `putPreImage` and `getPreImage` keep the pre-image blobs a restore reads, content-addressed and never deleted by `save`. `FileLedgerRepositoryLive` keeps each scope's ledger as one JSON file under `$XDG_STATE_HOME/agent-kit/harness` with the blobs beside it, refuses a ledger of an unknown `schemaVersion` or an invalid shape without clearing it, and passes the aggregate-repository conformance suite from `/testing/effect`.
@@ -614,9 +614,9 @@ An Effect entry (it needs `effect` 4.0.4, like `/platform/effect`). It installs 
 
 ### S49: Effect entries run on the host's single copy of Effect
 
-- Given a consumer project that installs the packed kit and `effect` 4.0.4
+- Given a consumer project that installs the packed kit and `effect` at the version the peer declares
 - When it type-checks and runs a program that reads `PlatformService` with `Effect.runPromiseExit`, provided by `NodePlatformLive`
-- Then every Effect entry imports, the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package (by real path), every Effect entry resolves the same one as the consumer at 4.0.4, and no built file bundles a module from `node_modules`
+- Then every Effect entry imports, the program succeeds with the Node platform, the consumer's tree holds exactly one `effect` package (by real path), every Effect entry resolves the same one as the consumer at the version the peer declares, and no built file bundles a module from `node_modules`
 
 ### S53: A check that cannot complete is not a missing agent
 
@@ -698,7 +698,7 @@ An Effect entry (it needs `effect` 4.0.4, like `/platform/effect`). It installs 
 
 ### S66: collab reaches agent-kit only through its public entries, as a peer
 
-- Given the packed `@rivus/agent-kit` and `@rivus/agent-kit-collab` installed together, and a consumer that also installs `effect` 4.0.4
+- Given the packed `@rivus/agent-kit` and `@rivus/agent-kit-collab` installed together, and a consumer that also installs `effect` at the version the peer declares
 - When the consumers import every entry, take, check and release a process lock, and run a lease program on `sqliteLeaseRepository` with `NodePlatformLive`
 - Then `/process-lock` loads without `effect`, every collab entry resolves the consumer's copies of `@rivus/agent-kit` and `effect`, the lease generations are 1 then 2, and collab's `dist` inlines nothing outside its own `src/`
 
@@ -912,7 +912,7 @@ An Effect entry (it needs `effect` 4.0.4, like `/platform/effect`). It installs 
 - Persisted data: 0.1.0 writes nothing and opens agent logs read-only. `/harness` keeps its ledger (`ledger.json`, schema version 1), the pre-images it restores, and its lock files under `$XDG_STATE_HOME/agent-kit/harness` (`~/.local/state/agent-kit/harness` when unset), outside the agents' homes and dotfiles source directories. collab writes only where the caller points it: a process lock's database or lock file and its `.holder` file; a SQLite lease repository's database (schema version in `user_version`) and its `<path>.<key>.fence` locks; a file lease repository's `<key>.lease.json` (with `schemaVersion`) and lock files.
 - Configuration: agent home overrides (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) are read from the `env` passed to the kit, never from the global process environment directly.
 - Operational bounds: ESM only, `sideEffects: false`, `engines.node >=22.13` (development and CI use Node 24), MIT. Published type declarations do not reference the private internal packages. Listing reads at most 128 KB per session file. Lock-based features support local directories only, not NFS; collab's locks and leases need darwin or linux.
-- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, `/cost` and `/redact`, which use no dependencies. `/harness` edits configuration with `jsonc-parser` and `@decimalturn/toml-patch`. `effect` is an optional peer pinned to exactly 4.0.4, needed only by consumers of Effect entries. `@rivus/agent-kit-collab` names `@rivus/agent-kit` as a peer at the same version (`^<version>`).
+- Dependencies: `zod/mini` is the only validation library, except in `/harness/events`, `/cost` and `/redact`, which use no dependencies. `/harness` edits configuration with `jsonc-parser` and `@decimalturn/toml-patch`. Effect entries need the host to install the optional peer `effect` at exactly the version in `peerDependencies.effect`, read with `npm view @rivus/agent-kit peerDependencies.effect` or `npm view @rivus/agent-kit-collab peerDependencies.effect`. `@rivus/agent-kit-collab` names `@rivus/agent-kit` as a peer at the same version (`^<version>`).
 
 ## Acceptance Evidence
 
