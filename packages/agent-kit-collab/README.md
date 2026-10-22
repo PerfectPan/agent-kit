@@ -15,10 +15,13 @@ changes.
 npm install @rivus/agent-kit @rivus/agent-kit-collab
 # Read the exact effect peer version for /lease and /lanes, then install that version:
 npm view @rivus/agent-kit-collab peerDependencies.effect
+npm install --save-exact "effect@$(npm view @rivus/agent-kit-collab peerDependencies.effect)"
 ```
 
 Select a verified non-placeholder release that exports the entries you need, with both packages at the same
 version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
+For a verified older release, query `npm view @rivus/agent-kit-collab@<version> peerDependencies.effect` and use
+the same `@<version>` suffix in the install line's query.
 
 `@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. The Effect entries
 `/lease` and `/lanes` need the host to install `effect` at exactly the version in `peerDependencies.effect`, as
