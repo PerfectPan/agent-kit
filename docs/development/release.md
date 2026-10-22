@@ -207,10 +207,12 @@ Run it after `pnpm run check` so `dist` exists.
 
   The catch-all groups separate minor/patch updates from majors. Later rules give `size-limit` and
   `@size-limit/*` their own group, the `packages:vitePlus` preset plus `oxlint-plugin-eslint` a Vite+ toolchain
-  group, the exact `effect` peer its own group (separate from `@effect/*` development tools), and the root
-  `packageManager` pin a pnpm group. Renovate changes both size-limit catalog pins before regenerating the
-  lockfile, satisfying their exact peer requirements together. Keep `strictPeerDependencies: true`; compare
-  every entry's size against main, and raise a budget only to the measured size.
+  group, `effect` and `@effect/vitest` an effect group, and the root `packageManager` pin a pnpm group.
+  `@effect/vitest` requires a minimum `effect` version, so they must move together to satisfy strict peer checks;
+  `@effect/tsgo` has no effect peer and stays in the catch-all group. Renovate updates both size-limit catalog
+  pins together only when both releases have passed the seven-day wait in the same run. Different release dates
+  can leave only one eligible, so review their exact peer requirements before merging. Keep
+  `strictPeerDependencies: true`; compare every entry's size against main, and raise a budget only to the measured size.
 
   Node upgrades remain deliberate: `engines`, `devEngines.runtime`, `.node-version` and major `@types/node`
   updates are disabled. `@perfectpan/lint-config` stays disabled because it is a Git dependency whose upgrades
@@ -237,14 +239,16 @@ Run it after `pnpm run check` so `dist` exists.
 
   GitHub's dependency graph cannot read this repository's two-document lockfile, so npm security findings come
   from Renovate's OSV checks (`osvVulnerabilityAlerts: true`), not Dependabot alerts. OSV support is experimental
-  and covers direct dependencies; security PRs can bypass release-age and schedule limits and update a toolchain
-  member alone, so apply the same alignment checks and repair procedure.
+  and covers direct dependencies; `vulnerabilityAlerts.rangeStrategy: "bump"` keeps security fixes on the tested
+  `pnpm install` path, including in-range fixes. Security PRs can bypass release-age and schedule limits and update
+  a toolchain member alone, so apply the same alignment checks and repair procedure.
 
   Renovate opens a **Dependency Dashboard** issue through `config:recommended`. Use its checkboxes to retry or
   recreate an update and request a pending PR; see the [dashboard controls](https://docs.renovatebot.com/key-concepts/dashboard/).
-  To [pause updates](https://docs.renovatebot.com/configuration-options/#enabled), set `"enabled": false` in `renovate.json`; this also closes Renovate's open PRs and dashboard
-  and deletes its branches on the next run. Deleting `renovate.json` stops dependency updates under the hosted app's
-  [default configuration requirement](https://docs.renovatebot.com/self-hosted-configuration/#requireconfig); restore the file to resume.
+  To pause updates, set `"enabled": false` in `renovate.json`. In Renovate 44.x, the next run closes its open PRs
+  and deletes its branches but leaves the Dependency Dashboard open. Remove the setting or set it to `true` to
+  resume. Keep the config file: deleting it under the hosted app opens a new "Configure Renovate" onboarding PR
+  on the next run.
 
   Every npm PR body reminds the reviewer to add changesets when published runtime dependencies change:
 

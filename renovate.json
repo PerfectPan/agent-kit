@@ -43,7 +43,7 @@
       "groupName": "vite-plus toolchain"
     },
     {
-      "matchPackageNames": ["effect"],
+      "matchPackageNames": ["effect", "@effect/vitest"],
       "groupName": "effect",
       "prBodyNotes": [
         "Updating the exact optional effect peer requires one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab, plus README and documentation version updates; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
@@ -68,10 +68,6 @@
       "enabled": false
     },
     {
-      "matchManagers": ["nodenv"],
-      "enabled": false
-    },
-    {
       "matchPackageNames": ["@types/node"],
       "matchUpdateTypes": ["major"],
       "enabled": false
@@ -80,5 +76,8 @@
       "matchPackageNames": ["@perfectpan/lint-config"],
       "enabled": false
     }
-  ]
+  ],
+  "vulnerabilityAlerts": {
+    "rangeStrategy": "bump"
+  }
 }
