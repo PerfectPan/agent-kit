@@ -273,8 +273,10 @@ Run it after `pnpm run check` so `dist` exists.
   - **Exact optional `effect` peer**: the tool does not inspect peer dependencies, and its devDependency is
     excluded, so it generates no changeset. Add one `minor` changeset naming both `@rivus/agent-kit` and
     `@rivus/agent-kit-collab`, whose summary names the new version and says that hosts pinning the old one fail to
-    install under npm. Keep the optional peer aligned with the catalog and review README and documentation
-    references to the peer version.
+    install under npm. Keep the optional peer aligned with the catalog devDependency. This changeset is the only
+    required release note: current-state documentation refers to `peerDependencies.effect` (for example,
+    `npm view @rivus/agent-kit peerDependencies.effect`) rather than a version number, so peer updates need no
+    documentation version edits.
   - **Lock-file maintenance**: the tool does not inspect lockfile resolutions. Compare the built output with the
     PR base; if a bundled dependency such as `zod/mini` changes it, add a patch changeset for the affected published
     packages. A `packageManager`-only update also generates no changeset.

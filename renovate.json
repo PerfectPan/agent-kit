@@ -46,7 +46,7 @@
       "matchPackageNames": ["effect", "@effect/vitest"],
       "groupName": "effect",
       "prBodyNotes": [
-        "The changeset automation does not detect optional effect peer updates. Add one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab, explaining the new peer version and npm install failure for hosts pinning the old version. Keep the peer, catalog and documentation aligned; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
+        "The changeset automation does not detect optional effect peer updates. Add one minor changeset naming both @rivus/agent-kit and @rivus/agent-kit-collab, explaining the new peer version and npm install failure for hosts pinning the old version. Keep the optional peer aligned with the catalog devDependency. Documentation refers to peerDependencies.effect and needs no version edits; follow [Bot Pull Requests](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md#bot-pull-requests)."
       ]
     },
     {
