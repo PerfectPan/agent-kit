@@ -171,9 +171,9 @@ the run fails at it with an authentication error. Configure the publisher and re
    newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
    PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
    with that bump.
-3. For a breaking release, complete the [application comparison](adoption.md#application-comparison-before-release)
-   before merging the release PR. In particular, 0.20.0 requires the 0.19.1 versus candidate comparison for all three
-   consuming applications. Review the version and changelog diff, then select **Ready for review**. Pull requests created with the
+3. Before merging the 0.20.0 release PR, complete the [application comparison](adoption.md#application-comparison-before-release)
+   against 0.19.1 for all three consuming applications. Review the version and changelog diff, then select
+   **Ready for review**. Pull requests created with the
    workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
    reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, pass a GitHub App
    token or a fine-grained PAT to the action's `github-token` input, never through the `GITHUB_TOKEN` environment

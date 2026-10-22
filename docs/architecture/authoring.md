@@ -490,8 +490,8 @@ headroom to measured sizes; do not hide growth with spare budget. Keep identity 
 unbundled catalog chunk contains unused facts: assess the tree-shaken entry as well as its chunk. Record CI duration
 when changing workspace structure or lint tooling.
 
-Breaking releases also require the [application comparison](../development/adoption.md#application-comparison-before-release)
-before the release PR is merged. Publication and application adoption remain separate checks in the
+The 0.20.0 release requires the [application comparison](../development/adoption.md#application-comparison-before-release)
+before its release PR is merged. Publication and application adoption remain separate checks in the
 [release runbook](../development/release.md).
 
 ## What Not To Build

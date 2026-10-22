@@ -80,7 +80,6 @@ both runs. Applications on older kit versions may already fail against the basel
 separately. Every candidate-only error must be explained by the API changes above; investigate any other difference
 before releasing. Capture exact revisions, package inputs, commands and outcomes in the release evidence.
 
-For later breaking releases, use the preceding published release and the candidate in the same comparison.
 After publication is verified, open the applications' upgrade PRs and wait for their own CI. Passing kit checks,
 retiring a design document and publishing a release do not establish application adoption. The
 [release runbook](release.md#cutting-a-release) keeps the order of these gates.
