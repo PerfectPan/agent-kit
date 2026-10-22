@@ -33,9 +33,9 @@ catalog:
   size-limit: 14.2.0
   typescript: 7.0.2
   # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
-  vite: npm:@voidzero-dev/vite-plus-core@1.2.0
-  vite-plus: 1.2.0
-  vitest: 5.0.4
+  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vite-plus: 1.3.0
+  vitest: 5.0.5
   zod: ^4.6.7
 
 # Redirect whatever declares a `vite` range to the vite-plus core alias.

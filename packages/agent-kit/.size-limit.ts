@@ -47,5 +47,5 @@ export default [
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22858 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24645 B" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19127 B" }
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19128 B" }
 ] satisfies SizeLimitConfig;
