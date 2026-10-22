@@ -256,9 +256,9 @@ Run it after `pnpm run check` so `dist` exists.
     `pnpm change <name> --bump patch --summary "Update dependencies."`.
   - When the PR moves the exact optional `effect` peer, update it together with the catalog devDependency. Add one
     `minor` changeset naming both `@rivus/agent-kit` and `@rivus/agent-kit-collab`, whose summary names the new
-    version and says that hosts pinning the old one fail to install under npm. Update the version written in
-    `README.md`, both package READMEs, `docs/development/adoption.md` and `docs/specs/0001-agent-kit.md`
-    (`git grep` the old version outside the `CHANGELOG` files). The effect group's PR body repeats this requirement.
+    version and says that hosts pinning the old one fail to install under npm. This changeset is the only required
+    release note: current-state documentation refers to `peerDependencies.effect` rather than a version number,
+    so peer updates need no documentation version edits. The effect group's PR body repeats this requirement.
 
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned

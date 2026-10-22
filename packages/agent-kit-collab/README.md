@@ -13,15 +13,16 @@ changes.
 
 ```bash
 npm install @rivus/agent-kit @rivus/agent-kit-collab
-# for /lease and /lanes, which are Effect entries:
-npm install effect@4.0.4
+# Read the exact effect peer version for /lease and /lanes, then install that version:
+npm view @rivus/agent-kit-collab peerDependencies.effect
 ```
 
 Select a verified non-placeholder release that exports the entries you need, with both packages at the same
 version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
 
-`@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. `effect` 4.0.4 is an
-optional peer that only `/lease` and `/lanes` need. ESM only, no side effects, Node.js 22.13 or later on darwin or
+`@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. The Effect entries
+`/lease` and `/lanes` need the host to install `effect` at exactly the version in `peerDependencies.effect`, as
+reported by the command above. Plain entries do not need this optional peer. ESM only, no side effects, Node.js 22.13 or later on darwin or
 linux. win32 is not supported: the platform cannot identify processes there (boot id, pid and start time), which
 leases and lock files need; a SQLite process lock is still taken, with `holder` undefined, as described below.
 Every lock supports local directories only; neither SQLite's locks nor lock files are reliable on NFS. Holders are
