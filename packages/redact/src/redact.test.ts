@@ -58,12 +58,30 @@ describe("redactText", () => {
     const at = (value: string) => text(value, "/u/alice");
     expect(at(String.raw`\n-u-alice-proj`)).toBe(String.raw`\n~-proj`);
     expect(at(String.raw`\t-u-alice-proj`)).toBe(String.raw`\t~-proj`);
-    expect(at(String.raw`"-u-alice-proj`)).toBe(String.raw`"~-proj`);
     expect(at(String.raw`\u0022-u-alice-proj`)).toBe(String.raw`\u0022~-proj`);
     expect(at("%2F-u-alice-proj")).toBe("%2F~-proj");
     expect(at(String.raw`\nu/alice/x`)).toBe(String.raw`\n~/x`);
+    expect(at("%22u/alice/x")).toBe("%22~/x");
+    expect(at(String.raw`\u0022u/alice/x`)).toBe(String.raw`\u0022~/x`);
     expect(at(String.raw`x-u-alice-proj`)).toBe(String.raw`x-u-alice-proj`);
     expect(at("9u/alice/x")).toBe("9u/alice/x");
+    // Accepting an escape before the start does not lengthen the name: `alicex` is another user's home.
+    expect(at(String.raw`\n-u-alicex-proj`)).toBe(String.raw`\n-u-alicex-proj`);
+    expect(at(String.raw`\nu/alicex/y`)).toBe(String.raw`\nu/alicex/y`);
+  });
+
+  it("S60: hides the encoded home after an escape, and the home shapes after an ANSI SGR sequence", () => {
+    const at = (value: string) => text(value, "/u/alice");
+    expect(at("%22%2Fu%2Falice%22")).toBe("%22~%22");
+    expect(at("cwd%3D%2Fu%2Falice%2Fx")).toBe("cwd%3D~%2Fx");
+    expect(at("file%3A%2F%2F%2Fu%2Falice")).toBe("file%3A%2F%2F~");
+    expect(at(String.raw`\n%2Fu%2Falice%2Fx`)).toBe(String.raw`\n~%2Fx`);
+    // A name character before the encoded home is none of the escapes: kept, as on main.
+    expect(at("x%2Fu%2Falice")).toBe("x%2Fu%2Falice");
+    // An SGR sequence ends in `m`, a name character; every start that accepts an escape accepts the sequence.
+    expect(at(String.raw`\u001b[32mu/alice/x`)).toBe(String.raw`\u001b[32m~/x`);
+    expect(at("\x1b[32mu/alice/x")).toBe("\x1b[32m~/x");
+    expect(at(String.raw`\u001b[0m-u-alice-proj`)).toBe(String.raw`\u001b[0m~-proj`);
   });
 
   it("S60: replaces Windows spellings: either separator, JSON-escaped, file URLs and MSYS paths", () => {
@@ -78,6 +96,7 @@ describe("redactText", () => {
     expect(at(String.raw`C:\Profiles\meg\x`)).toBe(String.raw`C:\Profiles\meg\x`);
     expect(at("C--Profiles-me-proj")).toBe("~-proj");
     expect(at("*C--Profiles-me-proj")).toBe("*~-proj");
+    expect(at(String.raw`\nC--Profiles-me-proj`)).toBe(String.raw`\n~-proj`);
   });
 
   it("S60: replaces ~user, the shell's name for the home directory, also after a JSON escape", () => {

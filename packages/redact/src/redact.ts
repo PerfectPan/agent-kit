@@ -11,10 +11,11 @@ export interface RedactOptions {
 const REDACTED = "[redacted]";
 
 /**
- * A JSON or C escape (`\n`, `\u0022`) or URL encoding (`%22`, `%3D`) ending right before a match start: its last
- * character is a letter or digit and would otherwise count as part of a word.
+ * A JSON or C escape (`\n`, `\u0022`), URL encoding (`%22`, `%3D`) or ANSI SGR colour sequence (`\x1b[32m`, spelled
+ * `\u001b[32m` inside a JSON string) ending right before a match start: its last character is a letter or digit and
+ * would otherwise count as part of a word.
  */
-const ESCAPE_END = String.raw`\\[nrtbf]|\\u[0-9A-Fa-f]{4}|%[0-9A-Fa-f]{2}`;
+const ESCAPE_END = String.raw`\\[nrtbf]|\\u[0-9A-Fa-f]{4}|%[0-9A-Fa-f]{2}|\x1b\[[0-9;]*m|\\u001[bB]\[[0-9;]*m`;
 
 /**
  * Where a token may start: at the start, after a character that is not `word`, or right after such an escape.
@@ -49,7 +50,8 @@ interface HomePatterns {
    * Percent-encoding and Claude Code's project slug, as agents spell a directory in their own folder names. The slug
    * of a home with more than one segment (`-Users-alice`, `C--Profiles-me`) is hidden after any character that is not
    * a letter, digit, `_` or `%` — including `*` in a glob and `]` in markdown — and after an escape that ends in a
-   * name character (`\n-Users-alice` in raw JSONL, `%2F-Users-alice` in a file URL). A one-segment home (`/root` becomes
+   * name character (`\n-Users-alice` in raw JSONL, `%2F-Users-alice` from component encoding, such as a query
+   * value). A one-segment home (`/root` becomes
    * `-root`) hides its slug only at a path segment start: after other punctuation the text is an ordinary word or
    * flag (`npm --root-dir x`, `*-root-p`, `x.-root`, `a--root`) that this boundary keeps and the wide boundary would
    * rewrite (`npm -~-dir x`); the word in `pre-root` stays under either.
@@ -112,12 +114,15 @@ function buildPatterns(home: string): HomePatterns {
   const literal =
     drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
   const pathSegments = drive === undefined ? segments.filter(Boolean) : segments.slice(1);
-  const slugStart = pathSegments.length > 1 ? `(?:(?<![${NAME}%])|(?<=${ESCAPE_END}))` : SEGMENT_START;
+  // A hidden spelling starts after a character that is not a name character (or `%`, whose sequence continues into
+  // the spelling), or right after an escape, whose last character would otherwise count as one.
+  const escapedStart = `(?:(?<![${NAME}%])|(?<=${ESCAPE_END}))`;
+  const slugStart = pathSegments.length > 1 ? escapedStart : SEGMENT_START;
   const dash = root.replace(/[^A-Za-z0-9]/g, "-");
   return {
     home,
     encoded: new RegExp(
-      `(?:(?<![${NAME}%])${escapeRegExp(encodeURIComponent(root))}|${slugStart}${escapeRegExp(dash)})(?![${NAME}])`,
+      `(?:${escapedStart}${escapeRegExp(encodeURIComponent(root))}|${slugStart}${escapeRegExp(dash)})(?![${NAME}])`,
       "giu"
     ),
     literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
