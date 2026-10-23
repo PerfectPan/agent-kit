@@ -23,6 +23,11 @@
     - thin-books-doubt
     - tidy-tools-repeat
     - wide-crabs-carry
+"@rivus/agent-kit-collab@0.21.0":
+  dir: packages/agent-kit-collab
+  intents:
+    - effect-peer-4-0-5
+    - shiny-trains-sip
 "@rivus/agent-kit@0.19.1":
   dir: packages/agent-kit
   intents:
@@ -49,3 +54,8 @@
     - thin-books-doubt
     - tidy-tools-repeat
     - wide-crabs-carry
+"@rivus/agent-kit@0.21.0":
+  dir: packages/agent-kit
+  intents:
+    - effect-peer-4-0-5
+    - shiny-trains-sip
