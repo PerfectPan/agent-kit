@@ -6,6 +6,7 @@ import type { Result } from "@rivus/agent-kit-catalog/public";
 import {
   foldTranscript,
   loadTranscript,
+  promptStarts,
   sessionPrompts,
   summarizeSession,
   type SessionPromptsOptions,
@@ -73,9 +74,9 @@ describe("the Claude Code prompt rule", () => {
     expect(userFlags(user(allInjected))).toEqual({ injected: true });
     expect(recordText(user(allInjected))).toBeUndefined();
 
-    expect(
-      userFlags(user([textBlock("<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>")]))
-    ).toEqual({ injected: true });
+    const fork = "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests";
+    expect(userFlags(user([textBlock(fork)]))).toEqual({});
+    expect(recordText(user([textBlock(fork)]))).toBe(fork);
 
     expect(userFlags(user([textBlock("   ")]))).toEqual({});
     expect(recordText(user([textBlock("   ")]))).toBeUndefined();
@@ -120,8 +121,7 @@ describe("the prompt rule over the prompt-blocks fixture", () => {
     });
     expect(payload("b-u4:1")).toEqual({ injected: true, text: "<system-reminder>Exit code 0.</system-reminder>" });
     expect(payload("b-u5")).toEqual({
-      injected: true,
-      text: "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>"
+      text: "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests"
     });
   });
 
@@ -136,21 +136,46 @@ describe("the prompt rule over the prompt-blocks fixture", () => {
     expect(previewClaudeCodeRecords(records).firstPrompt).toBe("Start the fix");
   });
 
+  it("starts each prompt record's turn at its first user event", async () => {
+    const transcript = await load();
+    const starts = promptStarts(transcript);
+    const startOf = (record: string) => starts.find((event) => event.id === record)?.id;
+    // Simple records start at their single block; a record the host opens starts at its flagged first block.
+    for (const record of ["b-u1", "b-u2", "b-u3", "b-u5", "b-u6", "b-u7", "b-u8"]) {
+      expect(startOf(record)).toBe(record);
+    }
+    expect(starts.some((event) => event.id === "b-u3:1")).toBe(false);
+    expect(starts.some((event) => event.id === "b-u4")).toBe(false);
+  });
+
+  it("titles the session and previews the first prompt of a record the host opens from the user's text", async () => {
+    const titlePath = "/u/me/.claude/projects/prompt-blocks-title/session.jsonl";
+    const transcript = value(await loadTranscript(platform, { agent: "claude-code", path: titlePath }, { providers }));
+    expect(transcript.session.title).toBe("fix the bug");
+    const records = new TextDecoder()
+      .decode(fixtureFiles["/u/me/.claude/projects/prompt-blocks-title/session.jsonl"]!)
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(previewClaudeCodeRecords(records).firstPrompt).toBe("fix the bug");
+  });
+
   it("collects the same turns and prompts from the fold and the fast pass, trimmed and capped", async () => {
     const transcript = await load();
     const folded = foldTranscript(transcript);
-    expect(folded.turns).toBe(6);
+    expect(folded.turns).toBe(7);
     const options: SessionPromptsOptions = { limit: 10, maxChars: 8 };
     const fast = value(
       await summarizeSession(platform, { agent: "claude-code", path }, { providers, prompts: options })
     );
-    expect(fast.turns).toBe(6);
+    expect(fast.turns).toBe(7);
     expect(fast).toEqual({ ...folded, prompts: sessionPrompts(transcript, options) });
     // Leading whitespace stays out of the cap, and the whitespace-only record collects no prompt.
     expect(sessionPrompts(transcript, options)).toEqual([
       { text: "Start th" },
       { text: "fix the " },
       { text: "continue" },
+      { text: "<fork-bo" },
       { text: "capsize1" },
       { text: "first pa" }
     ]);
@@ -158,6 +183,9 @@ describe("the prompt rule over the prompt-blocks fixture", () => {
       { text: "Start the fix" },
       { text: "fix the bug" },
       { text: "continue with the tests" },
+      {
+        text: "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests"
+      },
       { text: "capsize12" },
       { text: "first part\n\nsecond part" }
     ]);

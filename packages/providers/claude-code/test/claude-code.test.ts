@@ -312,6 +312,7 @@ describe("sessions use cases over Claude Code", () => {
         "compaction",
         "empty-ids",
         "plain",
+        "prompt-blocks-title",
         "prompt-blocks",
         "prompt-snapshot",
         "regroup",
@@ -320,7 +321,7 @@ describe("sessions use cases over Claude Code", () => {
         "unknown-type"
       ].map(session)
     );
-    expect(totals).toEqual([9]);
+    expect(totals).toEqual([10]);
     expect(heads.find((head) => head.ref.path === session("unknown-type"))).toMatchObject({
       ref: { agent: "claude-code", sessionId: "s-unknown" },
       title: "Hello",

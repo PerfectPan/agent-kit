@@ -8,8 +8,11 @@ const COMMAND_WRAPPER =
   /^\s*<(?:command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|bash-input|bash-stdout|bash-stderr)>/;
 /** Text the CLI injects into the user role. Not prompts. */
 const INJECTED = /^\s*(?:<task-notification>|<system-reminder>|\[Request interrupted)/;
-/** Host context the CLI adds around the user's text: the IDE's opened file and selection, and a fork's scaffolding. Not prompts. */
-const HOST_CONTEXT = /^\s*<(?:ide_opened_file|ide_selection|fork-boilerplate)>/;
+/**
+ * Host context the CLI adds beside the user's text: the IDE's opened file and selection. Not prompts. A fork's
+ * `<fork-boilerplate>` block is no host context: the same block carries the directive, so it is the user's own text.
+ */
+const HOST_CONTEXT = /^\s*<(?:ide_opened_file|ide_selection)>/;
 
 /** A text block the host adds, so it is no part of the user's prompt, alone or beside the user's own blocks. */
 export function isHostAddedText(text: string): boolean {
