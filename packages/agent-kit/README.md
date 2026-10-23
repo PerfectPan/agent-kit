@@ -88,14 +88,19 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 `listSessions` reads only the head and tail of each file. `loadTranscript` reads every file of one session and
 returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped; it returns the complete
 session — there is no live file-following API, and a compaction marks the events it replaced with `shadowedBy` only
-after the whole session is read. `summarizeSession` takes `prompts: { limit, maxChars }` to return the main lane's
-user prompts in the same read: each prompt record's own text blocks, trimmed and joined, the first `limit` in
-transcript order, each capped at `maxChars`. An event's `kind` types its
+after the whole session is read. `summarizeSession` reads the agent's bounded summarize pass where it has one and
+folds the loaded transcript otherwise, with the same numbers either way; the pass's memory grows with the session's
+requests, lanes and tool calls, not with the file's bytes. It takes `prompts: { limit, maxChars }` to return the
+main lane's user prompts in the same read: each prompt record's own text blocks — not the text the host adds beside
+them — trimmed and joined, the first `limit` in transcript order, each capped at `maxChars`. Caps outside the range
+fail with `invalid-prompts`. An event's `kind` types its
 `payload`: after `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds
 beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
-record is absent, not 0.
+record is absent, not 0. `scanUsage` with a kept state yields only what was written since, so a caller that keeps a
+state also keeps its own totals beside it, uses one state per window with the same `since`, and runs its scans one
+at a time: two concurrent scans from one state both yield the new records.
 
 ### Hook events
 
@@ -116,14 +121,18 @@ is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome
 more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
 copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
 Register observation hooks only on events that are not permission gates, or return the allow response the dialect's
-output rules record: on a gate, invalid output blocks the agent's operation.
+output rules record; an observer prints the dialect's `passThrough` and must not silently block a gate. Each gate's
+`output` rules decide what its exit codes and stdout do — Cursor's gates block on output the event cannot read, and
+what empty output does there is undocumented.
 `builtinHookDialects` holds each agent's hook facts: event names, the timeout unit, which events are permission
 gates and what an observing hook should print.
 
 ### Harness injection
 
 `/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It
-plans first and changes agent targets only when the plan is applied; every target change is recorded in a ledger
+plans first and changes agent targets only when the plan is applied; an `InstallPlan` is a handle that cannot be
+constructed or serialized, `applyInstall` takes only a plan `planInstall` returned and fails with `unknown-plan`
+otherwise, so a restart re-plans. Every target change is recorded in a ledger
 under `$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
 
 ```ts
@@ -149,7 +158,8 @@ const bundle = {
 
 const program = Effect.gen(function* () {
   const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
-  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts
+  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts; plan.notes;
+  // plan.droppedHooks. A PlanConflict names, per conflict, the choices that resolve it ("force", "adopt", "backup").
   return yield* applyInstall(plan);
 });
 await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
