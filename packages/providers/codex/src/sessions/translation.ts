@@ -193,11 +193,23 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         part.itemIds = itemIds;
       };
 
+      // Event ids stay unique because every id is taken only while `usedIds` does not hold it, and a taken id moves
+      // to the next free serial of its base. The pattern guarantees nothing by itself: an item may carry any id,
+      // `request:<key>` or `L<n>:<serial>` included, so the check at emission is what keeps ids apart.
+      const nextFree = (base: string, serial = 0): string => {
+        let candidate = serial === 0 ? base : `${base}:${serial}`;
+        while (usedIds.has(candidate)) {
+          serial += 1;
+          candidate = `${base}:${serial}`;
+        }
+        return candidate;
+      };
+
       const emit = (body: TranscriptEventBody, id?: string): CodexPart => {
         let eventId = id ?? payload.id ?? lineKey(record);
         if (retain) {
           if (usedIds.has(eventId)) {
-            eventId = lineKey(record);
+            eventId = nextFree(lineKey(record), 1);
           }
           usedIds.add(eventId);
         }
@@ -222,15 +234,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           ...(usage ? { usage } : {}),
           ...(finishReason ? { finishReason } : {})
         };
-        // Event ids are unique within a transcript, and an item event may carry the id `request:<key>` itself. The
-        // request keeps `request:<key>` when free, else takes the first free `request:<key>:<n>`: an item can take
-        // that serial only by preceding the request, which moves on to the next serial, and `emit` renames any later
-        // event off a taken id, so the id the request settles on stays its alone.
+        // The request keeps `request:<key>` when free, else the first free serial of it; `requestId` keeps the key.
         let id = `request:${key}`;
         if (retain) {
-          for (let serial = 1; usedIds.has(id); serial += 1) {
-            id = `request:${key}:${serial}`;
-          }
+          id = nextFree(id);
           usedIds.add(id);
         }
         const part: CodexPart<"request"> = {

@@ -28,7 +28,7 @@ export interface CodexSummarizeOptions {
 }
 
 /** A record with the time the pass reads it at: `ts` is `undefined` in the leading run no record has stamped yet. */
-export interface CodexStampedRecord {
+interface CodexStampedRecord {
   readonly record: SourcedRecord;
   readonly ts: number | undefined;
 }

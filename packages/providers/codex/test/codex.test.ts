@@ -129,11 +129,20 @@ describe("codex translation", () => {
     const ids = transcript.events.map((event) => event.id);
     expect(new Set(ids).size).toBe(ids.length);
     // The user item took `request:r1` first, so the r1 request moves to the first free serial and keeps its
-    // `requestId` key; the r2 request came first, so the later item with its id renames to the line key.
-    expect(ids).toEqual(["request:r1", "request:r1:1", "msg-a", "request:r2", "L6"]);
+    // `requestId` key; the r2 request came first, so the later item with its id renames to the first free serial of
+    // its line key.
+    expect(ids).toEqual(["request:r1", "request:r1:1", "msg-a", "request:r2", "L6:1"]);
     const [r1, r2] = requests(transcript);
     expect(r1).toMatchObject({ id: "request:r1:1", requestId: "r1" });
     expect(r2).toMatchObject({ id: "request:r2", requestId: "r2" });
+  });
+
+  it("renames an event whose id an item took to the first free serial of its line key", async () => {
+    const transcript = await load("id-fallback");
+    const ids = transcript.events.map((event) => event.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // The items took the line keys of the duration marker and of the id-less item; both fall back to serials.
+    expect(ids).toEqual(["L4", "L5", "L4:1", "L5:1"]);
   });
 
   it("takes the system prompt from session_meta.base_instructions only when the rollout records it", async () => {
@@ -541,9 +550,10 @@ describe("codex translation", () => {
 describe("sessions use cases over Codex", () => {
   it("summarizes a time-less, a time-less-prefixed and a forked rollout like the folded transcript", async () => {
     for (const path of [
-      // Both live outside the conformance set: see the golden test for why.
-      "/u/me/.codex/fx/timeless/rollout-timeless.jsonl",
-      "/u/me/.codex/fx/timeless/rollout-timeless-prefix.jsonl",
+      rollout("timeless"),
+      rollout("timeless-prefix"),
+      rollout("fork-timeless-turn"),
+      rollout("fork-timeless-known"),
       rollout("fork")
     ]) {
       const providers = { sessions: testSessions, identity: testIdentity };

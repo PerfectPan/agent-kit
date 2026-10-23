@@ -106,7 +106,10 @@ const sessions: readonly (readonly [CodingAgentId, string, readonly string[]])[]
       "/u/me/.claude/projects/-u-me-work/s-usage/subagents/agent-helper.jsonl"
     ]
   ],
-  ...codexSessions("/fx/codex/conformance").map((session) => ["codex", session.path, [session.path]] as const),
+  // A time-less record's stamp is the file's mtime, which a rewrite moves, so the grown decode disagrees with the whole one.
+  ...codexSessions("/fx/codex/conformance")
+    .filter((session) => !session.path.includes("timeless"))
+    .map((session) => ["codex", session.path, [session.path]] as const),
   ...Object.keys(tree)
     .filter((path) => path.startsWith("/u/me/.codex/"))
     .map((path) => ["codex", path, [path]] as const),
