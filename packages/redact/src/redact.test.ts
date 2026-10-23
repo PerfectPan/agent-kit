@@ -54,6 +54,18 @@ describe("redactText", () => {
     expect(leak(`[${slug}](x)`)).toBe("[~-proj](x)");
   });
 
+  it("S60: hides the slug and the slash-less home after a JSON escape or URL encoding, keeps them after a name character", () => {
+    const at = (value: string) => text(value, "/u/alice");
+    expect(at(String.raw`\n-u-alice-proj`)).toBe(String.raw`\n~-proj`);
+    expect(at(String.raw`\t-u-alice-proj`)).toBe(String.raw`\t~-proj`);
+    expect(at(String.raw`"-u-alice-proj`)).toBe(String.raw`"~-proj`);
+    expect(at(String.raw`\u0022-u-alice-proj`)).toBe(String.raw`\u0022~-proj`);
+    expect(at("%2F-u-alice-proj")).toBe("%2F~-proj");
+    expect(at(String.raw`\nu/alice/x`)).toBe(String.raw`\n~/x`);
+    expect(at(String.raw`x-u-alice-proj`)).toBe(String.raw`x-u-alice-proj`);
+    expect(at("9u/alice/x")).toBe("9u/alice/x");
+  });
+
   it("S60: replaces Windows spellings: either separator, JSON-escaped, file URLs and MSYS paths", () => {
     const windows = String.raw`C:\Profiles\me`;
     const at = (value: string) => text(value, windows);

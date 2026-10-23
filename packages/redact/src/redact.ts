@@ -11,11 +11,15 @@ export interface RedactOptions {
 const REDACTED = "[redacted]";
 
 /**
- * Where a token may start: at the start, after a character that is not `word`, or right after an escape that ends in
- * a letter or digit: a JSON or C escape (`\n`, `\u0022`) or URL encoding (`%22`, `%3D`). The escape's last character
- * would otherwise count as part of a word.
+ * A JSON or C escape (`\n`, `\u0022`) or URL encoding (`%22`, `%3D`) ending right before a match start: its last
+ * character is a letter or digit and would otherwise count as part of a word.
  */
-const tokenStart = (word: string) => String.raw`(?<=^|[^${word}]|\\[nrtbf]|\\u[0-9A-Fa-f]{4}|%[0-9A-Fa-f]{2})`;
+const ESCAPE_END = String.raw`\\[nrtbf]|\\u[0-9A-Fa-f]{4}|%[0-9A-Fa-f]{2}`;
+
+/**
+ * Where a token may start: at the start, after a character that is not `word`, or right after such an escape.
+ */
+const tokenStart = (word: string) => String.raw`(?<=^|[^${word}]|${ESCAPE_END})`;
 
 /**
  * API keys and tokens by their published prefixes (OpenAI and Anthropic `sk-`, AWS key ids, GitHub, Slack, npm) and
@@ -44,7 +48,8 @@ interface HomePatterns {
   /**
    * Percent-encoding and Claude Code's project slug, as agents spell a directory in their own folder names. The slug
    * of a home with more than one segment (`-Users-alice`, `C--Profiles-me`) is hidden after any character that is not
-   * a letter, digit, `_` or `%` — including `*` in a glob and `]` in markdown. A one-segment home (`/root` becomes
+   * a letter, digit, `_` or `%` — including `*` in a glob and `]` in markdown — and after an escape that ends in a
+   * name character (`\n-Users-alice` in raw JSONL, `%2F-Users-alice` in a file URL). A one-segment home (`/root` becomes
    * `-root`) hides its slug only at a path segment start: after other punctuation the text is an ordinary word or
    * flag (`npm --root-dir x`, `*-root-p`, `x.-root`, `a--root`) that this boundary keeps and the wide boundary would
    * rewrite (`npm -~-dir x`); the word in `pre-root` stays under either.
@@ -68,13 +73,14 @@ function unique(values: readonly string[]): string[] {
 
 /**
  * `/u/me` anywhere (inside `a/u/me` of a diff header or `file:///u/me`), JSON-escaped as `\/u\/me`, URL-encoded as in
- * a file URL, and without its leading slash (`u/me/x`, a path relative to `/`) when no name character precedes it.
- * A home of one segment (`/root`) has no slash-less form: alone it is an ordinary word.
+ * a file URL, and without its leading slash (`u/me/x`, a path relative to `/`) when no name character precedes it —
+ * an escape that ends in one (`\nu/me/x`) counts as none. A home of one segment (`/root`) has no slash-less form:
+ * alone it is an ordinary word.
  */
 function posixSpellings(root: string): string[] {
   const spellings = [escapeRegExp(root), escapeRegExp(root.replaceAll("/", "\\/")), escapeRegExp(encodeURI(root))];
   if (/^\/[^/]+\/./.test(root)) {
-    spellings.push(`(?<![${NAME}])${escapeRegExp(root.slice(1))}`);
+    spellings.push(`(?:(?<![${NAME}])|(?<=${ESCAPE_END}))${escapeRegExp(root.slice(1))}`);
   }
   return unique(spellings);
 }
@@ -106,7 +112,7 @@ function buildPatterns(home: string): HomePatterns {
   const literal =
     drive === undefined ? posixSpellings(root) : windowsSpellings(drive, segments.slice(1).join("/"), root);
   const pathSegments = drive === undefined ? segments.filter(Boolean) : segments.slice(1);
-  const slugStart = pathSegments.length > 1 ? `(?<![${NAME}%])` : SEGMENT_START;
+  const slugStart = pathSegments.length > 1 ? `(?:(?<![${NAME}%])|(?<=${ESCAPE_END}))` : SEGMENT_START;
   const dash = root.replace(/[^A-Za-z0-9]/g, "-");
   return {
     home,
