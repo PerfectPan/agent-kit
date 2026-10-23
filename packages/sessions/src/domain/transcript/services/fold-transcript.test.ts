@@ -103,7 +103,7 @@ describe("prompt text caps", () => {
 });
 
 describe("sessionPrompts", () => {
-  it("takes one prompt per record, the first non-empty text of its events", () => {
+  it("takes one prompt per record, skipping injected events, other lanes and empty texts", () => {
     const summary = transcript({
       capabilities: [],
       events: [
@@ -115,6 +115,19 @@ describe("sessionPrompts", () => {
       ]
     });
     expect(sessionPrompts(summary, { limit: 10, maxChars: 100 })).toEqual([{ text: "first" }, { text: "second" }]);
+  });
+
+  it("joins a record's own block texts with a blank line, each trimmed, and keeps a whitespace-only record silent", () => {
+    const summary = transcript({
+      capabilities: [],
+      events: [
+        event({ id: "h", kind: "user", payload: { injected: true, text: "<system-reminder>x</system-reminder>" } }),
+        event({ id: "a", kind: "user", payload: { text: "  fix  " } }),
+        event({ id: "b", kind: "user", payload: { text: "the bug" } }),
+        event({ id: "w", kind: "user", payload: { text: "   " }, source: { ...source, line: 2 } })
+      ]
+    });
+    expect(sessionPrompts(summary, { limit: 10, maxChars: 100 })).toEqual([{ text: "fix\n\nthe bug" }]);
   });
 
   it("caps the count and each text, and keeps a promptless list empty", () => {
@@ -131,5 +144,14 @@ describe("sessionPrompts", () => {
       { text: "prompt 1" }
     ]);
     expect(sessionPrompts(transcript({ capabilities: [], events }), { limit: 0, maxChars: 8 })).toEqual([]);
+  });
+});
+
+describe("emptyPrompts", () => {
+  it("trims the text a pass adds and drops whitespace-only prompts, so the fast pass matches the fold", () => {
+    const sink = emptyPrompts({ limit: 5, maxChars: 8 });
+    sink.add("   capsize12   ");
+    sink.add("   ");
+    expect(sink.list).toEqual([{ text: "capsize1" }]);
   });
 });

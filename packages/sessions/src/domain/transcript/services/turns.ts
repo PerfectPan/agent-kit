@@ -85,36 +85,38 @@ export function capPromptText(text: string, maxChars: number): string {
 }
 
 /**
- * The main lane's user prompts, by the kit's prompt rule: one per prompt record, its text the record's first
- * non-empty `payload.text`, the first `limit` in transcript order, each capped at `maxChars`. A prompt record
- * without text, such as an image-only one, is a turn but yields no prompt.
+ * The main lane's user prompts, by the kit's prompt rule: one per prompt record, its text the record's event
+ * texts, each trimmed, joined with a blank line; the first `limit` in transcript order, each capped at `maxChars`.
+ * A prompt record without text, such as an image-only one or one the host filled, is a turn but yields no prompt.
  */
 export function sessionPrompts(
   transcript: Pick<Transcript, "events" | "agents">,
   options: SessionPromptsOptions
 ): SessionPrompt[] {
   const mainId = mainAgentId(transcript);
-  const texts = new Map<string, string>();
+  const parts = new Map<string, string[]>();
   for (const event of transcript.events) {
     if (!isPrompt(event) || laneOf(event, mainId) !== mainId) {
       continue;
     }
-    const key = `${laneOf(event, mainId)}\0${recordKey(event)}`;
-    const text = typeof event.payload.text === "string" ? event.payload.text : "";
-    const known = texts.get(key);
-    if (known === undefined || (known === "" && text !== "")) {
-      texts.set(key, text);
-    }
-  }
-  const prompts: SessionPrompt[] = [];
-  for (const text of texts.values()) {
-    if (prompts.length >= options.limit) {
-      break;
-    }
+    const text = typeof event.payload.text === "string" ? event.payload.text.trim() : "";
     if (text === "") {
       continue;
     }
-    prompts.push({ text: capPromptText(text, options.maxChars) });
+    const key = `${laneOf(event, mainId)}\0${recordKey(event)}`;
+    const known = parts.get(key);
+    if (known === undefined) {
+      parts.set(key, [text]);
+    } else {
+      known.push(text);
+    }
+  }
+  const prompts: SessionPrompt[] = [];
+  for (const joined of parts.values()) {
+    if (prompts.length >= options.limit) {
+      break;
+    }
+    prompts.push({ text: capPromptText(joined.join("\n\n"), options.maxChars) });
   }
   return prompts;
 }

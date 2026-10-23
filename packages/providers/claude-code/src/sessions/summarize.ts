@@ -16,6 +16,7 @@ import { CLAUDE_CODE_CAPABILITIES } from "./events.js";
 import { type ClaudeCodeEventPart, claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
 import { isPrompt } from "@rivus/agent-kit-sessions/spi";
 import type { Usage } from "@rivus/agent-kit-sessions/spi";
+import { recordText } from "./user-flags.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../records/usage.js";
 
 const AGENT = CLAUDE_CODE_ID;
@@ -117,12 +118,8 @@ export async function summarizeClaudeCodeRecords(
     }
     if (promptPart !== undefined && (laneId === undefined || laneId === MAIN_LANE_ID)) {
       totals.turns += 1;
-      // The prompt's text is the first non-empty text any of the record's user events carries.
-      prompts.add(
-        classified.events.find(
-          (part) => part.kind === "user" && typeof part.payload.text === "string" && part.payload.text !== ""
-        )?.payload.text
-      );
+      // The record's prompt text, by the same rule that titles the session.
+      prompts.add(recordText(rec));
     }
 
     if (classified.events.length > 0 && laneId !== undefined && laneId !== MAIN_LANE_ID) {
