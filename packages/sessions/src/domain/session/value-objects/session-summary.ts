@@ -19,7 +19,7 @@ export interface SessionSummary {
  * Version of the summary numbers. It changes when a number changes meaning or value for the same files, so that a
  * cache of summaries knows to recompute them.
  */
-export const SESSION_SUMMARY_VERSION = 1;
+export const SESSION_SUMMARY_VERSION = 2;
 
 /** One main-lane user prompt of a Session: the kit's prompt rule, its text capped at the caller's `maxChars`. */
 export interface SessionPrompt {
