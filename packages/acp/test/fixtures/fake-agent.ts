@@ -21,6 +21,13 @@ interface FakeSession {
 
 const env = process.env;
 const statePath = env.FAKE_ACP_STATE;
+/** The per-turn scripts a `FAKE_ACP_REPLAY` run follows; read once, when the agent starts. */
+const replay = env.FAKE_ACP_REPLAY
+  ? (JSON.parse(readFileSync(env.FAKE_ACP_REPLAY, "utf8")) as {
+      updates?: Record<string, unknown>[];
+      fail?: boolean;
+    }[])
+  : undefined;
 const sessions = new Map<string, FakeSession>();
 const loads = new Map<string, number>();
 const known = new Set<string>(
@@ -135,6 +142,18 @@ const app = acp
     });
 
     const turn = async (): Promise<acp.PromptResponse> => {
+      // `FAKE_ACP_REPLAY` names a JSON file of per-turn scripts, `[{ updates?: [...], fail?: true }]`: each prompt
+      // replays its turn's updates, so a test can run arbitrary update lists through the live path.
+      if (replay !== undefined) {
+        const scripted = replay[session.turns - 1] ?? {};
+        for (const value of scripted.updates ?? []) {
+          await update(client, sessionId, value);
+        }
+        if (scripted.fail === true) {
+          throw acp.RequestError.internalError(undefined, "the turn broke");
+        }
+        return { stopReason: "end_turn" };
+      }
       switch (command) {
         case "echo": {
           const words = rest.join(" ");
@@ -243,6 +262,26 @@ const app = acp
         }
         case "fail":
           throw acp.RequestError.internalError(undefined, "the turn broke");
+        case "background-text": {
+          // A turn that fails with open text and an open call: the next turn says its own text and ends, so the open
+          // call closes at its finish.
+          const callId = `call-bg-${sessionId}`;
+          if (session.backgroundStarted !== true) {
+            session.backgroundStarted = true;
+            await say(client, sessionId, "partial");
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call",
+              toolCallId: callId,
+              title: "run_background",
+              kind: "execute",
+              status: "in_progress",
+              rawInput: { command: "sleep 100" }
+            });
+            throw acp.RequestError.internalError(undefined, "the turn broke");
+          }
+          await say(client, sessionId, "b");
+          return { stopReason: "end_turn" };
+        }
         case "background":
         case "background-shared":
         case "background-fail":

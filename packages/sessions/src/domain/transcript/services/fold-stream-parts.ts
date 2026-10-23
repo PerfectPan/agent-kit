@@ -164,7 +164,8 @@ export function createStreamFolder(): StreamFolder {
  * The completed events of a list of stream parts, such as the deltas a consumer kept or forwarded, stamped with
  * `now()` as each completes. The live stream's own `event` parts are skipped, so folding a session's parts in order
  * gives exactly its `event` parts, with other times. Folding one turn's deltas alone repeats the `tool_call` of a
- * call that outlived its turn, with its full input: each turn's deltas are self-contained.
+ * call that outlived its turn, with the input it had when it was emitted: each turn's deltas are self-contained, and
+ * an update for a call whose result is out emits nothing.
  */
 export function foldStreamParts(
   parts: Iterable<TranscriptStreamPart>,

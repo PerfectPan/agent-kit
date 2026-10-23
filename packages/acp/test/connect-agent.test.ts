@@ -214,12 +214,9 @@ describe("connectAgent", () => {
       expect(first.failed).toBe(true);
       const second = yield* collectTurn(session.prompt([text("background-fail")]));
       expect(second.failed).toBe(false);
-      // The call and its result went out in the failed turn; the late input update repeats the call's start so the
-      // turn stays self-contained, and no new event follows it.
-      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
-        "tool-input-start",
-        "tool-input-available"
-      ]);
+      // The call and its result went out in the failed turn: the late input update is one for an ended call, which
+      // emits nothing.
+      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([]);
       const callId = `call-bg-${session.sessionId}`;
       const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
       expect(events.filter((event) => event.kind === "tool_call").map((event) => event.payload.callId)).toEqual([
@@ -230,6 +227,39 @@ describe("connectAgent", () => {
       ]);
       const ids = events.map((event) => event.id);
       expect(new Set(ids).size).toBe(ids.length);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("S89: a failed turn's open text is its own event, and a call left open completes at the next finish", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const first = yield* collectTurn(session.prompt([text("background-text")]));
+      expect(first.failed).toBe(true);
+      // The partial text is the failed turn's event; the open call gets none.
+      expect(
+        first.parts.flatMap((part) => (part.type === "event" ? [[part.event.kind, part.event.payload]] : []))
+      ).toEqual([["assistant", { text: "partial" }]]);
+      const second = yield* collectTurn(session.prompt([text("background-text")]));
+      expect(second.failed).toBe(false);
+      // The next turn shows only its own text; the still-open call takes its start and input into this turn's deltas
+      // before the finish closes it, so the deltas stay self-contained.
+      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available"
+      ]);
+      const callId = `call-bg-${session.sessionId}`;
+      const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
+      expect(events.map((event) => [event.kind, event.payload])).toEqual([
+        ["assistant", { text: "partial" }],
+        ["assistant", { text: "b" }],
+        ["tool_call", { callId, name: "run_background", args: { command: "sleep 100" } }],
+        ["request", { granularity: "turn", finishReason: "end_turn" }]
+      ]);
+      // The whole session's fold still gives exactly its event parts.
+      const deltas = [...first.parts, ...second.parts].filter((part) => part.type !== "event");
+      const timeless = (event: (typeof events)[number]) => ({ ...event, ts: 0, seq: 0 });
+      expect(foldStreamParts(deltas).map(timeless)).toEqual(events.map(timeless));
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 

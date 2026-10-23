@@ -165,6 +165,10 @@ export function endTurn(
     step(live, live.session.finishTurn(outcome.response.stopReason));
     Queue.endUnsafe(turn.sink);
   } else {
+    // The failed turn closes its open text and reasoning into its own stream, so the partial text is this turn's
+    // event, as folding its parts gives. A call still open stays open in the session state: no event here, and the
+    // next successful finish closes it.
+    emit(conn, live, turn, turn.translator.closeOpen?.() ?? []);
     step(live, live.session.finishTurn("error"));
     Queue.failCauseUnsafe(turn.sink, Cause.fail(outcome.error));
   }
