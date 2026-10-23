@@ -59,3 +59,12 @@
   intents:
     - effect-peer-4-0-5
     - shiny-trains-sip
+"@rivus/agent-kit@0.21.1":
+  dir: packages/agent-kit
+  intents:
+    - claude-code-prompt-blocks
+    - clever-tigers-wonder
+    - little-forks-draw
+    - proud-dodos-look
+    - quick-chairs-shake
+    - real-spoons-think

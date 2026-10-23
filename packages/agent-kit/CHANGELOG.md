@@ -1,5 +1,21 @@
 # Change Log - @rivus/agent-kit
 
+## 0.21.1
+
+### Patch Changes
+
+- Summaries of Claude Code sessions change and `SESSION_SUMMARY_VERSION` is now 2, so caches of `summarizeSession` results recompute; a session's `turns` can go up or down. Claude Code's IDE context blocks (`<ide_opened_file>`, `<ide_selection>`) now count as host-added text. A record that opens with a host block and holds the user's text — a system reminder or IDE context, then the user's words — now counts a turn in `summarizeSession`'s `turns`, collects its prompt and titles the session with the user's text: a system reminder first counted nothing before, and IDE context first counted a turn that prompted and titled with the opened file. A record holding only IDE blocks no longer counts a turn (before, it counted one, with the opened file as prompt and title), a system reminder beside an image now counts a turn (before, none), and a host block beside only a tool result, or followed by a slash command, counts no turn (before, both counted a turn). In `loadTranscript` events of a prompt record, a host-added text block carries `injected: true` in its payload, and session titles and `firstPrompt` of multi-block records are the joined, trimmed text. Collected prompts are trimmed for every agent, and a prompt that is only whitespace is no longer collected; one record's prompt joins its text events with a blank line instead of taking the first non-empty one. Consumers that cache prompts, titles or summaries recompute them.
+
+- Hide the URL-encoded home (`%2Fu%2Fme`), the project slug and the slash-less home right after a JSON escape (`\n`), URL encoding (`%2F`) or an ANSI colour sequence (`\u001b[32m`) in raw text, where the escape's last letter or digit kept the spelling visible.
+
+- Codex transcripts keep event ids unique when a response item's id equals another event's id: the request event renames to the first free request:<key>:<n>, and an event whose id or line key an item took renames to the first free L<line>:<n>.
+
+- The Codex summarize pass no longer buffers a rollout whose records carry no timestamps: a time-less file streams through at the memory of its running numbers.
+
+- On the live ACP path, a tool call updated after its turn ended no longer appears twice: a session keeps one stream folder across its turns, so a call yields one `tool_call` however many turns it outlives. Each turn's deltas stay self-contained — a turn carrying an update for an open call it has not yet mentioned repeats the call's start and input first, and a turn's `finish` re-sends the open calls no earlier finish has closed — so folding one turn's deltas alone repeats the `tool_call` of a call that outlived it, with the input it had when it was emitted. An update for a call whose result is out emits nothing, and a failed turn closes its open text and reasoning as its own events while a call left open stays open for the next finish. A call's input and output are dropped once its result is emitted.
+
+- A hook event registered for Claude Code is no longer attributed to Cursor when only the environment carries CURSOR_VERSION, which a parent shell can leave behind: Cursor evidence now comes from the payload's cursor_version field, per Cursor's documented base hook input.
+
 ## 0.21.0
 
 ### Minor Changes
