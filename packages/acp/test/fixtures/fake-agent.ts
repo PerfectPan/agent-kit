@@ -15,10 +15,19 @@ interface FakeSession {
   cancel?: () => void;
   /** A cancel that arrived before its prompt's handler ran; the SDK may dispatch the two in either order. */
   cancelEarly?: boolean;
+  /** Whether the `background` command already started its call in an earlier turn. */
+  backgroundStarted?: boolean;
 }
 
 const env = process.env;
 const statePath = env.FAKE_ACP_STATE;
+/** The per-turn scripts a `FAKE_ACP_REPLAY` run follows; read once, when the agent starts. */
+const replay = env.FAKE_ACP_REPLAY
+  ? (JSON.parse(readFileSync(env.FAKE_ACP_REPLAY, "utf8")) as {
+      updates?: Record<string, unknown>[];
+      fail?: boolean;
+    }[])
+  : undefined;
 const sessions = new Map<string, FakeSession>();
 const loads = new Map<string, number>();
 const known = new Set<string>(
@@ -133,6 +142,18 @@ const app = acp
     });
 
     const turn = async (): Promise<acp.PromptResponse> => {
+      // `FAKE_ACP_REPLAY` names a JSON file of per-turn scripts, `[{ updates?: [...], fail?: true }]`: each prompt
+      // replays its turn's updates, so a test can run arbitrary update lists through the live path.
+      if (replay !== undefined) {
+        const scripted = replay[session.turns - 1] ?? {};
+        for (const value of scripted.updates ?? []) {
+          await update(client, sessionId, value);
+        }
+        if (scripted.fail === true) {
+          throw acp.RequestError.internalError(undefined, "the turn broke");
+        }
+        return { stopReason: "end_turn" };
+      }
       switch (command) {
         case "echo": {
           const words = rest.join(" ");
@@ -241,6 +262,75 @@ const app = acp
         }
         case "fail":
           throw acp.RequestError.internalError(undefined, "the turn broke");
+        case "background-text": {
+          // A turn that fails with open text and an open call: the next turn says its own text and ends, so the open
+          // call closes at its finish.
+          const callId = `call-bg-${sessionId}`;
+          if (session.backgroundStarted !== true) {
+            session.backgroundStarted = true;
+            await say(client, sessionId, "partial");
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call",
+              toolCallId: callId,
+              title: "run_background",
+              kind: "execute",
+              status: "in_progress",
+              rawInput: { command: "sleep 100" }
+            });
+            throw acp.RequestError.internalError(undefined, "the turn broke");
+          }
+          await say(client, sessionId, "b");
+          return { stopReason: "end_turn" };
+        }
+        case "background":
+        case "background-shared":
+        case "background-fail":
+        case "background-late": {
+          // A command that outlives its turn: the first prompt starts the call, a later prompt completes it.
+          // `background-shared` names the call the same in every session, so a tool state shared across sessions
+          // collides. `background-fail` completes the call and then fails the prompt request, and the next turn
+          // updates the ended call's input. `background-late` fails before the call ends, and the next turn
+          // completes it.
+          const callId = command === "background-shared" ? "call-bg-shared" : `call-bg-${sessionId}`;
+          const completed = {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "background done" } }]
+          };
+          if (session.backgroundStarted !== true) {
+            session.backgroundStarted = true;
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call",
+              toolCallId: callId,
+              title: "run_background",
+              kind: "execute",
+              status: "in_progress",
+              rawInput: { command: "sleep 100" }
+            });
+            if (command === "background-fail") {
+              await update(client, sessionId, completed);
+              throw acp.RequestError.internalError(undefined, "the turn broke");
+            }
+            if (command === "background-late") {
+              throw acp.RequestError.internalError(undefined, "the turn broke");
+            }
+            await say(client, sessionId, "started in the background");
+            return { stopReason: "end_turn" };
+          }
+          if (command === "background-fail") {
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call_update",
+              toolCallId: callId,
+              rawInput: { command: "sleep 100", cwd: "/w" }
+            });
+            await say(client, sessionId, "input arrived late");
+            return { stopReason: "end_turn" };
+          }
+          await update(client, sessionId, completed);
+          await say(client, sessionId, "background finished");
+          return { stopReason: "end_turn" };
+        }
         default:
           await say(client, sessionId, `turn ${session.turns}: ${text}`);
           return { stopReason: "end_turn" };
