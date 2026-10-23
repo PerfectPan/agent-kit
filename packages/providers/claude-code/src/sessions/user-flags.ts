@@ -43,15 +43,8 @@ export interface ClaudeCodeUserFlags {
 
 /** The texts of a record's blocks: its string content as the only block, else its text blocks in order. */
 function blockTexts(record: UserRecord): string[] {
-  const content = record.message?.content;
-  if (typeof content === "string") {
-    return [content];
-  }
-  if (!Array.isArray(content)) {
-    return [];
-  }
   const texts: string[] = [];
-  for (const block of content) {
+  for (const block of contentBlocks(record)) {
     if (block?.type === "text" && block.text !== undefined) {
       texts.push(block.text);
     }
