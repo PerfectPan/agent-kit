@@ -5,7 +5,11 @@ import type { Env } from "./payload-fields.js";
 
 const present = (value: string | undefined): boolean => value !== undefined && value !== "";
 
-/** Payload evidence wins over inherited environment; table order decides within each kind. */
+/**
+ * Payload evidence wins over the environment, which a hook process inherits: a variable the host exports to the
+ * shells it starts cannot name the host on its own. What payload evidence names each host, and how firm it is, the
+ * dialects carry — Cursor's in its `runsHooksOf.unverified` note.
+ */
 export function sniffSource(
   declared: CodingAgentId,
   payload: PayloadView,

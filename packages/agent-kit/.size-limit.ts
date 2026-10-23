@@ -13,7 +13,7 @@ const nodeOnly = {
 // code through those chunks; size-limit rebundles and tree-shakes each entry before compression.
 // Budgets that need adjustment track measured output without extra headroom.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38712 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38885 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44533 B" },
@@ -27,9 +27,9 @@ export default [
   // command's first word for doctor, is counted with the entry. Configuration cleanup also carries the ledger
   // creation proof and its invalidation when the original entries disappear. Install-plan and bundle values own
   // validation and copy their inputs before freezing; legacy command content is parsed at the application boundary.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "82674 B" },
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "82765 B" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
-  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "7692 B" },
+  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "7826 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "5833 B", ...nodeOnly },
   { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "5914 B", ...nodeOnly },
@@ -46,7 +46,7 @@ export default [
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24570 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22858 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22980 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24760 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19189 B" }
