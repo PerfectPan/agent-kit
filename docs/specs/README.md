@@ -8,4 +8,4 @@ Follow the [SDD lifecycle](../../CONTRIBUTING.md#sdd-workflow-and-document-lifec
 
 ## Active Specs
 
-- [0001: agent-kit public entries](0001-agent-kit.md): behavior of the 0.1.0 entries and the planned entries. Paired with [Plan 0001](../plans/0001-agent-kit.md).
+None. Retired specs stay in git history; their lasting behavior lives in current-state docs and tests.

@@ -233,18 +233,18 @@ holds entries such as family aliases. A model without a price has no cost (`unde
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                 | In 0.1.0                 |
-| ----------- | ------------------------------- | ------------------------------------------------------- | ------------------------ |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                        | sessions and transcripts |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)   | sessions and transcripts |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                  | sessions and transcripts |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` | catalog identity only    |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    | catalog identity only    |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      | catalog identity only    |
-| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` | added after 0.1.0 |
+| Agent       | Id                              | Home: override, default                                 |
+| ----------- | ------------------------------- | ------------------------------------------------------- |
+| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                        |
+| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)   |
+| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                  |
+| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini` |
+| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`    |
+| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`      |
+| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
 
-Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/transcript/usage` reads the usage of every agent in the table except
-Cursor (added after 0.1.0).
+Every agent in the table has a hook dialect in `/harness/events`. `/transcript/usage` reads the usage of every agent in the table except
+Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
@@ -278,9 +278,7 @@ and keyed scheduling lanes (`/lanes`, an Effect entry) with a global concurrency
 implemented in `/acp`.
 
 `/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of
-what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection). The kit side of P0–P6 is implemented. Application
-adoption and real-agent acceptance remain open; see
-[plan 6.3](docs/plans/0001-agent-kit.md#63-phases-and-tasks).
+what it wrote; see [packages/agent-kit/README.md](packages/agent-kit/README.md#harness-injection).
 
 ## Repository
 
@@ -295,8 +293,6 @@ pnpm install
 pnpm run check   # format, build, lint, typecheck, test, package checks
 ```
 
-- [`docs/plans/0001-agent-kit.md`](docs/plans/0001-agent-kit.md): design, decisions and phases.
-- [`docs/specs/0001-agent-kit.md`](docs/specs/0001-agent-kit.md): behavior of the public entries.
 - [`docs/architecture/authoring.md`](docs/architecture/authoring.md): how to write a context package.
 - [`docs/development/adoption.md`](docs/development/adoption.md): application migration, verification and rollback.
 - [`CONTEXT.md`](CONTEXT.md): glossary.

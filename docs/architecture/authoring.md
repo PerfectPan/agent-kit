@@ -1,6 +1,6 @@
 # Authoring Conventions
 
-Use this guide when adding or changing code in an agent-kit context. It defines where code goes, how aggregates and use cases are shaped, and which rules apply to plain TS contexts and to Effect contexts. [CONTEXT.md](../../CONTEXT.md) defines the terms; [plan 0001](../plans/0001-agent-kit.md) records the design decisions (sections 3.1–3.3, 3.5, 3.7 and 3.9 are the source of these rules). The architecture manifest `infra/architecture/boundaries.ts` and the boundary rules generated from it enforce the dependency rules below (see [Verify At The Owner](#verify-at-the-owner)).
+Use this guide when adding or changing code in an agent-kit context. It defines where code goes, how aggregates and use cases are shaped, and which rules apply to plain TS contexts and to Effect contexts. [CONTEXT.md](../../CONTEXT.md) defines the terms. The architecture manifest `infra/architecture/boundaries.ts` and the boundary rules generated from it enforce the dependency rules below (see [Verify At The Owner](#verify-at-the-owner)).
 
 ## Choose The Owner
 
@@ -260,10 +260,10 @@ removal. The install-plan aggregate owns root containment and ledger-basis compa
 
 Public and persisted data stay plain. Explicit `Snapshot` types name those shapes internally; public and testing
 SPI exports expose the plain shapes. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
-`InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, the `StepContentAfter`
+`InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, a step's `contentAfter`
 result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
 rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
-`StepContentAfter` is local to the application executor. `Strategy` lives with the bundle SPI. Registration
+the `contentAfter` result is local to the application executor. `Strategy` lives with the bundle SPI. Registration
 observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
 plain snapshots.
 
