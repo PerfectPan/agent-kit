@@ -148,10 +148,10 @@ export const cursorHookDialect: HookDialect = {
         SessionEnd: "sessionEnd"
       },
       unverified:
-        "Cursor's input schema says all hooks it runs receive a base set of fields, `cursor_version` included " +
+        'The docs\' input schema reads "All hooks receive a base set of fields", `cursor_version` included ' +
         "(cursor.com/docs/hooks, Reference \u2192 Common schema \u2192 Input (all hooks)); that the Claude Code " +
         "hooks it loads and runs as mapped Cursor events receive the same base input is an inference from that " +
-        "statement, which forum reports of `cursor_version` in Cursor payloads agree with. The third-party page " +
+        "statement, and forum reports show `cursor_version` in Cursor hook payloads. The third-party page " +
         "covers loading, name mapping and response compatibility, and warns of behavior differences between " +
         "execution environments (cursor.com/docs/reference/third-party-hooks)."
     }
