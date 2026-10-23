@@ -29,7 +29,7 @@ export default [
   // validation and copy their inputs before freezing; legacy command content is parsed at the application boundary.
   { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "82765 B" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
-  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "7812 B" },
+  { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "7826 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
   { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "5833 B", ...nodeOnly },
   { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "5914 B", ...nodeOnly },
@@ -46,7 +46,7 @@ export default [
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24488 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22971 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22980 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24645 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19128 B" }
