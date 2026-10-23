@@ -83,14 +83,19 @@ function secondOf(ts: number): number {
 }
 
 /**
- * Advances the replay rule by one parsed record, with its parsed payload and time in epoch milliseconds. The caller
- * parses both once; the rule reads the payload through the parameters instead of parsing it again per helper.
+ * Advances the replay rule by one parsed record, with its parsed payload and time in epoch milliseconds. A `ts` of
+ * `undefined` marks a record of the leading run that carries no time of its own: the batch rule stamps that whole
+ * run with the rollout's first known time, which a streaming reader learns only on arrival, or with 1 when no
+ * record ever names one. The ts-dependent decisions wait out that stamp: within the run every record shares it, so
+ * a second usage record there always lands on the same second, and the first known time is that stamp.
+ * The caller parses the record and payload once; the rule reads the payload through the parameters instead of
+ * parsing it again per helper.
  */
 export function stepForkReplay(
   state: ForkReplayState,
   rec: CodexRecordValue | undefined,
   payload: ForkReplayPayload | undefined,
-  ts: number
+  ts: number | undefined
 ): ForkReplayStep {
   switch (state.phase) {
     case "start": {
@@ -110,7 +115,7 @@ export function stepForkReplay(
           : { state: { phase: "turns", forkTime: state.forkTime }, replayed: true };
       }
       if (isUsageRecord(rec, payload)) {
-        return { state: { phase: "second", second: secondOf(ts) }, replayed: undefined };
+        return { state: { phase: "second", second: ts === undefined ? undefined : secondOf(ts) }, replayed: undefined };
       }
       return { state, replayed: undefined };
     }
@@ -120,15 +125,33 @@ export function stepForkReplay(
         ? { state: { phase: "own" }, replayed: false }
         : { state, replayed: true };
     }
-    case "second":
-      if (!isUsageRecord(rec, payload)) {
+    case "second": {
+      if (state.second === undefined) {
+        if (isUsageRecord(rec, payload)) {
+          return {
+            state: ts === undefined ? { phase: "second-replay" } : { phase: "second-replay", second: secondOf(ts) },
+            replayed: true,
+            settled: true
+          };
+        }
+        return { state: ts === undefined ? state : { phase: "second", second: secondOf(ts) }, replayed: undefined };
+      }
+      if (ts === undefined || !isUsageRecord(rec, payload)) {
         return { state, replayed: undefined };
       }
       return secondOf(ts) === state.second
         ? { state: { phase: "second-replay", second: secondOf(ts) }, replayed: true, settled: true }
         : { state: { phase: "own" }, replayed: false, settled: false };
-    case "second-replay":
+    }
+    case "second-replay": {
+      if (state.second === undefined) {
+        return { state: ts === undefined ? state : { phase: "second-replay", second: secondOf(ts) }, replayed: true };
+      }
+      if (ts === undefined) {
+        return { state, replayed: true };
+      }
       return secondOf(ts) === state.second ? { state, replayed: true } : { state: { phase: "own" }, replayed: false };
+    }
   }
 }
 

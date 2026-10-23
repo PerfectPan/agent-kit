@@ -1,0 +1,6 @@
+{"timestamp":"2026-01-04T00:00:00.000Z","type":"session_meta","payload":{"id":"s-idcoll"}}
+{"timestamp":"2026-01-04T00:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"before"}],"id":"request:r1"}}
+{"timestamp":"2026-01-04T00:00:02.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"answer"}],"id":"msg-a"}}
+{"timestamp":"2026-01-04T00:00:03.000Z","type":"token_usage_record","payload":{"response_id":"r1","usage":{"input_tokens":11,"output_tokens":3}}}
+{"timestamp":"2026-01-04T00:00:04.000Z","type":"token_usage_record","payload":{"response_id":"r2","usage":{"input_tokens":10,"output_tokens":2}}}
+{"timestamp":"2026-01-04T00:00:05.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"after"}],"id":"request:r2"}}

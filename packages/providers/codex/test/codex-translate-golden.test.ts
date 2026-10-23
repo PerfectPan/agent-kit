@@ -5,12 +5,10 @@ import { fileURLToPath } from "node:url";
 import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { describe, expect, it } from "vite-plus/test";
 
-// The translated shape of every conformance fixture and of the corners rollout, pinned: a refactor of the Codex
-// record dispatch may not change it silently. The corners rollout lives outside the conformance directory because it
-// pins an id collision the conformance suite's uniqueness rule would reject. To regenerate deliberately after an
-// accepted shape change, run this file with UPDATE_GOLDEN set — `vp test test/codex-translate-golden.test.ts` with
-// the variable in the environment rewrites the JSON from the current translation — and review the file's diff as
-// part of the change.
+// The translated shape of every conformance fixture, pinned: a refactor of the Codex record dispatch may not change
+// it silently. To regenerate deliberately after an accepted shape change, run this file with UPDATE_GOLDEN set —
+// `vp test test/codex-translate-golden.test.ts` with the variable in the environment rewrites the JSON from the
+// current translation — and review the file's diff as part of the change.
 const fixtures = fileURLToPath(new URL("fixtures/sessions", import.meta.url));
 const goldenPath = new URL("fixtures/sessions/translate-golden.json", import.meta.url);
 const golden = JSON.parse(readFileSync(goldenPath, "utf8")) as Record<string, unknown>;
@@ -61,9 +59,7 @@ const translateAll = (): Record<string, unknown> => {
     const path =
       name === "unknown-generation"
         ? `${fixtures}/unknown-generation/rollout-bad.jsonl`
-        : name === "rollout-corners"
-          ? `${fixtures}/corners/rollout-corners.jsonl`
-          : `${fixtures}/conformance/${name}.jsonl`;
+        : `${fixtures}/conformance/${name}.jsonl`;
     out[name] = serialize(name, readFileSync(path, "utf8"));
   }
   return out;
