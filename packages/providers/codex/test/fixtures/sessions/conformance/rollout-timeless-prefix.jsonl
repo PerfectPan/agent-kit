@@ -1,0 +1,8 @@
+{"type":"session_meta","payload":{"id":"s-sub","forked_from_id":"s-parent"}}
+{"type":"token_usage_record","payload":{"response_id":"p1","usage":{"input_tokens":7,"output_tokens":1}}}
+{"type":"token_usage_record","payload":{"response_id":"p2","usage":{"input_tokens":8,"output_tokens":1}}}
+{"timestamp":"2026-01-05T00:00:10.000Z","type":"turn_context","payload":{"turn_id":"turn-own","model":"gpt-test"}}
+{"timestamp":"2026-01-05T00:00:11.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"own work"}]}}
+{"timestamp":"2026-01-05T00:00:12.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"done"}]}}
+{"timestamp":"2026-01-05T00:00:12.500Z","type":"token_usage_record","payload":{"response_id":"o1","usage":{"input_tokens":20,"output_tokens":4}}}
+{"timestamp":"2026-01-05T00:00:13.000Z","type":"event_msg","payload":{"type":"task_complete","duration_ms":2500}}

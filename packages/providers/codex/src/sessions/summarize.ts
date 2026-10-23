@@ -3,7 +3,8 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 import {
   addTurnDuration,
   emptyTotals,
-  type StampedRecord,
+  type SourcedRecord,
+  type TimedRecord,
   type UnknownFormatGeneration,
   unknownFormatGeneration,
   addRequest,
@@ -26,6 +27,30 @@ export interface CodexSummarizeOptions {
   prompts?: SessionPromptsOptions;
 }
 
+/** A record with the time the pass reads it at: `ts` is `undefined` in the leading run no record has stamped yet. */
+interface CodexStampedRecord {
+  readonly record: SourcedRecord;
+  readonly ts: number | undefined;
+}
+
+/**
+ * Stamps one rollout in file order the way `mergeByTime` stamps a single group, without holding the records that
+ * precede the first known time: each takes the previous known time, and a leading one has none yet, which the
+ * fork-replay rule reads as "the batch rule's stamp for it is not known yet". A file that names no time at all
+ * leaves every `ts` `undefined`, where `mergeByTime` would stamp 1.
+ */
+async function* stampWhileReading(timed: AsyncIterable<TimedRecord>): AsyncGenerator<CodexStampedRecord> {
+  let lastKnown: number | undefined;
+  for await (const { record, time } of timed) {
+    if (time === undefined) {
+      yield { record, ts: lastKnown };
+    } else {
+      lastKnown = time;
+      yield { record, ts: time };
+    }
+  }
+}
+
 /**
  * The end of a forked rollout's replay, decided while the records stream past: the same bookkeeping
  * `scanForkReplay` runs, a record at a time and without holding any of them. The batch rule's
@@ -35,7 +60,7 @@ export interface CodexSummarizeOptions {
  * undecided it is that count, which an append moves, so the fold reads no further than it.
  */
 async function scanForkReplayEndWhileReading(
-  stamped: AsyncIterable<StampedRecord>
+  stamped: AsyncIterable<CodexStampedRecord>
 ): Promise<{ end: number; decided: boolean; covered: number }> {
   let state = FORK_REPLAY_START;
   const tracker = trackForkReplayEnd();
@@ -66,22 +91,25 @@ async function scanForkReplayEndWhileReading(
  * links and the orphan flags set references, and the event ids' duplicate protection only names events.
  */
 export async function summarizeCodexRecords(
-  /** A fresh stamped stream per read: the pass reads the rollout twice, and a stream does not restart. */
-  stamped: () => AsyncIterable<StampedRecord>,
+  /** A fresh stream of the rollout's records with their own times per read: the pass reads the rollout twice, and a
+   * stream does not restart. */
+  timed: () => AsyncIterable<TimedRecord>,
   options: CodexSummarizeOptions = {}
 ): Promise<Result<SessionSummaryWithPrompts, UnknownFormatGeneration>> {
-  const { end, decided, covered } = await scanForkReplayEndWhileReading(stamped());
+  const { end, decided, covered } = await scanForkReplayEndWhileReading(stampWhileReading(timed()));
   const pass = createCodexTranslation({ retain: false });
   const totals = emptyTotals();
   const prompts = emptyPrompts(options.prompts);
   let seen = 0;
-  for await (const { record, ts } of stamped()) {
+  for await (const { record, ts } of stampWhileReading(timed())) {
     // While the end is undecided it is the record count, which an append moves: fold exactly what the first read
     // covered. A decided end cannot be un-decided by an append, so the fold reads on.
     if (!decided && seen >= covered) {
       break;
     }
-    const outcome = pass.step(record, ts, { replayed: seen < end, justEnded: seen === end });
+    // The summary's numbers read no times, so a record the first known time has not reached yet takes the stamp a
+    // wholly time-less file gets.
+    const outcome = pass.step(record, ts ?? 1, { replayed: seen < end, justEnded: seen === end });
     if (!outcome.ok) {
       return err(unknownFormatGeneration(AGENT, record));
     }
