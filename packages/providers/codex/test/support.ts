@@ -15,7 +15,8 @@ export function codexSessions(root: string): ConformanceSession[] {
     { path: at("legacy"), records: 9, capabilities: ["reasoning"] },
     { path: at("interrupted"), records: 12, capabilities: ["requests", "usage", "durations"] },
     { path: at("duplicate-usage"), records: 5, capabilities: ["requests", "usage"] },
-    { path: at("token-delta"), records: 6, capabilities: ["requests", "usage"] }
+    { path: at("token-delta"), records: 6, capabilities: ["requests", "usage"] },
+    { path: at("request-id-collision"), records: 6, capabilities: ["requests", "usage"] }
   ];
 }
 

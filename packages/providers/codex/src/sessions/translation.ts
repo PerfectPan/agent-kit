@@ -222,10 +222,21 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           ...(usage ? { usage } : {}),
           ...(finishReason ? { finishReason } : {})
         };
+        // Event ids are unique within a transcript, and an item event may carry the id `request:<key>` itself. The
+        // request keeps `request:<key>` when free, else takes the first free `request:<key>:<n>`: an item can take
+        // that serial only by preceding the request, which moves on to the next serial, and `emit` renames any later
+        // event off a taken id, so the id the request settles on stays its alone.
+        let id = `request:${key}`;
+        if (retain) {
+          for (let serial = 1; usedIds.has(id); serial += 1) {
+            id = `request:${key}:${serial}`;
+          }
+          usedIds.add(id);
+        }
         const part: CodexPart<"request"> = {
           kind: "request",
           payload: body,
-          id: `request:${key}`,
+          id,
           ts,
           requestId: key,
           record,
@@ -235,9 +246,6 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         recordParts.push(part);
         eventCount += 1;
         if (retain) {
-          // A request's id must match the translation's ids: `request:<key>` even on a collision with an event id,
-          // which only the emit path renames away.
-          usedIds.add(part.id);
           segment = placeRequest(parts, segment, part);
         } else {
           segment = eventCount;

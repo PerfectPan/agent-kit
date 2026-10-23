@@ -3348,7 +3348,7 @@
     }
    },
    {
-    "id": "request:L9",
+    "id": "request:L9:1",
     "seq": 2,
     "ts": 1767398405000,
     "kind": "request",
@@ -3430,6 +3430,189 @@
      "payload": {
       "type": "task_complete",
       "duration_ms": 250
+     }
+    }
+   }
+  ]
+ },
+ "rollout-request-id-collision": {
+  "ok": true,
+  "session": {
+   "id": "s-idcoll",
+   "title": "before",
+   "startedAt": 1767484800000,
+   "endedAt": 1767484805000
+  },
+  "agents": [
+   {
+    "id": "main"
+   }
+  ],
+  "skipped": [
+   {
+    "reason": "session-meta",
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 1
+    }
+   }
+  ],
+  "events": [
+   {
+    "id": "request:r1",
+    "seq": 0,
+    "ts": 1767484801000,
+    "kind": "user",
+    "requestId": "r1",
+    "payload": {
+     "text": "before"
+    },
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 2
+    },
+    "original": {
+     "timestamp": "2026-01-04T00:00:01.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "user",
+      "content": [
+       {
+        "type": "input_text",
+        "text": "before"
+       }
+      ],
+      "id": "request:r1"
+     }
+    }
+   },
+   {
+    "id": "request:r1:1",
+    "seq": 1,
+    "ts": 1767484802000,
+    "kind": "request",
+    "requestId": "r1",
+    "payload": {
+     "responseId": "r1",
+     "usage": {
+      "inputTokens": 11,
+      "outputTokens": 3,
+      "totalTokens": 14
+     }
+    },
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 4
+    },
+    "original": {
+     "timestamp": "2026-01-04T00:00:03.000Z",
+     "type": "token_usage_record",
+     "payload": {
+      "response_id": "r1",
+      "usage": {
+       "input_tokens": 11,
+       "output_tokens": 3
+      }
+     }
+    }
+   },
+   {
+    "id": "msg-a",
+    "seq": 2,
+    "ts": 1767484802000,
+    "kind": "assistant",
+    "requestId": "r1",
+    "payload": {
+     "text": "answer"
+    },
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 3
+    },
+    "original": {
+     "timestamp": "2026-01-04T00:00:02.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+       {
+        "type": "output_text",
+        "text": "answer"
+       }
+      ],
+      "id": "msg-a"
+     }
+    }
+   },
+   {
+    "id": "request:r2",
+    "seq": 3,
+    "ts": 1767484804000,
+    "kind": "request",
+    "requestId": "r2",
+    "payload": {
+     "responseId": "r2",
+     "usage": {
+      "inputTokens": 10,
+      "outputTokens": 2,
+      "totalTokens": 12
+     }
+    },
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 5
+    },
+    "original": {
+     "timestamp": "2026-01-04T00:00:04.000Z",
+     "type": "token_usage_record",
+     "payload": {
+      "response_id": "r2",
+      "usage": {
+       "input_tokens": 10,
+       "output_tokens": 2
+      }
+     }
+    }
+   },
+   {
+    "id": "L6",
+    "seq": 4,
+    "ts": 1767484805000,
+    "kind": "assistant",
+    "payload": {
+     "text": "after"
+    },
+    "source": {
+     "file": "rollout-request-id-collision.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 6
+    },
+    "original": {
+     "timestamp": "2026-01-04T00:00:05.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+       {
+        "type": "output_text",
+        "text": "after"
+       }
+      ],
+      "id": "request:r2"
      }
     }
    }

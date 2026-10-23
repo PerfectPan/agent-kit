@@ -123,6 +123,18 @@ describe("codex translation", () => {
     }
   });
 
+  it("keeps the request id free of an item id that equals request:<key>, before or after its request", async () => {
+    const transcript = await load("request-id-collision");
+    const ids = transcript.events.map((event) => event.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // The user item took `request:r1` first, so the r1 request moves to the first free serial and keeps its
+    // `requestId` key; the r2 request came first, so the later item with its id renames to the line key.
+    expect(ids).toEqual(["request:r1", "request:r1:1", "msg-a", "request:r2", "L6"]);
+    const [r1, r2] = requests(transcript);
+    expect(r1).toMatchObject({ id: "request:r1:1", requestId: "r1" });
+    expect(r2).toMatchObject({ id: "request:r2", requestId: "r2" });
+  });
+
   it("takes the system prompt from session_meta.base_instructions only when the rollout records it", async () => {
     const plain = await load("plain");
     expect(plain.session.systemPrompt).toBe("Be brief.");
