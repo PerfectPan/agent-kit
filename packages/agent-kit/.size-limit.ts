@@ -41,10 +41,10 @@ export default [
   // grok, claude-code and codex. /transcript/usage also carries a bundled copy, since the entry imports nothing
   // and `vp pack` inlines it. The conformance suites also bundle cost, whose LiteLLM adapter now parses with zod/mini.
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
-  // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
-  // grow all three.
+  // and the prompts conformance check grows /testing, whose turn-start rule adds the rest; the Codex and Grok
+  // passes and their shared record dispatches grow all three.
   { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24523 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22858 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22877 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
   { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24771 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19128 B" }

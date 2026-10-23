@@ -74,7 +74,8 @@ describe("the Claude Code prompt rule", () => {
     expect(userFlags(user(allInjected))).toEqual({ injected: true });
     expect(recordText(user(allInjected))).toBeUndefined();
 
-    const fork = "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests";
+    const fork =
+      "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests";
     expect(userFlags(user([textBlock(fork)]))).toEqual({});
     expect(recordText(user([textBlock(fork)]))).toBe(fork);
 
