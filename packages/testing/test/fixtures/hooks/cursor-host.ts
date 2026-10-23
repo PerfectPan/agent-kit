@@ -28,12 +28,25 @@ export const cursorHostSamples: readonly HookDialectSample[] = [
     expected: { ...identity, nativeEvent: "preToolUse", phase: "activity", tool: { name: "Shell", callId: "tool-1" } }
   },
   {
-    name: "CURSOR_VERSION alone names Cursor, and a Claude Code event name maps to Cursor's",
+    name: "a Claude event name with the Cursor field names Cursor",
+    declaredAgent: "claude-code",
+    payload: { ...common, hook_event_name: "Stop", session_id: common.conversation_id, status: "completed" },
+    env: {},
+    expected: {
+      ...identity,
+      nativeEvent: "Stop",
+      phase: "finish",
+      scope: "turn",
+      outcome: "completed"
+    }
+  },
+  {
+    name: "a Claude Code payload with an inherited CURSOR_VERSION stays Claude Code's",
     declaredAgent: "claude-code",
     payload: { hook_event_name: "Stop", session_id: "c0nv-cursor-1", status: "completed" },
     env: { CURSOR_VERSION: "3.13.25", CMUX_SURFACE_ID: "5D1A-surface" },
     expected: {
-      agent: "cursor",
+      agent: "claude-code",
       nativeEvent: "Stop",
       phase: "finish",
       scope: "turn",
