@@ -35,8 +35,9 @@ export default [
   { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "5914 B", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "104 B" },
   { name: "@rivus/agent-kit/platform/effect", path: "dist/platform/effect.js", import: "*", limit: "184 B" },
-  // The slug and slash-less starts accept preceding escapes, which adds two alternation branches to the built regexes.
-  { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1066 B" },
+  // The hidden spellings' starts accept preceding escapes — JSON, URL encoding and ANSI SGR sequences — which adds
+  // alternation branches to the built regexes.
+  { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "1088 B" },
   // Size-limit counts dependencies, and the log readers now import zod/mini, which the sessions and transcript
   // graphs did not pull in on main: most of their growth is zod/mini itself, the rest the reader schemas of
   // grok, claude-code and codex. /transcript/usage also carries a bundled copy, since the entry imports nothing
