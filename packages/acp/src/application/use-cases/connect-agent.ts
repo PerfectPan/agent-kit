@@ -1,5 +1,6 @@
 import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { Env, ExitStatus } from "@rivus/agent-kit-platform/public";
+import { createStreamFolder } from "@rivus/agent-kit-sessions/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
@@ -232,7 +233,8 @@ function register(
       keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
       session: opened.value.state,
       pendingBlocks,
-      toolState: { tools: new Map(), ended: new Set(), emittedCalls: new Set() },
+      toolState: { tools: new Map(), ended: new Set() },
+      folder: createStreamFolder(),
       ...(root === undefined ? {} : { root })
     };
     conn.sessions.set(sessionId, live);

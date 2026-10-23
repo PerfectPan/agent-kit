@@ -243,9 +243,22 @@ const app = acp
         }
         case "fail":
           throw acp.RequestError.internalError(undefined, "the turn broke");
-        case "background": {
+        case "background":
+        case "background-shared":
+        case "background-fail":
+        case "background-late": {
           // A command that outlives its turn: the first prompt starts the call, a later prompt completes it.
-          const callId = `call-bg-${sessionId}`;
+          // `background-shared` names the call the same in every session, so a tool state shared across sessions
+          // collides. `background-fail` completes the call and then fails the prompt request, and the next turn
+          // updates the ended call's input. `background-late` fails before the call ends, and the next turn
+          // completes it.
+          const callId = command === "background-shared" ? "call-bg-shared" : `call-bg-${sessionId}`;
+          const completed = {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "background done" } }]
+          };
           if (session.backgroundStarted !== true) {
             session.backgroundStarted = true;
             await update(client, sessionId, {
@@ -256,15 +269,26 @@ const app = acp
               status: "in_progress",
               rawInput: { command: "sleep 100" }
             });
+            if (command === "background-fail") {
+              await update(client, sessionId, completed);
+              throw acp.RequestError.internalError(undefined, "the turn broke");
+            }
+            if (command === "background-late") {
+              throw acp.RequestError.internalError(undefined, "the turn broke");
+            }
             await say(client, sessionId, "started in the background");
             return { stopReason: "end_turn" };
           }
-          await update(client, sessionId, {
-            sessionUpdate: "tool_call_update",
-            toolCallId: callId,
-            status: "completed",
-            content: [{ type: "content", content: { type: "text", text: "background done" } }]
-          });
+          if (command === "background-fail") {
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call_update",
+              toolCallId: callId,
+              rawInput: { command: "sleep 100", cwd: "/w" }
+            });
+            await say(client, sessionId, "input arrived late");
+            return { stopReason: "end_turn" };
+          }
+          await update(client, sessionId, completed);
           await say(client, sessionId, "background finished");
           return { stopReason: "end_turn" };
         }

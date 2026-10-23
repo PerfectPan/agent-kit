@@ -13,7 +13,7 @@ import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
 import { afterEach } from "vite-plus/test";
 
-import { connectAgent, optionOfKind, probeAgent, SessionBindingStore } from "../src/public.js";
+import { connectAgent, optionOfKind, probeAgent, type PromptBlock, SessionBindingStore } from "../src/public.js";
 import {
   connectFake,
   eventTexts,
@@ -30,6 +30,16 @@ afterEach(() => {
 });
 
 const run = (parts: Stream.Stream<TranscriptStreamPart, unknown>) => Stream.runCollect(parts);
+
+/** The parts a turn delivered before its outcome, and whether the prompt failed. */
+const collectTurn = (parts: Stream.Stream<TranscriptStreamPart, unknown>) =>
+  Effect.gen(function* () {
+    const collected: TranscriptStreamPart[] = [];
+    const exit = yield* Effect.exit(
+      Stream.runForEach(Stream.tap(parts, (part) => Effect.sync(() => collected.push(part))), () => Effect.void)
+    );
+    return { parts: collected, failed: Exit.isFailure(exit) };
+  });
 
 describe("connectAgent", () => {
   it.effect("completes the handshake and reports the agent", () =>
@@ -143,12 +153,14 @@ describe("connectAgent", () => {
       const first = yield* run(session.prompt([text("background")]));
       const second = yield* run(session.prompt([text("background")]));
       const callId = `call-bg-${session.sessionId}`;
-      // The call starts in the first turn and the later update brings only its result, no second call.
+      // The call starts in the first turn; the later turn repeats its start so its deltas stay self-contained.
       expect([...first].flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
         "tool-input-start",
         "tool-input-available"
       ]);
       expect([...second].flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available",
         "tool-output-available"
       ]);
       const events = [...first, ...second].flatMap((part) => (part.type === "event" ? [part.event] : []));
@@ -161,21 +173,84 @@ describe("connectAgent", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
-  it.effect("keeps the tool state of two sessions apart", () =>
+  it.effect("keeps the tool state of two sessions apart when both use one call id", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();
-      const callsOf = (parts: Iterable<TranscriptStreamPart>) =>
-        [...parts].flatMap((part) =>
-          part.type === "event" && part.event.kind === "tool_call" ? [part.event.payload.callId] : []
-        );
+      const turnsOf = (handle: { prompt: (blocks: readonly PromptBlock[]) => Stream.Stream<TranscriptStreamPart, unknown> }) =>
+        Effect.gen(function* () {
+          const start = yield* collectTurn(handle.prompt([text("background-shared")]));
+          const done = yield* collectTurn(handle.prompt([text("background-shared")]));
+          return [...start.parts, ...done.parts];
+        });
       const one = yield* connection.newSession();
-      const oneStart = yield* run(one.prompt([text("background")]));
-      const oneDone = yield* run(one.prompt([text("background")]));
       const two = yield* connection.newSession();
-      const twoStart = yield* run(two.prompt([text("background")]));
-      const twoDone = yield* run(two.prompt([text("background")]));
-      expect(callsOf([...oneStart, ...oneDone])).toEqual([`call-bg-${one.sessionId}`]);
-      expect(callsOf([...twoStart, ...twoDone])).toEqual([`call-bg-${two.sessionId}`]);
+      // The fake agent names the call `call-bg-shared` in every session, so a tool state shared across sessions
+      // would swallow the second session's completion.
+      for (const parts of [yield* turnsOf(one), yield* turnsOf(two)]) {
+        expect(
+          parts.flatMap((part) =>
+            part.type === "event" && part.event.kind === "tool_call" ? [part.event.payload] : []
+          )
+        ).toEqual([{ callId: "call-bg-shared", name: "run_background", args: { command: "sleep 100" } }]);
+        expect(
+          parts.flatMap((part) =>
+            part.type === "event" && part.event.kind === "tool_result" ? [part.event.payload] : []
+          )
+        ).toEqual([{ callId: "call-bg-shared", isError: false, output: "background done" }]);
+      }
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("S89: a failed turn's completed call is not emitted twice, and its event ids stay unique", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const first = yield* collectTurn(session.prompt([text("background-fail")]));
+      expect(first.failed).toBe(true);
+      const second = yield* collectTurn(session.prompt([text("background-fail")]));
+      expect(second.failed).toBe(false);
+      // The call and its result went out in the failed turn; the late input update repeats the call's start so the
+      // turn stays self-contained, and no new event follows it.
+      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available"
+      ]);
+      const callId = `call-bg-${session.sessionId}`;
+      const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
+      expect(events.filter((event) => event.kind === "tool_call").map((event) => event.payload.callId)).toEqual([
+        callId
+      ]);
+      expect(events.filter((event) => event.kind === "tool_result").map((event) => event.payload)).toEqual([
+        { callId, isError: false, output: "background done" }
+      ]);
+      const ids = events.map((event) => event.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("S89: a call its turn left open completes once, with its input, in the next turn", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const first = yield* collectTurn(session.prompt([text("background-late")]));
+      expect(first.failed).toBe(true);
+      expect(first.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available"
+      ]);
+      const second = yield* collectTurn(session.prompt([text("background-late")]));
+      expect(second.failed).toBe(false);
+      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available",
+        "tool-output-available"
+      ]);
+      const callId = `call-bg-${session.sessionId}`;
+      const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
+      expect(events.filter((event) => event.kind.startsWith("tool")).map((event) => [event.kind, event.payload])).toEqual([
+        ["tool_call", { callId, name: "run_background", args: { command: "sleep 100" } }],
+        ["tool_result", { callId, isError: false, output: "background done" }]
+      ]);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 

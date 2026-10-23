@@ -1,8 +1,4 @@
-import {
-  createAcpPartTranslator,
-  createStreamFolder,
-  type TranscriptStreamPart
-} from "@rivus/agent-kit-sessions/public";
+import { createAcpPartTranslator, type TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -157,8 +153,6 @@ function prompt(
       const turn: Turn = {
         sink,
         translator: createAcpPartTranslator(`${number}.`, live.toolState),
-        folder: createStreamFolder(),
-        toolState: live.toolState,
         ended: Deferred.makeUnsafe(),
         cancelRequested: Deferred.makeUnsafe()
       };
@@ -230,7 +224,7 @@ export function sessionHandle(
 /** Delivers one `session/update` to the running turn; between turns, such as during a load's replay, it is dropped. */
 export function deliverUpdate(conn: ConnectionState, live: LiveSession, update: Record<string, unknown>): void {
   if (live.turn !== undefined) {
-    emit(conn, live.turn, live.turn.translator.update(update));
+    emit(conn, live, live.turn, live.turn.translator.update(update));
   }
 }
 

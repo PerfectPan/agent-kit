@@ -19,15 +19,21 @@ interface ToolFold {
 }
 
 /**
- * A folder for one stream of parts, such as one live turn. Text and reasoning become one event each at their `*-end`; a
+ * A folder for one stream of parts: the live session keeps one folder across its turns, so its `event` parts are
+ * what folding the session's parts in order gives. Text and reasoning become one event each at their `*-end`; a
  * tool call becomes a `tool_call` and a `tool_result` once its output is available, so the call carries its final
- * input; `finish` closes what is still open, lists the calls that never ended without a result, and adds the turn's
- * `request`. `event` parts are skipped: they are what the folder produces.
+ * input; a repeated `tool-input-start` or `tool-input-available` for a call whose result is already out is no new
+ * call; `finish` closes what is still open, lists the calls that never ended without a result, and adds the turn's
+ * `request`. Once a call's result is emitted the folder keeps only its id, so the state does not grow with finished
+ * calls. The events' `seq` restarts after each `finish`, as one turn's stream numbers from its start. `event` parts
+ * are skipped: they are what the folder produces.
  */
 export function createStreamFolder(): StreamFolder {
   let seq = 0;
   const texts = new Map<string, { kind: "assistant" | "reasoning"; text: string }>();
   const tools = new Map<string, ToolFold>();
+  /** The calls whose `tool_result` this folder emitted; a later input part for one of them is no new call. */
+  const ended = new Set<string>();
 
   const event = <K extends TranscriptEventKind>(
     kind: K,
@@ -95,6 +101,9 @@ export function createStreamFolder(): StreamFolder {
         case "reasoning-end":
           return closeText(part.id, ts);
         case "tool-input-start": {
+          if (ended.has(part.toolCallId)) {
+            return [];
+          }
           const tool = toolOf(part.toolCallId, part.toolName);
           if (part.title !== undefined) {
             tool.title = part.title;
@@ -102,6 +111,9 @@ export function createStreamFolder(): StreamFolder {
           return [];
         }
         case "tool-input-available": {
+          if (ended.has(part.toolCallId)) {
+            return [];
+          }
           const tool = toolOf(part.toolCallId, part.toolName);
           tool.input = part.input;
           // `title` is the call's current display title: leaving it out clears an earlier one.
@@ -116,15 +128,15 @@ export function createStreamFolder(): StreamFolder {
         case "tool-output-error": {
           const tool = toolOf(part.toolCallId);
           tools.delete(part.toolCallId);
+          ended.add(part.toolCallId);
           const payload = {
             callId: part.toolCallId,
             isError: part.type === "tool-output-error",
             ...(part.output === undefined ? {} : { output: part.output })
           };
-          return [
-            ...call(part.toolCallId, tool, ts),
-            event("tool_result", `tool_result:${part.toolCallId}`, payload, ts)
-          ];
+          // A result for a call this folder already finished repeats only the result, never the call.
+          const callEvents = tool.called ? [] : call(part.toolCallId, tool, ts);
+          return [...callEvents, event("tool_result", `tool_result:${part.toolCallId}`, payload, ts)];
         }
         case "update":
           return [event(part.kind, `update:${part.id}`, { ...part.payload }, ts, part.original)];
@@ -136,7 +148,10 @@ export function createStreamFolder(): StreamFolder {
             finishReason: part.finishReason,
             ...(part.usage === undefined ? {} : { usage: part.usage })
           };
-          return [...closed, ...calls, event("request", `request:${part.id}`, payload, ts)];
+          const out = [...closed, ...calls, event("request", `request:${part.id}`, payload, ts)];
+          // The next turn's events number from their start, as a folder per turn numbered them.
+          seq = 0;
+          return out;
         }
         case "event":
           return [];
@@ -147,8 +162,9 @@ export function createStreamFolder(): StreamFolder {
 
 /**
  * The completed events of a list of stream parts, such as the deltas a consumer kept or forwarded, stamped with
- * `now()` as each completes. The live stream's own `event` parts are skipped, so folding a turn's whole stream gives
- * the events it carried, with other times.
+ * `now()` as each completes. The live stream's own `event` parts are skipped, so folding a session's parts in order
+ * gives exactly its `event` parts, with other times. Folding one turn's deltas alone repeats the `tool_call` of a
+ * call that outlived its turn, with its full input: each turn's deltas are self-contained.
  */
 export function foldStreamParts(
   parts: Iterable<TranscriptStreamPart>,

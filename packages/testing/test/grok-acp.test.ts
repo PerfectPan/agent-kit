@@ -97,36 +97,33 @@ describe("S89: Grok logs and live turns read ACP updates with the same rules", (
     );
 
   /**
-   * The parts of one session's live turns: a translator per turn over the session's shared tool state, a fresh fold
-   * per turn, and a `tool_call` an earlier turn already emitted dropped — the composition of the live ACP path. With
-   * `shared` off, every turn folds from scratch, as a fold that forgets a call between turns would read.
+   * The parts of one session's live turns, through the composition the live ACP path runs: a translator per turn
+   * over the session's shared tool state, and one stream folder for the whole session, whose events become the
+   * `event` parts. `ok` names the turns whose prompt succeeds; a failed turn sends no finish. With `shared` off,
+   * every turn translates and folds from scratch, as a session that forgot a call between turns would read.
    */
-  const liveTurnsOf = (turns: readonly TurnUpdates[], shared = true): TranscriptStreamPart[] => {
-    const state: SharedToolState | undefined = shared
-      ? { tools: new Map(), ended: new Set(), emittedCalls: new Set() }
-      : undefined;
+  const liveTurnsOf = (
+    turns: readonly TurnUpdates[],
+    ok: readonly boolean[] = turns.map(() => true),
+    shared = true
+  ): TranscriptStreamPart[] => {
+    const state: SharedToolState | undefined = shared ? { tools: new Map(), ended: new Set() } : undefined;
+    const folder = createStreamFolder();
     const parts: TranscriptStreamPart[] = [];
-    for (const updates of turns) {
-      const translator = createAcpPartTranslator("t.", state);
+    turns.forEach((updates, index) => {
+      const translator = createAcpPartTranslator(`${index}.`, state);
       const turn = [
         ...updates.flatMap((update) => translator.update(update)),
-        ...translator.finish({ stopReason: "end_turn" })
+        ...(ok[index] ? translator.finish({ stopReason: "end_turn" }) : [])
       ];
-      const folder = createStreamFolder();
+      const turnFolder = shared ? folder : createStreamFolder();
       for (const part of turn) {
         parts.push(part);
-        for (const event of folder.push(part, 1)) {
-          if (state !== undefined && event.kind === "tool_call" && state.emittedCalls.has(event.payload.callId)) {
-            continue;
-          }
+        for (const event of turnFolder.push(part, 1)) {
           parts.push({ type: "event", event });
         }
       }
-      // The turn's stream has emitted every call seen so far, at its output or in its finish.
-      for (const callId of state?.tools.keys() ?? []) {
-        state?.emittedCalls.add(callId);
-      }
-    }
+    });
     return parts;
   };
 
@@ -245,7 +242,7 @@ describe("S89: Grok logs and live turns read ACP updates with the same rules", (
         }
       ]
     ];
-    expect(liveTurnsOf(turns)).toEqual(liveTurnsOf(turns, false));
+    expect(liveTurnsOf(turns)).toEqual(liveTurnsOf(turns, undefined, false));
   });
 
   it("gives two sessions that reuse a call id their own tool_call", () => {
@@ -265,5 +262,96 @@ describe("S89: Grok logs and live turns read ACP updates with the same rules", (
         ["tool_call", { callId: "c1", name: "bash", args: { command: "ls" } }]
       ]);
     }
+  });
+
+  it("reads a call whose turn failed after its result as one call, and the late input update as no new call", () => {
+    const start = {
+      sessionUpdate: "tool_call",
+      toolCallId: "c1",
+      title: "run_bg",
+      status: "in_progress",
+      rawInput: { command: "sleep 100" }
+    };
+    const complete = {
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c1",
+      status: "completed",
+      content: [{ type: "content", content: { type: "text", text: "background done" } }]
+    };
+    const lateInput = { sessionUpdate: "tool_call_update", toolCallId: "c1", rawInput: { cwd: "/w" } };
+    const parts = liveTurnsOf([[start, complete], [lateInput]], [false, true]);
+    expect(parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+      "tool-input-start",
+      "tool-input-available",
+      "tool-output-available",
+      "tool-input-start",
+      "tool-input-available"
+    ]);
+    expect(eventsOf(parts, ["tool_call", "tool_result"])).toEqual([
+      ["tool_call", { callId: "c1", name: "run_bg", args: { command: "sleep 100" } }],
+      ["tool_result", { callId: "c1", isError: false, output: "background done" }]
+    ]);
+    const ids = parts.flatMap((part) => (part.type === "event" ? [part.event.id] : []));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("completes a call its turn left open once, with its input, when a later turn ends it", () => {
+    const start = {
+      sessionUpdate: "tool_call",
+      toolCallId: "c1",
+      title: "run_bg",
+      status: "in_progress",
+      rawInput: { command: "sleep 100" }
+    };
+    const complete = {
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c1",
+      status: "completed",
+      content: [{ type: "content", content: { type: "text", text: "background done" } }]
+    };
+    const parts = liveTurnsOf([[start], [complete]], [false, true]);
+    expect(eventsOf(parts, ["tool_call", "tool_result"])).toEqual(
+      recordedOf([start, complete], ["tool_call", "tool_result"])
+    );
+    expect(eventsOf(parts, ["tool_call"])[0]?.[1]).toEqual({
+      callId: "c1",
+      name: "run_bg",
+      args: { command: "sleep 100" }
+    });
+  });
+
+  it("drops an ended call's input and output from the shared state, keeping only its end", () => {
+    const state: SharedToolState = { tools: new Map(), ended: new Set() };
+    const folder = createStreamFolder();
+    const translator = createAcpPartTranslator("t.", state);
+    for (const part of [
+      ...translator.update({
+        sessionUpdate: "tool_call",
+        toolCallId: "c1",
+        title: "run_bg",
+        rawInput: { command: "sleep 100" }
+      }),
+      ...translator.update({
+        sessionUpdate: "tool_call_update",
+        toolCallId: "c1",
+        status: "completed",
+        content: [{ type: "content", content: { type: "text", text: "done" } }]
+      })
+    ]) {
+      folder.push(part, 1);
+    }
+    const ended = state.tools.get("c1");
+    expect(ended).toBeDefined();
+    expect("args" in ended!).toBe(false);
+    expect("output" in ended!).toBe(false);
+    // A later update for the ended call emits no event and keeps no input or output in the state.
+    const late = translator.update({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c1",
+      rawInput: { command: "sleep 100", cwd: "/w" }
+    });
+    expect(late.flatMap((part) => folder.push(part, 1))).toEqual([]);
+    expect("args" in state.tools.get("c1")!).toBe(false);
+    expect("output" in state.tools.get("c1")!).toBe(false);
   });
 });

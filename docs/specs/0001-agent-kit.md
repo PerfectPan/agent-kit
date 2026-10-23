@@ -787,7 +787,7 @@ An Effect entry: like `/platform/effect`, it needs the host to install `effect` 
 - Then both give the same `tool_call` and `tool_result` payloads
 - Given a tool call whose `tool_call_update` arrives in a later turn than the one that started it
 - When the live session receives that update
-- Then the call keeps the state of the whole session, is emitted once across it with the payloads the log reads, and the update yields only what can follow the call — its result — under the original call id
+- Then the call keeps the state of the whole session, is emitted once across it with the payloads the log reads, and the update yields only what can follow the call — its result — under the original call id; the live `tool_call` keeps the input it had when it was emitted, while the log path rewrites the recorded call with the update's input or title
 
 ### S90: Claude Code gets hooks through a skills-dir plugin, its settings untouched
 
