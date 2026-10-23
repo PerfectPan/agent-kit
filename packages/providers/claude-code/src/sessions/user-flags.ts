@@ -1,4 +1,4 @@
-import type { ClaudeCodeRecordValue } from "../records/record.js";
+import type { ClaudeCodeContentBlockValue, ClaudeCodeRecordValue } from "../records/record.js";
 
 /** The fields the prompt rules read, shared by the envelope-checked and the body-only record parses. */
 type UserRecord = Pick<ClaudeCodeRecordValue, "isMeta" | "isCompactSummary" | "origin" | "message">;
@@ -17,6 +17,20 @@ const HOST_CONTEXT = /^\s*<(?:ide_opened_file|ide_selection)>/;
 /** A text block the host adds, so it is no part of the user's prompt, alone or beside the user's own blocks. */
 export function isHostAddedText(text: string): boolean {
   return INJECTED.test(text) || HOST_CONTEXT.test(text);
+}
+
+/** A content block that carries host-added text; any other block, such as an image, is the user's own. */
+function isHostAddedBlock(block: ClaudeCodeContentBlockValue | undefined): boolean {
+  return block?.type === "text" && block.text !== undefined && isHostAddedText(block.text);
+}
+
+/** The record's content as blocks: its string content as the only text block, else its blocks in order. */
+function contentBlocks(record: UserRecord): readonly (ClaudeCodeContentBlockValue | undefined)[] {
+  const content = record.message?.content;
+  if (typeof content === "string") {
+    return [{ type: "text", text: content }];
+  }
+  return Array.isArray(content) ? content : [];
 }
 
 /** The `MessagePayload` flags that tell a real prompt from other user-role records. */
@@ -72,8 +86,13 @@ export function userFlags(record: UserRecord): ClaudeCodeUserFlags {
     flags.command = true;
   }
   const origin = record.origin?.kind;
-  // A record without a text block, such as an image-only one, is a prompt without text, not an injected one.
-  if ((texts.length > 0 && texts.every(isHostAddedText)) || (origin !== undefined && origin !== "human")) {
+  // A record is injected when it holds nothing of the user's own: every block is host-added text. An image or any
+  // other non-text block is the user's own, so an image beside host context keeps the record a prompt.
+  const blocks = contentBlocks(record);
+  if (
+    (blocks.length > 0 && blocks.every((block) => isHostAddedBlock(block))) ||
+    (origin !== undefined && origin !== "human")
+  ) {
     flags.injected = true;
   }
   return flags;

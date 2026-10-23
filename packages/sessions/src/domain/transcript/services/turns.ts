@@ -36,29 +36,26 @@ export function recordKey(event: TranscriptEvent): string {
 }
 
 /**
- * The events that start a turn, on one lane or on all: each prompt record's first `user` event, because several
- * content blocks of one record start one turn. The first user event starts the record's turn even when a host-added
- * block precedes the user's text, so the start does not depend on which block carries the text.
+ * The events that start a turn, on one lane or on all: the first event of each prompt record, because several
+ * content blocks of one record start one turn.
  */
 export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, lane?: string): TranscriptEvent[] {
   const mainId = mainAgentId(transcript);
-  const prompts = new Set<string>();
-  for (const event of transcript.events) {
-    if (isPrompt(event) && (lane === undefined || laneOf(event, mainId) === lane)) {
-      prompts.add(`${laneOf(event, mainId)}\0${recordKey(event)}`);
-    }
-  }
-  const started = new Set<string>();
+  const seen = new Set<string>();
   const out: TranscriptEvent[] = [];
   for (const event of transcript.events) {
-    if (event.kind !== "user" || (lane !== undefined && laneOf(event, mainId) !== lane)) {
+    if (!isPrompt(event)) {
+      continue;
+    }
+    if (lane !== undefined && laneOf(event, mainId) !== lane) {
       continue;
     }
     const key = `${laneOf(event, mainId)}\0${recordKey(event)}`;
-    if (prompts.has(key) && !started.has(key)) {
-      started.add(key);
-      out.push(event);
+    if (seen.has(key)) {
+      continue;
     }
+    seen.add(key);
+    out.push(event);
   }
   return out;
 }
@@ -90,7 +87,8 @@ export function capPromptText(text: string, maxChars: number): string {
 /**
  * The main lane's user prompts, by the kit's prompt rule: one per prompt record, its text the record's event
  * texts, each trimmed, joined with a blank line; the first `limit` in transcript order, each capped at `maxChars`.
- * A prompt record without text, such as an image-only one or one the host filled, is a turn but yields no prompt.
+ * A prompt record without text, such as an image-only or a whitespace-only one, is a turn but yields no prompt; a
+ * record the host filled entirely is injected and counts no turn.
  */
 export function sessionPrompts(
   transcript: Pick<Transcript, "events" | "agents">,
