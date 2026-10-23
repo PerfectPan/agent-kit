@@ -36,7 +36,10 @@ const collectTurn = (parts: Stream.Stream<TranscriptStreamPart, unknown>) =>
   Effect.gen(function* () {
     const collected: TranscriptStreamPart[] = [];
     const exit = yield* Effect.exit(
-      Stream.runForEach(Stream.tap(parts, (part) => Effect.sync(() => collected.push(part))), () => Effect.void)
+      Stream.runForEach(
+        Stream.tap(parts, (part) => Effect.sync(() => collected.push(part))),
+        () => Effect.void
+      )
     );
     return { parts: collected, failed: Exit.isFailure(exit) };
   });
@@ -176,7 +179,9 @@ describe("connectAgent", () => {
   it.effect("keeps the tool state of two sessions apart when both use one call id", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();
-      const turnsOf = (handle: { prompt: (blocks: readonly PromptBlock[]) => Stream.Stream<TranscriptStreamPart, unknown> }) =>
+      const turnsOf = (handle: {
+        prompt: (blocks: readonly PromptBlock[]) => Stream.Stream<TranscriptStreamPart, unknown>;
+      }) =>
         Effect.gen(function* () {
           const start = yield* collectTurn(handle.prompt([text("background-shared")]));
           const done = yield* collectTurn(handle.prompt([text("background-shared")]));
@@ -247,7 +252,9 @@ describe("connectAgent", () => {
       ]);
       const callId = `call-bg-${session.sessionId}`;
       const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
-      expect(events.filter((event) => event.kind.startsWith("tool")).map((event) => [event.kind, event.payload])).toEqual([
+      expect(
+        events.filter((event) => event.kind.startsWith("tool")).map((event) => [event.kind, event.payload])
+      ).toEqual([
         ["tool_call", { callId, name: "run_background", args: { command: "sleep 100" } }],
         ["tool_result", { callId, isError: false, output: "background done" }]
       ]);

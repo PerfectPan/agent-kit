@@ -132,7 +132,12 @@ export function step<E>(
 }
 
 /** Queues parts for the turn's stream, each followed by the events it completes, stamped with the platform clock. */
-export function emit(conn: ConnectionState, live: LiveSession, turn: Turn, parts: readonly TranscriptStreamPart[]): void {
+export function emit(
+  conn: ConnectionState,
+  live: LiveSession,
+  turn: Turn,
+  parts: readonly TranscriptStreamPart[]
+): void {
   const ts = conn.platform.clock.now();
   for (const part of parts) {
     Queue.offerUnsafe(turn.sink, part);
