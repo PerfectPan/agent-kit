@@ -12,7 +12,7 @@ import { harnessStateDir } from "../services/state-dir.js";
 type LockPlatform = Pick<Platform, "env" | "home" | "fs" | "process" | "clock" | "sqlite">;
 
 // The lock is the same mechanism as the collab package's process lock; harness keeps its own copy because it cannot
-// depend on collab (plan 3.9). Keep both covered by the same race tests.
+// depend on collab. Keep both covered by the same race tests.
 
 /**
  * Two processes that try at once each take a shared lock on the way to the exclusive one; without a busy timeout both

@@ -381,7 +381,7 @@ describe("Ledger invariants", () => {
 });
 
 describe("three-way verify", () => {
-  // The table of plan 3.9, written out independently of the implementation.
+  // The three-way comparison table, written out independently of the implementation.
   function oracle(ledger?: string, actual?: string, desired?: string): VerifyStatus {
     if (ledger !== undefined && actual === undefined) {
       return "deleted-externally";

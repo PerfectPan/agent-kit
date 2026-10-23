@@ -31,7 +31,7 @@ function wrapped(home: TestHome, wrap: (files: ArtifactFilesShape) => ArtifactFi
   return Layer.merge(base, files);
 }
 
-describe("apply execution rules (plan 3.9)", () => {
+describe("apply execution rules", () => {
   it.live(
     "S96: cancellation lands between steps: the step in flight finishes and is recorded, the rest stay pending",
     () => {

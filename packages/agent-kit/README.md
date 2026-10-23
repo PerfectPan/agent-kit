@@ -86,12 +86,23 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 ```
 
 `listSessions` reads only the head and tail of each file. `loadTranscript` reads every file of one session and
-returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. An event's `kind` types its
+returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped; it returns the complete
+session — there is no live file-following API, and a compaction marks the events it replaced with `shadowedBy` only
+after the whole session is read. `summarizeSession` reads the agent's bounded summarize pass where it has one and
+folds the loaded transcript otherwise, with the same numbers either way; the pass's memory grows with the session's
+requests, lanes and tool calls, not with the file's bytes. It takes `prompts: { limit, maxChars }` to return the
+main lane's user prompts in the same read: a record's prompt text joins its own text blocks — not the text the host
+adds beside them, and an image block is the user's own — each trimmed, with a blank line between blocks; a record
+whose blocks are all host-added text is injected and counts no turn, one whose own text is only whitespace counts a
+turn without a prompt; the first `limit` records in transcript order, each capped at `maxChars`. Caps that are not
+whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`. An event's `kind` types its
 `payload`: after `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds
 beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
 SDK: `inputTokens` includes cache reads and writes, `outputTokens` includes reasoning, and a count the log does not
-record is absent, not 0.
+record is absent, not 0. `scanUsage` with a kept state yields only what was written since, so a caller that keeps a
+state also keeps its own totals beside it, uses one state per window with the same `since`, and runs its scans one
+at a time: two concurrent scans from one state both yield the new records.
 
 ### Hook events
 
@@ -111,13 +122,20 @@ const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), 
 is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the agent says
 more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
 copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
+Register observation hooks only on events that are not permission gates, or return the allow response the event's
+output rules record; an observer prints the event's `passThrough` — the dialect's unless that event's `output`
+overrides it, as Cursor's `beforeSubmitPrompt` printing `{"continue":true}` — and must not silently block a gate.
+Each gate's `output` rules decide what its exit codes and stdout do — Cursor's gates block on output the event
+cannot read, and what empty output does there is undocumented.
 `builtinHookDialects` holds each agent's hook facts: event names, the timeout unit, which events are permission
 gates and what an observing hook should print.
 
 ### Harness injection
 
 `/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It
-plans first and changes agent targets only when the plan is applied; every target change is recorded in a ledger
+plans first and changes agent targets only when the plan is applied; an `InstallPlan` is a handle that cannot be
+constructed or serialized, `applyInstall` takes only a plan `planInstall` returned and dies with an `AgentKitError`
+whose `code` is `"unknown-plan"` otherwise, so a restart re-plans. Every target change is recorded in a ledger
 under `$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
 
 ```ts
@@ -143,7 +161,8 @@ const bundle = {
 
 const program = Effect.gen(function* () {
   const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
-  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts
+  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts; plan.notes;
+  // plan.droppedHooks. A PlanConflict names, per conflict, the choices that resolve it ("force", "adopt", "backup").
   return yield* applyInstall(plan);
 });
 await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
@@ -158,8 +177,7 @@ and Pi a bridge that forwards their events to the command. Events the dialect re
 for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded. A send that fails or
 times out still does not throw into the agent, and the other events are forwarded without waiting. The timeout kills
 the shell the bridge started, so a longer finish hook is cut off, and an activity event forwarded in the same tick
-just before a finish can still reach the command after it; both are described in the spec's bridge paragraph
-([docs/specs/0001-agent-kit.md](../../docs/specs/0001-agent-kit.md), hook installation). The opencode
+just before a finish can still reach the command after it. The opencode
 bridge forwards each bus event as opencode
 sent it, plus the plugin's `directory`, and a tool hook as `{ type, properties, directory }`. When an event such as
 `file.edited` names no session, it adds `currentSessionId`: the session of the latest event that plugin instance saw
@@ -168,7 +186,11 @@ one's. A payload that throws while it is read does not reject the plugin callbac
 `currentSessionId` after opencode's own session paths, so an event that names a session keeps that id. An event fires
 once even in agents that also run Claude Code's settings hooks.
 Shared files keep their comments and formatting; nothing is written through a symlink or into a file chezmoi manages.
-Concurrent edits by tools that do not take the ledger lock can be lost without a trace.
+Concurrent edits by tools that do not take the ledger lock can be lost without a trace. A plan handle cannot be
+serialized and applied by a later process: re-plan after a restart, or after `PlanStale` or `TargetChanged`. Planning
+may settle an earlier holder's pending operations under the ledger lock, `verify` may acknowledge a ledger that is
+behind the disk, and `doctor`'s lock check may create lock files in the harness state directory; none of these
+rewrite agent targets.
 
 ### Usage records
 
@@ -344,24 +366,25 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
   `CancelUnsettled` from turns.
 - Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or
   without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`; test
-  for it with `isAgentKitError`. `readHookEvent` never throws because of a payload.
+  for it with `isAgentKitError`. `summarizeSession` throws the same way, with `code: "invalid-prompts"`, for
+  `prompts` caps that are not whole numbers in range. `readHookEvent` never throws because of a payload.
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                           | In 0.1.0                 |
-| ----------- | ------------------------------- | ----------------------------------------------------------------- | ------------------------ |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  | sessions and transcripts |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             | sessions and transcripts |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            | sessions and transcripts |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           | catalog identity only    |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              | catalog identity only    |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                | catalog identity only    |
-| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` | added after 0.1.0        |
+| Agent       | Id                              | Home: override, default                                           |
+| ----------- | ------------------------------- | ----------------------------------------------------------------- |
+| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
+| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
+| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
 
-Every agent in the table has a hook dialect in `/harness/events` (added after 0.1.0). `/acp` has a launch profile for
+Every agent in the table has a hook dialect in `/harness/events`. `/acp` has a launch profile for
 Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the
 facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the table except
-Cursor (added after 0.1.0).
+Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
@@ -389,4 +412,4 @@ and shared hook/MCP settings, plugins, extensions and skills do not count: insta
 agent `missing`.
 See [discovery evidence](https://github.com/PerfectPan/agent-kit/blob/main/packages/discovery/README.md) for paths and overrides.
 
-MIT licensed. Source and design documents: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit).
+MIT licensed. Source: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit).

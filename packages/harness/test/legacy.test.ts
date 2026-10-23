@@ -67,7 +67,7 @@ function oldSetup(home: TestHome): void {
   home.write(".claude/settings.json", `${JSON.stringify({ ...settings, hooks }, null, 2)}\n`);
 }
 
-describe("hooks an older version installed without a ledger (plan 3.10)", () => {
+describe("hooks an older version installed without a ledger", () => {
   it.effect("S91: are replaced by the plugin's, not installed a second time, and the user's own hook stays", () => {
     const home = testHome();
     home.write(".claude/settings.json", fixture("legacy-claude-settings.json"));

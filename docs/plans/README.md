@@ -10,4 +10,4 @@ Shared decisions follow [CONTRIBUTING](../../CONTRIBUTING.md#change-design-gate)
 
 ## Active Plans
 
-- [0001: agent-kit](0001-agent-kit.md): the shared foundation for agent projects, from the package layout to the phased execution plan (P0–P6). Paired with [Spec 0001](../specs/0001-agent-kit.md).
+None. Retired plans stay in git history; their lasting constraints live in current-state docs and tests.

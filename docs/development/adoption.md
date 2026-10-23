@@ -1,6 +1,6 @@
 # Adopting agent-kit
 
-This guide is for maintainers replacing an application's copy of coding-agent knowledge with agent-kit. The kit side of P0–P6 is implemented. Each application owns its migration, behavior checks and rollout. Split each application's adoption into pull requests by kit area (for example pricing, hook events, setup, locks), each replacing the old code it covers and carrying its own comparison evidence, and retain behavior except for corrections explicitly accepted during comparison.
+This guide is for maintainers replacing an application's copy of coding-agent knowledge with agent-kit. Each application owns its migration, behavior checks and rollout. Split each application's adoption into pull requests by kit area (for example pricing, hook events, setup, locks), each replacing the old code it covers and carrying its own comparison evidence, and retain behavior except for corrections explicitly accepted during comparison.
 
 Before adoption, select a verified npm release whose manifest exports the entries you need. Source implementation can precede publication. Install `@rivus/agent-kit` and `@rivus/agent-kit-collab` from the same lockstep release when using collab, and pin the chosen version in the application's lockfile. Placeholder versions are not usable releases. See the [release runbook](release.md) for publication checks.
 
@@ -48,41 +48,13 @@ for host-marker checks. `probeRecipeConformance(recipe, samples?, { providers }?
 and accepts provider overrides for identity checks. `aggregateRepositoryConformance(fixtures)` comes from
 `/testing/effect`, takes repository fixtures and has no provider option.
 
-## Provider API Upgrade
-
-The 0.20 API uses descriptors without a compatibility layer. The inventory above is the supported source API;
-option and result types without named consumers are derived from retained signatures with `Parameters`,
-`ReturnType`, indexed access or Effect success/error types.
-
-| Earlier API | Current API or required change |
-| --- | --- |
-| `builtinCodingAgents`, `builtinProbeRecipes`, `builtinInstallAdapters`, `builtinSessionAdapters`, `builtinAcpProfiles` | Select the corresponding optional service from `builtinProviders` by id |
-| `adapters`, `dialects`, `recipes`, `profiles` override options | `providers` descriptors; omit the option for defaults |
-| Per-agent translators and constants | Use `loadTranscript` / `summarizeSession` or the descriptor's service |
-| `decodeUsage`, `listUsageSources` | Call a descriptor's `usage.decode` / `usage.sources`, or use `scanUsage` |
-| `resolveHome`, `CodingAgentIdWithHome`, unbound `parseCodingAgentId` | No shell export; use service home rules through `sessionAdapterHome`, and resolve application aliases from descriptor identities |
-| `findLegacy` | Removed. Follow the [pre-kit upgrade sequence](#presence): run the old release's own uninstall first, then use `doctor` with old command markers after installation. Use `uninstall` for legacy cleanup only before installing, because it also removes the owner's ledger-recorded entries. |
-| Lease rule functions (`isFresh`, `canAcquire`, `nextFencingToken`, `checkFence`, `holderLiveness`) | Use lease manager and handle operations; the rules belong to internal values and aggregates |
-| Other names without a consumer | Use the retained public entries; do not deep-import an internal replacement |
-
-`builtinHookDialects` stays on `/harness/events` for the no-import hook path. `BuiltinCodingAgentId` and
-`isBuiltinCodingAgentId` stay on `/catalog`, together with the branded error and its guard. Ordinary entries share
-service objects with `/providers`; isolated hook objects are separate. SPI interface types retain their domain
-names and are imported from their service's public entry.
-
-| Application | Upgrade obligations |
-| --- | --- |
-| agent-presence | Select identity/display names and discovery recipes from descriptors. Preserve agent filters and version-probe options when overriding discovery. Retain hook-path dialect reads, event-name and alias assertions. |
-| agent-task-loop | Select identity/discovery for catalog and recipe presentation; preserve local recipe maps and id guards. Resolve aliases from descriptor identities. Select ACP profiles and pass edits as providers, retaining command aliases and lease/lanes behavior. |
-| The trace viewer | Project descriptors with sessions into a local adapter map for root enumeration and conformance. Use defaults without overrides; map custom adapters to `{ id, sessions }` for list/load/summarize. Preserve restrictions, custom adapter types, progress, prompt and fixture assertions. |
-
-### Application Comparison Before Release
+## Application Comparison Before Release
 
 For a release with breaking changes, compare each consuming application's typecheck and tests against the
-previous published release and local tarballs of the candidate before merging the release PR. For 0.20.0, use
-published 0.19.1 as the baseline and compare all three applications above. Use the same application revision,
+previous published release and local tarballs of the candidate before merging the release PR. Use the same application revision,
 inputs and commands for both runs. Applications on older kit versions may already fail against the baseline:
-record those failures separately. Every candidate-only error must be explained by the API changes above; investigate any other difference
+record those failures separately. Every candidate-only error must be explained by the API changes of the release, which its
+CHANGELOG records; investigate any other difference
 before releasing. Capture exact revisions, package inputs, commands and outcomes in the release evidence.
 
 After publication is verified, open the applications' upgrade PRs and wait for their own CI. Passing kit checks,
@@ -103,41 +75,9 @@ ACP programs use `connectAgent` with the platform service. Provide the platform 
 
 ## Migration steps
 
-### Trace viewer
-
-1. Replace session discovery and reading with `/sessions` and `/transcript`. Use `isSessionHead` before treating a list item as a session, and inspect the Result of loading or summarizing it.
-2. Keep turn reconstruction, timeline, context projection, text truncation and UI fields in the viewer. Update its model uses to `reasoning` and `finishReason` and use the kit's event references and interpretation rules.
-3. Consume the session listing incrementally and use summaries when a view does not require a full transcript. `summarizeSession` reads an adapter's bounded fast pass where it has one (claude-code today) and folds the loaded transcript otherwise; the numbers are the same, and the pass keeps no transcript — its state grows with the session's requests, lanes and tool calls, not with its bytes. With `prompts: { limit, maxChars }` the same read returns the main lane's user prompts for a search index. Confirm memory no longer grows with full session size for that view; `loadTranscript` still loads a complete session and is not a live file-following API.
-4. Adopt `/redact` with the same home and display/export policy as the host application. Delete the duplicate per-agent packages and readers after its tests and old/new session-list comparison pass.
-
-### Presence
-
-1. Replace usage scanners with `/transcript/usage` and pricing calculations with `/cost`. Keep price snapshots and their update workflow in presence and inject the table. Presence rescans each window without state. Passing scan state, typed as `ReturnType<typeof scanUsage>["state"]`, is optional: persisting it saves rescans, but a continued scan yields only what was written since, so a caller that keeps it also keeps its own per-day totals with it, uses one state per window with the same `since`, and runs scans one at a time.
-2. Compare token and cost totals per agent over the same logs, window and price table. Input includes cache and output includes reasoning; breakdown fields are subsets. Missing counts and unpriced costs stay absent. Pricing preserves logged costs, one-hour cache writes and a per-record priority multiplier. Compare after accounting for scan finalization of still-running sources; do not hide decoding corrections in a broad tolerance.
-3. Split hook and setup build outputs before migrating injection. Check the built hook's code and declaration graph for Effect and setup imports, and measure its cold start. A static setup import in the hook/CLI graph defeats the split even when tree-shaking would discard it elsewhere.
-4. Use `/harness/events` in the hook. Continue to own presence's online-state policy. Respect the selected dialect's permission response semantics; an observer must not silently block a gate. On opencode, an event that names no session (`file.edited`, or `session.error` without `sessionID`) still carries `sessionId`: the bridge adds `currentSessionId` from the latest event that named one, including an event or tool input it does not forward, for that plugin instance only, until that session is deleted, and `readHookEvent` reads it after opencode's own session paths. That id is the latest session's, not necessarily the one the event came from: when one plugin instance serves several sessions at once (parallel task subagents, or the TUI and the web client attached to one directory), a session-less event, and the heartbeat it drives, can land on whichever session named itself last.
-5. Use `/harness` in setup. Supply a `Bundle` with the application's owner, version, digest and hooks/skills. Presence passes no legacy command markers to the install plan. To upgrade from a pre-kit release, the user first runs that release's own uninstall. Use `uninstall(owner, { agents, legacyMarkers })` for cleanup only before installing the new release: it removes the owner's ledger-recorded entries as well as legacy artifacts. Inspect its `kept` artifacts and plan notes. After installing the new release, run `doctor({ owner, agents, markers })` with the old command markers and the current hook command to report remaining legacy hooks. Doctor's lock check may create lock files in the harness state directory. The [/harness spec](../specs/0001-agent-kit.md#harness) defines the cleanup scope, including Grok's canonical owner file and ignored directory extensions. Keep the hook shim command stable, using `{agent}` for the declaring agent. Call `planInstall`, display its `changes`, `commands`, `expectedTrustPrompts`, `notes` and `droppedHooks`, resolve only the allowed conflict choices, then pass the same plan handle to `applyInstall`. Plans cannot be serialized and reconstructed for later execution; re-plan after a restart or `PlanStale`/`TargetChanged`.
-6. Run `verify(owner, { bundle, agents })` and `doctor({ owner, agents, markers })` after installation, and expose `inventory` and `uninstall` as appropriate in the setup UI/CLI. Planning may settle earlier pending operations under the ledger lock, and verify may acknowledge a ledger behind the disk; neither rewrites agent targets. Do not describe these operations as universally state-free.
-7. Replace the mkdir lock with collab's plain `acquireProcessLock`, handling `ProcessLockHeld` and releasing the returned handle when the process ends. From 0.15.0 the kit serializes the acquisitions of one lock inside a process in memory, so presence's own per-path turn queue (`src/process-lock.ts`) goes: its state lock, log lock and queue worker call `acquireProcessLock(platform, path, { wait: true, signal })` directly and still never block the thread in a SQLite busy wait on a holder in the same process. Calls share turns only through platforms with the same `sqlite` object, which every `createNodePlatform()` result has; a call through a platform with another one, such as a wrapper, meets the others in SQLite instead. The turns live in the module state of `@rivus/agent-kit-collab`, so two copies of it in one process (two versions, or one bundled into another package) do not share them: their acquisitions exclude each other only in SQLite, as processes do, and the first attempt of each can block the thread in SQLite busy waits (10 ms, a few times) on a holder in the same process. Having dropped its own queue, presence keeps a single copy of collab: dedupe it in the lockfile and do not bundle a second one. Verify with concurrent writers of one lock in one process. From 0.15.0 a SQLite lock also no longer needs the process identity, which only feeds its `.holder` diagnostics, so a hook that an agent's sandbox keeps from running `/bin/ps` or `/usr/sbin/sysctl` still takes it, with `holder` undefined and no `.holder` file; code that reads `holder` handles `undefined`. Without SQLite the lock file still needs the identity, and the acquisition rejects there.
-8. Test upgrade, reapply, uninstall and downgrade under an isolated home. Then perform the separately authorized real Cursor and Codex checks before declaring application adoption complete.
-
 ### Editor plugin
 
 Bundle `/transcript/usage` and `/cost` directly, supply the needed platform ports, and inject prices. Verify the output imports no runtime package or Node built-in the editor cannot provide. Keep the plugin's UI, reporting windows, persistence and price distribution policy. Test decoded totals and absent values with its existing fixtures.
-
-### Agent task loop and agent-finder CLI
-
-1. Replace init, discovery, session listing and preview with `/catalog`, `/discovery`, `/sessions` and `/transcript` as needed. The agent-finder CLI calls `detectAgents`; `/discovery` now covers the kit's 7 agents, and its other agents can be supplied through the `providers` option with `{ id, discovery: recipe }` descriptors. Inspect recipe warnings and accept intended corrected probe facts explicitly. Use `versionProbe: false` with default file auth for an inspection that must execute no agent command.
-2. Delete duplicate session root and resume knowledge from the TUI, the moved session reader package, and the MoonBit scanner after the application's tests, init smoke and preview comparison pass. Verify CI no longer needs the MoonBit toolchain.
-3. Replace TaskOccupancyService's handwritten heartbeat, AbortController and release lifecycle with `createLeaseManager` and scoped `manager.acquire`. Keep task policy in the application. Fence writes using `handle.runFenced`, and make non-cancellable writes uninterruptible or wait until their AbortSignal has stopped them.
-4. Keep room-specific orchestration and ToolServer in the application. After migration is accepted, confirm with the owner before deprecating `@rivus/agent-finder-core` and ending mooncakes module updates; those external actions are a separate completion state.
-
-### Room web
-
-1. Adopt collab leases using the SQLite lease repository where appropriate. Treat this as a code replacement; the kit does not promise compatibility with an existing database file or schema. Choose and verify the state transition before pointing it at existing data.
-2. Replace ACP driving with `/acp` and scheduling with `/lanes`. Retain ToolServer and room policy. Keep a `ManagedRuntime` at the host assembly root, and run wake/cancel Effects in callbacks with failure handling.
-3. Set `maxConcurrent`, choose `maxQueued` and `turnTimeoutMs`, and keep the connection/lease/prompt lifecycle inside the caller's `activate`. Test that concurrent ACP processes obey the global limit, wakes coalesce, a queued key is not duplicated, and cancel/close wait for cleanup. Observe `onExit` without making it wait on `cancel` or `close`.
-4. Verify ACP permission denial, cancel deadlines, binding invalidation, explicit environment, client file confinement and shutdown with the application's old tests. Complete the real-agent smoke before claiming supported upstream behavior.
 
 ### Host application
 
@@ -151,6 +91,8 @@ Run installation tests with an explicit isolated `HOME` and environment. Confirm
 
 Roll back by reverting an application's adoption PRs, latest first. Reverting a PR that installs nothing on users' machines needs no further step; a PR that installs through harness follows the downgrade order below. Preserve a compatible prior dependency lockfile and state. New persistent stores need a reviewed state migration or separate path; do not assume their schemas match the application's old stores.
 
+When migrating an install made by a release older than the kit's ledger, run that release's own uninstall first. Use `uninstall(owner, { agents, legacyMarkers })` for legacy cleanup only before installing the new release, because it also removes the owner's ledger-recorded entries, and run `doctor({ owner, agents, markers })` with the old command markers and the current hook command afterwards to report what remains.
+
 Harness downgrade order is mandatory: use the new version to `uninstall` its owner, inspect the report and any kept user-edited artifacts, run `verify` and `doctor` to establish that no new/legacy duplicate hook remains, then install the old application and run its old setup. Re-running old setup while the new plugin still exists can fire every event twice. Test `new install → new uninstall → old install/setup` under an isolated home and count one invocation per event. If uninstall reports kept artifacts, resolve them deliberately before enabling old setup. Never downgrade by deleting the ledger or blindly replaying a failed apply.
 
 ## Known limits and open acceptance
@@ -162,5 +104,5 @@ Harness downgrade order is mandatory: use the new version to `uninstall` its own
 - Usage decoding supports Claude Code, Codex, Gemini CLI, Grok, opencode and Pi; full session/transcript adapters cover Claude Code, Codex and Grok. Cursor has hook support but no usage decoder. An installed agent is not evidence of every capability.
 - A running source may keep unfinished usage until it is quiet for 30 minutes; unknown or missing usage stays absent. opencode usage needs SQLite. Login known only to a system credential store such as Keychain can remain `unknown` in file-based discovery.
 - ACP's Gemini flag and Grok system-prompt `_meta` location have unverified profile warnings. The live smoke suite is manual; record its results before accepting an upstream program. Tests against a fake agent establish protocol and cleanup behavior, not every upstream program's compatibility.
-- File session bindings are atomically replaced but are not locked across processes. Lanes are process-local and persist no queue. Process locks and leases require local directories on darwin/linux and all contenders to see the same process table; NFS and containers with incompatible PID namespaces are outside their guarantee. The no-SQLite lock-file fallback has documented empty-stamp crash/stall limits.
+- File session bindings are atomically replaced but are not locked across processes. Lanes are process-local and persist no queue. Process locks and leases require local directories on darwin/linux and all contenders to see the same process table; NFS and containers with incompatible PID namespaces are outside their guarantee. The no-SQLite lock-file fallback has documented empty-stamp crash/stall limits ([the collab README's Process lock section](../../packages/agent-kit-collab/README.md#process-lock)).
 - Releases remain 0.x; a minor version can change the API. A source-ready entry must not be adopted from an older published package that does not export it.

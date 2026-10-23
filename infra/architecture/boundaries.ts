@@ -201,7 +201,7 @@ export const boundaries: BoundaryRules = {
     },
     // The built `/harness/events` entry imports nothing, which check-dist enforces; `vp pack` bundles zod/mini into the
     // entries that use it. The hook path stays synchronous and reads its payload through schemas. The configuration
-    // editors keep comments and formatting (plan 3.12); the injection tests run on the Node platform. shell-quote
+    // editors keep comments and formatting; the injection tests run on the Node platform. shell-quote
     // reads the first word of a hook command for doctor and stays behind that one module.
     [HARNESS]: {
       siblingEntries: ["public/events"],

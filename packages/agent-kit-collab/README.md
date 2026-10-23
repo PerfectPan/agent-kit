@@ -64,8 +64,10 @@ sandbox that denies running `ps` or `sysctl`) still takes the lock: `lock.value.
 `<path>.holder` is written, and one left by a holder that died is removed. Without SQLite the lock is a file that
 holds the identity; a lock file whose holder died on this host is reclaimed on the next attempt, one reclaimer at a
 time. The lock file needs the identity to judge its holder, so there `acquireProcessLock` rejects with the error
-reading it and creates nothing. Pass `{ wait: true, signal }` to wait for the holder instead of getting
-`ProcessLockHeld` at once.
+reading it and creates nothing. Two limits of that fallback: a crash between creating the lock file and writing the
+stamp leaves an empty file that counts as held for 30 s, and a holder stalled longer than that between the two steps
+can end up holding the lock together with its reclaimer. Pass `{ wait: true, signal }` to wait for the holder
+instead of getting `ProcessLockHeld` at once.
 
 Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks
 without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the
