@@ -136,6 +136,49 @@ describe("connectAgent", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect("S89: a tool call updated after its turn ends is emitted once across the session", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const first = yield* run(session.prompt([text("background")]));
+      const second = yield* run(session.prompt([text("background")]));
+      const callId = `call-bg-${session.sessionId}`;
+      // The call starts in the first turn and the later update brings only its result, no second call.
+      expect([...first].flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-input-start",
+        "tool-input-available"
+      ]);
+      expect([...second].flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : []))).toEqual([
+        "tool-output-available"
+      ]);
+      const events = [...first, ...second].flatMap((part) => (part.type === "event" ? [part.event] : []));
+      expect(events.filter((event) => event.kind === "tool_call").map((event) => event.payload)).toEqual([
+        { callId, name: "run_background", args: { command: "sleep 100" } }
+      ]);
+      expect(events.filter((event) => event.kind === "tool_result").map((event) => event.payload)).toEqual([
+        { callId, isError: false, output: "background done" }
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps the tool state of two sessions apart", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const callsOf = (parts: Iterable<TranscriptStreamPart>) =>
+        [...parts].flatMap((part) =>
+          part.type === "event" && part.event.kind === "tool_call" ? [part.event.payload.callId] : []
+        );
+      const one = yield* connection.newSession();
+      const oneStart = yield* run(one.prompt([text("background")]));
+      const oneDone = yield* run(one.prompt([text("background")]));
+      const two = yield* connection.newSession();
+      const twoStart = yield* run(two.prompt([text("background")]));
+      const twoDone = yield* run(two.prompt([text("background")]));
+      expect(callsOf([...oneStart, ...oneDone])).toEqual([`call-bg-${one.sessionId}`]);
+      expect(callsOf([...twoStart, ...twoDone])).toEqual([`call-bg-${two.sessionId}`]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S39: a session runs one turn at a time and denies permission by default", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();

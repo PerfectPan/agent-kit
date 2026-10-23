@@ -15,6 +15,8 @@ interface FakeSession {
   cancel?: () => void;
   /** A cancel that arrived before its prompt's handler ran; the SDK may dispatch the two in either order. */
   cancelEarly?: boolean;
+  /** Whether the `background` command already started its call in an earlier turn. */
+  backgroundStarted?: boolean;
 }
 
 const env = process.env;
@@ -241,6 +243,31 @@ const app = acp
         }
         case "fail":
           throw acp.RequestError.internalError(undefined, "the turn broke");
+        case "background": {
+          // A command that outlives its turn: the first prompt starts the call, a later prompt completes it.
+          const callId = `call-bg-${sessionId}`;
+          if (session.backgroundStarted !== true) {
+            session.backgroundStarted = true;
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call",
+              toolCallId: callId,
+              title: "run_background",
+              kind: "execute",
+              status: "in_progress",
+              rawInput: { command: "sleep 100" }
+            });
+            await say(client, sessionId, "started in the background");
+            return { stopReason: "end_turn" };
+          }
+          await update(client, sessionId, {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "background done" } }]
+          });
+          await say(client, sessionId, "background finished");
+          return { stopReason: "end_turn" };
+        }
         default:
           await say(client, sessionId, `turn ${session.turns}: ${text}`);
           return { stopReason: "end_turn" };

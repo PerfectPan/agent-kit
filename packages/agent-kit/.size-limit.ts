@@ -16,7 +16,7 @@ export default [
   { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38603 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
-  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44533 B" },
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44573 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "651 B" },
   // Pricing and summarization are pure; their entry imports nothing.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1127 B" },

@@ -1,6 +1,11 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { ExitStatus } from "@rivus/agent-kit-platform/public";
-import type { AcpPartTranslator, StreamFolder, TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
+import type {
+  AcpPartTranslator,
+  createAcpPartTranslator,
+  StreamFolder,
+  TranscriptStreamPart
+} from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -40,11 +45,16 @@ export type PromptError =
  */
 export type PermissionCallback = (request: PermissionRequest) => Effect.Effect<PermissionDecision | undefined>;
 
+/** The tool state one session's turns share: the shape of the sessions translator's optional second parameter. */
+type SessionToolState = NonNullable<Parameters<typeof createAcpPartTranslator>[1]>;
+
 /** The running turn of a session. Its parts go to `sink`, the queue behind the caller's stream. */
 export interface Turn {
   readonly sink: Queue.Queue<TranscriptStreamPart, PromptError | Cause.Done>;
   readonly translator: AcpPartTranslator;
   readonly folder: StreamFolder;
+  /** The session's shared tool state; `emit` drops a `tool_call` it already emitted, `endTurn` marks the calls emitted. */
+  readonly toolState: SessionToolState;
   /** Completes when the turn ends, however it ends. */
   readonly ended: Deferred.Deferred<void>;
   /** Completes when a cancel starts, so pending permission requests are answered `cancelled`. */
@@ -62,6 +72,8 @@ export interface LiveSession {
   readonly keys: Set<string>;
   session: AcpSession;
   turn?: Turn;
+  /** The ACP tool state every turn of this session shares, so a call keeps its state beyond the turn that started it. */
+  readonly toolState: SessionToolState;
   /** The system prompt still to send before the first prompt, for agents that read it from the first block. */
   pendingBlocks: readonly PromptBlock[];
   /** The session directory, links resolved, for client file calls; absent when they are off or it does not exist. */
@@ -123,6 +135,11 @@ export function emit(conn: ConnectionState, turn: Turn, parts: readonly Transcri
   for (const part of parts) {
     Queue.offerUnsafe(turn.sink, part);
     for (const event of turn.folder.push(part, ts)) {
+      // A fresh fold pairs an output with a call it never saw and emits that call; a call an earlier turn already
+      // emitted would appear a second time here, so the update arrives as its result alone.
+      if (event.kind === "tool_call" && turn.toolState.emittedCalls.has(event.payload.callId)) {
+        continue;
+      }
       Queue.offerUnsafe(turn.sink, { type: "event", event });
     }
   }
@@ -143,6 +160,11 @@ export function endTurn(
   live.turn = undefined;
   if ("response" in outcome) {
     emit(conn, turn, turn.translator.finish(outcome.response));
+    // This turn's stream has emitted every call seen so far, at its output or in the finish above. An update for one
+    // of them in a later turn may then only add its result. A failed turn emits nothing, so its calls stay open.
+    for (const callId of turn.toolState.tools.keys()) {
+      turn.toolState.emittedCalls.add(callId);
+    }
     step(live, live.session.finishTurn(outcome.response.stopReason));
     Queue.endUnsafe(turn.sink);
   } else {

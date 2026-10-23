@@ -285,12 +285,25 @@ export interface AcpPartTranslator {
  * A translator for one session. Part ids start with `prefix` and count up, so they stay unique across the turns of
  * the session. A text or reasoning part runs until another kind of update arrives, or a chunk names another
  * `messageId`; a tool call reports its input whenever an update supplies one and its output once, when it ends.
+ *
+ * `state` lets a caller create one translator per turn and still keep the tool state with the session; without it
+ * the maps are the translator's own. `emittedCalls` names the calls whose `tool_call` a finished turn already
+ * emitted: the log path reads an update for such a call as a rewrite of that call, which a turn's stream cannot
+ * take back, so the translator reports only what can still follow the call — its result.
  */
-export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
+export function createAcpPartTranslator(
+  prefix: string,
+  state?: {
+    readonly tools: Map<string, AcpToolState>;
+    readonly ended: Set<string>;
+    readonly emittedCalls: Set<string>;
+  }
+): AcpPartTranslator {
   let counter = 0;
   const nextId = () => `${prefix}${counter++}`;
-  const tools = new Map<string, AcpToolState>();
-  const ended = new Set<string>();
+  const tools = state?.tools ?? new Map<string, AcpToolState>();
+  const ended = state?.ended ?? new Set<string>();
+  const emittedCalls = state?.emittedCalls ?? new Set<string>();
   let open: { readonly kind: "text" | "reasoning"; readonly id: string; readonly messageId?: string } | undefined;
 
   const close = (): TranscriptStreamPart[] => {
@@ -328,9 +341,10 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
     if (first) {
       parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
     }
-    // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
+    // An input part makes the fold emit its call, so a call an earlier turn already emitted takes none. A title
+    // change is reported even without new input, so a live fold sees the latest display title (S89); a
     // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
-    if (supplied(update.rawInput) || state.title !== prevTitle) {
+    if (!emittedCalls.has(toolCallId) && (supplied(update.rawInput) || state.title !== prevTitle)) {
       parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
     }
     if (isAcpToolDone(state) && !ended.has(toolCallId)) {

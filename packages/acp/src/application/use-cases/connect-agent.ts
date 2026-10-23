@@ -232,6 +232,7 @@ function register(
       keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
       session: opened.value.state,
       pendingBlocks,
+      toolState: { tools: new Map(), ended: new Set(), emittedCalls: new Set() },
       ...(root === undefined ? {} : { root })
     };
     conn.sessions.set(sessionId, live);

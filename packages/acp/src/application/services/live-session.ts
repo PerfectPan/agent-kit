@@ -156,8 +156,9 @@ function prompt(
       const number = live.session.toSnapshot().turns;
       const turn: Turn = {
         sink,
-        translator: createAcpPartTranslator(`${number}.`),
+        translator: createAcpPartTranslator(`${number}.`, live.toolState),
         folder: createStreamFolder(),
+        toolState: live.toolState,
         ended: Deferred.makeUnsafe(),
         cancelRequested: Deferred.makeUnsafe()
       };
