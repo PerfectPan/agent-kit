@@ -10,8 +10,7 @@ import {
   type SessionSummaryWithPrompts,
   createTranscript,
   mergeByTime,
-  mergeByTimeStream,
-  type StampedRecord,
+  type TimedRecord,
   type Transcript,
   timedRecord,
   discoverSessions,
@@ -54,19 +53,17 @@ async function loadCodex(
   return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
 }
 
-/** The rollout's records, stamped with their inherited times, one at a time; a read stops when the loop leaves. */
+/** The rollout's records in file order with their own times, one at a time; a read stops when the loop leaves. */
 function timedLines(
   platform: SessionPlatform,
   file: string,
   signal: AbortSignal | undefined
-): AsyncGenerator<StampedRecord, void, undefined> {
-  return mergeByTimeStream([
-    (async function* () {
-      for await (const record of readJsonlStream(platform, file, { signal })) {
-        yield timedRecord(record);
-      }
-    })()
-  ]);
+): AsyncGenerator<TimedRecord, void, undefined> {
+  return (async function* () {
+    for await (const record of readJsonlStream(platform, file, { signal })) {
+      yield timedRecord(record);
+    }
+  })();
 }
 
 /**
