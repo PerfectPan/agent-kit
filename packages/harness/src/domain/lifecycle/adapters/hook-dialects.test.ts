@@ -20,19 +20,29 @@ describe("readHookEvent", () => {
         { providers: { hooks: testHooks } }
       ).agent
     ).toBe("grok");
+    // Cursor's payload field names Cursor with or without the variable, which a parent shell may have exported.
     expect(
       readHookEvent("claude-code", { ...payload, cursor_version: "3.13.25" }, {}, { providers: { hooks: testHooks } })
         .agent
     ).toBe("cursor");
     expect(
-      readHookEvent("claude-code", payload, { CURSOR_VERSION: "3.13.25" }, { providers: { hooks: testHooks } }).agent
+      readHookEvent(
+        "claude-code",
+        { ...payload, cursor_version: "3.13.25" },
+        { CURSOR_VERSION: "3.13.25" },
+        { providers: { hooks: testHooks } }
+      ).agent
     ).toBe("cursor");
+    // The variable alone is inherited, so it is no evidence: Cursor sets it for the hooks it starts itself.
+    expect(
+      readHookEvent("claude-code", payload, { CURSOR_VERSION: "3.13.25" }, { providers: { hooks: testHooks } }).agent
+    ).toBe("claude-code");
     expect(
       readHookEvent("claude-code", payload, { GROK_SESSION_ID: "" }, { providers: { hooks: testHooks } }).agent
     ).toBe("claude-code");
   });
 
-  it("S30: lets payload evidence decide; GROK_SESSION_ID never names Grok, CURSOR_VERSION only for agents Cursor runs", () => {
+  it("S30: lets payload evidence decide; no environment variable alone names Grok or Cursor", () => {
     const codex = { hook_event_name: "PreToolUse", session_id: "c1", turn_id: "t1", tool_name: "Bash" };
     expect(readHookEvent("codex", codex, { GROK_SESSION_ID: "g1" }, { providers: { hooks: testHooks } }).agent).toBe(
       "codex"
@@ -67,16 +77,14 @@ describe("readHookEvent", () => {
         { CURSOR_VERSION: "3.13.25" },
         { providers: { hooks: testHooks } }
       ).agent
-    ).toBe("cursor");
+    ).toBe("claude-code");
   });
 
   it("reads Cursor's rename of a Claude Code event as Cursor's event", () => {
     const event = readHookEvent(
       "claude-code",
-      { hook_event_name: "UserPromptSubmit", generation_id: "g2" },
-      {
-        CURSOR_VERSION: "3.13.25"
-      },
+      { hook_event_name: "UserPromptSubmit", cursor_version: "3.13.25", generation_id: "g2" },
+      {},
       { providers: { hooks: testHooks } }
     );
     expect(event).toEqual({
