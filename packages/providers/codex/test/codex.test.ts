@@ -13,7 +13,8 @@ import {
   loadTranscript,
   type SessionHead,
   type SessionListFailure,
-  type Transcript
+  type Transcript,
+  summarizeSession
 } from "@rivus/agent-kit-sessions/public";
 import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { describe, expect, it } from "vite-plus/test";
@@ -538,6 +539,21 @@ describe("codex translation", () => {
 });
 
 describe("sessions use cases over Codex", () => {
+  it("summarizes a time-less, a time-less-prefixed and a forked rollout like the folded transcript", async () => {
+    for (const path of [
+      // Both live outside the conformance set: see the golden test for why.
+      "/u/me/.codex/fx/timeless/rollout-timeless.jsonl",
+      "/u/me/.codex/fx/timeless/rollout-timeless-prefix.jsonl",
+      rollout("fork")
+    ]) {
+      const providers = { sessions: testSessions, identity: testIdentity };
+      const transcript = value(await loadTranscript(platform, { agent: "codex", path }, { providers }));
+      const summary = value(await summarizeSession(platform, { agent: "codex", path }, { providers }));
+      // The paths assert in order; a diff names the first rollout whose summary left the fold.
+      expect(summary).toEqual(foldTranscript(transcript));
+    }
+  });
+
   it("returns a missing or unreadable rollout as a tagged failure", async () => {
     expect(
       await loadTranscript(

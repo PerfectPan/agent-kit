@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 import { mergeByTime, timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { describe, expect, it } from "vite-plus/test";
 
-// The translated shape of every conformance fixture and of the corners rollout, pinned: a refactor of the Codex
-// record dispatch may not change it silently. The corners rollout lives outside the conformance directory and pins
-// the corner where an item id equals the `request:<key>` id a later usage record takes, answered by renaming the
-// request. To regenerate deliberately after an accepted shape change, run this file with UPDATE_GOLDEN set —
+// The translated shape of every conformance fixture and of the rollouts outside it, pinned: a refactor of the Codex
+// record dispatch may not change it silently. The corners rollout pins the corner where an item id equals the
+// `request:<key>` id a later usage record takes, answered by renaming the request. The time-less rollouts live
+// outside the conformance directory because the usage decoder stamps a record without a time with the file's mtime,
+// which a rewrite moves, so the incremental usage check would see two stamps for one record. To regenerate
+// deliberately after an accepted shape change, run this file with UPDATE_GOLDEN set —
 // `vp test test/codex-translate-golden.test.ts` with the variable in the environment rewrites the JSON from the
 // current translation — and review the file's diff as part of the change.
 const fixtures = fileURLToPath(new URL("fixtures/sessions", import.meta.url));
@@ -63,7 +65,9 @@ const translateAll = (): Record<string, unknown> => {
         ? `${fixtures}/unknown-generation/rollout-bad.jsonl`
         : name === "rollout-corners"
           ? `${fixtures}/corners/rollout-corners.jsonl`
-          : `${fixtures}/conformance/${name}.jsonl`;
+          : name === "rollout-timeless" || name === "rollout-timeless-prefix"
+            ? `${fixtures}/timeless/${name}.jsonl`
+            : `${fixtures}/conformance/${name}.jsonl`;
     out[name] = serialize(name, readFileSync(path, "utf8"));
   }
   return out;
