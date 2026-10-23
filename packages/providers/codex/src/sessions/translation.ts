@@ -193,11 +193,24 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         part.itemIds = itemIds;
       };
 
+      // Event ids stay unique because every id is taken only while `usedIds` does not hold it, and the check runs
+      // only where ids are retained. A taken id moves to the next free serial of the record's line key — not of the
+      // item's own id. The pattern guarantees nothing by itself: an item may carry any id, `request:<key>` or
+      // `L<n>:<serial>` included, so the check at emission is what keeps ids apart.
+      const nextFree = (base: string, serial = 0): string => {
+        let candidate = serial === 0 ? base : `${base}:${serial}`;
+        while (usedIds.has(candidate)) {
+          serial += 1;
+          candidate = `${base}:${serial}`;
+        }
+        return candidate;
+      };
+
       const emit = (body: TranscriptEventBody, id?: string): CodexPart => {
         let eventId = id ?? payload.id ?? lineKey(record);
         if (retain) {
           if (usedIds.has(eventId)) {
-            eventId = lineKey(record);
+            eventId = nextFree(lineKey(record));
           }
           usedIds.add(eventId);
         }
@@ -222,10 +235,16 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           ...(usage ? { usage } : {}),
           ...(finishReason ? { finishReason } : {})
         };
+        // The request keeps `request:<key>` when free, else the first free serial of it; `requestId` keeps the key.
+        let id = `request:${key}`;
+        if (retain) {
+          id = nextFree(id);
+          usedIds.add(id);
+        }
         const part: CodexPart<"request"> = {
           kind: "request",
           payload: body,
-          id: `request:${key}`,
+          id,
           ts,
           requestId: key,
           record,
@@ -235,9 +254,6 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         recordParts.push(part);
         eventCount += 1;
         if (retain) {
-          // A request's id must match the translation's ids: `request:<key>` even on a collision with an event id,
-          // which only the emit path renames away.
-          usedIds.add(part.id);
           segment = placeRequest(parts, segment, part);
         } else {
           segment = eventCount;

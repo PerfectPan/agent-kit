@@ -1,0 +1,5 @@
+{"type":"session_meta","payload":{"id":"s-tless"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}}
+{"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hello"}]}}
+{"type":"token_usage_record","payload":{"response_id":"r1","usage":{"input_tokens":5,"output_tokens":1}}}
+{"type":"event_msg","payload":{"type":"task_complete","duration_ms":100}}
