@@ -160,10 +160,11 @@ retains completion for built-ins while accepting third-party ids.
 
 A HookDialect's `hostMarkers` declares top-level payload fields and environment variables that identify the agent
 actually running a hook. `sniffSource` checks all payload markers before any environment marker, in hooks-table
-order within each kind. An environment marker applies only when the declared agent is listed in that dialect's
-`foreignHooks`. The shell puts Grok before Cursor, covered by `provider-tables.test.ts`; cross-agent samples run in
-`testing/test/hook-dialects.conformance.test.ts`. Terminal identity is separate from coding-agent identity and
-belongs to harness lifecycle services.
+order within each kind. An environment marker is inherited by every child process the agent starts, so it names a
+host only where no payload evidence exists and the variable cannot reach the other agent's processes; it applies
+only when the declared agent is listed in that dialect's `foreignHooks`. The shell puts Grok before Cursor, covered
+by `provider-tables.test.ts`; cross-agent samples run in `testing/test/hook-dialects.conformance.test.ts`. Terminal
+identity is separate from coding-agent identity and belongs to harness lifecycle services.
 
 ## Read-Side Services And Utilities
 
