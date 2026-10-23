@@ -22,10 +22,7 @@ import type { ClaudeCodeContentBlockValue } from "../src/records/record.js";
 
 const FORK = "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests";
 const textBlock = (text: string) => ({ type: "text", text });
-const user = (
-  content: string | readonly (ClaudeCodeContentBlockValue | undefined)[],
-  extra: Record<string, unknown> = {}
-) => ({
+const user = (content: string | (ClaudeCodeContentBlockValue | undefined)[], extra: Record<string, unknown> = {}) => ({
   type: "user",
   uuid: "u",
   timestamp: "2026-01-01T00:00:00.000Z",
@@ -195,7 +192,7 @@ describe("the prompt rule over the prompt-blocks fixture", () => {
       { text: "first part\n\nsecond part" },
       {
         text: "<fork-boilerplate>Forked from an earlier session.</fork-boilerplate>\n\nYour directive: fix the tests"
-      },
+      }
     ]);
   });
 });
