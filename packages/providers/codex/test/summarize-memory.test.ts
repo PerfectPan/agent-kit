@@ -31,6 +31,29 @@ function codexSessionContent(turns: number): string {
 
 describe("summarizeSession memory", () => {
   const prompts = { limit: 200, maxChars: 500 };
+  const agent = "codex" as const;
+
+  const peakDuring = async (files: ReturnType<typeof createMemoryPlatform>, path: string, summarize: boolean): Promise<number> => {
+    gc();
+    await new Promise((resolve) => setImmediate(resolve));
+    const before = process.memoryUsage().heapUsed;
+    const peak = { value: before };
+    const sampled = withSampledReads(files, peak);
+    if (summarize) {
+      await summarizeSession(
+        sampled,
+        { agent, path },
+        { prompts, providers: { sessions: testSessions, identity: testIdentity } }
+      );
+    } else {
+      await loadTranscript(
+        sampled,
+        { agent, path },
+        { providers: { sessions: testSessions, identity: testIdentity } }
+      );
+    }
+    return peak.value - before;
+  };
 
   it("summarizes a growing Codex rollout without holding its records", async () => {
     const files = createMemoryPlatform({
@@ -39,37 +62,15 @@ describe("summarizeSession memory", () => {
         "/codex/large/rollout.jsonl": codexSessionContent(LARGE_TURNS)
       }
     });
-    const agent = "codex" as const;
-    const peakDuring = async (path: string, summarize: boolean): Promise<number> => {
-      gc();
-      await new Promise((resolve) => setImmediate(resolve));
-      const before = process.memoryUsage().heapUsed;
-      const peak = { value: before };
-      const sampled = withSampledReads(files, peak);
-      if (summarize) {
-        await summarizeSession(
-          sampled,
-          { agent, path },
-          { prompts, providers: { sessions: testSessions, identity: testIdentity } }
-        );
-      } else {
-        await loadTranscript(
-          sampled,
-          { agent, path },
-          { providers: { sessions: testSessions, identity: testIdentity } }
-        );
-      }
-      return peak.value - before;
-    };
     // A warm-up round: the first parse of a rollout pays for JIT and module warm-up, which would otherwise land in
     // the first measured round.
-    await peakDuring("/codex/small/rollout.jsonl", false);
-    await peakDuring("/codex/small/rollout.jsonl", true);
+    await peakDuring(files, "/codex/small/rollout.jsonl", false);
+    await peakDuring(files, "/codex/small/rollout.jsonl", true);
     for (let round = 1; round <= 5; round++) {
-      const loadSmall = await peakDuring("/codex/small/rollout.jsonl", false);
-      const passSmall = await peakDuring("/codex/small/rollout.jsonl", true);
-      const loadLarge = await peakDuring("/codex/large/rollout.jsonl", false);
-      const passLarge = await peakDuring("/codex/large/rollout.jsonl", true);
+      const loadSmall = await peakDuring(files, "/codex/small/rollout.jsonl", false);
+      const passSmall = await peakDuring(files, "/codex/small/rollout.jsonl", true);
+      const loadLarge = await peakDuring(files, "/codex/large/rollout.jsonl", false);
+      const passLarge = await peakDuring(files, "/codex/large/rollout.jsonl", true);
       const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       console.log(
         `round ${round}: load ${megabytes(loadSmall)} -> ${megabytes(loadLarge)}, summarize ${megabytes(passSmall)} -> ${megabytes(passLarge)}`
@@ -79,5 +80,25 @@ describe("summarizeSession memory", () => {
       expect(passLarge, `round ${round}: the fast pass should not materialize the rollout`).toBeLessThan(1024 * 1024);
       expect(passLarge, `round ${round}: the fast pass should stay far below the load`).toBeLessThan(loadLarge / 5);
     }
+  }, 300_000);
+
+  it("summarizes a time-less rollout without holding its records", async () => {
+    // The same large rollout with every timestamp dropped: the whole file is one leading run without a time.
+    const timeless = codexSessionContent(LARGE_TURNS)
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => line.replace(/"timestamp":"[^"]*",/, ""))
+      .join("\n");
+    const files = createMemoryPlatform({ files: { "/codex/timeless/rollout.jsonl": `${timeless}\n` } });
+    // A warm-up round, as in the growing test above.
+    await peakDuring(files, "/codex/timeless/rollout.jsonl", false);
+    await peakDuring(files, "/codex/timeless/rollout.jsonl", true);
+    const loadTimeless = await peakDuring(files, "/codex/timeless/rollout.jsonl", false);
+    const passTimeless = await peakDuring(files, "/codex/timeless/rollout.jsonl", true);
+    const megabytes = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    console.log(`time-less: load ${megabytes(loadTimeless)}, summarize ${megabytes(passTimeless)}`);
+    expect(loadTimeless, "load should hold the time-less rollout").toBeGreaterThan(8 * 1024 * 1024);
+    expect(passTimeless, "the fast pass should not materialize the time-less rollout").toBeLessThan(1024 * 1024);
+    expect(passTimeless, "the fast pass should stay far below the load").toBeLessThan(loadTimeless / 5);
   }, 300_000);
 });

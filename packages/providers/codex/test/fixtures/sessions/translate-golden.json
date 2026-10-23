@@ -3617,5 +3617,315 @@
     }
    }
   ]
+ },
+ "rollout-timeless": {
+  "ok": true,
+  "session": {
+   "id": "s-tless",
+   "title": "hi",
+   "startedAt": 1,
+   "endedAt": 1
+  },
+  "agents": [
+   {
+    "id": "main"
+   }
+  ],
+  "skipped": [
+   {
+    "reason": "session-meta",
+    "source": {
+     "file": "rollout-timeless.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 1
+    }
+   }
+  ],
+  "events": [
+   {
+    "id": "L2",
+    "seq": 0,
+    "ts": 1,
+    "kind": "user",
+    "requestId": "r1",
+    "payload": {
+     "text": "hi"
+    },
+    "source": {
+     "file": "rollout-timeless.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 2
+    },
+    "original": {
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "user",
+      "content": [
+       {
+        "type": "input_text",
+        "text": "hi"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "request:r1",
+    "seq": 1,
+    "ts": 1,
+    "kind": "request",
+    "requestId": "r1",
+    "payload": {
+     "responseId": "r1",
+     "usage": {
+      "inputTokens": 5,
+      "outputTokens": 1,
+      "totalTokens": 6
+     }
+    },
+    "source": {
+     "file": "rollout-timeless.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 4
+    },
+    "original": {
+     "type": "token_usage_record",
+     "payload": {
+      "response_id": "r1",
+      "usage": {
+       "input_tokens": 5,
+       "output_tokens": 1
+      }
+     }
+    }
+   },
+   {
+    "id": "L3",
+    "seq": 2,
+    "ts": 1,
+    "kind": "assistant",
+    "requestId": "r1",
+    "payload": {
+     "text": "hello"
+    },
+    "source": {
+     "file": "rollout-timeless.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 3
+    },
+    "original": {
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+       {
+        "type": "output_text",
+        "text": "hello"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "L5",
+    "seq": 3,
+    "ts": 1,
+    "kind": "system",
+    "payload": {
+     "type": "turn_duration",
+     "durationMs": 100
+    },
+    "source": {
+     "file": "rollout-timeless.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 5
+    },
+    "original": {
+     "type": "event_msg",
+     "payload": {
+      "type": "task_complete",
+      "duration_ms": 100
+     }
+    }
+   }
+  ]
+ },
+ "rollout-timeless-prefix": {
+  "ok": true,
+  "session": {
+   "id": "s-sub",
+   "title": "own work",
+   "startedAt": 1767571210000,
+   "endedAt": 1767571213000
+  },
+  "agents": [
+   {
+    "id": "main"
+   }
+  ],
+  "skipped": [
+   {
+    "reason": "session-meta",
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 1
+    }
+   },
+   {
+    "reason": "fork-replay",
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 2
+    }
+   },
+   {
+    "reason": "fork-replay",
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 3
+    }
+   },
+   {
+    "reason": "turn-context",
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 4
+    }
+   }
+  ],
+  "events": [
+   {
+    "id": "L5",
+    "seq": 0,
+    "ts": 1767571211000,
+    "kind": "user",
+    "requestId": "o1",
+    "payload": {
+     "text": "own work"
+    },
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 5
+    },
+    "original": {
+     "timestamp": "2026-01-05T00:00:11.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "user",
+      "content": [
+       {
+        "type": "input_text",
+        "text": "own work"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "request:o1",
+    "seq": 1,
+    "ts": 1767571212000,
+    "kind": "request",
+    "requestId": "o1",
+    "payload": {
+     "model": "gpt-test",
+     "responseId": "o1",
+     "usage": {
+      "inputTokens": 20,
+      "outputTokens": 4,
+      "totalTokens": 24
+     }
+    },
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 7
+    },
+    "original": {
+     "timestamp": "2026-01-05T00:00:12.500Z",
+     "type": "token_usage_record",
+     "payload": {
+      "response_id": "o1",
+      "usage": {
+       "input_tokens": 20,
+       "output_tokens": 4
+      }
+     }
+    }
+   },
+   {
+    "id": "L6",
+    "seq": 2,
+    "ts": 1767571212000,
+    "kind": "assistant",
+    "requestId": "o1",
+    "payload": {
+     "text": "done"
+    },
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 6
+    },
+    "original": {
+     "timestamp": "2026-01-05T00:00:12.000Z",
+     "type": "response_item",
+     "payload": {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+       {
+        "type": "output_text",
+        "text": "done"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "L8",
+    "seq": 3,
+    "ts": 1767571213000,
+    "kind": "system",
+    "payload": {
+     "type": "turn_duration",
+     "durationMs": 2500
+    },
+    "source": {
+     "file": "rollout-timeless-prefix.jsonl",
+     "offset": 0,
+     "length": 1,
+     "line": 8
+    },
+    "original": {
+     "timestamp": "2026-01-05T00:00:13.000Z",
+     "type": "event_msg",
+     "payload": {
+      "type": "task_complete",
+      "duration_ms": 2500
+     }
+    }
+   }
+  ]
  }
 }
