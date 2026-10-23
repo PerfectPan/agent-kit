@@ -13,10 +13,10 @@ const nodeOnly = {
 // code through those chunks; size-limit rebundles and tree-shakes each entry before compression.
 // Budgets that need adjustment track measured output without extra headroom.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "38885 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "39027 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
-  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44533 B" },
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44633 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "651 B" },
   // Pricing and summarization are pure; their entry imports nothing.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1127 B" },
@@ -45,9 +45,9 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24570 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22980 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "24676 B" },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "22999 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2169 B" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24760 B" },
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "24886 B" },
   { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "19189 B" }
 ] satisfies SizeLimitConfig;

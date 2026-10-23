@@ -1,6 +1,11 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { ExitStatus } from "@rivus/agent-kit-platform/public";
-import type { AcpPartTranslator, StreamFolder, TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
+import type {
+  AcpPartTranslator,
+  createAcpPartTranslator,
+  StreamFolder,
+  TranscriptStreamPart
+} from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -40,11 +45,13 @@ export type PromptError =
  */
 export type PermissionCallback = (request: PermissionRequest) => Effect.Effect<PermissionDecision | undefined>;
 
+/** The tool state one session's turns share: the shape of the sessions translator's optional second parameter. */
+type SessionToolState = NonNullable<Parameters<typeof createAcpPartTranslator>[1]>;
+
 /** The running turn of a session. Its parts go to `sink`, the queue behind the caller's stream. */
 export interface Turn {
   readonly sink: Queue.Queue<TranscriptStreamPart, PromptError | Cause.Done>;
   readonly translator: AcpPartTranslator;
-  readonly folder: StreamFolder;
   /** Completes when the turn ends, however it ends. */
   readonly ended: Deferred.Deferred<void>;
   /** Completes when a cancel starts, so pending permission requests are answered `cancelled`. */
@@ -62,6 +69,13 @@ export interface LiveSession {
   readonly keys: Set<string>;
   session: AcpSession;
   turn?: Turn;
+  /** The ACP tool state every turn of this session shares, so a call keeps its state beyond the turn that started it. */
+  readonly toolState: SessionToolState;
+  /**
+   * The stream folder of the whole session, not of one turn: the `event` parts are what folding the session's parts
+   * in order gives, so a call keeps its one `tool_call` however many turns it outlives.
+   */
+  readonly folder: StreamFolder;
   /** The system prompt still to send before the first prompt, for agents that read it from the first block. */
   pendingBlocks: readonly PromptBlock[];
   /** The session directory, links resolved, for client file calls; absent when they are off or it does not exist. */
@@ -118,11 +132,16 @@ export function step<E>(
 }
 
 /** Queues parts for the turn's stream, each followed by the events it completes, stamped with the platform clock. */
-export function emit(conn: ConnectionState, turn: Turn, parts: readonly TranscriptStreamPart[]): void {
+export function emit(
+  conn: ConnectionState,
+  live: LiveSession,
+  turn: Turn,
+  parts: readonly TranscriptStreamPart[]
+): void {
   const ts = conn.platform.clock.now();
   for (const part of parts) {
     Queue.offerUnsafe(turn.sink, part);
-    for (const event of turn.folder.push(part, ts)) {
+    for (const event of live.folder.push(part, ts)) {
       Queue.offerUnsafe(turn.sink, { type: "event", event });
     }
   }
@@ -142,10 +161,14 @@ export function endTurn(
   }
   live.turn = undefined;
   if ("response" in outcome) {
-    emit(conn, turn, turn.translator.finish(outcome.response));
+    emit(conn, live, turn, turn.translator.finish(outcome.response));
     step(live, live.session.finishTurn(outcome.response.stopReason));
     Queue.endUnsafe(turn.sink);
   } else {
+    // The failed turn closes its open text and reasoning into its own stream, so the partial text is this turn's
+    // event, as folding its parts gives. A call still open stays open in the session state: no event here, and the
+    // next successful finish closes it.
+    emit(conn, live, turn, turn.translator.closeOpen());
     step(live, live.session.finishTurn("error"));
     Queue.failCauseUnsafe(turn.sink, Cause.fail(outcome.error));
   }

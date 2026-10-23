@@ -233,7 +233,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -285,7 +285,7 @@ importers:
         version: 4.0.5(effect@4.0.5)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -331,7 +331,7 @@ importers:
         version: 0.18.5
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-acp':
         specifier: workspace:*
         version: link:../acp
@@ -425,7 +425,7 @@ importers:
         version: 4.0.5(effect@4.0.5)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../agent-kit
@@ -461,7 +461,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -483,7 +483,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -505,7 +505,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-provider-codex':
         specifier: workspace:*
         version: link:../providers/codex
@@ -551,7 +551,7 @@ importers:
         version: 4.0.5(effect@4.0.5)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -599,7 +599,7 @@ importers:
         version: 0.53.0
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       effect:
         specifier: 'catalog:'
         version: 4.0.5
@@ -627,7 +627,7 @@ importers:
         version: 4.0.5(effect@4.0.5)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -667,7 +667,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -704,7 +704,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -735,7 +735,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -772,7 +772,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -809,7 +809,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform':
         specifier: workspace:*
         version: link:../../platform
@@ -849,7 +849,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../../platform-node
@@ -886,7 +886,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -908,7 +908,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -930,7 +930,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -961,10 +961,16 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../acp
       '@rivus/agent-kit-cost':
         specifier: workspace:*
         version: link:../cost
+      '@rivus/agent-kit-platform-node':
+        specifier: workspace:*
+        version: link:../platform-node
       '@rivus/agent-kit-provider-claude-code':
         specifier: workspace:*
         version: link:../providers/claude-code
@@ -1003,7 +1009,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -1021,7 +1027,7 @@ importers:
         version: 4.0.5(effect@4.0.5)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../../packages/agent-kit
@@ -1367,22 +1373,10 @@ packages:
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
 
-  '@oxfmt/binding-android-arm-eabi@0.71.0':
-    resolution: {integrity: sha512-l31EyBfB4egJeFua11aQFEUE9nnDtfpWCadqQovm0WL30t/yUHtdFl/5HyFXvd5xT8Ewh3U4TI9f30GowrQ1fw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [android]
-
   '@oxfmt/binding-android-arm-eabi@0.73.0':
     resolution: {integrity: sha512-dhunAdMbi/4o0Y66/+Wl6rpsNqpvE4i26Qw6bB77A97L2lJoktWg6m+X9QOon8iOEEqzD9rEZqFi5uZ4oIzhCA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
-    os: [android]
-
-  '@oxfmt/binding-android-arm64@0.71.0':
-    resolution: {integrity: sha512-E8q39SUZzSXQ08oZoFoTkxRADkdBNgL6De4qgZYr2O4JCunwqrZwAyCebxIF3yVHBafHM30WUkhTkDi+jNYZOw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
     os: [android]
 
   '@oxfmt/binding-android-arm64@0.73.0':
@@ -1391,22 +1385,10 @@ packages:
     cpu: [arm64]
     os: [android]
 
-  '@oxfmt/binding-darwin-arm64@0.71.0':
-    resolution: {integrity: sha512-pTteTrN88DicrmJ3DocBmpNDa6Umfh0iveEG8rnAlDFQpclmtDS7hnIvZbIEV9mDO0Ot1U0sjtoJQ1itd/ZMhQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [darwin]
-
   '@oxfmt/binding-darwin-arm64@0.73.0':
     resolution: {integrity: sha512-Tn7Y+qWIpCQK+qdYwBcn6YvqeBuPiuG3tcNlYg16a5QL2o3rSmrgBB1nCyYqo0uvc1LNrfQW9/CK2tzFuID/Fg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-    os: [darwin]
-
-  '@oxfmt/binding-darwin-x64@0.71.0':
-    resolution: {integrity: sha512-G5melRC3IiNEgXlNKJhSExJYQGAQIppHFp2cl/wFrqQcEwmc4k4TkrHaFTR29SDudjoW5AZq5cXPGJDqtlH/Yg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [darwin]
 
   '@oxfmt/binding-darwin-x64@0.73.0':
@@ -1415,32 +1397,14 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@oxfmt/binding-freebsd-x64@0.71.0':
-    resolution: {integrity: sha512-Hb1P5yKb9aiH2VSbm3Ml37mKjzqpunYet9krw/YK7V5JsAUJDQlju3Yk/dEqQvJD/usBvpi01Vbk9ZDNo0a8Cw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [freebsd]
-
   '@oxfmt/binding-freebsd-x64@0.73.0':
     resolution: {integrity: sha512-IKR4lFnBkYNL9Uqdxa5GMTQLvnLj+3sDwTvh2atHCzah0xeo+1xR5bigRU8uyXlOsA4VpXUn0UAimq4E4RBGmQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-  '@oxfmt/binding-linux-arm-gnueabihf@0.71.0':
-    resolution: {integrity: sha512-r7n4JEO+rkp0kaP3ia+0hv6FzK3PQIHqaF0jxGuhjJ4JHVX9ZVRbgpDVDW+OloyuJsRWpWFDKIHe8gfl1p/4mQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
   '@oxfmt/binding-linux-arm-gnueabihf@0.73.0':
     resolution: {integrity: sha512-7qnZ4g0ZCO3aZevOOQpZIABYwwXJW1lLDo2elviGdPQ0i11255xKEMFsi97fC1/nauQFseCJfELUy/k2JoOP+g==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
-  '@oxfmt/binding-linux-arm-musleabihf@0.71.0':
-    resolution: {integrity: sha512-EEynTF4nakgqDhVCmd3cHQCmTcw0BM8ea6eHigTdtZ3yxdsBNv+dYkt+OpDDZx1n/jzjI7J+Ht7IgkqFWuJUxQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
@@ -1451,26 +1415,12 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@oxfmt/binding-linux-arm64-gnu@0.71.0':
-    resolution: {integrity: sha512-7VgJIrywCwR/G6YMv+HqsccUt8Z4q4mbM2xR+Ry/6AeMk4pCmZ9aO4Srd3mmrvVu8PsCZGP7oHEHSXWTmyloaQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
   '@oxfmt/binding-linux-arm64-gnu@0.73.0':
     resolution: {integrity: sha512-VZ3cSgCAT18knKo52DcACmAuIoqG6qVEyeZRFbJd0xmYQ8GyYjuBc6IAh6MZHijT6q7p4/HPI+6ZWsCuhdV6iw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
-
-  '@oxfmt/binding-linux-arm64-musl@0.71.0':
-    resolution: {integrity: sha512-AOCaminv/+fhinUXKvtPZT4POhNYmN9GfvaJdgJa1AbvuzClWGwDIXfJg8eu3sYaVL2B68jNvmS7LZGAYa0z3A==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
 
   '@oxfmt/binding-linux-arm64-musl@0.73.0':
     resolution: {integrity: sha512-8YVzH59XSHcqwXNgc5qK851zCqwpmBgOifARXEPPe5/xTsIbHceYoPZAyqfpYV0CfKmzSaEDBgYHFza4rhx+Zw==}
@@ -1479,24 +1429,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxfmt/binding-linux-ppc64-gnu@0.71.0':
-    resolution: {integrity: sha512-0SHxuaa4QRLM7jfsd8wc6L7KdLg+FR6/ah9k1eAvcrK/Sni7oxchMvsjwUsyakVAta+wBVDkjJTr7/RFU0uUGA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
   '@oxfmt/binding-linux-ppc64-gnu@0.73.0':
     resolution: {integrity: sha512-MqRJnmCys0rwOgpWyEidSA7v/bvOqfNDJhPkQoR9mPVYrvSmMaW2Xhdpl28cbTA+brOM1is62GjIvJplVlUVpw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
-  '@oxfmt/binding-linux-riscv64-gnu@0.71.0':
-    resolution: {integrity: sha512-UNKj1+rPorTK6uSlQzpN96vDNbHbL/63zcpznweo0ImQdkDdtQCS7G3puxX++2cESPKT2B56Y6DICUmFTJde5A==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [riscv64]
     os: [linux]
     libc: [glibc]
 
@@ -1507,13 +1443,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@oxfmt/binding-linux-riscv64-musl@0.71.0':
-    resolution: {integrity: sha512-5cVXKj7a0mWu7GU6/bZgNyv+KtLgM5S9cnT26Os2/abj8pK/bklHsbdYEHGLLniGjNYkyzwem8mZciPCaDtilw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [riscv64]
-    os: [linux]
-    libc: [musl]
-
   '@oxfmt/binding-linux-riscv64-musl@0.73.0':
     resolution: {integrity: sha512-D8b4I8I1kLdJQFwdFXNV+cwh3xWSiNKofjdGUk0nDpc0AHOds8T+poGbP9RWQMvgsvMb9OMgp/aV7ahBR37TbQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1521,24 +1450,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxfmt/binding-linux-s390x-gnu@0.71.0':
-    resolution: {integrity: sha512-lNpcMuZvyU1V/CY5h19hac03m4E4PLSYRckcxZOynSPojI4Mwt6nEu9wT/gVf0bclH3xGEWjwqApnSTgjkd2oA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
   '@oxfmt/binding-linux-s390x-gnu@0.73.0':
     resolution: {integrity: sha512-QrC1S5VL1+N5rvorB15jH7CPvjVHA7GyUI5oVEd8Bd9m5605RDBQYTxDQ920DuylRoZOh2V7/xXpfCtFUrojUQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
-  '@oxfmt/binding-linux-x64-gnu@0.71.0':
-    resolution: {integrity: sha512-5/Z6pUewQpknXqC4/ykK6Zc6RiteAnPem1Ci7K1RZLVF6w6MMjwHjR4vsjijW4Czidgv7HKeVglGjElADliT9w==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [linux]
     libc: [glibc]
 
@@ -1549,13 +1464,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@oxfmt/binding-linux-x64-musl@0.71.0':
-    resolution: {integrity: sha512-uVdG2N/4GEbOeljpQ+xv+NeEwJWJGj0WaxSiSYnoiqIYy3RWrWd3rGUmxWXP1A8+ferNvvwFoDAtvgsDUvBuSw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
   '@oxfmt/binding-linux-x64-musl@0.73.0':
     resolution: {integrity: sha512-LmQe+nV8e+eUwfPNCxDF+owbsg88toBiR/8rZRgVOeKQP3MaGefXZRvBoc1UG37iWEQ/9JlCXG9Mc4nf4N3agw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1563,34 +1471,16 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxfmt/binding-openharmony-arm64@0.71.0':
-    resolution: {integrity: sha512-1LwEZmSDRFKeBaGd/Hgj2xI3SmgGFpF4YtgkSx0sTYdTiZfHWbcFvRIBjL1YiDNdQd9Khda3Ij8CoqBULjskDg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [openharmony]
-
   '@oxfmt/binding-openharmony-arm64@0.73.0':
     resolution: {integrity: sha512-8weOr1OKknE0G2DbR6ejJUT9AOsoBU6cXlsetmbihHv1K+bK7qP61T6lJxY0k/aAO7GyOJiRGNlL+04r4eH8Xg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
-  '@oxfmt/binding-win32-arm64-msvc@0.71.0':
-    resolution: {integrity: sha512-5tplmkeMXmza3PUptJQy25wCPJbIAg5g5r7zs+DI+7eEYOqbY+7roMdSH2zbDvv1Pb4oTDJ6NWYx9IRxBxXwhQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [win32]
-
   '@oxfmt/binding-win32-arm64-msvc@0.73.0':
     resolution: {integrity: sha512-mZV+QxXYgb8E18gzAFItb937VIsE4dqWdStrD3tRRC52UubOYEuU+e7NaIqUsGdB5YsJqNeuck3Ue/af2r9wyA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-    os: [win32]
-
-  '@oxfmt/binding-win32-ia32-msvc@0.71.0':
-    resolution: {integrity: sha512-T2LWgh3Vx4PYDjtcqRRGDyCsVxeF/VE5xTpUQiCm65bNLwMpRnJYj6Hlkf6qRM3+jxCIOqHD1kVHNQCCiAVMNQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ia32]
     os: [win32]
 
   '@oxfmt/binding-win32-ia32-msvc@0.73.0':
@@ -1599,31 +1489,15 @@ packages:
     cpu: [ia32]
     os: [win32]
 
-  '@oxfmt/binding-win32-x64-msvc@0.71.0':
-    resolution: {integrity: sha512-L06SVp7Hu1EQTkh3+PHnKK26dxVbEpOG2InMwCooTE4MA437b5FgfTleCCiGn4ykISHnHU6UHaIg7SiMO7rBHA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [win32]
-
   '@oxfmt/binding-win32-x64-msvc@0.73.0':
     resolution: {integrity: sha512-cGcze2fu+ykIaFtkEvZlkZ3HvnCLk+WISthtq99zWTWn0x13t5L9TxvGdLZMUMvtfYR+ICkiCwKnguVubdcw0w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
 
-  '@oxlint-tsgolint/darwin-arm64@7.0.2003':
-    resolution: {integrity: sha512-TgV33rXr6ueXBwvc+0nssUkTBSXHJxv77I8p4RCjDjCnvexHtmoPiudVRDfj3S3puMDdeQdHW6jdUgUPy3nr/w==}
-    cpu: [arm64]
-    os: [darwin]
-
   '@oxlint-tsgolint/darwin-arm64@7.0.2004':
     resolution: {integrity: sha512-uJk3ttju7Lz+Nv8WG4CsLyewoL1qf/Ny8S8OksJ7Bm/F14Tc9gMfW6arM1PCc57IzH/X/I79YsCWTgxX1FKibQ==}
     cpu: [arm64]
-    os: [darwin]
-
-  '@oxlint-tsgolint/darwin-x64@7.0.2003':
-    resolution: {integrity: sha512-hY3FMAjIaPDdK3FNxyRXRfHPOFeoBn6dmnLyKZgQ2IbTTD1adXhl6PfCIqHhCPvurigv7nf7mYuWZZ19MmJzmg==}
-    cpu: [x64]
     os: [darwin]
 
   '@oxlint-tsgolint/darwin-x64@7.0.2004':
@@ -1631,19 +1505,9 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@oxlint-tsgolint/linux-arm64@7.0.2003':
-    resolution: {integrity: sha512-eAET4JpyfBbg8SO0K74o4R55tEjVC292pIyxGOw2XGf8x/HrPNyxwQ478jMYOM54FIVOHc8sJ6VRHxluy6lucw==}
-    cpu: [arm64]
-    os: [linux]
-
   '@oxlint-tsgolint/linux-arm64@7.0.2004':
     resolution: {integrity: sha512-TAehQc+qdRXyDN3nl/r/3/oPrBVrbtrDeGMkFyG6mf+XphpoJ2lAMVFLclyvrVZCw02RbKROjyw8h72XwQQHcw==}
     cpu: [arm64]
-    os: [linux]
-
-  '@oxlint-tsgolint/linux-x64@7.0.2003':
-    resolution: {integrity: sha512-GXdyO/XyqDJ3s/llR/oOktLsYNjZtWSQBy0JMc+/0gsNPvTcseKPhn9c6KcFyWmnr6H4vljYALbujonqSzzEGw==}
-    cpu: [x64]
     os: [linux]
 
   '@oxlint-tsgolint/linux-x64@7.0.2004':
@@ -1651,19 +1515,9 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@oxlint-tsgolint/win32-arm64@7.0.2003':
-    resolution: {integrity: sha512-TWauXnPfet0VgpmrstoAK58eJ4gbuwPUuUTQmYQAzE/RG1CpnxXtrKUJULf6lyerPE4KN3gM+DflIA1hOH+38Q==}
-    cpu: [arm64]
-    os: [win32]
-
   '@oxlint-tsgolint/win32-arm64@7.0.2004':
     resolution: {integrity: sha512-FVWplzDImWhiuawnIZVETaQecv4GWom6Jv4Fx2xj7hhXXDZ5okEgiw1gTCImHTIQsi2ycC5oSxVwrn69bMh7iw==}
     cpu: [arm64]
-    os: [win32]
-
-  '@oxlint-tsgolint/win32-x64@7.0.2003':
-    resolution: {integrity: sha512-DoRmfe7j8VqNlukp8liRVW45GQDhzRccNenjD/pdzelgtffW47pCMd1xbJLkPaPbKnTwID3onn3VZlL7JbebEA==}
-    cpu: [x64]
     os: [win32]
 
   '@oxlint-tsgolint/win32-x64@7.0.2004':
@@ -1671,22 +1525,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oxlint/binding-android-arm-eabi@1.86.0':
-    resolution: {integrity: sha512-63Ozq6yQn79B2UxjSZ9huJmI+3/ZPI7hxAe6TyFh9oQL447KnIMoffOdtog+h4KILbQr61ZRvFPW5gYbAUgpgQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [android]
-
   '@oxlint/binding-android-arm-eabi@1.88.0':
     resolution: {integrity: sha512-k6Fgkf86ubfeH4GvqYsRolfuVAp0pfYVZvifSlXNHPdMaWUOfxUrmLEeDD7hF6U2oJuhsVxhSWq86/xCJ+9MmA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
-    os: [android]
-
-  '@oxlint/binding-android-arm64@1.86.0':
-    resolution: {integrity: sha512-JdLGp44phbf/0Du236Dt06yfK6Qw8xhTFeDvHJdjk167r59OfP5+BL31mgMYVnswS8e+j6tFuccSY0QDC/lgCw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
     os: [android]
 
   '@oxlint/binding-android-arm64@1.88.0':
@@ -1695,22 +1537,10 @@ packages:
     cpu: [arm64]
     os: [android]
 
-  '@oxlint/binding-darwin-arm64@1.86.0':
-    resolution: {integrity: sha512-h+vkOr4ik6KLFCXdtNVEj9xfnXfNUpPoF95QjORdhiSpLqQePzcN81kGHjAgsw1/G7WBWK5KsFKbI2UK8EyzMA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [darwin]
-
   '@oxlint/binding-darwin-arm64@1.88.0':
     resolution: {integrity: sha512-qgBjB7eEKcCB4RqjXGuoSZq74g0wD09fWFJ+HWcCJcKaga8TeUHtb+BY0SsxdleSLBgx4RZ7qmgo0EzqEq7JoQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-    os: [darwin]
-
-  '@oxlint/binding-darwin-x64@1.86.0':
-    resolution: {integrity: sha512-wbglRuH5eKsp68keTOOeKDHU1astWSRYFsh2bwKQTAPb44rD6kVgzYI1ZrAJRTc6/7PH55ZXFCQx0rQXrj0UdA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [darwin]
 
   '@oxlint/binding-darwin-x64@1.88.0':
@@ -1719,32 +1549,14 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@oxlint/binding-freebsd-x64@1.86.0':
-    resolution: {integrity: sha512-yTQ7QSOlNfQsrfbeVweTiegQJLKPjUKgXp/JpGiFzza6Hp29S9LAoH77TM3L0RjK39iQRZB5lk5iq2t241Mfag==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [freebsd]
-
   '@oxlint/binding-freebsd-x64@1.88.0':
     resolution: {integrity: sha512-xTOdYOIqCufgIj0knvxu86FBfovP6QBiD7ngNva01gb8xPQCD5gXkE5APGczH35zStim1O3zqvFbLQmY85xXRg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.86.0':
-    resolution: {integrity: sha512-QYJGy0E2Tv8GAayyBIeHFTwQb8u+zrvrOYrifuDGZDr9ad5XsDhiMScpZymhS9fwWjqrgG2ZUwT4vpY0ISqp4Q==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
   '@oxlint/binding-linux-arm-gnueabihf@1.88.0':
     resolution: {integrity: sha512-BLadtw88NdYJBrAtC1dYzrPfSP2d5zgx6iuZycdD0YmZBJ2Nqbit9Z4PSaIb6gxK25dweArGMPbOmq/0ugwUPg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
-  '@oxlint/binding-linux-arm-musleabihf@1.86.0':
-    resolution: {integrity: sha512-oQo83CafLT8p3qh0AGkN0tSUIh5Hm63mfDsoqUmBQUBnSZLNBAbyRaAftfGY5a0cKZ34dG6jAtMYgcY5kZqt5g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
@@ -1755,26 +1567,12 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@oxlint/binding-linux-arm64-gnu@1.86.0':
-    resolution: {integrity: sha512-EM6wy5c2UM12qPb7iDJDBAZvHyfEJGH6iosFgaFiaRZpirz99//EHcUyD2KAskz07x1TULuiAtsojf4nvWWksw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
   '@oxlint/binding-linux-arm64-gnu@1.88.0':
     resolution: {integrity: sha512-jutT2Hy8JCuZuMwIFHo2HtyxfOfBJHyQxlBHBK1SL9W2f8n/WhjAP0FnDMz9d/mjhv9+QA0mx5AdQ9fDjsrFFg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
-
-  '@oxlint/binding-linux-arm64-musl@1.86.0':
-    resolution: {integrity: sha512-vCiUQb9ZNzZalxYRU4mlZwUqT5f+c7Sk9DwUOplWHtik3Dl4r3DVnUB5tBeRuTAUe6MUVCTylNW7TkkN8J1oTw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
 
   '@oxlint/binding-linux-arm64-musl@1.88.0':
     resolution: {integrity: sha512-8N8iGV9hh4Lkeuq7QsEkjoXNRRflqR1G2qyoGYXcA0k5qllrdqmfylKEXyHIVERxqNDyMO4StqDQ0uLxXcBQAg==}
@@ -1783,24 +1581,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-linux-ppc64-gnu@1.86.0':
-    resolution: {integrity: sha512-T0AzE89yjTYmOhB/hb6i+rWTpe2mYt+xiguBhs9DEPIJTZ1H8OYqsE4VxJHHw2Wlq8Mztwvp2P8NV87ZOuhPRw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
   '@oxlint/binding-linux-ppc64-gnu@1.88.0':
     resolution: {integrity: sha512-5ydcQt3znNQ/rGEWYRvpS2cK9+T18P2VYgnyJ+eloEAwi9YUmsXy5VGrRqNWIK6qzWwHGnEE3ojVqqQNo+f0hA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
-  '@oxlint/binding-linux-riscv64-gnu@1.86.0':
-    resolution: {integrity: sha512-s49r0K2f5Oc7fJoMUO1WkdhYK5Ob79uYRwWQ/XNoGysaOq3RUGmGUbHSuXiyydTTA+P9xEdDEnnlZVXiaSJhlw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [riscv64]
     os: [linux]
     libc: [glibc]
 
@@ -1811,13 +1595,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-riscv64-musl@1.86.0':
-    resolution: {integrity: sha512-JIa2tYR8ayb3nvcMSZzn4O/xTy13S7MHllu7cBD+B5qDQXXSRy/Vwk1aNpiTjZmBJGwKCHOy/NvnY5Xcwg27uQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [riscv64]
-    os: [linux]
-    libc: [musl]
-
   '@oxlint/binding-linux-riscv64-musl@1.88.0':
     resolution: {integrity: sha512-Wt47mKMWelVjRjuR7BCFxXkB0m79K1sTEbqMHRWciKUgo5iv7sWsF4RXSOyFYHD9zerNrkRZblnN273rhwOA1Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1825,24 +1602,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-linux-s390x-gnu@1.86.0':
-    resolution: {integrity: sha512-XwXMyBsAuWZkhZU74UNcfQKr1CJJAKnS80dZzOnjl6A4fKcf91IjFgidegQugMHA5SN8ulwDXEDV1yPntjXgQQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
   '@oxlint/binding-linux-s390x-gnu@1.88.0':
     resolution: {integrity: sha512-g3L12KCS4+1gtUt3RbJ4F+Yxx4LNmmZLEPfhd8rAHEJjJk2lAgNfnjGoP/phJyhG5WS6VbNYbJtadJelNfvTMA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
-  '@oxlint/binding-linux-x64-gnu@1.86.0':
-    resolution: {integrity: sha512-C1WjukSyMnr66b+w1/tV8RFVv6d9v0MzDf4p9IxVXknqgmTHBgZh1pccN1eHzFr0b9Tbb3OXoPsAAdAuHAQfeA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [linux]
     libc: [glibc]
 
@@ -1853,13 +1616,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-x64-musl@1.86.0':
-    resolution: {integrity: sha512-ap6KLmvC38c6MdYzsIh25cXQupqYvjd37tMNftzrX1DCtkX1Gcf2B+S2B17dD4lKa5c5gJog7DQJyDo82PBKyw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
   '@oxlint/binding-linux-x64-musl@1.88.0':
     resolution: {integrity: sha512-EmhBsp+xuKb6YbZNEMLBo80Xw71AZOIm18do8ni/GLX/Lw1XzNhVYpbxO1KasYtoAvrGtCOdCPULRlIE0bPbTQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1867,23 +1623,11 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-openharmony-arm64@1.86.0':
-    resolution: {integrity: sha512-996Q9w/2GLwNyy5Djs39Jt09aFlr4b7TPhoj7dvo5FHmcyiF68nPz73HNc5UAYKIYeK+M9JzPQ4Wg1r1dXvP6A==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [openharmony]
-
   '@oxlint/binding-openharmony-arm64@1.88.0':
     resolution: {integrity: sha512-DBUcx/KwYdg1DAz+G01P/GFv512J04EsZadbHptx2FTpWT/MWRg21ZToNHt9pnsfQRBQ3et/g+vqzbvrdAVbuA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
-
-  '@oxlint/binding-win32-arm64-msvc@1.86.0':
-    resolution: {integrity: sha512-9uTCHYTknNkug5+46ViSoUMuOuGWK61D87QnblU6CXaWKJC630Z7dbls61vdHxya/cR2ycQZ6Mm6ckgF6Cag5g==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [win32]
 
   '@oxlint/binding-win32-arm64-msvc@1.88.0':
     resolution: {integrity: sha512-xeVd0n4XG5HvynxfYvXi6uB+JvZbVZataowPS8cYpMbYg9mwE4sSyElFQd4LVJFifq8bRLDSR18XgEildmcXAg==}
@@ -1891,22 +1635,10 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@oxlint/binding-win32-ia32-msvc@1.86.0':
-    resolution: {integrity: sha512-a47ga7EKVfMU8rO0i1m3mGwfNRj3FhQyt1d/ukO/E9u1HHF3KpR3tyb3VhuJBGEVPF8uR4exSyHUyx7xbE+uxw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ia32]
-    os: [win32]
-
   '@oxlint/binding-win32-ia32-msvc@1.88.0':
     resolution: {integrity: sha512-MA6iOw//amleaz2mVMsZrA7NHlEexjTrhIxSMFCXQi6IUuQO+3Od00GZhr2iCYw6RFzMW36jkKK/WHBXMsoQAw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
-    os: [win32]
-
-  '@oxlint/binding-win32-x64-msvc@1.86.0':
-    resolution: {integrity: sha512-az4dzifCRzES1crwu6pDFXzJTIanrdxXFL9TbiJWrx9LKcuacbR83aPvxDA1LKLNswi/RoqitC7Afcflhu3zBQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [win32]
 
   '@oxlint/binding-win32-x64-msvc@1.88.0':
@@ -3144,19 +2876,6 @@ packages:
     resolution: {integrity: sha512-Gr/6fkjZwi937c4Tsz8y0iO4U0FLPkZI6JSVucLAIvQyqh379px7RS8ORIc0HOORbFjXZ6zyqWLl53qxhSeofw==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
-  oxfmt@0.71.0:
-    resolution: {integrity: sha512-lUPUl0d/+Io5pDrsPXWs6rB4N/bpB78oj9CTDpnbulfDz+0r3XXcHPlQ7kRPJ2GjIT4nX+/mcqunOeP9BvsEtg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      svelte: ^5.0.0
-      vite-plus: '*'
-    peerDependenciesMeta:
-      svelte:
-        optional: true
-      vite-plus:
-        optional: true
-
   oxfmt@0.73.0:
     resolution: {integrity: sha512-Ke4xbpuzqIBP4bkd48q815RhqWNJqOBzxVA9199M4qcF0y0LtpUv7UTg1dJ5ea6jw0RBUDZvX3qOUMNmmxfxbw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3177,26 +2896,9 @@ packages:
     resolution: {integrity: sha512-S67hB1/w+sRb8Qa7EBU9nSoopjZ8a/vY1pqHYBYm9rFm9H60ovpGodxPdqxI/p/OGpmPUY2ARLKPx43l5BxwGg==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
-  oxlint-tsgolint@7.0.2003:
-    resolution: {integrity: sha512-VnK4zlqgmgq/7ZcjzCk/WpN8kKFsYGcB85Io9qT3wL4K8Un3RKmJkp793crNETieMusPMKOA4a+Mw2wbteI6TQ==}
-    hasBin: true
-
   oxlint-tsgolint@7.0.2004:
     resolution: {integrity: sha512-vQ9WDF3fiZJvRdSDosNOflerOCOpwol6vWzVDxW76RcU19cjTh7engvkHLvmv+tzedR8fAiJUVUGr6IVZdkzXQ==}
     hasBin: true
-
-  oxlint@1.86.0:
-    resolution: {integrity: sha512-og0lhgvZfgGF//gOOmZXvtr+GmBbAGEnbEhv/QUg7UW2Wi4wHMnJbnMD+zuHgPdJxdklfgpPupdlAaAySyxrZg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      oxlint-tsgolint: '>=7.0.2003'
-      vite-plus: '*'
-    peerDependenciesMeta:
-      oxlint-tsgolint:
-        optional: true
-      vite-plus:
-        optional: true
 
   oxlint@1.88.0:
     resolution: {integrity: sha512-uIcFgw8BmqvFRGzH5+r7d2zJMEexwNSrEmM6WQNnGh3VkO0XYTEFoyxyNE6tjKMUib9Cue4XJA2DoWruO5D6aw==}
@@ -3826,265 +3528,133 @@ snapshots:
 
   '@oxc-project/types@0.154.0': {}
 
-  '@oxfmt/binding-android-arm-eabi@0.71.0':
-    optional: true
-
   '@oxfmt/binding-android-arm-eabi@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-android-arm64@0.71.0':
     optional: true
 
   '@oxfmt/binding-android-arm64@0.73.0':
     optional: true
 
-  '@oxfmt/binding-darwin-arm64@0.71.0':
-    optional: true
-
   '@oxfmt/binding-darwin-arm64@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-darwin-x64@0.71.0':
     optional: true
 
   '@oxfmt/binding-darwin-x64@0.73.0':
     optional: true
 
-  '@oxfmt/binding-freebsd-x64@0.71.0':
-    optional: true
-
   '@oxfmt/binding-freebsd-x64@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-linux-arm-gnueabihf@0.71.0':
     optional: true
 
   '@oxfmt/binding-linux-arm-gnueabihf@0.73.0':
     optional: true
 
-  '@oxfmt/binding-linux-arm-musleabihf@0.71.0':
-    optional: true
-
   '@oxfmt/binding-linux-arm-musleabihf@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-linux-arm64-gnu@0.71.0':
     optional: true
 
   '@oxfmt/binding-linux-arm64-gnu@0.73.0':
     optional: true
 
-  '@oxfmt/binding-linux-arm64-musl@0.71.0':
-    optional: true
-
   '@oxfmt/binding-linux-arm64-musl@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-linux-ppc64-gnu@0.71.0':
     optional: true
 
   '@oxfmt/binding-linux-ppc64-gnu@0.73.0':
     optional: true
 
-  '@oxfmt/binding-linux-riscv64-gnu@0.71.0':
-    optional: true
-
   '@oxfmt/binding-linux-riscv64-gnu@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-linux-riscv64-musl@0.71.0':
     optional: true
 
   '@oxfmt/binding-linux-riscv64-musl@0.73.0':
     optional: true
 
-  '@oxfmt/binding-linux-s390x-gnu@0.71.0':
-    optional: true
-
   '@oxfmt/binding-linux-s390x-gnu@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-linux-x64-gnu@0.71.0':
     optional: true
 
   '@oxfmt/binding-linux-x64-gnu@0.73.0':
     optional: true
 
-  '@oxfmt/binding-linux-x64-musl@0.71.0':
-    optional: true
-
   '@oxfmt/binding-linux-x64-musl@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-openharmony-arm64@0.71.0':
     optional: true
 
   '@oxfmt/binding-openharmony-arm64@0.73.0':
     optional: true
 
-  '@oxfmt/binding-win32-arm64-msvc@0.71.0':
-    optional: true
-
   '@oxfmt/binding-win32-arm64-msvc@0.73.0':
-    optional: true
-
-  '@oxfmt/binding-win32-ia32-msvc@0.71.0':
     optional: true
 
   '@oxfmt/binding-win32-ia32-msvc@0.73.0':
     optional: true
 
-  '@oxfmt/binding-win32-x64-msvc@0.71.0':
-    optional: true
-
   '@oxfmt/binding-win32-x64-msvc@0.73.0':
-    optional: true
-
-  '@oxlint-tsgolint/darwin-arm64@7.0.2003':
     optional: true
 
   '@oxlint-tsgolint/darwin-arm64@7.0.2004':
     optional: true
 
-  '@oxlint-tsgolint/darwin-x64@7.0.2003':
-    optional: true
-
   '@oxlint-tsgolint/darwin-x64@7.0.2004':
-    optional: true
-
-  '@oxlint-tsgolint/linux-arm64@7.0.2003':
     optional: true
 
   '@oxlint-tsgolint/linux-arm64@7.0.2004':
     optional: true
 
-  '@oxlint-tsgolint/linux-x64@7.0.2003':
-    optional: true
-
   '@oxlint-tsgolint/linux-x64@7.0.2004':
-    optional: true
-
-  '@oxlint-tsgolint/win32-arm64@7.0.2003':
     optional: true
 
   '@oxlint-tsgolint/win32-arm64@7.0.2004':
     optional: true
 
-  '@oxlint-tsgolint/win32-x64@7.0.2003':
-    optional: true
-
   '@oxlint-tsgolint/win32-x64@7.0.2004':
-    optional: true
-
-  '@oxlint/binding-android-arm-eabi@1.86.0':
     optional: true
 
   '@oxlint/binding-android-arm-eabi@1.88.0':
     optional: true
 
-  '@oxlint/binding-android-arm64@1.86.0':
-    optional: true
-
   '@oxlint/binding-android-arm64@1.88.0':
-    optional: true
-
-  '@oxlint/binding-darwin-arm64@1.86.0':
     optional: true
 
   '@oxlint/binding-darwin-arm64@1.88.0':
     optional: true
 
-  '@oxlint/binding-darwin-x64@1.86.0':
-    optional: true
-
   '@oxlint/binding-darwin-x64@1.88.0':
-    optional: true
-
-  '@oxlint/binding-freebsd-x64@1.86.0':
     optional: true
 
   '@oxlint/binding-freebsd-x64@1.88.0':
     optional: true
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.86.0':
-    optional: true
-
   '@oxlint/binding-linux-arm-gnueabihf@1.88.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm-musleabihf@1.86.0':
     optional: true
 
   '@oxlint/binding-linux-arm-musleabihf@1.88.0':
     optional: true
 
-  '@oxlint/binding-linux-arm64-gnu@1.86.0':
-    optional: true
-
   '@oxlint/binding-linux-arm64-gnu@1.88.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm64-musl@1.86.0':
     optional: true
 
   '@oxlint/binding-linux-arm64-musl@1.88.0':
     optional: true
 
-  '@oxlint/binding-linux-ppc64-gnu@1.86.0':
-    optional: true
-
   '@oxlint/binding-linux-ppc64-gnu@1.88.0':
-    optional: true
-
-  '@oxlint/binding-linux-riscv64-gnu@1.86.0':
     optional: true
 
   '@oxlint/binding-linux-riscv64-gnu@1.88.0':
     optional: true
 
-  '@oxlint/binding-linux-riscv64-musl@1.86.0':
-    optional: true
-
   '@oxlint/binding-linux-riscv64-musl@1.88.0':
-    optional: true
-
-  '@oxlint/binding-linux-s390x-gnu@1.86.0':
     optional: true
 
   '@oxlint/binding-linux-s390x-gnu@1.88.0':
     optional: true
 
-  '@oxlint/binding-linux-x64-gnu@1.86.0':
-    optional: true
-
   '@oxlint/binding-linux-x64-gnu@1.88.0':
-    optional: true
-
-  '@oxlint/binding-linux-x64-musl@1.86.0':
     optional: true
 
   '@oxlint/binding-linux-x64-musl@1.88.0':
     optional: true
 
-  '@oxlint/binding-openharmony-arm64@1.86.0':
-    optional: true
-
   '@oxlint/binding-openharmony-arm64@1.88.0':
-    optional: true
-
-  '@oxlint/binding-win32-arm64-msvc@1.86.0':
     optional: true
 
   '@oxlint/binding-win32-arm64-msvc@1.88.0':
     optional: true
 
-  '@oxlint/binding-win32-ia32-msvc@1.86.0':
-    optional: true
-
   '@oxlint/binding-win32-ia32-msvc@1.88.0':
-    optional: true
-
-  '@oxlint/binding-win32-x64-msvc@1.86.0':
     optional: true
 
   '@oxlint/binding-win32-x64-msvc@1.88.0':
@@ -4092,18 +3662,10 @@ snapshots:
 
   '@oxlint/plugins@1.88.0': {}
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2003)(oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))':
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))':
     optionalDependencies:
-      oxfmt: 0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
-      oxlint: 1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
-      oxlint-tsgolint: 7.0.2003
-      typescript: 7.0.2
-      vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)
-
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(oxlint-tsgolint@7.0.2004)(oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))':
-    optionalDependencies:
-      oxfmt: 0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
-      oxlint: 1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+      oxfmt: 0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
+      oxlint: 1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2))
       oxlint-tsgolint: 7.0.2004
       typescript: 7.0.2
       vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)
@@ -5097,32 +4659,6 @@ snapshots:
       '@oxc-parser/binding-win32-ia32-msvc': 0.154.0
       '@oxc-parser/binding-win32-x64-msvc': 0.154.0
 
-  oxfmt@0.71.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)):
-    dependencies:
-      tinypool: 2.2.0
-    optionalDependencies:
-      '@oxfmt/binding-android-arm-eabi': 0.71.0
-      '@oxfmt/binding-android-arm64': 0.71.0
-      '@oxfmt/binding-darwin-arm64': 0.71.0
-      '@oxfmt/binding-darwin-x64': 0.71.0
-      '@oxfmt/binding-freebsd-x64': 0.71.0
-      '@oxfmt/binding-linux-arm-gnueabihf': 0.71.0
-      '@oxfmt/binding-linux-arm-musleabihf': 0.71.0
-      '@oxfmt/binding-linux-arm64-gnu': 0.71.0
-      '@oxfmt/binding-linux-arm64-musl': 0.71.0
-      '@oxfmt/binding-linux-ppc64-gnu': 0.71.0
-      '@oxfmt/binding-linux-riscv64-gnu': 0.71.0
-      '@oxfmt/binding-linux-riscv64-musl': 0.71.0
-      '@oxfmt/binding-linux-s390x-gnu': 0.71.0
-      '@oxfmt/binding-linux-x64-gnu': 0.71.0
-      '@oxfmt/binding-linux-x64-musl': 0.71.0
-      '@oxfmt/binding-openharmony-arm64': 0.71.0
-      '@oxfmt/binding-win32-arm64-msvc': 0.71.0
-      '@oxfmt/binding-win32-ia32-msvc': 0.71.0
-      '@oxfmt/binding-win32-x64-msvc': 0.71.0
-      vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)
-    optional: true
-
   oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)):
     dependencies:
       tinypool: 2.2.0
@@ -5150,16 +4686,6 @@ snapshots:
 
   oxlint-plugin-eslint@1.88.0: {}
 
-  oxlint-tsgolint@7.0.2003:
-    optionalDependencies:
-      '@oxlint-tsgolint/darwin-arm64': 7.0.2003
-      '@oxlint-tsgolint/darwin-x64': 7.0.2003
-      '@oxlint-tsgolint/linux-arm64': 7.0.2003
-      '@oxlint-tsgolint/linux-x64': 7.0.2003
-      '@oxlint-tsgolint/win32-arm64': 7.0.2003
-      '@oxlint-tsgolint/win32-x64': 7.0.2003
-    optional: true
-
   oxlint-tsgolint@7.0.2004:
     optionalDependencies:
       '@oxlint-tsgolint/darwin-arm64': 7.0.2004
@@ -5168,56 +4694,6 @@ snapshots:
       '@oxlint-tsgolint/linux-x64': 7.0.2004
       '@oxlint-tsgolint/win32-arm64': 7.0.2004
       '@oxlint-tsgolint/win32-x64': 7.0.2004
-
-  oxlint@1.86.0(oxlint-tsgolint@7.0.2003)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)):
-    optionalDependencies:
-      '@oxlint/binding-android-arm-eabi': 1.86.0
-      '@oxlint/binding-android-arm64': 1.86.0
-      '@oxlint/binding-darwin-arm64': 1.86.0
-      '@oxlint/binding-darwin-x64': 1.86.0
-      '@oxlint/binding-freebsd-x64': 1.86.0
-      '@oxlint/binding-linux-arm-gnueabihf': 1.86.0
-      '@oxlint/binding-linux-arm-musleabihf': 1.86.0
-      '@oxlint/binding-linux-arm64-gnu': 1.86.0
-      '@oxlint/binding-linux-arm64-musl': 1.86.0
-      '@oxlint/binding-linux-ppc64-gnu': 1.86.0
-      '@oxlint/binding-linux-riscv64-gnu': 1.86.0
-      '@oxlint/binding-linux-riscv64-musl': 1.86.0
-      '@oxlint/binding-linux-s390x-gnu': 1.86.0
-      '@oxlint/binding-linux-x64-gnu': 1.86.0
-      '@oxlint/binding-linux-x64-musl': 1.86.0
-      '@oxlint/binding-openharmony-arm64': 1.86.0
-      '@oxlint/binding-win32-arm64-msvc': 1.86.0
-      '@oxlint/binding-win32-ia32-msvc': 1.86.0
-      '@oxlint/binding-win32-x64-msvc': 1.86.0
-      oxlint-tsgolint: 7.0.2003
-      vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)
-    optional: true
-
-  oxlint@1.86.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)):
-    optionalDependencies:
-      '@oxlint/binding-android-arm-eabi': 1.86.0
-      '@oxlint/binding-android-arm64': 1.86.0
-      '@oxlint/binding-darwin-arm64': 1.86.0
-      '@oxlint/binding-darwin-x64': 1.86.0
-      '@oxlint/binding-freebsd-x64': 1.86.0
-      '@oxlint/binding-linux-arm-gnueabihf': 1.86.0
-      '@oxlint/binding-linux-arm-musleabihf': 1.86.0
-      '@oxlint/binding-linux-arm64-gnu': 1.86.0
-      '@oxlint/binding-linux-arm64-musl': 1.86.0
-      '@oxlint/binding-linux-ppc64-gnu': 1.86.0
-      '@oxlint/binding-linux-riscv64-gnu': 1.86.0
-      '@oxlint/binding-linux-riscv64-musl': 1.86.0
-      '@oxlint/binding-linux-s390x-gnu': 1.86.0
-      '@oxlint/binding-linux-x64-gnu': 1.86.0
-      '@oxlint/binding-linux-x64-musl': 1.86.0
-      '@oxlint/binding-openharmony-arm64': 1.86.0
-      '@oxlint/binding-win32-arm64-msvc': 1.86.0
-      '@oxlint/binding-win32-ia32-msvc': 1.86.0
-      '@oxlint/binding-win32-x64-msvc': 1.86.0
-      oxlint-tsgolint: 7.0.2004
-      vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)
-    optional: true
 
   oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(publint@0.3.25)(typescript@7.0.2)):
     optionalDependencies:

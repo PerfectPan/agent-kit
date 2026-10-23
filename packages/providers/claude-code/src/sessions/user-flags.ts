@@ -1,4 +1,4 @@
-import type { ClaudeCodeRecordValue } from "../records/record.js";
+import type { ClaudeCodeContentBlockValue, ClaudeCodeRecordValue } from "../records/record.js";
 
 /** The fields the prompt rules read, shared by the envelope-checked and the body-only record parses. */
 type UserRecord = Pick<ClaudeCodeRecordValue, "isMeta" | "isCompactSummary" | "origin" | "message">;
@@ -8,6 +8,30 @@ const COMMAND_WRAPPER =
   /^\s*<(?:command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|bash-input|bash-stdout|bash-stderr)>/;
 /** Text the CLI injects into the user role. Not prompts. */
 const INJECTED = /^\s*(?:<task-notification>|<system-reminder>|\[Request interrupted)/;
+/**
+ * Host context the CLI adds beside the user's text: the IDE's opened file and selection. Not prompts. A fork's
+ * `<fork-boilerplate>` block is no host context: the same block carries the directive, so it is the user's own text.
+ */
+const HOST_CONTEXT = /^\s*<(?:ide_opened_file|ide_selection)>/;
+
+/** A text block the host adds, so it is no part of the user's prompt, alone or beside the user's own blocks. */
+export function isHostAddedText(text: string): boolean {
+  return INJECTED.test(text) || HOST_CONTEXT.test(text);
+}
+
+/** A content block that carries host-added text; any other block, such as an image, is the user's own. */
+function isHostAddedBlock(block: ClaudeCodeContentBlockValue | undefined): boolean {
+  return block?.type === "text" && block.text !== undefined && isHostAddedText(block.text);
+}
+
+/** The record's content as blocks: its string content as the only text block, else its blocks in order. */
+function contentBlocks(record: UserRecord): readonly (ClaudeCodeContentBlockValue | undefined)[] {
+  const content = record.message?.content;
+  if (typeof content === "string") {
+    return [{ type: "text", text: content }];
+  }
+  return Array.isArray(content) ? content : [];
+}
 
 /** The `MessagePayload` flags that tell a real prompt from other user-role records. */
 export interface ClaudeCodeUserFlags {
@@ -17,37 +41,51 @@ export interface ClaudeCodeUserFlags {
   injected?: true;
 }
 
-/** The text of a user record: its string content, or its first text block. Titles and turn flags use this rule. */
-export function recordText(record: UserRecord): string | undefined {
-  const content = record.message?.content;
-  if (typeof content === "string") {
-    return content;
-  }
-  if (!Array.isArray(content)) {
-    return undefined;
-  }
-  for (const block of content) {
+/** The texts of a record's blocks: its string content as the only block, else its text blocks in order. */
+function blockTexts(record: UserRecord): string[] {
+  const texts: string[] = [];
+  for (const block of contentBlocks(record)) {
     if (block?.type === "text" && block.text !== undefined) {
-      return block.text;
+      texts.push(block.text);
     }
   }
-  return undefined;
+  return texts;
+}
+
+/**
+ * The prompt text of a user record: its blocks that are not host-added, each trimmed, joined with a blank line.
+ * `undefined` when none remains, so a record the host filled entirely, or whose own text is only whitespace,
+ * collects no prompt and no title.
+ */
+export function recordText(record: UserRecord): string | undefined {
+  const own = blockTexts(record)
+    .filter((text) => !isHostAddedText(text))
+    .map((text) => text.trim())
+    .filter((text) => text !== "");
+  return own.length === 0 ? undefined : own.join("\n\n");
 }
 
 export function userFlags(record: UserRecord): ClaudeCodeUserFlags {
   const flags: ClaudeCodeUserFlags = {};
-  const text = recordText(record) ?? "";
   if (record.isMeta) {
     flags.meta = true;
   }
   if (record.isCompactSummary) {
     flags.compactSummary = true;
   }
-  if (COMMAND_WRAPPER.test(text)) {
+  const texts = blockTexts(record);
+  const own = texts.find((text) => !isHostAddedText(text));
+  if (own !== undefined && COMMAND_WRAPPER.test(own)) {
     flags.command = true;
   }
   const origin = record.origin?.kind;
-  if (INJECTED.test(text) || (origin !== undefined && origin !== "human")) {
+  // A record is injected when it holds nothing of the user's own: every block is host-added text. An image or any
+  // other non-text block is the user's own, so an image beside host context keeps the record a prompt.
+  const blocks = contentBlocks(record);
+  if (
+    (blocks.length > 0 && blocks.every((block) => isHostAddedBlock(block))) ||
+    (origin !== undefined && origin !== "human")
+  ) {
     flags.injected = true;
   }
   return flags;

@@ -1,8 +1,4 @@
-import {
-  createAcpPartTranslator,
-  createStreamFolder,
-  type TranscriptStreamPart
-} from "@rivus/agent-kit-sessions/public";
+import { createAcpPartTranslator, type TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -100,6 +96,9 @@ function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effec
       ...(binding === undefined ? {} : { binding })
     };
     if (owned) {
+      // A cancel that never settles fails the turn like a failed prompt: its open text and reasoning close into its
+      // own stream first, so the partial text is this turn's event.
+      emit(conn, live, turn, turn.translator.closeOpen());
       Queue.failCauseUnsafe(turn.sink, Cause.fail(unsettled));
     }
     return unsettled;
@@ -156,8 +155,7 @@ function prompt(
       const number = live.session.toSnapshot().turns;
       const turn: Turn = {
         sink,
-        translator: createAcpPartTranslator(`${number}.`),
-        folder: createStreamFolder(),
+        translator: createAcpPartTranslator(`${number}.`, live.toolState),
         ended: Deferred.makeUnsafe(),
         cancelRequested: Deferred.makeUnsafe()
       };
@@ -229,7 +227,7 @@ export function sessionHandle(
 /** Delivers one `session/update` to the running turn; between turns, such as during a load's replay, it is dropped. */
 export function deliverUpdate(conn: ConnectionState, live: LiveSession, update: Record<string, unknown>): void {
   if (live.turn !== undefined) {
-    emit(conn, live.turn, live.turn.translator.update(update));
+    emit(conn, live, live.turn, live.turn.translator.update(update));
   }
 }
 

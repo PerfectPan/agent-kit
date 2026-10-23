@@ -279,18 +279,45 @@ export interface AcpPartTranslator {
   update(update: Record<string, unknown>): TranscriptStreamPart[];
   /** Closes what is still open and ends the turn with the `session/prompt` response. */
   finish(response: { readonly stopReason: string; readonly usage?: unknown }): TranscriptStreamPart[];
+  /**
+   * The parts that close the turn's open text and reasoning, for a turn that ends without a response: its stream
+   * takes them before it fails, so the partial text is that turn's event.
+   */
+  closeOpen(): TranscriptStreamPart[];
 }
 
 /**
  * A translator for one session. Part ids start with `prefix` and count up, so they stay unique across the turns of
  * the session. A text or reasoning part runs until another kind of update arrives, or a chunk names another
  * `messageId`; a tool call reports its input whenever an update supplies one and its output once, when it ends.
+ *
+ * `state` lets a caller create one translator per turn and still keep the tool state with the session; without it
+ * the maps are the translator's own. A turn's deltas stay self-contained: the first update a turn carries for an
+ * open call sends `tool-input-start` and `tool-input-available` with the call's merged name, title and input, even
+ * when an earlier turn introduced the call — the session's folder emits the `tool_call` once, and folding that turn
+ * alone repeats it with the input the call had when it was emitted. An update for a call whose result is out emits
+ * nothing: its input and output are gone by design. At `finish`, a call still open that no earlier finish has
+ * closed takes its start and input parts before the finish, which closes it; a failed turn sends no finish, so such
+ * a call stays open for the next one. Once a call's result is out, its input and output are dropped from the state;
+ * each ended call keeps `{ callId, name, title?, status }`, so a long session's state does not grow with its
+ * finished calls.
  */
-export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
+export function createAcpPartTranslator(
+  prefix: string,
+  state?: {
+    readonly tools: Map<string, AcpToolState>;
+    readonly ended: Set<string>;
+    /** The open calls a successful `finish` has closed; a later finish does not re-send them. */
+    readonly closed: Set<string>;
+  }
+): AcpPartTranslator {
   let counter = 0;
   const nextId = () => `${prefix}${counter++}`;
-  const tools = new Map<string, AcpToolState>();
-  const ended = new Set<string>();
+  const tools = state?.tools ?? new Map<string, AcpToolState>();
+  const ended = state?.ended ?? new Set<string>();
+  const closed = state?.closed ?? new Set<string>();
+  /** The calls this translator's turn has already sent the input parts for; one translator runs one turn. */
+  const mentioned = new Set<string>();
   let open: { readonly kind: "text" | "reasoning"; readonly id: string; readonly messageId?: string } | undefined;
 
   const close = (): TranscriptStreamPart[] => {
@@ -320,17 +347,32 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
 
   const tool = (update: AcpUpdateValue): TranscriptStreamPart[] => {
     const parts = close();
+    // The call is over — its input and output are gone by design — and an update for it emits nothing, in the turn
+    // that ended it or a later one.
+    if (ended.has(update.toolCallId ?? "")) {
+      return parts;
+    }
     const prevTitle = tools.get(update.toolCallId ?? "")?.title;
     const { state, first } = mergeAcpToolUpdate(tools, update);
     const { callId: toolCallId, name: toolName } = state;
     // mergeAcpToolUpdate keeps `title` different from `name`, and clears it when a later title equals the name.
     const title = state.title === undefined ? {} : { title: state.title };
     if (first) {
+      mentioned.add(toolCallId);
       parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
-    }
-    // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
-    // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
-    if (supplied(update.rawInput) || state.title !== prevTitle) {
+      // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
+      // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
+      if (supplied(update.rawInput) || state.title !== prevTitle) {
+        parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
+      }
+    } else if (!mentioned.has(toolCallId)) {
+      // A turn's deltas are self-contained: a call an earlier turn introduced still opens with its start and its
+      // merged input here, so no consumer meets an output without the call it belongs to. The session's folder
+      // emits the `tool_call` once; folding this turn alone repeats it with the full input.
+      mentioned.add(toolCallId);
+      parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
+      parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
+    } else if (supplied(update.rawInput) || state.title !== prevTitle) {
       parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
     }
     if (isAcpToolDone(state) && !ended.has(toolCallId)) {
@@ -341,6 +383,11 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
           ? { type: "tool-output-error", toolCallId, errorText: errorText(state), ...output }
           : { type: "tool-output-available", toolCallId, ...output }
       );
+    }
+    // The result is out: later updates for this call can emit nothing, so its input and output are not kept.
+    if (ended.has(toolCallId)) {
+      delete state.args;
+      delete state.output;
     }
     return parts;
   };
@@ -377,15 +424,35 @@ export function createAcpPartTranslator(prefix: string): AcpPartTranslator {
     },
     finish(response) {
       const usage = acpUsage(response.usage);
-      return [
-        ...close(),
-        {
-          type: "finish",
-          id: nextId(),
-          finishReason: response.stopReason,
-          ...(usage === undefined ? {} : { usage })
+      // A call still open when an earlier turn failed stayed open in the session state: this finish closes it, so
+      // the turn re-sends its start and input first and its deltas stay self-contained. A call an earlier finish
+      // closed is not re-sent, and a call that ended needs nothing.
+      const parts = close();
+      for (const [callId, state] of tools) {
+        if (ended.has(callId) || closed.has(callId)) {
+          continue;
         }
-      ];
-    }
+        const title = state.title === undefined ? {} : { title: state.title };
+        if (!mentioned.has(callId)) {
+          parts.push({ type: "tool-input-start", toolCallId: callId, toolName: state.name, ...title });
+          parts.push({
+            type: "tool-input-available",
+            toolCallId: callId,
+            toolName: state.name,
+            input: state.args,
+            ...title
+          });
+        }
+        closed.add(callId);
+      }
+      parts.push({
+        type: "finish",
+        id: nextId(),
+        finishReason: response.stopReason,
+        ...(usage === undefined ? {} : { usage })
+      });
+      return parts;
+    },
+    closeOpen: () => close()
   };
 }

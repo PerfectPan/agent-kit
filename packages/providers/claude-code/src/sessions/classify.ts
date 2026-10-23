@@ -5,7 +5,7 @@ import {
   type ClaudeCodeRecordValue
 } from "../records/record.js";
 import { promptSnapshotPayload } from "./prompt-snapshot.js";
-import { type ClaudeCodeUserFlags, isPromptFlags, recordText, userFlags } from "./user-flags.js";
+import { type ClaudeCodeUserFlags, isHostAddedText, isPromptFlags, recordText, userFlags } from "./user-flags.js";
 import { claudeCodeRequestKey } from "../records/usage.js";
 
 /** Record types that only the CLI reads. Each becomes a skipped record with its type as the reason. */
@@ -61,7 +61,15 @@ function blockEvent(
   switch (blockType) {
     case "text": {
       const text = item.text ?? "";
-      return { kind: role, payload: { ...flags, ...(text ? { text } : {}) } };
+      // A host-added block is no prompt even in a record whose own blocks make the record one.
+      return {
+        kind: role,
+        payload: {
+          ...flags,
+          ...(role === "user" && isHostAddedText(text) ? { injected: true } : {}),
+          ...(text ? { text } : {})
+        }
+      };
     }
     case "image": {
       const mediaType = item.source?.media_type;

@@ -235,7 +235,7 @@ export const boundaries: BoundaryRules = {
       siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX],
+      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ACP, PLATFORM_NODE],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

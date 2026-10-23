@@ -118,13 +118,13 @@ function summaryGates(capabilities: readonly Capability[]): SummaryGates {
 export interface PromptSink {
   /** The collected prompts; `undefined` when the caller asked for none, like the summary's `prompts` field. */
   readonly list: SessionPrompt[] | undefined;
-  /** Adds one prompt start's text: it lands while the collection is under `limit`, and only a non-empty string. */
+  /** Adds one prompt start's text: trimmed, it lands while the collection is under `limit`, and only when it keeps text. */
   add(text: unknown): void;
 }
 
 /**
  * The sink a pass fills while it folds: the first `limit` non-empty texts of the main lane's prompt starts, each
- * sliced to `maxChars` — the rule `sessionPrompts` applies to a loaded transcript.
+ * trimmed and sliced to `maxChars` — the rule `sessionPrompts` applies to a loaded transcript.
  */
 export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
   const limit = options?.limit ?? 0;
@@ -133,8 +133,9 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
   return {
     list,
     add(text) {
-      if (list !== undefined && list.length < limit && typeof text === "string" && text !== "") {
-        list.push({ text: capPromptText(text, maxChars) });
+      const own = typeof text === "string" ? text.trim() : "";
+      if (list !== undefined && list.length < limit && own !== "") {
+        list.push({ text: capPromptText(own, maxChars) });
       }
     }
   };

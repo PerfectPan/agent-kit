@@ -201,6 +201,31 @@ describe("cancel", () => {
       }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect("an unsettled cancel closes the failed turn's open text into its own stream", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({ cancelTimeoutMs: 5_000 });
+      const session = yield* connection.newSession();
+      const stuck = yield* start(session.prompt([text("stubborn")]));
+      yield* eventually(said(stuck.parts, "working"));
+      const cancel = yield* session.cancel().pipe(Effect.exit, Effect.forkChild);
+      yield* TestClock.adjust(5_000);
+      const cancelled = yield* Fiber.join(cancel);
+      expect(Exit.isFailure(cancelled) && Exit.findErrorOption(cancelled)).toMatchObject({
+        value: { _tag: "CancelUnsettled" }
+      });
+      // The turn's deltas end with the open text's close, and the partial text is its own event.
+      expect(stuck.parts.at(-2)).toMatchObject({ type: "text-end" });
+      expect(stuck.parts.at(-1)).toMatchObject({
+        type: "event",
+        event: { kind: "assistant", payload: { text: expect.stringContaining("working") } }
+      });
+      const turnExit = yield* Fiber.join(stuck.fiber);
+      expect(Exit.isFailure(turnExit) && Exit.findErrorOption(turnExit)).toMatchObject({
+        value: { _tag: "CancelUnsettled" }
+      });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S84: a closed session refuses every operation", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake({ fake: { FAKE_ACP_SESSION_CLOSE: "1" } });
