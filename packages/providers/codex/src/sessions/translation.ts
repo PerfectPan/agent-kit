@@ -193,9 +193,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         part.itemIds = itemIds;
       };
 
-      // Event ids stay unique because every id is taken only while `usedIds` does not hold it, and a taken id moves
-      // to the next free serial of its base. The pattern guarantees nothing by itself: an item may carry any id,
-      // `request:<key>` or `L<n>:<serial>` included, so the check at emission is what keeps ids apart.
+      // Event ids stay unique because every id is taken only while `usedIds` does not hold it, and the check runs
+      // only where ids are retained. A taken id moves to the next free serial of the record's line key — not of the
+      // item's own id. The pattern guarantees nothing by itself: an item may carry any id, `request:<key>` or
+      // `L<n>:<serial>` included, so the check at emission is what keeps ids apart.
       const nextFree = (base: string, serial = 0): string => {
         let candidate = serial === 0 ? base : `${base}:${serial}`;
         while (usedIds.has(candidate)) {
@@ -209,7 +210,7 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         let eventId = id ?? payload.id ?? lineKey(record);
         if (retain) {
           if (usedIds.has(eventId)) {
-            eventId = nextFree(lineKey(record), 1);
+            eventId = nextFree(lineKey(record));
           }
           usedIds.add(eventId);
         }

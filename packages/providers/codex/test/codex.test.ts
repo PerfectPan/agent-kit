@@ -129,9 +129,9 @@ describe("codex translation", () => {
     const ids = transcript.events.map((event) => event.id);
     expect(new Set(ids).size).toBe(ids.length);
     // The user item took `request:r1` first, so the r1 request moves to the first free serial and keeps its
-    // `requestId` key; the r2 request came first, so the later item with its id renames to the first free serial of
-    // its line key.
-    expect(ids).toEqual(["request:r1", "request:r1:1", "msg-a", "request:r2", "L6:1"]);
+    // `requestId` key; the r2 request came first, so the later item with its id renames to the line key, which is
+    // free and the id 0.20 shipped.
+    expect(ids).toEqual(["request:r1", "request:r1:1", "msg-a", "request:r2", "L6"]);
     const [r1, r2] = requests(transcript);
     expect(r1).toMatchObject({ id: "request:r1:1", requestId: "r1" });
     expect(r2).toMatchObject({ id: "request:r2", requestId: "r2" });
