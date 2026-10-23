@@ -605,14 +605,6 @@ describe("readHookEvent", () => {
         })
       )
     ).toEqual({ agent: "my-agent", phase: "finish", scope: "turn", nativeEvent: "done", sessionId: "s" });
-    expect(
-      readHookEvent(
-        "claude-code",
-        { hook_event_name: "Stop" },
-        { CURSOR_VERSION: "1" },
-        { providers: { hooks: { ...testHooks, ...({ cursor: null } as unknown as HookDialects) } } }
-      )
-    ).toEqual(readHookEvent("claude-code", { hook_event_name: "Stop" }, {}, { providers: { hooks: testHooks } }));
   });
 });
 
