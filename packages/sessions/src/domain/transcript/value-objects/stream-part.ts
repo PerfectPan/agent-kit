@@ -29,7 +29,12 @@ type UpdatePart = {
  * `tool-input-available` whenever its input is known or changes, then `tool-output-available` once it has completed
  * or `tool-output-error` once it has failed, with `errorText` for display and the output the agent gave, if any.
  * `update` is an update that becomes one event as it is, such as a plan or a mode change. `finish` ends the turn.
- * `event` carries a completed event; `foldStreamParts` produces the same events from the other parts.
+ * `event` carries a completed event; folding a session's parts in order gives its `event` parts, so the live session
+ * keeps one folder across its turns. Each turn's deltas stay self-contained — an update for an open call the turn
+ * has not yet mentioned repeats the call's start and input first, and the turn's `finish` re-sends the open calls no
+ * earlier finish has closed — so folding one turn alone repeats the `tool_call` of a call that outlived it, with the
+ * input it had when it was emitted. An update for a call whose result is out emits nothing: its input and output are
+ * gone by design.
  */
 export type TranscriptStreamPart =
   | { readonly type: "text-start"; readonly id: string }
