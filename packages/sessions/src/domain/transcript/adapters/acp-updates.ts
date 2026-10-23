@@ -283,7 +283,7 @@ export interface AcpPartTranslator {
    * The parts that close the turn's open text and reasoning, for a turn that ends without a response: its stream
    * takes them before it fails, so the partial text is that turn's event.
    */
-  closeOpen?(): TranscriptStreamPart[];
+  closeOpen(): TranscriptStreamPart[];
 }
 
 /**

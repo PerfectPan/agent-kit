@@ -149,7 +149,9 @@ export function createStreamFolder(): StreamFolder {
             ...(part.usage === undefined ? {} : { usage: part.usage })
           };
           const out = [...closed, ...calls, event("request", `request:${part.id}`, payload, ts)];
-          // The next turn's events number from their start, as a folder per turn numbered them.
+          // Numbering restarts after each `finish`: the next turn's events number from their start, as a
+          // folder per turn numbered them. A turn that fails sends no finish, so the turn after it continues
+          // the count.
           seq = 0;
           return out;
         }

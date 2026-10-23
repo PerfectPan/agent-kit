@@ -96,6 +96,9 @@ function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effec
       ...(binding === undefined ? {} : { binding })
     };
     if (owned) {
+      // A cancel that never settles fails the turn like a failed prompt: its open text and reasoning close into its
+      // own stream first, so the partial text is this turn's event.
+      emit(conn, live, turn, turn.translator.closeOpen());
       Queue.failCauseUnsafe(turn.sink, Cause.fail(unsettled));
     }
     return unsettled;
