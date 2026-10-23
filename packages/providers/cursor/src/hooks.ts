@@ -2,7 +2,6 @@ import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
 import {
   CURSOR_ID,
   CURSOR_VERSION_FIELD,
-  CURSOR_VERSION_ENV,
   CURSOR_TRANSCRIPT_ENV,
   CURSOR_FOREIGN_AGENT,
   CURSOR_FOREIGN_HOOK_FILES
@@ -45,7 +44,7 @@ function gate(fields: readonly string[]): HookOutput {
 
 export const cursorHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
-  hostMarkers: { payloadFields: [CURSOR_VERSION_FIELD], env: [CURSOR_VERSION_ENV] },
+  hostMarkers: { payloadFields: [CURSOR_VERSION_FIELD] },
   agent: CURSOR_ID,
   delivery: "command",
   timeout: { unit: "seconds", unverified: "The default is only called the platform default." },
@@ -149,7 +148,12 @@ export const cursorHookDialect: HookDialect = {
         SessionEnd: "sessionEnd"
       },
       unverified:
-        "Which keys a Claude Code hook receives is undocumented; forum reports show Cursor's (cursor_version)."
+        'The docs\' input schema reads "All hooks receive a base set of fields", `cursor_version` included ' +
+        "(cursor.com/docs/hooks, Reference \u2192 Common schema \u2192 Input (all hooks)); that the Claude Code " +
+        "hooks it loads and runs as mapped Cursor events receive the same base input is an inference from that " +
+        "statement, and forum reports show `cursor_version` in Cursor hook payloads. The third-party page " +
+        "covers loading, name mapping and response compatibility, and warns of behavior differences between " +
+        "execution environments (cursor.com/docs/reference/third-party-hooks)."
     }
   ]
 };
