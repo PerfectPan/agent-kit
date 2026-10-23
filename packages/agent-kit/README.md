@@ -91,9 +91,11 @@ session — there is no live file-following API, and a compaction marks the even
 after the whole session is read. `summarizeSession` reads the agent's bounded summarize pass where it has one and
 folds the loaded transcript otherwise, with the same numbers either way; the pass's memory grows with the session's
 requests, lanes and tool calls, not with the file's bytes. It takes `prompts: { limit, maxChars }` to return the
-main lane's user prompts in the same read: each prompt record's own text blocks — not the text the host adds beside
-them — trimmed and joined, the first `limit` in transcript order, each capped at `maxChars`. Caps outside the range
-fail with `invalid-prompts`. An event's `kind` types its
+main lane's user prompts in the same read: a record's prompt text joins its own text blocks — not the text the host
+adds beside them, and an image block is the user's own — each trimmed, with a blank line between blocks; a record
+whose blocks are all host-added text is injected and counts no turn, one whose own text is only whitespace counts a
+turn without a prompt; the first `limit` records in transcript order, each capped at `maxChars`. Caps that are not
+whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`. An event's `kind` types its
 `payload`: after `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds
 beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
@@ -120,10 +122,11 @@ const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), 
 is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the agent says
 more; a payload or event the dialect does not know reads as `unknown` instead of throwing. Tool arguments are never
 copied, only the tool's name and call id. `terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
-Register observation hooks only on events that are not permission gates, or return the allow response the dialect's
-output rules record; an observer prints the dialect's `passThrough` and must not silently block a gate. Each gate's
-`output` rules decide what its exit codes and stdout do — Cursor's gates block on output the event cannot read, and
-what empty output does there is undocumented.
+Register observation hooks only on events that are not permission gates, or return the allow response the event's
+output rules record; an observer prints the event's `passThrough` — the dialect's unless that event's `output`
+overrides it, as Cursor's `beforeSubmitPrompt` printing `{"continue":true}` — and must not silently block a gate.
+Each gate's `output` rules decide what its exit codes and stdout do — Cursor's gates block on output the event
+cannot read, and what empty output does there is undocumented.
 `builtinHookDialects` holds each agent's hook facts: event names, the timeout unit, which events are permission
 gates and what an observing hook should print.
 
@@ -131,8 +134,8 @@ gates and what an observing hook should print.
 
 `/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It
 plans first and changes agent targets only when the plan is applied; an `InstallPlan` is a handle that cannot be
-constructed or serialized, `applyInstall` takes only a plan `planInstall` returned and fails with `unknown-plan`
-otherwise, so a restart re-plans. Every target change is recorded in a ledger
+constructed or serialized, `applyInstall` takes only a plan `planInstall` returned and dies with an `AgentKitError`
+whose `code` is `"unknown-plan"` otherwise, so a restart re-plans. Every target change is recorded in a ledger
 under `$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
 
 ```ts
@@ -363,7 +366,8 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
   `CancelUnsettled` from turns.
 - Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or
   without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`; test
-  for it with `isAgentKitError`. `readHookEvent` never throws because of a payload.
+  for it with `isAgentKitError`. `summarizeSession` throws the same way, with `code: "invalid-prompts"`, for
+  `prompts` caps that are not whole numbers in range. `readHookEvent` never throws because of a payload.
 
 ## Agents
 

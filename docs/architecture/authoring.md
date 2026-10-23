@@ -263,7 +263,8 @@ SPI exports expose the plain shapes. Provider render requests (`HookSpec`, `Skil
 `InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, a step's `contentAfter`
 result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
 rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
-the `contentAfter` result lives in planning (`plan-install.ts`). `Strategy` lives with the bundle SPI. Registration
+the `contentAfter` result — declared by `PlanStep.contentAfter`; planning resolves it — lives in planning
+(`plan-install.ts`). `Strategy` lives with the bundle SPI. Registration
 observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
 plain snapshots.
 
