@@ -33,7 +33,11 @@ describe("summarizeSession memory", () => {
   const prompts = { limit: 200, maxChars: 500 };
   const agent = "codex" as const;
 
-  const peakDuring = async (files: ReturnType<typeof createMemoryPlatform>, path: string, summarize: boolean): Promise<number> => {
+  const peakDuring = async (
+    files: ReturnType<typeof createMemoryPlatform>,
+    path: string,
+    summarize: boolean
+  ): Promise<number> => {
     gc();
     await new Promise((resolve) => setImmediate(resolve));
     const before = process.memoryUsage().heapUsed;
@@ -46,11 +50,7 @@ describe("summarizeSession memory", () => {
         { prompts, providers: { sessions: testSessions, identity: testIdentity } }
       );
     } else {
-      await loadTranscript(
-        sampled,
-        { agent, path },
-        { providers: { sessions: testSessions, identity: testIdentity } }
-      );
+      await loadTranscript(sampled, { agent, path }, { providers: { sessions: testSessions, identity: testIdentity } });
     }
     return peak.value - before;
   };
