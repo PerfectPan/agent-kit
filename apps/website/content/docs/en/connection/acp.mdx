@@ -5,9 +5,9 @@ description: connectAgent drives one Agent session over ACP.
 
 `@rivus/agent-kit/acp` exports `connectAgent`, `probeAgent`, `agentEnv`, and `SessionBindingStore` and its Layers. It runs with `effect` and a platform that spawns.
 
-`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the agent. Cursor and Pi have no supported ACP transport. The generated support flags are on [Supported Agents](/docs/agents).
+`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent. Cursor and Pi have no supported ACP transport. The generated support flags are on [Supported Agents](/docs/agents).
 
-`connectAgent` starts an agent's ACP program with exactly the environment you pass, completes the handshake and returns a connection that belongs to your Scope. Closing the Scope closes its sessions and stops the process.
+`connectAgent` starts an Agent's ACP program with exactly the environment you pass, completes the handshake and returns a connection that belongs to your Scope. Closing the Scope closes its sessions and stops the process.
 
 A session runs one turn at a time, and `prompt` streams the turn. Deltas are named after AI SDK's stream parts (`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-available`, `tool-output-error`, `finish`) and `event` parts carrying the completed `TranscriptEvent`s.
 

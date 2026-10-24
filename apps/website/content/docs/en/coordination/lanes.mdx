@@ -5,7 +5,7 @@ description: One activation per key, under a global concurrency cap.
 
 `@rivus/agent-kit-collab/lanes` exports `createLanes`. It is an Effect entry and is process-local. It needs `effect` at the peer version from [Installation](/docs/installation). It does not take a platform.
 
-Lanes run work per key, one activation at a time, under a global concurrency cap and a bounded queue. The package knows no particular agent.
+Lanes run work per key, one activation at a time, under a global concurrency cap and a bounded queue. The package knows no particular Agent.
 
 ```ts title="createLanes"
 import { createLanes } from "@rivus/agent-kit-collab/lanes";

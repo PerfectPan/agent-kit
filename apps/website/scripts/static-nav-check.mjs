@@ -217,7 +217,10 @@ try {
   await waitForText(session, "connects to one Agent at a time");
   const docs = await evaluate(session, "location.href");
 
-  await evaluate(session, `document.querySelector('[aria-label="Choose a language"]')?.click()`);
+  await evaluate(
+    session,
+    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
+  );
   await waitForText(session, "中文");
   await evaluate(
     session,
@@ -230,7 +233,10 @@ try {
   await waitForText(session, "两个包使用同一版本");
   const chineseGuide = await evaluate(session, "location.href");
 
-  await evaluate(session, `document.querySelector('[aria-label="Choose a language"]')?.click()`);
+  await evaluate(
+    session,
+    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
+  );
   await waitForText(session, "English");
   await evaluate(
     session,

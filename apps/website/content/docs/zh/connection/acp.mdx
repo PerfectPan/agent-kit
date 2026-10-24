@@ -5,11 +5,11 @@ description: connectAgent 通过 ACP 驱动一个 Agent 会话。
 
 `@rivus/agent-kit/acp` 导出 `connectAgent`、`probeAgent`、`agentEnv`，以及 `SessionBindingStore` 和它的 Layer。它需要 `effect`，以及能够拉起进程的平台。
 
-`/acp` 为 Claude Code（`claude-agent-acp`）、Codex（`codex-acp`）、Gemini CLI、Grok 和 opencode 提供启动配置。配置的 `warnings` 标出尚未对照该 Agent 核对的事实。Cursor 和 Pi 没有受支持的 ACP 传输。生成的支持标志见 [支持的 Agent](/zh/docs/agents)。
+`/acp` 为 Claude Code（`claude-agent-acp`）、Codex（`codex-acp`）、Gemini CLI、Grok 和 opencode 提供启动配置。配置的 `warnings` 列出尚未对照该 Agent 核对过的事实。Cursor 和 Pi 没有受支持的 ACP 传输。生成的支持标志见 [支持的 Agent](/zh/docs/agents)。
 
-`connectAgent` 用你传入的环境原样启动 Agent 的 ACP 程序，完成握手，并返回一个属于你的 Scope 的连接。关闭 Scope 会关闭它的会话并停止进程。
+`connectAgent` 用调用方传入的环境原样启动 Agent 的 ACP 程序，完成握手，并返回一个属于该 Scope 的连接。关闭 Scope 会关闭它的会话并停止进程。
 
-一个会话一次只跑一个回合，`prompt` 以流的形式给出这个回合。增量按 AI SDK 的流部分命名（`text-delta`、`reasoning-delta`、`tool-input-*`、`tool-output-available`、`tool-output-error`、`finish`），`event` 部分携带完成的 `TranscriptEvent`。
+一个会话一次只跑一个回合。`prompt` 以流的形式给出该回合。增量按 AI SDK 的流部分命名（`text-delta`、`reasoning-delta`、`tool-input-*`、`tool-output-available`、`tool-output-error`、`finish`）。`event` 部分携带完成的 `TranscriptEvent`。
 
 ```ts title="connectAgent"
 import * as Effect from "effect/Effect";
@@ -38,13 +38,13 @@ const turn = Effect.scoped(
 await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
 ```
 
-权限请求交给 `onPermission`。没有它，或没有给出回答时，请求被拒绝。
+权限请求交给 `onPermission`。没有该回调，或没有给出回答时，请求被拒绝。
 
-中断回合的流，或调用 `session.cancel()`，会发送 `session/cancel`，并在 `cancelTimeoutMs` 内等待回合结束（默认 5 秒）。没有按时结束时，会话的绑定被移除，连接被关闭，它的其他会话以 `ConnectionClosed` 失败。
+中断回合的流，或调用 `session.cancel()`，会发送 `session/cancel`，并在 `cancelTimeoutMs` 内等待回合结束。默认是 5 秒。没有按时结束时，会话的绑定被移除，连接被关闭。它的其他会话以 `ConnectionClosed` 失败。
 
-`sessionKey` 在 `SessionBindingStore`（`MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`）里把一个键绑定到会话，因此后来的连接可以 `loadSession({ sessionKey })`。
+`sessionKey` 在 `SessionBindingStore` 里把一个键绑定到会话。实现是 `MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`。后来的连接可以 `loadSession({ sessionKey })`。
 
-除非 `fileSystem` 打开它们，客户端的文件读写是关闭的。打开之后，解析链接后仍留在会话目录内。
+客户端的文件读写默认关闭。`fileSystem` 打开它们之后，解析链接后仍须留在会话目录内。
 
 `probeAgent` 打开一次试探会话，并报告 `ready`、`needs-login` 或 `unavailable`。
 

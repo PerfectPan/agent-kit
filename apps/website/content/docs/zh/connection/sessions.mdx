@@ -1,11 +1,11 @@
 ---
 title: 会话与记录
-description: listSessions 读取文件的头和尾。loadTranscript 读取一个会话。
+description: listSessions 读取文件头尾，loadTranscript 读取一个会话。
 ---
 
-`@rivus/agent-kit/sessions` 导出 `listSessions`、`sessionAdapterHome`、`isSessionHead` 和 `SessionAdapter`。它可以在任何环境运行，需要平台。
+`@rivus/agent-kit/sessions` 导出 `listSessions`、`sessionAdapterHome`、`isSessionHead` 和 `SessionAdapter`。任何环境都可以用，需要平台。
 
-`@rivus/agent-kit/transcript` 导出 `loadTranscript`、`summarizeSession`、`Transcript` 和 `TranscriptEvent`。它可以在任何环境运行，需要平台。
+`@rivus/agent-kit/transcript` 导出 `loadTranscript`、`summarizeSession`、`Transcript` 和 `TranscriptEvent`。任何环境都可以用，需要平台。
 
 ```ts title="列出会话并读取一份记录"
 import { createNodePlatform } from "@rivus/agent-kit/node";
@@ -30,33 +30,33 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 }
 ```
 
-`listSessions` 只读取每个文件的头和尾。它对缺失的根（`RootMissing`）或无法读取的文件（`ReadFailed`）产出 `{ ref, error }`，然后继续下一项。在 `listSessions({ agents })` 中指名没有会话适配器的 Agent，会抛出 `code: "capability-unsupported"` 的 `AgentKitError`。
+`listSessions` 只读取每个文件的头和尾。根目录缺失时产出 `{ ref, error }`，`error` 为 `RootMissing`。文件读不了时同样产出，`error` 为 `ReadFailed`。然后继续下一项。在 `listSessions({ agents })` 中指定没有会话适配器的 Agent，会抛出 `code: "capability-unsupported"` 的 `AgentKitError`。
 
-`loadTranscript` 读取一个会话的每个文件，并返回有序的 `events`、它的子 Agent 车道（`agents`），以及跳过的记录。它返回完整会话。没有跟随文件实时更新的 API。压缩只在整个会话读完之后，才用 `shadowedBy` 标出被它替换的事件。
+`loadTranscript` 读取一个会话的每个文件，返回有序的 `events`、子 Agent lane（`agents`），以及跳过的记录。返回的是完整会话。没有跟随文件实时更新的 API。压缩只有在整个会话读完之后，才用 `shadowedBy` 标出被替换的事件。
 
-`loadTranscript` 和 `summarizeSession` 解析为 `Result`：`{ ok: true, value }` 或 `{ ok: false, error }`，其中 `error._tag` 标出失败原因。它们的失败为 `SessionNotFound`、`ReadFailed`、`UnknownFormatGeneration`、`NoAdapterAccepted` 或 `CapabilityUnsupported`。
+`loadTranscript` 和 `summarizeSession` 的结果是 `Result`：`{ ok: true, value }` 或 `{ ok: false, error }`。`error._tag` 标出失败原因。失败为 `SessionNotFound`、`ReadFailed`、`UnknownFormatGeneration`、`NoAdapterAccepted` 或 `CapabilityUnsupported`。
 
 ## 摘要与提示词
 
-`summarizeSession` 在 Agent 有自己的有界摘要过程时读取它，否则折叠已加载的 transcript。两种做法得到的数字相同。这个过程占用的内存随会话的请求、车道和工具调用增长，不随文件字节数增长。
+Agent 自带有界摘要过程时，`summarizeSession` 读取该过程。否则它折叠已经加载的 transcript。两种做法得到的数字相同。占用的内存随会话的请求数、lane 数和工具调用数增长，不随文件字节数增长。
 
-它接受 `prompts: { limit, maxChars }`，在同一次读取里返回主车道的用户提示词。
+它接受 `prompts: { limit, maxChars }`，并在同一次读取里返回主 lane 的用户提示词。
 
-- 一条记录的提示词文本只拼接它自己的文本块，不包含宿主加在旁边的文本；图像块属于用户自己。
+- 一条记录的提示词文本只拼接它自己的文本块，不包含宿主加在旁边的文本。图像块属于用户自己。
 - 每个块都会去掉首尾空白，块与块之间空一行。
 - 所有块都是宿主添加文本的记录算作注入，不计回合。
 - 自己的文本只有空白的记录计一个回合，但没有提示词。
 - 按 transcript 顺序返回前 `limit` 条记录，每条截到 `maxChars`。
 
-不在范围内的非整数上限会抛出 `code: "invalid-prompts"` 的 `AgentKitError`。
+上限不是范围内的整数时，抛出 `code: "invalid-prompts"` 的 `AgentKitError`。
 
 ## 事件
 
-事件的 `kind` 决定其 `payload` 的类型。`event.kind === "tool_call"` 之后，`event.payload` 是 `TranscriptEventPayloads["tool_call"]`。Agent 在该 kind 的载荷类型之外添加的字段读作 `unknown`。
+事件的 `kind` 决定 `payload` 的类型。`event.kind === "tool_call"` 之后，`event.payload` 是 `TranscriptEventPayloads["tool_call"]`。Agent 在该 kind 的载荷类型之外添加的字段读作 `unknown`。
 
 事件通过 `agentId`、`parentId`、`requestId`、`payload.callId` 和 `shadowedBy` 互相引用。
 
-这些事件上的 Token 计数遵循[用量约定](/zh/docs/concepts/usage-convention)：日志没有记录的计数是缺席，不是 0。
+这些事件上的 Token 计数遵循[用量约定](/zh/docs/concepts/usage-convention)。日志没有记录的计数是缺失，不是 0。
 
 `sessionAdapterHome` 解析会话服务或用量服务的主目录。直接解码用量时这样调用：`sessionAdapterHome(usage, { home, env })`。见 [Token 用量](/zh/docs/connection/token-usage)。
 

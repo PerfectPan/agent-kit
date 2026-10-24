@@ -1,3 +1,129 @@
 @import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+
+@theme {
+  --font-sans: "Bricolage Grotesque Variable", system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+/* Landing tokens, mapped onto Fumadocs. Light is the default; .dark is the warm palette. */
+:root {
+  --color-fd-background: #fbf7f2;
+  --color-fd-foreground: #2a211e;
+  --color-fd-muted: #f3ece3;
+  --color-fd-muted-foreground: #85776e;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #2a211e;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #2a211e;
+  --color-fd-border: #e6dccf;
+  --color-fd-primary: #b94f3c;
+  --color-fd-primary-foreground: #fffaf4;
+  --color-fd-secondary: #f3ece3;
+  --color-fd-secondary-foreground: #2a211e;
+  --color-fd-accent: #f3ece3;
+  --color-fd-accent-foreground: #2a211e;
+  --color-fd-ring: #b94f3c;
+  --color-fd-overlay: rgba(42, 33, 30, 0.2);
+}
+
+.dark {
+  --color-fd-background: #1c1614;
+  --color-fd-foreground: #f4ece4;
+  --color-fd-muted: #2a221e;
+  --color-fd-muted-foreground: #b3a399;
+  --color-fd-popover: #261e1b;
+  --color-fd-popover-foreground: #f4ece4;
+  --color-fd-card: #261e1b;
+  --color-fd-card-foreground: #f4ece4;
+  --color-fd-border: #3d322c;
+  --color-fd-primary: #b94f3c;
+  --color-fd-primary-foreground: #fffaf4;
+  --color-fd-secondary: #2e2622;
+  --color-fd-secondary-foreground: #f4ece4;
+  --color-fd-accent: #3a2e28;
+  --color-fd-accent-foreground: #f4ece4;
+  --color-fd-ring: #c46a56;
+  --color-fd-overlay: rgba(28, 22, 20, 0.55);
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: #2a221e;
+  --color-fd-secondary: #2e2622;
+  --color-fd-muted-foreground: #b3a399;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+figure.shiki {
+  background-color: #f3ece3;
+}
+
+.dark figure.shiki {
+  background-color: #322823;
+}
+
+figure.shiki pre,
+figure.shiki code,
+.prose :where(code):not(:where(pre *)) {
+  font-family: var(--font-mono);
+}
+
+.prose :where(code):not(:where(pre *)) {
+  background-color: #f3ece3;
+  border-color: #e6dccf;
+}
+
+.dark .prose :where(code):not(:where(pre *)) {
+  background-color: #322823;
+  border-color: #4a3d37;
+}
+
+.docs-mascot {
+  width: 1.7rem;
+  height: 1.7rem;
+  overflow: visible;
+  flex: none;
+}
+
+.docs-mascot .m-body {
+  fill: #b94f3c;
+}
+
+.docs-mascot .m-flap {
+  fill: #e3a93b;
+}
+
+.docs-mascot .m-eye {
+  fill: #fff;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.docs-wordmark {
+  letter-spacing: -0.03em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:hover .docs-mascot .m-all {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: ak-docs-hop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes ak-docs-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+}

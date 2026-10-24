@@ -3,17 +3,17 @@ title: Introduction
 description: Connection for one Agent, coordination for many, and the public entries.
 ---
 
-`@rivus/agent-kit` connects to one Agent at a time. It provides building blocks for applications that work with third-party coding agents such as Claude Code, Codex and Grok. The kit knows each agent's id and home directory, lists its sessions, and reads their logs into one transcript model with one usage convention.
+`@rivus/agent-kit` connects to one Agent at a time. It is a universal Agent toolkit: it knows each Agent's id and home directory, lists its sessions, and reads their logs into one transcript model with one usage convention. Claude Code, Codex and Grok are today's built-in Agents, along with the others on [Supported Agents](/docs/agents).
 
-`@rivus/agent-kit-collab` coordinates many Agents. It adds fenced leases (`/lease`), a single-instance process lock (`/process-lock`) and keyed scheduling lanes (`/lanes`). The package knows no particular agent. Collab's entries use agent-kit's public platform and follow the same lockstep release.
+`@rivus/agent-kit-collab` coordinates many Agents. It adds fenced leases (`/lease`), a single-instance process lock (`/process-lock`) and keyed scheduling lanes (`/lanes`). The package knows no particular Agent. Collab's entries use agent-kit's public platform and follow the same lockstep release.
 
-Files, processes and the environment come from a `Platform` object that the caller passes in, so the reading code also runs in a browser. ACP is implemented in `/acp`. `/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of what it wrote.
+Files, processes and the environment come from a `Platform` object that the caller passes in, so the reading code also runs in a browser. ACP is implemented in `/acp`. `/harness` installs an application's hooks and skills into these Agents and removes them again, with a ledger of what it wrote.
 
 Status is 0.x. A minor release may contain breaking changes. Both packages share one lockstep release policy, so they ship the same version.
 
 ## Entries
 
-The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (20 in total). The tables describe that source API. Verify that the npm release you select exports the entries you need before adoption. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md).
+The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (20 in total). The tables describe that source API.
 
 | Entry                                                               | Main exports                                                                                                     | Runs in                                  |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -41,24 +41,12 @@ The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-k
 | [`@rivus/agent-kit-collab/lease`](/docs/coordination/leases)               | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect   |
 | [`@rivus/agent-kit-collab/lanes`](/docs/coordination/lanes)                | `createLanes`                                                                                                    | Effect   |
 
-`builtinProviders` from `/providers` exposes each agent's `identity`, `discovery`, `install`, `sessions`, `usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use. The ordinary entries share these service objects. Hook commands keep using `builtinHookDialects` from `/harness/events`, whose isolated build imports nothing and owns separate hook objects. `/catalog` retains `AgentKitError` and `isAgentKitError` so callers can recognize errors from shell functions.
+`builtinProviders` from `/providers` exposes each Agent's `identity`, `discovery`, `install`, `sessions`, `usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use. The ordinary entries share these service objects. Hook commands keep using `builtinHookDialects` from `/harness/events`, whose isolated build imports nothing and owns separate hook objects. `/catalog` retains `AgentKitError` and `isAgentKitError` so callers can recognize errors from shell functions.
 
 The **Runs in** column marks entries that need `effect` with "with `effect`". Plain entries do not load that optional peer.
-
-## Repository
-
-The project is a pnpm workspace monorepo laid out like [PerfectPan/project-template-pnpm](https://github.com/PerfectPan/project-template-pnpm). Each bounded context is a private package under `packages/`. `packages/agent-kit` is the published shell that re-exports their public names and bundles them into `dist`. `infra/architecture/boundaries.ts` declares which package and layer may import what, and `vp lint` checks every package's imports against it.
-
-```bash
-pnpm install
-pnpm run check   # format, build, lint, typecheck, test, package checks
-```
-
-- [Authoring a context package](https://github.com/PerfectPan/agent-kit/blob/main/docs/architecture/authoring.md)
-- [Adoption, verification and rollback](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md)
-- [Glossary](https://github.com/PerfectPan/agent-kit/blob/main/CONTEXT.md)
-- [Contributing](https://github.com/PerfectPan/agent-kit/blob/main/CONTRIBUTING.md) and [releases](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md)
 
 ## License
 
 MIT. Source: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit). `@rivus/agent-kit-collab` is MIT as well.
+
+To contribute, start from [CONTRIBUTING.md](https://github.com/PerfectPan/agent-kit/blob/main/CONTRIBUTING.md).

@@ -19,14 +19,14 @@ The README's support table uses these words where a cell is not "yes":
 - Pi sessions: session storage has no supported reader.
 - Pi ACP: no supported ACP transport.
 
-Every agent in the table has a hook dialect in `/harness/events`.
+Every Agent in the table has a hook dialect in `/harness/events`.
 
-`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the agent.
+`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent.
 
-`/transcript/usage` reads the usage of every agent in the table except Cursor.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 
 Codex's default home includes archived sessions. `GEMINI_CLI_HOME` replaces the user's home. `PI_CODING_AGENT_DIR` expands `~`. opencode's home in this table is the data home (`$XDG_DATA_HOME/opencode`, otherwise `~/.local/share/opencode`), not the plugin/config home.
 
-To display an agent name, find `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`. Adding a provider is [Providers](/docs/concepts/providers).
+To display an Agent name, find `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`. Adding a provider is [Providers](/docs/concepts/providers).

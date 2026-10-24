@@ -5,27 +5,27 @@ description: detectAgents reports runnable, found, missing or unknown, with evid
 
 `@rivus/agent-kit/discovery` exports `detectAgents`, `versionFromOutput` and `ProbeRecipe`. It runs anywhere, with a platform.
 
-`detectAgents(platform)` reports, for each of the seven agents in the [Agents table](/docs/agents), whether it is `runnable`, `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state.
+`detectAgents(platform)` reports, for each built-in Agent in the [Agents table](/docs/agents), whether it is `runnable`, `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state.
 
-By default the login state comes only from credential files and environment variables, without running anything and without returning secret values. `authProbe: "commands"` also runs the agents' own status commands, whose side effects each recipe lists.
+By default the login state comes only from credential files and environment variables, without running anything and without returning secret values. `authProbe: "commands"` also runs the Agents' own status commands, whose side effects each recipe lists.
 
-Version probes run by default and make an agent `runnable`. `versionProbe: false` runs nothing at all. Only a successful version probe establishes `runnable`.
+Version probes run by default and make an Agent `runnable`. `versionProbe: false` runs nothing at all. Only a successful version probe establishes `runnable`.
 
-Commands run without a shell and with a time limit. A check that fails is reported in `problems`. `detectAgents` resolves to `Installation[]`. A failed probe is recorded in that agent's `problems`.
+Commands run without a shell and with a time limit. A check that fails is reported in `problems`. `detectAgents` resolves to `Installation[]`. A failed probe is recorded in that Agent's `problems`.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor.
 
 ## What counts as found
 
-`detectAgents` reports `found` from a command on PATH, an application path, or an agent-owned state path.
+`detectAgents` reports `found` from a command on PATH, an application path, or an Agent-owned state path.
 
 Configuration evidence uses the existing `config` kind. Its paths are session stores, application state or credential files, not arbitrary configuration. An empty store still counts, and retained state can establish `found` after the command is removed.
 
-An installer can create an agent home and populate hooks, settings, MCP servers, skills, plugins or extensions without installing the agent. None of those paths establishes `found`. Built-in `mcpConfigPaths` are empty because the previously listed MCP files are shared, installer-writable configuration. In particular, `~/.claude.json` can contain MCP configuration: it remains a source of login state when other evidence exists, but its existence alone is not installation evidence. Auth variables also do not establish installation.
+An installer can create an Agent home and populate hooks, settings, MCP servers, skills, plugins or extensions without installing the Agent. None of those paths establishes `found`. Built-in `mcpConfigPaths` are empty because the previously listed MCP files are shared, installer-writable configuration. In particular, `~/.claude.json` can contain MCP configuration: it remains a source of login state when other evidence exists, but its existence alone is not installation evidence. Auth variables also do not establish installation.
 
-Configuration evidence comes from agent-owned session stores, application state or credential files. Agent homes and shared hook/MCP settings, plugins, extensions and skills do not count: installing hooks alone leaves an agent `missing`.
+Configuration evidence comes from Agent-owned session stores, application state or credential files. Agent homes and shared hook/MCP settings, plugins, extensions and skills do not count: installing hooks alone leaves an Agent `missing`.
 
-The table lists every built-in configuration evidence path. Agent-home paths use catalog rules. An override replaces the default home, rather than probing both. The session/usage fixtures validate the layouts without reading any local agent data. Credential paths come from the existing login probes. Discovery returns only non-secret authentication facts.
+The table lists every built-in configuration evidence path. Agent-home paths use catalog rules. An override replaces the default home, rather than probing both. The session/usage fixtures validate the layouts without reading any local Agent data. Credential paths come from the existing login probes. Discovery returns only non-secret authentication facts.
 
 | Agent       | Evidence relative to its data home                                                                                  | Home and overrides                                                                                                                                          | Sources and reason                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -55,6 +55,6 @@ Harness artifacts and shared configuration remain excluded:
 | Pi          | `extensions/`, `settings.json`                                                                   | [Strategies](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/pi/src/install.ts)          |
 | Cursor      | `~/.cursor/`, `~/.cursor/plugins/local/`, the three desktop roots' `User/mcp.json`               | [Strategies](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/cursor/src/install.ts)      |
 
-Changing these facts affects consumers of `detectAgents` with the built-in recipes, including agent-presence and application setup/detection screens. Machines with no command, recognized application or agent-owned state now report `missing`, including Claude Code with only `~/.claude.json` (macOS keychain login and no session yet), and machines populated only by hooks or MCP settings. Cursor desktop state still establishes `found` without a CLI. Command and application-path detection, custom recipes, and the evidence/status interfaces remain unchanged.
+Changing these facts affects consumers of `detectAgents` with the built-in recipes, including agent-presence and application setup/detection screens. Machines with no command, recognized application or Agent-owned state now report `missing`, including Claude Code with only `~/.claude.json` (macOS keychain login and no session yet), and machines populated only by hooks or MCP settings. Cursor desktop state still establishes `found` without a CLI. Command and application-path detection, custom recipes, and the evidence/status interfaces remain unchanged.
 
 To customize a built-in recipe, select its `discovery` service and pass `providers`. See [Providers](/docs/concepts/providers). Check a recipe you write with `probeRecipeConformance` from `/testing`.

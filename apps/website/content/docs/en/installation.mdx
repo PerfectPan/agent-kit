@@ -21,8 +21,6 @@ npm view @rivus/agent-kit peerDependencies.effect
 
 Plain entries do not load this optional peer. The entry table's **Runs in** column on [Introduction](/docs) marks entries that need it with "with `effect`".
 
-The entry table describes the source API. Verify the exports of the npm version you select before adoption. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
-
 ## @rivus/agent-kit-collab
 
 ```bash title="Install both packages and the effect peer"
@@ -32,9 +30,9 @@ npm view @rivus/agent-kit-collab peerDependencies.effect
 npm install --save-exact "effect@$(npm view @rivus/agent-kit-collab peerDependencies.effect)"
 ```
 
-Select a verified non-placeholder release that exports the entries you need, with both packages at the same version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
+Both packages use the same version. These docs follow the main branch; the npm release can lag behind until the next release. Each package's CHANGELOG lists what shipped.
 
-For a verified older release, query `npm view @rivus/agent-kit-collab@<version> peerDependencies.effect` and use the same `@<version>` suffix in the install line's query.
+For an older release, query `npm view @rivus/agent-kit-collab@<version> peerDependencies.effect` and use the same `@<version>` suffix in the install line's query.
 
 `@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. The Effect entries `/lease` and `/lanes` need the host to install `effect` at exactly the version in `peerDependencies.effect`, as reported by the command above. Plain entries do not need this optional peer.
 

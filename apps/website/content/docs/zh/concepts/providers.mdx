@@ -1,30 +1,30 @@
 ---
 title: Provider
-description: 内置描述符、自行添加，以及服务如何合并。
+description: 内置 provider、自行添加，以及服务如何合并。
 ---
 
-`@rivus/agent-kit/providers` 导出 `Provider` 和 `builtinProviders`。它可以在任何环境运行。
+`@rivus/agent-kit/providers` 导出 `Provider` 和 `builtinProviders`。任何环境都可以用。
 
-`builtinProviders` 在支持时暴露每个 Agent 的 `identity`、`discovery`、`install`、`sessions`、`usage` 和 `acp` 服务。按 `id` 选出描述符，使用前再检查可选服务是否存在。普通入口共用这些服务对象。
+`builtinProviders` 在对应能力存在时，暴露每个 Agent 的 `identity`、`discovery`、`install`、`sessions`、`usage` 和 `acp`。先按 `id` 取描述符，使用前再检查可选服务是否存在。普通入口共用这些服务对象。
 
-Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。那份隔离构建不导入任何东西，并持有单独的 hook 对象。它不接受 Provider 列表。
+Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。这份隔离构建不导入其他模块，并持有单独的 hook 对象。它不接受 provider 列表。
 
-`/catalog` 保留 `AgentKitError` 和 `isAgentKitError`，以便调用方识别来自 shell 函数的错误。
+`/catalog` 保留 `AgentKitError` 和 `isAgentKitError`，调用方可以据此识别 shell 函数抛出的错误。
 
-每个内置 Agent 有哪些服务，见 [支持的 Agent](/zh/docs/agents) 上生成的表。当前的内置 Agent 是示例。数量以那张表为准。
+每个内置 Agent 提供哪些服务，见 [支持的 Agent](/zh/docs/agents) 上生成的表。目前的内置 Agent 只是示例。有哪些 Agent，以那张表为准。
 
 ## 自行添加
 
 路由函数接受 `providers?: readonly Provider[]`。类型和 `builtinProviders` 来自 `@rivus/agent-kit/providers`。
 
-描述符按 id 和服务覆盖内置项。`{ id: "codex", hooks: dialect }` 只改 Codex 的 hook。省略的服务和其他 Agent 仍然可用。旧的 `adapters`、`dialects`、`recipes` 和 `profiles` 选项已经移除。
+描述符按 id 和服务覆盖内置项。`{ id: "codex", hooks: dialect }` 只改 Codex 的 hook。省略的服务和其他 Agent 仍然可用。旧的 `adapters`、`dialects`、`recipes` 和 `profiles` 已经移除。
 
-自定义 `identity` 提供别名和回退主目录规则。冲突的别名，或 id 与描述符不一致的 identity，会被拒绝。
+自定义 `identity` 提供别名和回退主目录规则。别名冲突，或者 identity 的 id 与描述符不一致，都会被拒绝。
 
-要显示 Agent 名称，查找 `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`。
+显示 Agent 名称时，查找 `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`。
 
-要定制发现，选出它的 `discovery` 配方，并传入 `providers: [{ id, discovery: { ...recipe, auth: {} } }]`。
+定制发现时，取出它的 `discovery` 配方，并传入 `providers: [{ id, discovery: { ...recipe, auth: {} } }]`。
 
-没有具名消费者的选项类型和结果类型仍留在签名里。用 `Parameters` 或 `ReturnType` 推导它们；Effect 操作则用 Effect 的成功类型和错误类型。
+没有具名消费者的选项类型和结果类型仍留在签名里。用 `Parameters` 或 `ReturnType` 推导。Effect 操作用 Effect 的成功类型和错误类型。
 
-要读取另一个 Agent，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `/testing` 的 `sessionAdapterConformance` 检查它。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。测试套件见 [适配器测试](/zh/docs/testing)。
+读取另一个 Agent 时，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `/testing` 的 `sessionAdapterConformance` 检查。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。测试套件见 [适配器测试](/zh/docs/testing)。

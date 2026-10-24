@@ -7,9 +7,9 @@ description: scanUsage reads token records without building transcripts.
 
 Exports: `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`.
 
-`/transcript/usage` reads the usage of every agent in the [Agents table](/docs/agents) except Cursor.
+`/transcript/usage` reads the usage of every Agent in the [Agents table](/docs/agents) except Cursor.
 
-`scanUsage` reads every agent's usage under its home and returns a state to pass to the next scan, which then reads only what was written since.
+`scanUsage` reads every Agent's usage under its home and returns a state to pass to the next scan, which then reads only what was written since.
 
 ```ts title="scanUsage"
 import { createNodePlatform } from "@rivus/agent-kit/node";
@@ -34,9 +34,9 @@ A caller that keeps a state also keeps its own totals beside it, uses one state 
 
 ## UsageRecord
 
-A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the agent logs only turn totals (Grok, with `modelCalls` and `usageByModel`).
+A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the Agent logs only turn totals (Grok, with `modelCalls` and `usageByModel`).
 
-It carries the agent's own cost when the log has one (`costUsd`, `costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier.
+It carries the Agent's own cost when the log has one (`costUsd`, `costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier.
 
 A request that several files hold counts once. That includes a Claude Code subagent file that starts with a copy of another's records, and an older Gemini CLI chat migrated into a `.jsonl` file.
 
@@ -73,6 +73,6 @@ if (usage) {
 }
 ```
 
-The decoder's cursor continues a source. `scanUsage` manages those cursors for scans across agents.
+The decoder's cursor continues a source. `scanUsage` manages those cursors for scans across Agents.
 
 Price the records with a table you pass to `/cost`. The kit ships no prices. See [Cost](/docs/connection/cost).

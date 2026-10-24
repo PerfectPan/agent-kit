@@ -1,6 +1,6 @@
 ---
 title: Sessions and transcripts
-description: listSessions reads file heads and tails. loadTranscript reads one session.
+description: listSessions reads file heads and tails, and loadTranscript reads one session.
 ---
 
 `@rivus/agent-kit/sessions` exports `listSessions`, `sessionAdapterHome`, `isSessionHead` and `SessionAdapter`. It runs anywhere, with a platform.
@@ -30,7 +30,7 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 }
 ```
 
-`listSessions` reads only the head and tail of each file. It yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and goes on with the next one. Naming an agent without a session adapter in `listSessions({ agents })` throws an `AgentKitError` with `code: "capability-unsupported"`.
+`listSessions` reads only the head and tail of each file. It yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and goes on with the next one. Naming an Agent without a session adapter in `listSessions({ agents })` throws an `AgentKitError` with `code: "capability-unsupported"`.
 
 `loadTranscript` reads every file of one session and returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. It returns the complete session. There is no live file-following API, and a compaction marks the events it replaced with `shadowedBy` only after the whole session is read.
 
@@ -38,7 +38,7 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 
 ## Summaries and prompts
 
-`summarizeSession` reads the agent's bounded summarize pass where it has one and folds the loaded transcript otherwise, with the same numbers either way. The pass's memory grows with the session's requests, lanes and tool calls, not with the file's bytes.
+`summarizeSession` reads the Agent's bounded summarize pass where it has one and folds the loaded transcript otherwise, with the same numbers either way. The pass's memory grows with the session's requests, lanes and tool calls, not with the file's bytes.
 
 It takes `prompts: { limit, maxChars }` to return the main lane's user prompts in the same read.
 
@@ -52,7 +52,7 @@ Caps that are not whole numbers in range throw an `AgentKitError` with `code: "i
 
 ## Events
 
-An event's `kind` types its `payload`. After `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds beyond its kind's payload type reads as `unknown`.
+An event's `kind` types its `payload`. After `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an Agent adds beyond its kind's payload type reads as `unknown`.
 
 Events reference each other through `agentId`, `parentId`, `requestId`, `payload.callId` and `shadowedBy`.
 

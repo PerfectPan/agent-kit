@@ -17,6 +17,7 @@ function RootComponent() {
       </head>
       <body>
         <RootProvider
+          theme={{ defaultTheme: "light" }}
           i18n={i18nProvider(translations, language)}
           search={{
             options: {

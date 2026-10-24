@@ -1,16 +1,16 @@
 ---
 title: 适配器测试
-description: 会话适配器、hook 方言、探测配方和仓储的一致性套件。
+description: 会话适配器、hook 方言、探测配方和仓储的 conformance 套件。
 ---
 
-`@rivus/agent-kit/testing` 导出 `createMemoryPlatform`、`sessionAdapterConformance`、`hookDialectConformance` 和 `probeRecipeConformance`。它运行在 Node 中，不会打成浏览器包。
+`@rivus/agent-kit/testing` 导出 `createMemoryPlatform`、`sessionAdapterConformance`、`hookDialectConformance` 和 `probeRecipeConformance`。它只在 Node 里运行，不能打包进浏览器。
 
-`@rivus/agent-kit/testing/effect` 导出 `aggregateRepositoryConformance`，即每个聚合仓储都要通过的一致性用例。它可以在任何环境运行，需要 `effect`。
+`@rivus/agent-kit/testing/effect` 导出 `aggregateRepositoryConformance`，也就是每个聚合仓储都要通过的 conformance 用例。任何环境都可以用，需要 `effect`。
 
-要读取另一个 Agent，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `sessionAdapterConformance` 检查它。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。
+读取另一个 Agent 时，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `sessionAdapterConformance` 检查。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。
 
-`hookDialectConformance` 检查 hook 方言。`probeRecipeConformance` 检查发现配方。描述符如何合并见 [Provider](/zh/docs/concepts/providers)。
+`hookDialectConformance` 检查 hook 方言。`probeRecipeConformance` 检查发现配方。描述符如何合并，见 [Provider](/zh/docs/concepts/providers)。
 
-README 点出了这些套件，但没有给出它们的调用签名。用 `Parameters` 或 `ReturnType` 推导选项类型和结果类型；Effect 操作则用 Effect 的成功类型和错误类型。
+README 点出了这些套件，但没有给出调用签名。用 `Parameters` 或 `ReturnType` 推导选项和结果。Effect 操作用 Effect 的成功类型和错误类型。
 
-README 点出了 `createMemoryPlatform`，但没有描述它的选项。发现的证据回归测试在检测前于内存主目录上运行 `planInstall` / `applyInstall`。用量来源测试用各 Provider 的用量夹具覆盖六种默认布局和覆盖。这些测试在仓库里。见 [Agent 检测](/zh/docs/connection/discovery)。
+README 点出了 `createMemoryPlatform`，但没有描述它的选项。发现的证据回归测试会在检测前，于内存主目录上运行 `planInstall` / `applyInstall`。用量来源测试用各 provider 的用量夹具，覆盖六种默认布局和覆盖。这些测试在仓库里。见 [Agent 检测](/zh/docs/connection/discovery)。
