@@ -1,0 +1,39 @@
+{
+  "name": "website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private bilingual website for agent-kit. It is not published.",
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "lint": "vp lint 2>&1",
+    "typecheck": "tsr generate && tsc -p tsconfig.json",
+    "test": "vp test --passWithNoTests",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
+  },
+  "dependencies": {
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/start-static-server-functions": "catalog:",
+    "fumadocs-core": "catalog:",
+    "fumadocs-mdx": "catalog:",
+    "fumadocs-ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "catalog:",
+    "@tanstack/router-cli": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/mdx": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

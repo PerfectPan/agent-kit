@@ -99,3 +99,6 @@ packages.
 ## 5. Open questions
 
 - Whether README sections move to the site or stay duplicated (decide after Task 3).
+- `@tanstack/start-static-server-functions` requests its cache at the origin root (`/__tsr/…`); the site prefixes that
+  one path with the base in `src/lib/static-cache-base.ts`. Drop the patch when the package honours Vite's `base`,
+  and run `apps/website/scripts/static-nav-check.mjs` in the Pages workflow (Task 5) so a regression fails CI.

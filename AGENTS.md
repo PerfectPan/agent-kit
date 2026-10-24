@@ -41,6 +41,10 @@ pnpm run check:package # after build: publint, attw (ESM-only), size-limit and t
 # Work on one package (add ... after the name to include its workspace dependencies):
 pnpm --filter @rivus/agent-kit-platform run test
 
+# Private website (TanStack Start + Fumadocs). It is not published and needs no changeset:
+pnpm --filter website build
+pnpm --filter website typecheck
+
 # Record a release note for changed packages. Non-interactive form (works without a terminal):
 pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
 # Interactive prompt (needs a terminal); preview with `pnpm change status`:
@@ -60,7 +64,7 @@ gh repo-checks protect --repo OWNER/REPO
 ```
 
 Workspace members are the folders that the globs in `pnpm-workspace.yaml` match (`packages/*`,
-`packages/providers/*`, `infra/*`, `tests/*`, `scripts`):
+`packages/providers/*`, `infra/*`, `tests/*`, `scripts`, `apps/*`):
 
 - `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files re-export names individually and bind routed functions to per-service provider tables,
   importing internal packages' `public.ts` (or a lighter public sub-entry such as
@@ -84,6 +88,8 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
   by Node.
 - `tests/smoke` is the private `agent-kit-smoke` project: smoke tests against the coding agents installed on this
   machine, run by hand with `pnpm run smoke` there (see its README). Its `test` script is empty, so CI never runs them.
+- `apps/website` is the private `website` project: the bilingual site, built with TanStack Start and Fumadocs.
+  It is not published and does not need a changeset.
 
 Every package defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the root
 `pnpm -r` shortcuts call; pnpm skips a package whose script is empty. Shared dependency versions live in the
@@ -110,7 +116,8 @@ For non-trivial changes:
 
 - A PR that changes a published package's source, manifest or build config, an internal package that the shell
   bundles, or the lockfile, includes a changeset under `.changeset/`. A change in an internal package needs a
-  changeset for `@rivus/agent-kit`. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
+  changeset for `@rivus/agent-kit`. A lockfile change that only adds or updates the private website's dependencies
+  needs none. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
   (format in `CONTRIBUTING.md`); while the packages are 0.x, a breaking change is `minor`, never `major`. CI does not
   check for missing changesets; adding one is the author's and the reviewer's call.
 - Never bump versions, edit `CHANGELOG.md`, create release tags, or publish by hand. Every push to `main` runs both
