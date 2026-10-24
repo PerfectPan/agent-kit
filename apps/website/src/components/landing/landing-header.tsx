@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { docsIndex } from "../../lib/guide-paths.ts";
+import { docsIndex, guide } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
 import { LANG_STORAGE_KEY } from "../../lib/lang-preference.ts";
 import { GITHUB_URL } from "../../lib/projects.ts";
@@ -13,6 +13,7 @@ function homePath(lang: Lang): "/" | "/zh" {
 export function LandingHeader({ lang }: { readonly lang: Lang }) {
   const navigate = useNavigate();
   const docs = docsIndex(lang);
+  const api = guide(lang, "api");
 
   function choose(next: Lang) {
     localStorage.setItem(LANG_STORAGE_KEY, next);
@@ -32,7 +33,7 @@ export function LandingHeader({ lang }: { readonly lang: Lang }) {
           <Link to={docs} className="hide-sm">
             {text(lang, "navDocs")}
           </Link>
-          <Link to={docs} className="hide-sm">
+          <Link to={api.to} params={api.params} className="hide-sm">
             {text(lang, "navApi")}
           </Link>
           <a href={GITHUB_URL}>{text(lang, "navGithub")}</a>

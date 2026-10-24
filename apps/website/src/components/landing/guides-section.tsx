@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 
-import { docsIndex } from "../../lib/guide-paths.ts";
+import { docsIndex, guide } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
 
 export function GuidesSection({ lang }: { readonly lang: Lang }) {
   const docs = docsIndex(lang);
+  const api = guide(lang, "api");
   return (
     <section className="final">
       <h2>{text(lang, "guidesTitle")}</h2>
@@ -13,7 +14,7 @@ export function GuidesSection({ lang }: { readonly lang: Lang }) {
         <Link to={docs} className="btn btn-primary">
           {text(lang, "readGuide")}
         </Link>
-        <Link to={docs} className="btn btn-ghost">
+        <Link to={api.to} params={api.params} className="btn btn-ghost">
           {text(lang, "apiReference")}
         </Link>
       </div>

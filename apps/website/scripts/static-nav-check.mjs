@@ -1,6 +1,7 @@
 // Serves dist/client under /agent-kit/ and clicks landing -> docs -> the other
-// language -> one nested guide -> back to English. Chrome is headless via the
-// DevTools protocol. Not part of `pnpm test`.
+// language -> one nested guide -> back to English -> one API page -> the Chinese
+// fallback of that page. Chrome is headless via the DevTools protocol. Not part
+// of `pnpm test`.
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -244,6 +245,25 @@ try {
   );
   await waitForText(session, "Node.js 22.13 or later");
   const englishGuide = await evaluate(session, "location.href");
+
+  await evaluate(
+    session,
+    `document.querySelector('a[href="${prefix}/docs/api/sessions"], a[href="${prefix}/docs/api/sessions/"]')?.click()`
+  );
+  await waitForText(session, "listSessions");
+  const apiSessions = await evaluate(session, "location.href");
+
+  await evaluate(
+    session,
+    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
+  );
+  await waitForText(session, "中文");
+  await evaluate(
+    session,
+    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "中文")?.click()`
+  );
+  await waitForText(session, "此页尚无中文译本");
+  const chineseApi = await evaluate(session, "location.href");
   session.close();
 
   const interesting = session.responses.filter((entry) => !entry.url.endsWith("/favicon.ico"));
@@ -257,6 +277,8 @@ try {
   console.log(`zh docs ${chinese}`);
   console.log(`zh guide ${chineseGuide}`);
   console.log(`en guide ${englishGuide}`);
+  console.log(`api sessions ${apiSessions}`);
+  console.log(`zh api ${chineseApi}`);
   console.log(`requests ${interesting.length}`);
   for (const entry of interesting) {
     console.log(`${entry.status} ${entry.url}`);
@@ -272,6 +294,12 @@ try {
   }
   if (!englishGuide.includes(`${prefix}/docs/installation`) || englishGuide.includes("/zh/")) {
     throw new Error(`nested English guide stayed at ${englishGuide}`);
+  }
+  if (!apiSessions.includes(`${prefix}/docs/api/sessions`) || apiSessions.includes("/zh/")) {
+    throw new Error(`API navigation stayed at ${apiSessions}`);
+  }
+  if (!chineseApi.includes(`${prefix}/zh/docs/api/sessions`)) {
+    throw new Error(`Chinese API fallback stayed at ${chineseApi}`);
   }
   if (cacheHits.length < 2) {
     throw new Error(`expected two static server function cache responses, got ${cacheHits.length}`);

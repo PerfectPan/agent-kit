@@ -3,6 +3,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
 
+import { apiSymbolToc } from "../lib/api-page.ts";
 import { docs } from "../lib/source.ts";
 
 export function DocsArticle({ path, fallback }: { path: string; fallback: boolean }) {
@@ -15,7 +16,7 @@ export function DocsArticle({ path, fallback }: { path: string; fallback: boolea
   const MDX = page.body;
 
   return (
-    <DocsPage toc={loaded.toc}>
+    <DocsPage toc={apiSymbolToc(path, loaded.toc)}>
       <DocsTitle>{page.title}</DocsTitle>
       {page.description === undefined ? null : <DocsDescription>{page.description}</DocsDescription>}
       <DocsBody>

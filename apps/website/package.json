@@ -5,7 +5,7 @@
   "description": "Private bilingual website for agent-kit. It is not published.",
   "type": "module",
   "scripts": {
-    "build": "vp build && node scripts/publish-search-index.mjs",
+    "build": "pnpm --filter website-api run generate && vp build && node scripts/publish-search-index.mjs",
     "lint": "vp lint 2>&1",
     "typecheck": "tsr generate && tsc -p tsconfig.json",
     "test": "vp test --passWithNoTests",
@@ -16,6 +16,7 @@
     "@fontsource-variable/bricolage-grotesque": "catalog:",
     "@fontsource/jetbrains-mono": "catalog:",
     "@rivus/agent-kit": "workspace:*",
+    "@rivus/agent-kit-collab": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "@tanstack/start-static-server-functions": "catalog:",

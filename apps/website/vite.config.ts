@@ -104,11 +104,18 @@ export default defineConfig({
   ],
   fmt: {
     ...fmt,
-    ignorePatterns: ["src/routeTree.gen.ts", ".source/**"]
+    ignorePatterns: ["src/routeTree.gen.ts", ".source/**", "content/docs/en/api/**", "content/docs/zh/api/**"]
   },
   lint: {
     ...lint,
-    ignorePatterns: ["node_modules/**", "dist/**", "src/routeTree.gen.ts", ".source/**"]
+    ignorePatterns: [
+      "node_modules/**",
+      "dist/**",
+      "src/routeTree.gen.ts",
+      ".source/**",
+      "content/docs/en/api/**",
+      "content/docs/zh/api/**"
+    ]
   },
   test: {
     passWithNoTests: true
