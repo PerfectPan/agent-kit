@@ -1,0 +1,77 @@
+name: Pages
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# ci.yml has no paths filter. A public-entry change has to rebuild the API reference, so this
+# workflow builds on every pull request, push to main, and manual run.
+
+permissions:
+  contents: read
+
+# A pull request cancels the previous run of that pull request. A push to main queues, so two
+# deploys never run at once. workflow_dispatch shares the branch group and does not cancel a deploy.
+concurrency:
+  group: pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      # Installs the pnpm from `packageManager` and the Node.js major from .node-version, then runs
+      # `pnpm install --frozen-lockfile`.
+      - uses: pnpm/setup@v3
+        with:
+          node-version-file: .node-version
+          require-lockfile: true
+          # The store cache is keyed on the lockfile content hash; the action restores before installing.
+          cache: true
+      # `website...` is the site and its workspace dependencies, including both published packages.
+      # Those builds run first. The site build then generates the API reference through website-api.
+      - run: pnpm --filter website... run build
+      - name: static navigation
+        env:
+          # google-chrome ships on the ubuntu-latest image. The script falls back to this path on Linux.
+          CHROME: /usr/bin/google-chrome
+        run: node apps/website/scripts/static-nav-check.mjs
+      # Jekyll drops every path whose name starts with `_`. The client output has `__tsr` and hashed
+      # files under `assets/` whose names start with `_`, so the artifact carries an empty .nojekyll
+      # when any such path exists. The upload omits dotfiles unless include-hidden-files is true.
+      - name: Keep underscore paths
+        run: |
+          client=apps/website/dist/client
+          if [ -n "$(find "$client" -name '_*' -print -quit)" ]; then
+            : > "$client/.nojekyll"
+          fi
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/website/dist/client
+          include-hidden-files: true
+
+  deploy:
+    name: deploy
+    needs: build
+    # A pull request and workflow_dispatch only build.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Creates the Pages deployment and requests the OIDC token Pages uses to verify the source.
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

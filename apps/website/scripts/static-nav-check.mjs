@@ -10,7 +10,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const chromePath = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../dist/client");
 const prefix = "/agent-kit";
 const types = new Map([
@@ -29,6 +28,21 @@ function existsFile(file) {
     return false;
   }
 }
+
+function defaultChrome() {
+  if (process.platform === "darwin") {
+    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  }
+  const candidates = [
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser"
+  ];
+  return candidates.find((candidate) => existsFile(candidate)) ?? "google-chrome";
+}
+
+const chromePath = process.env.CHROME ?? defaultChrome();
 
 function fileFor(urlPath) {
   if (urlPath !== prefix && !urlPath.startsWith(`${prefix}/`)) {

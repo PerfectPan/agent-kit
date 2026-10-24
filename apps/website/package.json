@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Private bilingual website for agent-kit. It is not published.",
+  "homepage": "https://perfectpan.github.io/agent-kit/",
   "type": "module",
   "scripts": {
     "build": "pnpm --filter website-api run generate && vp build && node scripts/publish-search-index.mjs",

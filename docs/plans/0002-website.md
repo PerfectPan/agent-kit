@@ -1,9 +1,9 @@
 # Project website
 
-- Status: in review
+- Status: in review (implemented; the owner still sets GitHub Pages → Source to GitHub Actions)
 - Owner: PerfectPan
 - Reviewer: unconfirmed
-- Last updated: 2026-10-24
+- Last updated: 2026-10-25
 - Paired Spec: [docs/specs/0002-website.md](../specs/0002-website.md)
 
 ## 1. Background and goals
@@ -63,6 +63,8 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
   Chinese, static prerender under `/agent-kit/`; the six workspace scripts.
 - Exit condition: `pnpm install` from the root succeeds; `pnpm --filter website build` writes static HTML for `/`,
   `/zh`, `/docs/...` and `/zh/docs/...`; `pnpm run check` passes; risks 1 and 3 answered in the handoff note.
+- Delivered: TanStack Start and Fumadocs in `apps/website`, prerendered under `/agent-kit/`. The vite override and
+  static prerender both worked.
 
 #### Task 2: Landing page
 
@@ -72,6 +74,7 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
   support table.
 - Tests: unit tests for the demo state (W2), the dictionary having every key in both languages (W1).
 - Exit condition: W1, W2, W3, W6, W8 checked in a browser at 1440 and 390 px, light theme, both languages.
+- Delivered: landing page in both languages, with the mascot, size budgets, and the provider table.
 
 #### Task 3: Guides
 
@@ -79,26 +82,38 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
 - Change: guides moved from `packages/agent-kit/README.md` and `packages/agent-kit-collab/README.md` (one page per
   task), Chinese translations.
 - Exit condition: W4.
+- Delivered: guides from the two package READMEs, with Chinese translations. The package READMEs stay.
 
 #### Task 4: API reference
 
 - Files: `apps/website/scripts/**`, generated MDX location (ignored by git).
 - Change: generator from the built declarations, risk 2 answered.
 - Exit condition: W5 for every public entry.
+- Delivered: `website-api` generates 21 pages (20 public entries plus the index) with TypeDoc. TypeScript 6 is only
+  `catalogs.typescript6`.
 
 #### Task 5: Deployment
 
 - Files: `.github/workflows/pages.yml`, docs.
 - Exit condition: W7 on a fork.
+- Delivered: `pages.yml` builds on pull requests and `workflow_dispatch`, and deploys on a push to `main`. W7 on
+  GitHub still needs Settings → Pages → Source: GitHub Actions.
 
 ### 4.3 Rollback
 
 Each task is its own commit; reverting `apps/website` and the workspace glob removes the site without touching the
 packages.
 
-## 5. Open questions
+## 5. Open items
 
-- Whether README sections move to the site or stay duplicated (decide after Task 3).
-- `@tanstack/start-static-server-functions` requests its cache at the origin root (`/__tsr/…`); the site prefixes that
-  one path with the base in `src/lib/static-cache-base.ts`. Drop the patch when the package honours Vite's `base`,
-  and run `apps/website/scripts/static-nav-check.mjs` in the Pages workflow (Task 5) so a regression fails CI.
+Decided after Task 3: the package READMEs stay. The site does not replace them.
+
+Still open:
+
+- `@tanstack/start-static-server-functions` requests its cache at the origin root (`/__tsr/staticServerFnCache/`).
+  `apps/website/src/lib/static-cache-base.ts` prefixes that one path with the Vite base. Drop the patch when the
+  package honours Vite's `base`. `pages.yml` runs `apps/website/scripts/static-nav-check.mjs`, so a regression fails
+  the Pages build.
+- Long signatures on API pages scroll horizontally at 1440 px.
+- The browser playground stays out of scope, with a custom domain and request-time server rendering.
+- Add the site URL to the root README once the first deploy is live (the README is being rewritten in a separate pull request).
