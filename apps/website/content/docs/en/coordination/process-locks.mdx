@@ -1,0 +1,66 @@
+---
+title: Process locks
+description: One running instance per machine, with acquireProcessLock.
+---
+
+`@rivus/agent-kit-collab/process-lock` exports `acquireProcessLock`, `isProcessLockHeld`, `ProcessLock` and `ProcessLockPlatform`. It is plain TypeScript and takes a platform.
+
+A process lock is a single-instance lock for processes that run coding agents side by side. The package knows no particular agent.
+
+```ts title="acquireProcessLock"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";
+
+const lock = await acquireProcessLock(createNodePlatform(), "/var/run/my-daemon/daemon.lock");
+if (!lock.ok) {
+  console.error(`already running (pid ${lock.error.holder?.pid ?? "unknown"})`);
+  process.exit(1);
+}
+// ... run; the kernel releases the lock if the process dies, or call:
+await lock.value.release();
+```
+
+## SQLite and the lock file
+
+With `platform.sqlite` the lock is a SQLite database held with `locking_mode=EXCLUSIVE`. The kernel drops it the moment the holder exits or crashes, and nothing is reclaimed. The holder's identity goes into `<path>.holder` for diagnostics only, so a process that cannot read its own identity (`platform.process.self` throws, as on macOS in a sandbox that denies running `ps` or `sysctl`) still takes the lock: `lock.value.holder` is then `undefined`, no `<path>.holder` is written, and one left by a holder that died is removed.
+
+Without SQLite the lock is a file that holds the identity. A lock file whose holder died on this host is reclaimed on the next attempt, one reclaimer at a time. The lock file needs the identity to judge its holder, so there `acquireProcessLock` rejects with the error reading it and creates nothing.
+
+Two limits of that fallback:
+
+- A crash between creating the lock file and writing the stamp leaves an empty file that counts as held for 30 s.
+- A holder stalled longer than that between the two steps can end up holding the lock together with its reclaimer.
+
+Pass `{ wait: true, signal }` to wait for the holder instead of getting `ProcessLockHeld` at once.
+
+On win32 the platform cannot identify processes (boot id, pid and start time). A SQLite process lock is still taken, with `holder` undefined. See [Installation](/docs/installation) for NFS, containers and a renamed host.
+
+## Turns inside one process
+
+Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the lock or give up, and only then makes its own attempt. It never opens SQLite against a holder in its own process, whose busy wait would block the thread the holder needs to finish and release.
+
+Without `wait` such a call gets `ProcessLockHeld` at once. Aborting `signal` takes a task out of the queue and leaves the others' turns as they were.
+
+Tasks share the turns when they name the same file (its directory resolved through symlinks) through platforms with the same `sqlite` object (without SQLite, the same `fs`), as every platform from `createNodePlatform` has. Other processes are still kept out by SQLite or the lock file.
+
+The turns live in this package's module state, so a second copy of it in the process (another version, or one bundled into a dependency) does not share them and meets the first in SQLite, as another process does.
+
+## isProcessLockHeld
+
+`isProcessLockHeld` tells whether another process, or an acquisition in this one, holds the lock, without taking it. A short-lived process can use it to hand work to a running holder and start one only when there is none.
+
+```ts title="isProcessLockHeld"
+import { isProcessLockHeld } from "@rivus/agent-kit-collab/process-lock";
+
+if (!(await isProcessLockHeld(platform, "/var/run/my-daemon/daemon.lock"))) {
+  startWorker(); // the worker takes the lock with acquireProcessLock, and exits if another one got it first
+}
+```
+
+The check writes nothing: no `<path>.holder`, and a missing lock file reads as free and stays missing.
+
+With SQLite it makes one attempt at a shared lock, with no busy timeout and no retries, reads no process identity, and answers in well under a millisecond. Checks that run at once all see a free lock as free. The first attempt of an `acquireProcessLock` running at the same moment waits out a check (a 10 ms busy timeout, then a few short retries) and still gets a free lock. The later retries of `wait: true` have no busy timeout, so one that meets a check can find the free lock busy. The call then gets it after another backoff.
+
+Without SQLite it judges the lock file's holder as an acquisition does and leaves a dead holder's file for the next acquisition to reclaim.
+
+The answer can be stale by the time it arrives, so only `acquireProcessLock` decides who holds the lock. It takes `{ signal }`. Since the check never waits, it looks at the signal once, before it starts, and rejects with `signal.reason` if it is aborted.

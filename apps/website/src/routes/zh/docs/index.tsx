@@ -13,7 +13,7 @@ function ChineseDocs() {
 export const Route = createFileRoute("/zh/docs/")({
   component: ChineseDocs,
   loader: async () => {
-    const data = await loadDocsPage({ data: { lang: "zh" } });
+    const data = await loadDocsPage({ data: { lang: "zh", slugs: [] } });
     await docs.getPage(data.path)?.preload();
     return data;
   }

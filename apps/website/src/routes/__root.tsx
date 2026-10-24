@@ -16,7 +16,15 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
-        <RootProvider i18n={i18nProvider(translations, language)}>
+        <RootProvider
+          i18n={i18nProvider(translations, language)}
+          search={{
+            options: {
+              type: "static",
+              api: `${import.meta.env.BASE_URL}api/search.json`
+            }
+          }}
+        >
           <Outlet />
         </RootProvider>
         <Scripts />

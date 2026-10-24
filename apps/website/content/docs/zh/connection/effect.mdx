@@ -1,0 +1,29 @@
+---
+title: Effect 入口
+description: PlatformService 与 NodePlatformLive。工具包返回 Effect，自己不运行它们。
+---
+
+Effect 入口返回从 `PlatformService` 读取平台的 Effect 和 Layer。由你的应用提供它并运行程序。工具包没有 Promise 包装，自己也不运行 Effect。
+
+`@rivus/agent-kit/platform/effect` 导出 `PlatformService`，即作为 Effect 服务的 `Platform`。它可以在任何环境运行，需要 `effect`。
+
+`@rivus/agent-kit/node/effect` 导出 `NodePlatformLive`，一个用 `createNodePlatform()` 提供 `PlatformService` 的 Layer。它运行在 Node 中，需要 `effect`。
+
+```ts title="PlatformService"
+import * as Effect from "effect/Effect";
+
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import { PlatformService } from "@rivus/agent-kit/platform/effect";
+
+const program = Effect.gen(function* () {
+  const platform = yield* PlatformService;
+  return platform.home;
+});
+const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatformLive)));
+```
+
+要使用另一份 `env` 或 `home`，改为提供 `Layer.succeed(PlatformService, createNodePlatform({ env, home }))`。
+
+把 `effect` 安装成与 `peerDependencies.effect` 完全相同的版本。见 [安装](/zh/docs/installation)。普通入口不会加载这个可选 peer。
+
+其他 Effect 入口是 [Harness 安装](/zh/docs/connection/harness)、[ACP](/zh/docs/connection/acp)、[租约](/zh/docs/coordination/leases) 和 [车道](/zh/docs/coordination/lanes)。

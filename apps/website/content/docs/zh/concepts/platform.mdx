@@ -1,0 +1,22 @@
+---
+title: 平台
+description: 提供文件、进程和环境的对象。
+---
+
+文件、进程和环境来自调用方传入的 `Platform` 对象，因此读取代码也能在浏览器里运行。
+
+`@rivus/agent-kit/platform` 只以类型导出 `Platform`。它可以在任何环境运行。
+
+`@rivus/agent-kit/node` 导出 `createNodePlatform`，运行在 Node 中。读取会话、用量或锁的指南都从它开始：
+
+```ts title="createNodePlatform"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+
+const platform = createNodePlatform();
+```
+
+`@rivus/agent-kit-collab` 不认识任何具体 Agent。它通过同一个 `Platform` 访问文件、进程、时钟和 SQLite。
+
+`/node`、`/node/effect` 和 `/testing` 不会打成浏览器包。其余每个入口都会。平台的 Effect 包装见 [Effect 入口](/zh/docs/connection/effect)。
+
+OpenCode 的 SQLite 存储需要 `platform.sqlite`。没有它时，用量扫描产出 `SqliteUnavailable`。进程锁在 `platform.sqlite` 存在时使用它，并用 `platform.process.self` 取得持有者身份。细节见 [Token 用量](/zh/docs/connection/token-usage) 和 [进程锁](/zh/docs/coordination/process-locks)。

@@ -1,3 +1,6 @@
+import { Link } from "@tanstack/react-router";
+
+import { guide } from "../../lib/guide-paths.ts";
 import { CAPABILITIES, type Capability } from "../../lib/support.ts";
 import { text, type CopyKey, type Lang } from "../../lib/landing-copy.ts";
 import { landingFacts } from "virtual:landing-facts";
@@ -12,6 +15,7 @@ const COLUMN_LABEL: Record<Capability, CopyKey> = {
 };
 
 export function ProvidersSection({ lang }: { readonly lang: Lang }) {
+  const providers = guide(lang, "concepts/providers");
   return (
     <section className="section" aria-labelledby="providers-heading">
       <h2 id="providers-heading">{text(lang, "providersTitle")}</h2>
@@ -45,7 +49,11 @@ export function ProvidersSection({ lang }: { readonly lang: Lang }) {
               </tr>
             ))}
             <tr className="add">
-              <td colSpan={7}>{text(lang, "addProvider")}</td>
+              <td colSpan={7}>
+                <Link to={providers.to} params={providers.params}>
+                  {text(lang, "addProvider")}
+                </Link>
+              </td>
             </tr>
           </tbody>
         </table>

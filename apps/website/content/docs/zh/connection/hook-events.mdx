@@ -1,0 +1,38 @@
+---
+title: Hook 事件
+description: readHookEvent 把 hook 载荷变成生命周期阶段。它不做 IO。
+---
+
+`/harness/events` 给 hook 进程使用。它是同步的，不做 IO，也不导入 npm 包或 Node 内置模块。它可以在任何环境运行。
+
+导出：`readHookEvent`、`builtinHookDialects`、`LifecycleEvent`。
+
+[Agent 表](/zh/docs/agents) 中的每个 Agent 在 `/harness/events` 里都有 hook 方言。Hook 命令继续使用 `builtinHookDialects`。那份隔离构建不导入任何东西，并持有单独的 hook 对象。它不跟随 `providers` 列表。
+
+```ts title="readHookEvent"
+import { readFileSync } from "node:fs";
+
+import { readHookEvent } from "@rivus/agent-kit/harness/events";
+
+// In a hook command registered for Claude Code; the payload is the JSON the agent wrote to stdin.
+const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), process.env);
+// { agent: "claude-code", phase: "start", scope: "turn", nativeEvent: "UserPromptSubmit", sessionId, cwd, turnId }
+```
+
+`agent` 是真正运行这个 hook 的 Agent。Grok 和 Cursor 也会运行 Claude Code 设置里的 hook。
+
+`phase` 为 `start`、`activity`、`blocked`、`finish` 或 `unknown`。Agent 说得更多时，还带 `scope`、`outcome` 和 `blocker`。方言不认识的载荷或事件读作 `unknown`，而不是抛出。`readHookEvent` 不会因为载荷而抛出。
+
+工具参数从不复制，只保留工具名和调用 id。
+
+`terminal` 标出 hook 所在的 herdr、cmux、Superset 或 tmux 窗格。
+
+只在不是权限门的事件上注册观察 hook，或者返回该事件输出规则所记录的允许响应。观察者打印事件的 `passThrough`。这是方言的值，除非该事件的 `output` 覆盖它，例如 Cursor 的 `beforeSubmitPrompt` 打印 `{"continue":true}`。观察者不得静默挡住一道门。
+
+每个门的 `output` 规则决定它的退出码和 stdout 做什么。Cursor 的门会挡住事件无法读取的输出，那里空输出做什么没有文档记载。
+
+`builtinHookDialects` 保存每个 Agent 的 hook 事实：事件名、超时单位、哪些事件是权限门，以及观察 hook 应该打印什么。
+
+在 `readHookEvent` 中指名没有 hook 方言的 Agent，会抛出 `code: "capability-unsupported"` 的 `AgentKitError`。用 `/catalog` 的 `isAgentKitError` 检测。
+
+安装这些 hook 见 [Harness 安装](/zh/docs/connection/harness)。用 `/testing` 的 `hookDialectConformance` 检查自己写的方言。

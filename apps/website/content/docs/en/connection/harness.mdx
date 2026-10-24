@@ -1,0 +1,76 @@
+---
+title: Harness installation
+description: planInstall and applyInstall write hooks and skills, and record them in a ledger.
+---
+
+`/harness` installs what an application wants into the agents (hooks and skills for now) and removes it again. It runs anywhere, with `effect` and a platform.
+
+Exports: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports.
+
+It plans first and changes agent targets only when the plan is applied. An `InstallPlan` is a handle that cannot be constructed or serialized. `applyInstall` takes only a plan `planInstall` returned and dies with an `AgentKitError` whose `code` is `"unknown-plan"` otherwise, so a restart re-plans. Every target change is recorded in a ledger under `$XDG_STATE_HOME/agent-kit/harness` while an SQLite lock is held, so a crash is recovered by probing, not replayed.
+
+```ts title="planInstall and applyInstall"
+import { applyInstall, HarnessLive, planInstall, uninstall } from "@rivus/agent-kit/harness";
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+
+const bundle = {
+  owner: "my-app",
+  version: "1.2.0",
+  digest: "…",
+  // `{agent}` becomes each agent's id; keep the command stable, agents that review hooks ask again when it changes.
+  artifacts: [
+    {
+      type: "hooks",
+      command: "/usr/local/bin/my-app-hook {agent}",
+      events: { "claude-code": ["Stop"], codex: ["Stop"] }
+    }
+  ],
+  legacyMarkers: ["my-app hook"] // what older versions registered without a ledger is replaced, not duplicated
+} as const;
+
+const program = Effect.gen(function* () {
+  const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
+  // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts; plan.notes;
+  // plan.droppedHooks. A PlanConflict names, per conflict, the choices that resolve it ("force", "adopt", "backup").
+  return yield* applyInstall(plan);
+});
+await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
+// Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
+```
+
+## Where each Agent is written
+
+- Claude Code gets a skills-dir plugin.
+- Codex gets a plugin (through `codex plugin`, or `config.toml` hook groups when `codex` is not on `PATH`).
+- Gemini CLI gets an extension.
+- Grok gets a file in `~/.grok/hooks`.
+- Cursor gets a local plugin.
+- opencode and Pi get a bridge that forwards their events to the command.
+
+Events the dialect reads as ending something (phase `finish`) are delivered synchronously. Those events are opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle, and Pi `agent_end`, `agent_settled` and `session_shutdown`. The bridge hands them to the command and waits for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded.
+
+A send that fails or times out still does not throw into the agent, and the other events are forwarded without waiting. The timeout kills the shell the bridge started, so a longer finish hook is cut off, and an activity event forwarded in the same tick just before a finish can still reach the command after it.
+
+## opencode bridge
+
+The opencode bridge forwards each bus event as opencode sent it, plus the plugin's `directory`, and a tool hook as `{ type, properties, directory }`.
+
+When an event such as `file.edited` names no session, it adds `currentSessionId`: the session of the latest event that plugin instance saw name one, forwarded or not, until that session is deleted. With several sessions in one directory, that is the latest one's.
+
+A payload that throws while it is read does not reject the plugin callback. `readHookEvent` reads `currentSessionId` after opencode's own session paths, so an event that names a session keeps that id.
+
+An event fires once even in agents that also run Claude Code's settings hooks.
+
+## Files, crashes and checks
+
+Shared files keep their comments and formatting. Nothing is written through a symlink or into a file chezmoi manages. Concurrent edits by tools that do not take the ledger lock can be lost without a trace.
+
+A plan handle cannot be serialized and applied by a later process. Re-plan after a restart, or after `PlanStale` or `TargetChanged`.
+
+Planning may settle an earlier holder's pending operations under the ledger lock. `verify` may acknowledge a ledger that is behind the disk. `doctor`'s lock check may create lock files in the harness state directory. None of these rewrite agent targets.
+
+`uninstall("my-app")` removes only what the ledger records and keeps files the user changed.
+
+Hook payloads themselves are read with [Hook events](/docs/connection/hook-events). Paths that an install creates are not discovery evidence. See [Agent detection](/docs/connection/discovery).

@@ -1,0 +1,78 @@
+---
+title: Token usage
+description: scanUsage reads token records without building transcripts.
+---
+
+`/transcript/usage` decodes token usage without building transcripts, and imports nothing outside the package, so a host that cannot install dependencies can bundle it alone. It runs anywhere, with a platform.
+
+Exports: `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`.
+
+`/transcript/usage` reads the usage of every agent in the [Agents table](/docs/agents) except Cursor.
+
+`scanUsage` reads every agent's usage under its home and returns a state to pass to the next scan, which then reads only what was written since.
+
+```ts title="scanUsage"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
+type UsageScanState = ReturnType<typeof scanUsage>["state"];
+
+const platform = createNodePlatform();
+const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+let state: UsageScanState | undefined; // keep it between runs, as JSON
+const records: UsageRecord[] = []; // a continued scan yields only new records: keep records with the state
+
+const scan = scanUsage(platform, { since, ...(state ? { state } : {}) });
+for await (const item of scan) {
+  if (isUsageRecord(item)) {
+    records.push(item);
+  }
+}
+state = scan.state;
+```
+
+A caller that keeps a state also keeps its own totals beside it, uses one state per window with the same `since`, and runs its scans one at a time: two concurrent scans from one state both yield the new records. Counts follow the [usage convention](/docs/concepts/usage-convention).
+
+## UsageRecord
+
+A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the agent logs only turn totals (Grok, with `modelCalls` and `usageByModel`).
+
+It carries the agent's own cost when the log has one (`costUsd`, `costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier.
+
+A request that several files hold counts once. That includes a Claude Code subagent file that starts with a copy of another's records, and an older Gemini CLI chat migrated into a `.jsonl` file.
+
+Claude Code writes a response as several records, so the last requests of a session that is still running wait in the state. A scan reports them once their file has been quiet for 30 minutes.
+
+A scan that continues from a state needs `since`. The state keeps a cursor per source (by an identity that survives Codex archiving) and a short hash of every request counted since then, about 1 MB for a busy month.
+
+`scanUsage` yields `{ agent, path, error }` items for a failed read and goes on. OpenCode's SQLite store needs `platform.sqlite`. Without it a scan yields `SqliteUnavailable`.
+
+When the `signal` option aborts, the call rejects with `signal.reason`.
+
+## Direct decoding
+
+For direct source decoding, select a descriptor's `usage` service and call its `sources` and `decode` methods. Resolve its home with `sessionAdapterHome(usage, { home, env })`. This helper also accepts a usage service.
+
+```ts title="Decode one agent's usage sources"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+import { sessionAdapterHome } from "@rivus/agent-kit/sessions";
+
+const platform = createNodePlatform();
+const usage = builtinProviders.find(({ id }) => id === "codex")?.usage;
+if (usage) {
+  const { home, env } = platform;
+  const agentHome = sessionAdapterHome(usage, { home, env });
+  for await (const source of usage.sources(platform, agentHome)) {
+    if ("error" in source) {
+      throw source.error;
+    }
+    for await (const item of usage.decode(platform, source)) {
+      console.log(item);
+    }
+  }
+}
+```
+
+The decoder's cursor continues a source. `scanUsage` manages those cursors for scans across agents.
+
+Price the records with a table you pass to `/cost`. The kit ships no prices. See [Cost](/docs/connection/cost).

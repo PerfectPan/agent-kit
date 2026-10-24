@@ -1,0 +1,49 @@
+---
+title: Installation
+description: ESM, Node.js 22.13 or later, the effect peer, and the same version of both packages.
+---
+
+## @rivus/agent-kit
+
+```bash title="Install @rivus/agent-kit"
+npm install @rivus/agent-kit
+```
+
+ESM only, no side effects, Node.js 22.13 or later.
+
+Every entry except `/node`, `/node/effect` and `/testing` also bundles for browsers.
+
+Effect entries need the host to install `effect` at exactly the version in `peerDependencies.effect`. Read it with:
+
+```bash title="Read the effect peer"
+npm view @rivus/agent-kit peerDependencies.effect
+```
+
+Plain entries do not load this optional peer. The entry table's **Runs in** column on [Introduction](/docs) marks entries that need it with "with `effect`".
+
+The entry table describes the source API. Verify the exports of the npm version you select before adoption. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
+
+## @rivus/agent-kit-collab
+
+```bash title="Install both packages and the effect peer"
+npm install @rivus/agent-kit @rivus/agent-kit-collab
+# Read the exact effect peer version for /lease and /lanes, then install that version:
+npm view @rivus/agent-kit-collab peerDependencies.effect
+npm install --save-exact "effect@$(npm view @rivus/agent-kit-collab peerDependencies.effect)"
+```
+
+Select a verified non-placeholder release that exports the entries you need, with both packages at the same version. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md) for migration checks and rollback.
+
+For a verified older release, query `npm view @rivus/agent-kit-collab@<version> peerDependencies.effect` and use the same `@<version>` suffix in the install line's query.
+
+`@rivus/agent-kit` is a peer dependency, so the process holds one copy of the platform types. The Effect entries `/lease` and `/lanes` need the host to install `effect` at exactly the version in `peerDependencies.effect`, as reported by the command above. Plain entries do not need this optional peer.
+
+ESM only, no side effects, Node.js 22.13 or later on darwin or linux.
+
+win32 is not supported: the platform cannot identify processes there (boot id, pid and start time), which leases and lock files need. A SQLite process lock is still taken, with `holder` undefined, as described in [Process locks](/docs/coordination/process-locks).
+
+Every lock supports local directories only. Neither SQLite's locks nor lock files are reliable on NFS.
+
+Holders are judged by host name, boot id, pid and start time, so all processes that share a lock must see one process table. Containers that share the host's name and kernel but not its PID namespace are not supported. A host renamed while it holds locks makes its holders look remote (judged by the TTL alone; a lock file of a dead holder then stays until removed).
+
+Status is 0.x, with one lockstep release policy for this package and `@rivus/agent-kit` (same version). A minor release may contain breaking changes.

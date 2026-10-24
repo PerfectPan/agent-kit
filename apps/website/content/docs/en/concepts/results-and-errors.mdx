@@ -1,0 +1,19 @@
+---
+title: Results and errors
+description: Result values, yielded read errors, Effect tags, and thrown AgentKitError.
+---
+
+`@rivus/agent-kit/catalog` exports `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError` and `isAgentKitError`. It runs anywhere. `/catalog` retains `AgentKitError` and `isAgentKitError` so callers can recognize errors from shell functions.
+
+- `loadTranscript` and `summarizeSession` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where `error._tag` names the failure. `loadTranscript` and `summarizeSession` fail with `SessionNotFound`, `ReadFailed`, `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`.
+- `detectAgents` resolves to `Installation[]`. A failed probe is recorded in that agent's `problems`.
+- `listSessions` yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and goes on with the next one. `scanUsage` yields `{ agent, path, error }` items the same way.
+- When the `signal` option aborts, the call rejects with `signal.reason`.
+- `/acp` fails Effects with the same kind of `_tag` errors: `AgentUnavailable` and `HandshakeFailed` from `connectAgent`; `AuthRequired`, `AcpTimeout`, `AcpRequestFailed`, `ConnectionClosed`, `BindingNotFound`, `LoadUnsupported` and `SessionBindingStoreFailure` from opening sessions; `TurnInProgress`, `SessionClosed` and `CancelUnsettled` from turns.
+- Programming errors and defects throw. Naming an agent without a session adapter in `listSessions({ agents })`, or without a hook dialect in `readHookEvent`, throws an `AgentKitError` with `code: "capability-unsupported"`. Test for it with `isAgentKitError`. `summarizeSession` throws the same way, with `code: "invalid-prompts"`, for `prompts` caps that are not whole numbers in range. `readHookEvent` never throws because of a payload.
+
+Lease failures are typed values with a `_tag`: `LeaseHeld`, `LeaseLost`, `LeaseConfigInvalid`, `LeaseRepositoryFailure` and the repository's `RevisionConflict`. The kit runs no Effect itself. Run the program at your application's assembly root.
+
+Lane failures are typed values with a `_tag`: `LaneQueueFull`, `LanesClosed` and `LanesConfigInvalid`.
+
+`applyInstall` dies with an `AgentKitError` whose `code` is `"unknown-plan"` when the plan was not returned by `planInstall`. Re-plan after `PlanStale` or `TargetChanged`. A `PlanConflict` names, per conflict, the choices that resolve it (`"force"`, `"adopt"`, `"backup"`).

@@ -1,0 +1,59 @@
+---
+title: ACP
+description: connectAgent 通过 ACP 驱动一个 Agent 会话。
+---
+
+`@rivus/agent-kit/acp` 导出 `connectAgent`、`probeAgent`、`agentEnv`，以及 `SessionBindingStore` 和它的 Layer。它需要 `effect`，以及能够拉起进程的平台。
+
+`/acp` 为 Claude Code（`claude-agent-acp`）、Codex（`codex-acp`）、Gemini CLI、Grok 和 opencode 提供启动配置。配置的 `warnings` 标出尚未对照该 Agent 核对的事实。Cursor 和 Pi 没有受支持的 ACP 传输。生成的支持标志见 [支持的 Agent](/zh/docs/agents)。
+
+`connectAgent` 用你传入的环境原样启动 Agent 的 ACP 程序，完成握手，并返回一个属于你的 Scope 的连接。关闭 Scope 会关闭它的会话并停止进程。
+
+一个会话一次只跑一个回合，`prompt` 以流的形式给出这个回合。增量按 AI SDK 的流部分命名（`text-delta`、`reasoning-delta`、`tool-input-*`、`tool-output-available`、`tool-output-error`、`finish`），`event` 部分携带完成的 `TranscriptEvent`。
+
+```ts title="connectAgent"
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
+
+import { agentEnv, connectAgent, MemorySessionBindingStoreLive } from "@rivus/agent-kit/acp";
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+
+const profile = builtinProviders.find((provider) => provider.id === "claude-code")?.acp;
+if (!profile) throw new Error("Claude Code ACP is unavailable");
+
+const turn = Effect.scoped(
+  Effect.gen(function* () {
+    const connection = yield* connectAgent("claude-code", {
+      cwd: "/work/project",
+      // Only the variables the agent reads; nothing is inherited.
+      env: agentEnv(profile, process.env),
+      onPermission: (request) => Effect.succeed(askTheUser(request))
+    });
+    const session = yield* connection.newSession({ sessionKey: "chat:42", systemPrompt: "Be brief." });
+    yield* session.prompt([{ type: "text", text: "Summarize README.md" }]).pipe(Stream.runForEach(render));
+  })
+);
+await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
+```
+
+权限请求交给 `onPermission`。没有它，或没有给出回答时，请求被拒绝。
+
+中断回合的流，或调用 `session.cancel()`，会发送 `session/cancel`，并在 `cancelTimeoutMs` 内等待回合结束（默认 5 秒）。没有按时结束时，会话的绑定被移除，连接被关闭，它的其他会话以 `ConnectionClosed` 失败。
+
+`sessionKey` 在 `SessionBindingStore`（`MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`）里把一个键绑定到会话，因此后来的连接可以 `loadSession({ sessionKey })`。
+
+除非 `fileSystem` 打开它们，客户端的文件读写是关闭的。打开之后，解析链接后仍留在会话目录内。
+
+`probeAgent` 打开一次试探会话，并报告 `ready`、`needs-login` 或 `unavailable`。
+
+## Effect 失败
+
+`/acp` 用 `_tag` 错误使 Effect 失败：
+
+- `connectAgent` 产生 `AgentUnavailable` 和 `HandshakeFailed`
+- 打开会话产生 `AuthRequired`、`AcpTimeout`、`AcpRequestFailed`、`ConnectionClosed`、`BindingNotFound`、`LoadUnsupported` 和 `SessionBindingStoreFailure`
+- 回合产生 `TurnInProgress`、`SessionClosed` 和 `CancelUnsettled`
+
+平台 Layer 见 [Effect 入口](/zh/docs/connection/effect)。

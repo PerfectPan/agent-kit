@@ -1,0 +1,64 @@
+---
+title: Introduction
+description: Connection for one Agent, coordination for many, and the public entries.
+---
+
+`@rivus/agent-kit` connects to one Agent at a time. It provides building blocks for applications that work with third-party coding agents such as Claude Code, Codex and Grok. The kit knows each agent's id and home directory, lists its sessions, and reads their logs into one transcript model with one usage convention.
+
+`@rivus/agent-kit-collab` coordinates many Agents. It adds fenced leases (`/lease`), a single-instance process lock (`/process-lock`) and keyed scheduling lanes (`/lanes`). The package knows no particular agent. Collab's entries use agent-kit's public platform and follow the same lockstep release.
+
+Files, processes and the environment come from a `Platform` object that the caller passes in, so the reading code also runs in a browser. ACP is implemented in `/acp`. `/harness` installs an application's hooks and skills into these agents and removes them again, with a ledger of what it wrote.
+
+Status is 0.x. A minor release may contain breaking changes. Both packages share one lockstep release policy, so they ship the same version.
+
+## Entries
+
+The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (20 in total). The tables describe that source API. Verify that the npm release you select exports the entries you need before adoption. See [Adopting agent-kit](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md).
+
+| Entry                                                               | Main exports                                                                                                     | Runs in                                  |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| [`@rivus/agent-kit/acp`](/docs/connection/acp)                      | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers                                   | with `effect` and a platform that spawns |
+| [`@rivus/agent-kit/providers`](/docs/concepts/providers)            | `Provider`, `builtinProviders`                                                                                   | anywhere                                 |
+| [`@rivus/agent-kit/catalog`](/docs/concepts/results-and-errors)     | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError`                              | anywhere                                 |
+| [`@rivus/agent-kit/cost`](/docs/connection/cost)                    | `createPricing`, `summarize`, `Pricing`                                                                          | anywhere, no imports                     |
+| [`@rivus/agent-kit/discovery`](/docs/connection/discovery)          | `detectAgents`, `versionFromOutput`, `ProbeRecipe`                                                               | anywhere, with a platform                |
+| [`@rivus/agent-kit/harness`](/docs/connection/harness)              | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports | anywhere, with `effect` and a platform   |
+| [`@rivus/agent-kit/harness/events`](/docs/connection/hook-events)   | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`                                                         | anywhere, no imports                     |
+| [`@rivus/agent-kit/platform`](/docs/concepts/platform)              | `Platform` (type only)                                                                                           | anywhere                                 |
+| [`@rivus/agent-kit/redact`](/docs/connection/redaction)             | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                       | anywhere, no imports                     |
+| [`@rivus/agent-kit/node`](/docs/concepts/platform)                  | `createNodePlatform`                                                                                             | Node                                     |
+| [`@rivus/agent-kit/platform/effect`](/docs/connection/effect)       | `PlatformService`: the `Platform` as an Effect service                                                           | anywhere, with `effect`                  |
+| [`@rivus/agent-kit/node/effect`](/docs/connection/effect)           | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                          | Node, with `effect`                      |
+| [`@rivus/agent-kit/sessions`](/docs/connection/sessions)            | `listSessions`, `sessionAdapterHome`, `isSessionHead`, `SessionAdapter`                                          | anywhere, with a platform                |
+| [`@rivus/agent-kit/transcript`](/docs/connection/sessions)          | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent`                                            | anywhere, with a platform                |
+| [`@rivus/agent-kit/transcript/usage`](/docs/connection/token-usage) | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`                                                | anywhere, with a platform; no imports    |
+| [`@rivus/agent-kit/testing`](/docs/testing)                         | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`          | Node                                     |
+| [`@rivus/agent-kit/testing/effect`](/docs/testing)                  | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                        | anywhere, with `effect`                  |
+
+| Entry                                                                      | Main exports                                                                                                     | Kind     |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
+| [`@rivus/agent-kit-collab/process-lock`](/docs/coordination/process-locks) | `acquireProcessLock`, `isProcessLockHeld`, `ProcessLock`, `ProcessLockPlatform`                                  | plain TS |
+| [`@rivus/agent-kit-collab/lease`](/docs/coordination/leases)               | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect   |
+| [`@rivus/agent-kit-collab/lanes`](/docs/coordination/lanes)                | `createLanes`                                                                                                    | Effect   |
+
+`builtinProviders` from `/providers` exposes each agent's `identity`, `discovery`, `install`, `sessions`, `usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use. The ordinary entries share these service objects. Hook commands keep using `builtinHookDialects` from `/harness/events`, whose isolated build imports nothing and owns separate hook objects. `/catalog` retains `AgentKitError` and `isAgentKitError` so callers can recognize errors from shell functions.
+
+The **Runs in** column marks entries that need `effect` with "with `effect`". Plain entries do not load that optional peer.
+
+## Repository
+
+The project is a pnpm workspace monorepo laid out like [PerfectPan/project-template-pnpm](https://github.com/PerfectPan/project-template-pnpm). Each bounded context is a private package under `packages/`. `packages/agent-kit` is the published shell that re-exports their public names and bundles them into `dist`. `infra/architecture/boundaries.ts` declares which package and layer may import what, and `vp lint` checks every package's imports against it.
+
+```bash
+pnpm install
+pnpm run check   # format, build, lint, typecheck, test, package checks
+```
+
+- [Authoring a context package](https://github.com/PerfectPan/agent-kit/blob/main/docs/architecture/authoring.md)
+- [Adoption, verification and rollback](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/adoption.md)
+- [Glossary](https://github.com/PerfectPan/agent-kit/blob/main/CONTEXT.md)
+- [Contributing](https://github.com/PerfectPan/agent-kit/blob/main/CONTRIBUTING.md) and [releases](https://github.com/PerfectPan/agent-kit/blob/main/docs/development/release.md)
+
+## License
+
+MIT. Source: [PerfectPan/agent-kit](https://github.com/PerfectPan/agent-kit). `@rivus/agent-kit-collab` is MIT as well.

@@ -13,7 +13,7 @@ function EnglishDocs() {
 export const Route = createFileRoute("/docs/")({
   component: EnglishDocs,
   loader: async () => {
-    const data = await loadDocsPage({ data: { lang: "en" } });
+    const data = await loadDocsPage({ data: { lang: "en", slugs: [] } });
     await docs.getPage(data.path)?.preload();
     return data;
   }

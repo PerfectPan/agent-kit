@@ -1,13 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 
+import { docsIndex } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
 import { LANG_STORAGE_KEY } from "../../lib/lang-preference.ts";
 import { GITHUB_URL } from "../../lib/projects.ts";
 import { Mascot } from "../mascot.tsx";
-
-function docsPath(lang: Lang): "/docs" | "/zh/docs" {
-  return lang === "zh" ? "/zh/docs" : "/docs";
-}
 
 function homePath(lang: Lang): "/" | "/zh" {
   return lang === "zh" ? "/zh" : "/";
@@ -15,7 +12,7 @@ function homePath(lang: Lang): "/" | "/zh" {
 
 export function LandingHeader({ lang }: { readonly lang: Lang }) {
   const navigate = useNavigate();
-  const docs = docsPath(lang);
+  const docs = docsIndex(lang);
 
   function choose(next: Lang) {
     localStorage.setItem(LANG_STORAGE_KEY, next);

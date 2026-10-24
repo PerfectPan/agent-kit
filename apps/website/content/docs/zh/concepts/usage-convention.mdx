@@ -1,0 +1,14 @@
+---
+title: 用量约定
+description: Token 计数遵循 OTel GenAI 与 AI SDK。缺失的计数是缺席，不是 0。
+---
+
+用量遵循 OTel GenAI 与 AI SDK。
+
+- `inputTokens` 包含缓存读取和写入。
+- `outputTokens` 包含推理。
+- 日志没有记录的计数是缺席，不是 0。
+
+同一条缺席规则也出现在价格合计里。没有价格的模型没有费用（`undefined`，不是 0）；当其中没有任何一项被标价时，汇总的 `costUsd` 缺席。见 [费用](/zh/docs/connection/cost)。
+
+带有保留状态的 `scanUsage` 只产出自那以后写入的内容。保留状态的调用方还要在旁边保留自己的合计，对同一个 `since` 的窗口使用一份状态，并且一次只跑一次扫描：从同一份状态并发的两次扫描都会产出新记录。扫描本身见 [Token 用量](/zh/docs/connection/token-usage)。

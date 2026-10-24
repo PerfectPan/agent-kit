@@ -1,0 +1,38 @@
+---
+title: Hook events
+description: readHookEvent turns a hook payload into a lifecycle phase. It does no IO.
+---
+
+`/harness/events` is for hook processes. It is synchronous, does no IO and imports no npm package or Node built-in. It runs anywhere.
+
+Exports: `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`.
+
+Every agent in the [Agents table](/docs/agents) has a hook dialect in `/harness/events`. Hook commands keep using `builtinHookDialects`. That isolated build imports nothing and owns separate hook objects. It does not follow a `providers` list.
+
+```ts title="readHookEvent"
+import { readFileSync } from "node:fs";
+
+import { readHookEvent } from "@rivus/agent-kit/harness/events";
+
+// In a hook command registered for Claude Code; the payload is the JSON the agent wrote to stdin.
+const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), process.env);
+// { agent: "claude-code", phase: "start", scope: "turn", nativeEvent: "UserPromptSubmit", sessionId, cwd, turnId }
+```
+
+`agent` is the agent that really ran the hook. Grok and Cursor also run the hooks in Claude Code's settings.
+
+`phase` is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the agent says more. A payload or event the dialect does not know reads as `unknown` instead of throwing. `readHookEvent` never throws because of a payload.
+
+Tool arguments are never copied, only the tool's name and call id.
+
+`terminal` names the herdr, cmux, Superset or tmux pane the hook ran in.
+
+Register observation hooks only on events that are not permission gates, or return the allow response the event's output rules record. An observer prints the event's `passThrough` — the dialect's unless that event's `output` overrides it, as Cursor's `beforeSubmitPrompt` printing `{"continue":true}` — and must not silently block a gate.
+
+Each gate's `output` rules decide what its exit codes and stdout do. Cursor's gates block on output the event cannot read, and what empty output does there is undocumented.
+
+`builtinHookDialects` holds each agent's hook facts: event names, the timeout unit, which events are permission gates and what an observing hook should print.
+
+Naming an agent without a hook dialect in `readHookEvent` throws an `AgentKitError` with `code: "capability-unsupported"`. Test for it with `isAgentKitError` from `/catalog`.
+
+Installing those hooks is [Harness installation](/docs/connection/harness). Check a dialect you write with `hookDialectConformance` from `/testing`.

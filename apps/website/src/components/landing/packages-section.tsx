@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
+import { landingFacts } from "virtual:landing-facts";
+
 import type { ShownBudget } from "../../lib/entry-budgets.ts";
+import { entryGuide } from "../../lib/guide-paths.ts";
 import { text, type CopyKey, type Lang } from "../../lib/landing-copy.ts";
 import { INSTALL_COLLAB, INSTALL_KIT } from "../../lib/projects.ts";
-import { landingFacts } from "virtual:landing-facts";
 
 const BLURB: Record<string, CopyKey> = {
   "/discovery": "blurbDiscovery",
@@ -23,9 +26,12 @@ function entryList(entries: readonly ShownBudget[], lang: Lang) {
     <ul className="entries">
       {entries.map((entry) => {
         const blurb = BLURB[entry.entry];
+        const guide = entryGuide(lang, entry.entry);
         return (
           <li key={entry.entry}>
-            <code>{entry.entry}</code>
+            <Link to={guide.to} params={guide.params}>
+              <code>{entry.entry}</code>
+            </Link>
             <span>{blurb ? text(lang, blurb) : entry.entry}</span>
             <b className={entry.noImports ? "free" : undefined}>{entry.label}</b>
           </li>

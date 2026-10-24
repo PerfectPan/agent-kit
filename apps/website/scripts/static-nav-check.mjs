@@ -1,5 +1,6 @@
-// Serves dist/client under /agent-kit/ and clicks landing -> docs -> the other language.
-// Chrome is headless via the DevTools protocol. Not part of `pnpm test`.
+// Serves dist/client under /agent-kit/ and clicks landing -> docs -> the other
+// language -> one nested guide -> back to English. Chrome is headless via the
+// DevTools protocol. Not part of `pnpm test`.
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -213,8 +214,7 @@ try {
   const landing = await evaluate(session, "location.href");
 
   await evaluate(session, `document.querySelector('header a[href="${prefix}/docs"]')?.click()`);
-  await waitForText(session, "Getting started");
-  await waitForText(session, "English docs placeholder");
+  await waitForText(session, "connects to one Agent at a time");
   const docs = await evaluate(session, "location.href");
 
   await evaluate(session, `document.querySelector('[aria-label="Choose a language"]')?.click()`);
@@ -223,9 +223,21 @@ try {
     session,
     `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "中文")?.click()`
   );
-  await waitForText(session, "开始使用");
-  await waitForText(session, "中文文档占位");
+  await waitForText(session, "一次连接一个 Agent");
   const chinese = await evaluate(session, "location.href");
+
+  await evaluate(session, `document.querySelector('a[href="${prefix}/zh/docs/installation"]')?.click()`);
+  await waitForText(session, "两个包使用同一版本");
+  const chineseGuide = await evaluate(session, "location.href");
+
+  await evaluate(session, `document.querySelector('[aria-label="Choose a language"]')?.click()`);
+  await waitForText(session, "English");
+  await evaluate(
+    session,
+    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "English")?.click()`
+  );
+  await waitForText(session, "Node.js 22.13 or later");
+  const englishGuide = await evaluate(session, "location.href");
   session.close();
 
   const interesting = session.responses.filter((entry) => !entry.url.endsWith("/favicon.ico"));
@@ -237,15 +249,23 @@ try {
   console.log(`landing ${landing}`);
   console.log(`docs ${docs}`);
   console.log(`zh docs ${chinese}`);
+  console.log(`zh guide ${chineseGuide}`);
+  console.log(`en guide ${englishGuide}`);
   console.log(`requests ${interesting.length}`);
   for (const entry of interesting) {
     console.log(`${entry.status} ${entry.url}`);
   }
-  if (!docs.includes(`${prefix}/docs`)) {
+  if (!docs.includes(`${prefix}/docs`) || docs.includes(`${prefix}/zh/`)) {
     throw new Error(`docs navigation stayed at ${docs}`);
   }
-  if (!chinese.includes(`${prefix}/zh/docs`)) {
+  if (!chinese.includes(`${prefix}/zh/docs`) || chinese.includes("/installation")) {
     throw new Error(`language switch stayed at ${chinese}`);
+  }
+  if (!chineseGuide.includes(`${prefix}/zh/docs/installation`)) {
+    throw new Error(`nested Chinese guide stayed at ${chineseGuide}`);
+  }
+  if (!englishGuide.includes(`${prefix}/docs/installation`) || englishGuide.includes("/zh/")) {
+    throw new Error(`nested English guide stayed at ${englishGuide}`);
   }
   if (cacheHits.length < 2) {
     throw new Error(`expected two static server function cache responses, got ${cacheHits.length}`);

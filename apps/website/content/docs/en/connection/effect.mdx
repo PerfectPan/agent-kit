@@ -1,0 +1,29 @@
+---
+title: Effect entries
+description: PlatformService and NodePlatformLive. The kit returns Effects and does not run them.
+---
+
+Effect entries return Effects and Layers that read the platform from `PlatformService`. Your application provides it and runs the program. The kit has no Promise wrapper, and the kit runs no Effect itself.
+
+`@rivus/agent-kit/platform/effect` exports `PlatformService`, the `Platform` as an Effect service. It runs anywhere, with `effect`.
+
+`@rivus/agent-kit/node/effect` exports `NodePlatformLive`, a Layer that provides `PlatformService` with `createNodePlatform()`. It runs in Node, with `effect`.
+
+```ts title="PlatformService"
+import * as Effect from "effect/Effect";
+
+import { NodePlatformLive } from "@rivus/agent-kit/node/effect";
+import { PlatformService } from "@rivus/agent-kit/platform/effect";
+
+const program = Effect.gen(function* () {
+  const platform = yield* PlatformService;
+  return platform.home;
+});
+const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatformLive)));
+```
+
+For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodePlatform({ env, home }))` instead.
+
+Install `effect` at exactly the version in `peerDependencies.effect`. See [Installation](/docs/installation). Plain entries do not load this optional peer.
+
+Other Effect entries are [Harness installation](/docs/connection/harness), [ACP](/docs/connection/acp), [Leases](/docs/coordination/leases) and [Lanes](/docs/coordination/lanes).

@@ -1,0 +1,5 @@
+{
+  "title": "Coordination",
+  "defaultOpen": true,
+  "pages": ["process-locks", "leases", "lanes"]
+}

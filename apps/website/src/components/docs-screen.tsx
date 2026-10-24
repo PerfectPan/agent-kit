@@ -12,7 +12,7 @@ export function DocsScreen({ lang, data }: { lang: "en" | "zh"; data: DocsLoader
   return (
     <DocsLayout {...baseOptions(lang)} tree={data.pageTree}>
       <Suspense>
-        <DocsArticle path={data.path} />
+        <DocsArticle path={data.path} fallback={data.fallback} />
       </Suspense>
     </DocsLayout>
   );

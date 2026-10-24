@@ -2,6 +2,7 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { uiTranslations } from "fumadocs-ui/i18n";
 
 import { i18n } from "./i18n.ts";
+import { GITHUB_URL } from "./projects.ts";
 
 export const translations = i18n
   .translations()
@@ -13,8 +14,10 @@ export const translations = i18n
 
 export function baseOptions(locale: "en" | "zh"): BaseLayoutProps {
   return {
+    githubUrl: GITHUB_URL,
     nav: {
-      title: locale === "zh" ? "agent-kit 中文" : "agent-kit"
+      title: "agent-kit",
+      url: locale === "zh" ? "/zh" : "/"
     }
   };
 }

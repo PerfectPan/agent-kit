@@ -1,0 +1,78 @@
+---
+title: Token 用量
+description: scanUsage 读取 Token 记录，而不构造 transcript。
+---
+
+`/transcript/usage` 解码 Token 用量，而不构造 transcript。它不导入包以外的东西，因此无法安装依赖的宿主可以单独打包它。它可以在任何环境运行，需要平台。
+
+导出：`scanUsage`、`isUsageRecord`、`noCacheInputTokens`、`UsageRecord`。
+
+`/transcript/usage` 读取 [Agent 表](/zh/docs/agents) 中除 Cursor 以外每个 Agent 的用量。
+
+`scanUsage` 读取每个 Agent 主目录下的用量，并返回一份状态，传给下一次扫描。下一次扫描就只读取自那以后写入的内容。
+
+```ts title="scanUsage"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
+type UsageScanState = ReturnType<typeof scanUsage>["state"];
+
+const platform = createNodePlatform();
+const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+let state: UsageScanState | undefined; // keep it between runs, as JSON
+const records: UsageRecord[] = []; // a continued scan yields only new records: keep records with the state
+
+const scan = scanUsage(platform, { since, ...(state ? { state } : {}) });
+for await (const item of scan) {
+  if (isUsageRecord(item)) {
+    records.push(item);
+  }
+}
+state = scan.state;
+```
+
+保留状态的调用方还要在旁边保留自己的合计，对同一个 `since` 的窗口使用一份状态，并且一次只跑一次扫描：从同一份状态并发的两次扫描都会产出新记录。计数遵循[用量约定](/zh/docs/concepts/usage-convention)。
+
+## UsageRecord
+
+一条 `UsageRecord` 是一次模型请求（`granularity: "request"`）；当 Agent 只记录回合合计时，它是一个回合（Grok，带 `modelCalls` 和 `usageByModel`）。
+
+日志里有 Agent 自己的费用时，记录带上它（`costUsd`、`costSource: "agent"`），并为 Codex 的优先层级带上 `pricingMultiplier`。
+
+多个文件持有的同一次请求只计一次。这包括开头复制了另一份记录的 Claude Code 子 Agent 文件，以及迁移进 `.jsonl` 文件的较旧 Gemini CLI 对话。
+
+Claude Code 把一次响应写成多条记录，因此仍在运行的会话，其最后几次请求会留在状态里。文件安静 30 分钟后，扫描才报告它们。
+
+从状态继续的扫描需要 `since`。状态为每个来源保留一个游标（身份在 Codex 归档后仍然成立），以及自那以后每条已计数请求的短哈希。忙碌的一个月大约 1 MB。
+
+读取失败时，`scanUsage` 产出 `{ agent, path, error }` 并继续。OpenCode 的 SQLite 存储需要 `platform.sqlite`。没有它时，扫描产出 `SqliteUnavailable`。
+
+`signal` 选项中止时，调用以 `signal.reason` 拒绝。
+
+## 直接解码
+
+要直接解码来源，选出描述符的 `usage` 服务，调用它的 `sources` 和 `decode` 方法。用 `sessionAdapterHome(usage, { home, env })` 解析主目录。这个辅助函数也接受用量服务。
+
+```ts title="解码一个 Agent 的用量来源"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { builtinProviders } from "@rivus/agent-kit/providers";
+import { sessionAdapterHome } from "@rivus/agent-kit/sessions";
+
+const platform = createNodePlatform();
+const usage = builtinProviders.find(({ id }) => id === "codex")?.usage;
+if (usage) {
+  const { home, env } = platform;
+  const agentHome = sessionAdapterHome(usage, { home, env });
+  for await (const source of usage.sources(platform, agentHome)) {
+    if ("error" in source) {
+      throw source.error;
+    }
+    for await (const item of usage.decode(platform, source)) {
+      console.log(item);
+    }
+  }
+}
+```
+
+解码器的游标用来继续一个来源。`scanUsage` 为跨 Agent 的扫描管理这些游标。
+
+用传给 `/cost` 的价格表给记录标价。工具包不附带价格。见 [费用](/zh/docs/connection/cost)。

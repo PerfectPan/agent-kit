@@ -1,0 +1,14 @@
+---
+title: Usage convention
+description: Token counts follow OTel GenAI and the AI SDK. A missing count is absent, not 0.
+---
+
+Usage follows OTel GenAI and the AI SDK.
+
+- `inputTokens` includes cache reads and writes.
+- `outputTokens` includes reasoning.
+- A count the log does not record is absent, not 0.
+
+The same absence rule shows up in price totals. A model without a price has no cost (`undefined`, not 0), and a summary's `costUsd` is absent when nothing in it was priced. See [Cost](/docs/connection/cost).
+
+`scanUsage` with a kept state yields only what was written since. A caller that keeps a state also keeps its own totals beside it, uses one state per window with the same `since`, and runs its scans one at a time: two concurrent scans from one state both yield the new records. The scan itself is on [Token usage](/docs/connection/token-usage).
