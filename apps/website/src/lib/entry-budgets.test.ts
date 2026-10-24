@@ -1,0 +1,49 @@
+import { expect, it } from "vite-plus/test";
+
+import { budgetsFromLimits, formatBudget, type SizeLimitEntry } from "./entry-budgets.ts";
+
+const kit: readonly SizeLimitEntry[] = [
+  { name: "@rivus/agent-kit/discovery", limit: "11843 B" },
+  { name: "@rivus/agent-kit/sessions", limit: "24676 B" },
+  { name: "@rivus/agent-kit/transcript", limit: "24886 B" },
+  { name: "@rivus/agent-kit/transcript/usage", limit: "19189 B" },
+  { name: "@rivus/agent-kit/cost", limit: "1127 B" },
+  { name: "@rivus/agent-kit/harness/events", limit: "7826 B" },
+  { name: "@rivus/agent-kit/harness", limit: "82765 B" },
+  { name: "@rivus/agent-kit/acp", limit: "44633 B" },
+  { name: "@rivus/agent-kit/redact", limit: "1088 B" }
+];
+
+const collab: readonly SizeLimitEntry[] = [
+  { name: "@rivus/agent-kit-collab/process-lock", limit: "6762 B" },
+  { name: "@rivus/agent-kit-collab/lease", limit: "11102 B" },
+  { name: "@rivus/agent-kit-collab/lanes", limit: "1945 B" }
+];
+
+it("formats a byte limit as decimal kilobytes", () => {
+  expect(formatBudget("1127 B")).toBe("1.1 KB");
+  expect(formatBudget("1088 B")).toBe("1.1 KB");
+  expect(formatBudget("11843 B")).toBe("11.8 KB");
+});
+
+it("reads name and limit from size-limit entries", () => {
+  const budgets = budgetsFromLimits(kit, collab);
+  expect(budgets.kit.find((entry) => entry.entry === "/cost")).toEqual({
+    entry: "/cost",
+    label: "1.1 KB",
+    noImports: true
+  });
+  expect(budgets.kit.find((entry) => entry.entry === "/discovery")?.noImports).toBe(false);
+  expect(budgets.collab.map((entry) => entry.entry)).toEqual(["/process-lock", "/lease", "/lanes"]);
+  expect(
+    budgets.kit
+      .filter((entry) => entry.noImports)
+      .map((entry) => entry.entry)
+      .slice()
+      .sort()
+  ).toEqual(["/cost", "/harness/events", "/redact", "/transcript/usage"]);
+});
+
+it("throws when a size-limit entry is missing", () => {
+  expect(() => budgetsFromLimits([], collab)).toThrow("No size-limit entry for @rivus/agent-kit/discovery");
+});

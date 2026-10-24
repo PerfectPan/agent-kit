@@ -1,19 +1,17 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+
+import { LandingPage } from "../components/landing/landing-page.tsx";
+import { landingRedirectScript } from "../lib/lang-preference.ts";
+import landingCss from "../styles/landing.css?url";
 
 function Landing() {
-  return (
-    <main>
-      <h1>agent-kit</h1>
-      <p>
-        <Link to="/zh">中文</Link>
-      </p>
-      <p>
-        <Link to="/docs">Docs</Link>
-      </p>
-    </main>
-  );
+  return <LandingPage lang="en" />;
 }
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    links: [{ rel: "stylesheet", href: landingCss }],
+    scripts: [{ children: landingRedirectScript() }]
+  }),
   component: Landing
 });

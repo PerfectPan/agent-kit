@@ -157,13 +157,16 @@ async function evaluate(session, expression) {
 
 async function waitForText(session, text) {
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    const found = await evaluate(session, `document.body.innerText.includes(${JSON.stringify(text)})`);
+    const found = await evaluate(
+      session,
+      `document.body != null && document.body.innerText.includes(${JSON.stringify(text)})`
+    );
     if (found) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  const textNow = await evaluate(session, "document.body.innerText.slice(0, 500)");
+  const textNow = await evaluate(session, "document.body == null ? '' : document.body.innerText.slice(0, 500)");
   throw new Error(`timed out waiting for ${JSON.stringify(text)}. Page text: ${textNow}`);
 }
 
@@ -194,6 +197,9 @@ try {
   await session.send("Network.enable");
   await session.send("Page.enable");
   await session.send("Runtime.enable");
+  await session.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: 'localStorage.setItem("ak-lang","en");'
+  });
   await session.send("Emulation.setDeviceMetricsOverride", {
     width: 1280,
     height: 800,
@@ -206,7 +212,7 @@ try {
   await waitForText(session, "agent-kit");
   const landing = await evaluate(session, "location.href");
 
-  await evaluate(session, `document.querySelector('a[href="${prefix}/docs"]')?.click()`);
+  await evaluate(session, `document.querySelector('header a[href="${prefix}/docs"]')?.click()`);
   await waitForText(session, "Getting started");
   await waitForText(session, "English docs placeholder");
   const docs = await evaluate(session, "location.href");

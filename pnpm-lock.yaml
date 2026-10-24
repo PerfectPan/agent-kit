@@ -179,6 +179,12 @@ catalogs:
     '@effect/vitest':
       specifier: 4.0.5
       version: 4.0.5
+    '@fontsource-variable/bricolage-grotesque':
+      specifier: 5.3.0
+      version: 5.3.0
+    '@fontsource/jetbrains-mono':
+      specifier: 5.3.0
+      version: 5.3.0
     '@perfectpan/lint-config':
       specifier: github:PerfectPan/lint-config#v0.6.1
       version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279
@@ -279,6 +285,15 @@ importers:
 
   apps/website:
     dependencies:
+      '@fontsource-variable/bricolage-grotesque':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@fontsource/jetbrains-mono':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@rivus/agent-kit':
+        specifier: workspace:*
+        version: link:../../packages/agent-kit
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1536,6 +1551,12 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource-variable/bricolage-grotesque@5.3.0':
+    resolution: {integrity: sha512-TLi9Q4hJjS2UvoTMRSS2nHu6c4R56lAw60NR9QYtVRCHn0XtsFpiEhNffZ8Glsoxu6wEEwLKBP8lb94J52PNBA==}
+
+  '@fontsource/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A==}
 
   '@fuma-translate/react@1.0.2':
     resolution: {integrity: sha512-uOiOtBx3nRXR8Nu1GzBf1tApgF1FErDBTHxRIAQeyQdyOoZbrNRN6H4kDCWObY4qyGeGbHydG0DHzgeUgFDMIw==}
@@ -5642,6 +5663,10 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource-variable/bricolage-grotesque@5.3.0': {}
+
+  '@fontsource/jetbrains-mono@5.3.0': {}
 
   '@fuma-translate/react@1.0.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:

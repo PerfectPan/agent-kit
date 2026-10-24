@@ -13,6 +13,9 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "catalog:",
+    "@fontsource/jetbrains-mono": "catalog:",
+    "@rivus/agent-kit": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "@tanstack/start-static-server-functions": "catalog:",

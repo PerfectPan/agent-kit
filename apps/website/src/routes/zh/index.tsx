@@ -1,19 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+
+import { LandingPage } from "../../components/landing/landing-page.tsx";
+import landingCss from "../../styles/landing.css?url";
 
 function LandingZh() {
-  return (
-    <main>
-      <h1>agent-kit 中文</h1>
-      <p>
-        <Link to="/">English</Link>
-      </p>
-      <p>
-        <Link to="/zh/docs">文档</Link>
-      </p>
-    </main>
-  );
+  return <LandingPage lang="zh" />;
 }
 
 export const Route = createFileRoute("/zh/")({
+  head: () => ({
+    links: [{ rel: "stylesheet", href: landingCss }]
+  }),
   component: LandingZh
 });
