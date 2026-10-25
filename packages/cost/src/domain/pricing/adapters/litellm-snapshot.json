@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-25+de5dc5b238b6e972869d7dedc6ba3c4fb8d931fe",
+  "version": "2026-10-25+de5dc5b238b6e972869d7dedc6ba3c4fb8d931fe+041f55d53a68",
   "prices": {
     "MiniMax-M2": {
       "input_cost_per_token": 3e-7,

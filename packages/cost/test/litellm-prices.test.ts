@@ -108,8 +108,8 @@ describe("litellmPrices", () => {
     expect(Object.keys(litellmPrices)).toHaveLength(Object.keys(snapshot.prices).length);
   });
 
-  it("names its version by the date and commit of LiteLLM's file", () => {
-    expect(litellmPricesVersion).toMatch(/^\d{4}-\d{2}-\d{2}\+[0-9a-f]{40}$/);
+  it("names its version by the date and commit of LiteLLM's file and the prices' digest", () => {
+    expect(litellmPricesVersion).toMatch(/^\d{4}-\d{2}-\d{2}\+[0-9a-f]{40}\+[0-9a-f]{12}$/);
   });
 
   it("prices usage records by model with priceRecord", () => {

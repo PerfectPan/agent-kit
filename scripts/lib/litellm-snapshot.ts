@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import * as z from "zod/mini";
 
 /**
@@ -75,7 +77,7 @@ export interface SnapshotEntry {
 }
 
 export interface Snapshot {
-  /** `<date>+<commit>`: the UTC date and commit of the LiteLLM file the prices come from. */
+  /** `<date>+<commit>+<digest>`: the UTC date and commit of the LiteLLM file the prices come from, plus `priceDigest` of them. */
   version: string;
   prices: Record<string, SnapshotEntry>;
 }
@@ -197,11 +199,45 @@ export function selectPrices(list: unknown): Record<string, SnapshotEntry> {
   );
 }
 
-/** The version of a snapshot generated from the latest commit in GitHub's commit listing of the LiteLLM file. */
+/**
+ * The LiteLLM source of a snapshot, from the latest commit in GitHub's commit listing of the LiteLLM file: the commit
+ * to read the list from, and the `<date>+<commit>` head its version carries (`snapshotVersion` appends the digest).
+ */
 export function versionOf(commits: unknown): { commit: string; version: string } {
   const [{ sha, commit }] = z.parse(Commits, commits);
   // An ISO datetime without an offset is in UTC, which GitHub always uses.
   return { commit: sha, version: `${commit.committer.date.slice(0, 10)}+${sha}` };
+}
+
+/**
+ * Deterministic JSON of a value: every object's keys sorted, so a digest of it covers the content and not the order
+ * LiteLLM's list or the snapshot happens to name it in. Format and string encoding are JSON's own.
+ */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJson(item)).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(",")}}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * The first 12 hex digits of the SHA-256 of the prices' deterministic JSON: a name for the table's content itself, so
+ * the version changes whenever the prices the snapshot keeps change — a field newly kept under the same LiteLLM commit
+ * included — and a host can tell a table that would price stored data differently from one that would not.
+ */
+export function priceDigest(prices: Record<string, SnapshotEntry>): string {
+  return createHash("sha256").update(stableJson(prices)).digest("hex").slice(0, 12);
+}
+
+/** A snapshot's version: the LiteLLM source `versionOf` names, then the prices' digest. */
+export function snapshotVersion(version: string, prices: Record<string, SnapshotEntry>): string {
+  return `${version}+${priceDigest(prices)}`;
 }
 
 export function formatSnapshot(snapshot: Snapshot): string {
@@ -209,8 +245,10 @@ export function formatSnapshot(snapshot: Snapshot): string {
 }
 
 /**
- * The snapshot file's next text, or `undefined` when `current` already holds these prices: a new LiteLLM commit that
- * changes no price kept here is not an update, so the version keeps naming the commit the prices were taken from.
+ * The snapshot file's next text, or `undefined` when `current` already holds these prices under a version that names
+ * them: a new LiteLLM commit that changes no price kept here is not an update, so the version keeps naming the commit
+ * the prices were taken from. A held version that does not end in these prices' digest — a snapshot from before the
+ * digest, or prices edited without it — is rewritten even when the prices read the same.
  */
 export function nextSnapshot(
   current: string | undefined,
@@ -219,7 +257,11 @@ export function nextSnapshot(
 ): string | undefined {
   if (current !== undefined) {
     const held = Current.safeParse(JSON.parse(current));
-    if (held.success && formatSnapshot({ version: held.data.version, prices }) === current) {
+    if (
+      held.success &&
+      held.data.version.endsWith(`+${priceDigest(prices)}`) &&
+      formatSnapshot({ version: held.data.version, prices }) === current
+    ) {
       return undefined;
     }
   }
