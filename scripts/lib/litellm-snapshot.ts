@@ -92,7 +92,7 @@ function entryOf(entry: z.output<typeof Entry>): SnapshotEntry {
  * Names follow three rules:
  * - An entry's own `<litellm_provider>/` prefix is dropped (`xai/grok-4.20` becomes `grok-4.20`). LiteLLM keys most
  *   Gemini, xAI, Z.ai, Moonshot and MiniMax models only that way, but agents record the bare model name, and
- *   `createPricing` matches a key that the id contains, so a prefixed key would never price a recorded id.
+ *   `createPricing` matches a bare key to a prefixed id, never a prefixed key to a bare id.
  * - A key that still has a `/` after that is a route through another provider (`vertex_ai/…`, `openrouter/…`) or a
  *   variant such as an image size, and is left out.
  * - When a bare key and a prefixed one name the same model, the bare key wins: it is LiteLLM's entry for the name

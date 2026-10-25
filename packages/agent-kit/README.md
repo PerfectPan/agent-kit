@@ -283,10 +283,14 @@ const { total, groups } = summarize(records, pricing, { window: week, groupBy: [
 
 `summarize` prices each record using the amount the agent logged when there is one (Pi, opencode,
 Grok), otherwise each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes,
-output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model takes its own id's entry, else
-the longest key its id contains, regardless of case; `overrides` replace a key's prices, also in part, and `fallback`
-holds entries such as family aliases. A model without a price has no cost (`undefined`, not 0), and a summary's
-`costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
+output) times the record's `pricingMultiplier` (2 for Codex's priority tier). Keys match regardless of case. A table
+key names one model: it prices that id, the id followed by a date (`-20250929`, `-2025-08-07` or Vertex AI's
+`@20250929`), and either after one `<provider>/` prefix, so `claude-sonnet-4-5` prices `claude-sonnet-4-5-20250929`
+and `anthropic/claude-sonnet-4-5`; any other ending names another model, so `gpt-5` prices neither `gpt-5.7` nor
+`gpt-5-codex`. `overrides` are keyed the same way, replace a key's prices, also in part, and win over the table.
+`fallback` holds family aliases such as `opus`: an id that no override or table key matches takes the longest alias
+its id contains. A model without a price has no cost (`undefined`, not 0), and a summary's `costUsd` is absent when
+nothing in it was priced. A Grok turn split by model is priced and grouped per model.
 
 `priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
 buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
@@ -333,10 +337,9 @@ one-hour cache write and cache read prices that LiteLLM lists. `scripts/update-p
 and [`scripts/lib/litellm-snapshot.ts`](https://github.com/PerfectPan/agent-kit/blob/main/scripts/lib/litellm-snapshot.ts) documents the filter. Every Monday a
 workflow opens a pull request when a price the snapshot keeps has changed, and the next release ships it.
 
-`createPricing` gives an id the table lacks the entry of the longest key the id contains, and over a table this
-broad that key can belong to another model: until the snapshot has `gpt-5.7`, it is priced as `gpt-5`. Where that
-matters, correct such ids with `overrides`, or have the host treat an id that `litellmPrices` has no key for as
-unpriced.
+Each key names one model, so an id the snapshot has no key for has no price rather than another model's: until the
+snapshot has `gpt-5.7`, it is unpriced, not priced as `gpt-5`. A host that wants an estimate for such ids passes
+family aliases in `fallback`, at prices it chooses, or prices the ids with `overrides`.
 
 ### Effect
 
