@@ -2,12 +2,13 @@
   "name": "@rivus/agent-kit-cost",
   "version": "0.0.0",
   "private": true,
-  "description": "Pricing formulas, price lookup and usage summaries over injected price tables. Bundled into @rivus/agent-kit.",
+  "description": "Pricing formulas, price lookup and usage summaries over injected price tables, and a LiteLLM price snapshot. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./public": "./src/public.ts"
+    "./public": "./src/public.ts",
+    "./public/prices": "./src/prices.ts"
   },
   "scripts": {
     "build": "",

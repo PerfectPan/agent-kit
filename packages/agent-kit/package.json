@@ -23,6 +23,10 @@
       "types": "./dist/cost.d.ts",
       "default": "./dist/cost.js"
     },
+    "./cost/prices": {
+      "types": "./dist/cost/prices.d.ts",
+      "default": "./dist/cost/prices.js"
+    },
     "./discovery": {
       "types": "./dist/discovery.d.ts",
       "default": "./dist/discovery.js"

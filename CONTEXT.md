@@ -112,7 +112,10 @@ A decode of every UsageSource of the chosen agents that continues from the previ
 ## cost
 
 **PricingTable**:
-Prices per model, injected by the caller; the kit ships no price data. A key is a model id or a part of model ids, such as a family alias; a model takes its own id, else the longest key it contains.
+Prices per model, injected by the caller, such as the LiteLLM snapshot. A key is a model id or a part of model ids, such as a family alias; a model takes its own id, else the longest key it contains.
+
+**LiteLLM snapshot**:
+The kit's copy of LiteLLM's prices for the models the supported agents record, served by `/cost/prices` as a PricingTable with its version: the date and LiteLLM commit it was generated from, which a host records with the costs it computes.
 
 **Price**:
 The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output.
