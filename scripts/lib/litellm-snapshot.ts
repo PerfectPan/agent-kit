@@ -107,10 +107,19 @@ function thresholdTokens(suffix: string): number {
   return suffix.endsWith("k") ? Number(suffix.slice(0, -1)) * 1000 : Number(suffix);
 }
 
+/** The fields a tier can keep, in the order a tier writes them in, whatever order LiteLLM lists them in. */
+const TIER_FIELDS = [
+  "input_cost_per_token",
+  "output_cost_per_token",
+  "cache_read_input_token_cost",
+  "cache_creation_input_token_cost",
+  "cache_creation_input_token_cost_above_1hr"
+] as const;
+
 /**
  * The long-context tier of one parsed entry, its threshold parsed from the `*_above_<N>k_tokens` field names, its
- * rates rounded as the rest of the entry is. A tier keeps the fields LiteLLM lists under it; when an entry listed
- * more than one threshold, the largest would win — no entry lists two.
+ * rates rounded as the rest of the entry is. A tier keeps the fields LiteLLM lists under it, written in the
+ * `TIER_FIELDS` order; when an entry listed more than one threshold, the largest would win — no entry lists two.
  */
 function tierOf(entry: z.output<typeof Entry>): SnapshotLongContext | undefined {
   const tiers = new Map<number, Record<string, number>>();
@@ -139,7 +148,9 @@ function tierOf(entry: z.output<typeof Entry>): SnapshotLongContext | undefined 
   const rates = tiers.get(largest)!;
   return {
     above_tokens: largest,
-    ...Object.fromEntries(Object.entries(rates).map(([field, rate]) => [field, rounded(rate)]))
+    ...Object.fromEntries(
+      TIER_FIELDS.filter((field) => rates[field] !== undefined).map((field) => [field, rounded(rates[field]!)])
+    )
   };
 }
 
@@ -245,10 +256,11 @@ export function formatSnapshot(snapshot: Snapshot): string {
 }
 
 /**
- * The snapshot file's next text, or `undefined` when `current` already holds these prices under a version that names
- * them: a new LiteLLM commit that changes no price kept here is not an update, so the version keeps naming the commit
- * the prices were taken from. A held version that does not end in these prices' digest — a snapshot from before the
- * digest, or prices edited without it — is rewritten even when the prices read the same.
+ * The snapshot file's next text, or `undefined` when the version `current` carries ends in these prices' digest: the
+ * digest covers the prices' content and not their key order, so a new LiteLLM commit that changes no price kept here,
+ * or LiteLLM listing an entry's fields in another order, is not an update, and the file keeps naming the commit the
+ * prices were taken from. A version that ends in any other digest names a different table, and the file is rewritten
+ * under `version`.
  */
 export function nextSnapshot(
   current: string | undefined,
@@ -257,11 +269,7 @@ export function nextSnapshot(
 ): string | undefined {
   if (current !== undefined) {
     const held = Current.safeParse(JSON.parse(current));
-    if (
-      held.success &&
-      held.data.version.endsWith(`+${priceDigest(prices)}`) &&
-      formatSnapshot({ version: held.data.version, prices }) === current
-    ) {
+    if (held.success && held.data.version.endsWith(`+${priceDigest(prices)}`)) {
       return undefined;
     }
   }

@@ -279,7 +279,19 @@ describe("nextSnapshot", () => {
     expect(nextSnapshot(current, SELECTED, snapshotVersion(`2026-10-25+${SHA}`, SELECTED))).toBeUndefined();
   });
 
-  it("rewrites a file whose version predates the prices digest, at the same prices", () => {
+  it("leaves the file as it is when only the order of a tier's fields differs", () => {
+    // gpt-5.5's tier from SELECTED, with the same fields in the reverse order.
+    const reordered = {
+      ...SELECTED,
+      "gpt-5.5": {
+        ...SELECTED["gpt-5.5"]!,
+        long_context: { output_cost_per_token: 4.5e-5, input_cost_per_token: 1e-5, above_tokens: 272_000 }
+      }
+    };
+    expect(nextSnapshot(current, reordered, snapshotVersion(`2026-10-25+${SHA}`, reordered))).toBeUndefined();
+  });
+
+  it("rewrites the file when the version does not end in these prices' digest, at the same prices", () => {
     const legacy = formatSnapshot({ version: held, prices: SELECTED });
     expect(nextSnapshot(legacy, SELECTED, snapshotVersion(`2026-10-25+${SHA}`, SELECTED))).toBe(
       formatSnapshot({ version: snapshotVersion(`2026-10-25+${SHA}`, SELECTED), prices: SELECTED })
