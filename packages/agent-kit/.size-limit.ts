@@ -18,9 +18,7 @@ export default [
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44633 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "651 B" },
-  // Pricing and summarization are pure; their entry imports nothing. The budget includes the public `priceRecord`:
-  // its export, the `parts` of a PricedRecord and each part's `modelCalls`. `summarize` is built on it, so the two
-  // share one copy of the pricing rules.
+  // Pricing and summarization are pure; their entry imports nothing.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1159 B" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "11843 B" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini

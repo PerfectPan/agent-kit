@@ -124,7 +124,7 @@ An amount in USD for a UsageRecord, a part of a PricedRecord or a summary, with 
 Where a cost comes from: `agent` (reported by the agent itself) or `pricing-table` (computed by the kit).
 
 **PricedRecord**:
-A UsageRecord priced by model, by the rules a UsageSummary uses: one part per model when the record is split by model, else one part for the whole record. A part has its model, usage, model calls when the record counts them, and its Cost when something prices it.
+A UsageRecord priced by model, by the rules a UsageSummary uses: one part per model when the record is split by model, else one part for the whole record. A part has its model, usage, model calls when it counts them, and its Cost when something prices it. A part of a split counts only its model's share of the calls, never the record's, so the parts can add up to fewer calls than the record; a host that counts calls per record reads the record's model calls and divides them among the models itself.
 
 **CalendarWindow**:
 The last N calendar days up to now, from a midnight in a time zone, over which usage is summarized: 1 is today, 7 is today and the six days before.

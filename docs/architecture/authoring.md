@@ -55,7 +55,8 @@ Every context package uses the same layout, creating only the directories it nee
     factories/          Layer compositions
     services/           helpers shared by infra files
   lib/                  pure utilities with no domain or IO dependencies
-  public.ts             use cases and names used by sibling contexts, selected by the shell package
+  public.ts             use cases, the types their signatures name and the names siblings import,
+                        selected by the shell package
   spi.ts                provider interfaces and the context helpers their implementations need
 ```
 

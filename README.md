@@ -221,16 +221,19 @@ holds entries such as family aliases. A model without a price has no cost (`unde
 `priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
 buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
 (`usageByModel`), else one part for the whole record. A part has the `model` (absent when the record names none), its
-`usage`, its `modelCalls` when the record or its split counts them, and its `cost`: `{ costUsd, costSource }`, where
-`costSource` is `"agent"` for an amount the agent logged and `"pricing-table"` for one computed from the table. A part
-that nothing prices has no `cost`, which is not a cost of 0. The parts' costs, added up per agent and model, are
-`summarize`'s groups.
+`usage`, its `modelCalls` when it counts them, and its `cost`: `{ costUsd, costSource }`, where `costSource` is
+`"agent"` for an amount the agent logged and `"pricing-table"` for one computed from the table. A part that nothing
+prices has no `cost`, which is not a cost of 0. The parts' costs, added up per agent and model, are `summarize`'s
+groups. A part of a split has only the `modelCalls` of its model's share, never the record's: a share that counts none
+gives a part without `modelCalls`, so the parts can add up to fewer calls than `record.modelCalls`. A host that counts
+calls per record reads `record.modelCalls` and decides how to divide them among the models.
 
 ```ts
 for (const record of records) {
   for (const { model, usage, modelCalls, cost } of priceRecord(record, pricing).parts) {
     // Add usage, modelCalls and cost?.costUsd to the bucket of (the hour of record.timestamp, record.agent, model).
   }
+  // The parts' modelCalls can add up to less than record.modelCalls, which a host counting calls per record reads.
 }
 ```
 
