@@ -241,6 +241,11 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
       if (rec.type !== "user" && rec.type !== "assistant") {
         return ok([]);
       }
+      // A synthetic message is one Claude Code wrote itself, with zero usage and no model request behind it: it
+      // opens no request and yields no record, even when the entry carries a request id of its own.
+      if (rec.message?.model === SYNTHETIC_MODEL) {
+        return ok([]);
+      }
       const key = claudeCodeRequestKey(rec);
       if (!key) {
         return ok([]);
