@@ -324,11 +324,20 @@ describe("S213: a model's long-context tier", () => {
         model: "gpt-6-sol",
         usageByModel: {
           "gpt-6-sol": { usage: { inputTokens: 300_000 }, modelCalls: 1 },
-          "claude-sonnet-5": { usage: { inputTokens: 600_000 }, modelCalls: 2 }
+          // claude-haiku-5-5 has a tier of its own (threshold 100k), which its 600_000 input passes: two calls
+          // cannot show one request past it, so the share bills at the base 600_000×1 = 0.6, not the tier's 1.2.
+          "claude-haiku-5-5": { usage: { inputTokens: 600_000 }, modelCalls: 2 }
         }
       }
     );
-    // The one-call share past the threshold: 300_000×10 = 3. The two-call share at the base rates: 600_000×2 = 1.2.
-    expect(costOf(turn, table)).toEqual({ costUsd: 4.2, costSource: "pricing-table" });
+    // The one-call share past the threshold: 300_000×10 = 3.
+    expect(costOf(turn, table)).toEqual({ costUsd: 3.6, costSource: "pricing-table" });
+  });
+
+  it("bills a turn without modelCalls at the base rates however long its input", () => {
+    // An aggregate that does not say how many calls it sums cannot show one request past 272k:
+    // 900_000×5 = 4.5, not the tier's 9.
+    const turn = record({ inputTokens: 900_000 }, { agent: "grok", granularity: "turn", model: "gpt-6-sol" });
+    expect(costOf(turn, table)?.costUsd).toBeCloseTo(4.5, 9);
   });
 });
