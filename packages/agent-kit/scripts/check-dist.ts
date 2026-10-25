@@ -14,7 +14,7 @@ import * as z from "zod/mini";
 const NODE_ONLY_ENTRIES = new Set(["./node", "./node/effect", "./testing"]);
 // Entries whose code and declarations import nothing outside the package, not even its dependencies: a host that
 // cannot install dependencies bundles or loads them on their own.
-const ZERO_DEPENDENCY_ENTRIES = new Set(["./cost", "./harness/events", "./transcript/usage"]);
+const ZERO_DEPENDENCY_ENTRIES = new Set(["./cost", "./cost/prices", "./harness/events", "./transcript/usage"]);
 // These entries bundle zod/mini instead of importing it. `/node` and `/node/effect` share the platform chunk, so the
 // files reachable from either may inline zod; every other entry keeps the import.
 const ZOD_BUNDLE_ENTRIES = new Set([...ZERO_DEPENDENCY_ENTRIES, "./node", "./node/effect"]);

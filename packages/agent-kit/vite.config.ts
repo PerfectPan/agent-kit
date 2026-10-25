@@ -19,9 +19,9 @@ const entry = Object.fromEntries(
 );
 
 // The zero-dependency entries load on their own where a host cannot install dependencies, so their built code and
-// declarations import nothing. The packer bundles zod/mini into these three, and check-dist fails if one of them
-// still imports anything.
-const ZERO_DEPENDENCY_ENTRIES = ["cost", "harness/events", "transcript/usage"];
+// declarations import nothing. The packer bundles zod/mini into those that parse with it, and check-dist fails if one
+// of them still imports anything.
+const ZERO_DEPENDENCY_ENTRIES = ["cost", "cost/prices", "harness/events", "transcript/usage"];
 
 // `zod/mini` is bundled only when the importing file is the Node platform. That platform is one chunk, loaded by
 // `/node` and `/node/effect` and by nothing else, so the other entries of this pack keep importing zod/mini and zod

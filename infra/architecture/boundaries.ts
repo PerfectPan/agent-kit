@@ -213,7 +213,8 @@ export const boundaries: BoundaryRules = {
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
-    // bundles into the entry.
+    // bundles into the entry. `public/prices` serves the committed LiteLLM snapshot to the shell's `/cost/prices`,
+    // which imports nothing either: the snapshot is typed source, converted without zod/mini.
     [COST]: {
       siblingEntries: ["public"],
       dependsOn: [CATALOG, SESSIONS],

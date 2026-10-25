@@ -1,8 +1,8 @@
 import type { Price } from "./price.js";
 
 /**
- * Prices by model, injected by the caller: the kit ships no price data. A key is a model id or a part of model ids,
- * such as a family alias (`opus`); `createPricing` says how a model finds its key.
+ * Prices by model, injected by the caller, such as the kit's LiteLLM snapshot from `/cost/prices`. A key is a model id
+ * or a part of model ids, such as a family alias (`opus`); `createPricing` says how a model finds its key.
  */
 export type PricingTable = Readonly<Record<string, Price>>;
 

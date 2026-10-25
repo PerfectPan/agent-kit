@@ -28,6 +28,7 @@ The entry table describes the source API. Verify the exports of the npm version 
 | `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                   | anywhere                                 |
 | `@rivus/agent-kit/catalog`          | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError`                              | anywhere                                 |
 | `@rivus/agent-kit/cost`             | `createPricing`, `summarize`, `priceRecord`, `Pricing`                                                           | anywhere, no imports                     |
+| `@rivus/agent-kit/cost/prices`      | `litellmPrices`, `litellmPricesVersion`: a LiteLLM price snapshot                                                | anywhere, no imports                     |
 | `@rivus/agent-kit/discovery`        | `detectAgents`, `versionFromOutput`, `ProbeRecipe`                                                               | anywhere, with a platform                |
 | `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports | anywhere, with `effect` and a platform   |
 | `@rivus/agent-kit/harness/events`   | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`                                                         | anywhere, no imports                     |
@@ -255,8 +256,8 @@ OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `Sqlit
 
 ### Cost
 
-`/cost` prices usage records with a table you pass in, in USD per million tokens; the kit ships no prices. It is pure
-computation and imports nothing.
+`/cost` prices usage records with a table you pass in, in USD per million tokens: your own, or the LiteLLM snapshot
+from [`/cost/prices`](#cost-prices). It is pure computation and imports nothing.
 
 ```ts
 import { createPricing, priceRecord, summarize } from "@rivus/agent-kit/cost";
@@ -305,6 +306,32 @@ for (const record of records) {
   // The parts' modelCalls can add up to less than record.modelCalls, which a host counting calls per record reads.
 }
 ```
+
+### Cost prices
+
+`/cost/prices` is the kit's snapshot of LiteLLM's
+[model price list](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) for the models
+the supported agents record. `litellmPrices` is a table for `createPricing`. `litellmPricesVersion` is
+`<date>+<commit>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from. Store it with the costs
+you compute to know which table priced them. The entry imports nothing and is kept apart from `/cost`, so a host that
+brings its own table does not load this one.
+
+```ts
+import { createPricing, summarize } from "@rivus/agent-kit/cost";
+import { litellmPrices, litellmPricesVersion } from "@rivus/agent-kit/cost/prices";
+
+const pricing = createPricing(litellmPrices);
+const { total } = summarize(records, pricing);
+// Keep { costUsd: total.costUsd, pricedWith: litellmPricesVersion } together.
+```
+
+The snapshot keeps the chat models of the providers whose own APIs the agents call: Anthropic, OpenAI, Google Gemini,
+xAI, DeepSeek, Z.ai, Moonshot and MiniMax. Its keys are LiteLLM's model names without the provider's own prefix
+(`grok-4.20`, not `xai/grok-4.20`), because agents record the bare name; the same models routed through clouds and
+gateways (`bedrock/…`, `vertex_ai/…`, `openrouter/…`) are left out. Each entry has the input, output, cache write,
+one-hour cache write and cache read prices that LiteLLM lists. `scripts/update-pricing.ts` regenerates the snapshot,
+and [`scripts/lib/litellm-snapshot.ts`](https://github.com/PerfectPan/agent-kit/blob/main/scripts/lib/litellm-snapshot.ts) documents the filter. Every Monday a
+workflow opens a pull request when a price the snapshot keeps has changed, and the next release ships it.
 
 ### Effect
 
