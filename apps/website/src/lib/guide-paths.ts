@@ -1,5 +1,3 @@
-import type { Lang } from "./landing-copy.ts";
-
 /** Slug under `/docs` for each landing entry row. */
 export const ENTRY_GUIDE_SLUG = {
   "/discovery": "connection/discovery",
@@ -18,24 +16,24 @@ export const ENTRY_GUIDE_SLUG = {
 
 export type GuideEntry = keyof typeof ENTRY_GUIDE_SLUG;
 
-export function docsIndex(lang: Lang): "/docs" | "/zh/docs" {
-  return lang === "zh" ? "/zh/docs" : "/docs";
+export function docsIndex(): "/docs" {
+  return "/docs";
 }
 
-export function entryGuide(lang: Lang, entry: string): { to: "/docs/$" | "/zh/docs/$"; params: { _splat: string } } {
+export function entryGuide(entry: string): { to: "/docs/$"; params: { _splat: string } } {
   if (!(entry in ENTRY_GUIDE_SLUG)) {
     throw new Error(`No guide for ${entry}`);
   }
   const slug = ENTRY_GUIDE_SLUG[entry as GuideEntry];
   return {
-    to: lang === "zh" ? "/zh/docs/$" : "/docs/$",
+    to: "/docs/$",
     params: { _splat: slug }
   };
 }
 
-export function guide(lang: Lang, slug: string): { to: "/docs/$" | "/zh/docs/$"; params: { _splat: string } } {
+export function guide(slug: string): { to: "/docs/$"; params: { _splat: string } } {
   return {
-    to: lang === "zh" ? "/zh/docs/$" : "/docs/$",
+    to: "/docs/$",
     params: { _splat: slug }
   };
 }

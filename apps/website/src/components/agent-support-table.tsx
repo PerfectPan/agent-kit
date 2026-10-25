@@ -1,10 +1,9 @@
-import { useRouterState } from "@tanstack/react-router";
 import { landingFacts } from "virtual:landing-facts";
 
 import { AGENT_IDENTITY } from "../lib/agent-identity.ts";
-import { text, type Lang } from "../lib/landing-copy.ts";
-import { languageOf } from "../lib/language.ts";
+import { text } from "../lib/landing-copy.ts";
 import { CAPABILITIES, type Capability, type SupportRow } from "../lib/support.ts";
+import { useLanguage } from "./root-shell.tsx";
 
 const COLUMN_LABEL: Record<
   Capability,
@@ -40,8 +39,7 @@ function rows(): readonly (SupportRow & (typeof AGENT_IDENTITY)[number])[] {
 }
 
 export function AgentSupportTable() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const lang: Lang = languageOf(pathname);
+  const { lang } = useLanguage();
   const head = HEAD[lang];
   const table = rows();
 

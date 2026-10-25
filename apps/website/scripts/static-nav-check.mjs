@@ -1,7 +1,6 @@
-// Serves dist/client under /agent-kit/ and clicks landing -> docs -> the other
-// language -> one nested guide -> back to English -> one API page -> the Chinese
-// fallback of that page. Chrome is headless via the DevTools protocol. Not part
-// of `pnpm test`.
+// Serves dist/client under /agent-kit/ and clicks landing -> docs -> nested
+// page -> API page, then switches language in place. Chrome is headless via the
+// DevTools protocol. Not part of `pnpm test`.
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -172,18 +171,41 @@ async function evaluate(session, expression) {
 }
 
 async function waitForText(session, text) {
+  const started = Date.now();
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const found = await evaluate(
       session,
       `document.body != null && document.body.innerText.includes(${JSON.stringify(text)})`
     );
     if (found) {
-      return;
+      return Date.now() - started;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   const textNow = await evaluate(session, "document.body == null ? '' : document.body.innerText.slice(0, 500)");
   throw new Error(`timed out waiting for ${JSON.stringify(text)}. Page text: ${textNow}`);
+}
+
+async function clickLanguage(session, label) {
+  await evaluate(
+    session,
+    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
+  );
+  await waitForText(session, label);
+  await evaluate(
+    session,
+    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === ${JSON.stringify(label)})?.click()`
+  );
+}
+
+function assertPath(href, expected, label) {
+  const url = new URL(href);
+  if (url.pathname !== expected && url.pathname !== `${expected}/`) {
+    throw new Error(`${label} stayed at ${href}, expected ${expected}`);
+  }
+  if (url.pathname.includes("/zh")) {
+    throw new Error(`${label} used a /zh URL: ${href}`);
+  }
 }
 
 const profile = mkdtempSync(path.join(tmpdir(), "website-chrome-"));
@@ -225,98 +247,74 @@ try {
 
   const origin = `http://127.0.0.1:${port}`;
   await session.send("Page.navigate", { url: `${origin}${prefix}/` });
-  await waitForText(session, "agent-kit");
+  await waitForText(session, "The Universal Agent Toolkit");
   const landing = await evaluate(session, "location.href");
+  assertPath(landing, `${prefix}/`, "landing");
 
   await evaluate(session, `document.querySelector('header a[href="${prefix}/docs"]')?.click()`);
   await waitForText(session, "connects to one Agent at a time");
   const docs = await evaluate(session, "location.href");
+  assertPath(docs, `${prefix}/docs`, "docs");
 
-  await evaluate(
-    session,
-    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
-  );
-  await waitForText(session, "中文");
-  await evaluate(
-    session,
-    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "中文")?.click()`
-  );
-  await waitForText(session, "一次连接一个 Agent");
-  const chinese = await evaluate(session, "location.href");
-
-  await evaluate(session, `document.querySelector('a[href="${prefix}/zh/docs/installation"]')?.click()`);
-  await waitForText(session, "两个包使用同一版本");
-  const chineseGuide = await evaluate(session, "location.href");
-
-  await evaluate(
-    session,
-    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
-  );
-  await waitForText(session, "English");
-  await evaluate(
-    session,
-    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "English")?.click()`
-  );
+  await evaluate(session, `document.querySelector('a[href="${prefix}/docs/installation"]')?.click()`);
   await waitForText(session, "Node.js 22.13 or later");
-  const englishGuide = await evaluate(session, "location.href");
+  const guide = await evaluate(session, "location.href");
+  assertPath(guide, `${prefix}/docs/installation`, "nested page");
+
+  const urlBeforeSwitch = await evaluate(session, "location.href");
+  await clickLanguage(session, "中文");
+  await waitForText(session, "两个包使用同一版本");
+  const switched = await evaluate(session, "location.href");
+  if (switched !== urlBeforeSwitch) {
+    throw new Error(`language switch changed the URL from ${urlBeforeSwitch} to ${switched}`);
+  }
 
   await evaluate(
     session,
     `document.querySelector('a[href="${prefix}/docs/api/sessions"], a[href="${prefix}/docs/api/sessions/"]')?.click()`
   );
+  await waitForText(session, "此页尚无中文译本");
   await waitForText(session, "listSessions");
   const apiSessions = await evaluate(session, "location.href");
+  assertPath(apiSessions, `${prefix}/docs/api/sessions`, "API page");
 
-  await evaluate(
-    session,
-    `document.querySelector('[aria-label="Choose a language"], [aria-label="选择语言"]')?.click()`
-  );
-  await waitForText(session, "中文");
-  await evaluate(
-    session,
-    `[...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "中文")?.click()`
-  );
-  await waitForText(session, "此页尚无中文译本");
-  const chineseApi = await evaluate(session, "location.href");
+  await session.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: 'localStorage.setItem("ak-lang","zh");'
+  });
+
+  await session.send("Page.navigate", { url: `${origin}${prefix}/` });
+  const landingZhMs = await waitForText(session, "通用 Agent 工具库");
+  const landingHref = await evaluate(session, "location.href");
+  assertPath(landingHref, `${prefix}/`, "zh landing");
+  const landingVisibleEn = await evaluate(session, `document.body.innerText.includes("The Universal Agent Toolkit")`);
+  if (landingVisibleEn) {
+    throw new Error("Chinese landing innerText still includes the English hero");
+  }
+
+  await session.send("Page.navigate", { url: `${origin}${prefix}/docs` });
+  const docsZhMs = await waitForText(session, "一次连接一个 Agent");
+  const docsHref = await evaluate(session, "location.href");
+  assertPath(docsHref, `${prefix}/docs`, "zh docs");
+
   session.close();
 
   const interesting = session.responses.filter((entry) => !entry.url.endsWith("/favicon.ico"));
   const failures = interesting.filter((entry) => entry.status >= 400 || entry.url.includes("/_serverFn"));
-  const cacheHits = interesting.filter(
-    (entry) => entry.url.includes("/__tsr/staticServerFnCache/") && entry.status === 200
-  );
+  const zhUrls = interesting.filter((entry) => new URL(entry.url).pathname.includes("/zh"));
 
   console.log(`landing ${landing}`);
   console.log(`docs ${docs}`);
-  console.log(`zh docs ${chinese}`);
-  console.log(`zh guide ${chineseGuide}`);
-  console.log(`en guide ${englishGuide}`);
+  console.log(`guide ${guide}`);
+  console.log(`zh guide ${switched}`);
   console.log(`api sessions ${apiSessions}`);
-  console.log(`zh api ${chineseApi}`);
+  console.log(`zh landing delay ${landingZhMs}ms`);
+  console.log(`zh docs delay ${docsZhMs}ms`);
   console.log(`requests ${interesting.length}`);
   for (const entry of interesting) {
     console.log(`${entry.status} ${entry.url}`);
   }
-  if (!docs.includes(`${prefix}/docs`) || docs.includes(`${prefix}/zh/`)) {
-    throw new Error(`docs navigation stayed at ${docs}`);
-  }
-  if (!chinese.includes(`${prefix}/zh/docs`) || chinese.includes("/installation")) {
-    throw new Error(`language switch stayed at ${chinese}`);
-  }
-  if (!chineseGuide.includes(`${prefix}/zh/docs/installation`)) {
-    throw new Error(`nested Chinese guide stayed at ${chineseGuide}`);
-  }
-  if (!englishGuide.includes(`${prefix}/docs/installation`) || englishGuide.includes("/zh/")) {
-    throw new Error(`nested English guide stayed at ${englishGuide}`);
-  }
-  if (!apiSessions.includes(`${prefix}/docs/api/sessions`) || apiSessions.includes("/zh/")) {
-    throw new Error(`API navigation stayed at ${apiSessions}`);
-  }
-  if (!chineseApi.includes(`${prefix}/zh/docs/api/sessions`)) {
-    throw new Error(`Chinese API fallback stayed at ${chineseApi}`);
-  }
-  if (cacheHits.length < 2) {
-    throw new Error(`expected two static server function cache responses, got ${cacheHits.length}`);
+  if (zhUrls.length > 0) {
+    throw new Error(`requests used /zh URLs:\n${zhUrls.map((entry) => entry.url).join("\n")}`);
   }
   if (failures.length > 0) {
     throw new Error(`failed requests:\n${failures.map((entry) => `${entry.status} ${entry.url}`).join("\n")}`);

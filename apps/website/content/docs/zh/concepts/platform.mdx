@@ -17,6 +17,6 @@ const platform = createNodePlatform();
 
 `@rivus/agent-kit-collab` 不绑定具体 Agent。它通过同一个 `Platform` 访问文件、进程、时钟和 SQLite。
 
-除 `/node`、`/node/effect` 与 `/testing` 外，其余入口都可以打包到浏览器中使用。平台的 Effect 包装见 [Effect 入口](/zh/docs/connection/effect)。
+除 `/node`、`/node/effect` 与 `/testing` 外，其余入口都可以打包到浏览器中使用。平台的 Effect 包装见 [Effect 入口](/docs/connection/effect)。
 
-OpenCode 的 SQLite 存储需要 `platform.sqlite`。没有它时，用量扫描产出 `SqliteUnavailable`。进程锁在 `platform.sqlite` 存在时使用它，并用 `platform.process.self` 读取持有者身份。细节见 [Token 用量](/zh/docs/connection/token-usage) 和 [进程锁](/zh/docs/coordination/process-locks)。
+OpenCode 的 SQLite 存储需要 `platform.sqlite`。没有它时，用量扫描产出 `SqliteUnavailable`。进程锁在 `platform.sqlite` 存在时使用它，并用 `platform.process.self` 读取持有者身份。细节见 [Token 用量](/docs/connection/token-usage) 和 [进程锁](/docs/coordination/process-locks)。

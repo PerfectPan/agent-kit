@@ -94,7 +94,7 @@ export default defineConfig({
         crawlLinks: true,
         failOnError: true
       },
-      pages: [{ path: "/" }, { path: "/zh" }, { path: "/docs" }, { path: "/zh/docs" }],
+      pages: [{ path: "/" }, { path: "/docs" }],
       router: {
         basepath: SITE_BASE_PATH,
         quoteStyle: "double",

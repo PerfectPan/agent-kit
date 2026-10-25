@@ -110,6 +110,10 @@ figure.shiki code,
   letter-spacing: -0.03em;
 }
 
+html.ak-docs-pending [data-docs-shell] {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   a:hover .docs-mascot .m-all {
     transform-box: fill-box;

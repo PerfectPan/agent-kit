@@ -1,19 +1,29 @@
-import type { Serialized } from "fumadocs-core/source/client";
+import { notFound } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 
-import type { loadDocsPage } from "../lib/docs-loader.ts";
+import { englishFallback } from "../lib/docs-fallback.ts";
+import { slugsFromSplat } from "../lib/docs-path.ts";
 import { baseOptions } from "../lib/layout-shared.ts";
+import { source } from "../lib/source.ts";
 import { DocsArticle } from "./docs-article.tsx";
+import { useLanguage } from "./root-shell.tsx";
 
-type DocsLoaderData = Serialized<Awaited<ReturnType<typeof loadDocsPage>>>;
+export function DocsScreen({ splat }: { splat?: string }) {
+  const { lang } = useLanguage();
+  const slugs = slugsFromSplat(splat);
+  const page = source.getPage(slugs, lang);
+  if (!page) {
+    throw notFound();
+  }
 
-export function DocsScreen({ lang, data }: { lang: "en" | "zh"; data: DocsLoaderData }) {
   return (
-    <DocsLayout {...baseOptions(lang)} tree={data.pageTree}>
-      <Suspense>
-        <DocsArticle path={data.path} fallback={data.fallback} />
-      </Suspense>
-    </DocsLayout>
+    <div data-docs-shell="">
+      <DocsLayout {...baseOptions()} tree={source.getPageTree(lang)}>
+        <Suspense>
+          <DocsArticle path={page.path} fallback={englishFallback(lang, page.path)} lang={lang} />
+        </Suspense>
+      </DocsLayout>
+    </div>
   );
 }

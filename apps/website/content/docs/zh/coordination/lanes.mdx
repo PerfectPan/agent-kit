@@ -3,7 +3,7 @@ title: 车道
 description: 每个键一次激活，并受全局并发上限约束。
 ---
 
-`@rivus/agent-kit-collab/lanes` 导出 `createLanes`。它是 Effect 入口，并且只在进程内。它需要与 peer 声明一致的 `effect`，版本见 [安装](/zh/docs/installation)。它不接受平台。
+`@rivus/agent-kit-collab/lanes` 导出 `createLanes`。它是 Effect 入口，并且只在进程内。它需要与 peer 声明一致的 `effect`，版本见 [安装](/docs/installation)。它不接受平台。
 
 Lane 按键运行工作。同一时间一个键只有一次激活，并受全局并发上限和有界队列约束。`@rivus/agent-kit-collab` 不绑定具体 Agent。
 

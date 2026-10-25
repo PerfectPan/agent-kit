@@ -3,7 +3,7 @@ title: 租约
 description: 每个任务一个所有者，fencing token 永不回退。
 ---
 
-`@rivus/agent-kit-collab/lease` 导出 `createLeaseManager`、`LeaseRepository`、`sqliteLeaseRepository`、`fileLeaseRepository` 和 `memoryLeaseRepository`。它是 Effect 入口，需要平台。它需要与 peer 声明一致的 `effect`，版本见 [安装](/zh/docs/installation)。
+`@rivus/agent-kit-collab/lease` 导出 `createLeaseManager`、`LeaseRepository`、`sqliteLeaseRepository`、`fileLeaseRepository` 和 `memoryLeaseRepository`。它是 Effect 入口，需要平台。它需要与 peer 声明一致的 `effect`，版本见 [安装](/docs/installation)。
 
 Lease 让同一时间只有一个进程拥有一个任务，并拒绝过期所有者的写入。`@rivus/agent-kit-collab` 不绑定具体 Agent。
 
@@ -40,4 +40,4 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
 
 预期失败是带 `_tag` 的值：`LeaseHeld`、`LeaseLost`、`LeaseConfigInvalid`、`LeaseRepositoryFailure`，以及仓储的 `RevisionConflict`。工具包自己不运行 Effect。请在应用的组装根上运行程序。
 
-持有者按主机名、boot id、pid 和启动时间判断。win32、NFS、容器和被改名的主机见 [安装](/zh/docs/installation)。
+持有者按主机名、boot id、pid 和启动时间判断。win32、NFS、容器和被改名的主机见 [安装](/docs/installation)。

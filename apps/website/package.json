@@ -20,7 +20,6 @@
     "@rivus/agent-kit-collab": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
-    "@tanstack/start-static-server-functions": "catalog:",
     "fumadocs-core": "catalog:",
     "fumadocs-mdx": "catalog:",
     "fumadocs-ui": "catalog:",

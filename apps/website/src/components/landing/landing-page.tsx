@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import type { Lang } from "../../lib/landing-copy.ts";
 import { GuidesSection } from "./guides-section.tsx";
@@ -11,9 +11,11 @@ import { ProjectsSection } from "./projects-section.tsx";
 import { ProvidersSection } from "./providers-section.tsx";
 
 export function LandingPage({ lang }: { readonly lang: Lang }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const root = document.querySelector(".landing");
-    if (!(root instanceof HTMLElement)) {
+    const root = rootRef.current;
+    if (root === null) {
       return undefined;
     }
     const nodes = root.querySelectorAll(".reveal");
@@ -48,7 +50,7 @@ export function LandingPage({ lang }: { readonly lang: Lang }) {
   }, []);
 
   return (
-    <div className="landing" data-lang={lang}>
+    <div ref={rootRef} className="landing" data-lang={lang}>
       <LandingHeader lang={lang} />
       <main className="wrap">
         <LandingHero lang={lang} />

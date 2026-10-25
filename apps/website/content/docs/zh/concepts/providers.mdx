@@ -11,7 +11,7 @@ Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。这份隔�
 
 `/catalog` 保留 `AgentKitError` 和 `isAgentKitError`，调用方可以据此识别 shell 函数抛出的错误。
 
-每个内置 Agent 提供哪些服务，见 [支持的 Agent](/zh/docs/agents) 上生成的表。目前的内置 Agent 只是示例。有哪些 Agent，以那张表为准。
+每个内置 Agent 提供哪些服务，见 [支持的 Agent](/docs/agents) 上生成的表。目前的内置 Agent 只是示例。有哪些 Agent，以那张表为准。
 
 ## 自行添加
 
@@ -27,4 +27,4 @@ Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。这份隔�
 
 没有具名消费者的选项类型和结果类型仍留在签名里。用 `Parameters` 或 `ReturnType` 推导。Effect 操作用 Effect 的成功类型和错误类型。
 
-读取另一个 Agent 时，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `/testing` 的 `sessionAdapterConformance` 检查。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。测试套件见 [适配器测试](/zh/docs/testing)。
+读取另一个 Agent 时，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `/testing` 的 `sessionAdapterConformance` 检查。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。测试套件见 [适配器测试](/docs/testing)。

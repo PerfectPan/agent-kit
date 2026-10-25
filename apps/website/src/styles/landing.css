@@ -47,6 +47,29 @@ body:has(.landing) {
   overflow-x: clip;
 }
 
+.landing-langs {
+  display: grid;
+}
+
+.landing-langs > .landing {
+  grid-area: 1 / 1;
+}
+
+.landing[data-lang="zh"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+html[lang="zh"] .landing[data-lang="en"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+html[lang="zh"] .landing[data-lang="zh"] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .landing {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   color: var(--color-ink);

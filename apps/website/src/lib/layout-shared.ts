@@ -14,12 +14,12 @@ export const translations = i18n
     zh: { displayName: "中文", ...docsUiZh }
   });
 
-export function baseOptions(locale: "en" | "zh"): BaseLayoutProps {
+export function baseOptions(): BaseLayoutProps {
   return {
     githubUrl: GITHUB_URL,
     nav: {
       title: DocsBrand,
-      url: locale === "zh" ? "/zh" : "/"
+      url: "/"
     }
   };
 }

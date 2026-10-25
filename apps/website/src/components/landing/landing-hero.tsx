@@ -8,7 +8,7 @@ import { CodeDemo } from "./code-demo.tsx";
 import { CopyButton } from "./copy-button.tsx";
 
 export function LandingHero({ lang }: { readonly lang: Lang }) {
-  const start = guide(lang, "installation");
+  const start = guide("installation");
   return (
     <section className="hero">
       <h1>{text(lang, "heroTitle")}</h1>

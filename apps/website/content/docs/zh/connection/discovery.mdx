@@ -5,7 +5,7 @@ description: detectAgents 报告 runnable、found、missing 或 unknown，并附
 
 `@rivus/agent-kit/discovery` 导出 `detectAgents`、`versionFromOutput` 和 `ProbeRecipe`。它可以在任何环境运行，需要平台。
 
-`detectAgents(platform)` 对 [Agent 表](/zh/docs/agents) 中的每个内置 Agent 报告 `runnable`、`found`、`missing` 或 `unknown`。报告里包含证据、命令打印的版本，以及登录状态。
+`detectAgents(platform)` 对 [Agent 表](/docs/agents) 中的每个内置 Agent 报告 `runnable`、`found`、`missing` 或 `unknown`。报告里包含证据、命令打印的版本，以及登录状态。
 
 默认情况下，登录状态只来自凭据文件和环境变量。探测不运行任何命令，也不返回密钥值。`authProbe: "commands"` 还会运行 Agent 自己的状态命令。每条配方列出这些命令的副作用。
 
@@ -57,4 +57,4 @@ Harness 产物和共享配置仍然排除在外：
 
 改变这些事实会影响使用内置配方的 `detectAgents` 调用方，包括 agent-presence，以及应用的安装与检测界面。没有命令、可识别的应用程序，也没有 Agent 自己的状态时，机器现在报告 `missing`。只有 `~/.claude.json` 的 Claude Code 也是如此：macOS 钥匙串已登录，但还没有会话。只被 hook 或 MCP 设置填满的机器同样报告 `missing`。没有 CLI 时，Cursor 的桌面状态仍然可以确立 `found`。命令与应用程序路径的检测、自定义配方，以及证据和状态接口保持不变。
 
-要定制内置配方，取出它的 `discovery` 服务，并传入 `providers`。见 [Provider](/zh/docs/concepts/providers)。用 `/testing` 的 `probeRecipeConformance` 检查自己写的配方。
+要定制内置配方，取出它的 `discovery` 服务，并传入 `providers`。见 [Provider](/docs/concepts/providers)。用 `/testing` 的 `probeRecipeConformance` 检查自己写的配方。

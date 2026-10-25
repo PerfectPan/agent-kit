@@ -24,6 +24,6 @@ const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatfor
 
 换一份 `env` 或 `home` 时，改为提供 `Layer.succeed(PlatformService, createNodePlatform({ env, home }))`。
 
-`effect` 必须与 `peerDependencies.effect` 完全一致。见 [安装](/zh/docs/installation)。普通入口不会加载上述可选 peer。
+`effect` 必须与 `peerDependencies.effect` 完全一致。见 [安装](/docs/installation)。普通入口不会加载上述可选 peer。
 
-其他 Effect 入口是 [Harness 安装](/zh/docs/connection/harness)、[ACP](/zh/docs/connection/acp)、[租约](/zh/docs/coordination/leases) 和 [车道](/zh/docs/coordination/lanes)。
+其他 Effect 入口是 [Harness 安装](/docs/connection/harness)、[ACP](/docs/connection/acp)、[租约](/docs/coordination/leases) 和 [车道](/docs/coordination/lanes)。

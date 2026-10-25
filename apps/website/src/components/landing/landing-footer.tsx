@@ -9,7 +9,7 @@ export function LandingFooter({ lang }: { readonly lang: Lang }) {
   return (
     <footer>
       <div className="wrap">
-        <Link to={lang === "zh" ? "/zh" : "/"} className="brand">
+        <Link to="/" className="brand">
           <Mascot state="idle" />
           agent-kit
         </Link>

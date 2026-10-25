@@ -4,8 +4,8 @@ import { docsIndex, guide } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
 
 export function GuidesSection({ lang }: { readonly lang: Lang }) {
-  const docs = docsIndex(lang);
-  const api = guide(lang, "api");
+  const docs = docsIndex();
+  const api = guide("api");
   return (
     <section className="final reveal">
       <h2>{text(lang, "guidesTitle")}</h2>

@@ -30,7 +30,7 @@ The browser playground, a custom domain, server-side rendering at request time.
 | Location | `apps/website`, a private workspace project (`"private": true`), added to `pnpm-workspace.yaml` as `apps/*` | Keeps the site next to the code it documents; it is not published and has no changeset |
 | Framework | TanStack Start (React) with static prerendering | Owner's choice; prerendered HTML deploys to GitHub Pages |
 | Docs | Fumadocs (`fumadocs-core` with its TanStack adapter, `fumadocs-ui`, `fumadocs-mdx` Vite plugin) | Docs layout, search and i18n out of the box; TanStack support |
-| i18n | English default at `/`, Chinese under `/zh`; Fumadocs i18n for docs; one `t(en, zh)`-style dictionary for the landing page | Spec W1, W4 |
+| i18n | Language is client state (`ak-lang`); one URL per page (`/`, `/docs/...`); Fumadocs i18n for docs collections; one `t(en, zh)`-style dictionary for the landing page | Spec W1, W4 |
 | Styling | Tailwind CSS v4 with the tokens of the approved mockup (paper `#fbf7f2`, ink `#2a211e`, ochre `#b94f3c`, honey `#e3a93b`, event colours), Bricolage Grotesque and JetBrains Mono self-hosted | Approved visual direction; no third-party requests at runtime |
 | Landing page source | The approved mockup `site.html` (kept outside the repository, path given to the implementer) ported to React components | Single visual reference |
 | Mascot | The ribbon mascot as one SVG React component with `idle`, `working` and `blocked` states | Approved identity |
@@ -110,10 +110,6 @@ Decided after Task 3: the package READMEs stay. The site does not replace them.
 
 Still open:
 
-- `@tanstack/start-static-server-functions` requests its cache at the origin root (`/__tsr/staticServerFnCache/`).
-  `apps/website/src/lib/static-cache-base.ts` prefixes that one path with the Vite base. Drop the patch when the
-  package honours Vite's `base`. `pages.yml` runs `apps/website/scripts/static-nav-check.mjs`, so a regression fails
-  the Pages build.
 - Long signatures on API pages scroll horizontally at 1440 px.
 - The browser playground stays out of scope, with a custom domain and request-time server rendering.
 - Add the site URL to the root README once the first deploy is live (the README is being rewritten in a separate pull request).

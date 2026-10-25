@@ -2,7 +2,7 @@
 
 - Status: in review
 - Owner: PerfectPan
-- Last updated: 2026-10-24
+- Last updated: 2026-10-25
 - Paired Plan: [docs/plans/0002-website.md](../plans/0002-website.md)
 
 ## Scope
@@ -22,10 +22,10 @@ analytics.
 
 | ID | Given | When | Then |
 | --- | --- | --- | --- |
-| W1 | A visitor whose browser prefers Chinese | they open the site root | the landing page shows in Chinese; a switch in the header changes to English and is remembered |
+| W1 | A visitor whose browser prefers Chinese | they open the site root | the landing page at `/` shows in Chinese; a switch in the header changes to English in place, keeps the URL, and is remembered |
 | W2 | The landing page | the visitor picks a task tab and an Agent id in the code demo | the code and the sample output show that Agent's id; an Agent without that capability cannot be picked; "my-agent" shows the provider option |
 | W3 | The landing page | the visitor scrolls | they see, in order: the layer between tools and Agents, connection and coordination with each entry's size budget, projects built with agent-kit, the built-in provider table, links to guides and the API reference |
-| W4 | Any guide | the visitor switches language | the same guide opens in the other language, or the English page with a note when no translation exists |
+| W4 | Any guide | the visitor switches language | the same URL shows the other language, or the English page with a note when no translation exists |
 | W5 | The API reference | the visitor opens an entry such as `@rivus/agent-kit/sessions` | every exported function, type and constant of that entry is listed with its signature and doc comment, generated from the published declarations |
 | W6 | A visitor with `prefers-reduced-motion` | they open the landing page | no mascot animation runs; every state is still readable |
 | W7 | A push to `main` that changes the website or a public entry | CI runs | the site builds as static files and deploys to GitHub Pages; a pull request only builds |

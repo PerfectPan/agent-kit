@@ -9,8 +9,8 @@ description: 会话适配器、hook 方言、探测配方和仓储的 conformanc
 
 读取另一个 Agent 时，传入 `providers: [{ id: "my-agent", sessions: adapter }]`，并用 `sessionAdapterConformance` 检查。按 kind 泛型化的事件构造器，以 `TranscriptEventPayloads[K]`（从 `/transcript` 导出）接收载荷，并返回 `TranscriptEventOf<K>`。
 
-`hookDialectConformance` 检查 hook 方言。`probeRecipeConformance` 检查发现配方。描述符如何合并，见 [Provider](/zh/docs/concepts/providers)。
+`hookDialectConformance` 检查 hook 方言。`probeRecipeConformance` 检查发现配方。描述符如何合并，见 [Provider](/docs/concepts/providers)。
 
 README 点出了这些套件，但没有给出调用签名。用 `Parameters` 或 `ReturnType` 推导选项和结果。Effect 操作用 Effect 的成功类型和错误类型。
 
-README 点出了 `createMemoryPlatform`，但没有描述它的选项。发现的证据回归测试会在检测前，于内存主目录上运行 `planInstall` / `applyInstall`。用量来源测试用各 provider 的用量夹具，覆盖六种默认布局和覆盖。这些测试在仓库里。见 [Agent 检测](/zh/docs/connection/discovery)。
+README 点出了 `createMemoryPlatform`，但没有描述它的选项。发现的证据回归测试会在检测前，于内存主目录上运行 `planInstall` / `applyInstall`。用量来源测试用各 provider 的用量夹具，覆盖六种默认布局和覆盖。这些测试在仓库里。见 [Agent 检测](/docs/connection/discovery)。

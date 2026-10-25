@@ -1,31 +1,20 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import { docsIndex, guide } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
-import { LANG_STORAGE_KEY } from "../../lib/lang-preference.ts";
 import { GITHUB_URL } from "../../lib/projects.ts";
+import { useLanguage } from "../root-shell.tsx";
 import { Mascot } from "../mascot.tsx";
 
-function homePath(lang: Lang): "/" | "/zh" {
-  return lang === "zh" ? "/zh" : "/";
-}
-
 export function LandingHeader({ lang }: { readonly lang: Lang }) {
-  const navigate = useNavigate();
-  const docs = docsIndex(lang);
-  const api = guide(lang, "api");
-
-  function choose(next: Lang) {
-    localStorage.setItem(LANG_STORAGE_KEY, next);
-    if (next !== lang) {
-      void navigate({ to: next === "zh" ? "/zh" : "/" });
-    }
-  }
+  const { setLang } = useLanguage();
+  const docs = docsIndex();
+  const api = guide("api");
 
   return (
     <header className="nav">
       <div className="wrap">
-        <Link to={homePath(lang)} className="brand">
+        <Link to="/" className="brand">
           <Mascot state="idle" />
           agent-kit
         </Link>
@@ -38,10 +27,10 @@ export function LandingHeader({ lang }: { readonly lang: Lang }) {
           </Link>
           <a href={GITHUB_URL}>{text(lang, "navGithub")}</a>
           <span className="lang" role="group" aria-label={text(lang, "languageGroup")}>
-            <button type="button" aria-pressed={lang === "en"} onClick={() => choose("en")}>
+            <button type="button" aria-pressed={lang === "en"} onClick={() => setLang("en")}>
               {text(lang, "langEn")}
             </button>
-            <button type="button" aria-pressed={lang === "zh"} onClick={() => choose("zh")}>
+            <button type="button" aria-pressed={lang === "zh"} onClick={() => setLang("zh")}>
               {text(lang, "langZh")}
             </button>
           </span>

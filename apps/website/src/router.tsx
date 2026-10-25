@@ -1,5 +1,3 @@
-import "./lib/static-cache-base.ts";
-
 import { createRouter } from "@tanstack/react-router";
 
 import { SITE_BASE_PATH } from "./lib/site.ts";

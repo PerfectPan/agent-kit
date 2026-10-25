@@ -35,4 +35,4 @@ const { total, groups } = summarize(records, pricing, { window: week, groupBy: [
 
 没有价格的模型没有费用，结果是 `undefined`，不是 0。其中没有任何一项被标价时，汇总的 `costUsd` 缺失。按模型拆开的 Grok 回合，按模型标价，也按模型分组。
 
-记录来自 [Token 用量](/zh/docs/connection/token-usage)。日志里有 Agent 自己的费用时，记录带 `costUsd` 和 `costSource: "agent"`。Codex 的优先层级还带 `pricingMultiplier`。
+记录来自 [Token 用量](/docs/connection/token-usage)。日志里有 Agent 自己的费用时，记录带 `costUsd` 和 `costSource: "agent"`。Codex 的优先层级还带 `pricingMultiplier`。

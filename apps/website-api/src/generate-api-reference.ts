@@ -1,7 +1,7 @@
 // Writes one MDX page per public entry of @rivus/agent-kit and @rivus/agent-kit-collab
 // into content/docs/en/api, from the built declarations. Chinese gets only the
 // sidebar folder (content/docs/zh/api/meta.json); the pages stay English and the
-// docs shell shows the untranslated-page note. Run after the packages build.
+// Chinese UI shows the untranslated-page note. Run after the packages build.
 
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";

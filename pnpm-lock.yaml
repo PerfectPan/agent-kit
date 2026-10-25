@@ -203,9 +203,6 @@ catalogs:
     '@tanstack/router-cli':
       specifier: 1.167.46
       version: 1.167.46
-    '@tanstack/start-static-server-functions':
-      specifier: 1.167.44
-      version: 1.167.44
     '@types/mdx':
       specifier: 2.0.14
       version: 2.0.14
@@ -313,9 +310,6 @@ importers:
       '@tanstack/react-start':
         specifier: 'catalog:'
         version: 1.169.4(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.14)(supports-color@7.2.0)
-      '@tanstack/start-static-server-functions':
-        specifier: 'catalog:'
-        version: 1.167.44(@tanstack/react-start@1.169.4(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.14)(supports-color@7.2.0))
       fumadocs-core:
         specifier: 'catalog:'
         version: 16.17.8(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7)
@@ -2868,18 +2862,6 @@ packages:
   '@tanstack/start-server-core@1.169.45':
     resolution: {integrity: sha512-fKySLUGIy7aVYR6ZRgjC19TQdsZ+q/54M9hVfHrJQQVpM/T5qq5djZ3gsqhugmrWP+gyd9qpa9D6cxRtR6CJvg==}
     engines: {node: '>=22.12.0'}
-
-  '@tanstack/start-static-server-functions@1.167.44':
-    resolution: {integrity: sha512-E9VUC7k4Al//0VeUYBmqRIbvOU3QTdxeTeDlnlmuj3fbttlD5bLCroQC9of4ZhUUPZ3r8yhLS+9lSGsk6OTL7A==}
-    engines: {node: '>=22.12.0'}
-    peerDependencies:
-      '@tanstack/react-start': ^1.169.4
-      '@tanstack/solid-start': ^1.169.4
-    peerDependenciesMeta:
-      '@tanstack/react-start':
-        optional: true
-      '@tanstack/solid-start':
-        optional: true
 
   '@tanstack/start-storage-context@1.167.41':
     resolution: {integrity: sha512-MY+Z4cZBPbH7hjORcROMX7K3kV1X25ArFKmRbks+EukPP9UVwCXbZFVzYkTt1u0AHthvQTcpa4J9B9i0o6fEnA==}
@@ -6855,13 +6837,6 @@ snapshots:
       cookie-es: 3.1.1
       fetchdts: 0.2.0
       seroval: 1.7.1
-
-  '@tanstack/start-static-server-functions@1.167.44(@tanstack/react-start@1.169.4(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.14)(supports-color@7.2.0))':
-    dependencies:
-      '@tanstack/start-client-core': 1.170.39
-      seroval: 1.7.1
-    optionalDependencies:
-      '@tanstack/react-start': 1.169.4(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.14)(supports-color@7.2.0)
 
   '@tanstack/start-storage-context@1.167.41':
     dependencies:

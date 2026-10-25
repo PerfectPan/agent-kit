@@ -19,7 +19,7 @@ Effect 入口要求宿主安装的 `effect` 与 `peerDependencies.effect` 完全
 npm view @rivus/agent-kit peerDependencies.effect
 ```
 
-普通入口不会加载上述可选 peer。[简介](/zh/docs) 入口表的**运行环境**一列用「需要 `effect`」标出这些入口。
+普通入口不会加载上述可选 peer。[简介](/docs) 入口表的**运行环境**一列用「需要 `effect`」标出这些入口。
 
 ## @rivus/agent-kit-collab
 
@@ -38,7 +38,7 @@ npm install --save-exact "effect@$(npm view @rivus/agent-kit-collab peerDependen
 
 仅支持 ESM，没有副作用。在 darwin 或 linux 上需要 Node.js 22.13 及以上。
 
-不支持 win32。平台在 win32 上无法识别进程（boot id、pid、启动时间），而 lease 和锁文件需要这些信息。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。详见 [进程锁](/zh/docs/coordination/process-locks)。
+不支持 win32。平台在 win32 上无法识别进程（boot id、pid、启动时间），而 lease 和锁文件需要这些信息。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。详见 [进程锁](/docs/coordination/process-locks)。
 
 每种锁都只支持本地目录。SQLite 的锁和锁文件在 NFS 上都不可靠。
 

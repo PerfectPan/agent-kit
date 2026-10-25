@@ -28,7 +28,7 @@ function entryList(entries: readonly ShownBudget[], lang: Lang) {
     <ul className="entries">
       {entries.map((entry) => {
         const blurb = BLURB[entry.entry];
-        const guide = entryGuide(lang, entry.entry);
+        const guide = entryGuide(entry.entry);
         return (
           <li key={entry.entry}>
             <Link to={guide.to} params={guide.params}>

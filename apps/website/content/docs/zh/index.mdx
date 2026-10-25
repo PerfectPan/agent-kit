@@ -3,7 +3,7 @@ title: 简介
 description: 一次连接一个 Agent，协调多个 Agent，以及公开入口。
 ---
 
-`@rivus/agent-kit` 一次连接一个 Agent。它是通用 Agent 工具库：知道每个 Agent 的 id 和主目录，列出会话，并把日志读成同一种 transcript、同一种用量约定。Claude Code、Codex、Grok 是目前的内置 Agent，其余见 [支持的 Agent](/zh/docs/agents)。
+`@rivus/agent-kit` 一次连接一个 Agent。它是通用 Agent 工具库：知道每个 Agent 的 id 和主目录，列出会话，并把日志读成同一种 transcript、同一种用量约定。Claude Code、Codex、Grok 是目前的内置 Agent，其余见 [支持的 Agent](/docs/agents)。
 
 `@rivus/agent-kit-collab` 协调多个 Agent。它提供带 fencing token 的 lease（`/lease`）、单实例进程锁（`/process-lock`），以及按 key 调度的 lane（`/lanes`）。Collab 不绑定具体 Agent。它的入口使用 agent-kit 的公开平台，并与 agent-kit 锁定步进、同一版本发布。
 
@@ -15,31 +15,31 @@ description: 一次连接一个 Agent，协调多个 Agent，以及公开入口�
 
 源码 API 里，`@rivus/agent-kit` 有 17 个入口，`@rivus/agent-kit-collab` 有 3 个，合计 20 个。下表描述的是这份源码 API。
 
-| 入口                                                                   | 主要导出                                                                                                    | 运行环境                              |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| [`@rivus/agent-kit/acp`](/zh/docs/connection/acp)                      | `connectAgent`、`probeAgent`、`agentEnv`、`SessionBindingStore` 及其 Layer                                  | 需要 `effect`，以及能够拉起进程的平台 |
-| [`@rivus/agent-kit/providers`](/zh/docs/concepts/providers)            | `Provider`、`builtinProviders`                                                                              | 任何环境                              |
-| [`@rivus/agent-kit/catalog`](/zh/docs/concepts/results-and-errors)     | `isBuiltinCodingAgentId`、`Result`、`ok`、`err`、`AgentKitError`、`isAgentKitError`                         | 任何环境                              |
-| [`@rivus/agent-kit/cost`](/zh/docs/connection/cost)                    | `createPricing`、`summarize`、`Pricing`                                                                     | 任何环境，无导入                      |
-| [`@rivus/agent-kit/discovery`](/zh/docs/connection/discovery)          | `detectAgents`、`versionFromOutput`、`ProbeRecipe`                                                          | 任何环境，需要平台                    |
-| [`@rivus/agent-kit/harness`](/zh/docs/connection/harness)              | Effect：`planInstall`、`applyInstall`、`verify`、`uninstall`、`inventory`、`doctor`、`HarnessLive` 及其端口 | 任何环境，需要 `effect` 和平台        |
-| [`@rivus/agent-kit/harness/events`](/zh/docs/connection/hook-events)   | `readHookEvent`、`builtinHookDialects`、`LifecycleEvent`                                                    | 任何环境，无导入                      |
-| [`@rivus/agent-kit/platform`](/zh/docs/concepts/platform)              | `Platform`（仅类型）                                                                                        | 任何环境                              |
-| [`@rivus/agent-kit/redact`](/zh/docs/connection/redaction)             | `redact`、`redactText`：隐藏主目录路径的各种写法，以及形如密钥的字符串                                      | 任何环境，无导入                      |
-| [`@rivus/agent-kit/node`](/zh/docs/concepts/platform)                  | `createNodePlatform`                                                                                        | Node                                  |
-| [`@rivus/agent-kit/platform/effect`](/zh/docs/connection/effect)       | `PlatformService`：把 `Platform` 做成 Effect 服务                                                           | 任何环境，需要 `effect`               |
-| [`@rivus/agent-kit/node/effect`](/zh/docs/connection/effect)           | `NodePlatformLive`：用 `createNodePlatform()` 提供 `PlatformService` 的 Layer                               | Node，需要 `effect`                   |
-| [`@rivus/agent-kit/sessions`](/zh/docs/connection/sessions)            | `listSessions`、`sessionAdapterHome`、`isSessionHead`、`SessionAdapter`                                     | 任何环境，需要平台                    |
-| [`@rivus/agent-kit/transcript`](/zh/docs/connection/sessions)          | `loadTranscript`、`summarizeSession`、`Transcript`、`TranscriptEvent`                                       | 任何环境，需要平台                    |
-| [`@rivus/agent-kit/transcript/usage`](/zh/docs/connection/token-usage) | `scanUsage`、`isUsageRecord`、`noCacheInputTokens`、`UsageRecord`                                           | 任何环境，需要平台；无导入            |
-| [`@rivus/agent-kit/testing`](/zh/docs/testing)                         | `createMemoryPlatform`、`sessionAdapterConformance`、`hookDialectConformance`、`probeRecipeConformance`     | Node                                  |
-| [`@rivus/agent-kit/testing/effect`](/zh/docs/testing)                  | `aggregateRepositoryConformance`：每个聚合仓储都要通过的一致性用例                                          | 任何环境，需要 `effect`               |
+| 入口                                                                | 主要导出                                                                                                    | 运行环境                              |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| [`@rivus/agent-kit/acp`](/docs/connection/acp)                      | `connectAgent`、`probeAgent`、`agentEnv`、`SessionBindingStore` 及其 Layer                                  | 需要 `effect`，以及能够拉起进程的平台 |
+| [`@rivus/agent-kit/providers`](/docs/concepts/providers)            | `Provider`、`builtinProviders`                                                                              | 任何环境                              |
+| [`@rivus/agent-kit/catalog`](/docs/concepts/results-and-errors)     | `isBuiltinCodingAgentId`、`Result`、`ok`、`err`、`AgentKitError`、`isAgentKitError`                         | 任何环境                              |
+| [`@rivus/agent-kit/cost`](/docs/connection/cost)                    | `createPricing`、`summarize`、`Pricing`                                                                     | 任何环境，无导入                      |
+| [`@rivus/agent-kit/discovery`](/docs/connection/discovery)          | `detectAgents`、`versionFromOutput`、`ProbeRecipe`                                                          | 任何环境，需要平台                    |
+| [`@rivus/agent-kit/harness`](/docs/connection/harness)              | Effect：`planInstall`、`applyInstall`、`verify`、`uninstall`、`inventory`、`doctor`、`HarnessLive` 及其端口 | 任何环境，需要 `effect` 和平台        |
+| [`@rivus/agent-kit/harness/events`](/docs/connection/hook-events)   | `readHookEvent`、`builtinHookDialects`、`LifecycleEvent`                                                    | 任何环境，无导入                      |
+| [`@rivus/agent-kit/platform`](/docs/concepts/platform)              | `Platform`（仅类型）                                                                                        | 任何环境                              |
+| [`@rivus/agent-kit/redact`](/docs/connection/redaction)             | `redact`、`redactText`：隐藏主目录路径的各种写法，以及形如密钥的字符串                                      | 任何环境，无导入                      |
+| [`@rivus/agent-kit/node`](/docs/concepts/platform)                  | `createNodePlatform`                                                                                        | Node                                  |
+| [`@rivus/agent-kit/platform/effect`](/docs/connection/effect)       | `PlatformService`：把 `Platform` 做成 Effect 服务                                                           | 任何环境，需要 `effect`               |
+| [`@rivus/agent-kit/node/effect`](/docs/connection/effect)           | `NodePlatformLive`：用 `createNodePlatform()` 提供 `PlatformService` 的 Layer                               | Node，需要 `effect`                   |
+| [`@rivus/agent-kit/sessions`](/docs/connection/sessions)            | `listSessions`、`sessionAdapterHome`、`isSessionHead`、`SessionAdapter`                                     | 任何环境，需要平台                    |
+| [`@rivus/agent-kit/transcript`](/docs/connection/sessions)          | `loadTranscript`、`summarizeSession`、`Transcript`、`TranscriptEvent`                                       | 任何环境，需要平台                    |
+| [`@rivus/agent-kit/transcript/usage`](/docs/connection/token-usage) | `scanUsage`、`isUsageRecord`、`noCacheInputTokens`、`UsageRecord`                                           | 任何环境，需要平台；无导入            |
+| [`@rivus/agent-kit/testing`](/docs/testing)                         | `createMemoryPlatform`、`sessionAdapterConformance`、`hookDialectConformance`、`probeRecipeConformance`     | Node                                  |
+| [`@rivus/agent-kit/testing/effect`](/docs/testing)                  | `aggregateRepositoryConformance`：每个聚合仓储都要通过的一致性用例                                          | 任何环境，需要 `effect`               |
 
-| 入口                                                                          | 主要导出                                                                                                         | 种类    |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------- |
-| [`@rivus/agent-kit-collab/process-lock`](/zh/docs/coordination/process-locks) | `acquireProcessLock`、`isProcessLockHeld`、`ProcessLock`、`ProcessLockPlatform`                                  | 普通 TS |
-| [`@rivus/agent-kit-collab/lease`](/zh/docs/coordination/leases)               | `createLeaseManager`、`LeaseRepository`、`sqliteLeaseRepository`、`fileLeaseRepository`、`memoryLeaseRepository` | Effect  |
-| [`@rivus/agent-kit-collab/lanes`](/zh/docs/coordination/lanes)                | `createLanes`                                                                                                    | Effect  |
+| 入口                                                                       | 主要导出                                                                                                         | 种类    |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------- |
+| [`@rivus/agent-kit-collab/process-lock`](/docs/coordination/process-locks) | `acquireProcessLock`、`isProcessLockHeld`、`ProcessLock`、`ProcessLockPlatform`                                  | 普通 TS |
+| [`@rivus/agent-kit-collab/lease`](/docs/coordination/leases)               | `createLeaseManager`、`LeaseRepository`、`sqliteLeaseRepository`、`fileLeaseRepository`、`memoryLeaseRepository` | Effect  |
+| [`@rivus/agent-kit-collab/lanes`](/docs/coordination/lanes)                | `createLanes`                                                                                                    | Effect  |
 
 `/providers` 的 `builtinProviders` 在对应能力存在时，暴露每个 Agent 的 `identity`、`discovery`、`install`、`sessions`、`usage` 和 `acp`。先按 `id` 取描述符，使用前再检查可选服务是否存在。普通入口共用这些服务对象。Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。这份隔离构建不导入其他模块，并持有单独的 hook 对象。`/catalog` 保留 `AgentKitError` 和 `isAgentKitError`，调用方可以据此识别 shell 函数抛出的错误。
 

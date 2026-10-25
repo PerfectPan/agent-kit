@@ -2,6 +2,7 @@ import { loader } from "fumadocs-core/source";
 import { defineDocs } from "fumadocs-mdx/macro";
 
 import { apiSidebarLabel } from "./api-page.ts";
+import { docsUrl } from "./docs-path.ts";
 import { i18n } from "./i18n.ts";
 
 export const docs = defineDocs({
@@ -14,6 +15,7 @@ export const docs = defineDocs({
 export const source = loader({
   baseUrl: "/docs",
   i18n,
+  url: (slugs) => docsUrl(slugs),
   pageTree: {
     transformers: [
       {

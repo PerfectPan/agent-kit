@@ -7,7 +7,7 @@ description: scanUsage 读取 Token 记录，不构造 transcript。
 
 导出：`scanUsage`、`isUsageRecord`、`noCacheInputTokens`、`UsageRecord`。
 
-`/transcript/usage` 读取 [Agent 表](/zh/docs/agents) 中除 Cursor 以外每个 Agent 的用量。
+`/transcript/usage` 读取 [Agent 表](/docs/agents) 中除 Cursor 以外每个 Agent 的用量。
 
 `scanUsage` 读取每个 Agent 主目录下的用量，并返回一份状态，供下一次扫描使用。下一次扫描只读取此后写入的内容。
 
@@ -30,7 +30,7 @@ for await (const item of scan) {
 state = scan.state;
 ```
 
-调用方如果保留状态，还要在旁边保留自己的合计。同一个 `since` 窗口只用一份状态，并且一次只跑一次扫描。从同一份状态并发跑两次，两次都会产出新记录。计数遵循[用量约定](/zh/docs/concepts/usage-convention)。
+调用方如果保留状态，还要在旁边保留自己的合计。同一个 `since` 窗口只用一份状态，并且一次只跑一次扫描。从同一份状态并发跑两次，两次都会产出新记录。计数遵循[用量约定](/docs/concepts/usage-convention)。
 
 ## UsageRecord
 
@@ -75,4 +75,4 @@ if (usage) {
 
 解码器的游标用来继续一个来源。`scanUsage` 为跨 Agent 的扫描管理这些游标。
 
-用传给 `/cost` 的价格表给记录标价。工具包不附带价格。见 [费用](/zh/docs/connection/cost)。
+用传给 `/cost` 的价格表给记录标价。工具包不附带价格。见 [费用](/docs/connection/cost)。

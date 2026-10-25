@@ -56,8 +56,8 @@ Agent 自带有界摘要过程时，`summarizeSession` 读取该过程。否则�
 
 事件通过 `agentId`、`parentId`、`requestId`、`payload.callId` 和 `shadowedBy` 互相引用。
 
-这些事件上的 Token 计数遵循[用量约定](/zh/docs/concepts/usage-convention)。日志没有记录的计数是缺失，不是 0。
+这些事件上的 Token 计数遵循[用量约定](/docs/concepts/usage-convention)。日志没有记录的计数是缺失，不是 0。
 
-`sessionAdapterHome` 解析会话服务或用量服务的主目录。直接解码用量时这样调用：`sessionAdapterHome(usage, { home, env })`。见 [Token 用量](/zh/docs/connection/token-usage)。
+`sessionAdapterHome` 解析会话服务或用量服务的主目录。直接解码用量时这样调用：`sessionAdapterHome(usage, { home, env })`。见 [Token 用量](/docs/connection/token-usage)。
 
 `signal` 选项中止时，调用以 `signal.reason` 拒绝。

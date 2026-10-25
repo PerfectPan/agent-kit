@@ -33,7 +33,7 @@ await lock.value.release();
 
 传入 `{ wait: true, signal }` 可以等待持有者，而不是立刻得到 `ProcessLockHeld`。
 
-在 win32 上，平台无法识别进程（boot id、pid 和启动时间）。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。NFS、容器和被改名的主机见 [安装](/zh/docs/installation)。
+在 win32 上，平台无法识别进程（boot id、pid 和启动时间）。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。NFS、容器和被改名的主机见 [安装](/docs/installation)。
 
 ## 同一进程内的轮次
 
