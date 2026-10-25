@@ -3,6 +3,8 @@ title: Token 用量
 description: scanUsage 读取 Token 记录，不构造 transcript。
 ---
 
+## 增量扫描
+
 `/transcript/usage` 解码 Token 用量，不构造 transcript。它不导入包以外的模块，因此装不上依赖的宿主也可以单独打包它。任何环境都可以用，需要平台。
 
 导出：`scanUsage`、`isUsageRecord`、`noCacheInputTokens`、`UsageRecord`。

@@ -3,9 +3,13 @@ title: 平台
 description: 调用方传入的文件、进程与环境。
 ---
 
+## Platform 对象
+
 文件、进程和环境由调用方传入的 `Platform` 提供，因此读取代码也可以在浏览器里运行。
 
 `@rivus/agent-kit/platform` 只导出 `Platform` 类型。任何环境都可以用。
+
+## Node
 
 `@rivus/agent-kit/node` 导出 `createNodePlatform`，只在 Node 里运行。读取会话、用量或锁时，从它开始：
 
@@ -14,6 +18,8 @@ import { createNodePlatform } from "@rivus/agent-kit/node";
 
 const platform = createNodePlatform();
 ```
+
+## 浏览器与 SQLite
 
 `@rivus/agent-kit-collab` 不绑定具体 Agent。它通过同一个 `Platform` 访问文件、进程、时钟和 SQLite。
 

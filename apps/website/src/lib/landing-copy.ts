@@ -16,18 +16,15 @@ export const copy = {
   primaryNav: { en: "Primary", zh: "主导航" },
   heroTitle: { en: "The Universal Agent Toolkit", zh: "通用 Agent 工具库" },
   heroLead: {
-    en: "One TypeScript API to connect to any Agent, from detection, sessions and token usage to hooks and ACP, and to coordinate many Agents at once. Built in for Claude Code, Codex, Cursor and more.",
-    zh: "一套 TypeScript API：连接任意 Agent，涵盖检测、会话、token 用量、hook 与 ACP；也能协调多个 Agent 同时工作。内置支持 Claude Code、Codex、Cursor 等 Agent。"
+    en: "One API across Agents; only the id changes. Connect to one Agent, or coordinate many, through the same TypeScript surface.",
+    zh: "同一套 API，切换 Agent 只需更换 id。连接单个 Agent，或协调多个 Agent，都走同一套 TypeScript 接口。"
   },
   getStarted: { en: "Get started", zh: "快速开始" },
   copy: { en: "copy", zh: "copy" },
   copied: { en: "copied", zh: "已复制" },
   copyInstall: { en: "Copy the install command", zh: "复制安装命令" },
-  captionLead: { en: "One API across Agents; only the id changes.", zh: "同一套 API，切换 Agent 只需更换 id。" },
-  captionRest: {
-    en: " Built-in providers, or your own. Agents without a capability yet are greyed out.",
-    zh: "内置 provider 之外，也可以接入你自己的 Agent。暂不具备该能力的 Agent 显示为灰色。"
-  },
+  outputFields: { en: "fields", zh: "字段" },
+  outputRaw: { en: "raw", zh: "原始" },
   factsStrip: { en: "Kit facts", zh: "工具库概况" },
   factsEntries: { en: "public entries", zh: "个公开入口" },
   factsPackages: { en: "packages", zh: "个包" },
@@ -87,9 +84,9 @@ export const copy = {
     en: "For orchestrators and daemons that run several Agents side by side.",
     zh: "适用于同时运行多个 Agent 的编排器与守护进程。"
   },
-  legendBefore: { en: "Compressed size budgets checked in CI. ", zh: "CI 检查的压缩后体积上限。" },
-  legendMark: { en: "Orange", zh: "橙色" },
-  legendAfter: { en: ": no imports outside the package.", zh: "：不引入包外依赖。" },
+  legendBefore: { en: "compressed size budget, checked in CI", zh: "压缩体积上限，由 CI 检查" },
+  sizeBudget: { en: "compressed size budget", zh: "压缩体积上限" },
+  noDeps: { en: "no deps", zh: "零依赖" },
   builtTitle: { en: "Built with agent-kit", zh: "基于 agent-kit 构建" },
   builtBody: { en: "Open-source projects running on agent-kit today.", zh: "目前基于 agent-kit 的开源项目。" },
   presenceBody: {
@@ -100,11 +97,27 @@ export const copy = {
     en: "Agents taken through task execution, review, rework and pull-request handoff.",
     zh: "驱动 Agent 完成任务执行、评审、返工与 PR 交付。"
   },
-  yoursTitle: { en: "Your project", zh: "你的项目" },
-  yoursBody: {
-    en: "Built something on agent-kit? Open a pull request to add it here.",
-    zh: "基于 agent-kit 做了工具？提一个 PR，把它加到这里。"
-  },
+  viewOnGithub: { en: "View on GitHub", zh: "在 GitHub 上查看" },
+  presenceGithub: { en: "agent-presence on GitHub", zh: "agent-presence 在 GitHub" },
+  loopGithub: { en: "agent-task-loop on GitHub", zh: "agent-task-loop 在 GitHub" },
+  addProject: { en: "Built something on agent-kit? Add it here →", zh: "基于 agent-kit 做了工具？加到这里 →" },
+  sampleData: { en: "Sample data", zh: "示例数据" },
+  presenceName: { en: "Lin Yue", zh: "林越" },
+  presenceSig: { en: "presence.local/status", zh: "presence.local/status" },
+  presenceWorking: { en: "Claude Code · working", zh: "Claude Code · 工作中" },
+  presenceIdle: { en: "Codex · idle", zh: "Codex · 空闲" },
+  presenceTokens: { en: "Today 48.2M tokens", zh: "今日 48.2M tokens" },
+  loopTaskTitle: { en: "Fix the failing date test", zh: "修复失败的日期测试" },
+  loopAgentName: { en: "Claude Code", zh: "Claude Code" },
+  loopCheckTests: { en: "Tests pass", zh: "测试通过" },
+  loopCheckDiff: { en: "Diff reviewed", zh: "已看 diff" },
+  loopCheckNotes: { en: "Description filled", zh: "描述已写" },
+  loopPrChip: { en: "PR #128", zh: "PR #128" },
+  loopPr: { en: "#128 ready for review", zh: "#128 待评审" },
+  groupRead: { en: "Read", zh: "读取" },
+  groupHook: { en: "Hook into", zh: "接入" },
+  groupUtilities: { en: "Utilities", zh: "工具" },
+  groupCollab: { en: "Coordination", zh: "协作" },
   providersTitle: { en: "Built-in providers", zh: "内置 provider" },
   providersBody: {
     en: "Today's built-in coverage. Any other Agent can join as a provider, checked by the same conformance tests.",
@@ -119,12 +132,9 @@ export const copy = {
   addProvider: { en: "+ your Agent, as a provider", zh: "+ 你的 Agent，以 provider 接入" },
   supported: { en: "supported", zh: "支持" },
   unsupported: { en: "not supported", zh: "不支持" },
+  providersLegend: { en: "✓ supported · – not yet", zh: "✓ 支持 · – 暂未" },
   guidesTitle: { en: "Guides and API reference", zh: "指南与 API 参考" },
-  guidesBody: {
-    en: "A guide for each task, and a reference for every entry.",
-    zh: "每项任务一篇指南，每个入口一份参考。"
-  },
-  readGuide: { en: "Read the guide", zh: "阅读指南" },
+  readGuide: { en: "Guides", zh: "指南" },
   apiReference: { en: "API reference", zh: "API 参考" },
   footerBreak: { en: "0.x: minor releases may break", zh: "0.x：次版本可能包含不兼容变更" },
   navNpm: { en: "npm", zh: "npm" },

@@ -38,6 +38,8 @@ For an older release, query `npm view @rivus/agent-kit-collab@<version> peerDepe
 
 ESM only, no side effects, Node.js 22.13 or later on darwin or linux.
 
+## Platform limits
+
 win32 is not supported: the platform cannot identify processes there (boot id, pid and start time), which leases and lock files need. A SQLite process lock is still taken, with `holder` undefined, as described in [Process locks](/docs/coordination/process-locks).
 
 Every lock supports local directories only. Neither SQLite's locks nor lock files are reliable on NFS.

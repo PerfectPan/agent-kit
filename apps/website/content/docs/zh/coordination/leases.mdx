@@ -3,6 +3,8 @@ title: 租约
 description: 每个任务一个所有者，fencing token 永不回退。
 ---
 
+## 快速示例
+
 `@rivus/agent-kit-collab/lease` 导出 `createLeaseManager`、`LeaseRepository`、`sqliteLeaseRepository`、`fileLeaseRepository` 和 `memoryLeaseRepository`。它是 Effect 入口，需要平台。它需要与 peer 声明一致的 `effect`，版本见 [安装](/docs/installation)。
 
 Lease 让同一时间只有一个进程拥有一个任务，并拒绝过期所有者的写入。`@rivus/agent-kit-collab` 不绑定具体 Agent。
@@ -30,6 +32,8 @@ const program = Effect.scoped(
 await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
 ```
 
+## 持有者与 fencing
+
 - 一份 lease 只有一个持有者。它的代次就是 fencing token。每次取得都会增长，永不回退。释放后记录留作 tombstone。失去 lease 后再取得，会得到新的代次。旧句柄上的 token 会被拒绝。
 - 持有者在取得它的 Scope 里每 `heartbeatMs` 续约一次。`heartbeatMs × 2` 不得超过 `ttlMs`。关闭 Scope 会停止心跳并释放 lease。
 - 同一台主机上，进程已经消失的持有者会被立刻接管。pid 现在属于另一个进程时也一样。还活着但停止续约的持有者，在 TTL 之后被接管。这段时间由观察者自己的单调时钟计量，从它第一次看到当前记录的那一刻起算。
@@ -37,6 +41,8 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
 - 只有每个写入者都经过同一台机器上的同一个仓储时，守卫加重新读取才和受保护资源自己做的检查一样强。能够原子比较的资源应当保留它见过的最高 token，并拒绝更小的代次。
 - `sqliteLeaseRepository` 在 `BEGIN IMMEDIATE` 事务里比较 revision。`fileLeaseRepository` 是没有 SQLite 时的回退：每个键一个 JSON 文件，在按键的锁文件下写入。`memoryLeaseRepository` 服务一个进程。
 - 仓储端口遵循工具包的仓储形状。`load(key)` 是已存储的 `LeaseSnapshot` 或 `undefined`。`save(key, snapshot, expectedRevision)` 只覆盖该 revision。另一个写入者先移动了记录时，以 `RevisionConflict` 失败。
+
+## 仓库与失败
 
 预期失败是带 `_tag` 的值：`LeaseHeld`、`LeaseLost`、`LeaseConfigInvalid`、`LeaseRepositoryFailure`，以及仓储的 `RevisionConflict`。工具包自己不运行 Effect。请在应用的组装根上运行程序。
 

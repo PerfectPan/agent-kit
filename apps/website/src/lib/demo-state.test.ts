@@ -4,10 +4,15 @@ import { expect, it } from "vite-plus/test";
 import {
   MY_AGENT,
   TASK_ORDER,
+  changedFieldKeys,
+  changedLineIndexes,
   demoView,
   isBlockedOutput,
+  isSwapField,
+  maxOutputFieldCount,
   nextAutoplayStep,
   nextTaskKey,
+  outputFields,
   plainText,
   selectAgent,
   selectTask,
@@ -118,4 +123,38 @@ it("keeps the approved snippet text", () => {
 
   expect(plainText(demoView(on("hooks", "pi"), rows).output)).toContain('nativeEvent: "before_agent_start"');
   expect(demoView(on("coordinate", "codex"), rows).packageName).toBe("@rivus/agent-kit-collab");
+});
+
+it("flattens sample output into aligned key/value fields", () => {
+  expect(outputFields("detect", "claude-code")).toEqual([
+    { key: "agent", value: "claude-code" },
+    { key: "status", value: "runnable" },
+    { key: "auth", value: "logged-in" },
+    { key: "version", value: "…" }
+  ]);
+  expect(outputFields("usage", "grok")).toEqual([
+    { key: "agent", value: "grok" },
+    { key: "granularity", value: "turn" },
+    { key: "inputTokens", value: "18304" },
+    { key: "cacheReadTokens", value: "16128" },
+    { key: "outputTokens", value: "412" }
+  ]);
+  expect(outputFields("hooks", "pi").find((field) => field.key === "nativeEvent")?.value).toBe("before_agent_start");
+  expect(demoView(on("detect", "claude-code"), rows).fields).toEqual(outputFields("detect", "claude-code"));
+  expect(maxOutputFieldCount()).toBe(5);
+});
+
+it("marks Agent id and values that change as swap fields", () => {
+  expect(isSwapField("agent")).toBe(true);
+  expect(isSwapField("nativeEvent")).toBe(true);
+  expect(isSwapField("granularity")).toBe(true);
+  expect(isSwapField("worker A")).toBe(true);
+  expect(isSwapField("status")).toBe(false);
+  expect(changedFieldKeys(outputFields("usage", "claude-code"), outputFields("usage", "grok"))).toEqual([
+    "agent",
+    "granularity"
+  ]);
+  const from = demoView(on("detect", "claude-code"), rows).code;
+  const to = demoView(on("detect", "grok"), rows).code;
+  expect(changedLineIndexes(from, to).length).toBeGreaterThan(0);
 });

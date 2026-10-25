@@ -5,9 +5,13 @@ description: Id, aliases, home override, and the services each built-in provider
 
 import { AgentSupportTable } from "../../../src/components/agent-support-table.tsx";
 
+## Capability columns
+
 The capability columns are the built-in provider objects: a service field that is present counts as supported. They are not typed by hand. Id, aliases and the home override are the Agents table from the package README.
 
 <AgentSupportTable />
+
+## README wording
 
 The README's support table uses these words where a cell is not "yes":
 
@@ -18,6 +22,8 @@ The README's support table uses these words where a cell is not "yes":
 - opencode sessions: session storage has no supported reader.
 - Pi sessions: session storage has no supported reader.
 - Pi ACP: no supported ACP transport.
+
+## Homes and names
 
 Every Agent in the table has a hook dialect in `/harness/events`.
 

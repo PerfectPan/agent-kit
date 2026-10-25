@@ -3,9 +3,13 @@ title: Platform
 description: The object that supplies files, processes and the environment.
 ---
 
+## Platform object
+
 Files, processes and the environment come from a `Platform` object that the caller passes in, so the reading code also runs in a browser.
 
 `@rivus/agent-kit/platform` exports `Platform` as a type only. It runs anywhere.
+
+## Node
 
 `@rivus/agent-kit/node` exports `createNodePlatform` and runs in Node. Guides that read sessions, usage or locks start from it:
 
@@ -14,6 +18,8 @@ import { createNodePlatform } from "@rivus/agent-kit/node";
 
 const platform = createNodePlatform();
 ```
+
+## Browser and SQLite
 
 `@rivus/agent-kit-collab` knows no particular Agent. It reaches files, processes, clocks and SQLite through the same `Platform`.
 

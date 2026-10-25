@@ -3,6 +3,8 @@ title: Cost
 description: Price usage records with a table you pass in, since the kit ships no prices.
 ---
 
+## Pricing table
+
 `/cost` prices usage records with a table you pass in, in USD per million tokens. The kit ships no prices. It is pure computation and imports nothing. It runs anywhere.
 
 Exports: `createPricing`, `summarize`, `Pricing`.
@@ -29,9 +31,13 @@ for await (const item of scanUsage(createNodePlatform(), week)) {
 const { total, groups } = summarize(records, pricing, { window: week, groupBy: ["agent"] });
 ```
 
+## How records are priced
+
 `summarize` prices each record using the amount the Agent logged when there is one (Pi, opencode, Grok). Otherwise it prices each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes, output) times the record's `pricingMultiplier` (2 for Codex's priority tier).
 
 A model takes its own id's entry, else the longest key its id contains, regardless of case. `overrides` replace a key's prices, also in part, and `fallback` holds entries such as family aliases.
+
+## Missing prices
 
 A model without a price has no cost (`undefined`, not 0), and a summary's `costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
 

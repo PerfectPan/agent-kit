@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { Lang } from "../../lib/landing-copy.ts";
-import { GuidesSection } from "./guides-section.tsx";
+import { CloseCta } from "./close-cta.tsx";
 import { LandingFooter } from "./landing-footer.tsx";
 import { LandingHeader } from "./landing-header.tsx";
 import { LandingHero } from "./landing-hero.tsx";
@@ -55,10 +55,10 @@ export function LandingPage({ lang }: { readonly lang: Lang }) {
       <main className="wrap">
         <LandingHero lang={lang} />
         <LayerSection lang={lang} />
-        <PackagesSection lang={lang} />
         <ProjectsSection lang={lang} />
+        <PackagesSection lang={lang} />
         <ProvidersSection lang={lang} />
-        <GuidesSection lang={lang} />
+        <CloseCta lang={lang} />
       </main>
       <LandingFooter lang={lang} />
     </div>

@@ -3,6 +3,8 @@ title: 简介
 description: 一次连接一个 Agent，协调多个 Agent，以及公开入口。
 ---
 
+## 两个包
+
 `@rivus/agent-kit` 一次连接一个 Agent。它是通用 Agent 工具库：知道每个 Agent 的 id 和主目录，列出会话，并把日志读成同一种 transcript、同一种用量约定。Claude Code、Codex、Grok 是目前的内置 Agent，其余见 [支持的 Agent](/docs/agents)。
 
 `@rivus/agent-kit-collab` 协调多个 Agent。它提供带 fencing token 的 lease（`/lease`）、单实例进程锁（`/process-lock`），以及按 key 调度的 lane（`/lanes`）。Collab 不绑定具体 Agent。它的入口使用 agent-kit 的公开平台，并与 agent-kit 锁定步进、同一版本发布。

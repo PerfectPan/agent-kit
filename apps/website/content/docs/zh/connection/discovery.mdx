@@ -3,6 +3,8 @@ title: Agent 检测
 description: detectAgents 报告 runnable、found、missing 或 unknown，并附证据与登录状态。
 ---
 
+## 状态与探测
+
 `@rivus/agent-kit/discovery` 导出 `detectAgents`、`versionFromOutput` 和 `ProbeRecipe`。它可以在任何环境运行，需要平台。
 
 `detectAgents(platform)` 对 [Agent 表](/docs/agents) 中的每个内置 Agent 报告 `runnable`、`found`、`missing` 或 `unknown`。报告里包含证据、命令打印的版本，以及登录状态。

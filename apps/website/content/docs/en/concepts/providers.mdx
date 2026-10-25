@@ -3,9 +3,13 @@ title: Providers
 description: Built-in descriptors, your own, and how services merge.
 ---
 
+## Built-in descriptors
+
 `@rivus/agent-kit/providers` exports `Provider` and `builtinProviders`. It runs anywhere.
 
 `builtinProviders` exposes each Agent's `identity`, `discovery`, `install`, `sessions`, `usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use. The ordinary entries share these service objects.
+
+## Hook dialects and catalog
 
 Hook commands keep using `builtinHookDialects` from `/harness/events`. That isolated build imports nothing and owns separate hook objects. It does not take the provider list.
 

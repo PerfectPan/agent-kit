@@ -1,6 +1,18 @@
 import { expect, it } from "vite-plus/test";
 
-import { CONNECTION_FNS, COORDINATION_FNS, layerFnCapability, providerSupportsLayerFn } from "./layer-functions.ts";
+import {
+  CONNECTION_FNS,
+  COORDINATION_FNS,
+  DEFAULT_LAYER_PATH,
+  TOOL_IDS,
+  TOOL_PATHS,
+  layerFnCapability,
+  pathForFn,
+  pathForProvider,
+  pathForTool,
+  providerSupportsLayerFn,
+  resolveLayerPath
+} from "./layer-functions.ts";
 import type { SupportRow } from "./support.ts";
 
 const cursor: SupportRow = {
@@ -52,4 +64,56 @@ it("lights only providers that expose the hovered capability", () => {
 it("covers every function chip on the diagram", () => {
   expect(CONNECTION_FNS).toHaveLength(9);
   expect(COORDINATION_FNS).toHaveLength(3);
+});
+
+it("maps each tool to a typical function and provider path", () => {
+  expect(TOOL_PATHS.map((path) => path.tool)).toEqual([...TOOL_IDS]);
+  expect(pathForTool("usage")).toEqual({
+    tool: "usage",
+    fn: "scanUsage",
+    providerId: "claude-code",
+    collab: false
+  });
+  expect(pathForTool("orchestrator")).toEqual({
+    tool: "orchestrator",
+    fn: "createLeaseManager",
+    providerId: "claude-code",
+    collab: true
+  });
+  expect(pathForTool("runner")).toEqual({
+    tool: "runner",
+    fn: "createLanes",
+    providerId: "claude-code",
+    collab: true
+  });
+  expect(pathForFn("planInstall")).toEqual({
+    tool: "usage",
+    fn: "planInstall",
+    providerId: "claude-code",
+    collab: false
+  });
+  expect(DEFAULT_LAYER_PATH.fn).toBe("scanUsage");
+  expect(pathForFn("scanUsage")).toEqual(pathForTool("usage"));
+  expect(pathForFn("createLanes")).toEqual(pathForTool("runner"));
+  expect(pathForFn("redactText")).toEqual({
+    tool: "usage",
+    fn: "redactText",
+    providerId: "claude-code",
+    collab: false
+  });
+  expect(pathForProvider("codex", pathForTool("usage"))).toEqual({
+    tool: "usage",
+    fn: "scanUsage",
+    providerId: "codex",
+    collab: false
+  });
+  expect(pathForProvider("codex", pathForTool("orchestrator"))).toEqual({
+    ...DEFAULT_LAYER_PATH,
+    providerId: "codex",
+    collab: false
+  });
+  expect(resolveLayerPath(null)).toEqual(DEFAULT_LAYER_PATH);
+  expect(resolveLayerPath("hook")).toEqual(pathForTool("hook"));
+  expect(resolveLayerPath("listSessions")).toEqual(pathForTool("viewer"));
+  expect(resolveLayerPath("codex").providerId).toBe("codex");
 });

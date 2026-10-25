@@ -6,6 +6,8 @@ import {
   budgetsFromLimits,
   factsFromLimits,
   formatBudget,
+  groupedKitBudgets,
+  largestBudgetBytes,
   parseBudgetBytes,
   type SizeLimitEntry
 } from "./entry-budgets.ts";
@@ -66,4 +68,12 @@ it("counts public entries and the zero-dependency entries from NO_OUTSIDE_IMPORT
   });
   expect(barFillPercent(1127, 82765)).toBeCloseTo((1127 / 82765) * 100);
   expect(barFillPercent(10, 0)).toBe(0);
+  const budgets = budgetsFromLimits(kit, collab);
+  expect(largestBudgetBytes(budgets.kit, budgets.collab)).toBe(82765);
+  expect(barFillPercent(11102, 82765)).toBeCloseTo((11102 / 82765) * 100);
+  expect(groupedKitBudgets(budgets.kit).map((group) => [group.id, group.entries.map((entry) => entry.entry)])).toEqual([
+    ["read", ["/discovery", "/sessions", "/transcript", "/transcript/usage", "/cost"]],
+    ["hook", ["/harness/events", "/harness", "/acp"]],
+    ["utilities", ["/redact"]]
+  ]);
 });

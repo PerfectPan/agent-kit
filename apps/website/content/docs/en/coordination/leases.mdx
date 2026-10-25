@@ -3,6 +3,8 @@ title: Leases
 description: One owner per task, with a fencing token that never goes backwards.
 ---
 
+## Quick example
+
 `@rivus/agent-kit-collab/lease` exports `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository` and `memoryLeaseRepository`. It is an Effect entry and needs a platform. It needs `effect` at the peer version from [Installation](/docs/installation).
 
 A lease lets one process at a time own a task, and refuses a stale owner's writes. The package knows no particular Agent.
@@ -30,6 +32,8 @@ const program = Effect.scoped(
 await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
 ```
 
+## Holders and fencing
+
 - A lease has one holder. Its generation, the fencing token, grows on every acquisition and never goes back. A release keeps the record as a tombstone. Losing the lease and getting it again gives a new generation, so the old handle's token is refused.
 - The holder renews every `heartbeatMs` in the Scope that acquired it. `heartbeatMs × 2` must not exceed `ttlMs`. Closing the Scope stops the heartbeat and releases the lease.
 - A holder on the same host whose process is gone (or whose pid now belongs to another process) is taken over at once. A holder that is alive but stopped renewing is taken over after the TTL, measured by the observer's own monotonic clock from the moment it first saw the current record.
@@ -37,6 +41,8 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(LeaseLive)));
 - Guard plus re-read is as strong as a check by the protected resource itself only when every writer goes through the same repository on the same machine. A resource that can compare atomically should keep the highest token it has seen and reject a smaller generation.
 - `sqliteLeaseRepository` compares revisions inside `BEGIN IMMEDIATE` transactions. `fileLeaseRepository` is the fallback without SQLite: one JSON file per key, written under a per-key lock file. `memoryLeaseRepository` serves one process.
 - The repository port follows the kit's repository shape. `load(key)` is the stored `LeaseSnapshot` or `undefined`, and `save(key, snapshot, expectedRevision)` writes only over that revision and fails with a `RevisionConflict` when another writer moved the record first.
+
+## Repositories and failures
 
 Expected failures are typed values with a `_tag`: `LeaseHeld`, `LeaseLost`, `LeaseConfigInvalid`, `LeaseRepositoryFailure` and the repository's `RevisionConflict`. The kit runs no Effect itself. Run the program at your application's assembly root.
 

@@ -3,14 +3,20 @@ title: Testing your adapters
 description: Conformance suites for session adapters, hook dialects, probe recipes and repositories.
 ---
 
+## Suites
+
 `@rivus/agent-kit/testing` exports `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance` and `probeRecipeConformance`. It runs in Node and does not bundle for browsers.
 
 `@rivus/agent-kit/testing/effect` exports `aggregateRepositoryConformance`, the conformance cases every aggregate repository passes. It runs anywhere, with `effect`.
+
+## Adapters and dialects
 
 To read another Agent, pass `providers: [{ id: "my-agent", sessions: adapter }]` and check it with `sessionAdapterConformance`. An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]` (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
 `hookDialectConformance` checks a hook dialect. `probeRecipeConformance` checks a discovery recipe. How descriptors merge is on [Providers](/docs/concepts/providers).
 
 The README names these suites and does not show their call signatures. Derive option and result types with `Parameters` or `ReturnType`, and with Effect's success and error types for Effect operations.
+
+## Memory platform
 
 The README names `createMemoryPlatform` and does not describe its options. Discovery's evidence regression tests run `planInstall` / `applyInstall` over an in-memory home before detection. Usage source tests cover the six default layouts and overrides using the providers' usage fixtures. Those tests live in the repository. See [Agent detection](/docs/connection/discovery).

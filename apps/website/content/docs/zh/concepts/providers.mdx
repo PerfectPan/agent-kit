@@ -3,9 +3,13 @@ title: Provider
 description: 内置 provider、自行添加，以及服务如何合并。
 ---
 
+## 内置描述符
+
 `@rivus/agent-kit/providers` 导出 `Provider` 和 `builtinProviders`。任何环境都可以用。
 
 `builtinProviders` 在对应能力存在时，暴露每个 Agent 的 `identity`、`discovery`、`install`、`sessions`、`usage` 和 `acp`。先按 `id` 取描述符，使用前再检查可选服务是否存在。普通入口共用这些服务对象。
+
+## Hook 方言与 catalog
 
 Hook 命令继续使用 `/harness/events` 的 `builtinHookDialects`。这份隔离构建不导入其他模块，并持有单独的 hook 对象。它不接受 provider 列表。
 

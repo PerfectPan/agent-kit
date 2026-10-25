@@ -3,9 +3,13 @@ title: Effect 入口
 description: PlatformService 与 NodePlatformLive 返回 Effect，工具包自己不运行。
 ---
 
+## PlatformService
+
 Effect 入口返回从 `PlatformService` 读取平台的 Effect 和 Layer。由应用提供 Layer，并自己运行程序。工具包没有 Promise 包装，也不运行 Effect。
 
 `@rivus/agent-kit/platform/effect` 导出 `PlatformService`，也就是作为 Effect 服务的 `Platform`。任何环境都可以用，需要 `effect`。
+
+## NodePlatformLive
 
 `@rivus/agent-kit/node/effect` 导出 `NodePlatformLive`。它是用 `createNodePlatform()` 提供 `PlatformService` 的 Layer，只在 Node 里运行，需要 `effect`。
 
@@ -23,6 +27,8 @@ const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(NodePlatfor
 ```
 
 换一份 `env` 或 `home` 时，改为提供 `Layer.succeed(PlatformService, createNodePlatform({ env, home }))`。
+
+## Peer 依赖
 
 `effect` 必须与 `peerDependencies.effect` 完全一致。见 [安装](/docs/installation)。普通入口不会加载上述可选 peer。
 

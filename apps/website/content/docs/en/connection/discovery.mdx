@@ -3,6 +3,8 @@ title: Agent detection
 description: detectAgents reports runnable, found, missing or unknown, with evidence and login state.
 ---
 
+## Status and probes
+
 `@rivus/agent-kit/discovery` exports `detectAgents`, `versionFromOutput` and `ProbeRecipe`. It runs anywhere, with a platform.
 
 `detectAgents(platform)` reports, for each built-in Agent in the [Agents table](/docs/agents), whether it is `runnable`, `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state.

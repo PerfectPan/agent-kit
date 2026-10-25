@@ -3,6 +3,8 @@ title: Token usage
 description: scanUsage reads token records without building transcripts.
 ---
 
+## Incremental scans
+
 `/transcript/usage` decodes token usage without building transcripts, and imports nothing outside the package, so a host that cannot install dependencies can bundle it alone. It runs anywhere, with a platform.
 
 Exports: `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`.

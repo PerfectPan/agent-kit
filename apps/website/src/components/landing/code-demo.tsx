@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
 import {
   TASK_ORDER,
+  changedFieldKeys,
+  changedLineIndexes,
   demoView,
   initialSelection,
   isBlockedOutput,
+  isSwapField,
+  maxOutputFieldCount,
   nextAutoplayStep,
   nextTaskKey,
   selectAgent,
@@ -19,18 +23,32 @@ import { Mascot, type MascotState } from "../mascot.tsx";
 const WORK_MS = 1200;
 const LINE_MS = 50;
 const BLOCKED_MS = 900;
-const AUTOPLAY_FIRST_MS = 6000;
-const AUTOPLAY_NEXT_MS = 3500;
+const AUTOPLAY_IDLE_MS = 10_000;
+const AUTOPLAY_STEP_MS = 5000;
+const FLASH_MS = 200;
 
 function tokenClass(token: Token): string | undefined {
   const names = [token.tone, token.swap ? "swap" : undefined].filter((name) => name !== undefined);
   return names.length > 0 ? names.join(" ") : undefined;
 }
 
-function codeLines(lines: readonly (readonly Token[])[], shown: number) {
+function lineClass(index: number, shown: number, flash: ReadonlySet<number>): string | undefined {
+  const names = [index < shown ? undefined : "pending", flash.has(index) ? "flash" : undefined].filter(
+    (name) => name !== undefined
+  );
+  return names.length > 0 ? names.join(" ") : undefined;
+}
+
+function fieldRowClass(key: string, flash: ReadonlySet<string>): string | undefined {
+  const names = [isSwapField(key) ? "is-swap" : undefined, flash.has(key) ? "flash" : undefined].filter(
+    (name) => name !== undefined
+  );
+  return names.length > 0 ? names.join(" ") : undefined;
+}
+
+function codeLines(lines: readonly (readonly Token[])[], shown: number, flash: ReadonlySet<number>, nonce: number) {
   return lines.map((line, index) => (
-    <span key={index} className={index < shown ? undefined : "pending"}>
-      {index > 0 ? "\n" : null}
+    <span key={`${nonce}-${index}`} className={lineClass(index, shown, flash)}>
       {line.map((token, tokenIndex) => (
         <span key={tokenIndex} className={tokenClass(token)}>
           {token.text}
@@ -47,11 +65,20 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
   const [mascot, setMascot] = useState<MascotState>("idle");
   const [shown, setShown] = useState(view.output.length);
   const [paused, setPaused] = useState(false);
-  const [stopped, setStopped] = useState(false);
+  const [raw, setRaw] = useState(false);
+  const [hopNonce, setHopNonce] = useState(0);
+  const [flashNonce, setFlashNonce] = useState(0);
+  const [flashFields, setFlashFields] = useState<ReadonlySet<string>>(() => new Set());
+  const [flashCode, setFlashCode] = useState<ReadonlySet<number>>(() => new Set());
+  const [flashOutput, setFlashOutput] = useState<ReadonlySet<number>>(() => new Set());
   const [allowMotion, setAllowMotion] = useState(false);
   const firstSwitch = useRef(true);
-  const intervalMs = useRef(AUTOPLAY_FIRST_MS);
+  const lastUserAt = useRef(Date.now());
   const allowMotionRef = useRef(false);
+  const prevFields = useRef(view.fields);
+  const prevCode = useRef(view.code);
+  const prevOutput = useRef(view.output);
+  const fieldCount = maxOutputFieldCount();
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -70,17 +97,35 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
   }, [allowMotion]);
 
   useEffect(() => {
-    const output = demoView(selection, support).output;
+    const next = demoView(selection, support);
+    const fields = changedFieldKeys(prevFields.current, next.fields);
+    const code = changedLineIndexes(prevCode.current, next.code);
+    const outputLines = changedLineIndexes(prevOutput.current, next.output);
+    prevFields.current = next.fields;
+    prevCode.current = next.code;
+    prevOutput.current = next.output;
+    const output = next.output;
     if (firstSwitch.current) {
       firstSwitch.current = false;
       setShown(output.length);
       setMascot("idle");
       return;
     }
+    setFlashFields(new Set(fields));
+    setFlashCode(new Set(code));
+    setFlashOutput(new Set(outputLines));
+    setFlashNonce((current) => current + 1);
+    const flashTimer = window.setTimeout(() => {
+      setFlashFields(new Set());
+      setFlashCode(new Set());
+      setFlashOutput(new Set());
+    }, FLASH_MS);
     if (!allowMotionRef.current) {
       setShown(output.length);
       setMascot("idle");
-      return;
+      return () => {
+        window.clearTimeout(flashTimer);
+      };
     }
     setShown(0);
     setMascot("working");
@@ -98,6 +143,7 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
       timers.push(window.setTimeout(() => setMascot("idle"), WORK_MS + BLOCKED_MS));
     }
     return () => {
+      window.clearTimeout(flashTimer);
       for (const timer of timers) {
         window.clearTimeout(timer);
       }
@@ -105,17 +151,23 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
   }, [selection, support]);
 
   useEffect(() => {
-    if (!allowMotion || stopped || paused) {
+    if (!allowMotion || paused) {
       return undefined;
     }
+    const elapsed = Date.now() - lastUserAt.current;
+    const delay = elapsed < AUTOPLAY_IDLE_MS ? AUTOPLAY_IDLE_MS - elapsed : AUTOPLAY_STEP_MS;
     const timer = window.setTimeout(() => {
       setSelection((current) => nextAutoplayStep(current, support));
-      intervalMs.current = AUTOPLAY_NEXT_MS;
-    }, intervalMs.current);
+    }, delay);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [allowMotion, paused, selection, stopped, support]);
+  }, [allowMotion, paused, selection, support]);
+
+  function markUser() {
+    lastUserAt.current = Date.now();
+    setHopNonce((current) => current + 1);
+  }
 
   function onTaskKey(event: KeyboardEvent<HTMLDivElement>) {
     const next = nextTaskKey(view.task, event.key);
@@ -123,16 +175,14 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
       return;
     }
     event.preventDefault();
+    markUser();
     setSelection((current) => selectTask(current, next, support));
-    document.getElementById(`task-${next}`)?.focus();
+    document.getElementById(`task-${lang}-${next}`)?.focus();
   }
 
   return (
     <div
       className="demo"
-      onClick={() => {
-        setStopped(true);
-      }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -142,7 +192,7 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
         }
       }}
     >
-      <Mascot state={mascot} hopSignal={`${selection.task}:${selection.agentId}`} className="m" />
+      <Mascot state={mascot} hopSignal={hopNonce === 0 ? undefined : String(hopNonce)} className="m" />
       {mascot === "working" ? (
         <div key={`${selection.task}:${selection.agentId}`} className="feed" aria-hidden="true">
           <i />
@@ -159,11 +209,12 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
                 key={task}
                 type="button"
                 role="tab"
-                id={`task-${task}`}
-                aria-controls="task-panel"
+                id={`task-${lang}-${task}`}
+                aria-controls={`task-panel-${lang}`}
                 aria-selected={selected}
                 tabIndex={selected ? 0 : -1}
                 onClick={() => {
+                  markUser();
                   setSelection((current) => selectTask(current, task, support));
                 }}
               >
@@ -172,18 +223,37 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
             );
           })}
         </div>
-        <div role="tabpanel" id="task-panel" aria-labelledby={`task-${view.task}`}>
+        <div role="tabpanel" id={`task-panel-${lang}`} aria-labelledby={`task-${lang}-${view.task}`}>
           <div className="file">
             <span>{view.file}</span>
             <span>{view.packageName}</span>
           </div>
-          <pre>{codeLines(view.code, view.code.length)}</pre>
+          <pre>{codeLines(view.code, view.code.length, flashCode, flashNonce)}</pre>
           <div className="result">
             <div className="file">
               <span>{text(lang, "outputLabel")}</span>
-              <span>{text(lang, "sampleLabel")}</span>
+              <span className="output-toggle" role="group" aria-label={text(lang, "outputLabel")}>
+                <button type="button" aria-pressed={!raw} onClick={() => setRaw(false)}>
+                  {text(lang, "outputFields")}
+                </button>
+                <button type="button" aria-pressed={raw} onClick={() => setRaw(true)}>
+                  {text(lang, "outputRaw")}
+                </button>
+              </span>
             </div>
-            <pre>{codeLines(view.output, shown)}</pre>
+            <div className="result-body" style={{ "--output-rows": fieldCount } as CSSProperties}>
+              <dl className={raw ? "fields is-hidden" : "fields"} aria-hidden={raw}>
+                {view.fields.map((field) => (
+                  <div key={`${flashNonce}-${field.key}`} className={fieldRowClass(field.key, flashFields)}>
+                    <dt>{field.key}</dt>
+                    <dd>{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <pre className={raw ? undefined : "is-hidden"} aria-hidden={!raw}>
+                {codeLines(view.output, shown, flashOutput, flashNonce)}
+              </pre>
+            </div>
           </div>
           <div className="agents">
             <span>{text(lang, "agentLabel")}</span>
@@ -196,6 +266,7 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
                 aria-pressed={agent.pressed}
                 title={agent.enabled ? undefined : text(lang, "notSupportedYet")}
                 onClick={() => {
+                  markUser();
                   setSelection((current) => selectAgent(current, agent.id, support));
                 }}
               >
@@ -205,10 +276,6 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
           </div>
         </div>
       </div>
-      <p className="caption">
-        <b>{text(lang, "captionLead")}</b>
-        {text(lang, "captionRest")}
-      </p>
     </div>
   );
 }

@@ -11,37 +11,34 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
   const start = guide("installation");
   return (
     <section className="hero">
-      <h1>{text(lang, "heroTitle")}</h1>
-      <p className="lead">{text(lang, "heroLead")}</p>
-      <div className="cta">
-        <Link to={start.to} params={start.params} className="btn btn-primary">
-          {text(lang, "getStarted")}
-        </Link>
-        <span className="pill">
-          {INSTALL_KIT} <CopyButton value={INSTALL_KIT} lang={lang} />
-        </span>
+      <div className="hero-copy">
+        <h1>{text(lang, "heroTitle")}</h1>
+        <p className="lead">{text(lang, "heroLead")}</p>
+        <div className="cta">
+          <span className="pill">
+            {INSTALL_KIT} <CopyButton value={INSTALL_KIT} lang={lang} />
+          </span>
+          <Link to={start.to} params={start.params} className="btn btn-primary">
+            {text(lang, "getStarted")}
+          </Link>
+        </div>
       </div>
-      <CodeDemo lang={lang} />
-      <ul className="facts" aria-label={text(lang, "factsStrip")}>
-        <li>
-          <strong>{landingFacts.entryCount}</strong> {text(lang, "factsEntries")}
-        </li>
-        <li>
-          <strong>{landingFacts.packageCount}</strong> {text(lang, "factsPackages")}
-        </li>
-        <li>
-          <strong>{landingFacts.zeroDepCount}</strong> {text(lang, "factsZeroDep")}
-        </li>
-        <li>
-          <strong>{text(lang, "factsTypescript")}</strong>
-        </li>
-        <li>
-          <strong>{landingFacts.license}</strong>
-        </li>
-        <li>
-          <strong>{landingFacts.version}</strong>
-        </li>
-      </ul>
+      <div className="hero-demo">
+        <CodeDemo lang={lang} />
+        <p className="facts-note" aria-label={text(lang, "factsStrip")}>
+          {landingFacts.entryCount} {text(lang, "factsEntries")}
+          {" · "}
+          {landingFacts.packageCount} {text(lang, "factsPackages")}
+          {" · "}
+          {landingFacts.zeroDepCount} {text(lang, "factsZeroDep")}
+          {" · "}
+          {text(lang, "factsTypescript")}
+          {" · "}
+          {landingFacts.license}
+          {" · "}
+          {landingFacts.version}
+        </p>
+      </div>
     </section>
   );
 }

@@ -3,6 +3,8 @@ title: Introduction
 description: Connection for one Agent, coordination for many, and the public entries.
 ---
 
+## Packages
+
 `@rivus/agent-kit` connects to one Agent at a time. It is a universal Agent toolkit: it knows each Agent's id and home directory, lists its sessions, and reads their logs into one transcript model with one usage convention. Claude Code, Codex and Grok are today's built-in Agents, along with the others on [Supported Agents](/docs/agents).
 
 `@rivus/agent-kit-collab` coordinates many Agents. It adds fenced leases (`/lease`), a single-instance process lock (`/process-lock`) and keyed scheduling lanes (`/lanes`). The package knows no particular Agent. Collab's entries use agent-kit's public platform and follow the same lockstep release.

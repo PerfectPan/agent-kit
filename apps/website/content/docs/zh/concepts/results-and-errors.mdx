@@ -3,6 +3,8 @@ title: 结果与错误
 description: Result、读失败、Effect 的 _tag，以及抛出的 AgentKitError。
 ---
 
+## Result 值
+
 `@rivus/agent-kit/catalog` 导出 `isBuiltinCodingAgentId`、`Result`、`ok`、`err`、`AgentKitError` 和 `isAgentKitError`。任何环境都可以用。`/catalog` 保留 `AgentKitError` 和 `isAgentKitError`，调用方可以据此识别 shell 函数抛出的错误。
 
 - `loadTranscript` 和 `summarizeSession` 解析为 `Result`：`{ ok: true, value }` 或 `{ ok: false, error }`，其中 `error._tag` 标出失败原因。`loadTranscript` 和 `summarizeSession` 的失败为 `SessionNotFound`、`ReadFailed`、`UnknownFormatGeneration`、`NoAdapterAccepted` 或 `CapabilityUnsupported`。
@@ -10,7 +12,12 @@ description: Result、读失败、Effect 的 _tag，以及抛出的 AgentKitErro
 - `listSessions` 遇到缺失的根（`RootMissing`）或读不了的文件（`ReadFailed`）时，产出 `{ ref, error }`，然后继续下一项。`scanUsage` 同样产出 `{ agent, path, error }`。
 - `signal` 中止时，调用以 `signal.reason` 拒绝。
 - `/acp` 用同类 `_tag` 让 Effect 失败。`connectAgent` 产生 `AgentUnavailable` 和 `HandshakeFailed`。打开会话产生 `AuthRequired`、`AcpTimeout`、`AcpRequestFailed`、`ConnectionClosed`、`BindingNotFound`、`LoadUnsupported` 和 `SessionBindingStoreFailure`。回合产生 `TurnInProgress`、`SessionClosed` 和 `CancelUnsettled`。
+
+## 抛出的错误
+
 - 编程错误和缺陷会抛出。在 `listSessions({ agents })` 里指定没有会话适配器的 Agent，或在 `readHookEvent` 里指定没有 hook 方言的 Agent，会抛出 `code: "capability-unsupported"` 的 `AgentKitError`。用 `isAgentKitError` 判断。`summarizeSession` 在 `prompts` 上限不是范围内的整数时同样抛出，`code` 为 `"invalid-prompts"`。`readHookEvent` 不会因为载荷抛出。
+
+## Effect 标签
 
 Lease 失败是带 `_tag` 的值：`LeaseHeld`、`LeaseLost`、`LeaseConfigInvalid`、`LeaseRepositoryFailure`，以及仓储的 `RevisionConflict`。工具包自己不运行 Effect。请在应用的组装根上运行程序。
 

@@ -25,12 +25,18 @@ export interface DemoAgent {
   readonly pressed: boolean;
 }
 
+export interface OutputField {
+  readonly key: string;
+  readonly value: string;
+}
+
 export interface DemoView {
   readonly task: TaskKey;
   readonly file: string;
   readonly packageName: string;
   readonly code: readonly (readonly Token[])[];
   readonly output: readonly (readonly Token[])[];
+  readonly fields: readonly OutputField[];
   readonly agents: readonly DemoAgent[];
 }
 
@@ -209,7 +215,7 @@ function hooksOutput(agentId: string): Token[][] {
   }
   return [
     [p("{ agent: "), quoted(agentId), p(", phase: "), s('"start"'), p(", scope: "), s('"turn"'), p(",")],
-    [p("  nativeEvent: "), s(`"${native}"`), p(", sessionId, cwd }")]
+    [p("  nativeEvent: "), s(`"${native}"`, true), p(", sessionId, cwd }")]
   ];
 }
 
@@ -249,7 +255,7 @@ function usageCode(agentId: string, mine: boolean): Token[][] {
 function usageOutput(agentId: string): Token[][] {
   const granularity = agentId === "grok" ? "turn" : "request";
   return [
-    [p("{ agent: "), quoted(agentId), p(", granularity: "), s(`"${granularity}"`), p(",")],
+    [p("{ agent: "), quoted(agentId), p(", granularity: "), s(`"${granularity}"`, true), p(",")],
     [
       p("  usage: { inputTokens: "),
       num("18304"),
@@ -405,6 +411,89 @@ function detectOutput(agentId: string): Token[][] {
   ];
 }
 
+export function outputFields(task: TaskKey, agentId: string): readonly OutputField[] {
+  switch (task) {
+    case "detect":
+      return [
+        { key: "agent", value: agentId },
+        { key: "status", value: "runnable" },
+        { key: "auth", value: "logged-in" },
+        { key: "version", value: "…" }
+      ];
+    case "hooks": {
+      const native = TURN_START[agentId];
+      if (native === undefined) {
+        throw new Error(`No turn-start event for ${agentId}`);
+      }
+      return [
+        { key: "agent", value: agentId },
+        { key: "phase", value: "start" },
+        { key: "scope", value: "turn" },
+        { key: "nativeEvent", value: native }
+      ];
+    }
+    case "sessions":
+      return [
+        { key: "agent", value: agentId },
+        { key: "title", value: "Fix the failing date test" },
+        { key: "path", value: "…" }
+      ];
+    case "usage":
+      return [
+        { key: "agent", value: agentId },
+        { key: "granularity", value: agentId === "grok" ? "turn" : "request" },
+        { key: "inputTokens", value: "18304" },
+        { key: "cacheReadTokens", value: "16128" },
+        { key: "outputTokens", value: "412" }
+      ];
+    case "drive":
+      return [
+        { key: "text-delta", value: "The README describes…" },
+        { key: "event", value: "tool_call" },
+        { key: "finish", value: "stop" }
+      ];
+    case "coordinate":
+      return [
+        { key: "worker A", value: `acquired task:42 · fencing token 7 · ${agentId}` },
+        { key: "worker B", value: "LeaseHeld" }
+      ];
+    default: {
+      const exhaustive: never = task;
+      throw new Error(`Unknown task ${String(exhaustive)}`);
+    }
+  }
+}
+
+export function maxOutputFieldCount(): number {
+  return Math.max(...TASK_ORDER.map((task) => outputFields(task, MY_AGENT).length));
+}
+
+const SWAP_FIELD_KEYS = new Set(["agent", "nativeEvent", "granularity", "worker A"]);
+
+export function isSwapField(key: string): boolean {
+  return SWAP_FIELD_KEYS.has(key);
+}
+
+export function changedFieldKeys(prev: readonly OutputField[], next: readonly OutputField[]): readonly string[] {
+  const before = new Map(prev.map((field) => [field.key, field.value]));
+  return next.filter((field) => before.get(field.key) !== field.value).map((field) => field.key);
+}
+
+export function changedLineIndexes(
+  prev: readonly (readonly Token[])[],
+  next: readonly (readonly Token[])[]
+): readonly number[] {
+  return next.flatMap((line, index) => {
+    const earlier = prev[index];
+    if (earlier === undefined) {
+      return [index];
+    }
+    const before = earlier.map((token) => token.text).join("");
+    const after = line.map((token) => token.text).join("");
+    return before === after ? [] : [index];
+  });
+}
+
 function snippets(task: TaskKey, agentId: string): { code: Token[][]; output: Token[][] } {
   const mine = agentId === MY_AGENT;
   switch (task) {
@@ -452,6 +541,7 @@ export function demoView(selection: DemoSelection, rows: readonly SupportRow[]):
     packageName: spec.packageName,
     code: rendered.code,
     output: rendered.output,
+    fields: outputFields(selection.task, agentId),
     agents
   };
 }

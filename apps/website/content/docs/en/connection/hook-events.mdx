@@ -3,6 +3,8 @@ title: Hook events
 description: readHookEvent turns a hook payload into a lifecycle phase, and does no IO.
 ---
 
+## Quick example
+
 `/harness/events` is for hook processes. It is synchronous, does no IO and imports no npm package or Node built-in. It runs anywhere.
 
 Exports: `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`.
@@ -19,6 +21,8 @@ const event = readHookEvent("claude-code", JSON.parse(readFileSync(0, "utf8")), 
 // { agent: "claude-code", phase: "start", scope: "turn", nativeEvent: "UserPromptSubmit", sessionId, cwd, turnId }
 ```
 
+## Phases and payloads
+
 `agent` is the Agent that really ran the hook. Grok and Cursor also run the hooks in Claude Code's settings.
 
 `phase` is `start`, `activity`, `blocked`, `finish` or `unknown`, with `scope`, `outcome` and `blocker` where the Agent says more. A payload or event the dialect does not know reads as `unknown` instead of throwing. `readHookEvent` never throws because of a payload.
@@ -30,6 +34,8 @@ Tool arguments are never copied, only the tool's name and call id.
 Register observation hooks only on events that are not permission gates, or return the allow response the event's output rules record. An observer prints the event's `passThrough` — the dialect's unless that event's `output` overrides it, as Cursor's `beforeSubmitPrompt` printing `{"continue":true}` — and must not silently block a gate.
 
 Each gate's `output` rules decide what its exit codes and stdout do. Cursor's gates block on output the event cannot read, and what empty output does there is undocumented.
+
+## Dialects and errors
 
 `builtinHookDialects` holds each Agent's hook facts: event names, the timeout unit, which events are permission gates and what an observing hook should print.
 

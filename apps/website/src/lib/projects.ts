@@ -1,53 +1,25 @@
 import type { CopyKey } from "./landing-copy.ts";
 
-export interface ProjectChip {
-  readonly label: string;
-  readonly highlight: boolean;
-}
-
 export interface BuiltProject {
-  readonly id: "agent-presence" | "agent-task-loop" | "yours";
+  readonly id: "agent-presence" | "agent-task-loop";
   readonly href: string;
-  readonly title?: CopyKey;
   readonly body: CopyKey;
-  readonly yours: boolean;
-  readonly chips: readonly ProjectChip[];
+  readonly github: CopyKey;
 }
 
-/** Projects named on the landing page, in the approved mockup's order. */
+/** Projects named on the landing page. */
 export const builtProjects: readonly BuiltProject[] = [
   {
     id: "agent-presence",
     href: "https://github.com/PerfectPan/agent-presence",
     body: "presenceBody",
-    yours: false,
-    chips: [
-      { label: "/transcript/usage", highlight: false },
-      { label: "/harness/events", highlight: false },
-      { label: "/harness", highlight: false },
-      { label: "collab/process-lock", highlight: true }
-    ]
+    github: "presenceGithub"
   },
   {
     id: "agent-task-loop",
     href: "https://github.com/PerfectPan/agent-task-loop",
     body: "loopBody",
-    yours: false,
-    chips: [
-      { label: "/discovery", highlight: false },
-      { label: "/sessions", highlight: false },
-      { label: "/acp", highlight: false },
-      { label: "collab/lease", highlight: true },
-      { label: "collab/lanes", highlight: true }
-    ]
-  },
-  {
-    id: "yours",
-    href: "https://github.com/PerfectPan/agent-kit",
-    title: "yoursTitle",
-    body: "yoursBody",
-    yours: true,
-    chips: []
+    github: "loopGithub"
   }
 ];
 
