@@ -55,7 +55,8 @@ Every context package uses the same layout, creating only the directories it nee
     factories/          Layer compositions
     services/           helpers shared by infra files
   lib/                  pure utilities with no domain or IO dependencies
-  public.ts             names used by sibling contexts and selected by the shell package
+  public.ts             use cases, the types their signatures name and the names siblings import,
+                        selected by the shell package
   spi.ts                provider interfaces and the context helpers their implementations need
 ```
 
@@ -79,9 +80,9 @@ The exact import matrix and npm specifiers live in `boundaries.ts`, not a second
 
 - Cross-package imports go through the target package's `public.ts`, or its `spi.ts` when the importer's `spiImports` explicitly lists that dependency; never into its `domain/` (including the `adapters/` folders) or `infra/`. Dependencies are declared in `package.json`; pnpm's isolated `node_modules` gives a package only what it declares, so an undeclared import does not resolve. A package whose tests need a workspace package that its sources may not use, such as acp's tests starting a fake agent through platform-node, declares it as a devDependency and lists it under `testsOnly` in the manifest.
 - Sibling access requires the importer's `dependsOn` and the target's explicit `siblingEntries` in `boundaries.ts`. Each listed entry must exist in the target's `exports`; adding an export alone grants no sibling access. Lists contain only entries used by siblings: harness lists `public/events`, never its aggregate `public` entry. Bare package imports must name an explicit entry; `public/effect` stays shell-only, and siblings use the declared `effect` entry. SPI access remains governed separately by `spiImports`.
-- Pure contexts such as catalog and cost export domain functions directly and need no `application/`. Shared format parsing stays in domain `adapters/`; agent-specific translation lives in providers.
+- `public.ts` lists the context's use cases, the types their signatures name and the names siblings import. A pure context such as catalog or cost has no `application/`: its use cases are domain services or factories designed as operations for callers, such as cost's `createPricing`, `summarize` and `priceRecord`, and callers call them directly. The building blocks of a use case stay internal even when a caller could use them: cost exports `priceRecord`, which prices one record by model and on which `summarize` is built, not the token formula and the per-model split inside it. Shared format parsing stays in domain `adapters/`; agent-specific translation lives in providers.
 - A concept's `adapters/` folder and `infra/` are different things. A shared format adapter translates a format we do not control into our model. A port adapter implements an interface we declared. A port implementation never goes under a concept's `adapters/`, and a format translation never goes under `infra/`.
-- A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. Its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
+- A use case is an operation the package exports for applications: `listSessions`, `planInstall`, `acquireProcessLock`. In a context with `application/`, its file lives in `application/use-cases/`. Code the use cases share — building a ledger scope, decoding one file's records, walking session directories — lives in `application/services/`; it may call ports but owns no business rules. `errors.ts` and `ports.ts` stay at the `application/` root.
 
 ## Provider Packages
 
