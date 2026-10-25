@@ -21,14 +21,15 @@ adoption. See [Adopting agent-kit](docs/development/adoption.md).
 
 ## Entries
 
-The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (20 in total).
+The source API has 18 entries in `@rivus/agent-kit` and three in `@rivus/agent-kit-collab` (21 in total).
 
 | Entry                             | Main exports                                                                                      | Runs in                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
 | `@rivus/agent-kit/acp`            | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers | with `effect` and a platform that spawns |
 | `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | anywhere |
 | `@rivus/agent-kit/catalog`        | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError` | anywhere                  |
-| `@rivus/agent-kit/cost`           | `createPricing`, `summarize`, `Pricing` | anywhere, no imports      |
+| `@rivus/agent-kit/cost`           | `createPricing`, `summarize`, `priceRecord`, `Pricing` | anywhere, no imports      |
+| `@rivus/agent-kit/cost/prices`    | `litellmPrices`, `litellmPricesVersion`: a LiteLLM price snapshot | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `versionFromOutput`, `ProbeRecipe` | anywhere, with a platform |
 | `@rivus/agent-kit/harness`        | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` | anywhere, with `effect`   |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent` | anywhere, no imports      |
@@ -186,11 +187,11 @@ OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `Sqlit
 
 ### Cost
 
-`/cost` prices usage records with a table you pass in, in USD per million tokens; the kit ships no prices. It is pure
-computation and imports nothing.
+`/cost` prices usage records with a table you pass in, in USD per million tokens: your own, or the LiteLLM snapshot
+from [`/cost/prices`](#cost-prices). It is pure computation and imports nothing.
 
 ```ts
-import { createPricing, summarize } from "@rivus/agent-kit/cost";
+import { createPricing, priceRecord, summarize } from "@rivus/agent-kit/cost";
 import { createNodePlatform } from "@rivus/agent-kit/node";
 import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
 
@@ -213,10 +214,71 @@ const { total, groups } = summarize(records, pricing, { window: week, groupBy: [
 
 `summarize` prices each record using the amount the agent logged when there is one (Pi, opencode,
 Grok), otherwise each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes,
-output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model takes its own id's entry, else
-the longest key its id contains, regardless of case; `overrides` replace a key's prices, also in part, and `fallback`
-holds entries such as family aliases. A model without a price has no cost (`undefined`, not 0), and a summary's
-`costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
+output) times the record's `pricingMultiplier` (2 for Codex's priority tier). Keys match regardless of case. A table
+key names one model: it prices that id, the id followed by a date (`-20250929`, `-2025-08-07` or Vertex AI's
+`@20250929`), and either after one `<provider>/` prefix, so `claude-sonnet-4-5` prices `claude-sonnet-4-5-20250929`
+and `anthropic/claude-sonnet-4-5`; any other ending names another model, so `gpt-5` prices neither `gpt-5.7` nor
+`gpt-5-codex`. `fallback` holds family aliases such as `opus`: an id that no table key matches takes the longest alias
+its id contains. `overrides` are your own rules and, unlike table keys, match by substring: an id takes the longest
+override key it contains, and that override replaces its prices, also in part, over the table and the fallback. So
+`{ opus: … }` reprices both `claude-opus-4-8` and `claude-3-opus`, and `{ "gpt-4o": … }` also reaches `gpt-4o-mini`.
+A partial override takes the prices it lacks from the id's price without overrides: over the snapshot,
+`{ "gpt-4o": { input: 1 } }` prices `gpt-4o-2024-05-13` at its own output price ($15), not `gpt-4o`'s ($10), and an
+id without a price of its own stays unpriced. A model without a price has no cost (`undefined`, not 0), and a
+summary's `costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per
+model.
+
+`priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
+buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
+(`usageByModel`), else one part for the whole record. A part has the `model` (absent when the record names none), its
+`usage`, its `modelCalls` when it counts them, and its `cost`: `{ costUsd, costSource }`, where `costSource` is
+`"agent"` for an amount the agent logged and `"pricing-table"` for one computed from the table. A part that nothing
+prices has no `cost`, which is not a cost of 0. The parts' costs, added up per agent and model, are `summarize`'s
+groups. A part of a split has only the `modelCalls` of its model's share, never the record's: a share that counts none
+gives a part without `modelCalls`, so the parts can add up to fewer calls than `record.modelCalls`. A host that counts
+calls per record reads `record.modelCalls` and decides how to divide them among the models.
+
+```ts
+for (const record of records) {
+  for (const { model, usage, modelCalls, cost } of priceRecord(record, pricing).parts) {
+    // Add usage, modelCalls and cost?.costUsd to the bucket of (the hour of record.timestamp, record.agent, model).
+  }
+  // The parts' modelCalls can add up to less than record.modelCalls, which a host counting calls per record reads.
+}
+```
+
+### Cost prices
+
+`/cost/prices` is the kit's snapshot of LiteLLM's
+[model price list](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) for the models
+the supported agents record. `litellmPrices` is a table for `createPricing`. `litellmPricesVersion` is
+`<date>+<commit>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from. Store it with the costs
+you compute to know which table priced them. The entry imports nothing and is kept apart from `/cost`, so a host that
+brings its own table does not load this one.
+
+```ts
+import { createPricing, summarize } from "@rivus/agent-kit/cost";
+import { litellmPrices, litellmPricesVersion } from "@rivus/agent-kit/cost/prices";
+
+const pricing = createPricing(litellmPrices);
+const { total } = summarize(records, pricing);
+// Keep { costUsd: total.costUsd, pricedWith: litellmPricesVersion } together.
+```
+
+The snapshot keeps the chat models of the providers whose own APIs the agents call: Anthropic, OpenAI, Google Gemini,
+xAI, DeepSeek, Z.ai, Moonshot and MiniMax. Its keys are LiteLLM's model names without the provider's own prefix
+(`grok-4.20`, not `xai/grok-4.20`), because agents record the bare name; the same models routed through clouds and
+gateways (`bedrock/…`, `vertex_ai/…`, `openrouter/…`) are left out. Each entry has the input, output, cache write,
+one-hour cache write and cache read prices that LiteLLM lists. `scripts/update-pricing.ts` regenerates the snapshot,
+and [`scripts/lib/litellm-snapshot.ts`](scripts/lib/litellm-snapshot.ts) documents the filter. Every Monday a
+workflow opens a pull request when a price the snapshot keeps has changed, and the next release ships it.
+
+Each key names one model, so an id the snapshot has no key for has no price rather than another model's: until the
+snapshot has `gpt-5.7`, it is unpriced, not priced as `gpt-5`. A host that wants an estimate for such ids passes
+family aliases in `fallback`, at prices it chooses, or prices the ids with `overrides`. Overrides still match by
+substring, because the host writes them: a full override keyed `gpt-5` prices `gpt-5.7` and reprices every model the
+snapshot names whose id contains `gpt-5`; a partial one reprices those models but leaves `gpt-5.7`, which has no price
+of its own to fill it, unpriced.
 
 ## Errors
 
