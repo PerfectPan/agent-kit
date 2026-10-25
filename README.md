@@ -4,41 +4,40 @@
 [![CI](https://github.com/PerfectPan/agent-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/PerfectPan/agent-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Read, measure and extend the coding agents installed on a machine — Claude Code, Codex, Grok, Gemini CLI, opencode, Pi
-and Cursor — through one TypeScript API.
+**The Universal Agent Toolkit.** One TypeScript API to connect to any Agent — detect it, read its sessions and token
+usage, follow its hooks, install into it, drive it over ACP — and to coordinate many Agents working side by side.
 
-Every coding agent stores its sessions, token usage and hook payloads in its own format, under its own home directory.
-agent-kit keeps that knowledge in one place, so a dashboard, a usage tracker or an orchestrator does not reimplement it
-per agent:
+Think of it as lodash for cross-Agent tools: small typed functions, one entry per task, and the same call for every
+Agent. Built-in providers cover Claude Code, Codex, Cursor and more; any other Agent plugs in as a provider of your own,
+so your code does not change when a new Agent arrives.
 
-- **Sessions and transcripts**: list an agent's sessions and read them into one ordered event model, with subagent
-  lanes, compactions and pointers back to the original records.
-- **Usage and cost**: scan token usage across agents incrementally, with one convention (OTel GenAI and the AI SDK),
-  and price it with a table you provide.
-- **Hooks and harness**: parse the payload any agent's hook receives, and install your hooks and skills into the
-  agents with a ledger that removes exactly what was written.
-- **Discovery and ACP**: detect which agents are installed and logged in, and drive an agent over the Agent Client
-  Protocol.
+| Package                                                          | Role                               | What it holds                                                                                |
+| ---------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time    | Agent detection, sessions and transcripts, token usage and cost, hook events, harness installation, ACP, redaction |
+| [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md) | Coordination: many Agents at once  | Single-instance process locks, fenced leases, keyed scheduling lanes                         |
 
-Files, processes and the environment come from a `Platform` object the caller passes in, so every entry except
-`/node`, `/node/effect` and `/testing` also bundles for browsers.
-
-Status: 0.x. A minor release may contain breaking changes. This README follows `main`; the npm release can lag
-behind it until the next release, see each package's `CHANGELOG.md`.
+Both packages release together at one version. Status: 0.x; a minor release may contain breaking changes. This README
+follows `main`, and the npm release can lag behind it until the next release; each package's `CHANGELOG.md` lists what
+shipped.
 
 ## Install
 
 ```bash
 npm install @rivus/agent-kit
+npm install @rivus/agent-kit-collab   # coordination primitives, optional
 ```
 
-ESM only, no side effects, Node.js 22.13 or later. The Effect entries (`/acp`, `/harness`, `*/effect`) need `effect`
-installed at exactly the version in `peerDependencies.effect` (`npm view @rivus/agent-kit peerDependencies.effect`);
-the other entries do not load it.
+ESM only, no side effects, Node.js 22.13 or later. Every entry except `/node`, `/node/effect` and `/testing` also
+bundles for browsers: files, processes and the environment come from a `Platform` object the caller passes in. The
+Effect entries (`/acp`, `/harness`, `*/effect`, and collab's `/lease` and `/lanes`) need `effect` installed at exactly
+the version in `peerDependencies.effect` (`npm view @rivus/agent-kit peerDependencies.effect`); the other entries do not
+load it.
 
 ## Quick start
 
-List the sessions of three agents and read each one:
+### Connection
+
+List the sessions of three Agents and read each one:
 
 ```ts
 import { createNodePlatform } from "@rivus/agent-kit/node";
@@ -57,8 +56,33 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 }
 ```
 
+The same call reads an Agent of your own once you pass its provider:
+
+```ts
+const myAgent = { id: "my-agent", sessions: mySessionAdapter };
+listSessions(platform, { agents: ["my-agent"], providers: [myAgent] });
+```
+
+### Coordination
+
+Keep one instance of a worker running:
+
+```ts
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";
+
+const lock = await acquireProcessLock(createNodePlatform(), "/var/run/my-daemon/daemon.lock");
+if (!lock.ok) {
+  console.error(`already running (pid ${lock.error.holder?.pid ?? "unknown"})`);
+  process.exit(1);
+}
+// ... run; the kernel releases the lock if the process dies, or call:
+await lock.value.release();
+```
+
 Hook events, harness installation, usage records, cost, Effect and ACP each have an example in the
-[`@rivus/agent-kit` reference](packages/agent-kit/README.md).
+[`@rivus/agent-kit` reference](packages/agent-kit/README.md); leases and lanes are in the
+[`@rivus/agent-kit-collab` reference](packages/agent-kit-collab/README.md).
 
 ## Built-in support
 
@@ -72,36 +96,37 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
 | pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
-Another agent plugs in as a provider descriptor (`providers: [{ id: "my-agent", sessions: adapter }]`) and is checked
-with the conformance suites in `/testing`.
+These are today's built-in providers. Any other Agent plugs in as a provider descriptor
+(`providers: [{ id: "my-agent", sessions: adapter }]`) and is checked with the conformance suites in `/testing`.
 
 ## Entries
 
-| You want to                                         | Entry                                                   |
-| --------------------------------------------------- | ------------------------------------------------------- |
-| List sessions and read transcripts                  | `/sessions`, `/transcript`                              |
-| Scan token usage; price it                          | `/transcript/usage`, `/cost`                            |
-| Read a hook payload inside a hook process           | `/harness/events`                                       |
-| Install and remove hooks and skills                 | `/harness` (Effect)                                     |
-| Detect installed agents and their login state       | `/discovery`                                            |
-| Drive an agent over ACP                             | `/acp` (Effect)                                         |
-| Hide home paths and secrets before showing logs     | `/redact`                                               |
-| Look up the built-in agents and their services      | `/providers`, `/catalog`                                |
+| You want to                                         | Entry                                                    |
+| --------------------------------------------------- | -------------------------------------------------------- |
+| Detect installed Agents and their login state       | `/discovery`                                             |
+| List sessions and read transcripts                  | `/sessions`, `/transcript`                               |
+| Scan token usage; price it                          | `/transcript/usage`, `/cost`                             |
+| Read a hook payload inside a hook process           | `/harness/events`                                        |
+| Install and remove hooks and skills                 | `/harness` (Effect)                                      |
+| Drive an Agent over ACP                             | `/acp` (Effect)                                          |
+| Hide home paths and secrets before showing logs     | `/redact`                                                |
+| Look up the built-in Agents and their services      | `/providers`, `/catalog`                                 |
 | Provide files, processes and environment            | `/platform`, `/node`, `/platform/effect`, `/node/effect` |
-| Test your own adapter, hook dialect or probe recipe | `/testing`, `/testing/effect`                           |
+| Test your own adapter, hook dialect or probe recipe | `/testing`, `/testing/effect`                            |
+| Keep one instance of a worker running               | collab `/process-lock`                                   |
+| Give one worker a task, with a fencing token        | collab `/lease` (Effect)                                 |
+| Run one turn per key under a concurrency cap        | collab `/lanes` (Effect)                                 |
 
-`/cost`, `/redact`, `/harness/events` and `/transcript/usage` import nothing outside the package, so a host that cannot
-install dependencies can bundle them alone. Every entry is `@rivus/agent-kit/<entry>`; the
-[reference](packages/agent-kit/README.md) lists their main exports, where each runs and how each fails.
+Entries are `@rivus/agent-kit/<entry>`, and `@rivus/agent-kit-collab/<entry>` for collab. `/cost`, `/redact`,
+`/harness/events` and `/transcript/usage` import nothing outside the package, so a host that cannot install dependencies
+can bundle them alone. The package references list each entry's main exports, where it runs and how it fails.
 
-## Packages
+## Built with agent-kit
 
-| Package                                                     | What it holds                                                                                 |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [`@rivus/agent-kit`](packages/agent-kit/README.md)          | The entries above                                                                             |
-| [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md) | Fenced leases (`/lease`), single-instance process locks (`/process-lock`) and keyed scheduling lanes (`/lanes`) for processes that run agents side by side |
-
-Both packages release together at one version.
+- [agent-presence](https://github.com/PerfectPan/agent-presence): the Agents running on a machine, and their token
+  usage, in a Feishu signature preview.
+- [agent-task-loop](https://github.com/PerfectPan/agent-task-loop): Agents taken through task execution, review,
+  rework and pull-request handoff.
 
 ## Development
 
