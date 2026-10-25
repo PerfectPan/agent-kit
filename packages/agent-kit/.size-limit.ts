@@ -19,11 +19,12 @@ export default [
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44633 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "651 B" },
   // Pricing and summarization are pure; their entry imports nothing.
-  { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1191 B" },
-  // Nearly all of it is the LiteLLM snapshot, about 10 B a model. Unlike the other budgets, this one keeps room above
-  // the measured size for the models LiteLLM adds, so the bot's weekly update PRs pass; it still fails when the filter
-  // admits another provider's routes or the entry starts bundling zod/mini.
-  { name: "@rivus/agent-kit/cost/prices", path: "dist/cost/prices.js", import: "*", limit: "3000 B" },
+  { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1328 B" },
+  // Nearly all of it is the LiteLLM snapshot, about 10 B a model plus each model's long-context tier. Unlike the
+  // other budgets, this one keeps room above the measured size for the models LiteLLM adds, so the bot's weekly
+  // update PRs pass; it still fails when the filter admits another provider's routes or the entry starts bundling
+  // zod/mini.
+  { name: "@rivus/agent-kit/cost/prices", path: "dist/cost/prices.js", import: "*", limit: "3480 B" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "11843 B" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 38 kB) and zod/mini
   // (about 5 kB) above all. The bridges carry the per-event finish selectors and their payload check, and the

@@ -211,7 +211,8 @@ function restore(saved: unknown): ClaudeCodeUsageState {
 
 /**
  * Claude Code's usage over one session file, by the translator's rules: one record per request key, with the model and
- * message id of the request's last record and the usage that `claudeCodeRequestUsage` keeps. A request stays open,
+ * message id of the request's last record and the usage that `claudeCodeRequestUsage` keeps. A `<synthetic>` entry is
+ * no request here: usage skips it and yields no record, while the transcript keeps its event. A request stays open,
  * and in the cursor, until its lane has started four newer requests or the file is final; only then is it
  * reported, so a decode that continues the file later gives the records a decode of the whole file gives. Records
  * without usage neither open nor touch a request. Unlike the translator, which reads the whole session, the decoder
@@ -239,6 +240,11 @@ export function claudeCodeUsageLines(file: UsageFile, saved?: unknown): UsageLin
       state.lastTime = ts;
       state.sessionId ||= rec.sessionId;
       if (rec.type !== "user" && rec.type !== "assistant") {
+        return ok([]);
+      }
+      // A synthetic message is one Claude Code wrote itself, with zero usage and no model request behind it: it
+      // opens no request and yields no record, even when the entry carries a request id of its own.
+      if (rec.message?.model === SYNTHETIC_MODEL) {
         return ok([]);
       }
       const key = claudeCodeRequestKey(rec);

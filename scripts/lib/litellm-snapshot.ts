@@ -26,7 +26,7 @@ const MODES = new Set(["chat", "responses"]);
 /** A price field that is not a finite number reads as absent, as it does in `fromLiteLLM`. */
 const OptionalCost = z.catch(z.optional(z.number()), undefined);
 
-const Entry = z.object({
+const Entry = z.looseObject({
   litellm_provider: z.string(),
   mode: z.string(),
   input_cost_per_token: z.number(),
@@ -48,6 +48,22 @@ const Commits = z.tuple([Commit], z.unknown());
 
 const Current = z.object({ version: z.string() });
 
+/**
+ * One `*_above_<N>k_tokens` tier of LiteLLM's list that the snapshot keeps, in USD per token under LiteLLM's field
+ * names with the threshold factored out. A field is here only when LiteLLM lists it under the tier; the batch, flex,
+ * priority, ultrafast and decisions variants of a price, and the tiers of another cache lifetime (`_above_12hr_…`),
+ * are not kept.
+ */
+export interface SnapshotLongContext {
+  /** The threshold, from the `<N>k` of the field names: 272000 for `_above_272k_tokens`. */
+  above_tokens: number;
+  input_cost_per_token?: number;
+  output_cost_per_token?: number;
+  cache_read_input_token_cost?: number;
+  cache_creation_input_token_cost?: number;
+  cache_creation_input_token_cost_above_1hr?: number;
+}
+
 /** The fields of one entry that `fromLiteLLM` reads, in USD per token under LiteLLM's names, in this order. */
 export interface SnapshotEntry {
   input_cost_per_token: number;
@@ -55,6 +71,7 @@ export interface SnapshotEntry {
   cache_creation_input_token_cost?: number;
   cache_creation_input_token_cost_above_1hr?: number;
   cache_read_input_token_cost?: number;
+  long_context?: SnapshotLongContext;
 }
 
 export interface Snapshot {
@@ -71,17 +88,72 @@ function rounded(value: number): number {
   return Math.round(value * 1_000_000 * 1_000_000) / 1_000_000_000_000;
 }
 
+/**
+ * The four rates a long-context tier can reprice, above `<N>k` (or bare) counts of tokens; the first group is the
+ * field's name under the tier. A service tier's variant (`…_tokens_flex`, `…_tokens_priority`, `_batches`, and the
+ * like) does not end in `_tokens` and is not a tier field, and neither is the tier of another cache lifetime
+ * (`cache_creation_input_token_cost_above_12hr_above_…_tokens`).
+ */
+const TIERED =
+  /^(input_cost_per_token|output_cost_per_token|cache_read_input_token_cost|cache_creation_input_token_cost)_above_([0-9]+k?)_tokens$/;
+
+/** The tier's one-hour cache writes, the one field whose name carries its lifetime before the threshold. */
+const TIERED_1H = /^cache_creation_input_token_cost_above_1hr_above_([0-9]+k?)_tokens$/;
+
+/** `<N>k` of a field name as a count of tokens: `272k` is 272000, a bare `100000` counts as it is. */
+function thresholdTokens(suffix: string): number {
+  return suffix.endsWith("k") ? Number(suffix.slice(0, -1)) * 1000 : Number(suffix);
+}
+
+/**
+ * The long-context tier of one parsed entry, its threshold parsed from the `*_above_<N>k_tokens` field names, its
+ * rates rounded as the rest of the entry is. A tier keeps the fields LiteLLM lists under it; when an entry listed
+ * more than one threshold, the largest would win — no entry lists two.
+ */
+function tierOf(entry: z.output<typeof Entry>): SnapshotLongContext | undefined {
+  const tiers = new Map<number, Record<string, number>>();
+  let largest: number | undefined;
+  for (const [key, value] of Object.entries(entry)) {
+    const rate = OptionalCost.parse(value);
+    if (rate === undefined) {
+      continue;
+    }
+    const flat = TIERED.exec(key);
+    const over1h = flat === null ? TIERED_1H.exec(key) : null;
+    if (flat === null && over1h === null) {
+      continue;
+    }
+    const threshold = thresholdTokens(flat === null ? over1h![1]! : flat[2]!);
+    const rates = tiers.get(threshold) ?? {};
+    rates[flat === null ? "cache_creation_input_token_cost_above_1hr" : flat[1]!] = rate;
+    tiers.set(threshold, rates);
+    if (largest === undefined || threshold > largest) {
+      largest = threshold;
+    }
+  }
+  if (largest === undefined) {
+    return undefined;
+  }
+  const rates = tiers.get(largest)!;
+  return {
+    above_tokens: largest,
+    ...Object.fromEntries(Object.entries(rates).map(([field, rate]) => [field, rounded(rate)]))
+  };
+}
+
 function entryOf(entry: z.output<typeof Entry>): SnapshotEntry {
   const optional = (value: number | undefined) => (value === undefined ? undefined : rounded(value));
   const cacheWrite = optional(entry.cache_creation_input_token_cost);
   const cacheWrite1h = optional(entry.cache_creation_input_token_cost_above_1hr);
   const cacheRead = optional(entry.cache_read_input_token_cost);
+  const tier = tierOf(entry);
   return {
     input_cost_per_token: rounded(entry.input_cost_per_token),
     output_cost_per_token: rounded(entry.output_cost_per_token),
     ...(cacheWrite === undefined ? {} : { cache_creation_input_token_cost: cacheWrite }),
     ...(cacheWrite1h === undefined ? {} : { cache_creation_input_token_cost_above_1hr: cacheWrite1h }),
-    ...(cacheRead === undefined ? {} : { cache_read_input_token_cost: cacheRead })
+    ...(cacheRead === undefined ? {} : { cache_read_input_token_cost: cacheRead }),
+    ...(tier === undefined ? {} : { long_context: tier })
   };
 }
 

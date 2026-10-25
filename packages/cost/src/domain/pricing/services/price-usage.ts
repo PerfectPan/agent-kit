@@ -12,23 +12,53 @@ type Part = ModelUsage & { readonly model?: string };
  * USD of `usage` at `price`. The terms and their order are those of presence's formula, so both give the same
  * floating-point dollars. Input without cache is computed here rather than with sessions' `noCacheInputTokens`,
  * because cost takes only types from sessions.
+ *
+ * A model with a long-context tier bills a request whose total input (`inputTokens`, cache reads and writes
+ * included, as LiteLLM's `prompt_tokens` and Codex's `input_tokens`) exceeds the tier's threshold whole at the
+ * tier's rates — LiteLLM's calculator and ccusage's aggregation both charge every token of such a request at the
+ * tier, never only the part past the threshold — and a rate the tier lacks stays at the model's base price. The
+ * comparison is ccusage's strict `>`; LiteLLM bills an xAI request arriving at exactly the threshold at the tier
+ * too, and this does not. The tier prices one request: an aggregate of several calls, whose totals cannot tell how
+ * large any single request's context was, bills at the base rates (`singleRequest` false).
  */
-function priceUsage(usage: Usage, price: Price): number {
+function priceUsage(usage: Usage, price: Price, singleRequest: boolean): number {
   const cacheRead = usage.cacheReadTokens ?? 0;
   const cacheWrite = usage.cacheWriteTokens ?? 0;
   const cacheWrite1h = Math.min(cacheWrite, Math.max(0, usage.cacheWrite1hTokens ?? 0));
   const noCacheInput = Math.max(0, (usage.inputTokens ?? 0) - cacheRead - cacheWrite);
+  const tier = singleRequest ? price.longContext : undefined;
+  const rates =
+    tier !== undefined && (usage.inputTokens ?? 0) > tier.thresholdTokens
+      ? {
+          input: tier.input ?? price.input,
+          output: tier.output ?? price.output,
+          cacheRead: tier.cacheRead ?? price.cacheRead,
+          cacheWrite: tier.cacheWrite ?? price.cacheWrite,
+          cacheWrite1h: tier.cacheWrite1h ?? price.cacheWrite1h
+        }
+      : {
+          input: price.input,
+          output: price.output,
+          cacheRead: price.cacheRead,
+          cacheWrite: price.cacheWrite,
+          cacheWrite1h: price.cacheWrite1h
+        };
   return (
-    (noCacheInput * price.input +
-      (usage.outputTokens ?? 0) * price.output +
-      (cacheWrite - cacheWrite1h) * price.cacheWrite +
-      cacheWrite1h * (price.cacheWrite1h ?? price.cacheWrite) +
-      cacheRead * price.cacheRead) /
+    (noCacheInput * rates.input +
+      (usage.outputTokens ?? 0) * rates.output +
+      (cacheWrite - cacheWrite1h) * rates.cacheWrite +
+      cacheWrite1h * (rates.cacheWrite1h ?? rates.cacheWrite) +
+      cacheRead * rates.cacheRead) /
     1_000_000
   );
 }
 
-function costOfPart(part: Part, pricing: Pricing, multiplier: number | undefined): Cost | undefined {
+function costOfPart(
+  part: Part,
+  pricing: Pricing,
+  multiplier: number | undefined,
+  singleRequest: boolean
+): Cost | undefined {
   if (part.costUsd !== undefined) {
     return { costUsd: part.costUsd, costSource: part.costSource ?? "agent" };
   }
@@ -36,7 +66,10 @@ function costOfPart(part: Part, pricing: Pricing, multiplier: number | undefined
   if (price === undefined) {
     return undefined;
   }
-  return { costUsd: priceUsage(part.usage, price) * Math.max(0, multiplier ?? 1), costSource: "pricing-table" };
+  return {
+    costUsd: priceUsage(part.usage, price, singleRequest) * Math.max(0, multiplier ?? 1),
+    costSource: "pricing-table"
+  };
 }
 
 /**
@@ -53,6 +86,11 @@ function costOfPart(part: Part, pricing: Pricing, multiplier: number | undefined
  * replace the agent's amount. An amount from a price table on a split record, as `{ ...record, ...costOf(record,
  * pricing) }` leaves it, does not keep the record whole: its models are charged again. A part of a split counts the
  * model calls its share records, not a portion of the record's.
+ *
+ * The long-context tier prices one request. A `request` record is one; a `turn` or `session` record, and each part
+ * of one, is an aggregate of several calls, whose totals cannot tell how large any single request's context was,
+ * so it bills at the base rates and never at an average — the same limit ccusage's aggregation states for its
+ * summed totals. An aggregate counts as one request only when its own, or a part's, `modelCalls` is 1.
  */
 export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord {
   const split = Object.entries(record.usageByModel ?? {});
@@ -64,7 +102,12 @@ export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord
   const parts: Part[] = whole ? [record] : split.map(([model, share]) => ({ ...share, model }));
   return {
     parts: parts.map((part) => {
-      const cost = costOfPart(part, pricing, record.pricingMultiplier);
+      const cost = costOfPart(
+        part,
+        pricing,
+        record.pricingMultiplier,
+        record.granularity === "request" || part.modelCalls === 1 || record.modelCalls === 1
+      );
       return {
         ...(part.model === undefined ? {} : { model: part.model }),
         usage: part.usage,
