@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { fromLiteLLM } from "../../packages/cost/src/domain/pricing/adapters/from-litellm.ts";
+import { priceOfEntry } from "../../packages/cost/src/domain/pricing/adapters/litellm-entry.ts";
 import { formatSnapshot, nextSnapshot, selectPrices, versionOf } from "./litellm-snapshot.ts";
 
 const SHA = "de5dc5b238b6e972869d7dedc6ba3c4fb8d931fe";
@@ -117,6 +119,16 @@ const SELECTED = {
   "grok-4.20": { input_cost_per_token: 0.000002, output_cost_per_token: 0.000006 }
 };
 
+// The LiteLLM key each selected name is taken from.
+const SOURCES = {
+  "claude-opus-4-8": "claude-opus-4-8",
+  "deepseek-v4-pro": "deepseek-v4-pro",
+  "gemini-3.5-flash": "gemini/gemini-3.5-flash",
+  "glm-5.1": "zai/glm-5.1",
+  "gpt-5.5": "gpt-5.5",
+  "grok-4.20": "xai/grok-4.20"
+};
+
 const COMMITS = [
   { sha: SHA, commit: { committer: { date: "2026-10-25T01:20:36Z" } }, parents: [] },
   { sha: "0".repeat(40), commit: { committer: { date: "2026-10-24T09:00:00Z" } } }
@@ -127,6 +139,16 @@ describe("selectPrices", () => {
     const prices = selectPrices(LITELLM);
     expect(prices).toEqual(SELECTED);
     expect(Object.keys(prices)).toEqual(Object.keys(SELECTED));
+  });
+
+  // litellmPrices converts the kept entries with priceOfEntry, so its prices are those fromLiteLLM reads from the
+  // whole list only when the rounding and the dropped fields change nothing.
+  it("keeps the prices fromLiteLLM reads from each kept entry", () => {
+    const read = fromLiteLLM(LITELLM);
+    const kept = Object.entries(selectPrices(LITELLM)).map(([name, entry]) => [name, priceOfEntry(entry)]);
+    expect(Object.fromEntries(kept)).toStrictEqual(
+      Object.fromEntries(Object.entries(SOURCES).map(([name, key]) => [name, read[key]]))
+    );
   });
 
   it("drops an entry's own provider prefix", () => {
