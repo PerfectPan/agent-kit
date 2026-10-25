@@ -107,7 +107,7 @@ A file, directory or database that holds one agent's usage, such as a session fi
 Where a decode of one UsageSource stopped, as plain data: the bytes read and the state the agent's rules carry between records. A later decode continues from it and reads only what was written since.
 
 **Usage scan**:
-A decode of every UsageSource of the chosen agents that continues from the previous scan's state (a UsageCursor per source and the request keys seen) and counts a request that several files hold once.
+A decode of every UsageSource of the chosen agents that continues from the previous scan's state (a UsageCursor per source and the request keys seen) and counts a request that several files hold once. Claude Code's `<synthetic>` assistant entries, which the agent wrote itself with zero usage, are not model requests and yield no record.
 
 ## cost
 
@@ -115,10 +115,10 @@ A decode of every UsageSource of the chosen agents that continues from the previ
 Prices per model, injected by the caller, such as the LiteLLM snapshot. A key names one model and prices only that model's id, the id with a date after it, or either with a provider prefix; an id no key names has no price. Family aliases such as `opus` are a separate fallback, which prices such an id by the longest alias it contains. Overrides are the caller's own rules and match by substring: an id takes the longest override key it contains, over the table and the fallback, and a partial override takes the rest from the id's price without overrides.
 
 **LiteLLM snapshot**:
-The kit's copy of LiteLLM's prices for the models the supported agents record, served by `/cost/prices` as a PricingTable with its version: the date and LiteLLM commit it was generated from, which a host records with the costs it computes.
+The kit's copy of LiteLLM's prices for the models the supported agents record, with each model's long-context tier where LiteLLM lists one, served by `/cost/prices` as a PricingTable with its version: the date and LiteLLM commit it was generated from, which a host records with the costs it computes.
 
 **Price**:
-The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output.
+The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output. A long-context tier, where the model has one, prices a request whole — every token, not only the ones past the threshold — once its total input (cache reads and writes included) exceeds the tier's threshold, the way LiteLLM and ccusage bill long context.
 
 **Cost**:
 An amount in USD for a UsageRecord, a part of a PricedRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
