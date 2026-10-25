@@ -1,5 +1,15 @@
 # Change Log - @rivus/agent-kit
 
+## 0.23.0
+
+### Minor Changes
+
+- Price long-context requests at LiteLLM's tier rates, and stop counting Claude Code's `<synthetic>` entries as usage records.
+
+### Patch Changes
+
+- Add a digest of the price table's content to `litellmPricesVersion` (`<date>+<commit>+<digest>`), so the version changes whenever the snapshot's prices change and hosts can tell when stored costs need recomputing.
+
 ## 0.22.0
 
 ### Minor Changes
