@@ -9,10 +9,11 @@ const M = 1_000_000;
 const pricing = createPricing(litellmPrices);
 
 // The real model ids in the kit's tests and fixtures, with presence's snapshot list, that LiteLLM prices; spellings
-// differ in case and in dated or Codex suffixes as the agents record them.
+// differ in case and in dated suffixes as the agents record them.
 const CLAUDE = [
   "claude-opus-4-8",
   "claude-opus-4-8-20260101",
+  "claude-sonnet-4-5-20250929",
   "CLAUDE-OPUS-4-8",
   "claude-opus-5-5",
   "claude-sonnet-5",
@@ -28,7 +29,6 @@ const OTHERS = [
   "gpt-5.4",
   "gpt-5.5",
   "GPT-5.5",
-  "gpt-5.5-codex",
   "gpt-5.6-sol",
   "gemini-3-flash-preview",
   "Gemini-3-Flash-Preview",
@@ -41,6 +41,20 @@ const OTHERS = [
 const PREFIXED = ["glm-5.1", "grok-4.20", "grok-code-fast-1", "gemini-omni-1.1-flash", "kimi-k2.6", "MiniMax-M2.5"];
 // The usage fixtures' synthetic ids, which LiteLLM does not price; a short key must not price them either.
 const SYNTHETIC = ["claude-test", "gpt-test", "gemini-test", "gemini-flash-test", "grok-test", "model-test", "m1"];
+// Ids the snapshot has no key for whose names contain another model's key (`gpt-5`, `o1`, `gpt-4`, `glm-5`,
+// `deepseek-v3`, `minimax-m2`, `chat-latest`). An update that adds an id's own key prices it by that key.
+const UNKEYED = [
+  "gpt-5.7",
+  "gpt-5.7-codex",
+  "gpt-5.5-codex",
+  "o1-mini",
+  "gpt-4.5-preview",
+  "glm-5-turbo",
+  "glm-5.4",
+  "deepseek-v3.1",
+  "minimax-m2.7",
+  "gpt-5.4-chat-latest"
+];
 
 function priceOf(model: string): Price {
   const price = pricing.priceOf(model);
@@ -69,9 +83,16 @@ describe("litellmPrices", () => {
     expect(SYNTHETIC.filter((model) => pricing.priceOf(model) !== undefined)).toEqual([]);
   });
 
-  it("prices the bare names of models LiteLLM keys under a provider prefix", () => {
+  it("prices an id the snapshot has no key for by no other model's key", () => {
+    const own = (model: string) => Object.entries(litellmPrices).find(([key]) => key.toLowerCase() === model)?.[1];
+    expect(UNKEYED.filter((model) => pricing.priceOf(model) !== own(model))).toEqual([]);
+  });
+
+  it("prices the bare names of models LiteLLM keys under a provider prefix, also with that prefix", () => {
     expect(PREFIXED.filter((model) => pricing.priceOf(model) === undefined)).toEqual([]);
     expect(Object.keys(litellmPrices).filter((key) => key.includes("/"))).toEqual([]);
+    expect(pricing.priceOf("zai/glm-5.1")).toBe(priceOf("glm-5.1"));
+    expect(pricing.priceOf("xai/grok-4.20")).toBe(priceOf("grok-4.20"));
   });
 
   it("gives Claude models their one-hour cache write price", () => {
@@ -102,7 +123,7 @@ describe("litellmPrices", () => {
       cacheWriteTokens: 2 * M,
       cacheWrite1hTokens: M
     });
-    const codex = record("gpt-5.5-codex", { inputTokens: M, outputTokens: M }, { agent: "codex" });
+    const codex = record("gpt-5.5", { inputTokens: M, outputTokens: M }, { agent: "codex" });
     expect(priceRecord(cached, pricing).parts[0]?.cost).toEqual({
       costUsd: expect.closeTo(opus.input + opus.output + opus.cacheWrite + (opus.cacheWrite1h ?? NaN) + opus.cacheRead),
       costSource: "pricing-table"

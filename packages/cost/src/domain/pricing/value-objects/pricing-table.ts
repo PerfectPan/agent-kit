@@ -1,23 +1,23 @@
 import type { Price } from "./price.js";
 
 /**
- * Prices by model, injected by the caller, such as the kit's LiteLLM snapshot from `/cost/prices`. A key is a model id
- * or a part of model ids, such as a family alias (`opus`); `createPricing` says how a model finds its key.
+ * Prices by model, injected by the caller, such as the kit's LiteLLM snapshot from `/cost/prices`. A key names one
+ * model; `createPricing` says which ids it prices.
  */
 export type PricingTable = Readonly<Record<string, Price>>;
 
-/** Prices that replace a table's for the same keys; an entry may give only some of them. */
+/** Prices that replace the table's for the ids that contain a key; an entry may give only some of them. */
 export type PriceOverrides = Readonly<Record<string, Partial<Price>>>;
 
 export interface PricingOptions {
   /**
-   * Win over the table and the fallback. A partial entry takes the prices it lacks from the table's entry with the
-   * same key, else the fallback's; when neither has one, the models it matches have no price.
+   * Win over the table and the fallback for every id that contains a key, as `createPricing` says. A partial entry
+   * takes the prices it lacks from the price the id has without overrides; when it has none, the id has no price.
    */
   readonly overrides?: PriceOverrides;
   /**
-   * Entries the table lacks, such as family aliases for ids that a price list does not have yet. They take part in the
-   * same match as the table's entries; for the same key, the table's entry wins.
+   * Family aliases, such as `opus` or `gpt-5`, for ids that no table key matches: such a model takes the longest key
+   * its id contains.
    */
   readonly fallback?: PricingTable;
 }
@@ -28,18 +28,25 @@ export interface Pricing {
   priceOf(model: string): Price | undefined;
 }
 
-/** `id` when it is a key, else the longest key that `id` contains; the first one inserted among equally long keys. */
-function keyOf(id: string, keys: ReadonlyMap<string, unknown>): string | undefined {
-  if (keys.has(id)) {
-    return id;
-  }
-  let best: string | undefined;
-  for (const key of keys.keys()) {
-    if (id.includes(key) && (best === undefined || key.length > best.length)) {
+/**
+ * A date that names a snapshot of the model before it: `-20250929` (Anthropic), `-2025-08-07` (OpenAI) or Vertex AI's
+ * `@20250929`. Other endings, such as `-latest`, `-preview`, `-mini` or a four-digit `-0309`, can name another model.
+ */
+const DATED = /(?:[-@]\d{8}|-\d{4}-\d{2}-\d{2})$/;
+
+function lowered<T>(table: Readonly<Record<string, T>>): Map<string, T> {
+  return new Map(Object.entries(table).map(([key, value]) => [key.toLowerCase(), value]));
+}
+
+/** The entry of the longest key that `id` contains, the first given among equally long keys. */
+function longest<T>(id: string, entries: ReadonlyMap<string, T>): T | undefined {
+  let best = "";
+  for (const key of entries.keys()) {
+    if (id.includes(key) && key.length > best.length) {
       best = key;
     }
   }
-  return best;
+  return entries.get(best);
 }
 
 function complete(price: Partial<Price>): Price | undefined {
@@ -51,26 +58,30 @@ function complete(price: Partial<Price>): Price | undefined {
 }
 
 /**
- * The price lookup over `table`, with presence's rules. Keys match regardless of case. A model takes the entry of a
- * matching override key when there is one, else of a table or fallback key; among the keys of each, its own id wins,
- * then the longest key that its id contains, so `claude-opus-4-8-20260101` takes `claude-opus-4-8` over `opus`.
- * Containment does not mean the same model: over a broad table such as `litellmPrices`, an id the table lacks takes
- * another model's price without notice (`gpt-5.7` takes `gpt-5`, `o1-mini` takes `o1`, `gpt-5.4-chat-latest` takes
- * `chat-latest`). Correct such ids with `overrides`, or treat ids the table lacks as unpriced in the host. Lookups are
- * cached by model id.
+ * The price lookup over `table`. Keys match regardless of case.
+ *
+ * Table keys name one model each. A key prices a model whose id is the key, the key followed by a date (`-20250929`,
+ * `-2025-08-07` or `@20250929`), or either after one `<provider>/` prefix: `claude-sonnet-4-5` prices
+ * `claude-sonnet-4-5-20250929`, `claude-sonnet-4-5@20250929` and `anthropic/claude-sonnet-4-5`. Any other ending
+ * names another model, so `gpt-5` prices none of `gpt-5.7`, `gpt-5-codex` or `gpt-5-mini`, and `o1` does not price
+ * `o1-mini`. Among the keys an id matches, the id itself wins, then the id without its date, then both without
+ * the prefix.
+ *
+ * `fallback` keys are family aliases, used only when no table key matches: a model takes the longest fallback key its
+ * id contains, the first given among equally long keys, so `opus` prices `claude-opus-4-9` and `gpt-5` prices
+ * `gpt-5.7`.
+ *
+ * `overrides` are the caller's own rules and, unlike table keys, match by substring: a model takes the longest
+ * override key its id contains, the first given among equally long keys, and that override wins over the table and
+ * the fallback, so `{ opus: … }` reprices both `claude-opus-4-8` and `claude-3-opus`. A partial override takes the
+ * prices it lacks from the price the id has without overrides: over a table with `gpt-4o` and `gpt-4o-2024-05-13`,
+ * `{ "gpt-4o": { input: 1 } }` keeps the dated model's own output price. A partial override of an id without a price
+ * of its own gives no price. A model that nothing prices has no price. Lookups are cached by model id.
  */
 export function createPricing(table: PricingTable, options: PricingOptions = {}): Pricing {
-  const entries = new Map<string, Price>();
-  for (const source of [options.fallback ?? {}, table]) {
-    for (const [key, price] of Object.entries(source)) {
-      entries.set(key.toLowerCase(), price);
-    }
-  }
-  const overrides = new Map<string, Price | undefined>();
-  for (const [key, partial] of Object.entries(options.overrides ?? {})) {
-    const id = key.toLowerCase();
-    overrides.set(id, complete({ ...entries.get(id), ...partial }));
-  }
+  const entries = lowered(table);
+  const aliases = lowered(options.fallback ?? {});
+  const overrides = lowered(options.overrides ?? {});
   const found = new Map<string, Price | undefined>();
   return {
     priceOf(model) {
@@ -78,14 +89,11 @@ export function createPricing(table: PricingTable, options: PricingOptions = {})
         return found.get(model);
       }
       const id = model.toLowerCase();
-      const override = keyOf(id, overrides);
-      let price: Price | undefined;
-      if (override !== undefined) {
-        price = overrides.get(override);
-      } else {
-        const key = keyOf(id, entries);
-        price = key === undefined ? undefined : entries.get(key);
-      }
+      const bare = id.slice(id.indexOf("/") + 1);
+      const key = [id, id.replace(DATED, ""), bare, bare.replace(DATED, "")].find((name) => entries.has(name));
+      const own = key === undefined ? longest(id, aliases) : entries.get(key);
+      const override = longest(id, overrides);
+      const price = override === undefined ? own : complete({ ...own, ...override });
       found.set(model, price);
       return price;
     }
