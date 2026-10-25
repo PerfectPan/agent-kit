@@ -345,8 +345,9 @@ workflow opens a pull request when a price the snapshot keeps has changed, and t
 Each key names one model, so an id the snapshot has no key for has no price rather than another model's: until the
 snapshot has `gpt-5.7`, it is unpriced, not priced as `gpt-5`. A host that wants an estimate for such ids passes
 family aliases in `fallback`, at prices it chooses, or prices the ids with `overrides`. Overrides still match by
-substring, because the host writes them: `{ "gpt-5": … }` reprices `gpt-5.7` and also every model the snapshot names
-whose id contains `gpt-5`.
+substring, because the host writes them: a full override keyed `gpt-5` prices `gpt-5.7` and reprices every model the
+snapshot names whose id contains `gpt-5`; a partial one reprices those models but leaves `gpt-5.7`, which has no price
+of its own to fill it, unpriced.
 
 ### Effect
 
