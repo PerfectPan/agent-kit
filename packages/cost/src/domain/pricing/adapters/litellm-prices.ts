@@ -12,9 +12,11 @@ export const litellmPrices: PricingTable = Object.fromEntries(
 );
 
 /**
- * The snapshot's version: the date (UTC) and, after a `+`, the commit of LiteLLM's
- * `model_prices_and_context_window.json` it was generated from, such as `2026-10-25+de5dc5b2…` (40 hex digits); the
- * date is that commit's, not the day the snapshot was generated. A host records it next to the costs it computes with
- * `litellmPrices`.
+ * The snapshot's version: `<date>+<commit>+<digest>` — the date (UTC) and 40-digit commit of LiteLLM's
+ * `model_prices_and_context_window.json` it was generated from, then 12 hex digits digesting the prices themselves
+ * (the SHA-256 of their deterministic JSON, computed by `scripts/update-pricing.ts`); the date is that commit's, not
+ * the day the snapshot was generated. The version changes whenever the table's content changes, even under the same
+ * LiteLLM commit, so a host that records it next to the costs it computes with `litellmPrices` can tell when stored
+ * data would be priced differently and recompute.
  */
 export const litellmPricesVersion: string = snapshot.version;
