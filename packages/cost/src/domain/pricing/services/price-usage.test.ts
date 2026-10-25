@@ -252,7 +252,7 @@ describe("S213: a model's long-context tier", () => {
     expect(at(above, { costUsd: 0.25, costSource: "agent" })).toBe(0.25);
   });
 
-  it("judges each model of a split by its own usage, and summarize keeps priceRecord's costs", () => {
+  it("judges each model of a split by its own usage and call count, and summarize keeps priceRecord's costs", () => {
     const turn = record(
       { inputTokens: 600_000 },
       {
@@ -276,5 +276,59 @@ describe("S213: a model's long-context tier", () => {
     expect(summary.total.costUsd).toBe(3.6);
     const single = record(above, { model: "gpt-6-sol" });
     expect(summarize([single], table).total.costUsd).toBe(costOf(single, table)?.costUsd);
+  });
+
+  it("bills an aggregate of several calls at the base rates, and a one-call aggregate at the tier", () => {
+    // Nine calls totalling 600_000 input, no call provably past 272k on its own: 600_000×5 = 3, not the tier's 6.
+    const turn = record(
+      { inputTokens: 600_000 },
+      {
+        agent: "grok",
+        granularity: "turn",
+        modelCalls: 9,
+        model: "gpt-6-sol"
+      }
+    );
+    expect(costOf(turn, table)?.costUsd).toBeCloseTo(3, 9);
+    // One call totalling 300_000 input is past the threshold: 300_000×10 = 3, not the base 1.5.
+    const single = record(
+      { inputTokens: 300_000 },
+      {
+        agent: "grok",
+        granularity: "turn",
+        modelCalls: 1,
+        model: "gpt-6-sol"
+      }
+    );
+    expect(costOf(single, table)?.costUsd).toBeCloseTo(3, 9);
+    // A session aggregate is no single request either: 300_000×5 = 1.5.
+    const session = record(
+      { inputTokens: 300_000 },
+      {
+        agent: "grok",
+        granularity: "session",
+        modelCalls: 5,
+        model: "gpt-6-sol"
+      }
+    );
+    expect(costOf(session, table)?.costUsd).toBeCloseTo(1.5, 9);
+  });
+
+  it("judges each part of a split by its own call count, tiering the one-call share alone", () => {
+    const turn = record(
+      { inputTokens: 900_000 },
+      {
+        agent: "grok",
+        granularity: "turn",
+        modelCalls: 3,
+        model: "gpt-6-sol",
+        usageByModel: {
+          "gpt-6-sol": { usage: { inputTokens: 300_000 }, modelCalls: 1 },
+          "claude-sonnet-5": { usage: { inputTokens: 600_000 }, modelCalls: 2 }
+        }
+      }
+    );
+    // The one-call share past the threshold: 300_000×10 = 3. The two-call share at the base rates: 600_000×2 = 1.2.
+    expect(costOf(turn, table)).toEqual({ costUsd: 4.2, costSource: "pricing-table" });
   });
 });

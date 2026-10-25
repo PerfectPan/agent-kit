@@ -115,7 +115,7 @@ describe("litellmPrices", () => {
   it("prices usage records by model with priceRecord", () => {
     const opus = priceOf("claude-opus-4-8");
     const gpt = priceOf("gpt-5.5");
-    const gptTier = gpt.longContext;
+    expect(gpt.longContext).toMatchObject({ thresholdTokens: 272_000 });
     // 1M input without cache, 1M output, 1M five-minute and 1M one-hour cache writes, 1M cache reads.
     const cached = record("claude-opus-4-8-20260101", {
       inputTokens: 4 * M,
@@ -124,14 +124,14 @@ describe("litellmPrices", () => {
       cacheWriteTokens: 2 * M,
       cacheWrite1hTokens: M
     });
-    // 1M input is past gpt-5.5's long-context threshold, so its tier's input and output prices apply.
+    // 1M input is past gpt-5.5's long-context threshold, so the tier's prices apply: 1M×10 + 1M×45 = 55, not 35.
     const codex = record("gpt-5.5", { inputTokens: M, outputTokens: M }, { agent: "codex" });
     expect(priceRecord(cached, pricing).parts[0]?.cost).toEqual({
       costUsd: expect.closeTo(opus.input + opus.output + opus.cacheWrite + (opus.cacheWrite1h ?? NaN) + opus.cacheRead),
       costSource: "pricing-table"
     });
     expect(priceRecord(codex, pricing).parts[0]?.cost).toEqual({
-      costUsd: expect.closeTo((gptTier?.input ?? gpt.input) + (gptTier?.output ?? gpt.output)),
+      costUsd: expect.closeTo(55),
       costSource: "pricing-table"
     });
     expect(priceRecord(record("mystery", { inputTokens: M }), pricing).parts).toEqual([
