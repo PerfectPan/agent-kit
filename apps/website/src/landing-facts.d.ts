@@ -10,6 +10,9 @@ declare module "virtual:landing-facts" {
     };
     readonly version: string;
     readonly license: string;
+    readonly entryCount: number;
+    readonly packageCount: number;
+    readonly zeroDepCount: number;
   }
 
   export const landingFacts: LandingFacts;

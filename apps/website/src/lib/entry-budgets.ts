@@ -14,6 +14,13 @@ export interface ShownBudget {
   readonly entry: string;
   readonly label: string;
   readonly noImports: boolean;
+  readonly bytes: number;
+}
+
+export interface LandingStatFacts {
+  readonly entryCount: number;
+  readonly packageCount: number;
+  readonly zeroDepCount: number;
 }
 
 const KIT_ENTRIES = [
@@ -36,14 +43,37 @@ export interface SizeLimitEntry {
   readonly limit: string;
 }
 
-/** `"1127 B"` becomes `"1.1 KB"` (decimal kilobytes, one decimal place). */
-export function formatBudget(limit: string): string {
+export function parseBudgetBytes(limit: string): number {
   const match = /^(\d+) B$/.exec(limit);
   if (!match?.[1]) {
     throw new Error(`Unrecognised size limit: ${limit}`);
   }
-  const kilobytes = Number(match[1]) / 1000;
-  return `${kilobytes.toFixed(1)} KB`;
+  return Number(match[1]);
+}
+
+/** `"1127 B"` becomes `"1.1 KB"` (decimal kilobytes, one decimal place). */
+export function formatBudget(limit: string): string {
+  return `${(parseBudgetBytes(limit) / 1000).toFixed(1)} KB`;
+}
+
+/** Width of a budget bar, as a percentage of the largest entry in the same list. */
+export function barFillPercent(bytes: number, largest: number): number {
+  if (largest <= 0) {
+    return 0;
+  }
+  return (bytes / largest) * 100;
+}
+
+export function factsFromLimits(kit: readonly SizeLimitEntry[], collab: readonly SizeLimitEntry[]): LandingStatFacts {
+  const all = [...kit, ...collab];
+  if (all[0] === undefined) {
+    throw new Error("No size-limit entries");
+  }
+  return {
+    entryCount: all.length,
+    packageCount: (kit.length > 0 ? 1 : 0) + (collab.length > 0 ? 1 : 0),
+    zeroDepCount: NO_OUTSIDE_IMPORTS.length
+  };
 }
 
 function rowsFor(limits: Map<string, string>, packageName: string, entries: readonly string[]): ShownBudget[] {
@@ -56,7 +86,8 @@ function rowsFor(limits: Map<string, string>, packageName: string, entries: read
     return {
       entry,
       label: formatBudget(limit),
-      noImports: (NO_OUTSIDE_IMPORTS as readonly string[]).includes(name)
+      noImports: (NO_OUTSIDE_IMPORTS as readonly string[]).includes(name),
+      bytes: parseBudgetBytes(limit)
     };
   });
 }

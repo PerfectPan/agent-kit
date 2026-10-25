@@ -7,7 +7,7 @@ export function GuidesSection({ lang }: { readonly lang: Lang }) {
   const docs = docsIndex(lang);
   const api = guide(lang, "api");
   return (
-    <section className="final">
+    <section className="final reveal">
       <h2>{text(lang, "guidesTitle")}</h2>
       <p>{text(lang, "guidesBody")}</p>
       <div className="cta">

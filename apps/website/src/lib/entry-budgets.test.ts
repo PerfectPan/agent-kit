@@ -1,6 +1,14 @@
 import { expect, it } from "vite-plus/test";
 
-import { budgetsFromLimits, formatBudget, type SizeLimitEntry } from "./entry-budgets.ts";
+import {
+  NO_OUTSIDE_IMPORTS,
+  barFillPercent,
+  budgetsFromLimits,
+  factsFromLimits,
+  formatBudget,
+  parseBudgetBytes,
+  type SizeLimitEntry
+} from "./entry-budgets.ts";
 
 const kit: readonly SizeLimitEntry[] = [
   { name: "@rivus/agent-kit/discovery", limit: "11843 B" },
@@ -31,7 +39,8 @@ it("reads name and limit from size-limit entries", () => {
   expect(budgets.kit.find((entry) => entry.entry === "/cost")).toEqual({
     entry: "/cost",
     label: "1.1 KB",
-    noImports: true
+    noImports: true,
+    bytes: 1127
   });
   expect(budgets.kit.find((entry) => entry.entry === "/discovery")?.noImports).toBe(false);
   expect(budgets.collab.map((entry) => entry.entry)).toEqual(["/process-lock", "/lease", "/lanes"]);
@@ -46,4 +55,15 @@ it("reads name and limit from size-limit entries", () => {
 
 it("throws when a size-limit entry is missing", () => {
   expect(() => budgetsFromLimits([], collab)).toThrow("No size-limit entry for @rivus/agent-kit/discovery");
+});
+
+it("counts public entries and the zero-dependency entries from NO_OUTSIDE_IMPORTS", () => {
+  expect(parseBudgetBytes("104 B")).toBe(104);
+  expect(factsFromLimits(kit, collab)).toEqual({
+    entryCount: 12,
+    packageCount: 2,
+    zeroDepCount: NO_OUTSIDE_IMPORTS.length
+  });
+  expect(barFillPercent(1127, 82765)).toBeCloseTo((1127 / 82765) * 100);
+  expect(barFillPercent(10, 0)).toBe(0);
 });

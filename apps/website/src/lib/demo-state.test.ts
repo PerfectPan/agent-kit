@@ -5,6 +5,8 @@ import {
   MY_AGENT,
   TASK_ORDER,
   demoView,
+  isBlockedOutput,
+  nextAutoplayStep,
   nextTaskKey,
   plainText,
   selectAgent,
@@ -76,6 +78,19 @@ it("has code and output for every supported agent of every task", () => {
       expect(plainText(mine.code)).toContain("providers: [myAgent]");
     }
   }
+});
+
+it("cycles autoplay through supported Agents, then the next task", () => {
+  expect(nextAutoplayStep(on("detect", "claude-code"), rows)).toEqual(on("detect", "cursor"));
+  expect(nextAutoplayStep(on("detect", "grok"), rows)).toEqual(on("detect", MY_AGENT));
+  expect(nextAutoplayStep(on("detect", MY_AGENT), rows)).toEqual(on("hooks", "claude-code"));
+  expect(nextAutoplayStep(on("sessions", "claude-code"), rows)).toEqual(on("sessions", "grok"));
+  expect(nextAutoplayStep(on("coordinate", MY_AGENT), rows)).toEqual(on("detect", "claude-code"));
+});
+
+it("marks a LeaseHeld sample as blocked", () => {
+  expect(isBlockedOutput(demoView(on("coordinate", "codex"), rows).output)).toBe(true);
+  expect(isBlockedOutput(demoView(on("detect", "claude-code"), rows).output)).toBe(false);
 });
 
 it("moves the task tab with the arrow keys", () => {

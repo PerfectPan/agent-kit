@@ -17,7 +17,7 @@ const COLUMN_LABEL: Record<Capability, CopyKey> = {
 export function ProvidersSection({ lang }: { readonly lang: Lang }) {
   const providers = guide(lang, "concepts/providers");
   return (
-    <section className="section" aria-labelledby="providers-heading">
+    <section className="section reveal" aria-labelledby="providers-heading">
       <h2 id="providers-heading">{text(lang, "providersTitle")}</h2>
       <p className="sub">{text(lang, "providersBody")}</p>
       <div className="matrix-wrap">

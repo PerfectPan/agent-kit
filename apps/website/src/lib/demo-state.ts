@@ -455,3 +455,21 @@ export function demoView(selection: DemoSelection, rows: readonly SupportRow[]):
     agents
   };
 }
+
+/** Next supported Agent on this task, then the next task's first supported Agent. */
+export function nextAutoplayStep(selection: DemoSelection, rows: readonly SupportRow[]): DemoSelection {
+  const enabled = demoView(selection, rows).agents.filter((agent) => agent.enabled);
+  const index = enabled.findIndex((agent) => agent.id === selection.agentId);
+  const nextAgent = enabled[index + 1];
+  if (nextAgent !== undefined) {
+    return { task: selection.task, agentId: nextAgent.id };
+  }
+  const taskIndex = TASK_ORDER.indexOf(selection.task);
+  const task = TASK_ORDER[(taskIndex + 1) % TASK_ORDER.length] ?? TASK_ORDER[0];
+  const first = demoView({ task, agentId: MY_AGENT }, rows).agents.find((agent) => agent.enabled);
+  return { task, agentId: first?.id ?? MY_AGENT };
+}
+
+export function isBlockedOutput(output: DemoView["output"]): boolean {
+  return plainText(output).includes("LeaseHeld");
+}

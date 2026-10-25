@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { landingFacts } from "virtual:landing-facts";
 
 import { guide } from "../../lib/guide-paths.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
@@ -21,6 +22,26 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
         </span>
       </div>
       <CodeDemo lang={lang} />
+      <ul className="facts" aria-label={text(lang, "factsStrip")}>
+        <li>
+          <strong>{landingFacts.entryCount}</strong> {text(lang, "factsEntries")}
+        </li>
+        <li>
+          <strong>{landingFacts.packageCount}</strong> {text(lang, "factsPackages")}
+        </li>
+        <li>
+          <strong>{landingFacts.zeroDepCount}</strong> {text(lang, "factsZeroDep")}
+        </li>
+        <li>
+          <strong>{text(lang, "factsTypescript")}</strong>
+        </li>
+        <li>
+          <strong>{landingFacts.license}</strong>
+        </li>
+        <li>
+          <strong>{landingFacts.version}</strong>
+        </li>
+      </ul>
     </section>
   );
 }

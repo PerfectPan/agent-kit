@@ -9,7 +9,7 @@ import react from "@vitejs/plugin-react";
 import { fumadocsMdx } from "fumadocs-mdx/vite";
 import { defineConfig } from "vite-plus";
 
-import { budgetsFromLimits, type SizeLimitEntry } from "./src/lib/entry-budgets.ts";
+import { budgetsFromLimits, factsFromLimits, type SizeLimitEntry } from "./src/lib/entry-budgets.ts";
 import { SITE_BASE_PATH } from "./src/lib/site.ts";
 import { supportFromProviders } from "./src/lib/support.ts";
 
@@ -68,7 +68,8 @@ function landingFactsPlugin() {
         support: supportFromProviders(builtinProviders),
         budgets: budgetsFromLimits(kit, collab),
         version: pkg.version,
-        license: pkg.license
+        license: pkg.license,
+        ...factsFromLimits(kit, collab)
       };
       return `export const landingFacts = ${JSON.stringify(facts)};`;
     }

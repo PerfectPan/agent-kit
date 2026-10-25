@@ -1,9 +1,11 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import {
   TASK_ORDER,
   demoView,
   initialSelection,
+  isBlockedOutput,
+  nextAutoplayStep,
   nextTaskKey,
   selectAgent,
   selectTask,
@@ -12,16 +14,22 @@ import {
 } from "../../lib/demo-state.ts";
 import { text, type Lang } from "../../lib/landing-copy.ts";
 import { landingFacts } from "virtual:landing-facts";
-import { Mascot } from "../mascot.tsx";
+import { Mascot, type MascotState } from "../mascot.tsx";
+
+const WORK_MS = 1200;
+const LINE_MS = 50;
+const BLOCKED_MS = 900;
+const AUTOPLAY_FIRST_MS = 6000;
+const AUTOPLAY_NEXT_MS = 3500;
 
 function tokenClass(token: Token): string | undefined {
   const names = [token.tone, token.swap ? "swap" : undefined].filter((name) => name !== undefined);
   return names.length > 0 ? names.join(" ") : undefined;
 }
 
-function codeLines(lines: readonly (readonly Token[])[]) {
+function codeLines(lines: readonly (readonly Token[])[], shown: number) {
   return lines.map((line, index) => (
-    <span key={index}>
+    <span key={index} className={index < shown ? undefined : "pending"}>
       {index > 0 ? "\n" : null}
       {line.map((token, tokenIndex) => (
         <span key={tokenIndex} className={tokenClass(token)}>
@@ -36,6 +44,78 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
   const support = landingFacts.support;
   const [selection, setSelection] = useState(() => initialSelection(support));
   const view = demoView(selection, support);
+  const [mascot, setMascot] = useState<MascotState>("idle");
+  const [shown, setShown] = useState(view.output.length);
+  const [paused, setPaused] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [allowMotion, setAllowMotion] = useState(false);
+  const firstSwitch = useRef(true);
+  const intervalMs = useRef(AUTOPLAY_FIRST_MS);
+  const allowMotionRef = useRef(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    function sync() {
+      setAllowMotion(!query.matches);
+    }
+    sync();
+    query.addEventListener("change", sync);
+    return () => {
+      query.removeEventListener("change", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    allowMotionRef.current = allowMotion;
+  }, [allowMotion]);
+
+  useEffect(() => {
+    const output = demoView(selection, support).output;
+    if (firstSwitch.current) {
+      firstSwitch.current = false;
+      setShown(output.length);
+      setMascot("idle");
+      return;
+    }
+    if (!allowMotionRef.current) {
+      setShown(output.length);
+      setMascot("idle");
+      return;
+    }
+    setShown(0);
+    setMascot("working");
+    const timers: number[] = [];
+    output.forEach((_, index) => {
+      timers.push(window.setTimeout(() => setShown(index + 1), LINE_MS * (index + 1)));
+    });
+    const blocked = isBlockedOutput(output);
+    timers.push(
+      window.setTimeout(() => {
+        setMascot(blocked ? "blocked" : "idle");
+      }, WORK_MS)
+    );
+    if (blocked) {
+      timers.push(window.setTimeout(() => setMascot("idle"), WORK_MS + BLOCKED_MS));
+    }
+    return () => {
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [selection, support]);
+
+  useEffect(() => {
+    if (!allowMotion || stopped || paused) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setSelection((current) => nextAutoplayStep(current, support));
+      intervalMs.current = AUTOPLAY_NEXT_MS;
+    }, intervalMs.current);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [allowMotion, paused, selection, stopped, support]);
 
   function onTaskKey(event: KeyboardEvent<HTMLDivElement>) {
     const next = nextTaskKey(view.task, event.key);
@@ -48,8 +128,28 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
   }
 
   return (
-    <div className="demo">
-      <Mascot state="idle" hopSignal={`${selection.task}:${selection.agentId}`} className="m" />
+    <div
+      className="demo"
+      onClick={() => {
+        setStopped(true);
+      }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(event) => {
+        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) {
+          setPaused(false);
+        }
+      }}
+    >
+      <Mascot state={mascot} hopSignal={`${selection.task}:${selection.agentId}`} className="m" />
+      {mascot === "working" ? (
+        <div key={`${selection.task}:${selection.agentId}`} className="feed" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+      ) : null}
       <div className="window">
         <div className="tasks" role="tablist" aria-label={text(lang, "tasksLabel")} onKeyDown={onTaskKey}>
           {TASK_ORDER.map((task) => {
@@ -77,13 +177,13 @@ export function CodeDemo({ lang }: { readonly lang: Lang }) {
             <span>{view.file}</span>
             <span>{view.packageName}</span>
           </div>
-          <pre>{codeLines(view.code)}</pre>
+          <pre>{codeLines(view.code, view.code.length)}</pre>
           <div className="result">
             <div className="file">
               <span>{text(lang, "outputLabel")}</span>
               <span>{text(lang, "sampleLabel")}</span>
             </div>
-            <pre>{codeLines(view.output)}</pre>
+            <pre>{codeLines(view.output, shown)}</pre>
           </div>
           <div className="agents">
             <span>{text(lang, "agentLabel")}</span>

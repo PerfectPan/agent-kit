@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
-import type { ShownBudget } from "../../lib/entry-budgets.ts";
+import { barFillPercent, type ShownBudget } from "../../lib/entry-budgets.ts";
 import { entryGuide } from "../../lib/guide-paths.ts";
 import { text, type CopyKey, type Lang } from "../../lib/landing-copy.ts";
 import { INSTALL_COLLAB, INSTALL_KIT } from "../../lib/projects.ts";
@@ -22,6 +23,7 @@ const BLURB: Record<string, CopyKey> = {
 };
 
 function entryList(entries: readonly ShownBudget[], lang: Lang) {
+  const largest = Math.max(...entries.map((entry) => entry.bytes));
   return (
     <ul className="entries">
       {entries.map((entry) => {
@@ -34,6 +36,9 @@ function entryList(entries: readonly ShownBudget[], lang: Lang) {
             </Link>
             <span>{blurb ? text(lang, blurb) : entry.entry}</span>
             <b className={entry.noImports ? "free" : undefined}>{entry.label}</b>
+            <span className="budget-track" aria-hidden="true">
+              <i style={{ "--fill": `${barFillPercent(entry.bytes, largest)}%` } as CSSProperties} />
+            </span>
           </li>
         );
       })}
@@ -43,7 +48,7 @@ function entryList(entries: readonly ShownBudget[], lang: Lang) {
 
 export function PackagesSection({ lang }: { readonly lang: Lang }) {
   return (
-    <section className="section">
+    <section className="section reveal">
       <h2>{text(lang, "connectTitle")}</h2>
       <p className="sub">{text(lang, "connectBody")}</p>
       <div className="packages">
