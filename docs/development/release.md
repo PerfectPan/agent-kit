@@ -109,7 +109,7 @@ Two packages in one group:
    `pnpm run release:check` enforces both.
 3. Let GitHub Actions create pull requests: **Settings → Actions → General → Workflow permissions → Allow GitHub
    Actions to create and approve pull requests**. Version Packages fails without it, on the first push to `main`
-   that leaves changesets pending.
+   that leaves changesets pending, and so does Update Pricing on its first price change.
 
 ### npm Trusted Publisher, per package
 
@@ -292,6 +292,16 @@ Run it after `pnpm run check` so `dist` exists.
   - **Toolchain or devDependency upgrades**: automation covers published runtime dependencies only. If an upgrade
     such as vite-plus or rolldown changes the built output, add a patch changeset for the affected published packages.
 
+- **Price snapshot PRs**: `.github/workflows/update-pricing.yml` runs every Monday, or from **Actions → Update
+  Pricing → Run workflow**. It runs `scripts/update-pricing.ts`, which regenerates the LiteLLM snapshot of
+  `/cost/prices` and leaves it untouched when no price it keeps has changed. On a change it rebuilds the branch
+  `chore/update-pricing` from the commit it ran on, with the snapshot and a patch changeset for `@rivus/agent-kit`,
+  force-pushes it and opens or updates the draft PR `chore(cost): update the LiteLLM price snapshot`. Pull requests
+  created with the workflow's `github.token` do not trigger workflows, so select **Ready for review** to start CI, as
+  for the release PR. Review the diff for models that disappeared, then squash-merge; the next release ships it. A
+  failing check needs a fix on the branch: the fixture-pricing test in `packages/cost/test` when LiteLLM renamed or
+  dropped a model, the `/cost/prices` size budget when it added many. The next run replaces commits pushed to the
+  branch by hand, so merge or close the PR within the week.
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned
   with the oxlint version bundled by vite-plus; `scripts/toolchain.test.ts` enforces matching versions. This rule is
@@ -300,7 +310,8 @@ Run it after `pnpm run check` so `dist` exists.
   whole-repository lint and the manifest tests, and record CI duration.
 - **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
   to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
-  repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`, `renovate-changesets.yml`). Close
+  repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`, `renovate-changesets.yml`,
+  `update-pricing.yml`). Close
   PRs that touch `review.yml` or another file synced from
   [PerfectPan/project-template](https://github.com/PerfectPan/project-template), with a comment that the
   bump comes from upstream, and sync the file once upstream has it. Dependabot cannot ignore an action per file, so

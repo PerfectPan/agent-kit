@@ -1,0 +1,72 @@
+name: Update Pricing
+
+on:
+  schedule:
+    # Mondays at 02:17 UTC. LiteLLM changes its list most days; a weekly snapshot is fresh enough for usage costs and
+    # keeps the release flow to one price update a week.
+    - cron: "17 2 * * 1"
+  # Regenerates the snapshot on demand. Run on another branch, it opens the pull request against that branch.
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: update-pricing
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: update the LiteLLM price snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: chore/update-pricing
+      SNAPSHOT: packages/cost/src/domain/pricing/adapters/litellm-snapshot.json
+    steps:
+      - uses: actions/checkout@v7
+      # Installs the pnpm from `packageManager` and the Node.js major from .node-version, then runs
+      # `pnpm install --frozen-lockfile`: the generator parses LiteLLM's list with zod.
+      - uses: pnpm/setup@v3
+        with:
+          node-version-file: .node-version
+          require-lockfile: true
+      - name: Regenerate the snapshot
+        # The token only lifts the GitHub API rate limit for the commit lookup; the data is public.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/update-pricing.ts
+      # The generator leaves the file untouched when no price it keeps changed, so a clean tree means nothing to do.
+      # Otherwise the branch is rebuilt from the checked-out commit with the snapshot and a patch changeset, so the
+      # release flow publishes the new prices, and force-pushed: commits added to it by hand are replaced next week.
+      # A pull request opened with github.token starts no CI; it opens as a draft, and marking it ready for review
+      # starts CI, as for the release PR (docs/development/release.md).
+      - name: Open or update the pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- "$SNAPSHOT"; then
+            echo "::notice::The LiteLLM price snapshot is unchanged."
+            exit 0
+          fi
+          version="$(jq -r .version "$SNAPSHOT")"
+          title="chore(cost): update the LiteLLM price snapshot"
+          body="$(printf '%s\n\n%s\n' \
+            "Regenerates the \`/cost/prices\` snapshot with \`scripts/update-pricing.ts\`; its version is now \`${version}\`." \
+            "Opened by update-pricing.yml with the workflow token: mark it ready for review to run CI.")"
+          pnpm change @rivus/agent-kit --bump patch \
+            --summary "Update the LiteLLM price snapshot of \`/cost/prices\` to \`${version}\`."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$BRANCH"
+          git add -- "$SNAPSHOT" .changeset
+          git commit --message "$title" --message "LiteLLM price snapshot ${version}."
+          git push --force origin "$BRANCH"
+          if [[ "$(gh pr list --head "$BRANCH" --state open --json number --jq length)" == "0" ]]; then
+            gh pr create --draft --base "$GITHUB_REF_NAME" --head "$BRANCH" --title "$title" --body "$body"
+          else
+            gh pr edit "$BRANCH" --title "$title" --body "$body"
+          fi
