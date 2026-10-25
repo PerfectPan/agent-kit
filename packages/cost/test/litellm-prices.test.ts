@@ -75,10 +75,11 @@ describe("litellmPrices", () => {
   });
 
   it("gives Claude models their one-hour cache write price", () => {
-    for (const model of CLAUDE) {
-      const price = pricing.priceOf(model);
-      expect(price?.cacheWrite1h, model).toBeGreaterThan(price?.cacheWrite ?? Infinity);
-    }
+    const lacking = CLAUDE.filter((model) => {
+      const { cacheWrite, cacheWrite1h } = priceOf(model);
+      return cacheWrite1h === undefined || cacheWrite1h <= cacheWrite;
+    });
+    expect(lacking).toEqual([]);
   });
 
   it("is the table fromLiteLLM reads from the snapshot, with every entry priced", () => {
