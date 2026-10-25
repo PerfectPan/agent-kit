@@ -218,7 +218,11 @@ Grok), otherwise each count at the model's price (input without cache, cache rea
 output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model with a long-context tier prices
 a request whose total input — cache reads and writes included — exceeds the tier's threshold whole at the tier's
 rates, the way LiteLLM's calculator and ccusage bill it, and a rate the tier lacks at the model's base price; a
-request at or below the threshold keeps the base rates, and so does every model without a tier. Keys match regardless
+request at or below the threshold keeps the base rates, and so does every model without a tier. The tier prices one
+request: a `turn` or `session` record, or a part of one, that aggregates several model calls cannot tell how large
+any single request's context was and bills at the base rates, unless it counts one call. An override that says
+nothing about `longContext` keeps the model's own tier — a full override of the base prices still bills past the
+threshold at the table's tier; give `longContext` in the override to replace or drop it. Keys match regardless
 of case. A table
 key names one model: it prices that id, the id followed by a date (`-20250929`, `-2025-08-07` or Vertex AI's
 `@20250929`), and either after one `<provider>/` prefix, so `claude-sonnet-4-5` prices `claude-sonnet-4-5-20250929`

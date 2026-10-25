@@ -6,7 +6,12 @@ import type { Price } from "./price.js";
  */
 export type PricingTable = Readonly<Record<string, Price>>;
 
-/** Prices that replace the table's for the ids that contain a key; an entry may give only some of them. */
+/**
+ * Prices that replace the table's for the ids that contain a key; an entry may give only some of them. An entry that
+ * says nothing about `longContext` keeps the model's own tier — a full override of the base prices still bills past
+ * the threshold at the table's tier; an entry with a `longContext` replaces the tier, and an explicit
+ * `longContext: undefined` drops it.
+ */
 export type PriceOverrides = Readonly<Record<string, Partial<Price>>>;
 
 export interface PricingOptions {
@@ -84,7 +89,8 @@ function complete(price: Partial<Price>): Price | undefined {
  * the fallback, so `{ opus: … }` reprices both `claude-opus-4-8` and `claude-3-opus`. A partial override takes the
  * prices it lacks from the price the id has without overrides: over a table with `gpt-4o` and `gpt-4o-2024-05-13`,
  * `{ "gpt-4o": { input: 1 } }` keeps the dated model's own output price. A partial override of an id without a price
- * of its own gives no price. A model that nothing prices has no price. Lookups are cached by model id.
+ * of its own gives no price. An override entry that says nothing about `longContext` keeps the model's own tier, and
+ * one with a `longContext` replaces it. A model that nothing prices has no price. Lookups are cached by model id.
  */
 export function createPricing(table: PricingTable, options: PricingOptions = {}): Pricing {
   const entries = lowered(table);

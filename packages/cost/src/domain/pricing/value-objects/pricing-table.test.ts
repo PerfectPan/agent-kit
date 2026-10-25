@@ -159,6 +159,12 @@ describe("createPricing", () => {
       ...SNAPSHOT["gpt-6-sol"],
       input: 6
     });
+    // An override that replaces every base price still keeps the table's tier, which keeps billing past the threshold.
+    const full = { input: 6, output: 36, cacheWrite: 7.5, cacheRead: 0.6 };
+    expect(presence({ "gpt-6-sol": full }).priceOf("gpt-6-sol")).toEqual({
+      ...SNAPSHOT["gpt-6-sol"],
+      ...full
+    });
     expect(presence({ "gpt-6-sol": { input: 6, longContext: tier } }).priceOf("gpt-6-sol")).toEqual({
       ...SNAPSHOT["gpt-6-sol"],
       input: 6,
