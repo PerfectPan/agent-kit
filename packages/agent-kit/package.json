@@ -1,6 +1,6 @@
 {
   "name": "@rivus/agent-kit",
-  "version": "0.21.1",
+  "version": "0.22.0",
   "description": "Connect to third-party coding agents: identity, installed-agent detection, session logs, transcripts, driving agents over ACP and the host platform port.",
   "license": "MIT",
   "repository": {
@@ -22,6 +22,10 @@
     "./cost": {
       "types": "./dist/cost.d.ts",
       "default": "./dist/cost.js"
+    },
+    "./cost/prices": {
+      "types": "./dist/cost/prices.d.ts",
+      "default": "./dist/cost/prices.js"
     },
     "./discovery": {
       "types": "./dist/discovery.d.ts",

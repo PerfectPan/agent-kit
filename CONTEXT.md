@@ -112,16 +112,22 @@ A decode of every UsageSource of the chosen agents that continues from the previ
 ## cost
 
 **PricingTable**:
-Prices per model, injected by the caller; the kit ships no price data. A key is a model id or a part of model ids, such as a family alias; a model takes its own id, else the longest key it contains.
+Prices per model, injected by the caller, such as the LiteLLM snapshot. A key names one model and prices only that model's id, the id with a date after it, or either with a provider prefix; an id no key names has no price. Family aliases such as `opus` are a separate fallback, which prices such an id by the longest alias it contains. Overrides are the caller's own rules and match by substring: an id takes the longest override key it contains, over the table and the fallback, and a partial override takes the rest from the id's price without overrides.
+
+**LiteLLM snapshot**:
+The kit's copy of LiteLLM's prices for the models the supported agents record, served by `/cost/prices` as a PricingTable with its version: the date and LiteLLM commit it was generated from, which a host records with the costs it computes.
 
 **Price**:
 The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output.
 
 **Cost**:
-An amount in USD for a UsageRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
+An amount in USD for a UsageRecord, a part of a PricedRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
 
 **CostSource**:
 Where a cost comes from: `agent` (reported by the agent itself) or `pricing-table` (computed by the kit).
+
+**PricedRecord**:
+A UsageRecord priced by model, by the rules a UsageSummary uses: one part per model when the record is split by model, else one part for the whole record. A part has its model, usage, model calls when it counts them, and its Cost when something prices it. A part of a split counts only its model's share of the calls, never the record's, so the parts can add up to fewer calls than the record; a host that counts calls per record reads the record's model calls and divides them among the models itself.
 
 **CalendarWindow**:
 The last N calendar days up to now, from a midnight in a time zone, over which usage is summarized: 1 is today, 7 is today and the six days before.

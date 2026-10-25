@@ -68,3 +68,9 @@
     - proud-dodos-look
     - quick-chairs-shake
     - real-spoons-think
+"@rivus/agent-kit@0.22.0":
+  dir: packages/agent-kit
+  intents:
+    - cost-exact-model-match
+    - cost-price-record
+    - cost-prices

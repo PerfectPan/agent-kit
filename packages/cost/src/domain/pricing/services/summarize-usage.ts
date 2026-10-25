@@ -3,7 +3,7 @@ import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Pricing } from "../value-objects/pricing-table.js";
 import type { UsageGroup, UsageGroupKey, UsageSummary } from "../value-objects/usage-summary.js";
-import { portionsOf } from "./price-usage.js";
+import { priceRecord } from "./price-usage.js";
 
 export interface SummarizeOptions {
   /** Counts only the records from `since` (included) to `until` (excluded), such as a `calendarWindow`. */
@@ -64,11 +64,11 @@ function totals({ costUsd, ...rest }: Tally): UsageGroup {
 
 /**
  * Totals of `records` in the window, as presence summarizes its sources: tokens, how many records contributed, and
- * the sum of the costs that `costOf`'s rules know, per group. A group's cost is absent when none of its records had a
- * known cost; records without one add their tokens but no dollars. The total adds up the groups, as presence adds up
- * its sources, and counts each record once. A record split by model (`usageByModel`) adds its split, model by model,
- * and not its aggregate as well, so a turn of several models counts its tokens once and each model's tokens land in
- * that model's group.
+ * the sum of the costs that `priceRecord` gives their parts, per group. A group's cost is absent when none of its
+ * parts had a cost; parts without one add their tokens but no dollars. The total adds up the groups, as presence adds
+ * up its sources, and counts each record once. A record split by model (`usageByModel`) adds its split, model by
+ * model, and not its aggregate as well, so a turn of several models counts its tokens once and each model's tokens
+ * land in that model's group.
  */
 export function summarize(
   records: Iterable<UsageRecord>,
@@ -80,7 +80,7 @@ export function summarize(
   const groupBy = options.groupBy ?? ["agent", "model"];
   const byAgent = groupBy.includes("agent");
   const byModel = groupBy.includes("model");
-  // Without a key, every portion falls into one group, which is then the total.
+  // Without a key, every part falls into one group, which is then the total.
   const groups = new Map<string, Tally>();
   let entries = 0;
   for (const record of records) {
@@ -89,13 +89,13 @@ export function summarize(
     }
     entries += 1;
     const touched = new Set<Tally>();
-    for (const portion of portionsOf(record, pricing)) {
+    for (const part of priceRecord(record, pricing).parts) {
       const agent = byAgent ? record.agent : undefined;
-      const model = byModel ? portion.model : undefined;
+      const model = byModel ? part.model : undefined;
       const key = JSON.stringify([agent ?? null, model ?? null]);
       const group = groups.get(key) ?? tally(agent, model);
       groups.set(key, group);
-      add(group, portion.usage, portion.cost?.costUsd);
+      add(group, part.usage, part.cost?.costUsd);
       if (!touched.has(group)) {
         touched.add(group);
         group.entries += 1;

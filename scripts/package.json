@@ -2,7 +2,7 @@
   "name": "repo-scripts",
   "version": "0.0.0",
   "private": true,
-  "description": "Repository automation for this monorepo: release state and release identity checks.",
+  "description": "Repository automation for this monorepo: release state, release identity checks and the LiteLLM price snapshot.",
   "type": "module",
   "scripts": {
     "build": "",
@@ -16,6 +16,7 @@
     "@perfectpan/lint-config": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "zod": "catalog:"
   }
 }

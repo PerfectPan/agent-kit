@@ -13,7 +13,7 @@ so your code does not change when a new Agent arrives.
 
 | Package                                                          | Role                               | What it holds                                                                                |
 | ---------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time    | Agent detection, sessions and transcripts, token usage and cost, hook events, harness installation, ACP, redaction |
+| [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time    | Agent detection, sessions and transcripts, token usage and cost (with a LiteLLM price snapshot), hook events, harness installation, ACP, redaction |
 | [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md) | Coordination: many Agents at once  | Single-instance process locks, fenced leases, keyed scheduling lanes                         |
 
 Both packages release together at one version. Status: 0.x; a minor release may contain breaking changes. This README
@@ -105,7 +105,7 @@ These are today's built-in providers. Any other Agent plugs in as a provider des
 | --------------------------------------------------- | -------------------------------------------------------- |
 | Detect installed Agents and their login state       | `/discovery`                                             |
 | List sessions and read transcripts                  | `/sessions`, `/transcript`                               |
-| Scan token usage; price it                          | `/transcript/usage`, `/cost`                             |
+| Scan token usage; price it                          | `/transcript/usage`, `/cost`, `/cost/prices`             |
 | Read a hook payload inside a hook process           | `/harness/events`                                        |
 | Install and remove hooks and skills                 | `/harness` (Effect)                                      |
 | Drive an Agent over ACP                             | `/acp` (Effect)                                          |
@@ -117,8 +117,8 @@ These are today's built-in providers. Any other Agent plugs in as a provider des
 | Give one worker a task, with a fencing token        | collab `/lease` (Effect)                                 |
 | Run one turn per key under a concurrency cap        | collab `/lanes` (Effect)                                 |
 
-Entries are `@rivus/agent-kit/<entry>`, and `@rivus/agent-kit-collab/<entry>` for collab. `/cost`, `/redact`,
-`/harness/events` and `/transcript/usage` import nothing outside the package, so a host that cannot install dependencies
+Entries are `@rivus/agent-kit/<entry>`, and `@rivus/agent-kit-collab/<entry>` for collab. `/cost`, `/cost/prices`,
+`/redact`, `/harness/events` and `/transcript/usage` import nothing outside the package, so a host that cannot install dependencies
 can bundle them alone. The package references list each entry's main exports, where it runs and how it fails.
 
 ## Built with agent-kit
