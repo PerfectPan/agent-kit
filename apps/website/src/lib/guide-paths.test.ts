@@ -8,6 +8,7 @@ const ENTRIES = [
   "/transcript",
   "/transcript/usage",
   "/cost",
+  "/cost/prices",
   "/harness/events",
   "/harness",
   "/acp",

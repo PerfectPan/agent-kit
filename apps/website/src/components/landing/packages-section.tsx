@@ -12,6 +12,7 @@ const BLURB: Record<string, CopyKey> = {
   "/transcript": "blurbTranscript",
   "/transcript/usage": "blurbUsage",
   "/cost": "blurbCost",
+  "/cost/prices": "blurbCostPrices",
   "/harness/events": "blurbEvents",
   "/harness": "blurbHarness",
   "/acp": "blurbAcp",

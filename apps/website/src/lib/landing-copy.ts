@@ -73,6 +73,7 @@ export const copy = {
   blurbTranscript: { en: "Ordered events, subagents included", zh: "有序事件，包含子 Agent" },
   blurbUsage: { en: "Incremental token usage scans", zh: "增量的 token 用量扫描" },
   blurbCost: { en: "Cost from your own price table", zh: "按你的价格表计算费用" },
+  blurbCostPrices: { en: "LiteLLM price snapshot", zh: "LiteLLM 价格快照" },
   blurbEvents: { en: "Hook payloads as lifecycle phases", zh: "hook 载荷转为生命周期阶段" },
   blurbHarness: { en: "Hook and skill install with a ledger", zh: "带账本的 hook 与 skill 安装" },
   blurbAcp: { en: "Agent sessions over ACP", zh: "通过 ACP 驱动的 Agent 会话" },

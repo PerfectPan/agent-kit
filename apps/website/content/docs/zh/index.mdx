@@ -15,14 +15,15 @@ description: 一次连接一个 Agent，协调多个 Agent，以及公开入口�
 
 ## 入口
 
-源码 API 里，`@rivus/agent-kit` 有 17 个入口，`@rivus/agent-kit-collab` 有 3 个，合计 20 个。下表描述的是这份源码 API。
+源码 API 里，`@rivus/agent-kit` 有 18 个入口，`@rivus/agent-kit-collab` 有 3 个，合计 21 个。下表描述的是这份源码 API。
 
 | 入口                                                                | 主要导出                                                                                                    | 运行环境                              |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | [`@rivus/agent-kit/acp`](/docs/connection/acp)                      | `connectAgent`、`probeAgent`、`agentEnv`、`SessionBindingStore` 及其 Layer                                  | 需要 `effect`，以及能够拉起进程的平台 |
 | [`@rivus/agent-kit/providers`](/docs/concepts/providers)            | `Provider`、`builtinProviders`                                                                              | 任何环境                              |
 | [`@rivus/agent-kit/catalog`](/docs/concepts/results-and-errors)     | `isBuiltinCodingAgentId`、`Result`、`ok`、`err`、`AgentKitError`、`isAgentKitError`                         | 任何环境                              |
-| [`@rivus/agent-kit/cost`](/docs/connection/cost)                    | `createPricing`、`summarize`、`Pricing`                                                                     | 任何环境，无导入                      |
+| [`@rivus/agent-kit/cost`](/docs/connection/cost)                    | `createPricing`、`summarize`、`priceRecord`、`Pricing`                                                      | 任何环境，无导入                      |
+| [`@rivus/agent-kit/cost/prices`](/docs/connection/cost#价格快照)    | `litellmPrices`、`litellmPricesVersion`：LiteLLM 价格快照                                                   | 任何环境，无导入                      |
 | [`@rivus/agent-kit/discovery`](/docs/connection/discovery)          | `detectAgents`、`versionFromOutput`、`ProbeRecipe`                                                          | 任何环境，需要平台                    |
 | [`@rivus/agent-kit/harness`](/docs/connection/harness)              | Effect：`planInstall`、`applyInstall`、`verify`、`uninstall`、`inventory`、`doctor`、`HarnessLive` 及其端口 | 任何环境，需要 `effect` 和平台        |
 | [`@rivus/agent-kit/harness/events`](/docs/connection/hook-events)   | `readHookEvent`、`builtinHookDialects`、`LifecycleEvent`                                                    | 任何环境，无导入                      |

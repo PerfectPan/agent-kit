@@ -18,6 +18,7 @@ const kit: readonly SizeLimitEntry[] = [
   { name: "@rivus/agent-kit/transcript", limit: "24886 B" },
   { name: "@rivus/agent-kit/transcript/usage", limit: "19189 B" },
   { name: "@rivus/agent-kit/cost", limit: "1127 B" },
+  { name: "@rivus/agent-kit/cost/prices", limit: "3000 B" },
   { name: "@rivus/agent-kit/harness/events", limit: "7826 B" },
   { name: "@rivus/agent-kit/harness", limit: "82765 B" },
   { name: "@rivus/agent-kit/acp", limit: "44633 B" },
@@ -52,7 +53,7 @@ it("reads name and limit from size-limit entries", () => {
       .map((entry) => entry.entry)
       .slice()
       .sort()
-  ).toEqual(["/cost", "/harness/events", "/redact", "/transcript/usage"]);
+  ).toEqual(["/cost", "/cost/prices", "/harness/events", "/redact", "/transcript/usage"]);
 });
 
 it("throws when a size-limit entry is missing", () => {
@@ -62,7 +63,7 @@ it("throws when a size-limit entry is missing", () => {
 it("counts public entries and the zero-dependency entries from NO_OUTSIDE_IMPORTS", () => {
   expect(parseBudgetBytes("104 B")).toBe(104);
   expect(factsFromLimits(kit, collab)).toEqual({
-    entryCount: 12,
+    entryCount: 13,
     packageCount: 2,
     zeroDepCount: NO_OUTSIDE_IMPORTS.length
   });
@@ -72,7 +73,7 @@ it("counts public entries and the zero-dependency entries from NO_OUTSIDE_IMPORT
   expect(largestBudgetBytes(budgets.kit, budgets.collab)).toBe(82765);
   expect(barFillPercent(11102, 82765)).toBeCloseTo((11102 / 82765) * 100);
   expect(groupedKitBudgets(budgets.kit).map((group) => [group.id, group.entries.map((entry) => entry.entry)])).toEqual([
-    ["read", ["/discovery", "/sessions", "/transcript", "/transcript/usage", "/cost"]],
+    ["read", ["/discovery", "/sessions", "/transcript", "/transcript/usage", "/cost", "/cost/prices"]],
     ["hook", ["/harness/events", "/harness", "/acp"]],
     ["utilities", ["/redact"]]
   ]);

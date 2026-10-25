@@ -1,10 +1,11 @@
 /**
  * Entries the package README marks as importing nothing outside the package:
- * `/cost`, `/redact`, `/harness/events`, `/transcript/usage`.
+ * `/cost`, `/cost/prices`, `/redact`, `/harness/events`, `/transcript/usage`.
  * See packages/agent-kit/README.md.
  */
 export const NO_OUTSIDE_IMPORTS = [
   "@rivus/agent-kit/cost",
+  "@rivus/agent-kit/cost/prices",
   "@rivus/agent-kit/redact",
   "@rivus/agent-kit/harness/events",
   "@rivus/agent-kit/transcript/usage"
@@ -28,7 +29,7 @@ export const KIT_GROUP_ORDER = ["read", "hook", "utilities"] as const;
 export type KitGroupId = (typeof KIT_GROUP_ORDER)[number];
 
 export const KIT_GROUP_ENTRIES: Record<KitGroupId, readonly string[]> = {
-  read: ["/discovery", "/sessions", "/transcript", "/transcript/usage", "/cost"],
+  read: ["/discovery", "/sessions", "/transcript", "/transcript/usage", "/cost", "/cost/prices"],
   hook: ["/harness/events", "/harness", "/acp"],
   utilities: ["/redact"]
 };

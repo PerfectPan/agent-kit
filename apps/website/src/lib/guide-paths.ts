@@ -5,6 +5,7 @@ export const ENTRY_GUIDE_SLUG = {
   "/transcript": "connection/sessions",
   "/transcript/usage": "connection/token-usage",
   "/cost": "connection/cost",
+  "/cost/prices": "connection/cost",
   "/harness/events": "connection/hook-events",
   "/harness": "connection/harness",
   "/acp": "connection/acp",
