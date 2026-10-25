@@ -1,18 +1,12 @@
 import type { CostSource, ModelUsage, Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Cost } from "../value-objects/cost.js";
+import type { PricedRecord } from "../value-objects/priced-record.js";
 import type { Price } from "../value-objects/price.js";
 import type { Pricing } from "../value-objects/pricing-table.js";
 
-/** One model's part of a record, with its cost when that is known. */
-export interface UsagePortion {
-  readonly model?: string;
-  readonly usage: Usage;
-  readonly cost?: Cost;
-}
-
 /** A record, or one model's share of its split. */
-type Part = Pick<ModelUsage, "usage" | "costUsd" | "costSource"> & { readonly model?: string };
+type Part = ModelUsage & { readonly model?: string };
 
 /**
  * USD of `usage` at `price`. The terms and their order are those of presence's formula, so both give the same
@@ -46,14 +40,21 @@ function costOfPart(part: Part, pricing: Pricing, multiplier: number | undefined
 }
 
 /**
- * The record by model, as `costOf` and `summarize` charge it: one portion per model of its split, or the whole record
- * as one portion. A split replaces the aggregate, never adds to it, and wins over it: when the agent logged an amount
- * for the record and for every model, the models' amounts are used. The record stays whole only when the agent logged
- * an amount for it that the split does not divide among every model, because charging the other models at table
- * prices would replace the agent's amount. An amount from a price table on a split record, as `{ ...record,
- * ...costOf(record, pricing) }` leaves it, does not keep the record whole: its models are charged again.
+ * The record by model, priced: one part per model of its split, or the whole record as one part. `summarize` and
+ * `costOf` charge records through it. A part's cost follows three rules in order: (1) an amount the part carries
+ * (`costUsd`), such as one the agent logged, wins; (2) otherwise each token count is charged at the model's price;
+ * (3) that amount is multiplied by the record's `pricingMultiplier`. An agent's own amount is what it billed, so the
+ * multiplier does not apply to it. A count the part lacks costs nothing; a part without a model, or with a model that
+ * the pricing does not know, has no cost: absent, never 0.
+ *
+ * A split replaces the aggregate, never adds to it, and wins over it: when the agent logged an amount for the record
+ * and for every model, the models' amounts are used. The record stays whole only when the agent logged an amount for
+ * it that the split does not divide among every model, because charging the other models at table prices would
+ * replace the agent's amount. An amount from a price table on a split record, as `{ ...record, ...costOf(record,
+ * pricing) }` leaves it, does not keep the record whole: its models are charged again. A part of a split counts the
+ * model calls its share records, not a portion of the record's.
  */
-export function portionsOf(record: UsageRecord, pricing: Pricing): UsagePortion[] {
+export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord {
   const split = Object.entries(record.usageByModel ?? {});
   const whole =
     split.length === 0 ||
@@ -61,29 +62,27 @@ export function portionsOf(record: UsageRecord, pricing: Pricing): UsagePortion[
       record.costSource !== "pricing-table" &&
       !split.every(([, share]) => share.costUsd !== undefined));
   const parts: Part[] = whole ? [record] : split.map(([model, share]) => ({ ...share, model }));
-  return parts.map((part) => {
-    const cost = costOfPart(part, pricing, record.pricingMultiplier);
-    return {
-      ...(part.model === undefined ? {} : { model: part.model }),
-      usage: part.usage,
-      ...(cost === undefined ? {} : { cost })
-    };
-  });
+  return {
+    parts: parts.map((part) => {
+      const cost = costOfPart(part, pricing, record.pricingMultiplier);
+      return {
+        ...(part.model === undefined ? {} : { model: part.model }),
+        usage: part.usage,
+        ...(part.modelCalls === undefined ? {} : { modelCalls: part.modelCalls }),
+        ...(cost === undefined ? {} : { cost })
+      };
+    })
+  };
 }
 
 /**
- * The cost of a record, by three rules in order: (1) an amount the record carries (`costUsd`), such as one the agent
- * logged, wins; (2) otherwise each token count is charged at the model's price; (3) that amount is multiplied by the
- * record's `pricingMultiplier`. An agent's own amount is what it billed, so the multiplier does not apply to it. A
- * record split by model (`usageByModel`) is charged model by model, each share from its own amount or at its own
- * price, and its aggregate counts are not charged again (see `portionsOf`); `summarize` charges records the same way.
- * A count the record lacks costs nothing; a record without a model, or with a model that the pricing does not know,
- * has no cost: `undefined`, never 0.
+ * The cost of the whole record: the sum of its parts' costs from `priceRecord`, from a price table when any part's
+ * is. It has no cost, `undefined` and never 0, when one of its parts has none.
  */
 export function costOf(record: UsageRecord, pricing: Pricing): Cost | undefined {
   let costUsd = 0;
   let costSource: CostSource = "agent";
-  for (const { cost } of portionsOf(record, pricing)) {
+  for (const { cost } of priceRecord(record, pricing).parts) {
     if (cost === undefined) {
       return undefined;
     }

@@ -28,7 +28,7 @@ The source API has 17 entries in `@rivus/agent-kit` and three in `@rivus/agent-k
 | `@rivus/agent-kit/acp`            | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers | with `effect` and a platform that spawns |
 | `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | anywhere |
 | `@rivus/agent-kit/catalog`        | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError` | anywhere                  |
-| `@rivus/agent-kit/cost`           | `createPricing`, `summarize`, `Pricing` | anywhere, no imports      |
+| `@rivus/agent-kit/cost`           | `createPricing`, `summarize`, `priceRecord`, `Pricing` | anywhere, no imports      |
 | `@rivus/agent-kit/discovery`      | `detectAgents`, `versionFromOutput`, `ProbeRecipe` | anywhere, with a platform |
 | `@rivus/agent-kit/harness`        | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` | anywhere, with `effect`   |
 | `@rivus/agent-kit/harness/events` | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent` | anywhere, no imports      |
@@ -190,7 +190,7 @@ OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `Sqlit
 computation and imports nothing.
 
 ```ts
-import { createPricing, summarize } from "@rivus/agent-kit/cost";
+import { createPricing, priceRecord, summarize } from "@rivus/agent-kit/cost";
 import { createNodePlatform } from "@rivus/agent-kit/node";
 import { isUsageRecord, scanUsage, type UsageRecord } from "@rivus/agent-kit/transcript/usage";
 
@@ -217,6 +217,22 @@ output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A 
 the longest key its id contains, regardless of case; `overrides` replace a key's prices, also in part, and `fallback`
 holds entries such as family aliases. A model without a price has no cost (`undefined`, not 0), and a summary's
 `costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
+
+`priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
+buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
+(`usageByModel`), else one part for the whole record. A part has the `model` (absent when the record names none), its
+`usage`, its `modelCalls` when the record or its split counts them, and its `cost`: `{ costUsd, costSource }`, where
+`costSource` is `"agent"` for an amount the agent logged and `"pricing-table"` for one computed from the table. A part
+that nothing prices has no `cost`, which is not a cost of 0. The parts' costs, added up per agent and model, are
+`summarize`'s groups.
+
+```ts
+for (const record of records) {
+  for (const { model, usage, modelCalls, cost } of priceRecord(record, pricing).parts) {
+    // Add usage, modelCalls and cost?.costUsd to the bucket of (the hour of record.timestamp, record.agent, model).
+  }
+}
+```
 
 ## Errors
 

@@ -118,10 +118,13 @@ Prices per model, injected by the caller; the kit ships no price data. A key is 
 The prices of one model, in USD per million tokens, for input without cache, cache read, cache write (5-minute and 1-hour) and output.
 
 **Cost**:
-An amount in USD for a UsageRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
+An amount in USD for a UsageRecord, a part of a PricedRecord or a summary, with its CostSource. A record whose model has no price has no Cost, which is not a Cost of 0.
 
 **CostSource**:
 Where a cost comes from: `agent` (reported by the agent itself) or `pricing-table` (computed by the kit).
+
+**PricedRecord**:
+A UsageRecord priced by model, by the rules a UsageSummary uses: one part per model when the record is split by model, else one part for the whole record. A part has its model, usage, model calls when the record counts them, and its Cost when something prices it.
 
 **CalendarWindow**:
 The last N calendar days up to now, from a midnight in a time zone, over which usage is summarized: 1 is today, 7 is today and the six days before.
