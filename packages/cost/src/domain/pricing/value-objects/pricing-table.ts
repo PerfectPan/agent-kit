@@ -6,13 +6,13 @@ import type { Price } from "./price.js";
  */
 export type PricingTable = Readonly<Record<string, Price>>;
 
-/** Prices by model or by `fallback` alias that replace the table's; an entry may give only some of them. */
+/** Prices that replace the table's for the ids that contain a key; an entry may give only some of them. */
 export type PriceOverrides = Readonly<Record<string, Partial<Price>>>;
 
 export interface PricingOptions {
   /**
-   * Win over the table and the fallback for the ids their keys reach, as `createPricing` says. A partial entry takes
-   * the prices it lacks from the price the id has without overrides; when it has none, the id has no price.
+   * Win over the table and the fallback for every id that contains a key, as `createPricing` says. A partial entry
+   * takes the prices it lacks from the price the id has without overrides; when it has none, the id has no price.
    */
   readonly overrides?: PriceOverrides;
   /**
@@ -38,6 +38,17 @@ function lowered<T>(table: Readonly<Record<string, T>>): Map<string, T> {
   return new Map(Object.entries(table).map(([key, value]) => [key.toLowerCase(), value]));
 }
 
+/** The entry of the longest key that `id` contains, the first given among equally long keys. */
+function longest<T>(id: string, entries: ReadonlyMap<string, T>): T | undefined {
+  let best = "";
+  for (const key of entries.keys()) {
+    if (id.includes(key) && key.length > best.length) {
+      best = key;
+    }
+  }
+  return entries.get(best);
+}
+
 function complete(price: Partial<Price>): Price | undefined {
   const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
   if (input === undefined || output === undefined || cacheRead === undefined || cacheWrite === undefined) {
@@ -60,12 +71,12 @@ function complete(price: Partial<Price>): Price | undefined {
  * id contains, the first given among equally long keys, so `opus` prices `claude-opus-4-9` and `gpt-5` prices
  * `gpt-5.7`.
  *
- * `overrides` win over both, for the ids their keys reach. An override key is a model, which reaches the ids it
- * matches as a table key would, even ones a more specific table key prices, or a `fallback` alias, which reaches the
- * ids that take that alias: `{ opus: … }` reprices `claude-opus-4-9` but not a `claude-opus-4-8` that the table
- * prices. A model key wins over an alias. A partial override takes the prices it lacks from the price the id has
- * without overrides, so over a table with `gpt-4o` and `gpt-4o-2024-05-13`, `{ "gpt-4o": { input: 1 } }` keeps the
- * dated model's own output price. A model that nothing prices has no price. Lookups are cached by model id.
+ * `overrides` are the caller's own rules and, unlike table keys, match by substring: a model takes the longest
+ * override key its id contains, the first given among equally long keys, and that override wins over the table and
+ * the fallback, so `{ opus: … }` reprices both `claude-opus-4-8` and `claude-3-opus`. A partial override takes the
+ * prices it lacks from the price the id has without overrides: over a table with `gpt-4o` and `gpt-4o-2024-05-13`,
+ * `{ "gpt-4o": { input: 1 } }` keeps the dated model's own output price. A partial override of an id without a price
+ * of its own gives no price. A model that nothing prices has no price. Lookups are cached by model id.
  */
 export function createPricing(table: PricingTable, options: PricingOptions = {}): Pricing {
   const entries = lowered(table);
@@ -79,29 +90,10 @@ export function createPricing(table: PricingTable, options: PricingOptions = {})
       }
       const id = model.toLowerCase();
       const bare = id.slice(id.indexOf("/") + 1);
-      const names = [id, id.replace(DATED, ""), bare, bare.replace(DATED, "")];
-      const key = names.find((name) => entries.has(name));
-      let override = names.find((name) => overrides.has(name));
-      let price: Price | undefined;
-      if (key !== undefined) {
-        price = entries.get(key);
-      } else {
-        // The longest alias the id contains; the first one given among equally long aliases.
-        let alias = "";
-        for (const name of aliases.keys()) {
-          if (id.includes(name) && name.length > alias.length) {
-            alias = name;
-          }
-        }
-        price = aliases.get(alias);
-        // Hosts reprice a family by overriding its alias, so the override reaches every id that takes the alias.
-        if (price !== undefined && overrides.has(alias)) {
-          override ??= alias;
-        }
-      }
-      if (override !== undefined) {
-        price = complete({ ...price, ...overrides.get(override) });
-      }
+      const key = [id, id.replace(DATED, ""), bare, bare.replace(DATED, "")].find((name) => entries.has(name));
+      const own = key === undefined ? longest(id, aliases) : entries.get(key);
+      const override = longest(id, overrides);
+      const price = override === undefined ? own : complete({ ...own, ...override });
       found.set(model, price);
       return price;
     }

@@ -53,11 +53,11 @@ describe("createPricing", () => {
     expect(createPricing({}).priceOf("claude-opus-4-8")).toBeUndefined();
   });
 
-  it("S70: merges a partial override over the price of the models its key prices, and wins over the table", () => {
-    // `opus` is an alias, so its override reaches the ids that take it, not claude-opus-4-8, which the table prices.
+  it("S70: merges a partial override over the price of each model containing its key, and wins over the table", () => {
+    // The other prices come from the model's own price: the snapshot's for claude-opus-4-8, the opus alias's otherwise.
     const opus = presence({ opus: { input: 99 } });
     expect(opus.priceOf("opus")).toMatchObject({ input: 99, output: 75 });
-    expect(opus.priceOf("claude-opus-4-8")?.input).toBe(5);
+    expect(opus.priceOf("claude-opus-4-8")).toMatchObject({ input: 99, output: 25 });
     expect(opus.priceOf("claude-3-opus")?.input).toBe(99);
     expect(presence({ "GPT-5.5": { input: 7 } }).priceOf("gpt-5.5")).toEqual({
       input: 7,
@@ -111,14 +111,14 @@ describe("createPricing", () => {
     expect(pricing.priceOf("azure/gpt-4o-2024-08-06")).toBe(routed);
   });
 
-  it("applies an alias's override to the ids that take it, not to ids a model key or a longer alias prices", () => {
+  it("applies an override to every id that contains its key, whether the table or an alias prices the id", () => {
     const opus = presence({ OPUS: { input: 99 } });
-    expect(opus.priceOf("claude-3-opus")).toEqual({ ...ALIASES.opus, input: 99 });
-    expect(opus.priceOf("Anthropic/Claude-Opus-4-9")).toEqual({ ...ALIASES.opus, input: 99 });
-    expect(opus.priceOf("claude-opus-4-8")).toBe(SNAPSHOT["claude-opus-4-8"]);
+    expect(opus.priceOf("claude-opus-4-8")).toEqual({ ...SNAPSHOT["claude-opus-4-8"], input: 99 });
+    expect(opus.priceOf("Anthropic/Claude-3-Opus")).toEqual({ ...ALIASES.opus, input: 99 });
+    expect(opus.priceOf("gpt-5.5")).toBe(SNAPSHOT["gpt-5.5"]);
     const opus4 = { input: 20, output: 100, cacheWrite: 25, cacheRead: 2 };
     const longer = createPricing({}, { fallback: { ...ALIASES, "opus-4": opus4 }, overrides: { opus: { input: 99 } } });
-    expect(longer.priceOf("claude-opus-4-9")).toBe(opus4);
+    expect(longer.priceOf("claude-opus-4-9")).toEqual({ ...opus4, input: 99 });
   });
 
   it("fills a partial override with the price the id has without it", () => {
@@ -135,7 +135,7 @@ describe("createPricing", () => {
     });
   });
 
-  it("takes a model key's override over the table and over the override of the id's alias", () => {
+  it("takes the longest override key the id contains", () => {
     const pricing = presence({
       opus: { input: 50 },
       "claude-opus-4-8": { input: 99 },

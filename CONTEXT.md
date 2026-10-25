@@ -112,7 +112,7 @@ A decode of every UsageSource of the chosen agents that continues from the previ
 ## cost
 
 **PricingTable**:
-Prices per model, injected by the caller, such as the LiteLLM snapshot. A key names one model and prices only that model's id, the id with a date after it, or either with a provider prefix; an id no key names has no price. Family aliases such as `opus` are a separate fallback, which prices such an id by the longest alias it contains. Overrides are keyed by a model or an alias and replace the prices of the ids that key reaches; a partial override takes the rest from the id's price without overrides.
+Prices per model, injected by the caller, such as the LiteLLM snapshot. A key names one model and prices only that model's id, the id with a date after it, or either with a provider prefix; an id no key names has no price. Family aliases such as `opus` are a separate fallback, which prices such an id by the longest alias it contains. Overrides are the caller's own rules and match by substring: an id takes the longest override key it contains, over the table and the fallback, and a partial override takes the rest from the id's price without overrides.
 
 **LiteLLM snapshot**:
 The kit's copy of LiteLLM's prices for the models the supported agents record, served by `/cost/prices` as a PricingTable with its version: the date and LiteLLM commit it was generated from, which a host records with the costs it computes.

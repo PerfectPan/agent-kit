@@ -219,13 +219,14 @@ key names one model: it prices that id, the id followed by a date (`-20250929`, 
 `@20250929`), and either after one `<provider>/` prefix, so `claude-sonnet-4-5` prices `claude-sonnet-4-5-20250929`
 and `anthropic/claude-sonnet-4-5`; any other ending names another model, so `gpt-5` prices neither `gpt-5.7` nor
 `gpt-5-codex`. `fallback` holds family aliases such as `opus`: an id that no table key matches takes the longest alias
-its id contains. `overrides` replace prices, also in part, and win over both for the ids their keys reach. An override
-key is either a model, which reaches the ids it would match as a table key, or an alias in `fallback`, which reaches
-the ids that take that alias: `{ opus: … }` reprices `claude-3-opus` but not `claude-opus-4-8` when the table has that
-key. A model key wins over an alias. A partial override takes the prices it lacks from the id's price without
-overrides: over the snapshot, `{ "gpt-4o": { input: 1 } }` prices `gpt-4o-2024-05-13` at its own output price ($15),
-not `gpt-4o`'s ($10). A model without a price has no cost (`undefined`, not 0), and a summary's `costUsd` is absent
-when nothing in it was priced. A Grok turn split by model is priced and grouped per model.
+its id contains. `overrides` are your own rules and, unlike table keys, match by substring: an id takes the longest
+override key it contains, and that override replaces its prices, also in part, over the table and the fallback. So
+`{ opus: … }` reprices both `claude-opus-4-8` and `claude-3-opus`, and `{ "gpt-4o": … }` also reaches `gpt-4o-mini`.
+A partial override takes the prices it lacks from the id's price without overrides: over the snapshot,
+`{ "gpt-4o": { input: 1 } }` prices `gpt-4o-2024-05-13` at its own output price ($15), not `gpt-4o`'s ($10), and an
+id without a price of its own stays unpriced. A model without a price has no cost (`undefined`, not 0), and a
+summary's `costUsd` is absent when nothing in it was priced. A Grok turn split by model is priced and grouped per
+model.
 
 `priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
 buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
@@ -274,9 +275,9 @@ workflow opens a pull request when a price the snapshot keeps has changed, and t
 
 Each key names one model, so an id the snapshot has no key for has no price rather than another model's: until the
 snapshot has `gpt-5.7`, it is unpriced, not priced as `gpt-5`. A host that wants an estimate for such ids passes
-family aliases in `fallback`, at prices it chooses, or prices the ids with `overrides`. An override keyed by one of
-those aliases reaches only the ids that take the alias, not the models the snapshot names: to reprice
-`claude-opus-4-8`, override that key.
+family aliases in `fallback`, at prices it chooses, or prices the ids with `overrides`. Overrides still match by
+substring, because the host writes them: `{ "gpt-5": … }` reprices `gpt-5.7` and also every model the snapshot names
+whose id contains `gpt-5`.
 
 ## Errors
 
