@@ -53,9 +53,11 @@ function complete(price: Partial<Price>): Price | undefined {
 /**
  * The price lookup over `table`, with presence's rules. Keys match regardless of case. A model takes the entry of a
  * matching override key when there is one, else of a table or fallback key; among the keys of each, its own id wins,
- * then the longest key that its id contains, so `claude-opus-4-8-20260101` takes `claude-opus-4-8` over `opus`. Over
- * a whole price list, a short key can match an id it was not meant for: keep the models you price, as presence's
- * snapshot does. Lookups are cached by model id.
+ * then the longest key that its id contains, so `claude-opus-4-8-20260101` takes `claude-opus-4-8` over `opus`.
+ * Containment does not mean the same model: over a broad table such as `litellmPrices`, an id the table lacks takes
+ * another model's price without notice (`gpt-5.7` takes `gpt-5`, `o1-mini` takes `o1`, `gpt-5.4-chat-latest` takes
+ * `chat-latest`). Correct such ids with `overrides`, or treat ids the table lacks as unpriced in the host. Lookups are
+ * cached by model id.
  */
 export function createPricing(table: PricingTable, options: PricingOptions = {}): Pricing {
   const entries = new Map<string, Price>();

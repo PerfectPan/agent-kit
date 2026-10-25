@@ -264,6 +264,11 @@ one-hour cache write and cache read prices that LiteLLM lists. `scripts/update-p
 and [`scripts/lib/litellm-snapshot.ts`](scripts/lib/litellm-snapshot.ts) documents the filter. Every Monday a
 workflow opens a pull request when a price the snapshot keeps has changed, and the next release ships it.
 
+`createPricing` gives an id the table lacks the entry of the longest key the id contains, and over a table this
+broad that key can belong to another model: until the snapshot has `gpt-5.7`, it is priced as `gpt-5`. Where that
+matters, correct such ids with `overrides`, or have the host treat an id that `litellmPrices` has no key for as
+unpriced.
+
 ## Errors
 
 - `loadTranscript` and `summarizeSession` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where
