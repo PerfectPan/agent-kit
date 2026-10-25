@@ -11,7 +11,14 @@ const SNAPSHOT: PricingTable = {
   "deepseek-v4-pro": { input: 0.435, output: 0.87, cacheWrite: 0, cacheRead: 0.003625 },
   "gemini-3-flash-preview": { input: 0.5, output: 3, cacheWrite: 0.5, cacheRead: 0.05 },
   "gpt-5.5": { input: 5, output: 30, cacheWrite: 5, cacheRead: 0.5 },
-  "gpt-5.6-sol": { input: 5, output: 30, cacheWrite: 6.25, cacheRead: 0.5 }
+  "gpt-5.6-sol": { input: 5, output: 30, cacheWrite: 6.25, cacheRead: 0.5 },
+  "gpt-6-sol": {
+    input: 5,
+    output: 30,
+    cacheWrite: 6.25,
+    cacheRead: 0.5,
+    longContext: { thresholdTokens: 272_000, input: 10, output: 45, cacheRead: 1, cacheWrite: 12.5 }
+  }
 };
 const ALIASES: PricingTable = {
   opus: { input: 15, output: 75, cacheWrite: 18.75, cacheWrite1h: 30, cacheRead: 1.5 },
@@ -144,6 +151,23 @@ describe("createPricing", () => {
     expect(pricing.priceOf("claude-opus-4-8")).toEqual({ ...SNAPSHOT["claude-opus-4-8"], input: 99 });
     expect(pricing.priceOf("claude-opus-4-9")?.input).toBe(20);
     expect(pricing.priceOf("claude-3-opus")?.input).toBe(50);
+  });
+
+  it("keeps a model's tier through a partial override, and replaces it when the override carries one", () => {
+    const tier = { thresholdTokens: 200_000, input: 20 };
+    expect(presence({ "gpt-6-sol": { input: 6 } }).priceOf("gpt-6-sol")).toEqual({
+      ...SNAPSHOT["gpt-6-sol"],
+      input: 6
+    });
+    expect(presence({ "gpt-6-sol": { input: 6, longContext: tier } }).priceOf("gpt-6-sol")).toEqual({
+      ...SNAPSHOT["gpt-6-sol"],
+      input: 6,
+      longContext: tier
+    });
+    expect(presence({ "gpt-6-sol": { longContext: tier } }).priceOf("gpt-6-sol")).toEqual({
+      ...SNAPSHOT["gpt-6-sol"],
+      longContext: tier
+    });
   });
 
   it("prices a model that no table or override key matches by the longest fallback alias its id contains", () => {

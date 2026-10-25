@@ -12,18 +12,41 @@ type Part = ModelUsage & { readonly model?: string };
  * USD of `usage` at `price`. The terms and their order are those of presence's formula, so both give the same
  * floating-point dollars. Input without cache is computed here rather than with sessions' `noCacheInputTokens`,
  * because cost takes only types from sessions.
+ *
+ * A model with a long-context tier bills a request whose total input (`inputTokens`, cache reads and writes
+ * included, as LiteLLM's `prompt_tokens` and Codex's `input_tokens`) exceeds the tier's threshold whole at the
+ * tier's rates — LiteLLM's calculator and ccusage's aggregation both charge every token of such a request at the
+ * tier, never only the part past the threshold, and both compare strictly — and a rate the tier lacks stays at the
+ * model's base price. A part of a split is judged by its own usage.
  */
 function priceUsage(usage: Usage, price: Price): number {
   const cacheRead = usage.cacheReadTokens ?? 0;
   const cacheWrite = usage.cacheWriteTokens ?? 0;
   const cacheWrite1h = Math.min(cacheWrite, Math.max(0, usage.cacheWrite1hTokens ?? 0));
   const noCacheInput = Math.max(0, (usage.inputTokens ?? 0) - cacheRead - cacheWrite);
+  const tier = price.longContext;
+  const rates =
+    tier !== undefined && (usage.inputTokens ?? 0) > tier.thresholdTokens
+      ? {
+          input: tier.input ?? price.input,
+          output: tier.output ?? price.output,
+          cacheRead: tier.cacheRead ?? price.cacheRead,
+          cacheWrite: tier.cacheWrite ?? price.cacheWrite,
+          cacheWrite1h: tier.cacheWrite1h ?? price.cacheWrite1h
+        }
+      : {
+          input: price.input,
+          output: price.output,
+          cacheRead: price.cacheRead,
+          cacheWrite: price.cacheWrite,
+          cacheWrite1h: price.cacheWrite1h
+        };
   return (
-    (noCacheInput * price.input +
-      (usage.outputTokens ?? 0) * price.output +
-      (cacheWrite - cacheWrite1h) * price.cacheWrite +
-      cacheWrite1h * (price.cacheWrite1h ?? price.cacheWrite) +
-      cacheRead * price.cacheRead) /
+    (noCacheInput * rates.input +
+      (usage.outputTokens ?? 0) * rates.output +
+      (cacheWrite - cacheWrite1h) * rates.cacheWrite +
+      cacheWrite1h * (rates.cacheWrite1h ?? rates.cacheWrite) +
+      cacheRead * rates.cacheRead) /
     1_000_000
   );
 }

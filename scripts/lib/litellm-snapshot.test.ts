@@ -37,11 +37,16 @@ const LITELLM = {
     litellm_provider: "vertex_ai-anthropic_models",
     mode: "chat"
   },
-  // Floating-point noise in LiteLLM's number, and a cache read price that is not a number.
+  // Floating-point noise in LiteLLM's number, and a cache read price that is not a number. The tier's fields come
+  // along under their threshold; the flex variant and the twelve-hour cache-write tier do not.
   "gpt-5.5": {
     input_cost_per_token: 5.000000000000001e-6,
     output_cost_per_token: 3e-5,
     cache_read_input_token_cost: null,
+    input_cost_per_token_above_272k_tokens: 1e-5,
+    output_cost_per_token_above_272k_tokens: 4.5e-5,
+    input_cost_per_token_above_272k_tokens_flex: 9e-6,
+    cache_creation_input_token_cost_above_12hr_above_272k_tokens: 8e-6,
     litellm_provider: "openai",
     mode: "responses"
   },
@@ -115,7 +120,11 @@ const SELECTED = {
     cache_read_input_token_cost: 3e-8
   },
   "glm-5.1": { input_cost_per_token: 0.000001, output_cost_per_token: 0.0000032 },
-  "gpt-5.5": { input_cost_per_token: 0.000005, output_cost_per_token: 0.00003 },
+  "gpt-5.5": {
+    input_cost_per_token: 0.000005,
+    output_cost_per_token: 0.00003,
+    long_context: { above_tokens: 272_000, input_cost_per_token: 1e-5, output_cost_per_token: 4.5e-5 }
+  },
   "grok-4.20": { input_cost_per_token: 0.000002, output_cost_per_token: 0.000006 }
 };
 

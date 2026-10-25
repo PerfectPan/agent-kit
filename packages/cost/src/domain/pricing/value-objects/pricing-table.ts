@@ -50,11 +50,19 @@ function longest<T>(id: string, entries: ReadonlyMap<string, T>): T | undefined 
 }
 
 function complete(price: Partial<Price>): Price | undefined {
-  const { input, output, cacheRead, cacheWrite, cacheWrite1h } = price;
+  const { input, output, cacheRead, cacheWrite, cacheWrite1h, longContext } = price;
   if (input === undefined || output === undefined || cacheRead === undefined || cacheWrite === undefined) {
     return undefined;
   }
-  return { input, output, cacheRead, cacheWrite, ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }) };
+  return {
+    input,
+    output,
+    cacheRead,
+    cacheWrite,
+    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }),
+    // The tier is one field: an override that lacks it keeps the model's own, one that has it replaces it.
+    ...(longContext === undefined ? {} : { longContext })
+  };
 }
 
 /**
