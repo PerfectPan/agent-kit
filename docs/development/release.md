@@ -294,9 +294,12 @@ Run it after `pnpm run check` so `dist` exists.
 
 - **Price snapshot PRs**: `.github/workflows/update-pricing.yml` runs every Monday, or from **Actions → Update
   Pricing → Run workflow**. It runs `scripts/update-pricing.ts`, which regenerates the LiteLLM snapshot of
-  `/cost/prices` and leaves it untouched when no price it keeps has changed. On a change it rebuilds the branch
-  `chore/update-pricing` from the commit it ran on, with the snapshot and a patch changeset for `@rivus/agent-kit`,
-  force-pushes it and opens or updates the draft PR `chore(cost): update the LiteLLM price snapshot`. Pull requests
+  `/cost/prices` and leaves it untouched when no price it keeps has changed. The generator runs in a job with a
+  read-only token; on a change, a second job with write access rebuilds the branch `chore/update-pricing` from the
+  commit it ran on, with the snapshot and a patch changeset for `@rivus/agent-kit`, force-pushes it and opens or
+  updates the draft PR `chore(cost): update the LiteLLM price snapshot`. Only a run on `main` does that: run on
+  another branch, the workflow reports in a notice whether the snapshot changed, keeps the new file as the run's
+  artifact, and pushes nothing. Pull requests
   created with the workflow's `github.token` do not trigger workflows, so select **Ready for review** to start CI, as
   for the release PR. Review the diff for models that disappeared, then squash-merge; the next release ships it. A
   failing check needs a fix on the branch: the fixture-pricing test in `packages/cost/test` when LiteLLM renamed or
