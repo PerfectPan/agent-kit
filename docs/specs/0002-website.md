@@ -28,8 +28,11 @@ analytics.
 | W4 | Any guide | the visitor switches language | the same URL shows the other language, or the English page with a note when no translation exists |
 | W5 | The API reference | the visitor opens an entry such as `@rivus/agent-kit/sessions` | every exported function, type and constant of that entry is listed with its signature and doc comment, generated from the published declarations |
 | W6 | A visitor with `prefers-reduced-motion` | they open the landing page | no mascot animation runs; every state is still readable |
-| W7 | A push to `main` that changes the website or a public entry | CI runs | the site builds as static files and deploys to GitHub Pages; a pull request only builds |
+| W7 | A push to `main` that changes the website or a public entry | CI runs | the site builds as static files and publishes at the GitHub Pages root without deleting PR previews |
 | W8 | A 390 px wide screen | any page | nothing overflows horizontally; the code demo scrolls inside its own box |
+| W9 | An open PR changing website inputs, including one from a fork | an approved read-only build succeeds | a trusted workflow publishes its current head at `/agent-kit/pr-preview/pr-<number>/` and creates or updates one preview comment; stale or unrelated artifacts cannot overwrite it |
+| W10 | A preview page | a visitor opens or navigates it | links, assets, search and language switching work within its base path; every page has noindex metadata and a slim `Preview of #<number>` banner; production has neither |
+| W11 | A PR with a published preview | the PR closes | trusted code removes that preview and updates its comment, preserving production and other PRs; it does not execute PR code |
 
 Sizes shown on the landing page are the `size-limit` budgets from each package's `.size-limit.ts`; the support table
 is generated from the shipped provider tables, not written by hand.

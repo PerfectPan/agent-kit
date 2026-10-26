@@ -5,6 +5,7 @@ import { RootProvider } from "fumadocs-ui/provider/tanstack";
 
 import { DOCS_PENDING_CLASS, DOCS_PENDING_TIMEOUT_MS, LANG_STORAGE_KEY, languageFrom } from "./lang-preference.ts";
 import { translations } from "./translations.ts";
+import { PreviewNotice } from "../preview/index.ts";
 
 export function RootShell() {
   const { lang, setLang } = useLanguageState({
@@ -26,6 +27,7 @@ export function RootShell() {
         <HeadContent />
       </head>
       <body>
+        <PreviewNotice />
         <LanguageProvider value={{ lang, setLang }}>
           <RootProvider
             theme={{ defaultTheme: "light" }}

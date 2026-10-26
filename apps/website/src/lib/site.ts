@@ -1,5 +1,4 @@
-/**
- * GitHub Pages serves this project site under `/agent-kit/`.
- * Vite's `base` keeps the trailing slash; the router basepath does not.
- */
-export const SITE_BASE_PATH = "/agent-kit";
+/** Vite keeps a trailing slash; router basepaths and URL prefixes do not. */
+export function normalizeBasePath(value: string): string {
+  return value.replace(/\/+$/, "");
+}

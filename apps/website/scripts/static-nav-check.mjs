@@ -1,4 +1,4 @@
-// Serves dist/client under /agent-kit/ and clicks landing -> docs -> nested
+// Serves dist/client under SITE_BASE_PATH and clicks landing -> docs -> nested
 // page -> API page, then switches language in place. Chrome is headless via the
 // DevTools protocol. Not part of `pnpm test`.
 
@@ -9,8 +9,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { normalizeBasePath } from "../src/lib/site.ts";
+
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../dist/client");
-const prefix = "/agent-kit";
+const prefix = normalizeBasePath(process.env.SITE_BASE_PATH ?? "/agent-kit");
 const types = new Map([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
@@ -250,6 +252,26 @@ try {
   await waitForText(session, "The Universal Agent Toolkit");
   const landing = await evaluate(session, "location.href");
   assertPath(landing, `${prefix}/`, "landing");
+  const preview = process.env.SITE_PREVIEW_PR ?? "";
+  const previewState = await evaluate(
+    session,
+    `({ banner: document.querySelector('.preview-banner')?.textContent?.trim() ?? '', robots: document.querySelector('meta[name="robots"]')?.content ?? '' })`
+  );
+  if (
+    previewState.banner !== (preview ? `Preview of #${preview}` : "") ||
+    previewState.robots !== (preview ? "noindex" : "")
+  ) {
+    throw new Error(`unexpected preview metadata: ${JSON.stringify(previewState)}`);
+  }
+  for (const lang of ["en", "zh"]) {
+    const status = await evaluate(
+      session,
+      `fetch(${JSON.stringify(`${prefix}/api/search.${lang}.json`)}).then(response => response.status)`
+    );
+    if (status !== 200) {
+      throw new Error(`search index ${lang} returned ${status}`);
+    }
+  }
 
   await evaluate(session, `document.querySelector('header a[href="${prefix}/docs"]')?.click()`);
   await waitForText(session, "connects to one Agent at a time");
@@ -299,7 +321,9 @@ try {
   session.close();
 
   const interesting = session.responses.filter((entry) => !entry.url.endsWith("/favicon.ico"));
-  const failures = interesting.filter((entry) => entry.status >= 400 || entry.url.includes("/_serverFn"));
+  const failures = interesting.filter(
+    (entry) => entry.status >= 400 || entry.url.includes("/_serverFn") || !entry.url.startsWith(`${origin}${prefix}/`)
+  );
   const zhUrls = interesting.filter((entry) => new URL(entry.url).pathname.includes("/zh"));
 
   console.log(`landing ${landing}`);
