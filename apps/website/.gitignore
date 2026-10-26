@@ -6,3 +6,5 @@ src/routeTree.gen.ts
 # TypeDoc output, written by scripts/generate-api-reference.ts before the site build.
 content/docs/en/api/
 content/docs/zh/api/
+# Source build adapters; generated output remains under dist/.
+!src/features/docs/build/

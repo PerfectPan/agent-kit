@@ -1,16 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { LandingPage } from "../components/landing/landing-page.tsx";
-import landingCss from "../styles/landing.css?url";
-
-function Landing() {
-  return (
-    <div className="landing-langs">
-      <LandingPage lang="en" />
-      <LandingPage lang="zh" />
-    </div>
-  );
-}
+import { Landing } from "../features/landing/landing.tsx";
+import landingCss from "../components/landing.css?url";
 
 export const Route = createFileRoute("/")({
   head: () => ({

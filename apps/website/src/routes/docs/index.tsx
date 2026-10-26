@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
-import { DocsScreen } from "../../components/docs-screen.tsx";
-import { source } from "../../lib/source.ts";
+import { DocsScreen } from "../../features/docs/docs-page.tsx";
+import { source } from "../../features/docs/source.ts";
 
 function DocsIndex() {
   return <DocsScreen />;

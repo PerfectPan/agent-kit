@@ -130,6 +130,7 @@ For non-trivial changes:
 
 ## Repository Architecture
 
+- When changing the website, follow the source boundaries in [apps/website/README.md](apps/website/README.md).
 - `docs/architecture/authoring.md` is the authority for context and provider layouts, shared external-format adapters,
   plain TypeScript and Effect rules, and the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,

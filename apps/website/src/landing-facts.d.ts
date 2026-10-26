@@ -1,6 +1,6 @@
 declare module "virtual:landing-facts" {
-  import type { ShownBudget } from "./lib/entry-budgets.ts";
-  import type { SupportRow } from "./lib/support.ts";
+  import type { ShownBudget } from "./features/landing/entry-budgets.ts";
+  import type { SupportRow } from "./features/landing/support.ts";
 
   export interface LandingFacts {
     readonly support: readonly SupportRow[];

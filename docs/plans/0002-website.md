@@ -99,6 +99,28 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
 - Delivered: `pages.yml` builds on pull requests and `workflow_dispatch`, and deploys on a push to `main`. W7 on
   GitHub still needs Settings → Pages → Source: GitHub Actions.
 
+#### Task 10: Separate website features, UI, and effects
+
+- Scope: restructure `apps/website/src` without changing behavior, DOM, styles, copy, URLs, timings,
+  keyboard controls, or prerendered output. No package, dependency, or policy changes.
+- Decisions: routes render feature pages; the landing, demo, layer, docs, and i18n features own business
+  data and composition. Pure reducers own business selections and demo phases. Generic state, timers,
+  language persistence, observation, and measurement move to JSX-free hooks; UI receives props and
+  callbacks. Pure generic helpers remain in lib. Cross-feature imports use explicit index entries.
+- Order: preserve the existing homepage baseline; relocate modules and adjacent tests; separate UI and
+  effects; add reducer regression tests and named architecture checks; document the boundaries in the
+  website README and append the delivery evidence to HANDOFF.
+- Compatibility: retain the dual language tree, rendered node order, timer delays and cancellation,
+  keyboard focus, and existing Fumadocs integration. CSS files and class names stay unchanged.
+- Exit: website typecheck, lint, format:check, test, dependency-inclusive build, normalized homepage
+  comparison, static navigation check (or a concrete sandbox blocker), and root `pnpm run check`.
+  Record exact commands and final output lines. Deliver local edits for coordinator review, without
+  commits or pushes.
+- Review status: source separation and website checks/build are implemented. Strict whole-HTML parity
+  remains open because shared chunks/preloads and hydration timestamps differ; all 43 prerendered page
+  bodies match a clean HEAD build. Browser startup and the root process-identity tests are blocked in
+  the current sandbox. Task 10's HANDOFF records the exact evidence and remaining acceptance work.
+
 ### 4.3 Rollback
 
 Each task is its own commit; reverting `apps/website` and the workspace glob removes the site without touching the

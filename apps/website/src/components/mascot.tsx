@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 const BODY =
   "M76 52 L164 42 C190 40 208 56 208 78 V112 C208 124 200 132 188 132 C183 132 181 129 181 125 V107 C158 109 136 113 126 120 C121 124 120 128 120 131 C136 133 166 136 186 141 C200 144 208 152 208 166 V184 C208 198 196 208 182 208 H76 C60 208 48 196 48 180 V80 C48 64 60 54 76 52 Z";
 const FLAP =
@@ -9,29 +7,13 @@ export type MascotState = "idle" | "working" | "blocked";
 
 export function Mascot({
   state,
-  hopSignal,
+  hop,
   className
 }: {
   readonly state: MascotState;
-  /** Changes restart the hop. Omitted mascots only hop on brand hover. */
-  readonly hopSignal?: string;
+  readonly hop?: boolean;
   readonly className?: string;
 }) {
-  const [hop, setHop] = useState(false);
-
-  useEffect(() => {
-    if (hopSignal === undefined) {
-      return undefined;
-    }
-    setHop(false);
-    const frame = requestAnimationFrame(() => {
-      setHop(true);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [hopSignal]);
-
   const classes = [state, hop ? "hop" : undefined, className].filter((name) => name !== undefined).join(" ");
 
   return (
