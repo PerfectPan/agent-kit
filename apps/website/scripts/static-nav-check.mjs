@@ -103,7 +103,8 @@ function listen() {
 
 async function waitFor(url) {
   let last = "not up";
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  // CI runners start Chrome more slowly than a laptop; give it up to 30 s.
+  for (let attempt = 0; attempt < 300; attempt += 1) {
     try {
       const response = await fetch(url);
       if (response.ok) {
@@ -174,7 +175,8 @@ async function evaluate(session, expression) {
 
 async function waitForText(session, text) {
   const started = Date.now();
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  // CI runners start Chrome more slowly than a laptop; give it up to 30 s.
+  for (let attempt = 0; attempt < 300; attempt += 1) {
     const found = await evaluate(
       session,
       `document.body != null && document.body.innerText.includes(${JSON.stringify(text)})`
@@ -219,15 +221,24 @@ const chrome = spawn(
     "--headless=new",
     "--disable-gpu",
     "--no-first-run",
+    // Ubuntu 24.04 runners restrict unprivileged user namespaces, so Chrome's sandbox cannot start there.
+    // This throwaway check only loads the site we just built.
+    ...(process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
     `--remote-debugging-port=${debugPort}`,
     `--user-data-dir=${profile}`,
     "about:blank"
   ],
-  { stdio: "ignore" }
+  { stdio: ["ignore", "ignore", "pipe"] }
 );
+let chromeStderr = "";
+chrome.stderr.on("data", (chunk) => {
+  chromeStderr = (chromeStderr + chunk).slice(-4000);
+});
 
 try {
-  await waitFor(`http://127.0.0.1:${debugPort}/json/version`);
+  await waitFor(`http://127.0.0.1:${debugPort}/json/version`).catch((error) => {
+    throw new Error(`${error.message}\nChrome stderr:\n${chromeStderr || "(empty)"}`);
+  });
   const targets = await fetch(`http://127.0.0.1:${debugPort}/json/list`).then((response) => response.json());
   const page = targets.find((target) => target.type === "page");
   if (!page) {

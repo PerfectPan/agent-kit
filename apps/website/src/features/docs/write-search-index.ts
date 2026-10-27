@@ -3,8 +3,8 @@ import { join } from "node:path";
 
 import { createFromSource } from "fumadocs-core/search/server";
 
-import { i18nSearchData } from "../search-export.ts";
-import { source } from "../source.ts";
+import { i18nSearchData } from "./search-export.ts";
+import { source } from "./source.ts";
 
 const searchDir = join(process.cwd(), "dist/.search");
 

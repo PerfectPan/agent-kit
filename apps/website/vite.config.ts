@@ -1,4 +1,4 @@
-import { landingFactsPlugin } from "./src/features/docs/build/landing-facts-plugin.ts";
+import { landingFactsPlugin } from "./src/features/landing/facts-plugin.ts";
 import { fileURLToPath } from "node:url";
 
 import { fmt, lint } from "@perfectpan/lint-config/vite-plus";

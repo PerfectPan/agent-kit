@@ -153,7 +153,7 @@ it.each([
   ["lib/a.ts", 'import { x } from "../hooks/x.ts";', "lib-independent"],
   ["features/demo/a.ts", 'export * from "../../routes/index.tsx";', "features-no-routes"],
   ["features/demo/a.ts", 'import { text } from "../landing/copy.ts";', "feature-public-entry"],
-  ["features/docs/build/a.ts", 'import { x } from "../../landing/build/index.ts";', "feature-public-entry"]
+  ["features/docs/a.ts", 'import { x } from "../landing/copy.ts";', "feature-public-entry"]
 ])("reports a named rule for %s: %s", (file, code, rule) => {
   expect(violations(file, code).some((message) => message.startsWith(`${rule}:`))).toBe(true);
 });

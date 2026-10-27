@@ -10,7 +10,7 @@ export const Route = createRootRoute({
     if (!import.meta.env.SSR) {
       return;
     }
-    const { writeSearchIndexes } = await import("../features/docs/build/write-search-index.ts");
+    const { writeSearchIndexes } = await import("../features/docs/write-search-index.ts");
     await writeSearchIndexes();
   },
   head: () => ({

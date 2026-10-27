@@ -27,9 +27,9 @@ the parser already exposed by Vite. Failures name the rule:
 - `feature-public-entry`: another feature is accessed through its `index.ts`; add an entry only when
   another feature needs it, and export only those consumers' dependencies.
 
-Tests live beside their modules. `features/docs/build/` contains source adapters for search export and
-the landing-facts Vite plugin; generated output stays in `dist/`. The source directory is explicitly
-included in Git despite the repository's generic `build/` ignore.
+Tests live beside their modules. Build-time code lives with its feature: `features/docs/write-search-index.ts` writes the search indexes and
+`features/landing/facts-plugin.ts` provides the landing page's build-time facts; generated output stays in
+`dist/`.
 The base-path helper test lives at `src/site.test.ts`, outside the pure lib boundary, so lib does not
 import the test runner.
 

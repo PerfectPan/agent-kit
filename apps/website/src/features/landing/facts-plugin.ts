@@ -1,14 +1,20 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { budgetsFromLimits, factsFromLimits, supportFromProviders, type SizeLimitEntry } from "../../landing/index.ts";
+import { budgetsFromLimits, factsFromLimits, type SizeLimitEntry } from "./entry-budgets.ts";
+import { supportFromProviders } from "./support.ts";
 
 const require = createRequire(import.meta.url);
 const landingFactsId = "virtual:landing-facts";
 
-/** Node 24 strips types, so the package `.size-limit.ts` modules load as values. */
-async function importSizeLimits(relativePath: string): Promise<readonly SizeLimitEntry[]> {
-  const url = new URL(relativePath, import.meta.url);
+/**
+ * Node 24 strips types, so a package's `.size-limit.ts` loads as a value. The package is found by name: Vite
+ * bundles this file into a temporary config module, so paths relative to it would not point at the source tree.
+ */
+async function importSizeLimits(packageName: string): Promise<readonly SizeLimitEntry[]> {
+  const url = pathToFileURL(join(dirname(require.resolve(`${packageName}/package.json`)), ".size-limit.ts"));
   const imported: unknown = await import(url.href);
   if (
     typeof imported !== "object" ||
@@ -48,8 +54,8 @@ export function landingFactsPlugin() {
         return undefined;
       }
       const { builtinProviders } = await import("@rivus/agent-kit/providers");
-      const kit = await importSizeLimits("../../../../../../packages/agent-kit/.size-limit.ts");
-      const collab = await importSizeLimits("../../../../../../packages/agent-kit-collab/.size-limit.ts");
+      const kit = await importSizeLimits("@rivus/agent-kit");
+      const collab = await importSizeLimits("@rivus/agent-kit-collab");
       const pkg = JSON.parse(readFileSync(require.resolve("@rivus/agent-kit/package.json"), "utf8")) as {
         version: string;
         license: string;
