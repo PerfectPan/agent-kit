@@ -212,7 +212,8 @@ Run it after `pnpm run check` so `dist` exists.
   `@effect/tsgo` has no effect peer and stays in the catch-all group. Renovate updates both size-limit catalog
   pins together only when both releases have passed the seven-day wait in the same run. Different release dates
   can leave only one eligible, so review their exact peer requirements before merging. Keep
-  `strictPeerDependencies: true`; compare every entry's size against main, and raise a budget only to the measured size.
+  `strictPeerDependencies: true`. Size budgets keep 2% (at least 256 B) of headroom, so most updates pass unchanged;
+  when one exceeds a budget, compare every entry's size against main and run `pnpm size:update` on the branch.
 
   Node upgrades remain deliberate: `engines`, `devEngines.runtime`, `.node-version` and major `@types/node`
   updates are disabled. `@perfectpan/lint-config` stays disabled because it is a Git dependency whose upgrades
@@ -303,7 +304,7 @@ Run it after `pnpm run check` so `dist` exists.
   created with the workflow's `github.token` do not trigger workflows, so select **Ready for review** to start CI, as
   for the release PR. Review the diff for models that disappeared, then squash-merge; the next release ships it. A
   failing check needs a fix on the branch: the fixture-pricing test in `packages/cost/test` when LiteLLM renamed or
-  dropped a model, the `/cost/prices` size budget when it added many. The next run replaces commits pushed to the
+  dropped a model, `pnpm size:update` when it added enough models to exceed the `/cost/prices` budget. The next run replaces commits pushed to the
   branch by hand, so merge or close the PR within the week.
 - **Boundary-tool upgrades**: Renovate waits 14 days for `eslint`, `eslint-plugin-boundaries`,
   `eslint-import-resolver-typescript`, `oxc-parser` and `oxlint-plugin-eslint`. Keep `oxlint-plugin-eslint` aligned

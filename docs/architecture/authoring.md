@@ -487,9 +487,10 @@ coverage. The built-output identity check (`scripts/check-provider-packing.ts` i
 `check:package` after build, not from unit tests. It checks descriptor reference identity in ordinary entries;
 isolated hook objects are intentionally separate. `check-dist.ts` checks the slim runtime and declaration graphs.
 
-Compare every size-limit entry in both published packages with the main commit the change starts from. Explain
-growth over 1% in the PR. Raise only exceeded budgets to measured sizes and lower budgets with more than 1%
-headroom to measured sizes; do not hide growth with spare budget. Keep identity facts together even when an
+Compare every size-limit entry in both published packages with the main commit the change starts from, and explain
+growth over 1% in the PR. Each budget is the measured size plus 2%, at least 256 B, so small dependency updates pass
+without a budget change. When an entry exceeds its budget, or the change shrinks one, run `pnpm size:update` to
+reset every budget from the new sizes; do not edit limits by hand. Keep identity facts together even when an
 unbundled catalog chunk contains unused facts: assess the tree-shaken entry as well as its chunk. Record CI duration
 when changing workspace structure or lint tooling.
 
