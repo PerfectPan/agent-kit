@@ -37,6 +37,7 @@ pnpm run lint          # vp lint: oxlint with type-aware rules, TypeScript diagn
 pnpm run typecheck
 pnpm run test          # includes the boundary manifest test and lint cases in infra/architecture
 pnpm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
+pnpm run size:update  # rebuild the published packages and reset every size-limit budget to measured size + headroom
 
 # Work on one package (add ... after the name to include its workspace dependencies):
 pnpm --filter @rivus/agent-kit-platform run test

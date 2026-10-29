@@ -11,6 +11,7 @@
     "format": "pnpm -r run format",
     "format:check": "pnpm -r run format:check",
     "check:package": "pnpm -r run check:package",
+    "size:update": "node scripts/update-size-budgets.ts",
     "change": "pnpm change",
     "check": "pnpm run format:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:package",
     "release:version": "pnpm version -r && pnpm run check",

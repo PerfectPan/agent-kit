@@ -2,7 +2,7 @@
   "name": "repo-scripts",
   "version": "0.0.0",
   "private": true,
-  "description": "Repository automation for this monorepo: release state, release identity checks and the LiteLLM price snapshot.",
+  "description": "Repository automation for this monorepo: release state, release identity checks, the LiteLLM price snapshot and size budgets.",
   "type": "module",
   "scripts": {
     "build": "",
