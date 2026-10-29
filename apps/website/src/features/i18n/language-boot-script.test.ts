@@ -14,7 +14,7 @@ it("embeds the same choice in the static-page script", () => {
   expect(script).not.toContain("/zh");
 });
 
-it.each(["/agent-kit/docs", "/agent-kit/pr-preview/pr-215/docs"])(
+it.each(["/agent-kit/docs", "/docs"])(
   "restores the language before paint at %s without rewriting the URL",
   (pathname) => {
     const classes = new Set<string>();

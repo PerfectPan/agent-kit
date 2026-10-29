@@ -263,17 +263,6 @@ try {
   await waitForText(session, "The Universal Agent Toolkit");
   const landing = await evaluate(session, "location.href");
   assertPath(landing, `${prefix}/`, "landing");
-  const preview = process.env.SITE_PREVIEW_PR ?? "";
-  const previewState = await evaluate(
-    session,
-    `({ banner: document.querySelector('.preview-banner')?.textContent?.trim() ?? '', robots: document.querySelector('meta[name="robots"]')?.content ?? '' })`
-  );
-  if (
-    previewState.banner !== (preview ? `Preview of #${preview}` : "") ||
-    previewState.robots !== (preview ? "noindex" : "")
-  ) {
-    throw new Error(`unexpected preview metadata: ${JSON.stringify(previewState)}`);
-  }
   for (const lang of ["en", "zh"]) {
     const status = await evaluate(
       session,

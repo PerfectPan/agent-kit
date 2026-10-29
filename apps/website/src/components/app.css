@@ -69,15 +69,6 @@ body {
   font-family: var(--font-sans);
 }
 
-.preview-banner {
-  border-bottom: 1px solid var(--color-fd-border);
-  background: var(--color-fd-secondary);
-  color: var(--color-fd-foreground);
-  padding: 0.375rem 1rem;
-  text-align: center;
-  font: 500 0.75rem / 1.5 var(--font-mono);
-}
-
 figure.shiki {
   background-color: #f3ece3;
   border-width: 0;

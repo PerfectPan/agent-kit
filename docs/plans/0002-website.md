@@ -1,9 +1,9 @@
 # Project website
 
-- Status: in review (Task 11 local implementation; GitHub acceptance pending)
+- Status: in review (Task 11 main-only deployment; GitHub acceptance pending)
 - Owner: PerfectPan
 - Reviewer: unconfirmed
-- Last updated: 2026-10-25
+- Last updated: 2026-10-29
 - Paired Spec: [docs/specs/0002-website.md](../specs/0002-website.md)
 
 ## 1. Background and goals
@@ -36,19 +36,18 @@ The browser playground, a custom domain, server-side rendering at request time.
 | Mascot | The ribbon mascot as one SVG React component with `idle`, `working` and `blocked` states | Approved identity |
 | Data | Entry size budgets read from `packages/*/.size-limit.ts` and the support table from `builtinProviders` at build time | Spec: no hand-written numbers |
 | API reference | Generated from the built `.d.ts` of the published packages. First choice: TypeDoc + `typedoc-plugin-markdown` into MDX, with TypeScript 6 pinned for TypeDoc only through a scoped override; fallback: `fumadocs-typescript` (TypeScript 7 based) | TypeDoc supports TypeScript ≤ 6.0; to be confirmed in Task 1 |
-| Deployment | Read-only `pages.yml` builds; trusted writers publish `main` to the `gh-pages` root and PRs to `pr-preview/pr-<number>/`; Pages uses that branch's root | One GitHub Pages site with isolated publication paths; main preserves previews |
+| Deployment | `pages.yml` builds and checks every eligible event; only pushes to `main` upload a Pages artifact and deploy in a separate job. Pages source is **GitHub Actions** | The owner dropped PR previews: native Pages PR previews are alpha-only and not public, and a dedicated publishing branch is not wanted |
 
 ## 3. Risks to settle first
 
 1. TanStack Start and Fumadocs under the `vite@* → vite-plus-core` override.
 2. TypeDoc's TypeScript peer (≤ 6.0) against the catalog's TypeScript 7 with `strictPeerDependencies: true`.
 3. Static prerendering of every route in both languages under the `/agent-kit/` base path.
-4. Branch publication with `GITHUB_TOKEN` does not trigger Pages. The owner-approved permission
-   supplement (`actions: read` for artifact download; `pages: write` for explicit build requests) is
-   implemented; the Pages branch setting and live acceptance remain outstanding.
-5. A fork artifact is untrusted data. Validate metadata and paths without running code, bind it to the
-   source run and current PR through GitHub APIs, and serialize all writes and cleanups. Same-origin
-   preview JavaScript is still public executable content for visitors; noindex is not access control.
+4. A maintainer must set the Pages source to **GitHub Actions** and retain the `github-pages`
+   environment's deployment restrictions. Live deployment acceptance remains outstanding.
+5. Fork PRs build untrusted code with only `contents: read`, without persisted checkout credentials.
+   Retain repository workflow approval requirements. Only the separate main-push deploy job receives
+   `pages: write` and `id-token: write`; PR and manual runs cannot upload or deploy the site.
 
 A risk that cannot be solved without weakening a repository policy (catalog strictness, the vite override, peer
 strictness) stops the batch and goes back to the owner.
@@ -101,9 +100,9 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
 #### Task 5: Deployment
 
 - Files: `.github/workflows/pages.yml`, docs.
-- Exit condition: W7 on a fork.
-- Delivered initially through the Actions artifact. Task 11 replaces that delivery with branch
-  publication; GitHub setup and acceptance now follow the website README.
+- Exit condition: W7 on GitHub.
+- Deployment uses the Actions artifact. Task 11 keeps publication limited to main pushes;
+  GitHub setup and acceptance follow the website README.
 
 #### Task 10: Separate website features, UI, and effects
 
@@ -132,40 +131,40 @@ decisions taken, open issues. The coordinator reviews every batch before the nex
 Each task is its own commit; reverting `apps/website` and the workspace glob removes the site without touching the
 packages.
 
-#### Task 11: Pull request previews
+#### Task 11: Main-only Pages deployment
 
-- Scope: website build inputs, `.github/workflows/pages*.yml`, trusted Pages deployment helpers,
+- Scope: `.github/workflows/pages.yml`, removal of preview automation and UI, website build inputs,
   and website documentation. No commits, pushes, package edits, dependency changes, or policy relaxation.
-- Decisions: publish `main` to the `gh-pages` root and preserve `pr-preview/`; publish each PR to
-  `pr-preview/pr-<number>/`. Use event-level paths filters for website/API/package/workspace inputs,
-  keeping CI unfiltered. The Pages build has only `contents: read`; a separate default-branch
-  `workflow_run` consumes the artifact as data. Resolve fork PRs by head SHA through the API when
-  the event has no PR list. Reject invalid metadata, unsafe archive entries, and unrelated PRs;
-  skip stale heads and closed PRs. Close events use trusted code only.
-- Concurrency: every branch writer uses `pages-gh-pages` with cancellation disabled and `queue: max`,
-  so unrelated PR cleanups do not replace one another in the pending queue. Recheck PR state/head
-  before writing, and preserve sibling previews on every operation.
-- Review revision: port deployment automation and its regression tests to the private `scripts/`
-  TypeScript project. The CLI is `scripts/pages-preview.ts`; publishing and archive validation live
-  under `scripts/lib/` with adjacent tests. Use only Node built-ins and fetch so privileged jobs can
-  sparsely check out trusted default-branch `scripts` and `.node-version`, set up Node, and run without
-  installing dependencies. Retain metadata, archive, fork identity, state, comment and directory checks.
-  Add the approved `actions: read` to publishers and `pages: write` to all writers, with inline reasons;
-  keep the PR build at `contents: read`. Request a Pages build even on an unchanged rerun after an
-  earlier build-request failure. Verify the scripts gates, both website builds/gates and workflow YAML.
-- Build/UI: normalize `SITE_BASE_PATH` in a pure lib helper; Vite supplies the client base URL.
-  `SITE_PREVIEW_PR` adds noindex metadata and a slim preview banner through a feature and pure UI.
-- Order: implement and test base paths/UI; implement read-only artifact creation and trusted publishing;
-  add hostile-artifact/state regression checks; document setup and fork approval; run both builds,
-  navigation checks, website gates, full repository check, and workflow YAML validation.
-- Exit: append exact results and GitHub-only acceptance checks to HANDOFF. The owner approved the
-  Actions read / Pages write supplement; no repository setting or remote publication is authorized.
-- Local result: scripts typecheck/lint/formatting and 102 tests pass, including 59 Pages cases; direct
-  Node execution also passes in a sparse runtime copy without installed dependencies. Website
-  typecheck/lint/formatting and 77 tests pass; production and preview builds each produce 43 pages
-  with verified base paths, search indexes and preview metadata. Workflow YAML parses. Chrome still
-  times out before navigation and `/bin/ps` is still denied; browser acceptance and the full root gate
-  remain for an unrestricted environment. See Task 11's HANDOFF for exact commands and GitHub checks.
+- Decision: drop PR previews because GitHub's native support is alpha-only and unavailable publicly
+  ([upstream input definition](https://github.com/actions/deploy-pages/blob/main/action.yml)); the owner
+  does not want a dedicated publishing branch. Set the Pages source to **GitHub Actions**.
+- Workflow: keep the event-level paths filter for website/API/package/workspace inputs and keep CI
+  unfiltered. PRs, manual runs and main pushes build at `/agent-kit` and run the static navigation
+  check. The build job has only `contents: read`. A push to main, or a manual run on main, uploads
+  `apps/website/dist/client` (served as is, without Jekyll). A separate deploy job depends on build, runs
+  for those main runs, uses `actions/deploy-pages`, and targets `github-pages` with `pages: write`
+  and `id-token: write`.
+- Concurrency: PRs cancel stale runs; main runs are not canceled in progress. The `pages-deploy`
+  job group serializes deployments with cancellation disabled and `queue: max`.
+- Build/UI: remove preview metadata, banner, feature, environment input and preview-only tests.
+  Keep the pure `SITE_BASE_PATH` helper and regression tests; default to `/agent-kit` and support
+  `/` for a future custom domain. Keep the navigation check's Linux Chrome flags.
+- Order: update the workflow; delete preview workflow, deployment helpers and their tests/support;
+  remove preview UI and input handling; update base-path test fixtures and current-state docs;
+  run website/scripts gates, dependency-inclusive website build, static navigation, workflow YAML
+  parsing and the full repository check.
+- Exit: no obsolete preview references outside history and HANDOFF; website and scripts typecheck,
+  lint, format:check and test pass; `pnpm --filter website... run build` and `pnpm run check` pass,
+  or concrete sandbox blockers are recorded. Deliver local edits with exact results for coordinator
+  review. No repository setting changes or remote publication are authorized.
+- Rollback: revert this batch's workflow, website and documentation changes together; do not change
+  repository settings or deploy during the local implementation.
+- Local result: website and scripts typecheck, lint, format:check and test pass (75 and 48 tests).
+  The dependency-inclusive website build produces 43 HTML pages and both search indexes; workflow
+  YAML and repository checks pass. Static navigation times out before Chrome exposes its debugging
+  endpoint. The full repository gate passes formatting, build, lint and typecheck, then stops at three
+  existing process-identity tests with `spawnSync /bin/ps EPERM`; remaining tests and package checks
+  need an unrestricted environment. See the main-only deployment section in HANDOFF for exact commands.
 
 ## 5. Open items
 
@@ -173,10 +172,10 @@ Decided after Task 3: the package READMEs stay. The site does not replace them.
 
 Still open:
 
-- Set Pages to `gh-pages` / root after the branch exists. Verify real fork builds (including empty
-  `workflow_run.pull_requests`), stale/closed run rejection, one-comment updates, production preview
-  preservation, concurrent PR publication and close cleanup on GitHub; local YAML parsing cannot prove them.
-- Run both static-navigation variants where Chrome can start, and the full repository gate where
+- Set the Pages source to **GitHub Actions**. Verify a main push deploys, PRs (including forks) and
+  manual runs only build/check, and main deployments never overlap; YAML parsing cannot prove live behavior.
+- Revisit PR previews when the `actions/deploy-pages` `preview` input becomes publicly available.
+- Run production static navigation where Chrome can start, and the full repository gate where
   process-identity tests may invoke `/bin/ps`. Record current results in Task 11's HANDOFF section.
 - Long signatures on API pages scroll horizontally at 1440 px.
 - The browser playground stays out of scope, with a custom domain and request-time server rendering.
