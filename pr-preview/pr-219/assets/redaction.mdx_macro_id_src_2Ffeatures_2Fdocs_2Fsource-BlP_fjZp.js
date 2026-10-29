@@ -1,6 +1,0 @@
-import{t as e}from"./jsx-runtime-LKYXHABd.js";var t=e(),n={title:`脱敏`,description:`redact 与 redactText 隐藏主目录路径和形如密钥的字符串。`},r={contents:[{heading:`导出`,content:"`@rivus/agent-kit/redact` 导出 `redact` 和 `redactText`。"},{heading:`隐藏的内容`,content:`二者隐藏主目录路径的各种写法，以及形如密钥的字符串。`},{heading:`隔离`,content:`任何环境都可以用，也不导入其他包。README 没有再说明选项或返回值。`}],headings:[{id:`导出`,content:`导出`},{id:`隐藏的内容`,content:`隐藏的内容`},{id:`隔离`,content:`隔离`}]},i=[{depth:2,url:`#导出`,title:(0,t.jsx)(t.Fragment,{children:`导出`})},{depth:2,url:`#隐藏的内容`,title:(0,t.jsx)(t.Fragment,{children:`隐藏的内容`})},{depth:2,url:`#隔离`,title:(0,t.jsx)(t.Fragment,{children:`隔离`})}];function a(e){let n={code:`code`,h2:`h2`,p:`p`,...e.components};return(0,t.jsxs)(t.Fragment,{children:[(0,t.jsx)(n.h2,{id:`导出`,children:`导出`}),`
-`,(0,t.jsxs)(n.p,{children:[(0,t.jsx)(n.code,{children:`@rivus/agent-kit/redact`}),` 导出 `,(0,t.jsx)(n.code,{children:`redact`}),` 和 `,(0,t.jsx)(n.code,{children:`redactText`}),`。`]}),`
-`,(0,t.jsx)(n.h2,{id:`隐藏的内容`,children:`隐藏的内容`}),`
-`,(0,t.jsx)(n.p,{children:`二者隐藏主目录路径的各种写法，以及形如密钥的字符串。`}),`
-`,(0,t.jsx)(n.h2,{id:`隔离`,children:`隔离`}),`
-`,(0,t.jsx)(n.p,{children:`任何环境都可以用，也不导入其他包。README 没有再说明选项或返回值。`})]})}function o(e={}){let{wrapper:n}=e.components||{};return n?(0,t.jsx)(n,{...e,children:(0,t.jsx)(a,{...e})}):a(e)}export{o as default,n as frontmatter,r as structuredData,i as toc};

@@ -1,1 +1,0 @@
-async function e(){throw Error("`renderToMarkdown` is only available on the server.")}export{e as renderToMarkdown};
