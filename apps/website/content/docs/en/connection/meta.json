@@ -1,0 +1,5 @@
+{
+  "title": "Connection",
+  "defaultOpen": true,
+  "pages": ["discovery", "sessions", "token-usage", "cost", "hook-events", "harness", "acp", "redaction", "effect"]
+}

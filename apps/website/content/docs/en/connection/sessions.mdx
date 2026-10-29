@@ -1,0 +1,69 @@
+---
+title: Sessions and transcripts
+description: listSessions reads file heads and tails, and loadTranscript reads one session.
+---
+
+`@rivus/agent-kit/sessions` exports `listSessions`, `sessionAdapterHome`, `isSessionHead` and `SessionAdapter`. It runs anywhere, with a platform.
+
+`@rivus/agent-kit/transcript` exports `loadTranscript`, `summarizeSession`, `Transcript` and `TranscriptEvent`. It runs anywhere, with a platform.
+
+## Quick example
+
+```ts title="List sessions and load one transcript"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { isSessionHead, listSessions } from "@rivus/agent-kit/sessions";
+import { loadTranscript } from "@rivus/agent-kit/transcript";
+
+const platform = createNodePlatform();
+
+for await (const item of listSessions(platform, { agents: ["claude-code", "codex", "grok"] })) {
+  if (!isSessionHead(item)) {
+    console.warn(`cannot list ${item.ref.path}: ${item.error._tag}`);
+    continue;
+  }
+  const result = await loadTranscript(platform, item.ref);
+  if (!result.ok) {
+    console.warn(`cannot read ${item.ref.path}: ${result.error._tag}`);
+    continue;
+  }
+  const { events } = result.value;
+  const toolCalls = events.filter((event) => event.kind === "tool_call").length;
+  console.log(item.ref.agent, item.title ?? item.ref.path, `${events.length} events, ${toolCalls} tool calls`);
+}
+```
+
+## Listing and reading
+
+`listSessions` reads only the head and tail of each file. It yields `{ ref, error }` for a missing root (`RootMissing`) or an unreadable file (`ReadFailed`) and goes on with the next one. Naming an Agent without a session adapter in `listSessions({ agents })` throws an `AgentKitError` with `code: "capability-unsupported"`.
+
+`loadTranscript` reads every file of one session and returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. It returns the complete session. There is no live file-following API, and a compaction marks the events it replaced with `shadowedBy` only after the whole session is read.
+
+## Summaries and prompts
+
+`summarizeSession` reads the Agent's bounded summarize pass where it has one and folds the loaded transcript otherwise, with the same numbers either way. The pass's memory grows with the session's requests, lanes and tool calls, not with the file's bytes.
+
+It takes `prompts: { limit, maxChars }` to return the main lane's user prompts in the same read.
+
+- A record's prompt text joins its own text blocks, not the text the host adds beside them, and an image block is the user's own.
+- Each block is trimmed, with a blank line between blocks.
+- A record whose blocks are all host-added text is injected and counts no turn.
+- One whose own text is only whitespace counts a turn without a prompt.
+- The first `limit` records in transcript order are returned, each capped at `maxChars`.
+
+Caps that are not whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`.
+
+## Events
+
+An event's `kind` types its `payload`. After `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an Agent adds beyond its kind's payload type reads as `unknown`.
+
+Events reference each other through `agentId`, `parentId`, `requestId`, `payload.callId` and `shadowedBy`.
+
+Token counts on those events follow the [usage convention](/docs/concepts/usage-convention): absent, not 0, when the log does not record a count.
+
+`sessionAdapterHome` resolves a session or usage service's home. Direct usage decoding calls it as `sessionAdapterHome(usage, { home, env })`. See [Token usage](/docs/connection/token-usage).
+
+## Errors and cancellation
+
+`loadTranscript` and `summarizeSession` resolve to a `Result`: `{ ok: true, value }` or `{ ok: false, error }`, where `error._tag` names the failure. They fail with `SessionNotFound`, `ReadFailed`, `UnknownFormatGeneration`, `NoAdapterAccepted` or `CapabilityUnsupported`.
+
+When the `signal` option aborts, the call rejects with `signal.reason`.

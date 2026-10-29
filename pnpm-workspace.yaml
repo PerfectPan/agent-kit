@@ -4,6 +4,7 @@ packages:
   - infra/*
   - tests/*
   - scripts
+  - apps/*
 
 # Versions shared by workspace packages are declared once here and referenced with "catalog:". Packing replaces
 # "catalog:" with the range below, so a published manifest carries the range written here.
@@ -21,22 +22,46 @@ catalog:
   '@decimalturn/toml-patch': ^3.3.0
   '@effect/tsgo': 0.53.0
   '@effect/vitest': 4.0.5
+  '@fontsource-variable/bricolage-grotesque': 5.3.0
+  '@fontsource/jetbrains-mono': 5.3.0
   '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.6.1
   '@size-limit/preset-small-lib': 14.2.0
+  '@tailwindcss/vite': 4.3.3
+  '@tanstack/react-router': 1.170.46
+  '@tanstack/react-start': 1.169.4
+  '@tanstack/router-cli': 1.167.46
+  '@types/mdx': 2.0.14
   '@types/node': 24.19.2
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  '@vitejs/plugin-react': 6.1.2
   effect: 4.0.5
   es-toolkit: ^1.52.0
+  fumadocs-core: 16.17.8
+  fumadocs-mdx: 15.4.10
+  fumadocs-ui: 16.17.8
   jsonc-parser: ^3.3.1
   oxc-parser: 0.154.0
   publint: 0.3.25
+  react: 19.3.1
+  react-dom: 19.3.1
   shell-quote: ^1.12.0
   size-limit: 14.2.0
+  tailwindcss: 4.3.3
+  typedoc: 0.28.20
+  typedoc-plugin-markdown: 4.14.1
   typescript: 7.0.2
   # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
   vite: npm:@voidzero-dev/vite-plus-core@1.3.0
   vite-plus: 1.3.0
   vitest: 5.0.5
   zod: ^4.6.7
+
+# `apps/website-api` is the only package on this catalog. TypeDoc's peer name is `typescript`, and the
+# default catalog entry of that name is 7.0.2, which is outside TypeDoc's range.
+catalogs:
+  typescript6:
+    typescript: 6.0.3
 
 # Redirect whatever declares a `vite` range to the vite-plus core alias.
 overrides:

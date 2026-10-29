@@ -1,0 +1,13 @@
+{
+  "extends": "@perfectpan/lint-config/tsconfig/node.json",
+  "compilerOptions": {
+    // `typescript` is `export =`. The shared base leaves this off, and `import =` is not erasable.
+    "esModuleInterop": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

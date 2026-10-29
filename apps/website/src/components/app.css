@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@theme {
+  --font-sans: "Bricolage Grotesque Variable", system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --text-display: 800 clamp(2.5rem, 4.6vw, 4.25rem) / 1.04 var(--font-sans);
+  --text-section: 750 1.75rem / 1.2 var(--font-sans);
+  --text-component: 700 1.25rem / 1.25 var(--font-sans);
+  --text-body: 400 1.125rem / 1.6 var(--font-sans);
+  --radius-control: 8px;
+  --radius-container: 16px;
+}
+
+/* Landing tokens, mapped onto Fumadocs. Light is the default; .dark is the warm palette. */
+:root {
+  --shadow-card: 0 0 0 1px rgb(42 33 30 / 0.06), 0 1px 2px -1px rgb(42 33 30 / 0.06), 0 2px 4px rgb(42 33 30 / 0.04);
+  --color-fd-background: #fbf7f2;
+  --color-fd-foreground: #2a211e;
+  --color-fd-muted: #f3ece3;
+  --color-fd-muted-foreground: #5f564f;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #2a211e;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #2a211e;
+  --color-fd-border: #e6dccf;
+  --color-fd-primary: #b94f3c;
+  --color-fd-primary-foreground: #fffaf4;
+  --color-fd-secondary: #f3ece3;
+  --color-fd-secondary-foreground: #2a211e;
+  --color-fd-accent: #f3ece3;
+  --color-fd-accent-foreground: #2a211e;
+  --color-fd-ring: #b94f3c;
+  --color-fd-overlay: rgba(42, 33, 30, 0.2);
+}
+
+.dark {
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.08);
+  --color-fd-background: #1c1614;
+  --color-fd-foreground: #f4ece4;
+  --color-fd-muted: #2a221e;
+  --color-fd-muted-foreground: #b3a399;
+  --color-fd-popover: #261e1b;
+  --color-fd-popover-foreground: #f4ece4;
+  --color-fd-card: #261e1b;
+  --color-fd-card-foreground: #f4ece4;
+  --color-fd-border: #3d322c;
+  --color-fd-primary: #b94f3c;
+  --color-fd-primary-foreground: #fffaf4;
+  --color-fd-secondary: #2e2622;
+  --color-fd-secondary-foreground: #f4ece4;
+  --color-fd-accent: #3a2e28;
+  --color-fd-accent-foreground: #f4ece4;
+  --color-fd-ring: #c46a56;
+  --color-fd-overlay: rgba(28, 22, 20, 0.55);
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: #2a221e;
+  --color-fd-secondary: #2e2622;
+  --color-fd-muted-foreground: #b3a399;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.preview-banner {
+  border-bottom: 1px solid var(--color-fd-border);
+  background: var(--color-fd-secondary);
+  color: var(--color-fd-foreground);
+  padding: 0.375rem 1rem;
+  text-align: center;
+  font: 500 0.75rem / 1.5 var(--font-mono);
+}
+
+figure.shiki {
+  background-color: #f3ece3;
+  border-width: 0;
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-container);
+}
+
+.dark figure.shiki {
+  background-color: #322823;
+}
+
+figure.shiki pre,
+figure.shiki code,
+.prose :where(code):not(:where(pre *)) {
+  font-family: var(--font-mono);
+}
+
+figure.shiki .line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prose :where(code):not(:where(pre *)) {
+  background-color: transparent;
+  border-color: transparent;
+  border-width: 0;
+  box-shadow: none;
+  padding: 0;
+  font-weight: 500;
+}
+
+.prose :where(table) :where(code):not(:where(pre *)) {
+  background-color: color-mix(in srgb, #b94f3c 8%, #fbf7f2);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+.dark .prose :where(table) :where(code):not(:where(pre *)) {
+  background-color: color-mix(in srgb, #e8a995 14%, #1c1614);
+}
+
+#nd-docs-layout h1 {
+  font: 750 2.375rem / 1.15 var(--font-sans);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+#nd-docs-layout h2 {
+  font: 700 1.375rem / 1.25 var(--font-sans);
+  text-wrap: balance;
+}
+
+#nd-docs-layout h3 {
+  font: 650 1.125rem / 1.3 var(--font-sans);
+  text-wrap: balance;
+}
+
+html[lang="zh"] #nd-docs-layout :is(h1, h2, h3, h4) {
+  word-break: keep-all;
+}
+
+html[lang="zh"] #nd-docs-layout .prose {
+  line-break: strict;
+}
+
+#nd-docs-layout .prose {
+  max-width: 72ch;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+#nd-docs-layout .prose :where(pre),
+#nd-docs-layout .prose :where(figure.shiki),
+#nd-docs-layout .prose :where(table) {
+  max-width: min(52rem, 100%);
+}
+
+.docs-mascot {
+  width: 1.7rem;
+  height: 1.7rem;
+  overflow: visible;
+  flex: none;
+}
+
+.docs-mascot .m-body {
+  fill: #b94f3c;
+}
+
+.docs-mascot .m-flap {
+  fill: #e3a93b;
+}
+
+.docs-mascot .m-eye {
+  fill: #fff;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.docs-wordmark {
+  letter-spacing: -0.03em;
+}
+
+html.ak-docs-pending [data-docs-shell] {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:hover .docs-mascot .m-all {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: ak-docs-hop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes ak-docs-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+}
