@@ -400,6 +400,54 @@ describe("connectAgent", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect("streams the agent's stderr to onStderr, in order and whole", () =>
+    Effect.gen(function* () {
+      const seen: string[] = [];
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_STDERR_LOG: "1" },
+        onStderr: (chunk) => {
+          seen.push(chunk);
+        }
+      });
+      const session = yield* connection.newSession();
+      yield* run(session.prompt([text("hi")]));
+      // The reader runs beside the turn; whatever chunking the pipe chose, the lines arrive in order and whole.
+      for (let at = 0; at < 500 && !seen.join("").includes("stderr two 🦋 tail"); at += 1) {
+        yield* Effect.sleep(10);
+      }
+      expect(seen.join("")).toContain("stderr one\nstderr two 🦋 tail\n");
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps the connection working when onStderr throws or rejects", () =>
+    Effect.gen(function* () {
+      const throwing = yield* Effect.exit(
+        Effect.gen(function* () {
+          const connection = yield* connectFake({
+            fake: { FAKE_ACP_STDERR_LOG: "1" },
+            onStderr: () => {
+              throw new Error("callback throws");
+            }
+          });
+          const session = yield* connection.newSession();
+          return yield* run(session.prompt([text("hi")]));
+        }).pipe(Effect.scoped)
+      );
+      expect(Exit.isSuccess(throwing)).toBe(true);
+      const rejecting = yield* Effect.exit(
+        Effect.gen(function* () {
+          const connection = yield* connectFake({
+            fake: { FAKE_ACP_STDERR_LOG: "1" },
+            onStderr: () => Promise.reject(new Error("callback rejects"))
+          });
+          const session = yield* connection.newSession();
+          return yield* run(session.prompt([text("hi")]));
+        }).pipe(Effect.scoped)
+      );
+      expect(Exit.isSuccess(rejecting)).toBe(true);
+    }).pipe(Effect.provide(TestLive))
+  );
+
   it.effect("throws a branded error for an agent without a profile or a timeout out of range", () =>
     Effect.gen(function* () {
       const defectOf = (exit: Exit.Exit<unknown, unknown>) =>
