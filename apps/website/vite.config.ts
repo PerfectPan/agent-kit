@@ -11,16 +11,9 @@ import { defineConfig } from "vite-plus";
 import { normalizeBasePath } from "./src/lib/site.ts";
 
 const basePath = normalizeBasePath(process.env.SITE_BASE_PATH ?? "/agent-kit");
-const previewPr = process.env.SITE_PREVIEW_PR ?? "";
-if (previewPr && !/^[1-9][0-9]*$/.test(previewPr)) {
-  throw new Error("SITE_PREVIEW_PR must be a positive integer");
-}
 
 export default defineConfig({
   base: `${basePath}/`,
-  define: {
-    "import.meta.env.SITE_PREVIEW_PR": JSON.stringify(previewPr)
-  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url))

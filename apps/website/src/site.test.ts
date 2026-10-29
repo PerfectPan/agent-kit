@@ -6,7 +6,7 @@ it.each([
   ["/agent-kit", "/agent-kit"],
   ["/agent-kit/", "/agent-kit"],
   ["/agent-kit///", "/agent-kit"],
-  ["/agent-kit/pr-preview/pr-215/", "/agent-kit/pr-preview/pr-215"],
+  ["/docs/agent-kit/", "/docs/agent-kit"],
   ["/", ""],
   ["", ""]
 ])("normalizes the URL prefix %s without duplicating trailing slashes", (input, expected) => {
