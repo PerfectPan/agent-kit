@@ -74,3 +74,8 @@
     - cost-exact-model-match
     - cost-price-record
     - cost-prices
+"@rivus/agent-kit@0.23.0":
+  dir: packages/agent-kit
+  intents:
+    - loud-bears-roll
+    - purple-carrots-arrive

@@ -1,0 +1,26 @@
+{
+  "name": "website-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private TypeDoc runner for the website. Its typescript dependency is catalog:typescript6 so TypeDoc's peer resolves. The rest of the workspace stays on catalog TypeScript 7.",
+  "type": "module",
+  "scripts": {
+    "build": "",
+    "generate": "node src/generate-api-reference.ts",
+    "lint": "vp lint 2>&1",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vp test --passWithNoTests",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
+  },
+  "dependencies": {
+    "typedoc": "catalog:",
+    "typedoc-plugin-markdown": "catalog:",
+    "typescript": "catalog:typescript6"
+  },
+  "devDependencies": {
+    "@perfectpan/lint-config": "catalog:",
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -1,0 +1,45 @@
+---
+title: 车道
+description: 每个键一次激活，并受全局并发上限约束。
+---
+
+## 快速示例
+
+`@rivus/agent-kit-collab/lanes` 导出 `createLanes`。它是 Effect 入口，并且只在进程内。它需要与 peer 声明一致的 `effect`，版本见 [安装](/docs/installation)。它不接受平台。
+
+Lane 按键运行工作。同一时间一个键只有一次激活，并受全局并发上限和有界队列约束。`@rivus/agent-kit-collab` 不绑定具体 Agent。
+
+```ts title="createLanes"
+import { createLanes } from "@rivus/agent-kit-collab/lanes";
+import { Effect } from "effect";
+
+const program = Effect.scoped(
+  Effect.gen(function* () {
+    const lanes = yield* createLanes({
+      maxConcurrent: 4, // activations running at once across all keys
+      maxQueued: 32, // keys waiting for a free slot
+      turnTimeoutMs: 600_000, // an activation running longer is interrupted
+      activate: (key) => runTurn(key), // the work for one key, in a Scope of its own
+      onExit: (exit) => report(exit) // ActivationSucceeded | ActivationFailed | ActivationInterrupted
+    });
+    yield* lanes.wake("room:1"); // "started", "queued" or "coalesced"; never waits for the activation
+    // ... closing the Scope interrupts the running activations and waits for them.
+  })
+);
+```
+
+## 调度
+
+- 一条 lane 最多同时运行一个激活。激活开始之前到达的每一次唤醒都由它服务。对正在运行的 lane 唤醒任意多次，只留下一个激活跟在当前激活后面。唤醒已在队列中的 lane 不改变任何东西。
+- 空闲 lane 在有空位、且没有人等待时启动。否则它排到队列末尾。已经有 `maxQueued` 条 lane 在等待时，`wake` 以 `LaneQueueFull` 失败。空出来的位置给等待最久的 lane。因此运行期间再次被唤醒的 lane，排在这期间入队的 lane 后面。没有 `maxQueued` 时，队列对每个键最多保留一项。
+- `cancel(key)` 丢掉该键尚欠的唤醒，中断它正在运行的激活，并在激活结束（包括它的终结器和 `onExit`）后返回。`close` 以 `LanesClosed` 拒绝后来的唤醒，丢掉队列，中断每个正在运行的激活并等待它们。关闭创建这些 lane 的 Scope 会执行 `close`。
+- 激活带着 `createLanes` 运行时的上下文运行。它结束时关闭自己的 Scope，lane 只在那之后继续。被中断的激活，其终结器会在任何键的下一个激活取得它的位置之前运行完。
+- `onExit` 报告每个激活如何结束。激活自己成功或失败时，即使取消、关闭或超时发生在它的 Scope 关闭期间，也会如此报告。`ActivationInterrupted` 表示 lane 截断了它，或在它开始前停掉了它。后一种情况下从未调用 `activate`。`onExit` 不可中断地运行，因此 `cancel` 和 `close` 会等它。它不得反过来等它们。它抛出的缺陷记为一条警告。
+
+没有东西被持久化。Lane 活在一个进程里。
+
+## 失败
+
+预期失败是带 `_tag` 的值：`LaneQueueFull`、`LanesClosed` 和 `LanesConfigInvalid`。
+
+`wake` 返回 `"started"`、`"queued"` 或 `"coalesced"`，并且从不等待激活。`onExit` 报告 `ActivationSucceeded`、`ActivationFailed` 或 `ActivationInterrupted`。

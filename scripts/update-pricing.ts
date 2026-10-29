@@ -3,7 +3,7 @@ import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 
-import { nextSnapshot, selectPrices, versionOf } from "./lib/litellm-snapshot.ts";
+import { nextSnapshot, selectPrices, snapshotVersion, versionOf } from "./lib/litellm-snapshot.ts";
 import { findRepositoryRoot } from "./lib/workspace.ts";
 
 const USAGE = `usage: node scripts/update-pricing.ts
@@ -30,13 +30,14 @@ async function getJson(url: string, headers: Record<string, string> = {}): Promi
 
 const token = process.env["GITHUB_TOKEN"];
 // The latest commit that changed the file, and the file at that commit, so the version names exactly the prices read.
-const { commit, version } = versionOf(
+const { commit, version: source } = versionOf(
   await getJson(`https://api.github.com/repos/${LITELLM}/commits?path=${FILE}&per_page=1`, {
     accept: "application/vnd.github+json",
     ...(token === undefined || token === "" ? {} : { authorization: `Bearer ${token}` })
   })
 );
 const prices = selectPrices(await getJson(`https://raw.githubusercontent.com/${LITELLM}/${commit}/${FILE}`));
+const version = snapshotVersion(source, prices);
 
 const file = join(findRepositoryRoot(), SNAPSHOT);
 const text = nextSnapshot(existsSync(file) ? readFileSync(file, "utf8") : undefined, prices, version);

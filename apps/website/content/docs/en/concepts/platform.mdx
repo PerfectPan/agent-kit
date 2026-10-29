@@ -1,0 +1,28 @@
+---
+title: Platform
+description: The object that supplies files, processes and the environment.
+---
+
+## Platform object
+
+Files, processes and the environment come from a `Platform` object that the caller passes in, so the reading code also runs in a browser.
+
+`@rivus/agent-kit/platform` exports `Platform` as a type only. It runs anywhere.
+
+## Node
+
+`@rivus/agent-kit/node` exports `createNodePlatform` and runs in Node. Guides that read sessions, usage or locks start from it:
+
+```ts title="createNodePlatform"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+
+const platform = createNodePlatform();
+```
+
+## Browser and SQLite
+
+`@rivus/agent-kit-collab` knows no particular Agent. It reaches files, processes, clocks and SQLite through the same `Platform`.
+
+`/node`, `/node/effect` and `/testing` do not bundle for browsers. Every other entry does. Effect wrappers of the platform are on [Effect entries](/docs/connection/effect).
+
+OpenCode's SQLite store needs `platform.sqlite`. Without it, a usage scan yields `SqliteUnavailable`. Process locks use `platform.sqlite` when it is present, and `platform.process.self` for the holder's identity. Details are on [Token usage](/docs/connection/token-usage) and [Process locks](/docs/coordination/process-locks).

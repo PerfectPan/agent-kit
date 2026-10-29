@@ -222,10 +222,11 @@ A `UsageRecord` is one model request (`granularity: "request"`), or a turn when 
 with `modelCalls` and `usageByModel`); it carries the agent's own cost when the log has one (`costUsd`,
 `costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier. A request that several files hold (a Claude
 Code subagent file that starts with a copy of another's records, an older Gemini CLI chat migrated into a `.jsonl`
-file) counts once. Claude Code writes a response as several records, so the last requests of a session that is still
-running wait in the state; a scan reports them once their file has been quiet for 30 minutes. A scan that continues
-from a state needs `since`: the state keeps a cursor per source (by an identity that survives Codex archiving) and a
-short hash of every request counted since then, about 1 MB for a busy month.
+file) counts once. Assistant entries Claude Code wrote itself (`model: "<synthetic>"`, with zero usage and no request
+behind them) are not model requests and yield no record. Claude Code writes a response as several records, so the
+last requests of a session that is still running wait in the state; a scan reports them once their file has been quiet
+for 30 minutes. A scan that continues from a state needs `since`: the state keeps a cursor per source (by an identity
+that survives Codex archiving) and a short hash of every request counted since then, about 1 MB for a busy month.
 
 For direct source decoding, select a descriptor's `usage` service and call its `sources` and `decode` methods.
 Resolve its home with `sessionAdapterHome(usage, { home, env })`; this helper also accepts a usage service:
@@ -283,8 +284,15 @@ const { total, groups } = summarize(records, pricing, { window: week, groupBy: [
 
 `summarize` prices each record using the amount the agent logged when there is one (Pi, opencode,
 Grok), otherwise each count at the model's price (input without cache, cache reads, 5-minute and 1-hour cache writes,
-output) times the record's `pricingMultiplier` (2 for Codex's priority tier). Keys match regardless of case. A table
-key names one model: it prices that id, the id followed by a date (`-20250929`, `-2025-08-07` or Vertex AI's
+output) times the record's `pricingMultiplier` (2 for Codex's priority tier). A model with a long-context tier prices
+a request whose total input — cache reads and writes included — exceeds the tier's threshold whole at the tier's
+rates, the way LiteLLM's calculator and ccusage bill it, and a rate the tier lacks at the model's base price; a
+request at or below the threshold keeps the base rates, and so does every model without a tier. The tier prices one
+request: a `turn` or `session` record, or a part of one, that aggregates several model calls cannot tell how large
+any single request's context was and bills at the base rates, unless it counts one call. An override that says
+nothing about `longContext` keeps the model's own tier — a full override of the base prices still bills past the
+threshold at the table's tier; give `longContext` in the override to replace or drop it. Keys match regardless
+of case. A table key names one model: it prices that id, the id followed by a date (`-20250929`, `-2025-08-07` or Vertex AI's
 `@20250929`), and either after one `<provider>/` prefix, so `claude-sonnet-4-5` prices `claude-sonnet-4-5-20250929`
 and `anthropic/claude-sonnet-4-5`; any other ending names another model, so `gpt-5` prices neither `gpt-5.7` nor
 `gpt-5-codex`. `fallback` holds family aliases such as `opus`: an id that no table key matches takes the longest alias
@@ -321,8 +329,11 @@ for (const record of records) {
 `/cost/prices` is the kit's snapshot of LiteLLM's
 [model price list](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) for the models
 the supported agents record. `litellmPrices` is a table for `createPricing`. `litellmPricesVersion` is
-`<date>+<commit>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from. Store it with the costs
-you compute to know which table priced them. The entry imports nothing and is kept apart from `/cost`, so a host that
+`<date>+<commit>+<digest>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from, then 12 hex
+digits digesting the table's content itself. Store it with the costs you compute: it names the table that priced them,
+and it changes whenever that table's content changes — under a new LiteLLM commit, or because the snapshot keeps a
+field it did not before — so a stored version that differs from the current one says the stored costs may need
+recomputing. The entry imports nothing and is kept apart from `/cost`, so a host that
 brings its own table does not load this one.
 
 ```ts
@@ -338,7 +349,9 @@ The snapshot keeps the chat models of the providers whose own APIs the agents ca
 xAI, DeepSeek, Z.ai, Moonshot and MiniMax. Its keys are LiteLLM's model names without the provider's own prefix
 (`grok-4.20`, not `xai/grok-4.20`), because agents record the bare name; the same models routed through clouds and
 gateways (`bedrock/…`, `vertex_ai/…`, `openrouter/…`) are left out. Each entry has the input, output, cache write,
-one-hour cache write and cache read prices that LiteLLM lists. `scripts/update-pricing.ts` regenerates the snapshot,
+one-hour cache write and cache read prices that LiteLLM lists, and, where LiteLLM prices long context on the model,
+that tier: the threshold and the rates above it, which [`/cost`](#cost) applies to a request whose total input passes
+the threshold. `scripts/update-pricing.ts` regenerates the snapshot,
 and [`scripts/lib/litellm-snapshot.ts`](https://github.com/PerfectPan/agent-kit/blob/main/scripts/lib/litellm-snapshot.ts) documents the filter. Every Monday a
 workflow opens a pull request when a price the snapshot keeps has changed, and the next release ships it.
 

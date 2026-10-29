@@ -79,6 +79,19 @@ describe("claude-code usage", () => {
     expect(records.some((record) => record.model === "<synthetic>")).toBe(false);
   });
 
+  it("yields no record for a synthetic assistant entry, even one carrying a request id", async () => {
+    const records = await decode("claude-code", ".claude/projects/-u-me-work/s-usage.jsonl");
+    expect(records.some((record) => record.requestId === "req-syn")).toBe(false);
+    expect(records.some((record) => record.model === "<synthetic>")).toBe(false);
+    // The entries around it keep their records and de-duplication keys.
+    expect(records.map((record) => record.requestId ?? record.responseId)).toEqual([
+      "req-1",
+      "msg-gw",
+      "req-2",
+      "req-side"
+    ]);
+  });
+
   it("takes the one-hour cache breakdown as the cache write count when the flat count is 0", async () => {
     const records = await decode("claude-code", ".claude/projects/-u-me-work/s-usage.jsonl");
     expect(records[2]?.usage).toEqual({

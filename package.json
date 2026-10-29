@@ -2,7 +2,7 @@
   "name": "agent-kit",
   "private": true,
   "description": "Private workspace root: pnpm counts it as a workspace project; it publishes nothing and holds the pnpm -r shortcuts for the repository.",
-  "packageManager": "pnpm@12.13.0",
+  "packageManager": "pnpm@12.14.0",
   "scripts": {
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
@@ -11,6 +11,7 @@
     "format": "pnpm -r run format",
     "format:check": "pnpm -r run format:check",
     "check:package": "pnpm -r run check:package",
+    "size:update": "node scripts/update-size-budgets.ts",
     "change": "pnpm change",
     "check": "pnpm run format:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:package",
     "release:version": "pnpm version -r && pnpm run check",

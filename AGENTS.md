@@ -37,9 +37,14 @@ pnpm run lint          # vp lint: oxlint with type-aware rules, TypeScript diagn
 pnpm run typecheck
 pnpm run test          # includes the boundary manifest test and lint cases in infra/architecture
 pnpm run check:package # after build: publint, attw (ESM-only), size-limit and the dist check of the shell
+pnpm run size:update  # rebuild the published packages and reset every size-limit budget to measured size + headroom
 
 # Work on one package (add ... after the name to include its workspace dependencies):
 pnpm --filter @rivus/agent-kit-platform run test
+
+# Private website (TanStack Start + Fumadocs). It is not published and needs no changeset:
+pnpm --filter website build
+pnpm --filter website typecheck
 
 # Record a release note for changed packages. Non-interactive form (works without a terminal):
 pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
@@ -60,7 +65,7 @@ gh repo-checks protect --repo OWNER/REPO
 ```
 
 Workspace members are the folders that the globs in `pnpm-workspace.yaml` match (`packages/*`,
-`packages/providers/*`, `infra/*`, `tests/*`, `scripts`):
+`packages/providers/*`, `infra/*`, `tests/*`, `scripts`, `apps/*`):
 
 - `packages/agent-kit` is `@rivus/agent-kit`, the published shell. Its `src/<entry>.ts` files re-export names individually and bind routed functions to per-service provider tables,
   importing internal packages' `public.ts` (or a lighter public sub-entry such as
@@ -84,6 +89,10 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
   by Node.
 - `tests/smoke` is the private `agent-kit-smoke` project: smoke tests against the coding agents installed on this
   machine, run by hand with `pnpm run smoke` there (see its README). Its `test` script is empty, so CI never runs them.
+- `apps/website` is the private `website` project: the bilingual site, built with TanStack Start and Fumadocs.
+  It is not published and does not need a changeset. `apps/website-api` is the private `website-api` project that
+  generates the API reference with TypeDoc; it alone uses `catalog:typescript6`, since TypeDoc does not support
+  TypeScript 7.
 
 Every package defines the `build`, `lint`, `typecheck`, `test`, `format` and `format:check` scripts that the root
 `pnpm -r` shortcuts call; pnpm skips a package whose script is empty. Shared dependency versions live in the
@@ -110,7 +119,8 @@ For non-trivial changes:
 
 - A PR that changes a published package's source, manifest or build config, an internal package that the shell
   bundles, or the lockfile, includes a changeset under `.changeset/`. A change in an internal package needs a
-  changeset for `@rivus/agent-kit`. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
+  changeset for `@rivus/agent-kit`. A lockfile change that only adds or updates the private website's or
+  `website-api`'s dependencies needs none. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
   (format in `CONTRIBUTING.md`); while the packages are 0.x, a breaking change is `minor`, never `major`. CI does not
   check for missing changesets; adding one is the author's and the reviewer's call.
 - Never bump versions, edit `CHANGELOG.md`, create release tags, or publish by hand. Every push to `main` runs both
@@ -121,12 +131,14 @@ For non-trivial changes:
 
 ## Repository Architecture
 
+- When changing the website, follow the source boundaries in [apps/website/README.md](apps/website/README.md).
 - `docs/architecture/authoring.md` is the authority for context and provider layouts, shared external-format adapters,
   plain TypeScript and Effect rules, and the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
 - Organize code by domain boundaries, layer boundaries, and test boundaries before mechanical one-file-per-export preferences.
 - Keep domain rules, application services, infrastructure adapters, UI/CLI entrypoints, persistence, and test fixtures separated when those responsibilities exist.
+- Put unit tests next to the code they test (for TypeScript, `foo.test.ts` beside `foo.ts`; other languages follow their own convention). Integration tests, which cross modules, run a built artifact, or go through an external boundary such as HTTP or a database, live in the package's `test/` directory, with shared fixtures under `test/fixtures/`.
 - JavaScript or TypeScript projects take shared lint, format, and `tsconfig` rules from the `PerfectPan/lint-config` repository; see its README. Extend those shared configs instead of copying them.
 - Do not introduce a shared abstraction unless it removes real duplication, clarifies a boundary, or matches an existing project pattern.
 - When a file starts mixing multiple responsibilities or layers, split by responsibility rather than by arbitrary size.

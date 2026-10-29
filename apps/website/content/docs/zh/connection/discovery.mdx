@@ -1,0 +1,62 @@
+---
+title: Agent 检测
+description: detectAgents 报告 runnable、found、missing 或 unknown，并附证据与登录状态。
+---
+
+## 状态与探测
+
+`@rivus/agent-kit/discovery` 导出 `detectAgents`、`versionFromOutput` 和 `ProbeRecipe`。它可以在任何环境运行，需要平台。
+
+`detectAgents(platform)` 对 [Agent 表](/docs/agents) 中的每个内置 Agent 报告 `runnable`、`found`、`missing` 或 `unknown`。报告里包含证据、命令打印的版本，以及登录状态。
+
+默认情况下，登录状态只来自凭据文件和环境变量。探测不运行任何命令，也不返回密钥值。`authProbe: "commands"` 还会运行 Agent 自己的状态命令。每条配方列出这些命令的副作用。
+
+版本探测默认会运行。成功之后，该 Agent 记为 `runnable`。`versionProbe: false` 则不运行任何命令。只有成功的版本探测才能确立 `runnable`。
+
+命令不经过 shell，并且有时间限制。检查失败时，结果记入 `problems`。`detectAgents` 的结果类型是 `Installation[]`。某个 Agent 的探测失败，记在该 Agent 自己的 `problems` 里。
+
+`builtinProviders` 里的每个 Agent 都有 identity。除 Cursor 外，每个 Agent 都有主目录规则。
+
+## 什么算作 found
+
+PATH 上有命令、能找到应用程序路径，或存在 Agent 自己的状态路径时，`detectAgents` 报告 `found`。
+
+配置证据使用已有的 `config` 种类。路径是会话存储、应用状态或凭据文件，不是任意配置文件。空的存储仍然算数。命令被移除之后，留下的状态仍可以确立 `found`。
+
+安装器可以只创建 Agent 主目录，并写入 hook、设置、MCP 服务器、skill、插件或扩展，而不真正安装该 Agent。这些路径都不能确立 `found`。内置的 `mcpConfigPaths` 为空。先前列出的 MCP 文件是共享配置，安装器可以写入。`~/.claude.json` 也可以包含 MCP 配置。已有其他证据时，它仍可作为登录状态的来源。仅凭该文件存在，不能作为安装证据。认证变量同样不能确立安装。
+
+配置证据来自 Agent 自己的会话存储、应用状态或凭据文件。Agent 主目录，以及共享的 hook、MCP 设置、插件、扩展和 skill，都不算证据。机器上只有 hook 时，该 Agent 仍是 `missing`。
+
+下表列出每一条内置配置证据路径。Agent 主目录路径使用 catalog 规则。覆盖会替换默认主目录，两边不会同时探测。会话和用量夹具只校验布局，不读取本机的 Agent 数据。凭据路径来自已有的登录探测。发现只返回不含机密的认证事实。
+
+| Agent       | 相对其数据主目录的证据                                                                                   | 主目录与覆盖                                                                                                                                 | 来源与理由                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | `projects/`、`.credentials.json`                                                                         | `~/.claude`；`CLAUDE_CONFIG_DIR` 替换它                                                                                                      | [会话布局](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/claude-code/src/layout.ts) 存放项目 transcript；[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/claude-code/src/discovery.ts) 识别 CLI 登录文件。                                                                                         |
+| Codex       | `sessions/`、`archived_sessions/`、`auth.json`                                                           | `~/.codex`；`CODEX_HOME` 替换它                                                                                                              | [会话布局](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/codex/src/layout.ts) 读取进行中和已归档的 rollout；[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/codex/src/discovery.ts) 读取已存储的登录状态。                                                                                         |
+| Gemini CLI  | `tmp/`、`oauth_creds.json`                                                                               | `~/.gemini`；`GEMINI_CLI_HOME` 替换父目录，得到 `$GEMINI_CLI_HOME/.gemini`                                                                   | [会话布局](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/gemini-cli/src/layout.ts) 读取 `tmp` 下的对话；[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/gemini-cli/src/discovery.ts) 指出 OAuth 存储。                                                                                             |
+| Grok        | `sessions/`、`auth.json`                                                                                 | `~/.grok`；`GROK_HOME` 替换它                                                                                                                | [会话布局](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/grok/src/layout.ts) 读取会话更新和元数据；[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/grok/src/discovery.ts) 读取带作用域的凭据。                                                                                                     |
+| opencode    | `opencode.db`、`storage/message/`、`auth.json`                                                           | `~/.local/share/opencode`；设置了 `$XDG_DATA_HOME/opencode` 时用它                                                                           | [用量解码器](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/opencode/src/usage.ts) 读取 SQLite 和旧的消息存储；[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/opencode/src/discovery.ts) 读取 Provider 登录。这是数据主目录，不是插件或配置主目录。                                                |
+| Pi          | `sessions/`                                                                                              | `~/.pi/agent`；`PI_CODING_AGENT_DIR` 替换它，并展开开头的 `~`                                                                                | [会话布局](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/pi/src/layout.ts) 读取会话 JSONL。                                                                                                                                                                                                                                        |
+| Cursor      | 每个桌面根下的 `User/globalStorage/`；`~/.config/cursor/auth.json`、`~/AppData/Roaming/Cursor/auth.json` | 桌面根：`~/Library/Application Support/Cursor`、`~/.config/Cursor`、`~/AppData/Roaming/Cursor`；固定的 CLI 凭据位置；没有 catalog 主目录规则 | [Cursor 支持讨论](https://forum.cursor.com/t/custom-modes-where-are-they-saved/124271) 指出 `globalStorage` 里的桌面状态数据库。[凭据探测](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/cursor/src/discovery.ts) 识别 Linux 和 Windows 的 CLI 登录存储；macOS 使用钥匙串。`CURSOR_CONFIG_DIR` 和 `XDG_CONFIG_HOME` 仍然不受支持。 |
+
+Pi 只有会话证据。工具包没有 Pi 的认证探测，也没有文档记载的认证文件。
+
+[Provider 主目录规则](https://github.com/PerfectPan/agent-kit/blob/main/packages/agent-kit/src/providers/identity.ts) 和 [`homeFromRule`](https://github.com/PerfectPan/agent-kit/blob/main/packages/catalog/src/domain/coding-agent/services/home-from-rule.ts) 负责解析覆盖。[用量来源测试](https://github.com/PerfectPan/agent-kit/blob/main/packages/testing/test/usage-sources.test.ts) 用各 Provider 的用量夹具，覆盖全部六种默认布局和覆盖：[Claude Code](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/claude-code/test/fixtures/usage)、[Codex](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/codex/test/fixtures/usage)、[Gemini CLI](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/gemini-cli/test/fixtures/usage)、[Grok](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/grok/test/fixtures/usage)、[opencode](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/opencode/test/fixtures/usage) 和 [Pi](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/pi/test/fixtures/usage)。发现的[证据回归测试](https://github.com/PerfectPan/agent-kit/blob/main/packages/testing/test/discovery-evidence.test.ts) 独立检查每条路径，并在检测前于内存主目录上运行 `planInstall` / `applyInstall`。
+
+## 不算证据的路径
+
+Harness 产物和共享配置仍然排除在外：
+
+| Agent       | 排除在证据之外的路径                                                                           | 来源                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Claude Code | `skills/`、`settings.json`                                                                     | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/claude-code/src/install.ts) |
+| Codex       | `plugins/`、`config.toml`、`hooks.json`、共享 skill                                            | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/codex/src/install.ts)       |
+| Gemini CLI  | `extensions/`、`settings.json`                                                                 | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/gemini-cli/src/install.ts)  |
+| Grok        | `hooks/`                                                                                       | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/grok/src/install.ts)        |
+| opencode    | `$XDG_CONFIG_HOME/opencode/plugins/`（默认 `~/.config/opencode/plugins/`）、`opencode.json(c)` | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/opencode/src/install.ts)    |
+| Pi          | `extensions/`、`settings.json`                                                                 | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/pi/src/install.ts)          |
+| Cursor      | `~/.cursor/`、`~/.cursor/plugins/local/`、三个桌面根的 `User/mcp.json`                         | [策略](https://github.com/PerfectPan/agent-kit/blob/main/packages/providers/cursor/src/install.ts)      |
+
+改变这些事实会影响使用内置配方的 `detectAgents` 调用方，包括 agent-presence，以及应用的安装与检测界面。没有命令、可识别的应用程序，也没有 Agent 自己的状态时，机器现在报告 `missing`。只有 `~/.claude.json` 的 Claude Code 也是如此：macOS 钥匙串已登录，但还没有会话。只被 hook 或 MCP 设置填满的机器同样报告 `missing`。没有 CLI 时，Cursor 的桌面状态仍然可以确立 `found`。命令与应用程序路径的检测、自定义配方，以及证据和状态接口保持不变。
+
+要定制内置配方，取出它的 `discovery` 服务，并传入 `providers`。见 [Provider](/docs/concepts/providers)。用 `/testing` 的 `probeRecipeConformance` 检查自己写的配方。

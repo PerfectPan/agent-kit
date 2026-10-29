@@ -1,0 +1,5 @@
+{
+  "title": "协作",
+  "defaultOpen": true,
+  "pages": ["process-locks", "leases", "lanes"]
+}

@@ -1,0 +1,66 @@
+---
+title: 进程锁
+description: 每台机器一个运行实例，通过 acquireProcessLock 取得。
+---
+
+`@rivus/agent-kit-collab/process-lock` 导出 `acquireProcessLock`、`isProcessLockHeld`、`ProcessLock` 和 `ProcessLockPlatform`。它是普通 TypeScript，并接受一个平台。
+
+进程锁是单实例锁，给并排运行编码 Agent 的进程使用。`@rivus/agent-kit-collab` 不绑定具体 Agent。
+
+```ts title="acquireProcessLock"
+import { createNodePlatform } from "@rivus/agent-kit/node";
+import { acquireProcessLock } from "@rivus/agent-kit-collab/process-lock";
+
+const lock = await acquireProcessLock(createNodePlatform(), "/var/run/my-daemon/daemon.lock");
+if (!lock.ok) {
+  console.error(`already running (pid ${lock.error.holder?.pid ?? "unknown"})`);
+  process.exit(1);
+}
+// ... run; the kernel releases the lock if the process dies, or call:
+await lock.value.release();
+```
+
+## SQLite 与锁文件
+
+有 `platform.sqlite` 时，锁是以 `locking_mode=EXCLUSIVE` 持有的 SQLite 数据库。持有者退出或崩溃的瞬间，内核就放下它，没有东西需要回收。持有者身份只为诊断写入 `<path>.holder`。因此读不到自己身份的进程仍然可以取得锁。例如 macOS 沙箱拒绝运行 `ps` 或 `sysctl`，使 `platform.process.self` 抛出。此时 `lock.value.holder` 为 `undefined`，不写入 `<path>.holder`。已死持有者留下的那份会被删除。
+
+没有 SQLite 时，锁是一份保存身份的文件。持有者死在本机上的锁文件，会在下一次尝试时回收，一次只有一个回收者。锁文件需要身份才能判断持有者。因此那里的 `acquireProcessLock` 以读取身份的错误拒绝，并且什么都不创建。
+
+锁文件回退有两个限制：
+
+- 在创建锁文件和写入戳记之间崩溃，会留下一个空文件。它在 30 秒内算作已持有。
+- 持有者在这两步之间停顿超过这段时间，可能和它的回收者一起持有这把锁。
+
+传入 `{ wait: true, signal }` 可以等待持有者，而不是立刻得到 `ProcessLockHeld`。
+
+在 win32 上，平台无法识别进程（boot id、pid 和启动时间）。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。NFS、容器和被改名的主机见 [安装](/docs/installation)。
+
+## 同一进程内的轮次
+
+同一把锁在一个进程内的取得按内存中的轮次进行。因此可以从许多并发任务取得锁，而不必自己排队。一个任务持有锁或正在尝试时，下一个任务等它释放或放弃，然后才做自己的尝试。它从不对本进程里的持有者打开 SQLite。否则持有者完成并释放所需要的线程会被忙等堵住。
+
+没有 `wait` 时，这样的调用立刻得到 `ProcessLockHeld`。中止 `signal` 会把任务移出队列。其他任务的轮次保持原样。
+
+任务通过具有同一个 `sqlite` 对象的平台指名同一个文件时，共享这些轮次。没有 SQLite 时，则是同一个 `fs`。文件的目录会经符号链接解析。`createNodePlatform` 给出的每个平台都是这样。其他进程仍由 SQLite 或锁文件挡在外面。
+
+轮次活在 `@rivus/agent-kit-collab` 的模块状态里。因此进程里的第二份副本不与它们共享。第二份副本可以是另一个版本，或打进某个依赖的一份。它会像另一个进程那样在 SQLite 里相遇。
+
+## isProcessLockHeld
+
+`isProcessLockHeld` 说明另一个进程，或本进程里的一次取得，是否持有这把锁。它自己不取得锁。短命进程可以用它把工作交给正在运行的持有者，只在没有持有者时才启动一个。
+
+```ts title="isProcessLockHeld"
+import { isProcessLockHeld } from "@rivus/agent-kit-collab/process-lock";
+
+if (!(await isProcessLockHeld(platform, "/var/run/my-daemon/daemon.lock"))) {
+  startWorker(); // the worker takes the lock with acquireProcessLock, and exits if another one got it first
+}
+```
+
+这次检查什么都不写，也没有 `<path>.holder`。缺失的锁文件读作空闲，并保持缺失。
+
+有 SQLite 时，它做一次共享锁尝试，没有忙等超时，也没有重试。它不读取进程身份，并在远小于一毫秒内回答。同时运行的检查都会把空闲的锁看成空闲。同一时刻运行的 `acquireProcessLock` 的第一次尝试会等完一次检查（10 毫秒忙等超时，然后几次短重试），仍然得到空闲的锁。`wait: true` 的后续重试没有忙等超时，因此碰上检查的那一次可能发现空闲的锁正忙。这次调用会在另一次退避之后得到它。
+
+没有 SQLite 时，它像一次取得那样判断锁文件的持有者，并把已死持有者的文件留给下一次取得去回收。
+
+答案到达时可能已经过时。因此只有 `acquireProcessLock` 决定谁持有锁。它接受 `{ signal }`。检查从不等待，所以只在开始前看一次信号。若已中止，则以 `signal.reason` 拒绝。
