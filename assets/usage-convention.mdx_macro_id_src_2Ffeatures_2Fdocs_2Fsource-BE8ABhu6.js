@@ -1,0 +1,11 @@
+import{t as e}from"./jsx-runtime-LKYXHABd.js";var t=e(),n={title:`用量约定`,description:`Token 计数遵循 OTel GenAI 与 AI SDK，缺失的计数不是 0。`},r={contents:[{heading:`计数`,content:`用量遵循 OTel GenAI 与 AI SDK。`},{heading:`计数`,content:"`inputTokens` 包含缓存读取和缓存写入。"},{heading:`计数`,content:"`outputTokens` 包含推理。"},{heading:`计数`,content:`日志里没有的计数是缺失，不是 0。`},{heading:`缺席与费用`,content:"费用合计用同一条规则。没有价格的模型没有费用，结果是 `undefined`，不是 0。一组记录里如果没有任何一项被标价，汇总的 `costUsd` 也缺失。见 费用。"},{heading:`增量扫描`,content:"带状态的 `scanUsage` 只产出上次之后新写入的内容。调用方要把自己的合计和这份状态放在一起，同一个 `since` 窗口只用一份状态，并且一次只跑一次扫描。从同一份状态并发跑两次，两次都会产出新记录。扫描本身见 Token 用量。"}],headings:[{id:`计数`,content:`计数`},{id:`缺席与费用`,content:`缺席与费用`},{id:`增量扫描`,content:`增量扫描`}]},i=[{depth:2,url:`#计数`,title:(0,t.jsx)(t.Fragment,{children:`计数`})},{depth:2,url:`#缺席与费用`,title:(0,t.jsx)(t.Fragment,{children:`缺席与费用`})},{depth:2,url:`#增量扫描`,title:(0,t.jsx)(t.Fragment,{children:`增量扫描`})}];function a(e){let n={a:`a`,code:`code`,h2:`h2`,li:`li`,p:`p`,ul:`ul`,...e.components};return(0,t.jsxs)(t.Fragment,{children:[(0,t.jsx)(n.h2,{id:`计数`,children:`计数`}),`
+`,(0,t.jsx)(n.p,{children:`用量遵循 OTel GenAI 与 AI SDK。`}),`
+`,(0,t.jsxs)(n.ul,{children:[`
+`,(0,t.jsxs)(n.li,{children:[(0,t.jsx)(n.code,{children:`inputTokens`}),` 包含缓存读取和缓存写入。`]}),`
+`,(0,t.jsxs)(n.li,{children:[(0,t.jsx)(n.code,{children:`outputTokens`}),` 包含推理。`]}),`
+`,(0,t.jsx)(n.li,{children:`日志里没有的计数是缺失，不是 0。`}),`
+`]}),`
+`,(0,t.jsx)(n.h2,{id:`缺席与费用`,children:`缺席与费用`}),`
+`,(0,t.jsxs)(n.p,{children:[`费用合计用同一条规则。没有价格的模型没有费用，结果是 `,(0,t.jsx)(n.code,{children:`undefined`}),`，不是 0。一组记录里如果没有任何一项被标价，汇总的 `,(0,t.jsx)(n.code,{children:`costUsd`}),` 也缺失。见 `,(0,t.jsx)(n.a,{href:`/docs/connection/cost`,children:`费用`}),`。`]}),`
+`,(0,t.jsx)(n.h2,{id:`增量扫描`,children:`增量扫描`}),`
+`,(0,t.jsxs)(n.p,{children:[`带状态的 `,(0,t.jsx)(n.code,{children:`scanUsage`}),` 只产出上次之后新写入的内容。调用方要把自己的合计和这份状态放在一起，同一个 `,(0,t.jsx)(n.code,{children:`since`}),` 窗口只用一份状态，并且一次只跑一次扫描。从同一份状态并发跑两次，两次都会产出新记录。扫描本身见 `,(0,t.jsx)(n.a,{href:`/docs/connection/token-usage`,children:`Token 用量`}),`。`]})]})}function o(e={}){let{wrapper:n}=e.components||{};return n?(0,t.jsx)(n,{...e,children:(0,t.jsx)(a,{...e})}):a(e)}export{o as default,n as frontmatter,r as structuredData,i as toc};
