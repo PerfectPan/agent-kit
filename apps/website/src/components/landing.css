@@ -49,6 +49,8 @@ body:has(.landing) {
 
 .landing-langs {
   display: grid;
+  /* An auto track would grow to the code window's longest line and widen the page on phones. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .landing-langs > .landing {
@@ -330,45 +332,6 @@ html[lang="zh"] .landing[data-lang="zh"] {
   z-index: 3;
 }
 
-.landing .demo .feed {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.landing .demo .feed i {
-  position: absolute;
-  top: 58px;
-  right: 28px;
-  width: 26px;
-  height: 12px;
-  border-radius: 6px;
-  opacity: 0;
-}
-
-.landing .demo .feed i:nth-child(1) {
-  background: var(--color-honey);
-  --dx: -150px;
-  --dy: 248px;
-}
-
-.landing .demo .feed i:nth-child(2) {
-  top: 64px;
-  right: 22px;
-  background: var(--color-clay);
-  --dx: -210px;
-  --dy: 214px;
-}
-
-.landing .demo .feed i:nth-child(3) {
-  top: 52px;
-  right: 34px;
-  background: var(--color-sage);
-  --dx: -96px;
-  --dy: 276px;
-}
-
 .landing .window {
   position: relative;
   z-index: 2;
@@ -384,6 +347,20 @@ html[lang="zh"] .landing[data-lang="zh"] {
   padding: 12px 12px 0;
   border-bottom: 1px solid var(--color-code-line);
   overflow-x: auto;
+  position: relative;
+}
+
+/* One indicator slides under the selected tab; its position comes from useSelectedIndicator. */
+.landing .tasks::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--indicator-width, 0);
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--color-honey);
+  translate: var(--indicator-x, 0) 0;
 }
 
 .landing .tasks button {
@@ -393,17 +370,13 @@ html[lang="zh"] .landing[data-lang="zh"] {
   border: 0;
   padding: 9px 14px 12px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
   white-space: nowrap;
   border-radius: var(--radius-control) var(--radius-control) 0 0;
-  transition:
-    color 0.2s var(--ease),
-    border-color 0.2s var(--ease);
+  transition: color 0.2s var(--ease);
 }
 
 .landing .tasks button[aria-selected="true"] {
   color: var(--color-code-ink);
-  border-bottom-color: var(--color-honey);
 }
 
 .landing .file {
@@ -456,7 +429,12 @@ html[lang="zh"] .landing[data-lang="zh"] {
 
 .landing .window pre > span.flash,
 .landing .fields > div.flash {
-  animation: ak-line-flash 200ms var(--ease) both;
+  animation: ak-line-in 240ms var(--ease-enter) both;
+}
+
+.landing .window pre > span.flash .swap,
+.landing .fields > div.flash.is-swap dd {
+  animation: ak-swap-in 480ms var(--ease-enter) both;
 }
 
 .landing .result {
@@ -647,6 +625,7 @@ html[lang="zh"] .landing[data-lang="zh"] {
 
 .landing .section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px 48px;
   padding-top: 64px;
 }
@@ -1359,10 +1338,6 @@ html[lang="zh"] .landing[data-lang="zh"] {
     right: 8px;
     top: 0;
   }
-  .landing .demo .feed i {
-    top: 36px;
-    right: 16px;
-  }
   .landing .tier {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1377,6 +1352,11 @@ html[lang="zh"] .landing[data-lang="zh"] {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .landing .tasks::after {
+    transition:
+      translate 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
   .landing .hero h1 {
     animation: ak-enter 0.7s var(--ease-enter) both;
   }
@@ -1430,31 +1410,19 @@ html[lang="zh"] .landing[data-lang="zh"] {
   .landing .working .ev:nth-of-type(5) {
     animation-delay: 1.92s;
   }
-  .landing .demo .feed i {
-    animation: ak-feed-out 1.2s linear both;
-  }
-  .landing .demo .feed i:nth-child(2) {
-    animation-delay: 0.08s;
-  }
-  .landing .demo .feed i:nth-child(3) {
-    animation-delay: 0.16s;
-  }
   .landing .blocked .m-all {
     animation: ak-shake 2.6s ease-in-out infinite;
   }
   .landing[data-motion="on"] .reveal:not(.is-in) {
     opacity: 0;
     translate: 0 8px;
-    filter: blur(4px);
   }
   .landing[data-motion="on"] .reveal.is-in {
     opacity: 1;
     translate: 0;
-    filter: blur(0);
     transition:
       opacity 0.7s var(--ease-enter),
-      translate 0.7s var(--ease-enter),
-      filter 0.7s var(--ease-enter);
+      translate 0.7s var(--ease-enter);
   }
 }
 
@@ -1494,7 +1462,9 @@ html[lang="zh"] .landing[data-lang="zh"] {
     animation: none;
   }
   .landing .window pre > span.flash,
-  .landing .fields > div.flash {
+  .landing .fields > div.flash,
+  .landing .window pre > span.flash .swap,
+  .landing .fields > div.flash.is-swap dd {
     animation: none;
   }
   .landing .layer-packet {
@@ -1506,12 +1476,10 @@ html[lang="zh"] .landing[data-lang="zh"] {
   from {
     opacity: 0;
     translate: 0 8px;
-    filter: blur(4px);
   }
   to {
     opacity: 1;
     translate: 0;
-    filter: blur(0);
   }
 }
 
@@ -1594,29 +1562,15 @@ html[lang="zh"] .landing[data-lang="zh"] {
   }
 }
 
-@keyframes ak-feed-out {
-  0% {
+@keyframes ak-line-in {
+  from {
     opacity: 0;
-    transform: translate(0, 0) scale(0.55);
-  }
-  10% {
-    opacity: 1;
-    transform: translate(calc(var(--dx) * 0.08), calc(var(--dy) * 0.08)) scale(1);
-  }
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(var(--dx), var(--dy)) scale(0.88);
+    translate: 0 3px;
   }
 }
 
-@keyframes ak-line-flash {
+@keyframes ak-swap-in {
   from {
-    background-color: color-mix(in srgb, var(--color-honey) 28%, transparent);
-  }
-  to {
     background-color: transparent;
   }
 }

@@ -9,8 +9,8 @@ import { useAnimationRestart } from "../../hooks/use-animation-restart.ts";
 import { useReducedMotion } from "../../hooks/use-reduced-motion.ts";
 import { useTimedEvents } from "../../hooks/use-timed-events.ts";
 import { useFocusElement } from "../../hooks/use-focus-element.ts";
+import { useSelectedIndicator } from "../../hooks/use-selected-indicator.ts";
 import { Mascot } from "../../components/mascot.tsx";
-import { ResultChips } from "../../components/landing/result-chips.tsx";
 import { TaskTabs } from "../../components/landing/task-tabs.tsx";
 import { CodeWindow } from "../../components/landing/code-window.tsx";
 import { CodeView } from "../../components/landing/code-view.tsx";
@@ -23,6 +23,7 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
   const [state, dispatch] = useReducer(demoReducer, support, initialDemoState);
   const view = demoView(state.selection, support);
   const allowMotion = !useReducedMotion();
+  const tabsRef = useSelectedIndicator(view.task);
   const hop = useAnimationRestart(state.hopNonce === 0 ? undefined : String(state.hopNonce));
   useTimedEvents(state.selection, () => demoSequence(view, allowMotion), dispatch);
   const { markUser, interactionProps } = useAutoplay({
@@ -47,7 +48,6 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
   return (
     <div className="demo" {...interactionProps}>
       <Mascot state={state.phase} hop={hop} className="m" />
-      {state.phase === "working" ? <ResultChips key={`${state.selection.task}:${state.selection.agentId}`} /> : null}
       <CodeWindow
         tabs={
           <TaskTabs
@@ -59,6 +59,7 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
               label: text(lang, taskLabel(task))
             }))}
             onKeyDown={onTaskKey}
+            listRef={tabsRef}
             onSelect={(task) => {
               markUser();
               dispatch({ type: "task", task, rows: support });
