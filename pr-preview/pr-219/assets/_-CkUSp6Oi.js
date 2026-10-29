@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-LKYXHABd.js";import{t}from"./useParams-SotDW9NG.js";import{t as n}from"./docs-page-C6JBI1ip.js";var r=e();function i(){let{_splat:e}=t({from:`/docs/$`});return(0,r.jsx)(n,{splat:e})}export{i as component};
