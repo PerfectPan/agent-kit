@@ -422,7 +422,9 @@ reaches `onStderr` as decoded text arrives, in order, and the tail already attac
 neither awaited nor let to fail the connection. Interrupting a turn's
 stream, or `session.cancel()`, sends `session/cancel` and waits for the turn to end within `cancelTimeoutMs` (5 s by
 default); when it does not end in time, the session's binding is removed and the connection is closed, which fails its
-other sessions with `ConnectionClosed`. `sessionKey` binds a key to the session in the `SessionBindingStore`
+other sessions with `ConnectionClosed` — `unsettledCancel: "session"` closes only that session instead, with
+`session/close` when the agent supports it, and keeps the others running. `sessionKey` binds a key to the session in
+the `SessionBindingStore`
 (`MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`), so a later connection can
 `loadSession({ sessionKey })`. Client file reads and writes are off unless `fileSystem` turns them on, and then stay
 inside the session's directory after links are resolved. `probeAgent` opens one trial session and reports `ready`,

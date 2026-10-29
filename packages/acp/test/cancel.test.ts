@@ -226,6 +226,58 @@ describe("cancel", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect(
+    'S83: with unsettledCancel "session", an unsettled cancel closes only its session and the others keep running',
+    () =>
+      Effect.gen(function* () {
+        const connection = yield* connectFake({
+          cancelTimeoutMs: 5_000,
+          fake: { FAKE_ACP_SESSION_CLOSE: "1" },
+          unsettledCancel: "session"
+        });
+        const stubborn = yield* connection.newSession({ sessionKey: "chat:stubborn" });
+        const other = yield* connection.newSession({ sessionKey: "chat:other" });
+        const stuck = yield* start(stubborn.prompt([text("stubborn")]));
+        const bystander = yield* start(other.prompt([text("hang")]));
+        yield* eventually(said(stuck.parts, "working"));
+        yield* eventually(said(bystander.parts, "working"));
+
+        const cancel = yield* stubborn.cancel().pipe(Effect.exit, Effect.forkChild);
+        yield* eventually(said(stuck.parts, "cancel received"));
+        yield* TestClock.adjust(5_000);
+        const cancelled = yield* Fiber.join(cancel);
+        expect(Exit.isFailure(cancelled) && Exit.findErrorOption(cancelled)).toMatchObject({
+          value: {
+            _tag: "CancelUnsettled",
+            sessionId: stubborn.sessionId,
+            sessionKey: "chat:stubborn",
+            timeoutMs: 5_000,
+            binding: "removed"
+          }
+        });
+        const store = yield* SessionBindingStore;
+        expect(yield* store.get("chat:stubborn")).toBeUndefined();
+        expect(yield* store.get("chat:other")).toMatchObject({ sessionId: other.sessionId });
+        expect(yield* stubborn.snapshot).toMatchObject({ state: "closed", closeReason: "cancel-unsettled" });
+        const stuckExit = yield* Fiber.join(stuck.fiber);
+        expect(Exit.isFailure(stuckExit) && Exit.findErrorOption(stuckExit)).toMatchObject({
+          value: { _tag: "CancelUnsettled" }
+        });
+
+        // The connection and its process live on: the bystander's turn ends, and the session takes another.
+        yield* other.cancel();
+        expect(yield* Fiber.join(bystander.fiber)).toEqual(Exit.void);
+        expect(eventTexts(yield* Stream.runCollect(other.prompt([text("next")])))).toEqual(["turn 2: next"]);
+        const report = JSON.parse(eventTexts(yield* Stream.runCollect(other.prompt([text("inspect")])))[0] ?? "{}");
+        expect(alive(report.pid as number)).toBe(true);
+        // The closed session's later calls fail as on a closed session.
+        const refused = yield* Effect.exit(Stream.runCollect(stubborn.prompt([text("again")])));
+        expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+          value: { _tag: "SessionClosed", reason: "cancel-unsettled" }
+        });
+      }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S84: a closed session refuses every operation", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake({ fake: { FAKE_ACP_SESSION_CLOSE: "1" } });

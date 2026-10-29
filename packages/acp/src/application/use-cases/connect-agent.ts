@@ -77,6 +77,12 @@ export interface ConnectAgentOptions {
   /** How long a cancel may take, from sending `session/cancel` to the end of the turn; 5 s by default. */
   readonly cancelTimeoutMs?: number;
   /**
+   * What a cancel that does not settle within `cancelTimeoutMs` invalidates: the whole connection with its process
+   * (`"connection"`, the default), or only the session that cancelled (`"session"`), which closes it — with
+   * `session/close` when the agent supports it — removes its bindings, and keeps the other sessions running.
+   */
+  readonly unsettledCancel?: "connection" | "session";
+  /**
    * Receives the agent's stderr as decoded text arrives, in order, so a host can log a running agent. It may return a
    * promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection.
    */
@@ -423,11 +429,21 @@ function timeoutsOf(options: ConnectAgentOptions): Timeouts {
   return timeouts;
 }
 
+function unsettledCancelOf(options: ConnectAgentOptions): "connection" | "session" {
+  // `unknown` keeps both comparisons live for a caller that ignores the types.
+  const scope: unknown = options.unsettledCancel ?? "connection";
+  if (scope !== "connection" && scope !== "session") {
+    throw invalidOption(`unsettledCancel must be "connection" or "session", got ${String(scope)}`);
+  }
+  return scope;
+}
+
 function open(
   agent: CodingAgentId,
   profile: AcpProfile,
   options: ConnectAgentOptions,
   timeouts: Timeouts,
+  unsettledCancel: "connection" | "session",
   platform: AcpPlatform,
   bindings: Option.Option<SessionBindingStoreShape>,
   scope: Scope.Closeable
@@ -568,6 +584,7 @@ function open(
       fileSystem,
       requestTimeoutMs: timeouts.requestTimeoutMs,
       cancelTimeoutMs: timeouts.cancelTimeoutMs,
+      unsettledCancel,
       scope,
       ended: Deferred.makeUnsafe(),
       kill: () => controller.abort(),
@@ -618,10 +635,11 @@ export function connectAgent(
   return Effect.gen(function* () {
     const profile = yield* Effect.sync(() => requireService(agent, options.providers.acp, "has no ACP profile"));
     const timeouts = yield* Effect.sync(() => timeoutsOf(options));
+    const unsettledCancel = yield* Effect.sync(() => unsettledCancelOf(options));
     const platform = yield* PlatformService;
     const bindings = yield* Effect.serviceOption(SessionBindingStore);
     const scope = yield* Scope.fork(yield* Effect.scope, "sequential");
-    return yield* open(agent, profile, options, timeouts, platform, bindings, scope).pipe(
+    return yield* open(agent, profile, options, timeouts, unsettledCancel, platform, bindings, scope).pipe(
       Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : Scope.close(scope, exit)))
     );
   });
