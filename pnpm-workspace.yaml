@@ -17,10 +17,10 @@ ignoreWorkspaceCycles: true
 
 catalogMode: strict
 catalog:
-  '@agentclientprotocol/sdk': 1.8.0
+  '@agentclientprotocol/sdk': 1.9.0
   '@arethetypeswrong/cli': 0.18.5
-  '@decimalturn/toml-patch': ^3.3.0
-  '@effect/tsgo': 0.53.0
+  '@decimalturn/toml-patch': ^3.3.1
+  '@effect/tsgo': 0.56.0
   '@effect/vitest': 4.0.5
   '@fontsource-variable/bricolage-grotesque': 5.3.0
   '@fontsource/jetbrains-mono': 5.3.0
