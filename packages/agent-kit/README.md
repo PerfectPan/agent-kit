@@ -321,8 +321,11 @@ for (const record of records) {
 `/cost/prices` is the kit's snapshot of LiteLLM's
 [model price list](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) for the models
 the supported agents record. `litellmPrices` is a table for `createPricing`. `litellmPricesVersion` is
-`<date>+<commit>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from. Store it with the costs
-you compute to know which table priced them. The entry imports nothing and is kept apart from `/cost`, so a host that
+`<date>+<commit>+<digest>`: the date (UTC) and commit of LiteLLM's file the snapshot was generated from, then 12 hex
+digits digesting the table's content itself. Store it with the costs you compute: it names the table that priced them,
+and it changes whenever that table's content changes — under a new LiteLLM commit, or because the snapshot keeps a
+field it did not before — so a stored version that differs from the current one says the stored costs may need
+recomputing. The entry imports nothing and is kept apart from `/cost`, so a host that
 brings its own table does not load this one.
 
 ```ts

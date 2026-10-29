@@ -1,5 +1,12 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies:
+  - @rivus/agent-kit@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

@@ -1,8 +1,19 @@
+import { readFileSync } from "node:fs";
+
+import * as z from "zod/mini";
 import { describe, expect, it } from "vite-plus/test";
 
 import { fromLiteLLM } from "../../packages/cost/src/domain/pricing/adapters/from-litellm.ts";
 import { priceOfEntry } from "../../packages/cost/src/domain/pricing/adapters/litellm-entry.ts";
-import { formatSnapshot, nextSnapshot, selectPrices, versionOf } from "./litellm-snapshot.ts";
+import {
+  formatSnapshot,
+  nextSnapshot,
+  priceDigest,
+  selectPrices,
+  snapshotVersion,
+  versionOf,
+  type SnapshotEntry
+} from "./litellm-snapshot.ts";
 
 const SHA = "de5dc5b238b6e972869d7dedc6ba3c4fb8d931fe";
 
@@ -37,11 +48,16 @@ const LITELLM = {
     litellm_provider: "vertex_ai-anthropic_models",
     mode: "chat"
   },
-  // Floating-point noise in LiteLLM's number, and a cache read price that is not a number.
+  // Floating-point noise in LiteLLM's number, and a cache read price that is not a number. The tier's fields come
+  // along under their threshold; the flex variant and the twelve-hour cache-write tier do not.
   "gpt-5.5": {
     input_cost_per_token: 5.000000000000001e-6,
     output_cost_per_token: 3e-5,
     cache_read_input_token_cost: null,
+    input_cost_per_token_above_272k_tokens: 1e-5,
+    output_cost_per_token_above_272k_tokens: 4.5e-5,
+    input_cost_per_token_above_272k_tokens_flex: 9e-6,
+    cache_creation_input_token_cost_above_12hr_above_272k_tokens: 8e-6,
     litellm_provider: "openai",
     mode: "responses"
   },
@@ -115,7 +131,11 @@ const SELECTED = {
     cache_read_input_token_cost: 3e-8
   },
   "glm-5.1": { input_cost_per_token: 0.000001, output_cost_per_token: 0.0000032 },
-  "gpt-5.5": { input_cost_per_token: 0.000005, output_cost_per_token: 0.00003 },
+  "gpt-5.5": {
+    input_cost_per_token: 0.000005,
+    output_cost_per_token: 0.00003,
+    long_context: { above_tokens: 272_000, input_cost_per_token: 1e-5, output_cost_per_token: 4.5e-5 }
+  },
   "grok-4.20": { input_cost_per_token: 0.000002, output_cost_per_token: 0.000006 }
 };
 
@@ -206,20 +226,85 @@ describe("versionOf", () => {
   });
 });
 
+describe("snapshotVersion", () => {
+  const source = versionOf(COMMITS).version;
+
+  it("appends the prices' digest, so the same commit with different prices versions differently", () => {
+    const altered = { ...SELECTED, "glm-5.1": { input_cost_per_token: 0.0000012, output_cost_per_token: 0.000004 } };
+    const version = snapshotVersion(source, SELECTED);
+    expect(version).toBe(`${source}+${priceDigest(SELECTED)}`);
+    expect(version).toMatch(/[0-9a-f]{12}$/);
+    expect(snapshotVersion(source, altered)).not.toBe(version);
+  });
+
+  it("digests the prices' content, not the order their keys are named in", () => {
+    const reversed = (value: unknown): unknown => {
+      if (Array.isArray(value)) {
+        return value.map((item) => reversed(item));
+      }
+      if (value === null || typeof value !== "object") {
+        return value;
+      }
+      return Object.fromEntries(
+        Object.entries(value)
+          .reverse()
+          .map(([key, item]) => [key, reversed(item)])
+      );
+    };
+    expect(priceDigest(reversed(SELECTED) as Record<string, SnapshotEntry>)).toBe(priceDigest(SELECTED));
+  });
+
+  it("the committed snapshot's version ends with its own prices' digest", () => {
+    const Committed = z.object({ version: z.string(), prices: z.record(z.string(), z.unknown()) });
+    const snapshot = z.parse(
+      Committed,
+      JSON.parse(
+        readFileSync(
+          new URL("../../packages/cost/src/domain/pricing/adapters/litellm-snapshot.json", import.meta.url),
+          "utf8"
+        )
+      )
+    );
+    // The cost package's import of this file checks every entry against LiteLLMEntry at compile time; this test only
+    // re-derives the version, so the parsed record digests as the prices it is.
+    expect(snapshot.version.endsWith(`+${priceDigest(snapshot.prices as Record<string, SnapshotEntry>)}`)).toBe(true);
+  });
+});
+
 describe("nextSnapshot", () => {
-  const current = formatSnapshot({ version: `2026-10-18+${"1".repeat(40)}`, prices: SELECTED });
+  const held = `2026-10-18+${"1".repeat(40)}`;
+  const current = formatSnapshot({ version: snapshotVersion(held, SELECTED), prices: SELECTED });
 
   it("leaves the file as it is when a new commit changes no price it keeps", () => {
-    expect(nextSnapshot(current, SELECTED, `2026-10-25+${SHA}`)).toBeUndefined();
+    expect(nextSnapshot(current, SELECTED, snapshotVersion(`2026-10-25+${SHA}`, SELECTED))).toBeUndefined();
+  });
+
+  it("leaves the file as it is when only the order of a tier's fields differs", () => {
+    // gpt-5.5's tier from SELECTED, with the same fields in the reverse order.
+    const reordered = {
+      ...SELECTED,
+      "gpt-5.5": {
+        ...SELECTED["gpt-5.5"]!,
+        long_context: { output_cost_per_token: 4.5e-5, input_cost_per_token: 1e-5, above_tokens: 272_000 }
+      }
+    };
+    expect(nextSnapshot(current, reordered, snapshotVersion(`2026-10-25+${SHA}`, reordered))).toBeUndefined();
+  });
+
+  it("rewrites the file when the version does not end in these prices' digest, at the same prices", () => {
+    const legacy = formatSnapshot({ version: held, prices: SELECTED });
+    expect(nextSnapshot(legacy, SELECTED, snapshotVersion(`2026-10-25+${SHA}`, SELECTED))).toBe(
+      formatSnapshot({ version: snapshotVersion(`2026-10-25+${SHA}`, SELECTED), prices: SELECTED })
+    );
   });
 
   it("writes the new prices under the new version", () => {
     const prices = { ...SELECTED, "glm-5.1": { input_cost_per_token: 0.0000012, output_cost_per_token: 0.000004 } };
-    expect(nextSnapshot(current, prices, `2026-10-25+${SHA}`)).toBe(
-      formatSnapshot({ version: `2026-10-25+${SHA}`, prices })
+    expect(nextSnapshot(current, prices, snapshotVersion(`2026-10-25+${SHA}`, prices))).toBe(
+      formatSnapshot({ version: snapshotVersion(`2026-10-25+${SHA}`, prices), prices })
     );
-    expect(nextSnapshot(undefined, SELECTED, `2026-10-25+${SHA}`)).toBe(
-      formatSnapshot({ version: `2026-10-25+${SHA}`, prices: SELECTED })
+    expect(nextSnapshot(undefined, SELECTED, snapshotVersion(`2026-10-25+${SHA}`, SELECTED))).toBe(
+      formatSnapshot({ version: snapshotVersion(`2026-10-25+${SHA}`, SELECTED), prices: SELECTED })
     );
   });
 });
