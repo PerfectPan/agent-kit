@@ -11,6 +11,8 @@ Think of it as lodash for cross-Agent tools: small typed functions, one entry pe
 Agent. Built-in providers cover Claude Code, Codex, Cursor and more; any other Agent plugs in as a provider of your own,
 so your code does not change when a new Agent arrives.
 
+Guides and the API reference, in English and Chinese: [perfectpan.github.io/agent-kit](https://perfectpan.github.io/agent-kit/).
+
 | Package                                                          | Role                               | What it holds                                                                                |
 | ---------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
 | [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time    | Agent detection, sessions and transcripts, token usage and cost (with a LiteLLM price snapshot), hook events, harness installation, ACP, redaction |

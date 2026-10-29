@@ -172,11 +172,10 @@ Decided after Task 3: the package READMEs stay. The site does not replace them.
 
 Still open:
 
-- Set the Pages source to **GitHub Actions**. Verify a main push deploys, PRs (including forks) and
-  manual runs only build/check, and main deployments never overlap; YAML parsing cannot prove live behavior.
+- Verify that main deployments never overlap. The Pages source is GitHub Actions; a main push builds,
+  runs the static navigation check and deploys, and fork PRs only build.
 - Revisit PR previews when the `actions/deploy-pages` `preview` input becomes publicly available.
-- Run production static navigation where Chrome can start, and the full repository gate where
-  process-identity tests may invoke `/bin/ps`. Record current results in Task 11's HANDOFF section.
+- Run the full repository gate where process-identity tests may invoke `/bin/ps`, and record the result
+  in Task 11's HANDOFF section.
 - Long signatures on API pages scroll horizontally at 1440 px.
 - The browser playground stays out of scope, with a custom domain and request-time server rendering.
-- Add the site URL to the root README once the first deploy is live (the README is being rewritten in a separate pull request).
