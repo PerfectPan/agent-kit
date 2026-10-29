@@ -25,7 +25,8 @@ export function grokSessions(root: string): ConformanceSession[] {
       path: at("subagent-meta-id/updates.jsonl"),
       records: 4,
       capabilities: ["requests", "usage", "durations", "subagents"]
-    }
+    },
+    { path: at("request-id-collision/updates.jsonl"), records: 2, capabilities: ["requests", "usage"] }
   ];
 }
 
