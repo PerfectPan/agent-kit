@@ -78,6 +78,11 @@ export interface LiveSession {
   readonly folder: StreamFolder;
   /** The system prompt still to send before the first prompt, for agents that read it from the first block. */
   pendingBlocks: readonly PromptBlock[];
+  /**
+   * The updates that arrived while no turn ran, held for the next one, which opens with them: a background call's
+   * result lands after its turn ended, and the session's state keeps the call across turns.
+   */
+  readonly idleUpdates: Record<string, unknown>[];
   /** The session directory, links resolved, for client file calls; absent when they are off or it does not exist. */
   readonly root?: AbsolutePath;
 }

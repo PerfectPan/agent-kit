@@ -38,7 +38,8 @@ export interface AcpSessionHandle {
   /** The session's state when the Effect runs. */
   readonly snapshot: Effect.Effect<AcpSessionSnapshot>;
   /**
-   * Runs one turn and streams its parts: deltas and completed events. A second prompt while a turn runs fails with
+   * Runs one turn and streams its parts: deltas and completed events. It opens with the updates that arrived while no
+   * turn ran, so a background call's result reaches its parts. A second prompt while a turn runs fails with
    * `TurnInProgress`. Interrupting the stream, or leaving it before it ends, cancels the turn as `cancel` does.
    */
   prompt(blocks: readonly PromptBlock[]): Stream.Stream<TranscriptStreamPart, PromptError>;
@@ -170,6 +171,17 @@ function prompt(
         cancelRequested: Deferred.makeUnsafe()
       };
       live.turn = turn;
+      // The updates that landed while no turn ran open this one through its own translator, so a background call's
+      // result reaches the session's parts and the turn's deltas stay self-contained.
+      const idle = live.idleUpdates.splice(0);
+      if (idle.length > 0) {
+        emit(
+          conn,
+          live,
+          turn,
+          idle.flatMap((update) => turn.translator.update(update))
+        );
+      }
       // Runs when the stream ends for any reason; only a turn that is still running needs the cancel.
       yield* Effect.addFinalizer(() =>
         Effect.suspend(() => (live.turn === turn ? Effect.ignore(cancelTurn(conn, live)) : Effect.void))
@@ -234,10 +246,18 @@ export function sessionHandle(
   };
 }
 
-/** Delivers one `session/update` to the running turn; between turns, such as during a load's replay, it is dropped. */
+/**
+ * Delivers one `session/update` to the running turn. While no turn runs it is held for the next one, which opens with
+ * it, so a background call's result that lands after its turn ended reaches a turn's parts; a load's replay, which
+ * arrives while the load is in flight, is dropped as today.
+ */
 export function deliverUpdate(conn: ConnectionState, live: LiveSession, update: Record<string, unknown>): void {
   if (live.turn !== undefined) {
     emit(conn, live, live.turn, live.turn.translator.update(update));
+    return;
+  }
+  if (!conn.loading.has(live.sessionId)) {
+    live.idleUpdates.push(update);
   }
 }
 

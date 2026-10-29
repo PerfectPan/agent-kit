@@ -339,6 +339,37 @@ const app = acp
           await say(client, sessionId, "background finished");
           return { stopReason: "end_turn" };
         }
+        case "background-idle": {
+          // A call whose result lands after its turn ended: the first prompt starts the call and returns, and the
+          // completion update goes out a tick later, while no turn runs.
+          const callId = `call-bg-idle-${sessionId}`;
+          if (session.turns === 1) {
+            await update(client, sessionId, {
+              sessionUpdate: "tool_call",
+              toolCallId: callId,
+              title: "run_background",
+              kind: "execute",
+              status: "in_progress",
+              rawInput: { command: "sleep 100" }
+            });
+            await say(client, sessionId, "started in the background");
+            setTimeout(() => {
+              void Promise.resolve(
+                update(client, sessionId, {
+                  sessionUpdate: "tool_call_update",
+                  toolCallId: callId,
+                  status: "completed",
+                  content: [{ type: "content", content: { type: "text", text: "background done" } }]
+                })
+              )
+                .catch(() => undefined)
+                .then(() => process.stderr.write("idle completion sent\n"));
+            }, 10);
+            return { stopReason: "end_turn" };
+          }
+          await say(client, sessionId, "second turn");
+          return { stopReason: "end_turn" };
+        }
         default:
           await say(client, sessionId, `turn ${session.turns}: ${text}`);
           return { stopReason: "end_turn" };
