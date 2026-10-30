@@ -52,9 +52,10 @@ export function OutputFields({
           </button>
         </span>
       </div>
-      {/* Both views share one grid cell, so switching between them keeps the window height. */}
+      {/* Both views share one grid cell, so switching between them keeps the window height. The minimum fits the
+          most fields any task shows: 22 px rows, 4 px gaps and the 24 px of vertical padding. */}
       <div
-        className="grid min-h-[calc(var(--output-rows,5)*22px+16px)] px-5.5 pt-2 pb-4"
+        className="grid min-h-[calc(var(--output-rows,5)*26px+20px)] px-5.5 pt-2 pb-4"
         style={{ "--output-rows": fieldCount } as CSSProperties}
       >
         <dl

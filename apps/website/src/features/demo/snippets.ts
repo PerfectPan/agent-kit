@@ -516,6 +516,11 @@ function snippets(task: TaskKey, agentId: string): { code: Token[][]; output: To
   }
 }
 
+/** The most code lines any task shows; my-agent adds the provider line, so it is the longest variant. */
+export function maxCodeLineCount(): number {
+  return Math.max(...TASK_ORDER.map((task) => snippets(task, MY_AGENT).code.length));
+}
+
 export function plainText(lines: readonly (readonly Token[])[]): string {
   return lines.map((line) => line.map((token) => token.text).join("")).join("\n");
 }

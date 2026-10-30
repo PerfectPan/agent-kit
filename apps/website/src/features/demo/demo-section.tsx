@@ -1,8 +1,16 @@
-import { useReducer, type KeyboardEvent } from "react";
+import { useReducer, type CSSProperties, type KeyboardEvent } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
 import { text, type Lang } from "../landing/index.ts";
-import { TASK_ORDER, demoView, isSwapField, maxOutputFieldCount, nextTaskKey, taskLabel } from "./snippets.ts";
+import {
+  TASK_ORDER,
+  demoView,
+  isSwapField,
+  maxCodeLineCount,
+  maxOutputFieldCount,
+  nextTaskKey,
+  taskLabel
+} from "./snippets.ts";
 import { demoReducer, demoSequence, initialDemoState } from "./demo-reducer.ts";
 import { useAutoplay } from "../../hooks/use-autoplay.ts";
 import { useAnimationRestart } from "../../hooks/use-animation-restart.ts";
@@ -75,7 +83,11 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
         file={view.file}
         packageName={view.packageName}
       >
-        <pre className="overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]">
+        {/* Every task gets the height of the longest one, so switching tabs does not move the hero. */}
+        <pre
+          className="min-h-[calc(var(--code-rows)*22px+30px)] overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]"
+          style={{ "--code-rows": maxCodeLineCount() } as CSSProperties}
+        >
           <CodeView lines={view.code} shown={view.code.length} flash={state.flashCode} nonce={state.flashNonce} />
         </pre>
         <OutputFields

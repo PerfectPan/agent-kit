@@ -141,7 +141,8 @@ html[lang="zh"] #nd-page :is(h2, h3, h4) {
 }
 
 /* Sidebar and TOC internals are rendered by Fumadocs without class props. */
-#nd-sidebar [data-state]::before {
+#nd-sidebar [data-state]::before,
+#nd-sidebar-mobile [data-state]::before {
   background-color: color-mix(in srgb, var(--color-fd-border) 70%, transparent);
 }
 
@@ -150,11 +151,27 @@ html[lang="zh"] #nd-page :is(h2, h3, h4) {
   display: none;
 }
 
-/* The active page reads from its tint and weight; Fumadocs' extra 1px bar inside the tint is dropped. */
-#nd-sidebar a[data-active="true"] {
+/* The active page reads from its tint and weight, on the desktop sidebar and the mobile drawer; Fumadocs' extra 1px bar inside the tint is dropped. */
+#nd-sidebar a[data-active="true"],
+#nd-sidebar-mobile a[data-active="true"] {
   font-weight: 550;
 }
 
-#nd-sidebar a[data-active="true"]::before {
+/* Fumadocs tints items with translucent colours, which let the nested-page guide line show through; mix them with the
+   page colour so the tint is opaque. */
+#nd-sidebar a[data-active="true"],
+#nd-sidebar a[data-active="true"]:hover,
+#nd-sidebar-mobile a[data-active="true"],
+#nd-sidebar-mobile a[data-active="true"]:hover {
+  background-color: color-mix(in srgb, var(--color-fd-primary) 10%, var(--color-fd-background));
+}
+
+#nd-sidebar a:not([data-active="true"]):hover,
+#nd-sidebar-mobile a:not([data-active="true"]):hover {
+  background-color: color-mix(in srgb, var(--color-fd-accent) 50%, var(--color-fd-background));
+}
+
+#nd-sidebar a[data-active="true"]::before,
+#nd-sidebar-mobile a[data-active="true"]::before {
   content: none;
 }
