@@ -44,8 +44,9 @@ export interface AcpSessionHandle {
   prompt(blocks: readonly PromptBlock[]): Stream.Stream<TranscriptStreamPart, PromptError>;
   /**
    * Sends `session/cancel` and waits for the turn to end, at most `cancelTimeoutMs`; the turn's stream then ends with
-   * a `finish` whose reason is usually `cancelled`. When the turn does not end in time, its binding is removed, the
-   * connection is closed and this fails with `CancelUnsettled`. With no turn running it does nothing.
+   * a `finish` whose reason is usually `cancelled`. When the turn does not end in time, its binding is removed and
+   * this fails with `CancelUnsettled`; the whole connection with its process ends too, unless `unsettledCancel` is
+   * `"session"`, which closes only this session. With no turn running it does nothing.
    */
   cancel(): Effect.Effect<void, CancelUnsettled | SessionClosed>;
   /**
@@ -56,8 +57,10 @@ export interface AcpSessionHandle {
 }
 
 /**
- * A cancel that did not settle: the session closes, the connection with its process ends, and then the session's
- * bindings go, each bounded by the request timeout, so a store that hangs cannot keep the process alive.
+ * A cancel that did not settle: the session closes, its turn ends, and then the session's bindings go, each bounded
+ * by the request timeout, so a store that hangs cannot keep the process alive. With the connection scope the process
+ * ends too, which fails the connection's other sessions; with the session scope the process and the other sessions
+ * keep running, the session leaves the connection, and `session/close` goes to the agent when it supports it.
  */
 function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effect.Effect<CancelUnsettled> {
   return Effect.gen(function* () {
@@ -67,7 +70,14 @@ function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effec
       live.turn = undefined;
       Deferred.doneUnsafe(turn.ended, Effect.void);
     }
-    shutdown(conn, "cancel-unsettled");
+    if (conn.unsettledCancel === "session") {
+      conn.sessions.delete(live.sessionId);
+      if (conn.closed === undefined && conn.features.closeSession) {
+        yield* Effect.ignore(conn.wire.closeSession(live.sessionId).pipe(Effect.timeoutOption(conn.requestTimeoutMs)));
+      }
+    } else {
+      shutdown(conn, "cancel-unsettled");
+    }
     const { sessionId } = live;
     const sessionKey = primaryKey(live);
     const outcomes = yield* Effect.forEach(

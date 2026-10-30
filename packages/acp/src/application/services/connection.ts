@@ -96,6 +96,8 @@ export interface ConnectionState {
   readonly fileSystem: { readonly read: boolean; readonly write: boolean };
   readonly requestTimeoutMs: number;
   readonly cancelTimeoutMs: number;
+  /** What an unsettled cancel invalidates: the connection with its process, or only the session that cancelled. */
+  readonly unsettledCancel: "connection" | "session";
   /**
    * `session/load` and `session/resume` requests in flight, by session id, so concurrent loads of one session send one
    * request and share its LiveSession.
