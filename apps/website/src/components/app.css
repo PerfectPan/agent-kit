@@ -164,6 +164,21 @@ html[lang="zh"] #nd-page > .prose {
   text-decoration-color: var(--color-fd-primary);
 }
 
+/* The sidebar sits on the page colour rather than a white card, so a hairline is enough to separate it. */
+#nd-sidebar {
+  background-color: var(--color-fd-background);
+  border-inline-end-color: color-mix(in srgb, var(--color-fd-border) 60%, transparent);
+}
+
+#nd-sidebar [data-state]::before {
+  background-color: color-mix(in srgb, var(--color-fd-border) 70%, transparent);
+}
+
+/* The TOC marks the current section with its track segment alone; Fumadocs' travelling dot is dropped. */
+#nd-toc [style*="offset-path"] {
+  display: none;
+}
+
 /* The active page reads from its tint and weight; Fumadocs' extra 1px bar inside the tint is dropped. */
 #nd-sidebar a[data-active="true"] {
   font-weight: 550;

@@ -21,7 +21,7 @@ export function DocsArticle({ path, fallback, lang }: { path: string; fallback: 
   useDocumentReady(path, lang === "zh", DOCS_PENDING_CLASS);
 
   return (
-    <DocsPage toc={apiSymbolToc(path, loaded.toc)}>
+    <DocsPage toc={apiSymbolToc(path, loaded.toc)} tableOfContent={{ single: true }}>
       <DocsTitle>{page.title}</DocsTitle>
       {page.description === undefined ? null : <DocsDescription>{page.description}</DocsDescription>}
       <DocsBody>
