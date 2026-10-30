@@ -6,6 +6,7 @@ import { text, type Lang } from "./copy.ts";
 import { CHANGELOG_URL, GITHUB_URL, NPM_URL } from "./projects.ts";
 import { landingFacts } from "virtual:landing-facts";
 import { Mascot } from "../../components/mascot.tsx";
+import { BRAND } from "./brand.ts";
 
 export function LandingFooter({ lang }: { readonly lang: Lang }) {
   const docs = docsIndex();
@@ -13,8 +14,8 @@ export function LandingFooter({ lang }: { readonly lang: Lang }) {
   return (
     <FooterLayout
       brand={
-        <Link to="/" className="brand">
-          <Mascot state="idle" />
+        <Link to="/" className={`${BRAND} text-[17px]`}>
+          <Mascot state="idle" className="size-5.5" />
           agent-kit
         </Link>
       }

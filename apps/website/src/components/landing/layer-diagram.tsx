@@ -21,7 +21,12 @@ export function LayerDiagram({
 
   const flow = segments.join(" ");
   return (
-    <svg className="layer-lines" width={size.width} height={size.height} aria-hidden="true">
+    <svg
+      className="pointer-events-none absolute inset-0 z-0 size-full overflow-visible"
+      width={size.width}
+      height={size.height}
+      aria-hidden="true"
+    >
       <defs>
         <marker
           id={`layer-arrow-${uid}`}
@@ -32,14 +37,19 @@ export function LayerDiagram({
           markerHeight="7"
           orient="auto"
         >
-          <path d="M 0 0 L 8 4 L 0 8 z" />
+          <path className="fill-ochre" d="M 0 0 L 8 4 L 0 8 z" />
         </marker>
       </defs>
       {segments.map((segment) => (
-        <path key={segment} className="layer-flow" d={segment} markerEnd={`url(#layer-arrow-${uid})`} />
+        <path
+          key={segment}
+          className="fill-none stroke-ochre stroke-2"
+          d={segment}
+          markerEnd={`url(#layer-arrow-${uid})`}
+        />
       ))}
       <path id={`layer-flow-${uid}`} d={flow} fill="none" stroke="none" />
-      <circle className="layer-packet" r="3.5">
+      <circle className="fill-ochre motion-reduce:hidden" r="3.5">
         <animateMotion key={flow} dur="1.6s" repeatCount="indefinite" rotate="auto">
           <mpath href={`#layer-flow-${uid}`} />
         </animateMotion>

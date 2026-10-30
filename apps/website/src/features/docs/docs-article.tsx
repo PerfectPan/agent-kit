@@ -22,9 +22,15 @@ export function DocsArticle({ path, fallback, lang }: { path: string; fallback: 
 
   return (
     <DocsPage toc={apiSymbolToc(path, loaded.toc)} tableOfContent={{ single: true }}>
-      <DocsTitle>{page.title}</DocsTitle>
+      <DocsTitle
+        className={`text-[2.375rem] leading-[1.15] font-[750] tracking-[-0.03em] text-balance ${lang === "zh" ? "break-keep" : ""}`}
+      >
+        {page.title}
+      </DocsTitle>
       {page.description === undefined ? null : <DocsDescription>{page.description}</DocsDescription>}
-      <DocsBody>
+      <DocsBody
+        className={`max-w-[72ch] text-[1.0625rem] leading-[1.7] text-pretty ${lang === "zh" ? "[line-break:strict]" : ""}`}
+      >
         {fallback ? <Callout>此页尚无中文译本，以下为英文原文。</Callout> : null}
         <MDX components={defaultMdxComponents} />
       </DocsBody>

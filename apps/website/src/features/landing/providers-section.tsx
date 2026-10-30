@@ -19,14 +19,19 @@ const COLUMN_LABEL: Record<Capability, CopyKey> = {
 export function ProvidersSection({ lang }: { readonly lang: Lang }) {
   const providers = guide("concepts/providers");
   return (
-    <section className="section reveal" aria-labelledby={`providers-heading-${lang}`}>
+    <section
+      className="reveal grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-5 pt-16"
+      aria-labelledby={`providers-heading-${lang}`}
+    >
       <SectionHeading
         id={`providers-heading-${lang}`}
         title={text(lang, "providersTitle")}
         body={text(lang, "providersBody")}
       />
-      <div className="section-body">
-        <p className="matrix-legend">{text(lang, "providersLegend")}</p>
+      <div>
+        <p className="mb-2.5 text-secondary text-pretty text-ink-2 zh:[line-break:strict]">
+          {text(lang, "providersLegend")}
+        </p>
         <SupportTable
           label={text(lang, "agentLabel")}
           columns={CAPABILITIES.map((capability) => ({ id: capability, label: text(lang, COLUMN_LABEL[capability]) }))}
@@ -39,7 +44,7 @@ export function ProvidersSection({ lang }: { readonly lang: Lang }) {
           supportedMark="✓"
           unsupportedMark="–"
           footer={
-            <Link to={providers.to} params={providers.params}>
+            <Link to={providers.to} params={providers.params} className="hover:underline">
               {text(lang, "addProvider")}
             </Link>
           }

@@ -16,10 +16,10 @@ export function CodeWindow({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="window">
+    <div className="relative z-2 overflow-hidden rounded-container bg-code-bg shadow-window motion-safe:animate-[ak-enter_0.75s_var(--ease-enter)_200ms_both]">
       {tabs}
       <div role="tabpanel" id={panelId} aria-labelledby={tabId}>
-        <div className="file">
+        <div className="flex items-center justify-between px-5.5 pt-3.5 font-mono text-ui text-code-dim">
           <span>{file}</span>
           <span>{packageName}</span>
         </div>

@@ -46,8 +46,12 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
   }
 
   return (
-    <div className="demo" {...interactionProps}>
-      <Mascot state={state.phase} hop={hop} className="m" />
+    <div className="relative mt-2 pt-22 text-left phone:pt-15 xl:mt-0" {...interactionProps}>
+      <Mascot
+        state={state.phase}
+        hop={hop}
+        className="absolute top-0 right-4 z-3 size-26 phone:right-2 phone:size-18 motion-safe:animate-pop"
+      />
       <CodeWindow
         tabs={
           <TaskTabs
@@ -71,7 +75,7 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
         file={view.file}
         packageName={view.packageName}
       >
-        <pre>
+        <pre className="overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]">
           <CodeView lines={view.code} shown={view.code.length} flash={state.flashCode} nonce={state.flashNonce} />
         </pre>
         <OutputFields
