@@ -12,9 +12,8 @@ Private TanStack Start and Fumadocs site. Source is organized by responsibility:
 
 Business state lives in feature components using `useReducer` with a pure reducer beside the component.
 Generic state and effects live in hooks. Language is the only cross-tree state; only features read its
-context. Fumadocs integration stays in the docs and i18n features. The unchanged CSS files live in components beside the UI; the router
-entry, generated route tree, ambient declarations, and architecture test remain at the source root.
-Landing UI stays in `components/landing/` so the original CSS source directives still resolve.
+context. Fumadocs integration stays in the docs and i18n features. The router entry, generated route
+tree, ambient declarations, and architecture test remain at the source root.
 
 `src/architecture.test.ts` scans imports, re-exports, dynamic imports, and TypeScript import types using
 the parser already exposed by Vite. Failures name the rule:
@@ -32,6 +31,23 @@ Tests live beside their modules. Build-time code lives with its feature: `featur
 `dist/`.
 The base-path helper test lives at `src/site.test.ts`, outside the pure lib boundary, so lib does not
 import the test runner.
+
+## Styling
+
+Styles are Tailwind CSS v4 utilities on the elements that render them. A component that styles by
+state receives that state as a prop or reads it from an `aria-*` or `data-*` attribute through a
+variant; it does not hold state for styling. The stylesheets live in `src/components/`:
+
+| File          | Contents                                                                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-secondary`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.           |
+| `landing.css` | Linked by the landing route only. Scans the landing UI and features; defines the `phone` (≤640 px), `narrow` (≤900 px) and `zh` variants and the `reveal` utility. |
+| `app.css`     | Linked on every route. Fumadocs palette, and rules for Fumadocs and MDX output that takes no class: code blocks, prose headings and links, sidebar and TOC parts.  |
+
+`app.css` excludes the landing folders from its sources, so landing utilities stay out of the docs
+stylesheet. Each remaining CSS rule carries a comment saying why it is not a utility. Tailwind's
+scanner reads class names literally: write complete class strings, and pick between them in code
+rather than building them from fragments.
 
 ## Builds
 

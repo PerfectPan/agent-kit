@@ -166,6 +166,36 @@ packages.
   existing process-identity tests with `spawnSync /bin/ps EPERM`; remaining tests and package checks
   need an unrestricted environment. See the main-only deployment section in HANDOFF for exact commands.
 
+#### Task 13: Tailwind styles
+
+- Scope: rewrite the landing stylesheet (1599 lines) and the docs stylesheet (236 lines) as Tailwind v4
+  utilities in the JSX that renders each element. Rendering, DOM structure (apart from class and data
+  attributes), copy, URLs, timings, keyboard handling and reduced-motion handling stay as they were. No
+  new dependencies; the website is private, so no changeset.
+- Decisions: `components/theme.css` holds the shared `@theme` (colours, fonts, type scale with line
+  heights and weights, radii, shadows, easings, `animate-*` tokens with their keyframes) and is imported
+  by both stylesheets; Tailwind emits only the tokens a page uses. `landing.css` keeps the landing-only
+  link, adds `phone`/`narrow` variants with inclusive max-width queries (Tailwind's `max-*` exclude the
+  boundary), a `zh` variant for the Chinese tree, the `reveal` utility (useInView toggles plain classes)
+  and the `body:has(.landing-langs)` rule (the root shell renders `<body>`). `app.css` keeps the
+  Fumadocs palette, `.dark #nd-sidebar` (overrides an ID selector in the Fumadocs theme), Shiki and
+  prose rules for MDX output, and sidebar/TOC internals; it excludes the landing folders from its
+  sources. The docs title, body and sidebar take utilities through Fumadocs `className` props.
+  State-dependent classes are chosen in code from props (`lang`, selection, agent kind) or through
+  `aria-pressed`/`aria-selected`/`group-*` variants; the mascot takes a `quiet` prop for the docs
+  sidebar. Unused colour tokens and the `.ev` rules, which matched no element, are dropped.
+- Exit: headless-Chrome screenshots of the landing page (1440 and 390 px, both languages, reveals
+  shown), hero task/agent/raw/blocked states, layer and card hover, tab focus, the cost docs page in
+  both languages and dark, the API page and 390 px docs differ from a build of the previous commit in
+  under 0.5% of pixels, with every image above 0.05% explained; `scrollWidth` equals the viewport at
+  390/768/1440 px in both languages; with reduced motion the landing page runs no animations; website
+  format:check, lint, typecheck, test, the dependency-inclusive build and the static navigation check pass.
+- Result: the largest difference is 0.0755% (390 px English landing page, the task tab labels), which
+  matches the 0.0765% two baseline captures differ by; all other images differ by at most 0.0056%,
+  in antialiased text and rounded-corner edges. CSS sources drop from 1835 to 392 lines (`theme.css` 187, `app.css` 160,
+  `landing.css` 45); built CSS grows from 53.3 to 60.5 KB on the landing page and from 114.5 to
+  117.0 KB on every page.
+
 ## 5. Open items
 
 Decided after Task 3: the package READMEs stay. The site does not replace them.
