@@ -1,3 +1,5 @@
+import { cn } from "../lib/utils.ts";
+
 const BODY =
   "M76 52 L164 42 C190 40 208 56 208 78 V112 C208 124 200 132 188 132 C183 132 181 129 181 125 V107 C158 109 136 113 126 120 C121 124 120 128 120 131 C136 133 166 136 186 141 C200 144 208 152 208 166 V184 C208 198 196 208 182 208 H76 C60 208 48 196 48 180 V80 C48 64 60 54 76 52 Z";
 const FLAP =
@@ -15,7 +17,7 @@ function bodyMotion(state: MascotState, hop: boolean | undefined, quiet: boolean
   if (state === "blocked") {
     return "motion-safe:animate-shake";
   }
-  return `${hop ? "motion-safe:animate-hop" : ""} motion-safe:group-hover/brand:animate-hop-hover`;
+  return cn(hop && "motion-safe:animate-hop", "motion-safe:group-hover/brand:animate-hop-hover");
 }
 
 function eyeStyle(state: MascotState, quiet: boolean | undefined): string {
@@ -44,21 +46,26 @@ export function Mascot({
   readonly className?: string;
 }) {
   const blocked = state === "blocked";
-  const flap = state === "working" && !quiet ? "motion-safe:origin-top-left motion-safe:animate-flap" : "";
-  const eye = `origin-center fill-white transform-fill ${eyeStyle(state, quiet)}`;
+  const eye = cn("origin-center fill-white transform-fill", eyeStyle(state, quiet));
 
   return (
-    <svg className={`overflow-visible ${className ?? ""}`} viewBox="40 34 176 182" aria-hidden="true">
-      <g className={`origin-bottom transform-fill ${bodyMotion(state, hop, quiet)}`}>
+    <svg className={cn("overflow-visible", className)} viewBox="40 34 176 182" aria-hidden="true">
+      <g className={cn("origin-bottom transform-fill", bodyMotion(state, hop, quiet))}>
         <path
           className={blocked ? "fill-[color-mix(in_srgb,var(--color-ochre)_82%,#6b6b6b)]" : "fill-ochre"}
           d={BODY}
         />
-        <path className={`fill-honey transform-fill ${flap}`} d={FLAP} />
+        <path
+          className={cn(
+            "fill-honey transform-fill",
+            state === "working" && !quiet && "motion-safe:origin-top-left motion-safe:animate-flap"
+          )}
+          d={FLAP}
+        />
         <circle className={eye} cx="74" cy="86" r="5" />
         <circle className={eye} cx="108" cy="86" r="5" />
         <path
-          className={`stroke-white stroke-6 [stroke-linecap:round] ${blocked ? "opacity-100" : "opacity-0"}`}
+          className={cn("stroke-white stroke-6 [stroke-linecap:round]", blocked ? "opacity-100" : "opacity-0")}
           d="M68 88 H80 M102 88 H114"
         />
       </g>

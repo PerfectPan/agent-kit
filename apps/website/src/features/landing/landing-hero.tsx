@@ -7,7 +7,8 @@ import { INSTALL_KIT } from "./projects.ts";
 import { DemoSection } from "../demo/index.ts";
 import { useClipboard } from "../../hooks/use-clipboard.ts";
 import { CopyButton } from "../../components/landing/copy-button.tsx";
-import { PRIMARY_BUTTON } from "./button-classes.ts";
+import { Button } from "../../components/ui/button.tsx";
+import { cn } from "../../lib/utils.ts";
 
 // The Chinese headline and lead keep their own size and measure at every width.
 const HEADLINE: Record<Lang, string> = {
@@ -25,9 +26,12 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
   return (
     <section className="grid gap-7 pt-12 text-left phone:pt-8 xl:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)] xl:items-center xl:gap-x-14 xl:pt-18">
       <div>
-        <h1 className={`mb-4 text-balance motion-safe:animate-enter ${HEADLINE[lang]}`}>{text(lang, "heroTitle")}</h1>
+        <h1 className={cn("mb-4 text-balance motion-safe:animate-enter", HEADLINE[lang])}>{text(lang, "heroTitle")}</h1>
         <p
-          className={`mb-6 text-pretty text-ink-2 motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_70ms_both] ${LEAD[lang]}`}
+          className={cn(
+            "mb-6 text-pretty text-ink-2 motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_70ms_both]",
+            LEAD[lang]
+          )}
         >
           {text(lang, "heroLead")}
         </p>
@@ -41,15 +45,17 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
               onCopy={copy}
             />
           </span>
-          <Link to={start.to} params={start.params} className={PRIMARY_BUTTON}>
-            {text(lang, "getStarted")}
-          </Link>
+          <Button asChild size="lg">
+            <Link to={start.to} params={start.params}>
+              {text(lang, "getStarted")}
+            </Link>
+          </Button>
         </div>
       </div>
       <div className="min-w-0">
         <DemoSection lang={lang} />
         <p
-          className="mt-2.5 text-pretty font-sans text-micro text-muted zh:[line-break:strict] motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_280ms_both]"
+          className="mt-2.5 text-pretty font-sans text-micro text-muted-foreground zh:[line-break:strict] motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_280ms_both]"
           aria-label={text(lang, "factsStrip")}
         >
           {landingFacts.entryCount} {text(lang, "factsEntries")}

@@ -138,6 +138,8 @@ For non-trivial changes:
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
 - The website (`apps/website`) styles with Tailwind CSS utilities in the markup; see its README for the layering and
   the few stylesheet rules that remain. Do not add stylesheets or class selectors; its architecture test fails on them.
+  Use the shadcn components in `apps/website/src/components/ui` and `cn()` (`src/lib/utils.ts`) for class merging;
+  `pnpm --filter website run lint` checks the classes with `eslint-plugin-better-tailwindcss`.
 - Organize code by domain boundaries, layer boundaries, and test boundaries before mechanical one-file-per-export preferences.
 - Keep domain rules, application services, infrastructure adapters, UI/CLI entrypoints, persistence, and test fixtures separated when those responsibilities exist.
 - Put unit tests next to the code they test (for TypeScript, `foo.test.ts` beside `foo.ts`; other languages follow their own convention). Integration tests, which cross modules, run a built artifact, or go through an external boundary such as HTTP or a database, live in the package's `test/` directory, with shared fixtures under `test/fixtures/`.

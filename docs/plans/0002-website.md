@@ -195,6 +195,11 @@ packages.
   in antialiased text and rounded-corner edges. CSS sources drop from 1835 to 392 lines (`theme.css` 187, `app.css` 160,
   `landing.css` 45); built CSS grows from 53.3 to 60.5 KB on the landing page and from 114.5 to
   117.0 KB on every page.
+- Follow-up: controls come from shadcn/ui (`components/ui`: `Button` with site variants, single-choice
+  `ToggleGroup` for the language and fields/raw switches, Radix `Tabs` for the hero tasks) and classes are
+  combined with `cn()` (clsx and tailwind-merge, extended with the theme's scales) instead of class-string
+  constants and template strings. `eslint-plugin-better-tailwindcss` runs in oxlint as a JS plugin and fails
+  on unknown, conflicting, duplicate and non-canonical classes.
 
 ## 5. Open items
 

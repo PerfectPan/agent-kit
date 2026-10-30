@@ -33,8 +33,27 @@
   --color-fd-overlay: rgba(42, 33, 30, 0.2);
 }
 
+/* .dark also sets the shadcn/ui colours, whose light values are in theme.css. */
 .dark {
   --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.08);
+  --background: #1c1614;
+  --foreground: #f4ece4;
+  --card: #261e1b;
+  --card-foreground: #f4ece4;
+  --popover: #261e1b;
+  --popover-foreground: #f4ece4;
+  --primary: #b94f3c;
+  --primary-foreground: #fffaf4;
+  --secondary: #2e2622;
+  --secondary-foreground: #f4ece4;
+  --muted: #2a221e;
+  --muted-foreground: #b3a399;
+  --accent: #3a2e28;
+  --accent-foreground: #f4ece4;
+  --destructive: #c46a56;
+  --border: #3d322c;
+  --input: #3d322c;
+  --ring: #c46a56;
   --color-fd-background: #1c1614;
   --color-fd-foreground: #f4ece4;
   --color-fd-muted: #2a221e;

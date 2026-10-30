@@ -1,10 +1,14 @@
+import { cva } from "class-variance-authority";
 import type { ReactNode } from "react";
 
-const CELL = "border-b border-line py-2.5";
-const VALUE_CELL = `${CELL} px-2 text-center`;
-// The first column shrinks to its labels; the rest share the table width.
-const FIRST_CELL = `${CELL} w-[1%] pr-2 pl-4 text-left whitespace-nowrap text-ink`;
-const ROW = "hover:bg-[color-mix(in_srgb,var(--color-ochre)_6%,var(--color-card))]";
+import { cn } from "../../lib/utils.ts";
+
+const tableCell = cva("border-b border-line py-2.5", {
+  variants: {
+    // The first column shrinks to its labels; the rest share the table width.
+    column: { label: "w-[1%] pr-2 pl-4 text-left whitespace-nowrap text-ink", value: "px-2 text-center" }
+  }
+});
 
 export function SupportTable({
   label,
@@ -29,15 +33,19 @@ export function SupportTable({
   readonly footer: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-container shadow-card [contain:paint]">
+    <div className="overflow-x-auto rounded-container shadow-card contain-[paint]">
       <table className="w-full border-collapse bg-card font-mono text-ui-sm">
         <thead>
           <tr>
-            <th scope="col" className={`${FIRST_CELL} font-sans text-ui-sm font-[650]`}>
+            <th scope="col" className={cn(tableCell({ column: "label" }), "font-sans text-ui-sm font-[650]")}>
               {label}
             </th>
             {columns.map((column) => (
-              <th key={column.id} scope="col" className={`${VALUE_CELL} font-sans text-ui-sm font-[650] text-ink`}>
+              <th
+                key={column.id}
+                scope="col"
+                className={cn(tableCell({ column: "value" }), "font-sans text-ui-sm font-[650] text-ink")}
+              >
                 {column.label}
               </th>
             ))}
@@ -45,14 +53,18 @@ export function SupportTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className={ROW}>
-              <th scope="row" className={`${FIRST_CELL} font-mono text-ui-sm font-medium`}>
+            <tr key={row.id} className="hover:bg-[color-mix(in_srgb,var(--color-ochre)_6%,var(--card))]">
+              <th scope="row" className={cn(tableCell({ column: "label" }), "font-mono text-ui-sm font-medium")}>
                 {row.id}
               </th>
               {row.cells.map((cell) => (
                 <td
                   key={cell.id}
-                  className={`${VALUE_CELL} font-mono text-ui ${cell.supported ? "text-ink" : "text-ink-2"}`}
+                  className={cn(
+                    tableCell({ column: "value" }),
+                    "font-mono text-ui",
+                    cell.supported ? "text-ink" : "text-ink-2"
+                  )}
                 >
                   <span aria-hidden="true">{cell.supported ? supportedMark : unsupportedMark}</span>
                   <span className="sr-only">{cell.supported ? supportedLabel : unsupportedLabel}</span>
@@ -60,7 +72,7 @@ export function SupportTable({
               ))}
             </tr>
           ))}
-          <tr className={ROW}>
+          <tr className="hover:bg-[color-mix(in_srgb,var(--color-ochre)_6%,var(--card))]">
             <td
               colSpan={columns.length + 1}
               className="w-[1%] py-2.5 pr-2 pl-4 text-left font-sans font-semibold whitespace-nowrap text-ochre"

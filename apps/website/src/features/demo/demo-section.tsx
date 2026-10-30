@@ -1,22 +1,13 @@
-import { useReducer, type CSSProperties, type KeyboardEvent } from "react";
+import { useReducer, type CSSProperties } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
 import { text, type Lang } from "../landing/index.ts";
-import {
-  TASK_ORDER,
-  demoView,
-  isSwapField,
-  maxCodeLineCount,
-  maxOutputFieldCount,
-  nextTaskKey,
-  taskLabel
-} from "./snippets.ts";
+import { TASK_ORDER, demoView, isSwapField, maxCodeLineCount, maxOutputFieldCount, taskLabel } from "./snippets.ts";
 import { demoReducer, demoSequence, initialDemoState } from "./demo-reducer.ts";
 import { useAutoplay } from "../../hooks/use-autoplay.ts";
 import { useAnimationRestart } from "../../hooks/use-animation-restart.ts";
 import { useReducedMotion } from "../../hooks/use-reduced-motion.ts";
 import { useTimedEvents } from "../../hooks/use-timed-events.ts";
-import { useFocusElement } from "../../hooks/use-focus-element.ts";
 import { useSelectedIndicator } from "../../hooks/use-selected-indicator.ts";
 import { Mascot } from "../../components/mascot.tsx";
 import { TaskTabs } from "../../components/landing/task-tabs.tsx";
@@ -27,7 +18,6 @@ import { AgentPicker } from "../../components/landing/agent-picker.tsx";
 
 export function DemoSection({ lang }: { readonly lang: Lang }) {
   const support = landingFacts.support;
-  const focusElement = useFocusElement();
   const [state, dispatch] = useReducer(demoReducer, support, initialDemoState);
   const view = demoView(state.selection, support);
   const allowMotion = !useReducedMotion();
@@ -42,17 +32,6 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
     onStep: () => dispatch({ type: "autoplay", rows: support })
   });
 
-  function onTaskKey(event: KeyboardEvent<HTMLDivElement>) {
-    const next = nextTaskKey(view.task, event.key);
-    if (next === null) {
-      return;
-    }
-    event.preventDefault();
-    markUser();
-    dispatch({ type: "task", task: next, rows: support });
-    focusElement(`task-${lang}-${next}`);
-  }
-
   return (
     <div className="relative mt-2 pt-22 text-left phone:pt-15 xl:mt-0" {...interactionProps}>
       <Mascot
@@ -65,19 +44,18 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
           <TaskTabs
             lang={lang}
             label={text(lang, "tasksLabel")}
-            items={TASK_ORDER.map((task) => ({
-              id: task,
-              selected: view.task === task,
-              label: text(lang, taskLabel(task))
-            }))}
-            onKeyDown={onTaskKey}
+            items={TASK_ORDER.map((task) => ({ id: task, label: text(lang, taskLabel(task)) }))}
             listRef={tabsRef}
-            onSelect={(task) => {
-              markUser();
-              dispatch({ type: "task", task, rows: support });
-            }}
           />
         }
+        value={view.task}
+        onValueChange={(value) => {
+          const task = TASK_ORDER.find((key) => key === value);
+          if (task !== undefined) {
+            markUser();
+            dispatch({ type: "task", task, rows: support });
+          }
+        }}
         panelId={`task-panel-${lang}`}
         tabId={`task-${lang}-${view.task}`}
         file={view.file}

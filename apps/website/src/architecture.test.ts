@@ -47,7 +47,11 @@ function violations(file: string, code: string): string[] {
     if (layer === "hooks" && ["features", "components", "routes"].includes(targetLayer!)) {
       fail("hooks-independent", `forbidden import ${specifier}`);
     }
-    if (layer === "lib" && targetLayer !== "lib") {
+    // lib/ stays free of React and the other source layers; plain npm helpers are fine (cn() wraps clsx and
+    // tailwind-merge).
+    const local = path.startsWith("@/") || path.startsWith(".") || path.startsWith("virtual:");
+    const react = /^react(-dom)?(\/|$)/.test(path);
+    if (layer === "lib" && (react || (local && targetLayer !== "lib"))) {
       fail("lib-independent", `forbidden import ${specifier}`);
     }
     if (layer === "features" && targetLayer === "routes") {
@@ -198,6 +202,7 @@ it.each([
   ["hooks/a.tsx", "const element = <>hello</>;", "hooks-no-jsx"],
   ["lib/a.ts", 'import { useState } from "react";', "lib-independent"],
   ["lib/a.ts", 'import { x } from "../hooks/x.ts";', "lib-independent"],
+  ["lib/a.ts", 'import { x } from "@/components/ui/button.tsx";', "lib-independent"],
   ["features/demo/a.ts", 'export * from "../../routes/index.tsx";', "features-no-routes"],
   ["features/demo/a.ts", 'import { text } from "../landing/copy.ts";', "feature-public-entry"],
   ["features/docs/a.ts", 'import { x } from "../landing/copy.ts";', "feature-public-entry"]
@@ -210,6 +215,7 @@ it.each([
   ["components/a.tsx", 'const text = "useState import from ../features/demo"; // useEffect()'],
   ["hooks/a.ts", 'import { useState } from "react"; const label = "<div/>";'],
   ["lib/a.ts", 'import { x } from "./site.ts";'],
+  ["lib/a.ts", 'import { twMerge } from "tailwind-merge";'],
   ["features/demo/a.ts", 'import { text } from "../landing/index.ts";'],
   ["features/demo/a.ts", 'import { x } from "./snippets.ts";']
 ])("allows %s: %s", (file, code) => {

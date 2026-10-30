@@ -1,5 +1,6 @@
 import { useInView } from "../../hooks/use-in-view.ts";
-import { WRAP } from "../../components/landing/wrap.ts";
+import { PageWrap } from "../../components/landing/page-wrap.tsx";
+import { cn } from "../../lib/utils.ts";
 
 import type { Lang } from "./copy.ts";
 import { CloseCta } from "./close-cta.tsx";
@@ -30,18 +31,23 @@ export function LandingPage({ lang }: { readonly lang: Lang }) {
   return (
     <div
       ref={rootRef}
-      className={`${TREE_VISIBILITY[lang]} col-start-1 row-start-1 text-ink selection:bg-honey selection:text-ink [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-3 [&_:focus-visible]:outline-ochre`}
+      className={cn(
+        TREE_VISIBILITY[lang],
+        "col-start-1 row-start-1 text-ink selection:bg-honey selection:text-ink **:focus-visible:outline-2 **:focus-visible:outline-offset-3 **:focus-visible:outline-ochre"
+      )}
       data-lang={lang}
     >
       <LandingHeader lang={lang} />
-      <main className={WRAP}>
-        <LandingHero lang={lang} />
-        <LayerSection lang={lang} />
-        <ProjectsSection lang={lang} />
-        <PackagesSection lang={lang} />
-        <ProvidersSection lang={lang} />
-        <CloseCta lang={lang} />
-      </main>
+      <PageWrap asChild>
+        <main>
+          <LandingHero lang={lang} />
+          <LayerSection lang={lang} />
+          <ProjectsSection lang={lang} />
+          <PackagesSection lang={lang} />
+          <ProvidersSection lang={lang} />
+          <CloseCta lang={lang} />
+        </main>
+      </PageWrap>
       <LandingFooter lang={lang} />
     </div>
   );

@@ -12,7 +12,7 @@ export function SectionHeading({
       <h2 id={id} className="mb-2 text-left text-section tracking-[-0.03em] text-balance zh:break-keep">
         {title}
       </h2>
-      <p className="max-w-read text-left text-secondary text-pretty text-ink-2 zh:[line-break:strict]">{body}</p>
+      <p className="max-w-read text-left text-body-sm text-pretty text-ink-2 zh:[line-break:strict]">{body}</p>
     </div>
   );
 }

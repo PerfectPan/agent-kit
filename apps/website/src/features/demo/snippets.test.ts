@@ -11,7 +11,6 @@ import {
   isSwapField,
   maxOutputFieldCount,
   nextAutoplayStep,
-  nextTaskKey,
   outputFields,
   plainText,
   selectAgent,
@@ -96,14 +95,6 @@ it("cycles autoplay through supported Agents, then the next task", () => {
 it("marks a LeaseHeld sample as blocked", () => {
   expect(isBlockedOutput(demoView(on("coordinate", "codex"), rows).output)).toBe(true);
   expect(isBlockedOutput(demoView(on("detect", "claude-code"), rows).output)).toBe(false);
-});
-
-it("moves the task tab with the arrow keys", () => {
-  expect(nextTaskKey("detect", "ArrowRight")).toBe("hooks");
-  expect(nextTaskKey("detect", "ArrowLeft")).toBe("coordinate");
-  expect(nextTaskKey("usage", "Home")).toBe("detect");
-  expect(nextTaskKey("usage", "End")).toBe("coordinate");
-  expect(nextTaskKey("usage", "Enter")).toBeNull();
 });
 
 it("keeps the approved snippet text", () => {

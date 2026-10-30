@@ -2,6 +2,7 @@ import { SectionHeading } from "../../components/landing/section-heading.tsx";
 import { text, type Lang } from "./copy.ts";
 import { GITHUB_URL, builtProjects } from "./projects.ts";
 import { ProjectPreview } from "../../components/landing/project-preview.tsx";
+import { cn } from "../../lib/utils.ts";
 
 const CASE_BODY: Record<Lang, string> = { en: "", zh: "leading-[1.8] [line-break:strict]" };
 
@@ -38,7 +39,7 @@ export function ProjectsSection({ lang }: { readonly lang: Lang }) {
               <h3 className="mb-2 font-mono text-component tracking-[-0.02em] text-balance zh:break-keep">
                 {project.id}
               </h3>
-              <p className={`mb-3 text-secondary text-pretty text-ink-2 ${CASE_BODY[lang]}`}>
+              <p className={cn("mb-3 text-body-sm text-pretty text-ink-2", CASE_BODY[lang])}>
                 {text(lang, project.body)}
               </p>
               <a className="text-ui font-semibold text-ochre hover:underline" href={project.href}>
@@ -47,7 +48,7 @@ export function ProjectsSection({ lang }: { readonly lang: Lang }) {
             </article>
           ))}
         </div>
-        <p className="mt-4 text-secondary text-pretty zh:[line-break:strict]">
+        <p className="mt-4 text-body-sm text-pretty zh:[line-break:strict]">
           <a href={GITHUB_URL} className="text-ink-2 hover:text-ochre">
             {text(lang, "addProject")}
           </a>

@@ -1,14 +1,58 @@
 /* Design tokens shared by the landing and docs stylesheets. Tailwind emits only the tokens a page's utilities use. */
+
+/* The semantic colours that shadcn/ui components (components/ui) are written against, set from the palette below.
+   `card` and `muted-foreground` are also the palette's own card white and quiet text colour. app.css sets the docs
+   .dark values. */
+:root {
+  --background: #fbf7f2;
+  --foreground: #2a211e;
+  --card: #ffffff;
+  --card-foreground: #2a211e;
+  --popover: #ffffff;
+  --popover-foreground: #2a211e;
+  --primary: #b94f3c;
+  --primary-foreground: #fffaf4;
+  --secondary: #f3ece3;
+  --secondary-foreground: #2a211e;
+  --muted: #f3ece3;
+  --muted-foreground: #5f564f;
+  --accent: #f3ece3;
+  --accent-foreground: #2a211e;
+  --destructive: #b94f3c;
+  --border: #e6dccf;
+  --input: #d6c7b6;
+  --ring: #b94f3c;
+  --radius: 8px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
 @theme {
   --font-sans: "Bricolage Grotesque Variable", system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
   --color-paper: #fbf7f2;
   --color-paper-2: #f3ece3;
-  --color-card: #ffffff;
   --color-ink: #2a211e;
   --color-ink-2: #5d514b;
-  --color-muted: #5f564f;
   --color-line: #e6dccf;
   --color-line-2: #d6c7b6;
   --color-ochre: #b94f3c;
@@ -38,8 +82,8 @@
   --text-component: 1.25rem;
   --text-component--line-height: 1.25;
   --text-component--font-weight: 700;
-  --text-secondary: 0.9375rem;
-  --text-secondary--line-height: 1.5;
+  --text-body-sm: 0.9375rem;
+  --text-body-sm--line-height: 1.5;
   --text-micro: 0.875rem;
   --text-micro--line-height: 1.4;
   /* Control and chip labels keep the font's own line height. */

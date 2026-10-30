@@ -29,7 +29,7 @@ export function ProvidersSection({ lang }: { readonly lang: Lang }) {
         body={text(lang, "providersBody")}
       />
       <div>
-        <p className="mb-2.5 text-secondary text-pretty text-ink-2 zh:[line-break:strict]">
+        <p className="mb-2.5 text-body-sm text-pretty text-ink-2 zh:[line-break:strict]">
           {text(lang, "providersLegend")}
         </p>
         <SupportTable

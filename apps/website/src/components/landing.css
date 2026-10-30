@@ -10,6 +10,8 @@
 @source "../features/landing";
 @source "../features/demo";
 @source "../features/layer";
+@source "../components/ui";
+@source "../lib/utils.ts";
 
 /* The landing media queries include their boundary width, which Tailwind's max-* variants exclude. */
 @custom-variant phone (@media (max-width: 640px));

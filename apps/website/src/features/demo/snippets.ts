@@ -148,23 +148,6 @@ export function selectAgent(selection: DemoSelection, agentId: string, rows: rea
   return { task: selection.task, agentId };
 }
 
-export function nextTaskKey(current: TaskKey, key: string): TaskKey | null {
-  const index = TASK_ORDER.indexOf(current);
-  if (key === "ArrowRight" || key === "ArrowDown") {
-    return TASK_ORDER[(index + 1) % TASK_ORDER.length] ?? current;
-  }
-  if (key === "ArrowLeft" || key === "ArrowUp") {
-    return TASK_ORDER[(index - 1 + TASK_ORDER.length) % TASK_ORDER.length] ?? current;
-  }
-  if (key === "Home") {
-    return TASK_ORDER[0];
-  }
-  if (key === "End") {
-    return TASK_ORDER[TASK_ORDER.length - 1] ?? current;
-  }
-  return null;
-}
-
 function quoted(agentId: string): Token {
   return s(`"${agentId}"`, true);
 }

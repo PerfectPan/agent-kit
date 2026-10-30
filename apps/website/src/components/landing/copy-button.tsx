@@ -1,3 +1,5 @@
+import { cn } from "../../lib/utils.ts";
+
 export function CopyButton({
   copied,
   label,
@@ -12,7 +14,10 @@ export function CopyButton({
   return (
     <button
       type="button"
-      className={`cursor-pointer p-0 font-mono text-ui underline underline-offset-3 ${copied ? "text-ochre" : "text-ink-2"}`}
+      className={cn(
+        "cursor-pointer p-0 font-mono text-ui underline underline-offset-3",
+        copied ? "text-ochre" : "text-ink-2"
+      )}
       aria-label={title}
       onClick={onCopy}
     >

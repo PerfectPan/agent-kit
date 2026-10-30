@@ -21,7 +21,7 @@ the parser already exposed by Vite. Failures name the rule:
 - `components-pure-ui` / `components-no-state`: UI cannot import features, hooks, routes, or virtual
   business data, or use state/effect/context hooks. `useId` is allowed for markup IDs.
 - `hooks-independent` / `hooks-no-jsx`: hooks cannot import features, components, or routes, or render JSX.
-- `lib-independent`: lib imports stay inside lib.
+- `lib-independent`: lib imports only lib and npm packages other than React.
 - `features-no-routes`: features cannot import routes.
 - `feature-public-entry`: another feature is accessed through its `index.ts`; add an entry only when
   another feature needs it, and export only those consumers' dependencies.
@@ -40,7 +40,7 @@ variant; it does not hold state for styling. The stylesheets live in `src/compon
 
 | File          | Contents                                                                                                                                                           |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-secondary`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.           |
+| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-body-sm`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.             |
 | `landing.css` | Linked by the landing route only. Scans the landing UI and features; defines the `phone` (≤640 px), `narrow` (≤900 px) and `zh` variants and the `reveal` utility. |
 | `app.css`     | Linked on every route. Fumadocs palette, and rules for Fumadocs and MDX output that takes no class: code blocks, prose headings and links, sidebar and TOC parts.  |
 
@@ -51,6 +51,25 @@ rather than building them from fragments.
 
 `src/architecture.test.ts` enforces this (`styles-in-tailwind`): a stylesheet outside the three above fails, and so
 does a selector naming a class other than the ones that come from outside the markup (`dark`, `prose`, `shiki`, …).
+
+Controls come from [shadcn/ui](https://ui.shadcn.com) (`components.json`): `src/components/ui/` holds `Button`,
+`ToggleGroup` and `Tabs`, built on Radix primitives. Site looks are variants in those files (`Button`'s `card`,
+`ghost` and `chip` variants, `ToggleGroup`'s `paper`, `sidebar` and `code` surfaces) rather than class strings
+elsewhere; add a variant when a control repeats, and write utilities in place for one-off markup. shadcn's semantic
+colours (`background`, `primary`, `muted-foreground`, …) are set from the palette in `theme.css`, with the docs dark
+values in `app.css`. The components skip shadcn's React context, which `components/` may not read, so a toggle
+group's items take the variant too.
+
+Combine classes with `cn()` from `src/lib/utils.ts` (clsx plus tailwind-merge), not template strings: a later class
+replaces an earlier one for the same property. tailwind-merge knows the theme's custom scales from the list in
+`utils.ts`; add a new size, shadow, radius, easing or animation token there as well. A font-size utility also sets
+the line height, so put a size before the `leading-*` it should keep. `cva()` maps props to classes for local
+variants and lookup tables.
+
+`pnpm run lint` runs `eslint-plugin-better-tailwindcss` in oxlint over `className`, `cn()`, `cva()` and `clsx()`.
+It reports unknown, conflicting, duplicate and non-canonical classes and stray whitespace, checking the landing
+folders against `landing.css` and everything else against `app.css` (`vite.config.ts`). Class order is not enforced:
+`vp fmt` does not sort classes.
 
 ## Builds
 
