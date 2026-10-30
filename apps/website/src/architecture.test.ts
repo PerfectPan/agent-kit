@@ -125,6 +125,53 @@ function violations(file: string, code: string): string[] {
   return [...messages];
 }
 
+// Styles are Tailwind utilities in the markup. CSS files hold only the theme and rules for markup that takes no class
+// (Fumadocs and MDX output), so a stylesheet may only exist in this list and name only these classes.
+const stylesheets = new Set(["components/theme.css", "components/landing.css", "components/app.css"]);
+const cssClasses = new Set(["dark", "prose", "not-prose", "shiki", "line", "landing-langs", "is-in"]);
+
+function cssViolations(file: string, css: string): string[] {
+  if (!stylesheets.has(file)) {
+    return [`styles-in-tailwind: ${file}: write utilities in the markup instead of a new stylesheet`];
+  }
+  const source = css.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/"[^"]*"|'[^']*'/g, '""');
+  const messages: string[] = [];
+  for (const [, prelude] of source.matchAll(/([^{};]+)\{/g)) {
+    const selector = prelude!.trim();
+    if (selector.startsWith("@")) {
+      continue;
+    }
+    for (const [, name] of selector.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) {
+      if (!cssClasses.has(name!)) {
+        messages.push(`styles-in-tailwind: ${file}: .${name} in "${selector}"; use utilities on the element`);
+      }
+    }
+  }
+  return messages;
+}
+
+it("keeps styles in Tailwind utilities", () => {
+  const files = readdirSync(sourceRoot, { recursive: true, encoding: "utf8" }).filter((file) => file.endsWith(".css"));
+  const failures = files.flatMap((file) => cssViolations(file, readFileSync(resolve(sourceRoot, file), "utf8")));
+  expect(failures).toEqual([]);
+});
+
+it.each([
+  ["components/demo.css", ".x { color: red; }"],
+  ["components/landing.css", ".landing .tasks button { color: red; }"],
+  ["components/app.css", "@media (width < 40rem) { #nd-page .card:hover { opacity: 0.5; } }"]
+])("reports styles-in-tailwind for %s: %s", (file, css) => {
+  expect(cssViolations(file, css).some((message) => message.startsWith("styles-in-tailwind:"))).toBe(true);
+});
+
+it.each([
+  ["components/app.css", "#nd-page > .prose :where(a):not(:where(.not-prose *)) { transition: color 0.15s; }"],
+  ["components/app.css", '/* .old */ #nd-toc [style*="a.b"] { display: none; }'],
+  ["components/landing.css", "@utility reveal { &.is-in { opacity: 1; translate: 0 0.5px; } }"]
+])("allows %s: %s", (file, css) => {
+  expect(cssViolations(file, css)).toEqual([]);
+});
+
 it("enforces website source boundaries", () => {
   const files = readdirSync(sourceRoot, { recursive: true, encoding: "utf8" }).filter(
     (file) => /\.[cm]?[jt]sx?$/.test(file) && file !== "routeTree.gen.ts"

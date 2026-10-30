@@ -49,6 +49,9 @@ stylesheet. Each remaining CSS rule carries a comment saying why it is not a uti
 scanner reads class names literally: write complete class strings, and pick between them in code
 rather than building them from fragments.
 
+`src/architecture.test.ts` enforces this (`styles-in-tailwind`): a stylesheet outside the three above fails, and so
+does a selector naming a class other than the ones that come from outside the markup (`dark`, `prose`, `shiki`, …).
+
 ## Builds
 
 `SITE_BASE_PATH` defaults to `/agent-kit`; Vite reads it at build time and supplies `BASE_URL` to the
