@@ -388,7 +388,8 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 returns a connection that belongs to your Scope; closing the Scope closes its sessions and stops the process. A
 session runs one turn at a time, and `prompt` streams the turn: deltas named after AI SDK's stream parts
 (`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-available`, `tool-output-error`, `finish`) and `event` parts carrying the
-completed `TranscriptEvent`s.
+completed `TranscriptEvent`s. The turn opens with the updates that arrived while no turn ran, so a background
+call's result that lands between turns reaches its parts.
 
 ```ts
 import * as Effect from "effect/Effect";

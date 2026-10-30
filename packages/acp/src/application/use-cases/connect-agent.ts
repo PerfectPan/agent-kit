@@ -259,6 +259,7 @@ function register(
       keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
       session: opened.value.state,
       pendingBlocks,
+      idleUpdates: [],
       toolState: { tools: new Map(), ended: new Set(), closed: new Set() },
       folder: createStreamFolder(),
       ...(root === undefined ? {} : { root })

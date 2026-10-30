@@ -149,6 +149,44 @@ describe("connectAgent", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  // The idle update is timed by the agent's own clock, so the test waits on the live one.
+  it.live("S89: a call whose result lands between turns is emitted with the next turn's parts", () =>
+    Effect.gen(function* () {
+      const stderr: string[] = [];
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_STDERR_LOG: "1" },
+        onStderr: (chunk) => {
+          stderr.push(chunk);
+        }
+      });
+      const session = yield* connection.newSession();
+      const first = yield* collectTurn(session.prompt([text("background-idle")]));
+      const callId = `call-bg-idle-${session.sessionId}`;
+      expect(
+        first.parts.flatMap((part) => (part.type === "event" && part.event.kind === "tool_result" ? [1] : []))
+      ).toEqual([]);
+      // The completion update goes out while no turn runs; wait until the agent sent it, and a little more for the
+      // wire to deliver it, so the next prompt opens with the held update.
+      for (let at = 0; at < 500 && !stderr.join("").includes("idle completion sent"); at += 1) {
+        yield* Effect.sleep(10);
+      }
+      yield* Effect.sleep(100);
+      const second = yield* collectTurn(session.prompt([text("background-idle")]));
+      expect(second.parts.flatMap((part) => (part.type.startsWith("tool-") ? [part.type] : [])).slice(0, 3)).toEqual([
+        "tool-input-start",
+        "tool-input-available",
+        "tool-output-available"
+      ]);
+      const events = [...first.parts, ...second.parts].flatMap((part) => (part.type === "event" ? [part.event] : []));
+      expect(events.filter((event) => event.kind === "tool_call").map((event) => event.payload)).toEqual([
+        { callId, name: "run_background", args: { command: "sleep 100" } }
+      ]);
+      expect(events.filter((event) => event.kind === "tool_result").map((event) => event.payload)).toEqual([
+        { callId, isError: false, output: "background done" }
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S89: a tool call updated after its turn ends is emitted once across the session", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();
