@@ -1,20 +1,22 @@
-import type { KeyboardEventHandler } from "react";
+import type { KeyboardEventHandler, Ref } from "react";
 
 export function TaskTabs<T extends string>({
   lang,
   label,
   items,
   onSelect,
-  onKeyDown
+  onKeyDown,
+  listRef
 }: {
   readonly lang: string;
   readonly label: string;
   readonly items: readonly { readonly id: T; readonly selected: boolean; readonly label: string }[];
   readonly onSelect: (id: T) => void;
   readonly onKeyDown: KeyboardEventHandler<HTMLDivElement>;
+  readonly listRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div className="tasks" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div ref={listRef} className="tasks" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
       {items.map((item) => {
         const { id: task, selected } = item;
         return (
