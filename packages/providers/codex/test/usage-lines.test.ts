@@ -108,12 +108,49 @@ describe("codex usage lines", () => {
         )
       )
     ).toEqual([]);
-    // A record without a time falls back to the file's mtime once `lastTime` reads as absent.
+    // A record without a time and no earlier one holds back until the file's first known time, or its end.
     const fresh = codexUsageLines(file, { lastTime: "2026-01-01T00:00:01.000Z", responses: "r1" });
-    const records = pushed(
-      fresh.push(record({ type: "token_usage_record", payload: { response_id: "r1", usage: { input_tokens: 1 } } }))
-    );
-    expect(records.map((item) => [item.timestamp, item.model])).toEqual([[1000, undefined]]);
+    expect(
+      pushed(
+        fresh.push(record({ type: "token_usage_record", payload: { response_id: "r1", usage: { input_tokens: 1 } } }))
+      )
+    ).toEqual([]);
+    expect(fresh.end(true).map((item) => [item.timestamp, item.model])).toEqual([[1, undefined]]);
+  });
+
+  it("stamps the leading run without a time with the first known time, or 1 at a final end", () => {
+    const noTime = (responseId: string, input: number) => ({
+      type: "token_usage_record",
+      payload: { response_id: responseId, usage: { input_tokens: input, output_tokens: 1 } }
+    });
+    // A wholly time-less rollout emits nothing until the file is final, which stamps every call 1.
+    const timeless = codexUsageLines(file);
+    expect(pushed(timeless.push(record(noTime("r1", 1), 1)))).toEqual([]);
+    expect(pushed(timeless.push(record(noTime("r2", 2), 2)))).toEqual([]);
+    expect(timeless.end(true).map((item) => [item.timestamp, item.responseId])).toEqual([
+      [1, "r1"],
+      [1, "r2"]
+    ]);
+    // A time-less prefix takes the first known time, and a record after it inherits the previous known one.
+    const prefixed = codexUsageLines(file);
+    expect(pushed(prefixed.push(record(noTime("r1", 1), 1)))).toEqual([]);
+    expect(
+      pushed(prefixed.push(record({ ...noTime("r2", 2), timestamp: at(5000) }, 2))).map((item) => [
+        item.responseId,
+        item.timestamp
+      ])
+    ).toEqual([
+      ["r1", Date.parse(at(5000))],
+      ["r2", Date.parse(at(5000))]
+    ]);
+    expect(
+      pushed(
+        prefixed.push(
+          record({ type: "token_usage_record", payload: { response_id: "r3", usage: { input_tokens: 3 } } }, 3)
+        )
+      ).map((item) => item.timestamp)
+    ).toEqual([Date.parse(at(5000))]);
+    expect(prefixed.end(true)).toEqual([]);
   });
 
   it("compares the totals as they were written: a mistyped or absent total never stands in for the last one", () => {
@@ -166,7 +203,7 @@ describe("codex usage lines", () => {
         )
       )
     ).toEqual([]);
-    const saved = first.save() as { waiting?: { model?: string } };
+    const saved = first.save() as { pending?: { model?: string }[] };
     const second = codexUsageLines(file, saved);
     // A second usage record at another second settles the first as the rollout's own, so both are emitted.
     const emitted = pushed(
@@ -180,6 +217,6 @@ describe("codex usage lines", () => {
     );
     expect(emitted).toHaveLength(2);
     emitted[0]!.model = "mutated";
-    expect(saved.waiting?.model).toBeUndefined();
+    expect(saved.pending?.[0]?.model).toBeUndefined();
   });
 });

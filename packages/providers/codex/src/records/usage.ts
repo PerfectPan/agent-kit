@@ -208,8 +208,27 @@ interface CodexUsageState {
   tracker: CodexUsageTracker;
   /** `shortHash`es of the last response ids met, newest last. */
   responses: string[];
-  /** The first usage record of a fork, while the replay rule waits for the second one. */
-  waiting?: UsageRecord;
+  /** The calls read but not emitted, in file order: the first usage record while the replay rule waits, and the
+   * calls of the leading run whose stamp no record has given them yet. */
+  pending?: PendingCall[];
+}
+
+/**
+ * A usage call the decoder holds back until its replay decision and its stamp are both known. The fields besides
+ * `ts` and `replayed` snapshot what the call's own record told the state, so a later record cannot rewrite them
+ * while the call waits.
+ */
+interface PendingCall {
+  sessionId?: string;
+  model?: string;
+  pricingMultiplier?: number;
+  usage: Usage;
+  source: UsageRecord["source"];
+  responseId?: string;
+  /** The record's own time, or the first known time the leading run took; `undefined` while none has arrived. */
+  ts?: number;
+  /** Whether the replay rule decided the call is the rollout's own; `undefined` while the first usage record waits. */
+  replayed?: boolean;
 }
 
 /**
@@ -219,31 +238,24 @@ interface CodexUsageState {
  */
 const RESPONSE_IDS = 8;
 
-function callRecord(
-  state: CodexUsageState,
-  file: UsageFile,
-  usage: Usage,
-  timestamp: number,
-  source: UsageRecord["source"],
-  responseId: string | undefined
-): UsageRecord {
+/** The `UsageRecord` a held call becomes, at the stamp the state settled on. */
+function buildCall(file: UsageFile, entry: PendingCall, timestamp: number): UsageRecord {
   const record: UsageRecord = {
     agent: AGENT,
-    sessionId: state.sessionId ?? file.sessionId,
+    sessionId: entry.sessionId ?? file.sessionId,
     granularity: "request",
     timestamp,
-    usage,
-    source
+    usage: entry.usage,
+    source: entry.source
   };
-  if (responseId) {
-    record.responseId = responseId;
+  if (entry.responseId !== undefined) {
+    record.responseId = entry.responseId;
   }
-  if (state.model) {
-    record.model = state.model;
+  if (entry.model !== undefined) {
+    record.model = entry.model;
   }
-  const multiplier = codexPricingMultiplier(state.serviceTier);
-  if (multiplier !== undefined) {
-    record.pricingMultiplier = multiplier;
+  if (entry.pricingMultiplier !== undefined) {
+    record.pricingMultiplier = entry.pricingMultiplier;
   }
   return record;
 }
@@ -263,7 +275,7 @@ const CodexSavedState = z.looseObject({
   ),
   tracker: lenient(z.looseObject({ usageRecords: lenient(z.boolean()), totals: z.optional(z.unknown()) })),
   responses: lenient(z.array(lenient(z.string()))),
-  waiting: z.optional(z.unknown())
+  pending: z.optional(z.unknown())
 });
 
 /** A saved state is the decoder's own output, passed back through a cursor; a missing field starts empty. The state
@@ -275,7 +287,7 @@ function restore(saved: unknown): CodexUsageState {
     ...(state?.model === undefined ? {} : { model: state.model }),
     ...(state?.serviceTier === undefined ? {} : { serviceTier: state.serviceTier }),
     ...(state?.lastTime === undefined ? {} : { lastTime: state.lastTime }),
-    ...(state?.waiting === undefined ? {} : { waiting: state.waiting as UsageRecord }),
+    ...(state?.pending === undefined ? {} : { pending: state.pending as PendingCall[] }),
     fork: state?.fork?.phase === undefined ? FORK_REPLAY_START : (state.fork as ForkReplayState),
     tracker: { ...state?.tracker, usageRecords: state?.tracker?.usageRecords === true },
     responses: state?.responses?.filter((id): id is string => id !== undefined) ?? []
@@ -285,7 +297,10 @@ function restore(saved: unknown): CodexUsageState {
 /**
  * Codex's usage over one rollout, by the translator's rules (`codexRecordUsage`, `stepForkReplay`): one record per
  * model call, with the model of the turn's `turn_context` and the price factor of the thread's service tier
- * (`thread_settings_applied`).
+ * (`thread_settings_applied`). A record without a readable time takes the previous record's, and the leading run
+ * without one waits for the file's first known time the way the batch rule stamps it, or for the file's end, which
+ * stamps it 1; the file's mtime never stands in for a time, so a rewritten file keeps every call's stamp and dedupe
+ * key.
  */
 export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder {
   const state = restore(saved);
@@ -297,13 +312,31 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
     rememberKey(state.responses, hash, RESPONSE_IDS);
     return false;
   };
-  const settle = (settled: boolean | undefined): UsageRecord[] => {
-    const waiting = state.waiting;
-    if (settled === undefined || !waiting) {
-      return [];
+  /** Emits the leading held calls whose replay decision and stamp are both known; `final` stamps a file that never
+   * named a time with 1. */
+  const flush = (out: UsageRecord[], final = false): void => {
+    const pending = state.pending ?? [];
+    while (pending.length > 0) {
+      const entry = pending[0]!;
+      if (entry.replayed === undefined || (entry.ts === undefined && !final)) {
+        break;
+      }
+      pending.shift();
+      out.push(buildCall(file, entry, entry.ts ?? 1));
     }
-    delete state.waiting;
-    return settled ? [] : [waiting];
+  };
+  /** Applies the replay rule's verdict on the first held call, which waited for it: replay drops it, own lets it
+   * emit once its stamp is known. */
+  const settle = (settled: boolean | undefined): void => {
+    const waiting = state.pending?.[0];
+    if (settled === undefined || waiting === undefined || waiting.replayed !== undefined) {
+      return;
+    }
+    if (settled) {
+      state.pending?.shift();
+    } else {
+      waiting.replayed = false;
+    }
   };
   return {
     push(record) {
@@ -311,12 +344,20 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
       if (!knownCodexRecord(rec)) {
         return err(unknownFormatGeneration(AGENT, record));
       }
-      const ts = timeOf(rec.timestamp) ?? state.lastTime ?? file.mtimeMs;
-      state.lastTime = ts;
+      const ts = timeOf(rec.timestamp) ?? state.lastTime;
+      if (ts !== undefined) {
+        // The leading run's stamp is the first known time, the batch rule's stamp for it.
+        for (const entry of state.pending ?? []) {
+          entry.ts ??= ts;
+        }
+        state.lastTime = ts;
+      }
       const payload = rec.payload ?? {};
       const step = stepForkReplay(state.fork, rec, payload, ts);
       state.fork = step.state;
-      const out = settle(step.settled);
+      const out: UsageRecord[] = [];
+      settle(step.settled);
+      flush(out);
       const envelope = rec.type;
       if (envelope === undefined) {
         // An older rollout's header names the session; a `record_type` marker is bookkeeping.
@@ -342,21 +383,35 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
       if (!found || "skip" in found || !found.usage) {
         return ok(out);
       }
-      const usage = callRecord(state, file, found.usage, ts, sourceOf(record), found.responseId);
-      if (step.replayed === undefined) {
-        state.waiting = usage;
+      if (step.replayed === true) {
         return ok(out);
       }
-      return ok([...out, usage]);
+      const multiplier = codexPricingMultiplier(state.serviceTier);
+      (state.pending ??= []).push({
+        ...(state.sessionId === undefined ? {} : { sessionId: state.sessionId }),
+        ...(state.model === undefined ? {} : { model: state.model }),
+        ...(multiplier === undefined ? {} : { pricingMultiplier: multiplier }),
+        usage: found.usage,
+        source: sourceOf(record),
+        ...(found.responseId === undefined ? {} : { responseId: found.responseId }),
+        ...(ts === undefined ? {} : { ts }),
+        ...(step.replayed === undefined ? {} : { replayed: false })
+      });
+      flush(out);
+      return ok(out);
     },
     end(final) {
-      // A first usage record still waiting for the replay rule stays undecided, in the state, until the file is final.
+      // Calls still held stay in the state until the file is final: a first usage record the replay rule never heard
+      // about is the rollout's own, and a leading run without a time stamps 1.
       if (!final) {
         return [];
       }
       const end = endForkReplay(state.fork);
       state.fork = end.state;
-      return settle(end.settled);
+      settle(end.settled);
+      const out: UsageRecord[] = [];
+      flush(out, true);
+      return out;
     },
     save() {
       return structuredClone(state);
