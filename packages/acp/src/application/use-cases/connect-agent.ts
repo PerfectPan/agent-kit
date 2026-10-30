@@ -76,6 +76,11 @@ export interface ConnectAgentOptions {
   readonly requestTimeoutMs?: number;
   /** How long a cancel may take, from sending `session/cancel` to the end of the turn; 5 s by default. */
   readonly cancelTimeoutMs?: number;
+  /**
+   * Receives the agent's stderr as decoded text arrives, in order, so a host can log a running agent. It may return a
+   * promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection.
+   */
+  readonly onStderr?: (text: string) => void | Promise<void>;
 }
 
 export interface SessionOptions extends SessionSetup {
@@ -136,15 +141,30 @@ const EXIT_STATUS_WAIT_MS = 1_000;
 const STDERR_TAIL_CHARS = 8 * 1024;
 const CLIENT_INFO = { name: "@rivus/agent-kit", version: "1" } as const;
 
-/** Reads a stream to its end, keeping its last characters, so a chatty agent never blocks on a full pipe. */
-function drainTail(stream: ReadableStream<Uint8Array>): () => string {
+/**
+ * Reads a stream to its end, keeping its last characters, so a chatty agent never blocks on a full pipe. `onText` sees
+ * the decoded text as it arrives, whole characters even when a chunk ends mid-one, and is neither awaited nor let to
+ * fail the reading.
+ */
+function drainTail(stream: ReadableStream<Uint8Array>, onText?: (text: string) => void | Promise<void>): () => string {
   let tail = "";
   const decoder = new TextDecoder();
   const reader = stream.getReader();
   const read = (): Promise<void> =>
     reader.read().then(({ done, value }) => {
       if (!done) {
-        tail = `${tail}${decoder.decode(value, { stream: true })}`.slice(-STDERR_TAIL_CHARS);
+        const text = decoder.decode(value, { stream: true });
+        if (onText !== undefined && text !== "") {
+          try {
+            const delivered = onText(text);
+            if (delivered instanceof Promise) {
+              delivered.catch(() => undefined);
+            }
+          } catch {
+            // A callback that throws or rejects is the caller's problem, never the connection's.
+          }
+        }
+        tail = `${tail}${text}`.slice(-STDERR_TAIL_CHARS);
         return read();
       }
       return undefined;
@@ -457,7 +477,7 @@ function open(
         return { child: spawned, exited: settled };
       })
     );
-    const stderr = drainTail(child.stderr);
+    const stderr = drainTail(child.stderr, options.onStderr);
     const fileSystem = { read: options.fileSystem?.read === true, write: options.fileSystem?.write === true };
 
     const rootOf = (sessionId: string) => {

@@ -41,6 +41,14 @@ if (env.FAKE_ACP_IGNORE_SIGTERM === "1") {
 if (env.FAKE_ACP_NOISY === "1") {
   process.stderr.write("x".repeat(1024 * 1024));
 }
+if (env.FAKE_ACP_STDERR_LOG === "1") {
+  process.stderr.write("stderr one\n");
+  // The butterfly's bytes split across two writes, so a chunk-wise decoder must reassemble the line.
+  const line = Buffer.from("stderr two 🦋 tail\n");
+  const at = line.indexOf(Buffer.from("🦋"));
+  process.stderr.write(line.subarray(0, at + 1));
+  process.stderr.write(line.subarray(at + 1));
+}
 process.stderr.write(`fake-agent pid ${process.pid}\n`);
 
 const remember = (sessionId: string, cwd: string, meta: unknown, mcpServers: unknown) => {

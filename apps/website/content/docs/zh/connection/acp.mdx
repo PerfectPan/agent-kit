@@ -44,6 +44,8 @@ await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatform
 
 权限请求交给 `onPermission`。没有该回调，或没有给出回答时，请求被拒绝。
 
+Agent 的 stderr 会按到达顺序以解码后的文本交给 `onStderr`，错误上附带的尾部日志保持不变。该回调不会被等待，也不会影响连接。
+
 中断回合的流，或调用 `session.cancel()`，会发送 `session/cancel`，并在 `cancelTimeoutMs` 内等待回合结束。默认是 5 秒。没有按时结束时，会话的绑定被移除，连接被关闭。它的其他会话以 `ConnectionClosed` 失败。
 
 `sessionKey` 在 `SessionBindingStore` 里把一个键绑定到会话。实现是 `MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`。后来的连接可以 `loadSession({ sessionKey })`。

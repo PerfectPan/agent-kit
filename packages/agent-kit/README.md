@@ -417,7 +417,9 @@ const turn = Effect.scoped(
 await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
 ```
 
-Permission requests go to `onPermission`; without it, or without an answer, they are denied. Interrupting a turn's
+Permission requests go to `onPermission`; without it, or without an answer, they are denied. The agent's stderr
+reaches `onStderr` as decoded text arrives, in order, and the tail already attached to errors stays; the callback is
+neither awaited nor let to fail the connection. Interrupting a turn's
 stream, or `session.cancel()`, sends `session/cancel` and waits for the turn to end within `cancelTimeoutMs` (5 s by
 default); when it does not end in time, the session's binding is removed and the connection is closed, which fails its
 other sessions with `ConnectionClosed`. `sessionKey` binds a key to the session in the `SessionBindingStore`
