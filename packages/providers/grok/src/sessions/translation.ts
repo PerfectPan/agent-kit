@@ -207,6 +207,8 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
   const statuses = new Map<string, AcpToolState>();
   const toolEvents = new Map<string, ToolEvents>();
   const toolResults = new Map<string, boolean>();
+  /** The ids the retained events hold, so a request id one already holds moves to the next free serial. */
+  const usedIds = new Set<string>();
   const turn: GrokTurn = {};
   let lastUserPrompt: string | undefined;
   let segment = 0;
@@ -239,6 +241,18 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
     }
   };
 
+  /**
+   * The first id of `base`'s shape no event holds: `base` itself, then `base:1`, `base:2`, …. The pattern
+   * guarantees nothing by itself, so the check at emission is what keeps ids apart.
+   */
+  const nextFree = (base: string): string => {
+    let candidate = base;
+    for (let serial = 1; usedIds.has(candidate); serial += 1) {
+      candidate = `${base}:${serial}`;
+    }
+    return candidate;
+  };
+
   return {
     events: retain ? events : [],
     skipped: retain ? skips : [],
@@ -260,6 +274,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
       const pushEvent = <E extends TranscriptEvent>(event: E): E => {
         events.push(event);
         parts.push(event);
+        usedIds.add(event.id);
         return event;
       };
       /** The mode's emit: the event with retain, a light part without. */
@@ -348,9 +363,13 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         delete turn.model;
         const durationMs = update.elapsed_ms;
         if (retain) {
-          // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request.
+          // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
+          // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
+          // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
+          // already used, now checked like the Codex translator checks its own.
           const requestId = `request:${key}`;
-          const id = events.some((event) => event.id === requestId) ? `request:${lineId(record)}` : requestId;
+          const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
+          usedIds.add(id);
           segment = placeRequest(
             events,
             segment,

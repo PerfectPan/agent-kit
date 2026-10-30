@@ -76,7 +76,9 @@ function eventId(uuid: string | undefined, record: SourcedRecord, part: number):
 /**
  * One `request` event per request key (`claudeCodeRequestKey`), at its first record: Claude Code writes one record per
  * content block, and a request's records may interleave with another's. Later records update its model and finish
- * reason, and its usage by `claudeCodeRequestUsage`.
+ * reason, and its usage by `claudeCodeRequestUsage`. The request keeps `request:<requestId>` only while no emitted
+ * event holds that id, else the first free serial of it; records may carry any uuid, so the check at emission — not
+ * the `request:` pattern — is what keeps ids unique.
  */
 function mergeRequest(
   requests: Map<string, TranscriptEventOf<"request">>,
@@ -86,11 +88,23 @@ function mergeRequest(
   record: SourcedRecord,
   ts: number,
   agentId: string | undefined,
-  requestId: string
+  requestId: string,
+  usedIds: Set<string>,
+  requestIds: Set<string>
 ): void {
   let event = requests.get(requestId);
   if (!event) {
-    event = baseEvent(record, "request", {}, { id: `request:${requestId}`, ts, agentId, requestId });
+    let id = `request:${requestId}`;
+    if (usedIds.has(id)) {
+      let serial = 1;
+      while (usedIds.has(`request:${requestId}:${serial}`)) {
+        serial += 1;
+      }
+      id = `request:${requestId}:${serial}`;
+    }
+    usedIds.add(id);
+    requestIds.add(id);
+    event = baseEvent(record, "request", {}, { id, ts, agentId, requestId });
     requests.set(requestId, event);
     events.push(event);
     parsed.set(event, rec);
@@ -241,6 +255,18 @@ export function translateClaudeCodeRecords(
   const events: TranscriptEvent[] = [];
   const skipped: SkippedRecord[] = [];
   const requests = new Map<string, TranscriptEventOf<"request">>();
+  /** Every id an emitted event holds, so an id one already holds moves to the next free serial. */
+  const usedIds = new Set<string>();
+  /** The ids request events hold, so a record uuid one holds moves to the record's line id. */
+  const requestIds = new Set<string>();
+  /** The first id of `base`'s shape no event holds: `base` itself, then `base:1`, `base:2`, … */
+  const nextFree = (base: string): string => {
+    let candidate = base;
+    for (let serial = 1; usedIds.has(candidate); serial += 1) {
+      candidate = `${base}:${serial}`;
+    }
+    return candidate;
+  };
   const parentOf = new Map<string, string | undefined>();
   /** Each event's parsed record, so the later passes never parse a record again. */
   const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();
@@ -292,7 +318,7 @@ export function translateClaudeCodeRecords(
       return err(unknownFormatGeneration(AGENT, record));
     }
     if (classified.requestKey !== undefined) {
-      mergeRequest(requests, events, parsed, rec, record, ts, agentId, classified.requestKey);
+      mergeRequest(requests, events, parsed, rec, record, ts, agentId, classified.requestKey, usedIds, requestIds);
     }
     // A prompt titles the session only from the main lane; explicit titles do so from anywhere.
     if (classified.promptTitle !== undefined && !agentId) {
@@ -305,8 +331,15 @@ export function translateClaudeCodeRecords(
       skipRecord(skipped, record, classified.skip);
     }
     classified.events.forEach((eventPart, part) => {
+      let id = eventId(uuid, record, part);
+      // A record uuid that a request event already holds moves to the record's line id, first free serial; a uuid
+      // two records share keeps the id both name, which the collision issue leaves as today's behavior.
+      if (requestIds.has(id)) {
+        id = nextFree(lineId(record, part));
+      }
+      usedIds.add(id);
       const event = baseEvent(record, eventPart.kind, eventPart.payload, {
-        id: eventId(uuid, record, part),
+        id,
         ts,
         agentId,
         parentId,

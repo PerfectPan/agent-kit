@@ -135,6 +135,18 @@ describe("createGrokTranslation steps", () => {
     expect(requests.map((part) => part.payload.model)).toEqual(["m", undefined]);
   });
 
+  it("moves a request id that another event holds to the first free serial of its line key", () => {
+    // The second turn's `request:<key>` and its `request:<line>` fallback both name the first turn's request.
+    const retained = steps(
+      [
+        { sessionUpdate: "turn_completed", prompt_id: "updates.jsonl:2" },
+        { sessionUpdate: "turn_completed", prompt_id: "updates.jsonl:2" }
+      ],
+      true
+    ).translation;
+    expect(retained.events.map((event) => event.id)).toEqual(["request:updates.jsonl:2", "request:updates.jsonl:2:1"]);
+  });
+
   it("names a lane per spawned subagent, without titles in the bounded pass", () => {
     const updates = [
       { sessionUpdate: "subagent_spawned", subagent_id: "w", description: "Dig" },

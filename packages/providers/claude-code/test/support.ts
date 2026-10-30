@@ -60,6 +60,11 @@ export function claudeCodeSessions(root: string): ConformanceSession[] {
       path: at("prompt-blocks-title/session.jsonl"),
       records: 2,
       capabilities: ["requests", "usage"]
+    },
+    {
+      path: at("request-id-collision/session.jsonl"),
+      records: 3,
+      capabilities: ["requests", "usage"]
     }
   ];
 }

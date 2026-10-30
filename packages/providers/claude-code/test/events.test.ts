@@ -104,4 +104,41 @@ describe("translateClaudeCodeRecords", () => {
       ["a:2", "assistant", { text: "ok" }]
     ]);
   });
+
+  it("moves an id a request event holds to the first free serial at either side", () => {
+    // The first uuid reserves `request:r2`, the second steals its own request's id, and the third request's key is
+    // the first uuid.
+    const records = (values: unknown[]) =>
+      values.map((value, index) => ({
+        record: { value, file: "session.jsonl", offset: index, length: 0, line: index + 1 },
+        ts: index + 1
+      }));
+    const result = translateClaudeCodeRecords(
+      records([
+        { type: "user", uuid: "request:r2", message: { role: "user", content: "reserves r2" } },
+        {
+          type: "assistant",
+          uuid: "request:r1",
+          requestId: "r1",
+          message: { model: "claude-test", id: "msg-1", content: [{ type: "text", text: "steals its own" }] }
+        },
+        {
+          type: "assistant",
+          uuid: "a3",
+          requestId: "r2",
+          message: { model: "claude-test", id: "msg-2", content: [{ type: "text", text: "held by a uuid" }] }
+        }
+      ])
+    );
+    if (!result.ok) {
+      throw new Error("unexpected generation");
+    }
+    expect(result.value.events.map((event) => event.id)).toEqual([
+      "request:r2",
+      "request:r1",
+      "session.jsonl:2",
+      "request:r2:1",
+      "a3"
+    ]);
+  });
 });
