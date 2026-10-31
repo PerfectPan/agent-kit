@@ -1,5 +1,24 @@
 # Change Log - @rivus/agent-kit
 
+## 0.24.0
+
+### Minor Changes
+
+- `connectAgent` takes an optional `onStderr` callback that receives the agent's stderr as decoded text arrives, in order, with a multi-byte character split across chunks reassembled, so a host can log a running agent. The callback may return a promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection. The stderr tail already attached to errors stays.
+
+- `connectAgent` takes an optional `unsettledCancel` that chooses what a cancel which does not settle within `cancelTimeoutMs` invalidates. The default `"connection"` is today's behavior: the session closes, its bindings go, and the connection with its process ends, failing its other sessions with `ConnectionClosed`. With `"session"`, the process and the other sessions keep running: the cancelled session closes — with `session/close` when the agent supports it — its bindings go, later updates for it are ignored, and its later calls fail as on a closed session.
+
+### Patch Changes
+
+- On the live ACP path, an update that arrives while no turn runs is no longer dropped: it is held with the session and the next turn opens with it, so a background call's result that lands after its turn ended reaches a turn's parts and the transcript's `tool_result` instead of being lost. A load's replay, which arrives while the load is in flight, is dropped as today, and folding the session's parts in order still gives its `event` parts.
+
+- A Codex usage record without a readable time no longer takes the file's mtime, so decoding a file again after it is rewritten or grows keeps every call's stamp and dedupe key. The leading run without a time holds its calls until the file's first known time stamps them, the way the transcript stamps that run, or until the file is final, which stamps them 1; the fork-replay rule reads a not-yet-known stamp exactly as the transcript's batch rule does, so an incremental decode of a time-less rollout equals one decode of the whole file and counts what the transcript counts.
+
+- Event ids stay unique in translated Grok and Claude Code transcripts. A Grok `turn_completed` whose `request:<prompt_id>` another request already holds moves to the first free serial of `request:<line>`, where the fallback id went unchecked before; a Claude Code request whose `request:<requestId>` a record uuid holds takes the first free serial of the key, and a record uuid a request event holds moves to the first free serial of its line id. Sessions without a collision keep the ids they had.
+
+- Updated dependency `@agentclientprotocol/sdk` to `1.9.0`.
+  Updated dependency `@decimalturn/toml-patch` to `^3.3.1`.
+
 ## 0.23.0
 
 ### Minor Changes
