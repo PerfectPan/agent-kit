@@ -1,19 +1,22 @@
+import { cn } from "../../lib/utils.ts";
+
 export interface Token {
   readonly text: string;
   readonly tone?: "k" | "s" | "num" | "c";
   readonly swap?: boolean;
 }
 
-function tokenClass(token: Token): string | undefined {
-  const names = [token.tone, token.swap ? "swap" : undefined].filter((name) => name !== undefined);
-  return names.length > 0 ? names.join(" ") : undefined;
-}
+/** The honey highlight behind a value that changes with the selected Agent, in the code and the output fields. */
+export const SWAP_HIGHLIGHT = "rounded-sm bg-honey/34 text-code-ink";
 
-function lineClass(index: number, shown: number, flash: ReadonlySet<number>): string | undefined {
-  const names = [index < shown ? undefined : "pending", flash.has(index) ? "flash" : undefined].filter(
-    (name) => name !== undefined
-  );
-  return names.length > 0 ? names.join(" ") : undefined;
+const TONE = { k: "text-code-k", s: "text-code-s", num: "text-code-n", c: "text-code-dim" } as const;
+
+function tokenClass(token: Token, flash: boolean): string {
+  if (token.swap) {
+    // A swapped value stays at full strength in the plain code colour over its highlight.
+    return cn(SWAP_HIGHLIGHT, "px-0.5", flash && "motion-safe:animate-swap-in");
+  }
+  return cn("opacity-55", token.tone && TONE[token.tone]);
 }
 
 export function CodeView({
@@ -28,9 +31,16 @@ export function CodeView({
   readonly nonce: number;
 }) {
   return lines.map((line, index) => (
-    <span key={`${nonce}-${index}`} className={lineClass(index, shown, flash)}>
+    <span
+      key={`${nonce}-${index}`}
+      className={cn(
+        "-mx-1 block min-h-[22px] rounded-sm px-1",
+        index >= shown && "invisible",
+        flash.has(index) && "motion-safe:animate-line-in"
+      )}
+    >
       {line.map((token, tokenIndex) => (
-        <span key={tokenIndex} className={tokenClass(token)}>
+        <span key={tokenIndex} className={tokenClass(token, flash.has(index))}>
           {token.text}
         </span>
       ))}

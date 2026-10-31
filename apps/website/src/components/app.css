@@ -2,75 +2,64 @@
 @import "@fontsource-variable/bricolage-grotesque";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
-@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/lib/default-colors.css";
 @import "fumadocs-ui/css/preset.css";
+@import "./theme.css";
 
-@theme {
-  --font-sans: "Bricolage Grotesque Variable", system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --text-display: 800 clamp(2.5rem, 4.6vw, 4.25rem) / 1.04 var(--font-sans);
-  --text-section: 750 1.75rem / 1.2 var(--font-sans);
-  --text-component: 700 1.25rem / 1.25 var(--font-sans);
-  --text-body: 400 1.125rem / 1.6 var(--font-sans);
-  --radius-control: 8px;
-  --radius-container: 16px;
-}
+/* The landing utilities are generated into landing.css, which only the landing route links. */
+@source not "./landing";
+@source not "../features/landing";
+@source not "../features/demo";
+@source not "../features/layer";
 
-/* Landing tokens, mapped onto Fumadocs. Light is the default; .dark is the warm palette. */
+/* Fumadocs reads its palette from these variables; they follow the shadcn/ui colours, so .dark sets those alone. */
 :root {
-  --shadow-card: 0 0 0 1px rgb(42 33 30 / 0.06), 0 1px 2px -1px rgb(42 33 30 / 0.06), 0 2px 4px rgb(42 33 30 / 0.04);
-  --color-fd-background: #fbf7f2;
-  --color-fd-foreground: #2a211e;
-  --color-fd-muted: #f3ece3;
-  --color-fd-muted-foreground: #5f564f;
-  --color-fd-popover: #ffffff;
-  --color-fd-popover-foreground: #2a211e;
-  --color-fd-card: #ffffff;
-  --color-fd-card-foreground: #2a211e;
-  --color-fd-border: #e6dccf;
-  --color-fd-primary: #b94f3c;
-  --color-fd-primary-foreground: #fffaf4;
-  --color-fd-secondary: #f3ece3;
-  --color-fd-secondary-foreground: #2a211e;
-  --color-fd-accent: #f3ece3;
-  --color-fd-accent-foreground: #2a211e;
-  --color-fd-ring: #b94f3c;
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--popover);
+  --color-fd-popover-foreground: var(--popover-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
   --color-fd-overlay: rgba(42, 33, 30, 0.2);
 }
 
+/* The docs dark palette. The light shadcn/ui colours are in theme.css. */
 .dark {
   --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.08);
-  --color-fd-background: #1c1614;
-  --color-fd-foreground: #f4ece4;
-  --color-fd-muted: #2a221e;
-  --color-fd-muted-foreground: #b3a399;
-  --color-fd-popover: #261e1b;
-  --color-fd-popover-foreground: #f4ece4;
-  --color-fd-card: #261e1b;
-  --color-fd-card-foreground: #f4ece4;
-  --color-fd-border: #3d322c;
-  --color-fd-primary: #b94f3c;
-  --color-fd-primary-foreground: #fffaf4;
-  --color-fd-secondary: #2e2622;
-  --color-fd-secondary-foreground: #f4ece4;
-  --color-fd-accent: #3a2e28;
-  --color-fd-accent-foreground: #f4ece4;
-  --color-fd-ring: #c46a56;
+  --background: #1c1614;
+  --foreground: #f4ece4;
+  --card: #261e1b;
+  --card-foreground: #f4ece4;
+  --popover: #261e1b;
+  --popover-foreground: #f4ece4;
+  --primary: #b94f3c;
+  --primary-foreground: #fffaf4;
+  --secondary: #2e2622;
+  --secondary-foreground: #f4ece4;
+  --muted: #2a221e;
+  --muted-foreground: #b3a399;
+  --accent: #3a2e28;
+  --accent-foreground: #f4ece4;
+  --destructive: #c46a56;
+  --border: #3d322c;
+  --input: #3d322c;
+  --ring: #c46a56;
   --color-fd-overlay: rgba(28, 22, 20, 0.55);
 }
 
-.dark #nd-sidebar {
-  --color-fd-muted: #2a221e;
-  --color-fd-secondary: #2e2622;
-  --color-fd-muted-foreground: #b3a399;
-}
-
-body {
-  font-family: var(--font-sans);
-}
-
+/* Shiki code blocks and inline code come from MDX, which renders them without a class hook. */
 figure.shiki {
-  background-color: #f3ece3;
+  background-color: var(--color-paper-2);
   border-width: 0;
   box-shadow: var(--shadow-card);
   border-radius: var(--radius-container);
@@ -102,7 +91,7 @@ figure.shiki .line {
 }
 
 .prose :where(table) :where(code):not(:where(pre *)) {
-  background-color: color-mix(in srgb, #b94f3c 8%, #fbf7f2);
+  background-color: color-mix(in srgb, var(--color-ochre) 8%, var(--color-paper));
   padding: 0.15em 0.35em;
   border-radius: 4px;
 }
@@ -111,12 +100,7 @@ figure.shiki .line {
   background-color: color-mix(in srgb, #e8a995 14%, #1c1614);
 }
 
-#nd-page h1 {
-  font: 750 2.375rem / 1.15 var(--font-sans);
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-
+/* MDX headings and links inside the article body. */
 #nd-page h2 {
   font: 700 1.375rem / 1.25 var(--font-sans);
   text-wrap: balance;
@@ -127,20 +111,8 @@ figure.shiki .line {
   text-wrap: balance;
 }
 
-html[lang="zh"] #nd-page :is(h1, h2, h3, h4) {
+html[lang="zh"] #nd-page :is(h2, h3, h4) {
   word-break: keep-all;
-}
-
-html[lang="zh"] #nd-page > .prose {
-  line-break: strict;
-}
-
-/* The TOC links also carry .prose, so the article rules target the page body only. */
-#nd-page > .prose {
-  max-width: 72ch;
-  font-size: 1.0625rem;
-  line-height: 1.7;
-  text-wrap: pretty;
 }
 
 #nd-page > .prose :where(pre),
@@ -164,73 +136,23 @@ html[lang="zh"] #nd-page > .prose {
   text-decoration-color: var(--color-fd-primary);
 }
 
-/* The sidebar sits on the page colour rather than a white card, so a hairline is enough to separate it. */
-#nd-sidebar {
-  background-color: var(--color-fd-background);
-  border-inline-end-color: color-mix(in srgb, var(--color-fd-border) 60%, transparent);
-}
-
-#nd-sidebar [data-state]::before {
-  background-color: color-mix(in srgb, var(--color-fd-border) 70%, transparent);
-}
-
-/* The TOC marks the current section with its track segment alone; Fumadocs' travelling dot is dropped. */
-#nd-toc [style*="offset-path"] {
-  display: none;
-}
-
-/* The active page reads from its tint and weight; Fumadocs' extra 1px bar inside the tint is dropped. */
-#nd-sidebar a[data-active="true"] {
+/* Sidebar internals are rendered by Fumadocs without class props, on the desktop sidebar and the mobile drawer. The
+   active page reads from its weight and tint; Fumadocs' extra 1px bar inside the tint is dropped. Fumadocs tints items
+   with translucent colours, which let the nested-page guide line show through, so the tints are mixed with the page
+   colour to stay opaque. */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
   font-weight: 550;
+  background-color: color-mix(in srgb, var(--color-fd-primary) 10%, var(--color-fd-background));
 }
 
-#nd-sidebar a[data-active="true"]::before {
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"]::before {
   content: none;
 }
 
-.docs-mascot {
-  width: 1.7rem;
-  height: 1.7rem;
-  overflow: visible;
-  flex: none;
+:is(#nd-sidebar, #nd-sidebar-mobile) a:not([data-active="true"]):hover {
+  background-color: color-mix(in srgb, var(--color-fd-accent) 50%, var(--color-fd-background));
 }
 
-.docs-mascot .m-body {
-  fill: #b94f3c;
-}
-
-.docs-mascot .m-flap {
-  fill: #e3a93b;
-}
-
-.docs-mascot .m-eye {
-  fill: #fff;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.docs-wordmark {
-  letter-spacing: -0.03em;
-}
-
-html.ak-docs-pending [data-docs-shell] {
-  visibility: hidden;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:hover .docs-mascot .m-all {
-    transform-box: fill-box;
-    transform-origin: 50% 100%;
-    animation: ak-docs-hop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-}
-
-@keyframes ak-docs-hop {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-4px);
-  }
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-state]::before {
+  background-color: color-mix(in srgb, var(--color-fd-border) 70%, transparent);
 }

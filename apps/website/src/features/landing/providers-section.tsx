@@ -1,5 +1,5 @@
 import { SupportTable } from "../../components/landing/support-table.tsx";
-import { SectionHeading } from "../../components/landing/section-heading.tsx";
+import { LandingSection } from "../../components/landing/landing-section.tsx";
 import { Link } from "@tanstack/react-router";
 
 import { guide } from "../docs/index.ts";
@@ -19,32 +19,30 @@ const COLUMN_LABEL: Record<Capability, CopyKey> = {
 export function ProvidersSection({ lang }: { readonly lang: Lang }) {
   const providers = guide("concepts/providers");
   return (
-    <section className="section reveal" aria-labelledby={`providers-heading-${lang}`}>
-      <SectionHeading
-        id={`providers-heading-${lang}`}
-        title={text(lang, "providersTitle")}
-        body={text(lang, "providersBody")}
+    <LandingSection
+      aria-labelledby={`providers-heading-${lang}`}
+      headingId={`providers-heading-${lang}`}
+      title={text(lang, "providersTitle")}
+      body={text(lang, "providersBody")}
+    >
+      <p className="mb-2.5 text-body-sm text-ink-2">{text(lang, "providersLegend")}</p>
+      <SupportTable
+        label={text(lang, "agentLabel")}
+        columns={CAPABILITIES.map((capability) => ({ id: capability, label: text(lang, COLUMN_LABEL[capability]) }))}
+        rows={landingFacts.support.map((row) => ({
+          id: row.id,
+          cells: CAPABILITIES.map((capability) => ({ id: capability, supported: row[capability] }))
+        }))}
+        supportedLabel={text(lang, "supported")}
+        unsupportedLabel={text(lang, "unsupported")}
+        supportedMark="✓"
+        unsupportedMark="–"
+        footer={
+          <Link to={providers.to} params={providers.params} className="hover:underline">
+            {text(lang, "addProvider")}
+          </Link>
+        }
       />
-      <div className="section-body">
-        <p className="matrix-legend">{text(lang, "providersLegend")}</p>
-        <SupportTable
-          label={text(lang, "agentLabel")}
-          columns={CAPABILITIES.map((capability) => ({ id: capability, label: text(lang, COLUMN_LABEL[capability]) }))}
-          rows={landingFacts.support.map((row) => ({
-            id: row.id,
-            cells: CAPABILITIES.map((capability) => ({ id: capability, supported: row[capability] }))
-          }))}
-          supportedLabel={text(lang, "supported")}
-          unsupportedLabel={text(lang, "unsupported")}
-          supportedMark="✓"
-          unsupportedMark="–"
-          footer={
-            <Link to={providers.to} params={providers.params}>
-              {text(lang, "addProvider")}
-            </Link>
-          }
-        />
-      </div>
-    </section>
+    </LandingSection>
   );
 }

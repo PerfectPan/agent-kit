@@ -12,9 +12,8 @@ Private TanStack Start and Fumadocs site. Source is organized by responsibility:
 
 Business state lives in feature components using `useReducer` with a pure reducer beside the component.
 Generic state and effects live in hooks. Language is the only cross-tree state; only features read its
-context. Fumadocs integration stays in the docs and i18n features. The unchanged CSS files live in components beside the UI; the router
-entry, generated route tree, ambient declarations, and architecture test remain at the source root.
-Landing UI stays in `components/landing/` so the original CSS source directives still resolve.
+context. Fumadocs integration stays in the docs and i18n features. The router entry, generated route
+tree, ambient declarations, and architecture test remain at the source root.
 
 `src/architecture.test.ts` scans imports, re-exports, dynamic imports, and TypeScript import types using
 the parser already exposed by Vite. Failures name the rule:
@@ -22,7 +21,7 @@ the parser already exposed by Vite. Failures name the rule:
 - `components-pure-ui` / `components-no-state`: UI cannot import features, hooks, routes, or virtual
   business data, or use state/effect/context hooks. `useId` is allowed for markup IDs.
 - `hooks-independent` / `hooks-no-jsx`: hooks cannot import features, components, or routes, or render JSX.
-- `lib-independent`: lib imports stay inside lib.
+- `lib-independent`: lib imports only lib and npm packages other than React.
 - `features-no-routes`: features cannot import routes.
 - `feature-public-entry`: another feature is accessed through its `index.ts`; add an entry only when
   another feature needs it, and export only those consumers' dependencies.
@@ -32,6 +31,48 @@ Tests live beside their modules. Build-time code lives with its feature: `featur
 `dist/`.
 The base-path helper test lives at `src/site.test.ts`, outside the pure lib boundary, so lib does not
 import the test runner.
+
+## Styling
+
+Styles are Tailwind CSS v4 utilities on the elements that render them. A component that styles by
+state receives that state as a prop or reads it from an `aria-*` or `data-*` attribute through a
+variant; it does not hold state for styling. The stylesheets live in `src/components/`:
+
+| File          | Contents                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-body-sm`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.                   |
+| `landing.css` | Linked by the landing route only. Scans the landing UI and features; defines the `phone` (≤640 px), `narrow` (≤900 px) and `zh` variants and the `reveal` utility.       |
+| `app.css`     | Linked on every route. The fonts, the Fumadocs colours, and rules for Fumadocs and MDX output that takes no class: code blocks, prose headings and links, sidebar items. |
+
+`app.css` excludes the landing folders from its sources, so landing utilities stay out of the docs
+stylesheet. Each remaining CSS rule carries a comment saying why it is not a utility. Tailwind's
+scanner reads class names literally: write complete class strings, and pick between them in code
+rather than building them from fragments.
+
+`src/architecture.test.ts` enforces this (`styles-in-tailwind`): a stylesheet outside the three above fails, and so
+does a selector naming a class other than the ones that come from outside the markup (`dark`, `prose`, `shiki`, …).
+A stylesheet rule that needs a hook in the site's own markup selects a `data-*` attribute instead: `landing.css`
+styles `<body>` from `data-landing`, and `reveal` reads the `data-in-view` that `useInView` sets.
+
+Controls come from [shadcn/ui](https://ui.shadcn.com) (`components.json`): `src/components/ui/` holds `Button`,
+`ToggleGroup` and `Tabs`, built on Radix primitives. Site looks are variants in those files (`Button`'s `card`,
+`ghost` and `chip` variants, `ToggleGroup`'s `paper`, `sidebar` and `code` surfaces) rather than class strings
+elsewhere; add a variant when a control repeats, and write utilities in place for one-off markup. shadcn's semantic
+colours (`background`, `primary`, `muted-foreground`, …) are set from the palette in `theme.css`; `app.css` points the
+Fumadocs colours at them and sets the docs dark values. The components skip shadcn's React context, which `components/`
+may not read, so `ToggleGroup` styles its items from the group with `*:` utilities and its items take no variant. The
+language switch is one `LanguageToggle` in `features/i18n`, used by the landing header and the docs sidebar footer.
+
+Combine classes with `cn()` from `src/lib/utils.ts` (clsx plus tailwind-merge), not template strings: a later class
+replaces an earlier one for the same property. tailwind-merge knows the theme's custom scales from the list in
+`utils.ts`; add a new size, shadow, radius, easing or animation token there as well. A font-size utility also sets
+the line height, so put a size before the `leading-*` it should keep. `cva()` maps props to classes for local
+variants and lookup tables.
+
+`pnpm run lint` runs `eslint-plugin-better-tailwindcss` in oxlint over `className`, `cn()`, `cva()` and `clsx()`.
+It reports unknown, conflicting, duplicate and non-canonical classes and stray whitespace, checking the landing
+folders against `landing.css` and everything else against `app.css` (`vite.config.ts`). Class order is not enforced:
+`vp fmt` does not sort classes.
 
 ## Builds
 

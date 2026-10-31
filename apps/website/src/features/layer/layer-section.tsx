@@ -1,6 +1,7 @@
 import { layerReducer } from "./layer-reducer.ts";
 import { useElementRects } from "../../hooks/use-element-rects.ts";
 import { ChipRow } from "../../components/landing/chip-row.tsx";
+import { cva } from "class-variance-authority";
 import { useMemo, useReducer } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
@@ -14,6 +15,8 @@ import {
 } from "./layer-paths.ts";
 import { text, type CopyKey, type Lang } from "../landing/index.ts";
 import { LayerDiagram } from "../../components/landing/layer-diagram.tsx";
+import { LayerTier } from "../../components/landing/layer-tier.tsx";
+import { LayerFnGroup } from "../../components/landing/layer-fn-group.tsx";
 
 const TOOL_COPY: Record<ToolId, CopyKey> = {
   usage: "toolUsage",
@@ -24,6 +27,18 @@ const TOOL_COPY: Record<ToolId, CopyKey> = {
   runner: "toolRunner",
   viewer: "toolViewer"
 };
+
+const layerChip = cva("cursor-pointer rounded-control px-3 py-2 text-ink transition-shadow duration-200 ease-settle", {
+  variants: {
+    kind: { tool: "text-ui font-medium", provider: "font-mono text-ui-sm" },
+    state: {
+      idle: "bg-card ring-1 ring-line",
+      "on-path": "bg-card shadow-card ring-2 ring-honey/55",
+      // A provider that cannot run the focused function is drawn as an empty, dashed slot.
+      unsupported: "border border-dashed border-line-2 bg-paper"
+    }
+  }
+});
 
 export function LayerSection({ lang }: { readonly lang: Lang }) {
   const support = landingFacts.support;
@@ -60,66 +75,50 @@ export function LayerSection({ lang }: { readonly lang: Lang }) {
   }
 
   return (
-    <section className="layer reveal">
-      <div className="layer-head">
-        <h2>{text(lang, "layerTitle")}</h2>
-        <p>{text(lang, "layerBody")}</p>
+    <section className="reveal pt-18">
+      <div className="mb-7 max-w-read">
+        <h2 className="mb-2 text-left text-[clamp(2rem,3.2vw,3rem)] leading-[1.04] font-extrabold tracking-[-0.035em] text-balance zh:leading-tight zh:tracking-normal zh:break-keep">
+          {text(lang, "layerTitle")}
+        </h2>
+        <p className="mt-2.5 max-w-[62ch] text-left text-[17px] leading-[1.6] text-ink-2">{text(lang, "layerBody")}</p>
       </div>
-      <div ref={ref} className="stack">
+      <div ref={ref} className="relative grid gap-8">
         <LayerDiagram points={segments} size={size} />
-        <div className="tier">
-          <b>{text(lang, "yourTools")}</b>
+        <LayerTier label={text(lang, "yourTools")}>
           <ChipRow
-            className="row"
+            className="flex flex-wrap gap-2"
             onFocusChange={onFocusChange}
             items={TOOL_IDS.map((tool) => ({
               id: tool,
               node: `tool:${tool}`,
               label: text(lang, TOOL_COPY[tool]),
-              className: path.tool === tool ? "is-hot" : "is-idle",
+              className: layerChip({ kind: "tool", state: path.tool === tool ? "on-path" : "idle" }),
               pressed: path.tool === tool
             }))}
           />
-        </div>
-        <div className="tier core">
-          <b>{text(lang, "toolkit")}</b>
-          <div className="row fns">
-            <div className={path.collab ? "fn-group" : "fn-group is-on-path"}>
-              <em>{text(lang, "connection")} · agent-kit</em>
-              {CONNECTION_FNS.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  data-node={`fn:${name}`}
-                  className={path.fn === name ? "is-active" : undefined}
-                  aria-pressed={path.fn === name}
-                  {...bind(name)}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-            <div data-node="collab" className={path.collab ? "fn-group collab is-on-path" : "fn-group collab"}>
-              <em>{text(lang, "coordination")} · agent-kit-collab</em>
-              {COORDINATION_FNS.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  data-node={`fn:${name}`}
-                  className={path.fn === name ? "is-active" : undefined}
-                  aria-pressed={path.fn === name}
-                  {...bind(name)}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
+        </LayerTier>
+        <LayerTier label={text(lang, "toolkit")}>
+          <div className="grid grid-cols-[minmax(0,1.75fr)_minmax(12rem,1fr)] gap-x-4 gap-y-3 phone:grid-cols-1">
+            <LayerFnGroup
+              label={`${text(lang, "connection")} · agent-kit`}
+              onPath={!path.collab}
+              names={CONNECTION_FNS}
+              focusedFn={path.fn}
+              bind={bind}
+            />
+            <LayerFnGroup
+              data-node="collab"
+              label={`${text(lang, "coordination")} · agent-kit-collab`}
+              onPath={path.collab}
+              names={COORDINATION_FNS}
+              focusedFn={path.fn}
+              bind={bind}
+            />
           </div>
-        </div>
-        <div className="tier providers">
-          <b>{text(lang, "providersLabel")}</b>
+        </LayerTier>
+        <LayerTier label={text(lang, "providersLabel")}>
           <ChipRow
-            className="row"
+            className="flex flex-wrap gap-2"
             onFocusChange={onFocusChange}
             items={support.map((row) => {
               const onPath = !path.collab && row.id === path.providerId;
@@ -129,14 +128,19 @@ export function LayerSection({ lang }: { readonly lang: Lang }) {
                 node: `provider:${row.id}`,
                 label: row.id,
                 suffix: unsupported ? " –" : null,
-                className: onPath ? "is-lit" : unsupported ? "is-unsupported" : "is-idle",
+                className: layerChip({
+                  kind: "provider",
+                  state: onPath ? "on-path" : unsupported ? "unsupported" : "idle"
+                }),
                 pressed: onPath
               };
             })}
           >
-            <span className="yours">{text(lang, "yourAgent")}</span>
+            <span className="rounded-control border border-dashed border-ink-2 bg-transparent px-3 py-2 font-sans text-ui-sm font-semibold text-ink">
+              {text(lang, "yourAgent")}
+            </span>
           </ChipRow>
-        </div>
+        </LayerTier>
       </div>
     </section>
   );

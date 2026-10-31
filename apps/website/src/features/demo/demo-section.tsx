@@ -1,14 +1,13 @@
-import { useReducer, type KeyboardEvent } from "react";
+import { useReducer, type CSSProperties } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
 import { text, type Lang } from "../landing/index.ts";
-import { TASK_ORDER, demoView, isSwapField, maxOutputFieldCount, nextTaskKey, taskLabel } from "./snippets.ts";
+import { TASK_ORDER, demoView, isSwapField, MAX_CODE_LINES, MAX_OUTPUT_FIELDS, taskLabel } from "./snippets.ts";
 import { demoReducer, demoSequence, initialDemoState } from "./demo-reducer.ts";
 import { useAutoplay } from "../../hooks/use-autoplay.ts";
 import { useAnimationRestart } from "../../hooks/use-animation-restart.ts";
 import { useReducedMotion } from "../../hooks/use-reduced-motion.ts";
 import { useTimedEvents } from "../../hooks/use-timed-events.ts";
-import { useFocusElement } from "../../hooks/use-focus-element.ts";
 import { useSelectedIndicator } from "../../hooks/use-selected-indicator.ts";
 import { Mascot } from "../../components/mascot.tsx";
 import { TaskTabs } from "../../components/landing/task-tabs.tsx";
@@ -19,7 +18,6 @@ import { AgentPicker } from "../../components/landing/agent-picker.tsx";
 
 export function DemoSection({ lang }: { readonly lang: Lang }) {
   const support = landingFacts.support;
-  const focusElement = useFocusElement();
   const [state, dispatch] = useReducer(demoReducer, support, initialDemoState);
   const view = demoView(state.selection, support);
   const allowMotion = !useReducedMotion();
@@ -34,44 +32,41 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
     onStep: () => dispatch({ type: "autoplay", rows: support })
   });
 
-  function onTaskKey(event: KeyboardEvent<HTMLDivElement>) {
-    const next = nextTaskKey(view.task, event.key);
-    if (next === null) {
-      return;
-    }
-    event.preventDefault();
-    markUser();
-    dispatch({ type: "task", task: next, rows: support });
-    focusElement(`task-${lang}-${next}`);
-  }
-
   return (
-    <div className="demo" {...interactionProps}>
-      <Mascot state={state.phase} hop={hop} className="m" />
+    <div className="relative mt-2 pt-22 text-left phone:pt-15 xl:mt-0" {...interactionProps}>
+      <Mascot
+        state={state.phase}
+        hop={hop}
+        className="absolute top-0 right-4 z-3 size-26 phone:right-2 phone:size-18 motion-safe:animate-pop"
+      />
       <CodeWindow
         tabs={
           <TaskTabs
             lang={lang}
             label={text(lang, "tasksLabel")}
-            items={TASK_ORDER.map((task) => ({
-              id: task,
-              selected: view.task === task,
-              label: text(lang, taskLabel(task))
-            }))}
-            onKeyDown={onTaskKey}
+            items={TASK_ORDER.map((task) => ({ id: task, label: text(lang, taskLabel(task)) }))}
             listRef={tabsRef}
-            onSelect={(task) => {
-              markUser();
-              dispatch({ type: "task", task, rows: support });
-            }}
           />
         }
+        value={view.task}
+        onValueChange={(value) => {
+          const task = TASK_ORDER.find((key) => key === value);
+          if (task !== undefined) {
+            markUser();
+            dispatch({ type: "task", task, rows: support });
+          }
+        }}
         panelId={`task-panel-${lang}`}
         tabId={`task-${lang}-${view.task}`}
         file={view.file}
         packageName={view.packageName}
       >
-        <pre>
+        {/* Every task gets the height of the longest one, so switching tabs does not move the hero. The minimum counts
+            lines in 1lh; box-content keeps the padding out of it. */}
+        <pre
+          className="box-content min-h-[calc(var(--code-rows)*1lh)] overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]"
+          style={{ "--code-rows": MAX_CODE_LINES } as CSSProperties}
+        >
           <CodeView lines={view.code} shown={view.code.length} flash={state.flashCode} nonce={state.flashNonce} />
         </pre>
         <OutputFields
@@ -80,7 +75,7 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
           rawLabel={text(lang, "outputRaw")}
           raw={state.raw}
           onRawChange={(value) => dispatch({ type: "raw", value })}
-          fieldCount={maxOutputFieldCount()}
+          fieldCount={MAX_OUTPUT_FIELDS}
           fields={view.fields.map((field) => ({
             ...field,
             swap: isSwapField(field.key),

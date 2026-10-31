@@ -9,9 +9,8 @@ import {
   demoView,
   isBlockedOutput,
   isSwapField,
-  maxOutputFieldCount,
+  MAX_OUTPUT_FIELDS,
   nextAutoplayStep,
-  nextTaskKey,
   outputFields,
   plainText,
   selectAgent,
@@ -98,14 +97,6 @@ it("marks a LeaseHeld sample as blocked", () => {
   expect(isBlockedOutput(demoView(on("detect", "claude-code"), rows).output)).toBe(false);
 });
 
-it("moves the task tab with the arrow keys", () => {
-  expect(nextTaskKey("detect", "ArrowRight")).toBe("hooks");
-  expect(nextTaskKey("detect", "ArrowLeft")).toBe("coordinate");
-  expect(nextTaskKey("usage", "Home")).toBe("detect");
-  expect(nextTaskKey("usage", "End")).toBe("coordinate");
-  expect(nextTaskKey("usage", "Enter")).toBeNull();
-});
-
 it("keeps the approved snippet text", () => {
   const detect = demoView(on("detect", "claude-code"), rows);
   expect(plainText(detect.code)).toBe(
@@ -141,7 +132,7 @@ it("flattens sample output into aligned key/value fields", () => {
   ]);
   expect(outputFields("hooks", "pi").find((field) => field.key === "nativeEvent")?.value).toBe("before_agent_start");
   expect(demoView(on("detect", "claude-code"), rows).fields).toEqual(outputFields("detect", "claude-code"));
-  expect(maxOutputFieldCount()).toBe(5);
+  expect(MAX_OUTPUT_FIELDS).toBe(5);
 });
 
 it("marks Agent id and values that change as swap fields", () => {

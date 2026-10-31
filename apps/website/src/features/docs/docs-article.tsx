@@ -7,7 +7,11 @@ import { apiSymbolToc } from "./api-page.ts";
 import { DOCS_PENDING_CLASS } from "../i18n/index.ts";
 import { useDocumentReady } from "../../hooks/use-document-ready.ts";
 import type { Lang } from "../../lib/language.ts";
+import { cn } from "../../lib/utils.ts";
 import { docs } from "./source.ts";
+
+// The TOC marks the current section with its track segment alone, without Fumadocs' travelling dot.
+const TOC_LIST = { thumbBox: false };
 
 export function DocsArticle({ path, fallback, lang }: { path: string; fallback: boolean; lang: Lang }) {
   const page = docs.getPage(path);
@@ -21,10 +25,23 @@ export function DocsArticle({ path, fallback, lang }: { path: string; fallback: 
   useDocumentReady(path, lang === "zh", DOCS_PENDING_CLASS);
 
   return (
-    <DocsPage toc={apiSymbolToc(path, loaded.toc)} tableOfContent={{ single: true }}>
-      <DocsTitle>{page.title}</DocsTitle>
+    <DocsPage
+      toc={apiSymbolToc(path, loaded.toc)}
+      tableOfContent={{ single: true, list: TOC_LIST }}
+      tableOfContentPopover={{ list: TOC_LIST }}
+    >
+      <DocsTitle
+        className={cn(
+          "text-[2.375rem] leading-[1.15] font-[750] tracking-[-0.03em] text-balance",
+          lang === "zh" && "break-keep"
+        )}
+      >
+        {page.title}
+      </DocsTitle>
       {page.description === undefined ? null : <DocsDescription>{page.description}</DocsDescription>}
-      <DocsBody>
+      <DocsBody
+        className={cn("max-w-read text-[1.0625rem] leading-[1.7] text-pretty", lang === "zh" && "[line-break:strict]")}
+      >
         {fallback ? <Callout>此页尚无中文译本，以下为英文原文。</Callout> : null}
         <MDX components={defaultMdxComponents} />
       </DocsBody>

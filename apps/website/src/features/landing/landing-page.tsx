@@ -1,4 +1,6 @@
 import { useInView } from "../../hooks/use-in-view.ts";
+import { PageWrap } from "../../components/landing/page-wrap.tsx";
+import { cn } from "../../lib/utils.ts";
 
 import type { Lang } from "./copy.ts";
 import { CloseCta } from "./close-cta.tsx";
@@ -10,10 +12,16 @@ import { PackagesSection } from "./packages-section.tsx";
 import { ProjectsSection } from "./projects-section.tsx";
 import { ProvidersSection } from "./providers-section.tsx";
 
+// Both trees are prerendered; <html lang>, which the boot script sets before hydration, picks the visible one.
+const TREE_VISIBILITY: Record<Lang, string> = {
+  en: "in-[html[lang=zh]]:invisible in-[html[lang=zh]]:pointer-events-none",
+  zh: "invisible pointer-events-none in-[html[lang=zh]]:visible in-[html[lang=zh]]:pointer-events-auto"
+};
+
 export function LandingPage({ lang }: { readonly lang: Lang }) {
   const rootRef = useInView({
     selector: ".reveal",
-    visibleClass: "is-in",
+    visibleAttribute: "data-in-view",
     motionAttribute: "data-motion",
     motionValue: "on",
     threshold: 0.16,
@@ -21,16 +29,25 @@ export function LandingPage({ lang }: { readonly lang: Lang }) {
   });
 
   return (
-    <div ref={rootRef} className="landing" data-lang={lang}>
+    <div
+      ref={rootRef}
+      className={cn(
+        TREE_VISIBILITY[lang],
+        "col-start-1 row-start-1 text-pretty text-ink selection:bg-honey selection:text-ink **:focus-visible:outline-2 **:focus-visible:outline-offset-3 **:focus-visible:outline-ochre data-[lang=zh]:[line-break:strict]"
+      )}
+      data-lang={lang}
+    >
       <LandingHeader lang={lang} />
-      <main className="wrap">
-        <LandingHero lang={lang} />
-        <LayerSection lang={lang} />
-        <ProjectsSection lang={lang} />
-        <PackagesSection lang={lang} />
-        <ProvidersSection lang={lang} />
-        <CloseCta lang={lang} />
-      </main>
+      <PageWrap asChild>
+        <main>
+          <LandingHero lang={lang} />
+          <LayerSection lang={lang} />
+          <ProjectsSection lang={lang} />
+          <PackagesSection lang={lang} />
+          <ProvidersSection lang={lang} />
+          <CloseCta lang={lang} />
+        </main>
+      </PageWrap>
       <LandingFooter lang={lang} />
     </div>
   );

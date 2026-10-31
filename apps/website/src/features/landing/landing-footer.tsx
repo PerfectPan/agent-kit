@@ -5,19 +5,14 @@ import { docsIndex, guide } from "../docs/index.ts";
 import { text, type Lang } from "./copy.ts";
 import { CHANGELOG_URL, GITHUB_URL, NPM_URL } from "./projects.ts";
 import { landingFacts } from "virtual:landing-facts";
-import { Mascot } from "../../components/mascot.tsx";
+import { BrandLink } from "./brand-link.tsx";
 
 export function LandingFooter({ lang }: { readonly lang: Lang }) {
   const docs = docsIndex();
   const api = guide("api");
   return (
     <FooterLayout
-      brand={
-        <Link to="/" className="brand">
-          <Mascot state="idle" />
-          agent-kit
-        </Link>
-      }
+      brand={<BrandLink size="footer" />}
       summary={
         <>
           {landingFacts.version} · {landingFacts.license} · {text(lang, "footerBreak")}

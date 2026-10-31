@@ -1,3 +1,5 @@
+import { Button } from "../ui/button.tsx";
+
 export function AgentPicker({
   label,
   unsupportedLabel,
@@ -16,20 +18,21 @@ export function AgentPicker({
   readonly onSelect: (id: string) => void;
 }) {
   return (
-    <div className="agents">
-      <span>{label}</span>
+    <div className="flex flex-wrap items-center gap-1.5 bg-code-bar px-4 py-3">
+      <span className="mr-1.5 font-mono text-ui text-code-dim">{label}</span>
       {agents.map((agent) => (
-        <button
+        <Button
           key={agent.id}
           type="button"
-          className={agent.mine ? "mine" : undefined}
+          variant={agent.mine ? "chip-slot" : "chip"}
+          size="chip"
           disabled={!agent.enabled}
           aria-pressed={agent.pressed}
           title={agent.enabled ? undefined : unsupportedLabel}
           onClick={() => onSelect(agent.id)}
         >
           {agent.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

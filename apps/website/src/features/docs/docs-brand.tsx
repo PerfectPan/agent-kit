@@ -2,13 +2,14 @@ import type { ComponentProps } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { Mascot } from "../../components/mascot.tsx";
+import { cn } from "../../lib/utils.ts";
 
 /** Sidebar wordmark. Exact matching keeps the landing link inactive on nested docs routes. */
 export function DocsBrand({ className }: ComponentProps<"a">) {
   return (
-    <Link to="/" className={className} activeOptions={{ exact: true }}>
-      <Mascot state="idle" className="docs-mascot" />
-      <span className="docs-wordmark">agent-kit</span>
+    <Link to="/" className={cn("group/brand", className)} activeOptions={{ exact: true }}>
+      <Mascot state="idle" quiet className="size-[1.7rem] flex-none" />
+      <span className="tracking-[-0.03em]">agent-kit</span>
     </Link>
   );
 }

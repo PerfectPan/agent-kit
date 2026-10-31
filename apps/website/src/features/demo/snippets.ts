@@ -148,23 +148,6 @@ export function selectAgent(selection: DemoSelection, agentId: string, rows: rea
   return { task: selection.task, agentId };
 }
 
-export function nextTaskKey(current: TaskKey, key: string): TaskKey | null {
-  const index = TASK_ORDER.indexOf(current);
-  if (key === "ArrowRight" || key === "ArrowDown") {
-    return TASK_ORDER[(index + 1) % TASK_ORDER.length] ?? current;
-  }
-  if (key === "ArrowLeft" || key === "ArrowUp") {
-    return TASK_ORDER[(index - 1 + TASK_ORDER.length) % TASK_ORDER.length] ?? current;
-  }
-  if (key === "Home") {
-    return TASK_ORDER[0];
-  }
-  if (key === "End") {
-    return TASK_ORDER[TASK_ORDER.length - 1] ?? current;
-  }
-  return null;
-}
-
 function quoted(agentId: string): Token {
   return s(`"${agentId}"`, true);
 }
@@ -464,9 +447,8 @@ export function outputFields(task: TaskKey, agentId: string): readonly OutputFie
   }
 }
 
-export function maxOutputFieldCount(): number {
-  return Math.max(...TASK_ORDER.map((task) => outputFields(task, MY_AGENT).length));
-}
+/** The most output fields any task shows. */
+export const MAX_OUTPUT_FIELDS: number = Math.max(...TASK_ORDER.map((task) => outputFields(task, MY_AGENT).length));
 
 const SWAP_FIELD_KEYS = new Set(["agent", "nativeEvent", "granularity", "worker A"]);
 
@@ -515,6 +497,9 @@ function snippets(task: TaskKey, agentId: string): { code: Token[][]; output: To
     }
   }
 }
+
+/** The most code lines any task shows; my-agent adds the provider line, so it is the longest variant. */
+export const MAX_CODE_LINES: number = Math.max(...TASK_ORDER.map((task) => snippets(task, MY_AGENT).code.length));
 
 export function plainText(lines: readonly (readonly Token[])[]): string {
   return lines.map((line) => line.map((token) => token.text).join("")).join("\n");

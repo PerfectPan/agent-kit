@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
+import { PageWrap } from "./page-wrap.tsx";
+
 export function HeaderLayout({ brand, children }: { readonly brand: ReactNode; readonly children: ReactNode }) {
   return (
-    <header className="nav">
-      <div className="wrap">
+    <header>
+      <PageWrap className="flex h-16 items-center justify-between">
         {brand}
         {children}
-      </div>
+      </PageWrap>
     </header>
   );
 }
