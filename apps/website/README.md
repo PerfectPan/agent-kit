@@ -38,11 +38,11 @@ Styles are Tailwind CSS v4 utilities on the elements that render them. A compone
 state receives that state as a prop or reads it from an `aria-*` or `data-*` attribute through a
 variant; it does not hold state for styling. The stylesheets live in `src/components/`:
 
-| File          | Contents                                                                                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-body-sm`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.             |
-| `landing.css` | Linked by the landing route only. Scans the landing UI and features; defines the `phone` (≤640 px), `narrow` (≤900 px) and `zh` variants and the `reveal` utility. |
-| `app.css`     | Linked on every route. Fumadocs palette, and rules for Fumadocs and MDX output that takes no class: code blocks, prose headings and links, sidebar and TOC parts.  |
+| File          | Contents                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme.css`   | The shared `@theme`: fonts, colours, type scale (`text-display`, `text-body-sm`, `text-ui`, …), radii, shadows, easings and the `animate-*` keyframes.                   |
+| `landing.css` | Linked by the landing route only. Scans the landing UI and features; defines the `phone` (≤640 px), `narrow` (≤900 px) and `zh` variants and the `reveal` utility.       |
+| `app.css`     | Linked on every route. The fonts, the Fumadocs colours, and rules for Fumadocs and MDX output that takes no class: code blocks, prose headings and links, sidebar items. |
 
 `app.css` excludes the landing folders from its sources, so landing utilities stay out of the docs
 stylesheet. Each remaining CSS rule carries a comment saying why it is not a utility. Tailwind's
@@ -51,14 +51,17 @@ rather than building them from fragments.
 
 `src/architecture.test.ts` enforces this (`styles-in-tailwind`): a stylesheet outside the three above fails, and so
 does a selector naming a class other than the ones that come from outside the markup (`dark`, `prose`, `shiki`, …).
+A stylesheet rule that needs a hook in the site's own markup selects a `data-*` attribute instead: `landing.css`
+styles `<body>` from `data-landing`, and `reveal` reads the `data-in-view` that `useInView` sets.
 
 Controls come from [shadcn/ui](https://ui.shadcn.com) (`components.json`): `src/components/ui/` holds `Button`,
 `ToggleGroup` and `Tabs`, built on Radix primitives. Site looks are variants in those files (`Button`'s `card`,
 `ghost` and `chip` variants, `ToggleGroup`'s `paper`, `sidebar` and `code` surfaces) rather than class strings
 elsewhere; add a variant when a control repeats, and write utilities in place for one-off markup. shadcn's semantic
-colours (`background`, `primary`, `muted-foreground`, …) are set from the palette in `theme.css`, with the docs dark
-values in `app.css`. The components skip shadcn's React context, which `components/` may not read, so a toggle
-group's items take the variant too.
+colours (`background`, `primary`, `muted-foreground`, …) are set from the palette in `theme.css`; `app.css` points the
+Fumadocs colours at them and sets the docs dark values. The components skip shadcn's React context, which `components/`
+may not read, so `ToggleGroup` styles its items from the group with `*:` utilities and its items take no variant. The
+language switch is one `LanguageToggle` in `features/i18n`, used by the landing header and the docs sidebar footer.
 
 Combine classes with `cn()` from `src/lib/utils.ts` (clsx plus tailwind-merge), not template strings: a later class
 replaces an earlier one for the same property. tailwind-merge knows the theme's custom scales from the list in

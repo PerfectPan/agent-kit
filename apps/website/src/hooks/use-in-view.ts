@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 
 export function useInView({
   selector,
-  visibleClass,
+  visibleAttribute,
   motionAttribute,
   motionValue,
   threshold,
   rootMargin
 }: {
   readonly selector: string;
-  readonly visibleClass: string;
+  readonly visibleAttribute: string;
   readonly motionAttribute: string;
   readonly motionValue: string;
   readonly threshold: number;
@@ -26,7 +26,7 @@ export function useInView({
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
       for (const node of nodes) {
-        node.classList.add(visibleClass);
+        node.setAttribute(visibleAttribute, "");
       }
       return undefined;
     }
@@ -34,7 +34,7 @@ export function useInView({
       (entries, current) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            entry.target.classList.add(visibleClass);
+            entry.target.setAttribute(visibleAttribute, "");
             current.unobserve(entry.target);
           }
         }
@@ -51,7 +51,7 @@ export function useInView({
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [selector, visibleClass, motionAttribute, motionValue, threshold, rootMargin]);
+  }, [selector, visibleAttribute, motionAttribute, motionValue, threshold, rootMargin]);
 
   return rootRef;
 }

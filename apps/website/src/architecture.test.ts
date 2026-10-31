@@ -132,7 +132,7 @@ function violations(file: string, code: string): string[] {
 // Styles are Tailwind utilities in the markup. CSS files hold only the theme and rules for markup that takes no class
 // (Fumadocs and MDX output), so a stylesheet may only exist in this list and name only these classes.
 const stylesheets = new Set(["components/theme.css", "components/landing.css", "components/app.css"]);
-const cssClasses = new Set(["dark", "prose", "not-prose", "shiki", "line", "landing-langs", "is-in"]);
+const cssClasses = new Set(["dark", "prose", "not-prose", "shiki", "line"]);
 
 function cssViolations(file: string, css: string): string[] {
   if (!stylesheets.has(file)) {
@@ -171,7 +171,7 @@ it.each([
 it.each([
   ["components/app.css", "#nd-page > .prose :where(a):not(:where(.not-prose *)) { transition: color 0.15s; }"],
   ["components/app.css", '/* .old */ #nd-toc [style*="a.b"] { display: none; }'],
-  ["components/landing.css", "@utility reveal { &.is-in { opacity: 1; translate: 0 0.5px; } }"]
+  ["components/landing.css", "@utility reveal { &[data-in-view] { opacity: 1; translate: 0 0.5px; } }"]
 ])("allows %s: %s", (file, css) => {
   expect(cssViolations(file, css)).toEqual([]);
 });

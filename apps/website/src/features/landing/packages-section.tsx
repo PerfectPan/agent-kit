@@ -1,5 +1,5 @@
 import { EntryTable } from "../../components/landing/entry-table.tsx";
-import { SectionHeading } from "../../components/landing/section-heading.tsx";
+import { LandingSection } from "../../components/landing/landing-section.tsx";
 import { Link } from "@tanstack/react-router";
 import { cva } from "class-variance-authority";
 import { landingFacts } from "virtual:landing-facts";
@@ -57,35 +57,30 @@ const groupHeading = cva(
 export function PackagesSection({ lang }: { readonly lang: Lang }) {
   const groups = groupedKitBudgets(landingFacts.budgets.kit);
   return (
-    <section className="reveal grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-5 pt-16">
-      <SectionHeading title={text(lang, "connectTitle")} body={text(lang, "connectBody")} />
-      <div>
-        <div className="grid gap-2">
-          {groups.map((group, index) => (
-            <div key={group.id}>
-              <h3 className={groupHeading({ first: index === 0 })}>{text(lang, GROUP_COPY[group.id])}</h3>
-              <EntryTable entries={group.entries.map((entry) => entryRow(entry, lang))} />
-            </div>
-          ))}
-          <div>
-            <h3 className={groupHeading({ first: false })}>
-              agent-kit-collab{" "}
-              <small className="text-ui font-medium tracking-normal text-muted-foreground">
-                {text(lang, "groupCollab")}
-              </small>
-            </h3>
-            <EntryTable entries={landingFacts.budgets.collab.map((entry) => entryRow(entry, lang))} />
+    <LandingSection title={text(lang, "connectTitle")} body={text(lang, "connectBody")}>
+      <div className="grid gap-2">
+        {groups.map((group, index) => (
+          <div key={group.id}>
+            <h3 className={groupHeading({ first: index === 0 })}>{text(lang, GROUP_COPY[group.id])}</h3>
+            <EntryTable entries={group.entries.map((entry) => entryRow(entry, lang))} />
           </div>
+        ))}
+        <div>
+          <h3 className={groupHeading({ first: false })}>
+            agent-kit-collab{" "}
+            <small className="text-ui font-medium tracking-normal text-muted-foreground">
+              {text(lang, "groupCollab")}
+            </small>
+          </h3>
+          <EntryTable entries={landingFacts.budgets.collab.map((entry) => entryRow(entry, lang))} />
         </div>
-        <p className="mt-4 font-mono text-ui text-pretty text-muted-foreground zh:[line-break:strict]">
-          {INSTALL_KIT}
-          {" · "}
-          {INSTALL_COLLAB}
-        </p>
-        <p className="mt-3 text-left font-mono text-micro text-pretty text-muted-foreground zh:[line-break:strict]">
-          {text(lang, "legendBefore")}
-        </p>
       </div>
-    </section>
+      <p className="mt-4 font-mono text-ui text-muted-foreground">
+        {INSTALL_KIT}
+        {" · "}
+        {INSTALL_COLLAB}
+      </p>
+      <p className="mt-3 text-left font-mono text-micro text-muted-foreground">{text(lang, "legendBefore")}</p>
+    </LandingSection>
   );
 }

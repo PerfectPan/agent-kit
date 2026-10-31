@@ -17,7 +17,6 @@ import { text, type CopyKey, type Lang } from "../landing/index.ts";
 import { LayerDiagram } from "../../components/landing/layer-diagram.tsx";
 import { LayerTier } from "../../components/landing/layer-tier.tsx";
 import { LayerFnGroup } from "../../components/landing/layer-fn-group.tsx";
-import { cn } from "../../lib/utils.ts";
 
 const TOOL_COPY: Record<ToolId, CopyKey> = {
   usage: "toolUsage",
@@ -29,8 +28,6 @@ const TOOL_COPY: Record<ToolId, CopyKey> = {
   viewer: "toolViewer"
 };
 
-const TITLE: Record<Lang, string> = { en: "leading-[1.04] tracking-[-0.035em]", zh: "leading-[1.25] break-keep" };
-const BODY: Record<Lang, string> = { en: "", zh: "[line-break:strict]" };
 const layerChip = cva("cursor-pointer rounded-control px-3 py-2 text-ink transition-shadow duration-200 ease-settle", {
   variants: {
     kind: { tool: "text-ui font-medium", provider: "font-mono text-ui-sm" },
@@ -80,12 +77,10 @@ export function LayerSection({ lang }: { readonly lang: Lang }) {
   return (
     <section className="reveal pt-18">
       <div className="mb-7 max-w-read">
-        <h2 className={cn("mb-2 text-left text-[clamp(2rem,3.2vw,3rem)] font-extrabold text-balance", TITLE[lang])}>
+        <h2 className="mb-2 text-left text-[clamp(2rem,3.2vw,3rem)] leading-[1.04] font-extrabold tracking-[-0.035em] text-balance zh:leading-tight zh:tracking-normal zh:break-keep">
           {text(lang, "layerTitle")}
         </h2>
-        <p className={cn("mt-2.5 max-w-[62ch] text-left text-[17px] leading-[1.6] text-pretty text-ink-2", BODY[lang])}>
-          {text(lang, "layerBody")}
-        </p>
+        <p className="mt-2.5 max-w-[62ch] text-left text-[17px] leading-[1.6] text-ink-2">{text(lang, "layerBody")}</p>
       </div>
       <div ref={ref} className="relative grid gap-8">
         <LayerDiagram points={segments} size={size} />
@@ -103,7 +98,7 @@ export function LayerSection({ lang }: { readonly lang: Lang }) {
           />
         </LayerTier>
         <LayerTier label={text(lang, "toolkit")}>
-          <div className="grid grid-cols-[minmax(0,1.75fr)_minmax(12rem,1fr)] gap-x-4 gap-y-3 phone:grid-cols-[1fr]">
+          <div className="grid grid-cols-[minmax(0,1.75fr)_minmax(12rem,1fr)] gap-x-4 gap-y-3 phone:grid-cols-1">
             <LayerFnGroup
               label={`${text(lang, "connection")} · agent-kit`}
               onPath={!path.collab}

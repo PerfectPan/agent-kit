@@ -38,9 +38,7 @@ export function ProjectPreview({
   if (variant === "profile") {
     return (
       <div className="mb-4 rounded-control bg-paper-2 px-3.5 py-3">
-        <p className="mb-2.5 text-micro text-pretty text-muted-foreground zh:leading-[1.8] zh:[line-break:strict]">
-          {copy.sampleData}
-        </p>
+        <p className="mb-2.5 text-micro text-muted-foreground zh:leading-[1.8]">{copy.sampleData}</p>
         <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5">
           <span
             className="grid size-10 place-items-center rounded-full bg-card text-[0.95rem] leading-[normal] font-[650] text-ink"
@@ -50,9 +48,7 @@ export function ProjectPreview({
           </span>
           <div className="min-w-0">
             <strong className="block text-[0.95rem] leading-[1.3] font-[650] text-ink">{copy.presenceName}</strong>
-            <p className="mb-3 text-body-sm text-pretty text-ink-2 zh:leading-[1.8] zh:[line-break:strict]">
-              {copy.presenceSig}
-            </p>
+            <p className="mb-3 text-body-sm text-ink-2 zh:leading-[1.8]">{copy.presenceSig}</p>
             <div className="grid gap-2 rounded-control bg-card px-3 py-2.5 shadow-card">
               <div className="flex items-center gap-2 text-[14px] leading-[1.3] text-ink">
                 <i className="size-2 flex-none rounded-full bg-sage" />
@@ -62,9 +58,7 @@ export function ProjectPreview({
                 <i className="size-2 flex-none rounded-full bg-line-2" />
                 <span>{copy.presenceIdle}</span>
               </div>
-              <p className="mb-3 text-body-sm text-pretty text-ink-2 zh:leading-[1.8] zh:[line-break:strict]">
-                {copy.presenceTokens}
-              </p>
+              <p className="mb-3 text-body-sm text-ink-2 zh:leading-[1.8]">{copy.presenceTokens}</p>
             </div>
           </div>
         </div>
@@ -73,12 +67,10 @@ export function ProjectPreview({
   }
   return (
     <div className="mb-4 rounded-control bg-paper-2 px-3.5 py-3">
-      <p className="mb-2.5 text-micro text-pretty text-muted-foreground zh:leading-[1.8] zh:[line-break:strict]">
-        {copy.sampleData}
-      </p>
+      <p className="mb-2.5 text-micro text-muted-foreground zh:leading-[1.8]">{copy.sampleData}</p>
       <div>
         <h4 className="mb-2 text-[0.95rem] leading-[1.3] font-[650] text-ink">{copy.loopTaskTitle}</h4>
-        <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 mb-3 text-body-sm text-pretty text-ink-2 zh:leading-[1.8] zh:[line-break:strict]">
+        <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 mb-3 text-body-sm text-ink-2 zh:leading-[1.8]">
           <span className="rounded-control bg-[color-mix(in_srgb,var(--color-honey)_28%,var(--card))] px-2 py-0.5 font-[650] text-ink">
             {copy.stepReview}
           </span>

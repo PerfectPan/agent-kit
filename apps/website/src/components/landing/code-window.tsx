@@ -25,7 +25,7 @@ export function CodeWindow({
     <Tabs
       value={value}
       onValueChange={onValueChange}
-      className="relative z-2 overflow-hidden rounded-container bg-code-bg shadow-window motion-safe:animate-[ak-enter_0.75s_var(--ease-enter)_200ms_both]"
+      className="relative z-2 overflow-hidden rounded-container bg-code-bg shadow-window [--enter-delay:200ms] motion-safe:animate-enter"
     >
       {tabs}
       {/* One panel follows the selected tab. Its buttons are the tab stops, so it does not take Radix's tabIndex. */}

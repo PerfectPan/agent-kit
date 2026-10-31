@@ -17,7 +17,7 @@ const HEADLINE: Record<Lang, string> = {
 };
 const LEAD: Record<Lang, string> = {
   en: "max-w-[38ch] text-[18px] leading-[1.55] xl:max-w-none",
-  zh: "max-w-[28em] text-[17px] leading-[1.75] [line-break:strict]"
+  zh: "max-w-[28em] text-[17px] leading-[1.75]"
 };
 
 export function LandingHero({ lang }: { readonly lang: Lang }) {
@@ -27,15 +27,10 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
     <section className="grid gap-7 pt-12 text-left phone:pt-8 xl:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)] xl:items-center xl:gap-x-14 xl:pt-18">
       <div>
         <h1 className={cn("mb-4 text-balance motion-safe:animate-enter", HEADLINE[lang])}>{text(lang, "heroTitle")}</h1>
-        <p
-          className={cn(
-            "mb-6 text-pretty text-ink-2 motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_70ms_both]",
-            LEAD[lang]
-          )}
-        >
+        <p className={cn("mb-6 text-ink-2 [--enter-delay:70ms] motion-safe:animate-enter", LEAD[lang])}>
           {text(lang, "heroLead")}
         </p>
-        <div className="flex flex-wrap items-center justify-start gap-3 motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_140ms_both]">
+        <div className="flex flex-wrap items-center justify-start gap-3 [--enter-delay:140ms] motion-safe:animate-enter">
           <span className="inline-flex items-center gap-3.5 rounded-control bg-card px-4.5 py-3 font-mono text-ui shadow-card">
             {INSTALL_KIT}{" "}
             <CopyButton
@@ -55,7 +50,7 @@ export function LandingHero({ lang }: { readonly lang: Lang }) {
       <div className="min-w-0">
         <DemoSection lang={lang} />
         <p
-          className="mt-2.5 text-pretty font-sans text-micro text-muted-foreground zh:[line-break:strict] motion-safe:animate-[ak-enter_0.7s_var(--ease-enter)_280ms_both]"
+          className="mt-2.5 font-sans text-micro text-muted-foreground [--enter-delay:280ms] motion-safe:animate-enter"
           aria-label={text(lang, "factsStrip")}
         >
           {landingFacts.entryCount} {text(lang, "factsEntries")}

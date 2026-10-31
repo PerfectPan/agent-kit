@@ -21,7 +21,7 @@ const TREE_VISIBILITY: Record<Lang, string> = {
 export function LandingPage({ lang }: { readonly lang: Lang }) {
   const rootRef = useInView({
     selector: ".reveal",
-    visibleClass: "is-in",
+    visibleAttribute: "data-in-view",
     motionAttribute: "data-motion",
     motionValue: "on",
     threshold: 0.16,
@@ -33,7 +33,7 @@ export function LandingPage({ lang }: { readonly lang: Lang }) {
       ref={rootRef}
       className={cn(
         TREE_VISIBILITY[lang],
-        "col-start-1 row-start-1 text-ink selection:bg-honey selection:text-ink **:focus-visible:outline-2 **:focus-visible:outline-offset-3 **:focus-visible:outline-ochre"
+        "col-start-1 row-start-1 text-pretty text-ink selection:bg-honey selection:text-ink **:focus-visible:outline-2 **:focus-visible:outline-offset-3 **:focus-visible:outline-ochre data-[lang=zh]:[line-break:strict]"
       )}
       data-lang={lang}
     >

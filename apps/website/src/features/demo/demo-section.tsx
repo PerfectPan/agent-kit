@@ -2,7 +2,7 @@ import { useReducer, type CSSProperties } from "react";
 import { landingFacts } from "virtual:landing-facts";
 
 import { text, type Lang } from "../landing/index.ts";
-import { TASK_ORDER, demoView, isSwapField, maxCodeLineCount, maxOutputFieldCount, taskLabel } from "./snippets.ts";
+import { TASK_ORDER, demoView, isSwapField, MAX_CODE_LINES, MAX_OUTPUT_FIELDS, taskLabel } from "./snippets.ts";
 import { demoReducer, demoSequence, initialDemoState } from "./demo-reducer.ts";
 import { useAutoplay } from "../../hooks/use-autoplay.ts";
 import { useAnimationRestart } from "../../hooks/use-animation-restart.ts";
@@ -61,10 +61,11 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
         file={view.file}
         packageName={view.packageName}
       >
-        {/* Every task gets the height of the longest one, so switching tabs does not move the hero. */}
+        {/* Every task gets the height of the longest one, so switching tabs does not move the hero. The minimum counts
+            lines in 1lh; box-content keeps the padding out of it. */}
         <pre
-          className="min-h-[calc(var(--code-rows)*22px+30px)] overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]"
-          style={{ "--code-rows": maxCodeLineCount() } as CSSProperties}
+          className="box-content min-h-[calc(var(--code-rows)*1lh)] overflow-x-auto px-5.5 pt-3 pb-4.5 font-mono text-code text-code-dim [font-variant-ligatures:none]"
+          style={{ "--code-rows": MAX_CODE_LINES } as CSSProperties}
         >
           <CodeView lines={view.code} shown={view.code.length} flash={state.flashCode} nonce={state.flashNonce} />
         </pre>
@@ -74,7 +75,7 @@ export function DemoSection({ lang }: { readonly lang: Lang }) {
           rawLabel={text(lang, "outputRaw")}
           raw={state.raw}
           onRawChange={(value) => dispatch({ type: "raw", value })}
-          fieldCount={maxOutputFieldCount()}
+          fieldCount={MAX_OUTPUT_FIELDS}
           fields={view.fields.map((field) => ({
             ...field,
             swap: isSwapField(field.key),

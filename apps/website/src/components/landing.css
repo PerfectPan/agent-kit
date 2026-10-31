@@ -1,7 +1,5 @@
-/* Landing-only. Docs routes do not link this file, so the landing utilities stay off the Fumadocs pages. */
-@import "@fontsource-variable/bricolage-grotesque";
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
+/* Landing-only. Docs routes do not link this file, so the landing utilities stay off the Fumadocs pages. The fonts
+   come from app.css, which every route links. */
 @import "tailwindcss" source(none);
 @import "./theme.css";
 
@@ -11,7 +9,6 @@
 @source "../features/demo";
 @source "../features/layer";
 @source "../components/ui";
-@source "../lib/utils.ts";
 
 /* The landing media queries include their boundary width, which Tailwind's max-* variants exclude. */
 @custom-variant phone (@media (max-width: 640px));
@@ -20,7 +17,7 @@
 @custom-variant zh (&:where([data-lang="zh"] *));
 
 /* The root shell renders <body> for every route, so the landing page sets its page colours and type from here. */
-body:has(.landing-langs) {
+body:has([data-landing]) {
   margin: 0;
   background: var(--color-paper);
   color: var(--color-ink);
@@ -29,14 +26,14 @@ body:has(.landing-langs) {
   overflow-x: clip;
 }
 
-/* useInView adds `is-in` with classList once a section scrolls into view, so its states are selectors. */
+/* useInView sets `data-in-view` on a section once it scrolls into view. */
 @utility reveal {
   @media (prefers-reduced-motion: no-preference) {
-    :where([data-motion="on"]) &:not(.is-in) {
+    :where([data-motion="on"]) &:not([data-in-view]) {
       opacity: 0;
       translate: 0 8px;
     }
-    &.is-in {
+    &[data-in-view] {
       opacity: 1;
       translate: 0;
       transition:

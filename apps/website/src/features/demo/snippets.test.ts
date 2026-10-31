@@ -9,7 +9,7 @@ import {
   demoView,
   isBlockedOutput,
   isSwapField,
-  maxOutputFieldCount,
+  MAX_OUTPUT_FIELDS,
   nextAutoplayStep,
   outputFields,
   plainText,
@@ -132,7 +132,7 @@ it("flattens sample output into aligned key/value fields", () => {
   ]);
   expect(outputFields("hooks", "pi").find((field) => field.key === "nativeEvent")?.value).toBe("before_agent_start");
   expect(demoView(on("detect", "claude-code"), rows).fields).toEqual(outputFields("detect", "claude-code"));
-  expect(maxOutputFieldCount()).toBe(5);
+  expect(MAX_OUTPUT_FIELDS).toBe(5);
 });
 
 it("marks Agent id and values that change as swap fields", () => {

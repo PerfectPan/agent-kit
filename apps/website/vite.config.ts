@@ -26,8 +26,7 @@ const landingSources = [
 function tailwindRules(stylesheet: string): NonNullable<OxlintOverride["rules"]> {
   const entryPoint = fileURLToPath(new URL(`./src/components/${stylesheet}`, import.meta.url));
   return {
-    // `landing-langs` is a hook for a landing.css selector, not a utility.
-    "better-tailwindcss/no-unknown-classes": ["error", { entryPoint, ignore: ["^landing-langs$"] }],
+    "better-tailwindcss/no-unknown-classes": ["error", { entryPoint }],
     "better-tailwindcss/no-conflicting-classes": ["error", { entryPoint }],
     "better-tailwindcss/no-duplicate-classes": ["error", { entryPoint }],
     "better-tailwindcss/no-unnecessary-whitespace": ["error", { entryPoint }],
