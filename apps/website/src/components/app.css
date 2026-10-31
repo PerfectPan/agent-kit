@@ -90,10 +90,13 @@ figure.shiki .line {
   font-weight: 400;
 }
 
+/* Entry specifiers such as @rivus/agent-kit/providers stay on one line; the table scrolls instead of breaking them at
+   a hyphen. */
 .prose :where(table) :where(code):not(:where(pre *)) {
   background-color: color-mix(in srgb, var(--color-ochre) 8%, var(--color-paper));
   padding: 0.15em 0.35em;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .dark .prose :where(table) :where(code):not(:where(pre *)) {
