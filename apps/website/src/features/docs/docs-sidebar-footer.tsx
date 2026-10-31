@@ -3,11 +3,11 @@ import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
 import { GITHUB_URL, text } from "../landing/index.ts";
 import { useLanguage } from "../../hooks/use-language.ts";
 import { Button } from "../../components/ui/button.tsx";
-import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group.tsx";
+import { LanguageToggle } from "../i18n/index.ts";
 
 /** One quiet row at the bottom of the docs sidebar: repository link, language and theme. */
 export function DocsSidebarFooter() {
-  const { lang, setLang } = useLanguage();
+  const { lang } = useLanguage();
 
   return (
     <div className="flex items-center gap-1">
@@ -18,24 +18,7 @@ export function DocsSidebarFooter() {
           </svg>
         </a>
       </Button>
-      <ToggleGroup
-        variant="sidebar"
-        className="ms-auto"
-        aria-label={text(lang, "languageGroup")}
-        value={lang}
-        onValueChange={(value) => {
-          if (value === "en" || value === "zh") {
-            setLang(value);
-          }
-        }}
-      >
-        <ToggleGroupItem variant="sidebar" value="en">
-          {text(lang, "langEn")}
-        </ToggleGroupItem>
-        <ToggleGroupItem variant="sidebar" value="zh">
-          {text(lang, "langZh")}
-        </ToggleGroupItem>
-      </ToggleGroup>
+      <LanguageToggle variant="sidebar" className="ms-auto" />
       <ThemeSwitch className="border-0 bg-transparent p-0" />
     </div>
   );

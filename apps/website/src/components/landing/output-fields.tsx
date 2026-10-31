@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import { cn } from "../../lib/utils.ts";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group.tsx";
-import { CodeView, type Token } from "./code-view.tsx";
+import { CodeView, SWAP_HIGHLIGHT, type Token } from "./code-view.tsx";
 
 export function OutputFields({
   label,
@@ -42,30 +42,19 @@ export function OutputFields({
           variant="code"
           aria-label={label}
           value={raw ? "raw" : "fields"}
-          onValueChange={(value) => {
-            // Pressing the selected item would clear a single-choice group; one view always stays selected.
-            if (value !== "") {
-              onRawChange(value === "raw");
-            }
-          }}
+          onValueChange={(value) => onRawChange(value === "raw")}
         >
-          <ToggleGroupItem variant="code" value="fields">
-            {fieldsLabel}
-          </ToggleGroupItem>
-          <ToggleGroupItem variant="code" value="raw">
-            {rawLabel}
-          </ToggleGroupItem>
+          <ToggleGroupItem value="fields">{fieldsLabel}</ToggleGroupItem>
+          <ToggleGroupItem value="raw">{rawLabel}</ToggleGroupItem>
         </ToggleGroup>
       </div>
-      {/* Both views share one grid cell, so switching between them keeps the window height. The minimum fits the
-          most fields any task shows: 22 px rows, 4 px gaps and the 24 px of vertical padding. */}
-      <div
-        className="grid min-h-[calc(var(--output-rows,5)*26px+20px)] px-5.5 pt-2 pb-4"
-        style={{ "--output-rows": fieldCount } as CSSProperties}
-      >
+      {/* Both views share one grid cell, so switching between them keeps the window height. The field list is as tall
+          as the most fields any task shows: 1lh rows with a gap-1 between them. */}
+      <div className="grid px-5.5 pt-2 pb-4">
         <dl
+          style={{ "--output-rows": fieldCount } as CSSProperties}
           className={cn(
-            "col-start-1 row-start-1 grid content-start gap-1 font-mono text-ui-sm leading-[22px] text-code-ink",
+            "col-start-1 row-start-1 grid min-h-[calc(var(--output-rows)*(1lh+var(--spacing))-var(--spacing))] content-start gap-1 font-mono text-ui-sm leading-[22px] text-code-ink",
             raw && "pointer-events-none invisible"
           )}
           aria-hidden={raw}
@@ -82,7 +71,7 @@ export function OutputFields({
               <dd
                 className={cn(
                   "tabular-nums",
-                  field.swap ? "justify-self-start rounded-[4px] bg-honey/34 px-1 text-code-ink" : "text-code-dim",
+                  field.swap ? [SWAP_HIGHLIGHT, "justify-self-start px-1"] : "text-code-dim",
                   field.swap && field.flash && "motion-safe:animate-swap-in"
                 )}
               >

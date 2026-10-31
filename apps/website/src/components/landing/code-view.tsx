@@ -6,12 +6,15 @@ export interface Token {
   readonly swap?: boolean;
 }
 
+/** The honey highlight behind a value that changes with the selected Agent, in the code and the output fields. */
+export const SWAP_HIGHLIGHT = "rounded-sm bg-honey/34 text-code-ink";
+
 const TONE = { k: "text-code-k", s: "text-code-s", num: "text-code-n", c: "text-code-dim" } as const;
 
 function tokenClass(token: Token, flash: boolean): string {
   if (token.swap) {
     // A swapped value stays at full strength in the plain code colour over its highlight.
-    return cn("rounded-[4px] bg-honey/34 px-0.5 text-code-ink", flash && "motion-safe:animate-swap-in");
+    return cn(SWAP_HIGHLIGHT, "px-0.5", flash && "motion-safe:animate-swap-in");
   }
   return cn("opacity-55", token.tone && TONE[token.tone]);
 }
@@ -31,7 +34,7 @@ export function CodeView({
     <span
       key={`${nonce}-${index}`}
       className={cn(
-        "-mx-1 block min-h-[22px] rounded-[4px] px-1",
+        "-mx-1 block min-h-[22px] rounded-sm px-1",
         index >= shown && "invisible",
         flash.has(index) && "motion-safe:animate-line-in"
       )}

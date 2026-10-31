@@ -11,9 +11,6 @@ export const copy = {
   navDocs: { en: "Docs", zh: "文档" },
   navApi: { en: "API", zh: "API" },
   navGithub: { en: "GitHub", zh: "GitHub" },
-  langEn: { en: "EN", zh: "EN" },
-  langZh: { en: "中文", zh: "中文" },
-  languageGroup: { en: "Language", zh: "语言" },
   primaryNav: { en: "Primary", zh: "主导航" },
   heroTitle: { en: "The Universal Agent Toolkit", zh: "通用 Agent 工具库" },
   heroLead: {

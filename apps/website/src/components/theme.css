@@ -1,28 +1,28 @@
 /* Design tokens shared by the landing and docs stylesheets. Tailwind emits only the tokens a page's utilities use. */
 
 /* The semantic colours that shadcn/ui components (components/ui) are written against, set from the palette below.
-   `card` and `muted-foreground` are also the palette's own card white and quiet text colour. app.css sets the docs
-   .dark values. */
+   `card` and `muted-foreground` have no palette twin and serve as the landing's card white and quiet text colour.
+   app.css maps the Fumadocs colours onto these and sets the docs .dark values. */
 :root {
-  --background: #fbf7f2;
-  --foreground: #2a211e;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
   --card: #ffffff;
-  --card-foreground: #2a211e;
-  --popover: #ffffff;
-  --popover-foreground: #2a211e;
-  --primary: #b94f3c;
-  --primary-foreground: #fffaf4;
-  --secondary: #f3ece3;
-  --secondary-foreground: #2a211e;
-  --muted: #f3ece3;
+  --card-foreground: var(--color-ink);
+  --popover: var(--card);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-ochre);
+  --primary-foreground: var(--color-ochre-ink);
+  --secondary: var(--color-paper-2);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-paper-2);
   --muted-foreground: #5f564f;
-  --accent: #f3ece3;
-  --accent-foreground: #2a211e;
-  --destructive: #b94f3c;
-  --border: #e6dccf;
-  --input: #d6c7b6;
-  --ring: #b94f3c;
-  --radius: 8px;
+  --accent: var(--color-paper-2);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-ochre);
+  --border: var(--color-line);
+  --input: var(--color-line-2);
+  --ring: var(--color-ochre);
+  --radius: var(--radius-control);
 }
 
 @theme inline {
@@ -99,11 +99,14 @@
 
   --shadow-card: 0 0 0 1px rgb(42 33 30 / 0.06), 0 1px 2px -1px rgb(42 33 30 / 0.06), 0 2px 4px rgb(42 33 30 / 0.04);
   --shadow-window: 0 24px 60px -24px rgb(42 33 30 / 0.35);
+  /* The selected item of a toggle group. */
+  --shadow-thumb: 0 1px 2px rgb(42 33 30 / 0.1);
 
   --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-enter: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
-  --animate-enter: ak-enter 0.7s var(--ease-enter) both;
+  /* Set --enter-delay on the element to stagger it. */
+  --animate-enter: ak-enter 0.7s var(--ease-enter) var(--enter-delay, 0ms) both;
   --animate-pop: ak-pop 0.55s var(--ease-settle) 520ms both;
   --animate-line-in: ak-line-in 240ms var(--ease-enter) both;
   --animate-swap-in: ak-swap-in 480ms var(--ease-enter) both;

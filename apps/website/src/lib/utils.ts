@@ -7,7 +7,7 @@ const twMerge = extendTailwindMerge({
   extend: {
     theme: {
       text: ["display", "section", "component", "body-sm", "micro", "ui", "ui-sm", "code"],
-      shadow: ["card", "window"],
+      shadow: ["card", "window", "thumb"],
       radius: ["control", "container"],
       ease: ["settle", "enter"],
       animate: [
