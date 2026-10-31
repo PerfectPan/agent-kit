@@ -10,6 +10,9 @@ import type { Lang } from "../../lib/language.ts";
 import { cn } from "../../lib/utils.ts";
 import { docs } from "./source.ts";
 
+// The TOC marks the current section with its track segment alone, without Fumadocs' travelling dot.
+const TOC_LIST = { thumbBox: false };
+
 export function DocsArticle({ path, fallback, lang }: { path: string; fallback: boolean; lang: Lang }) {
   const page = docs.getPage(path);
   if (!page) {
@@ -22,7 +25,11 @@ export function DocsArticle({ path, fallback, lang }: { path: string; fallback: 
   useDocumentReady(path, lang === "zh", DOCS_PENDING_CLASS);
 
   return (
-    <DocsPage toc={apiSymbolToc(path, loaded.toc)} tableOfContent={{ single: true }}>
+    <DocsPage
+      toc={apiSymbolToc(path, loaded.toc)}
+      tableOfContent={{ single: true, list: TOC_LIST }}
+      tableOfContentPopover={{ list: TOC_LIST }}
+    >
       <DocsTitle
         className={cn(
           "text-[2.375rem] leading-[1.15] font-[750] tracking-[-0.03em] text-balance",

@@ -26,7 +26,7 @@ export function DocsScreen({ splat }: { splat?: string }) {
         tree={source.getPageTree(lang)}
         // The sidebar sits on the page colour rather than a white card, so a hairline is enough to separate it.
         sidebar={{
-          className: "bg-fd-background border-e-[color-mix(in_srgb,var(--color-fd-border)_60%,transparent)]",
+          className: "bg-fd-background border-e-fd-border/60",
           footer: <DocsSidebarFooter />
         }}
       >
