@@ -79,3 +79,12 @@
   intents:
     - loud-bears-roll
     - purple-carrots-arrive
+"@rivus/agent-kit@0.24.0":
+  dir: packages/agent-kit
+  intents:
+    - acp-idle-updates-held
+    - acp-stderr-callback
+    - acp-unsettled-cancel-scope
+    - codex-timeless-usage-stamp
+    - grok-claude-code-id-serials
+    - renovate-c5abd13
