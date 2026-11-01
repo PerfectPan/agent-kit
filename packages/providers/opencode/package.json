@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-provider-opencode",
   "version": "0.0.0",
   "private": true,
-  "description": "OpenCode identity, discovery, hooks, installation, usage and ACP. Bundled into @rivus/agent-kit.",
+  "description": "OpenCode identity, discovery, hooks, installation, sessions, usage and ACP. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -11,6 +11,7 @@
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",
+    "./sessions": "./src/sessions.ts",
     "./usage": "./src/usage.ts",
     "./acp": "./src/acp.ts"
   },

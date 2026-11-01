@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-provider-pi",
   "version": "0.0.0",
   "private": true,
-  "description": "Pi identity, discovery, hooks, installation and usage. Bundled into @rivus/agent-kit.",
+  "description": "Pi identity, discovery, hooks, installation, sessions and usage. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -11,6 +11,7 @@
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",
+    "./sessions": "./src/sessions.ts",
     "./usage": "./src/usage.ts"
   },
   "scripts": {

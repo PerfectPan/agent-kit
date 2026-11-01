@@ -51,15 +51,16 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery                        | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | -------------------------------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes                              | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| dsh         | yes      | No supported installation probe. | No supported hook dialect. | No supported installation adapter. | yes                                      | Usage storage has no supported decoder. | No supported ACP transport. |
+| gemini-cli  | yes      | yes                              | yes                        | yes                                | Session storage has no supported reader. | yes                                     | yes                         |
+| grok        | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| pi          | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
 
 ## Usage
 

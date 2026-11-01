@@ -8,8 +8,13 @@ export const piSessionDirectory: string = PI_SESSIONS_DIR;
 // `session` header; a session forked or branched from another names it in `parentSession` and starts with a copy of
 // that session's entries, which keep their own timestamps.
 
-export function piUsageRoots(home: AgentHome): string[] {
+/** The directories that hold Pi sessions: the one sessions root, grouped by project. */
+export function piRoots(home: AgentHome): string[] {
   return [joinPath(home.path, piSessionDirectory)];
+}
+
+export function piUsageRoots(home: AgentHome): string[] {
+  return piRoots(home);
 }
 
 export const PI_SESSION_FILES: { match(name: string): boolean; maxDepth: number } = {
