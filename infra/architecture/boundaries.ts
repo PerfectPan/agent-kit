@@ -114,6 +114,7 @@ const OPENCODE = "@rivus/agent-kit-provider-opencode";
 const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
+const ZCODE = "@rivus/agent-kit-provider-zcode";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
@@ -179,6 +180,15 @@ export const boundaries: BoundaryRules = {
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
       testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
+    [ZCODE]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/zcode/src/facts.ts",
+      providerServices: ["identity", "discovery", "usage"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, SESSIONS],
+      testsOnly: [TESTING, PLATFORM_NODE],
       external: ["zod/mini"]
     },
     [PLATFORM]: { siblingEntries: ["public", "effect"], dependsOn: [], external: [] },

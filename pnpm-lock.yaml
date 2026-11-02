@@ -572,6 +572,9 @@ importers:
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi
+      '@rivus/agent-kit-provider-zcode':
+        specifier: workspace:*
+        version: link:../providers/zcode
       '@rivus/agent-kit-redact':
         specifier: workspace:*
         version: link:../redact
@@ -1085,6 +1088,40 @@ importers:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
         version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+      '@rivus/agent-kit-testing':
+        specifier: workspace:*
+        version: link:../../testing
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/providers/zcode:
+    dependencies:
+      '@rivus/agent-kit-catalog':
+        specifier: workspace:*
+        version: link:../../catalog
+      '@rivus/agent-kit-discovery':
+        specifier: workspace:*
+        version: link:../../discovery
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../../sessions
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@perfectpan/lint-config':
+        specifier: 'catalog:'
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+      '@rivus/agent-kit-platform-node':
+        specifier: workspace:*
+        version: link:../../platform-node
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing

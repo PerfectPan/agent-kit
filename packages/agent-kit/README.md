@@ -51,15 +51,16 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery | hooks                                        | install                                | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | -------------------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| gemini-cli  | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | yes                                     | yes                         |
+| grok        | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | yes                                     | yes                         |
+| pi          | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | Hook configuration has no supported dialect. | Installation has no supported adapter. | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -480,7 +481,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the seven agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each of the eight agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each

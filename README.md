@@ -97,6 +97,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
 | pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | Hook configuration has no supported dialect. | Installation has no supported adapter. | Session storage has no supported reader. | yes | No supported ACP transport. |
 
 These are today's built-in providers. Any other Agent plugs in as a provider descriptor
 (`providers: [{ id: "my-agent", sessions: adapter }]`) and is checked with the conformance suites in `/testing`.
