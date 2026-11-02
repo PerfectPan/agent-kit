@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as z from "zod/mini";
-import { basenamePath, belowRoot, dirnamePath, joinPath } from "../src/lib/paths.js";
-import { timeOf } from "../src/lib/time.js";
-import { timeOfValue, logTimestamp } from "../src/lib/timestamp.js";
-import { lenient } from "../src/lib/lenient.js";
-import { rememberKey } from "../src/lib/remember-key.js";
-import { shortHash } from "../src/lib/short-hash.js";
+import { basenamePath, belowRoot, dirnamePath, joinPath } from "./paths.js";
+import { timeOf } from "./time.js";
+import { timeOfValue, logTimestamp } from "./timestamp.js";
+import { lenient } from "./lenient.js";
+import { rememberKey } from "./remember-key.js";
+import { shortHash } from "./short-hash.js";
 
 describe("literal path spelling", () => {
   it.each([

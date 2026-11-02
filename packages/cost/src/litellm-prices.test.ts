@@ -1,9 +1,9 @@
 import type { UsageRecord } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import snapshot from "../src/domain/pricing/adapters/litellm-snapshot.json" with { type: "json" };
-import { litellmPrices, litellmPricesVersion } from "../src/prices.js";
-import { createPricing, fromLiteLLM, type Price, priceRecord } from "../src/public.js";
+import snapshot from "./domain/pricing/adapters/litellm-snapshot.json" with { type: "json" };
+import { litellmPrices, litellmPricesVersion } from "./prices.js";
+import { createPricing, fromLiteLLM, type Price, priceRecord } from "./public.js";
 
 const M = 1_000_000;
 const pricing = createPricing(litellmPrices);

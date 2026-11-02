@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { SourcedRecord } from "@rivus/agent-kit-sessions/spi";
 import type { UsageRecord } from "@rivus/agent-kit-sessions/spi";
-import { geminiCliLegacyUsage, geminiCliUsageLines } from "../src/usage.js";
+import { geminiCliLegacyUsage, geminiCliUsageLines } from "./usage.js";
 
 const file = { path: "chat.jsonl", sessionId: "chat", mtimeMs: 1000 };
 const TIME = Date.parse("2026-01-01T00:00:01.000Z");

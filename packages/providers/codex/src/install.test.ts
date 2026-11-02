@@ -1,9 +1,9 @@
 import { expect, it, vi } from "vite-plus/test";
 
-import { codexInstallAdapter } from "../src/install.js";
+import { codexInstallAdapter } from "./install.js";
 
-vi.mock("../src/facts.js", async (original) => ({
-  ...(await original<typeof import("../src/facts.js")>()),
+vi.mock("./facts.js", async (original) => ({
+  ...(await original<typeof import("./facts.js")>()),
   CODEX_PLUGINS_DIR: "plugin-files",
   CODEX_PLUGINS_POINTER: "/registered-plugins"
 }));

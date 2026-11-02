@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { readHookEvent } from "@rivus/agent-kit-harness/public/events";
-import { opencodeHookDialect } from "../src/hooks.js";
+import { opencodeHookDialect } from "./hooks.js";
 const testHooks = { opencode: opencodeHookDialect };
 
 describe("opencode hooks", () => {

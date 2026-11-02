@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { previewClaudeCodeRecords } from "../src/sessions/preview.js";
+import { previewClaudeCodeRecords } from "./preview.js";
 
 describe("previewClaudeCodeRecords", () => {
   it("reads a record leniently: a field of an unexpected type counts as absent", () => {

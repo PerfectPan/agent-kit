@@ -6,8 +6,8 @@ import {
   type MemoryPlatformOptions,
   type MemoryRunResult
 } from "@rivus/agent-kit-testing/public";
-import { cursor } from "../src/identity.js";
-import { cursorProbe } from "../src/discovery.js";
+import { cursor } from "./identity.js";
+import { cursorProbe } from "./discovery.js";
 
 const HOME = "/u/me";
 const testDiscovery = { cursor: cursorProbe };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { SourcedRecord } from "@rivus/agent-kit-sessions/public";
-import { claudeCodeUsage, claudeCodeUsageLines } from "../src/records/usage.js";
+import { claudeCodeUsage, claudeCodeUsageLines } from "./usage.js";
 
 describe("claudeCodeUsage", () => {
   it("adds the cache back into input and derives the total", () => {

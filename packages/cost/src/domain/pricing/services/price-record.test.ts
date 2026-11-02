@@ -1,7 +1,7 @@
 import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createPricing, priceRecord, summarize } from "../src/public.js";
+import { createPricing, priceRecord, summarize } from "../../../public.js";
 
 const M = 1_000_000;
 const pricing = createPricing({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { translateClaudeCodeRecords } from "../src/sessions/events.js";
+import { translateClaudeCodeRecords } from "./events.js";
 
 const session = (result: ReturnType<typeof translateClaudeCodeRecords>) => {
   if (!result.ok) {

@@ -1,6 +1,6 @@
 import { expect, it } from "vite-plus/test";
 import * as z from "zod/mini";
-import { lenient } from "../src/lib/lenient.js";
+import { lenient } from "./lenient.js";
 
 it("keeps explicit fallbacks, successful parsing and whole-array rejection", () => {
   const fallback: string[] = [];

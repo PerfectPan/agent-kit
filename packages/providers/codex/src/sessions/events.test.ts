@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { mergeByTime, type StampedRecord } from "@rivus/agent-kit-sessions/spi";
 import { timedRecord } from "@rivus/agent-kit-sessions/spi";
-import { translateCodexRecords } from "../src/sessions/events.js";
+import { translateCodexRecords } from "./events.js";
 
 const session = (result: ReturnType<typeof translateCodexRecords>) => {
   if (!result.ok) {

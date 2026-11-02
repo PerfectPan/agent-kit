@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { SourcedRecord } from "@rivus/agent-kit-sessions/spi";
 import type { UsageRecord } from "@rivus/agent-kit-sessions/spi";
-import { codexUsage, codexUsageLines } from "../src/records/usage.js";
+import { codexUsage, codexUsageLines } from "./usage.js";
 
 const file = { path: "rollout-1.jsonl", sessionId: "rollout-1", mtimeMs: 1000 };
 const AT = "2026-01-01T00:00:01.000Z";

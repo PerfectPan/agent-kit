@@ -6,7 +6,7 @@ import {
   createOpencodeSettlement,
   opencodeQueryFloor,
   type OpencodeTableRow
-} from "../src/usage.js";
+} from "./usage.js";
 
 /**
  * One `message` row: opencode names each message after its row, so the id is a number in a string, which the

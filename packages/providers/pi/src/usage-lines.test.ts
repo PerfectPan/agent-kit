@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { SourcedRecord, UsageRecord } from "@rivus/agent-kit-sessions/spi";
-import { piUsageLines } from "../src/usage.js";
+import { piUsageLines } from "./usage.js";
 
 const file = { path: "session.jsonl", sessionId: "session", mtimeMs: 5000 };
 

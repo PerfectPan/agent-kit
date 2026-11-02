@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { claudeCodeUsageSourceId, claudeCodeUsageTarget } from "../src/layout.js";
+import { claudeCodeUsageSourceId, claudeCodeUsageTarget } from "./layout.js";
 
 describe("claude-code usage sources", () => {
   it("identifies a source by its path below the project directory, which a moved working directory renames", () => {
