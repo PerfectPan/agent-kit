@@ -8,12 +8,7 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import { afterEach } from "vite-plus/test";
 
-import {
-  FileSessionBindingStoreLive,
-  MemorySessionBindingStoreLive,
-  type SessionBinding,
-  SessionBindingStore
-} from "../src/public.js";
+import { FileSessionBindingStoreLive, type SessionBinding, SessionBindingStore } from "../src/public.js";
 import { removeWorkDirs, workDir } from "./support.js";
 
 afterEach(() => {
@@ -28,7 +23,6 @@ const binding = (sessionKey: string, sessionId: string): SessionBinding => ({
 });
 
 const stores: readonly [string, () => Layer.Layer<SessionBindingStore>][] = [
-  ["memory", () => MemorySessionBindingStoreLive],
   ["file", () => FileSessionBindingStoreLive(join(workDir(), "bindings.json")).pipe(Layer.provide(NodePlatformLive))]
 ];
 

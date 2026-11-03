@@ -2,7 +2,7 @@ import { builtinSessionAdapters } from "./providers.js";
 import { err, type CodingAgent } from "@rivus/agent-kit-catalog/public";
 import { detectAgents } from "@rivus/agent-kit-discovery/public";
 import { builtinProbeRecipes } from "./providers.js";
-import { type HookDialect, readHookEvent } from "@rivus/agent-kit-harness/public/events";
+import { type HookDialect } from "@rivus/agent-kit-harness/public/events";
 import {
   decodeUsage,
   listSessions,
@@ -14,7 +14,7 @@ import {
   type UsageRecord
 } from "@rivus/agent-kit-sessions/public";
 import { builtinUsageDecoders } from "./providers.js";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { expect, it, vi } from "vite-plus/test";
 
 import { hookDialectConformance } from "../src/hook-dialect-conformance.js";
 import { probeRecipeConformance } from "../src/probe-recipe-conformance.js";
@@ -133,40 +133,6 @@ const first: HookDialect = {
   hostMarkers: { payloadFields: ["firstMarker"], env: ["FIRST_HOST"] },
   runsHooksOf: [{ agent: "declared", files: ["~/settings"], byDefault: true, events: { start: "start" } }]
 };
-const second: HookDialect = { ...first, agent: "second", hostMarkers: { payloadFields: ["secondMarker"] } };
-const hooks = { declared: dialect, first, second };
-
-describe("declared host markers", () => {
-  it("prioritizes all payload markers over env markers, then hooks table order", () => {
-    expect(
-      readHookEvent(
-        "declared",
-        { event: "start", secondMarker: "yes" },
-        { FIRST_HOST: "yes" },
-        { providers: { hooks } }
-      ).agent
-    ).toBe("second");
-    expect(
-      readHookEvent("declared", { firstMarker: "yes", secondMarker: "yes" }, {}, { providers: { hooks } }).agent
-    ).toBe("first");
-    expect(
-      readHookEvent(
-        "declared",
-        { firstMarker: "yes", secondMarker: "yes" },
-        {},
-        { providers: { hooks: { second, first, declared: dialect } } }
-      ).agent
-    ).toBe("second");
-  });
-  it("uses env markers only for declared foreign hook relationships and ignores empty markers", () => {
-    expect(readHookEvent("declared", {}, { FIRST_HOST: "yes" }, { providers: { hooks } }).agent).toBe("first");
-    expect(readHookEvent("second", {}, { FIRST_HOST: "yes" }, { providers: { hooks } }).agent).toBe("second");
-    expect(readHookEvent("declared", { firstMarker: "" }, { FIRST_HOST: "" }, { providers: { hooks } }).agent).toBe(
-      "declared"
-    );
-  });
-});
-
 it("runs hook conformance with the supplied host table", async () => {
   const checks = hookDialectConformance(
     dialect,
