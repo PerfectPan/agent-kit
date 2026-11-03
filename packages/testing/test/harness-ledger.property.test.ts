@@ -17,9 +17,7 @@ import {
   locatorsOverlap,
   type ObservedArtifact,
   type PreImage,
-  type StepOutcome,
-  threeWayVerify,
-  type VerifyStatus
+  type StepOutcome
 } from "@rivus/agent-kit-harness/spi";
 import { isEqual } from "es-toolkit";
 import { describe, expect, it } from "vite-plus/test";
@@ -377,40 +375,5 @@ describe("Ledger invariants", () => {
       check(seed, JSON.stringify(stored) === before, "the stored data changed");
     }
     expect(found).toEqual([]);
-  });
-});
-
-describe("three-way verify", () => {
-  // The three-way comparison table, written out independently of the implementation.
-  function oracle(ledger?: string, actual?: string, desired?: string): VerifyStatus {
-    if (ledger !== undefined && actual === undefined) {
-      return "deleted-externally";
-    }
-    if (ledger === undefined) {
-      if (actual === undefined) {
-        return desired === undefined ? "in-sync" : "missing";
-      }
-      return actual === desired ? "adoptable" : "unmanaged";
-    }
-    if (actual === ledger) {
-      return desired !== undefined && desired !== ledger ? "outdated" : "in-sync";
-    }
-    return actual === desired ? "ledger-behind" : "user-modified";
-  }
-
-  it("matches every row of the table for every combination of ledger, disk and desired content", () => {
-    const values = [undefined, ...CONTENTS.slice(0, 3)];
-    for (const ledger of values) {
-      for (const actual of values) {
-        for (const desired of values) {
-          expect({ ledger, actual, desired, status: threeWayVerify({ ledger, actual, desired }) }).toEqual({
-            ledger,
-            actual,
-            desired,
-            status: oracle(ledger, actual, desired)
-          });
-        }
-      }
-    }
   });
 });

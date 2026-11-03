@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 
-import { LedgerRepository } from "../src/application/ports.js";
-import { loadLedger } from "../src/application/services/ledger-session.js";
-import type { LedgerSnapshot } from "../src/domain/ledger/aggregates/ledger.js";
+import { LedgerRepository } from "../ports.js";
+import { loadLedger } from "./ledger-session.js";
+import type { LedgerSnapshot } from "../../domain/ledger/aggregates/ledger.js";
 
 const scope = { key: "user", scope: "user" } as const;
 const snapshot = { schemaVersion: 1, lineage: "fixture", revision: 0, entries: {}, pending: [] };

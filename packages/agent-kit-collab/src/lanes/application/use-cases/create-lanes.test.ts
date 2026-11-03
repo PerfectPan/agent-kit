@@ -7,7 +7,7 @@ import * as Fiber from "effect/Fiber";
 import * as Logger from "effect/Logger";
 import { TestClock } from "effect/testing";
 
-import { type ActivationExit, createLanes, type Lanes } from "../src/lanes/public.js";
+import { type ActivationExit, createLanes, type Lanes } from "./create-lanes.js";
 
 type LanesStatus = Effect.Success<Lanes["status"]>;
 

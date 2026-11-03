@@ -1,5 +1,6 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, globSync, readFileSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { lint as sharedLint } from "@perfectpan/lint-config/vite-plus";
@@ -41,6 +42,29 @@ const packages: WorkspacePackage[] = projects.map(({ name, folder }) => {
   };
 });
 const onDisk = (path: string) => existsSync(join(root, path));
+
+/** Ask TypeScript to resolve inherited include/exclude settings, using the same compiler as typecheck. */
+function programFiles(config: string): Set<string> {
+  const effective = JSON.parse(execFileSync("tsc", ["--project", config, "--showConfig"], { encoding: "utf8" })) as {
+    files: string[];
+  };
+  return new Set(effective.files.map((file) => resolve(dirname(config), file)));
+}
+
+it("harness checks colocated Effect test APIs only in its test diagnostic program", () => {
+  const folder = "packages/harness";
+  const packageRoot = join(root, folder);
+  const production = programFiles(join(packageRoot, "tsconfig.production.json"));
+  const tests = programFiles(join(packageRoot, "test/tsconfig.json"));
+  const colocated = globSync(["src/**/*.test.ts", "src/**/*.spec.ts"], { cwd: packageRoot });
+  expect(packages.find((pkg) => pkg.folder === folder)?.lintScript).toBe(
+    "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.production.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict"
+  );
+  for (const file of colocated) {
+    expect(production.has(join(packageRoot, file)), `${folder}/${file} in production program`).toBe(false);
+    expect(tests.has(join(packageRoot, file)), `${folder}/${file} missing from test program`).toBe(true);
+  }
+}, 30_000);
 
 /** Development edges may cycle; only runtime dependencies determine production build direction. */
 function productionCycles(workspace: readonly WorkspacePackage[]): string[] {
@@ -128,7 +152,7 @@ function manifestViolations(workspace: readonly WorkspacePackage[], exists: (pat
         .map((entry) => `${pkg.folder}: entry-export ./${entry}`),
       ...(rule?.spi && pkg.exports?.["./spi"] !== "./src/spi.ts" ? [`${pkg.folder}: entry-export ./spi`] : []),
       // Keep the whole-package lint mandatory; only the existing output redirect and Effect diagnostics may follow.
-      ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:test\/)?tsconfig\.json --strict)*$/.test(
+      ...(/^vp lint(?: 2>&1)?(?: && effect-tsgo diagnostics --project (?:tsconfig(?:\.production)?|test\/tsconfig)\.json --strict)*$/.test(
         pkg.lintScript ?? ""
       )
         ? []
@@ -249,6 +273,7 @@ describe("the package manifests", () => {
   it.each([
     "vp lint",
     "vp lint 2>&1",
+    "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.production.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
     "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict"
   ])("accept the whole-package lint script %s", (lintScript) => {
     expect(

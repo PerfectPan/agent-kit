@@ -8,7 +8,7 @@ import {
   type AggregateRepository,
   type AggregateRepositoryFixtures,
   type AggregateRepositorySession
-} from "../src/effect.js";
+} from "./effect.js";
 
 // Each broken repository differs from the correct one in a single way; the named check must reject it.
 

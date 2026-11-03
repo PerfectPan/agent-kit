@@ -142,3 +142,21 @@ describe("translateClaudeCodeRecords", () => {
     ]);
   });
 });
+
+describe("claude-code translation", () => {
+  it("returns an unknown generation of a prompt snapshot as a value from the pure translation", () => {
+    const value = {
+      type: "attachment",
+      uuid: "x",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      version: "2.1.268",
+      attachment: { type: "prompt_snapshot", systemPrompt: [{ text: "x" }] }
+    };
+    expect(
+      translateClaudeCodeRecords([{ record: { value, file: "f.jsonl", line: 1, offset: 0, length: 1 }, ts: 1 }])
+    ).toEqual({
+      ok: false,
+      error: { _tag: "UnknownFormatGeneration", agent: "claude-code", file: "f.jsonl", line: 1 }
+    });
+  });
+});
