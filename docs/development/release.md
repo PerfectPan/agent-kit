@@ -199,9 +199,11 @@ Run it after `pnpm run check` so `dist` exists.
 ## Bot Pull Requests
 
 - **Release PR**: see step 3 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
-- **Renovate npm PRs**: `renovate.json` enables only the npm manager; GitHub Actions stay with Dependabot.
+- **Renovate dependency PRs**: `renovate.json` enables the npm and GitHub Actions managers. Renovate owns routine
+  npm/pnpm and Actions version updates; do not also configure Dependabot version updates for these ecosystems.
   Renovate checks on Mondays from 00:00 to 06:59 in Asia/Shanghai, waits seven days after a release, and opens at
-  most five concurrent version-update PRs. The waiting period stays above the workspace's one-day install policy.
+  most five concurrent version-update PRs. Automerge is disabled; require the PR checks and review major updates
+  separately before merging. The waiting period stays above the workspace's one-day install policy.
   `rangeStrategy: "bump"` updates declared ranges and regenerates the pnpm lockfile through `pnpm install`.
   `ignorePaths` excludes only `node_modules`, so the smoke-test workspace is included.
 
@@ -215,8 +217,8 @@ Run it after `pnpm run check` so `dist` exists.
   `strictPeerDependencies: true`. Size budgets keep 2% (at least 256 B) of headroom, so most updates pass unchanged;
   when one exceeds a budget, compare every entry's size against main and run `pnpm size:update` on the branch.
 
-  Node upgrades remain deliberate: `engines`, `devEngines.runtime`, `.node-version` and major `@types/node`
-  updates are disabled. `@perfectpan/lint-config` stays disabled because it is a Git dependency whose upgrades
+  Node upgrades remain deliberate: `engines`, `devEngines.runtime`, `.node-version`, Node versions extracted
+  from workflow inputs, and major `@types/node` updates are disabled. `@perfectpan/lint-config` stays disabled because it is a Git dependency whose upgrades
   need accompanying code fixes.
 
   `vitest` and the `vite` alias (`npm:@voidzero-dev/vite-plus-core`) must equal `vite-plus`'s exact dependencies.
@@ -238,11 +240,20 @@ Run it after `pnpm run check` so `dist` exists.
   regenerated lockfile, confirm it retains both documents and `packageManagerDependencies`, and run
   `pnpm install --frozen-lockfile` and `pnpm run check`.
 
-  GitHub's dependency graph cannot read this repository's two-document lockfile, so npm security findings come
-  from Renovate's OSV checks (`osvVulnerabilityAlerts: true`), not Dependabot alerts. OSV support is experimental
-  and covers direct dependencies; `vulnerabilityAlerts.rangeStrategy: "bump"` keeps security fixes on the tested
-  `pnpm install` path, including in-range fixes. Security PRs can bypass release-age and schedule limits and update
-  a toolchain member alone, so apply the same alignment checks and repair procedure.
+  **Security ownership is separate from routine version updates.** Keep GitHub's dependency graph and Dependabot
+  alerts; removing the version-update configuration does not disable either. Do not assume that an empty alert
+  list proves coverage of this repository's two-document pnpm lockfile. Renovate's existing OSV checks
+  (`osvVulnerabilityAlerts: true`) are experimental and cover direct dependencies; they do not prove that the
+  installed app can read GitHub Dependabot alerts. `vulnerabilityAlerts.rangeStrategy: "bump"` keeps security fixes
+  on the tested `pnpm install` path, including in-range fixes. Security PRs can bypass release-age and schedule
+  limits and update a toolchain member alone, so apply the same alignment checks and repair procedure.
+
+  Before assigning security-fix PRs to Renovate, verify its installed app can read this repository's Dependabot
+  alerts and inspect a real hosted run that reads those alerts and handles an actionable finding. Record the
+  dependency graph, alert and security-update settings independently, including package and lockfile coverage.
+  Then propose a separate, explicit security handoff with one primary PR owner and a rollback path. Leave the
+  existing security settings unchanged until that handoff is approved; this routine-update migration does not
+  change them.
 
   Renovate opens a **Dependency Dashboard** issue through `config:recommended`. Use its checkboxes to retry or
   recreate an update and request a pending PR; see the [dashboard controls](https://docs.renovatebot.com/key-concepts/dashboard/).
@@ -312,14 +323,20 @@ Run it after `pnpm run check` so `dist` exists.
   separate from the workspace's one-day `minimumReleaseAge` install policy. Read the oxlint JS-plugin changelog when
   upgrading: that interface is alpha and outside semver. Run the allowed/violating boundary fixtures,
   whole-repository lint and the manifest tests, and record CI duration.
-- **Dependabot GitHub Actions PRs** move an action to its next major version tag (for example `actions/checkout@v7`
-  to `@v8`); minor and patch releases need no PR because workflows reference the major tag. Merge them for this
-  repository's own workflows (`ci.yml`, `version-packages.yml`, `publish-npm.yml`, `renovate-changesets.yml`,
-  `update-pricing.yml`). Close
-  PRs that touch `review.yml` or another file synced from
-  [PerfectPan/project-template](https://github.com/PerfectPan/project-template), with a comment that the
-  bump comes from upstream, and sync the file once upstream has it. Dependabot cannot ignore an action per file, so
-  these PRs keep appearing.
+- **Renovate GitHub Actions PRs** cover every workflow, including `review.yml` and files originally synced from
+  [PerfectPan/project-template](https://github.com/PerfectPan/project-template). Minor/patch updates share a group;
+  major updates remain separate per action for review. Existing major tags stay as tags (for example
+  `actions/checkout@v7` to `@v8`), so moving minor/patch releases behind the same tag needs no PR. This policy does
+  not introduce SHA pinning. Preserve reviewed action versions when syncing template changes.
+
+  **Routine-update handoff:** keep the migration PR in draft until the existing Renovate installation is confirmed
+  to include this repository and a real hosted run demonstrates it can process the GitHub Actions manager and
+  write workflow updates. A local extraction or dry run only checks configuration, not hosted permissions or
+  production coverage. Record a hosted run or Actions update PR as evidence before merging the removal of
+  `.github/dependabot.yml`; if that cannot be verified, keep the existing main-branch Dependabot configuration.
+  After the handoff, inspect the first scheduled Renovate run and reconcile already-open Dependabot version PRs
+  against Renovate's branches. Do not retain two routine-update owners. If the hosted Actions manager fails,
+  restore the Dependabot Actions configuration and remove `github-actions` from `enabledManagers` together.
 
 ## Failure Recovery
 

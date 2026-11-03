@@ -222,7 +222,11 @@ The review checks come from [`PerfectPan/gh-repo-checks`](https://github.com/Per
 
 Run `gh repo-checks repository` locally before opening review. This generic check does not replace stack-specific tests, but it catches missing template files, tracked local artifacts, obvious secrets, private paths, and drift in review templates.
 
-Workflows reference actions by their latest major version tag, such as `actions/checkout@v7`, not by commit SHA. Workflow files copied from this template take action upgrades from the template rather than local edits.
+Workflows reference actions by their latest major version tag, such as `actions/checkout@v7`, not by commit SHA.
+Renovate manages routine action version updates in every workflow, including files originally copied from the
+template. Review major upgrades individually and require the PR checks before merging. When syncing a template
+workflow, preserve action versions already reviewed here. See [Bot Pull Requests](docs/development/release.md#bot-pull-requests)
+for dependency-update ownership and the rollout checks.
 
 ## Local Git Hooks
 
