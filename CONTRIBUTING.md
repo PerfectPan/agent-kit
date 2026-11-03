@@ -90,6 +90,19 @@ gh repo-checks protect --repo OWNER/REPO
 pnpm run publish:dry-run
 ```
 
+The full `CI` job named `check` runs when a non-Draft PR is opened, receives new commits (`synchronize`), is
+reopened, or is marked Ready for review. It also continues to run on pushes to `main`. Keep work in Draft until
+local checks are finished; ordinary and Renovate PRs opened directly as Ready get CI automatically.
+
+The separate lightweight `Review` workflow continues to check repository metadata, PR titles and descriptions
+on Draft PRs and description edits. It does not install project dependencies or run the full test suite. Bot
+authors remain exempt only from the description check.
+
+When a Draft PR event starts CI, `check` is skipped. GitHub reports skipped jobs as successful, so a green skipped
+status is not validation evidence, even when `check` is required by branch protection. After marking the PR Ready,
+confirm that `check` actually ran and passed for the current head and merge result before merging. Metadata edits
+do not restart full CI; a changed base or comparison still needs a fresh PR validation when the head has not moved.
+
 ## Changesets
 
 pnpm builds changelogs and version bumps from changesets in `.changeset/`. A PR that changes what a published
