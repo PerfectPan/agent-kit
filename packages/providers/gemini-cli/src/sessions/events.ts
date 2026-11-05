@@ -10,7 +10,6 @@ import {
   type ParsedTranscript,
   MAIN_LANE_ID,
   markOrphanToolResults,
-  placeRequest,
   shadowBefore,
   recordTime,
   sourceOf,
@@ -129,6 +128,47 @@ function valueOfMarkerSessionId(value: Record<string, unknown>): string | undefi
   return typeof value.sessionId === "string" ? value.sessionId : undefined;
 }
 
+function nextFreeOf(events: readonly TranscriptEvent[], usedIds: Set<string>, base: string): string {
+  let candidate = base;
+  for (let serial = 1; usedIds.has(candidate) || events.some((event) => event.id === candidate); serial += 1) {
+    candidate = `${base}:${serial}`;
+  }
+  return candidate;
+}
+
+/**
+ * Places one message's request immediately before its assistant event: the request precedes the output it priced.
+ * A message's usage rides its first tokens-bearing record, so the placement runs once per message id.
+ */
+function placeMessageRequest(
+  events: TranscriptEvent[],
+  assistant: TranscriptEventOf<"assistant">,
+  record: SourcedRecord,
+  id: string,
+  usage: NonNullable<ReturnType<typeof geminiCliUsage>>,
+  model: string | undefined,
+  usedIds: Set<string>,
+  placed: Set<string>
+): void {
+  if (placed.has(id)) {
+    return;
+  }
+  placed.add(id);
+  const payload = {
+    granularity: "request" as const,
+    ...(model === undefined ? {} : { model }),
+    usage
+  };
+  const requestId = `request:${id}`;
+  const reqId = usedIds.has(requestId) ? nextFreeOf(events, usedIds, `request:${lineId(record)}`) : requestId;
+  usedIds.add(reqId);
+  events.splice(
+    events.indexOf(assistant),
+    0,
+    baseEvent(record, "request", payload, { id: reqId, ts: assistant.ts, requestId: id })
+  );
+}
+
 /**
  * Translates one chat's records into transcript events. The CLI appends a message again whenever it changes (tokens
  * attached, tool calls added, content edited), always while it is the chat's last message: a later record whose id
@@ -145,9 +185,10 @@ export function translateGeminiCliRecords(
   const parsed = geminiCliChatRecords(records);
   const times = inheritTimes(records.map(recordTime));
   const chats = new Map<string, TranscriptEventOf<"assistant">>();
+  /** The message ids whose request has been placed; the usage rides the message's first tokens-bearing record. */
+  const requestPlaced = new Set<string>();
   const tools = new Map<string, ToolEvents>();
   const usedIds = new Set<string>();
-  let segment = 0;
   let sessionId: string | undefined = options.legacySessionId ?? options.sessionId;
   let startedAt: number | undefined;
   let endedAt: number | undefined;
@@ -242,9 +283,14 @@ export function translateGeminiCliRecords(
     if (kind === "gemini") {
       const seen = chats.get(id);
       if (seen) {
-        // The CLI appends the message again when it changes; the last record is its final text.
+        // The CLI appends the message again when it changes; the last record is its final text. The message's
+        // usage rides its first tokens-bearing record, so the request is placed when that record arrives.
         if (content !== undefined) {
           seen.payload.text = content;
+        }
+        const usage = geminiCliUsage(raw.tokens);
+        if (usage && !requestPlaced.has(id)) {
+          placeMessageRequest(events, seen, record, id, usage, value.model, usedIds, requestPlaced);
         }
         skipped.push({ reason: "message-update", source: sourceOf(record) });
       } else {
@@ -257,20 +303,7 @@ export function translateGeminiCliRecords(
         chats.set(id, assistant);
         const usage = geminiCliUsage(raw.tokens);
         if (usage) {
-          const payload = {
-            granularity: "request" as const,
-            ...(value.model === undefined ? {} : { model: value.model }),
-            usage
-          };
-          const requestId = `request:${id}`;
-          const reqId = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
-          usedIds.add(reqId);
-          segment = placeRequest(
-            events,
-            segment,
-            baseEvent(record, "request", payload, { id: reqId, ts, requestId: id })
-          );
-          segment = events.length;
+          placeMessageRequest(events, assistant, record, id, usage, value.model, usedIds, requestPlaced);
         }
       }
       const toolCalls = raw.toolCalls;

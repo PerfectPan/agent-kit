@@ -284,7 +284,8 @@ const platform: Platform = createNodePlatform({ home: ${JSON.stringify(home)}, e
 // Prices for the seeded sessions' models; Grok's session carries the cost Grok logged.
 const pricing = createPricing({
   "claude-test": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75, cacheWrite1h: 6 },
-  "gpt-test": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 }
+  "gpt-test": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
+  "gemini-test": { input: 2, output: 8, cacheRead: 0.2, cacheWrite: 2, cacheWrite1h: 4 }
 });
 for (const agent of seeded) {
   const heads: SessionHead[] = [];
