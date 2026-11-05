@@ -8,6 +8,7 @@
   "sideEffects": false,
   "exports": {
     "./identity": "./src/identity.ts",
+    "./sessions": "./src/sessions.ts",
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",

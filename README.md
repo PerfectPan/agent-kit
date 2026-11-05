@@ -93,7 +93,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
+| gemini-cli  | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
 | pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |

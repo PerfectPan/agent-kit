@@ -62,7 +62,7 @@ type GeminiCliRecordValue = z.output<typeof GeminiCliRecord>;
  * includes the cached tokens; tool-use prompt tokens (`tool`) are input billed like it, and `total` includes them, so
  * they are added to the input. `thoughts` are reasoning, billed as output and not part of `output`.
  */
-function geminiCliUsage(value: unknown): Usage | undefined {
+export function geminiCliUsage(value: unknown): Usage | undefined {
   const tokens = z.safeParse(GeminiCliTokens, value).data;
   return compactUsage({
     inputTokens: tokens?.input === undefined ? undefined : tokens.input + (tokens.tool ?? 0),

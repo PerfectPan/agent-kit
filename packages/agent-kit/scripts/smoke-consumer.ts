@@ -53,6 +53,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     agent: "grok",
     fixture: "packages/providers/grok/test/fixtures/sessions/conformance/plain",
     target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session"
+  },
+  {
+    agent: "gemini-cli",
+    fixture: "packages/providers/gemini-cli/test/fixtures/sessions/conformance/plain",
+    target: ".gemini/tmp/smokeproject/chats"
   }
 ];
 

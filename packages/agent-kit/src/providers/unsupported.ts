@@ -13,7 +13,7 @@ export const unsupported: Readonly<
     usage: "Usage storage has no supported decoder.",
     acp: "No supported ACP transport."
   },
-  "gemini-cli": { sessions: "Session storage has no supported reader." },
+  "gemini-cli": {},
   opencode: { sessions: "Session storage has no supported reader." },
   pi: { sessions: "Session storage has no supported reader.", acp: "No supported ACP transport." }
 };
