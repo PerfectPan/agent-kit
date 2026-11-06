@@ -1,0 +1,5 @@
+{"sessionId":"g3","projectHash":"projhash","kind":"main"}
+{"id":"u1","type":"user","content":"Explain","timestamp":"2026-01-01T00:00:00.000Z"}
+{"id":"gm1","type":"gemini","content":"Partial","model":"gemini-test","tokens":{"input":900,"output":10,"cached":0,"thoughts":0,"tool":0,"total":910},"timestamp":"2026-01-01T00:00:01.000Z"}
+{"id":"gm1","type":"gemini","content":"Full explanation with the final wording.","model":"gemini-test","tokens":{"input":900,"output":40,"cached":0,"thoughts":5,"tool":0,"total":945},"timestamp":"2026-01-01T00:00:02.000Z"}
+{"$patch":{"id":"gm1","content":"Edited final wording."}}

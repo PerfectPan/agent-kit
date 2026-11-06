@@ -114,11 +114,17 @@ function inlinedModules(): string[] {
   const zodInlineAllowed = reachableDistFiles(join(dist, "process-lock.js"));
   let regions = 0;
   for (const file of readdirSync(dist, { recursive: true, encoding: "utf8" })) {
+    if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(file)) {
+      problems.push(`dist/${file} is a test artifact; published packages must exclude tests`);
+    }
     if (!/\.(?:d\.ts|js)$/.test(file)) {
       continue;
     }
     for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
       regions += 1;
+      if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(source)) {
+        problems.push(`dist/${file} inlines test source ${source}`);
+      }
       if (source.startsWith("src/")) {
         continue;
       }

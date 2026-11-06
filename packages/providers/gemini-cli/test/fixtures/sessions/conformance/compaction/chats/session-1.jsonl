@@ -1,0 +1,6 @@
+{"sessionId":"g2","projectHash":"projhash","kind":"main"}
+{"id":"u1","type":"user","content":"Start","timestamp":"2026-01-01T00:00:00.000Z"}
+{"id":"g1","type":"gemini","content":"Working.","model":"gemini-test","timestamp":"2026-01-01T00:00:01.000Z"}
+{"id":"c1","type":"compression","compression":{"isPending":true,"originalTokenCount":null,"newTokenCount":null,"compressionStatus":null},"timestamp":"2026-01-01T00:00:02.000Z"}
+{"id":"c2","type":"compression","compression":{"isPending":false,"originalTokenCount":500,"newTokenCount":80,"compressionStatus":1},"timestamp":"2026-01-01T00:00:03.000Z"}
+{"id":"u2","type":"user","content":"After","timestamp":"2026-01-01T00:00:04.000Z"}

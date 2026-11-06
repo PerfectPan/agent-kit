@@ -68,8 +68,8 @@ jobs:
           fi
       # Runs the version script `release:version`: `pnpm version -r` bumps the versioning.fixed group to one shared
       # version (the largest bump across the pending changesets), writes each package's CHANGELOG.md and deletes the
-      # consumed changesets, then `pnpm run check` runs the release gates on the bumped tree. A pull request opened
-      # with github.token starts no CI until it is marked ready for review, so the gates run here. The action runs
+      # consumed changesets, then `pnpm run check` runs the release gates on the bumped tree. Every update leaves
+      # the release PR in Draft; a maintainer marks it Ready for full PR CI. The action runs
       # the script before it pushes anything, so a failing gate fails the run and leaves the release PR as it was.
       # Otherwise the action commits through the GitHub API (signed) and opens or updates the draft PR
       # `changeset-release/main` -> `main`, whose body lists each package's new changelog section. That commit takes
