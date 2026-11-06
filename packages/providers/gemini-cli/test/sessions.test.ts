@@ -111,6 +111,52 @@ describe("translateGeminiCliRecords", () => {
     const result = parsed.value.events.find((event) => event.kind === "tool_result");
     expect(result?.payload).toMatchObject({ callId: "t1", isError: true, output: "1 failed" });
   });
+
+  it("skips records that are not objects instead of failing the chat", () => {
+    const parsed = translateGeminiCliRecords(
+      records([
+        "null",
+        '"text"',
+        "42",
+        "[]",
+        line({ id: "u1", type: "user", content: "hi", timestamp: "2026-01-01T00:00:00.000Z" })
+      ]),
+      {}
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    expect(parsed.value.events.map((event) => event.kind)).toEqual(["user"]);
+    expect(parsed.value.skipped.map((skip) => skip.reason)).toEqual(Array(4).fill("invalid-record"));
+  });
+
+  it("drops tool calls without a string id instead of merging them or failing the chat", () => {
+    const parsed = translateGeminiCliRecords(
+      records([
+        line({
+          id: "g1",
+          type: "gemini",
+          content: "",
+          toolCalls: [
+            { id: { toString: null }, name: "shell", status: "success" },
+            { name: "read_file", status: "success" },
+            { name: "glob", status: "success" },
+            { id: "t1", name: { toString: null }, status: "success" }
+          ],
+          timestamp: "2026-01-01T00:00:01.000Z"
+        })
+      ]),
+      {}
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    const calls = parsed.value.events.filter((event) => event.kind === "tool_call");
+    expect(calls.map((event) => event.payload)).toEqual([{ callId: "t1", name: "" }]);
+    expect(parsed.value.skipped.map((skip) => skip.reason)).toEqual(Array(3).fill("invalid-tool-call"));
+  });
 });
 
 describe("geminiCliSessionAdapter", () => {
@@ -132,6 +178,55 @@ describe("geminiCliSessionAdapter", () => {
     }
     expect(loaded.value.session.id).toBe("legacy-session");
     expect(loaded.value.events.map((event) => event.kind)).toEqual(["user", "request", "assistant", "user"]);
+  });
+
+  it("skips a legacy chat's messages that are not objects", async () => {
+    const chat = { sessionId: "legacy", messages: [null, "text", { id: "u1", type: "user", content: "hi" }] };
+    const platform = createMemoryPlatform({
+      files: { "/gemini/legacy/chats/session-1.json": new TextEncoder().encode(JSON.stringify(chat)) }
+    });
+    const loaded = await geminiCliSessionAdapter.load(platform, {
+      agent: "gemini-cli",
+      path: "/gemini/legacy/chats/session-1.json"
+    });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.events.map((event) => event.kind)).toEqual(["user"]);
+    expect(loaded.value.skipped.map((skip) => skip.reason)).toEqual(["invalid-record", "invalid-record"]);
+  });
+
+  it("reports a chat's lines that are not JSON as skipped", async () => {
+    const text = [
+      line({ sessionId: "s1", kind: "main" }),
+      "{not json",
+      line({ id: "u1", type: "user", content: "hi" })
+    ];
+    const platform = createMemoryPlatform({
+      files: { "/gemini/tmp/p/chats/session-1.jsonl": new TextEncoder().encode(text.join("\n")) }
+    });
+    const loaded = await geminiCliSessionAdapter.load(platform, {
+      agent: "gemini-cli",
+      path: "/gemini/tmp/p/chats/session-1.jsonl"
+    });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.skipped.map((skip) => [skip.reason, skip.source.line])).toEqual([
+      ["chat-header", 1],
+      ["invalid-json", 2]
+    ]);
+  });
+
+  it("returns SessionNotFound for a chat file that does not exist", async () => {
+    const platform = createMemoryPlatform({ files: {} });
+    const loaded = await geminiCliSessionAdapter.load(platform, {
+      agent: "gemini-cli",
+      path: "/gemini/tmp/p/chats/session-1.jsonl"
+    });
+    expect(loaded).toMatchObject({ ok: false, error: { _tag: "SessionNotFound" } });
   });
 
   it("detects chats under a chats directory and rejects other files", async () => {

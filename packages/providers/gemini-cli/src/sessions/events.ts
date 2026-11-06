@@ -1,5 +1,4 @@
 import { ok, type Result } from "@rivus/agent-kit-catalog/spi";
-import { geminiCliUsage } from "../usage.js";
 
 import {
   assignSeq,
@@ -12,6 +11,7 @@ import {
   markOrphanToolResults,
   shadowBefore,
   recordTime,
+  type SkippedRecord,
   sourceOf,
   type SourcedRecord,
   type TranscriptEvent,
@@ -19,15 +19,10 @@ import {
   type TranscriptEventOf,
   type TranscriptEventKind,
   type TranscriptSession,
-  type UnknownFormatGeneration
+  type UnknownFormatGeneration,
+  type Usage
 } from "@rivus/agent-kit-sessions/spi";
-import {
-  geminiCliChatRecords,
-  geminiCliToolCallOf,
-  type GeminiCliToolCallValue,
-  isGeminiCliToolDone,
-  isGeminiCliToolError
-} from "./records.js";
+import { geminiCliChatItem, type GeminiCliToolCall } from "./records.js";
 
 /**
  * Recorded by every Gemini CLI chat. Usage travels on `gemini` records' `tokens`, compaction on `compression`
@@ -70,10 +65,8 @@ export function geminiCapabilities(events: readonly TranscriptEvent[]): Capabili
 }
 
 export interface GeminiCliTranslateOptions {
-  /** The fallback session id when the chat's header names none. */
-  sessionId?: string;
-  /** The session id a legacy `.json` chat carries in its object, over `sessionId`. */
-  legacySessionId?: string;
+  /** Wins over the session id the chat's records carry. */
+  sessionId?: string | undefined;
 }
 
 /** One tool call's events, for the rewrites later rows apply to them. */
@@ -83,49 +76,24 @@ interface ToolEvents {
 }
 
 /** One tool call's payload, as the call's last record shows it. */
-function toolCallPayload(call: GeminiCliToolCallValue): TranscriptEventOf<"tool_call">["payload"] {
-  const args = call.args;
+function toolCallPayload(call: GeminiCliToolCall): TranscriptEventOf<"tool_call">["payload"] {
   return {
-    callId: String(call.id ?? ""),
-    name: String(call.name ?? ""),
-    ...(args !== undefined ? { args } : {})
+    callId: call.id,
+    name: call.name,
+    ...(call.args === undefined ? {} : { args: call.args })
   };
 }
 
-/** One tool call's result payload, from its last done record; `resultDisplay` is the output the user saw. */
+/** One tool call's result payload, from its last ended record; the output is the text the user saw. */
 function toolResultPayload(
-  call: GeminiCliToolCallValue,
-  isError: boolean
+  callId: string,
+  result: NonNullable<GeminiCliToolCall["result"]>
 ): TranscriptEventOf<"tool_result">["payload"] {
-  const output = call.resultDisplay;
   return {
-    callId: String(call.id ?? ""),
-    isError,
-    ...(typeof output === "string" ? { output } : {})
+    callId,
+    isError: result.isError,
+    ...(result.output === undefined ? {} : { output: result.output })
   };
-}
-
-/** The id a `$patch` marker names, or `undefined` when the marker is not a patch of one message. */
-function valueOfMarkerId(marker: unknown): string | undefined {
-  if (typeof marker !== "object" || marker === null) {
-    return undefined;
-  }
-  const id = (marker as { id?: string | number }).id;
-  return id === undefined ? undefined : String(id);
-}
-
-/** The content a `$patch` marker writes into the message, or `undefined` when it writes none. */
-function valueOfMarkerContent(marker: unknown): string | undefined {
-  if (typeof marker !== "object" || marker === null) {
-    return undefined;
-  }
-  const content = (marker as Record<string, unknown>).content;
-  return typeof content === "string" ? content : undefined;
-}
-
-/** The session id a chat header line carries, or `undefined` when the line names none. */
-function valueOfMarkerSessionId(value: Record<string, unknown>): string | undefined {
-  return typeof value.sessionId === "string" ? value.sessionId : undefined;
 }
 
 function nextFreeOf(events: readonly TranscriptEvent[], usedIds: Set<string>, base: string): string {
@@ -145,7 +113,7 @@ function placeMessageRequest(
   assistant: TranscriptEventOf<"assistant">,
   record: SourcedRecord,
   id: string,
-  usage: NonNullable<ReturnType<typeof geminiCliUsage>>,
+  usage: Usage,
   model: string | undefined,
   usedIds: Set<string>,
   placed: Set<string>
@@ -181,15 +149,15 @@ export function translateGeminiCliRecords(
   options: GeminiCliTranslateOptions = {}
 ): Result<ParsedTranscript, UnknownFormatGeneration> {
   const events: TranscriptEvent[] = [];
-  const skipped: { reason: string; source: ReturnType<typeof sourceOf> }[] = [];
-  const parsed = geminiCliChatRecords(records);
+  const skipped: SkippedRecord[] = [];
+  const items = records.map((record) => geminiCliChatItem(record.value));
   const times = inheritTimes(records.map(recordTime));
   const chats = new Map<string, TranscriptEventOf<"assistant">>();
   /** The message ids whose request has been placed; the usage rides the message's first tokens-bearing record. */
   const requestPlaced = new Set<string>();
   const tools = new Map<string, ToolEvents>();
   const usedIds = new Set<string>();
-  let sessionId: string | undefined = options.legacySessionId ?? options.sessionId;
+  let sessionId = options.sessionId;
   let startedAt: number | undefined;
   let endedAt: number | undefined;
 
@@ -204,51 +172,31 @@ export function translateGeminiCliRecords(
 
   for (let index = 0; index < records.length; index++) {
     const record = records[index]!;
-    const value = parsed[index];
+    const item = items[index]!;
     const ts = times[index]!;
-    const raw = record.value as Record<string, unknown>;
-    if ("$patch" in raw) {
+    const skip = (reason: string): void => {
+      skipped.push({ reason, source: sourceOf(record) });
+    };
+    if (item.kind === "invalid") {
+      skip("invalid-record");
+      continue;
+    }
+    if (item.kind === "patch") {
       // The marker edits one earlier message's content in place; the patch itself becomes a skipped record.
-      const patchId = valueOfMarkerId(raw.$patch);
-      const patchContent = valueOfMarkerContent(raw.$patch);
-      if (patchId !== undefined) {
-        const message = chats.get(patchId);
-        if (message !== undefined && patchContent !== undefined) {
-          message.payload.text = patchContent;
-        }
-        skipped.push({ reason: "message-patch", source: sourceOf(record) });
-        continue;
+      const message = chats.get(item.messageId);
+      if (message !== undefined && item.content !== undefined) {
+        message.payload.text = item.content;
       }
-      skipped.push({ reason: "invalid-record", source: sourceOf(record) });
+      skip("message-patch");
       continue;
     }
-    if ("$set" in raw) {
-      skipped.push({ reason: "chat-set", source: sourceOf(record) });
-      continue;
-    }
-    if (value === undefined) {
-      // A chat header line names the session id and carries no item; a line this reader cannot shape at all is
-      // recorded as invalid.
-      const headerSessionId = valueOfMarkerSessionId(raw);
-      if (headerSessionId !== undefined) {
-        sessionId ??= headerSessionId;
-        skipped.push({ reason: "chat-header", source: sourceOf(record) });
-        continue;
-      }
-      skipped.push({ reason: "invalid-record", source: sourceOf(record) });
+    if (item.kind === "set") {
+      skip("chat-set");
       continue;
     }
     startedAt = Math.min(startedAt ?? ts, ts);
     endedAt = Math.max(endedAt ?? ts, ts);
-    sessionId ??= value.sessionId;
-    const id = value.id;
-    const kind = value.type;
-    const content = value.content;
-    if (id === undefined && kind === undefined) {
-      // The chat's header line: it names the session id (already taken) and no item.
-      skipped.push({ reason: "chat-header", source: sourceOf(record) });
-      continue;
-    }
+    sessionId ??= item.sessionId;
     /** Emits one event with a fresh serial of `lineId`, stamped with the record's inherited time. */
     const emit = (eventKind: TranscriptEventKind, payload: TranscriptEventBody["payload"]): TranscriptEvent => {
       const event = baseEvent(record, eventKind, payload, {
@@ -260,67 +208,63 @@ export function translateGeminiCliRecords(
       return event;
     };
 
-    if (id === undefined) {
-      // The chat's header line names the session id and nothing else; a typed record without an id is a notice the
-      // CLI shows in place, kept as a system event.
-      if (kind === undefined && value.sessionId !== undefined) {
-        skipped.push({ reason: "chat-header", source: sourceOf(record) });
-        continue;
-      }
-      if ("$set" in raw) {
-        skipped.push({ reason: "chat-set", source: sourceOf(record) });
-        continue;
-      }
-      emit("system", { type: kind ?? "unknown", ...(content === undefined ? {} : { text: content }) });
-      continue;
-    }
-
-    if (kind === "user") {
-      emit("user", content === undefined ? {} : { text: content });
-      continue;
-    }
-
-    if (kind === "gemini") {
-      const seen = chats.get(id);
-      if (seen) {
-        // The CLI appends the message again when it changes; the last record is its final text. The message's
-        // usage rides its first tokens-bearing record, so the request is placed when that record arrives.
-        if (content !== undefined) {
-          seen.payload.text = content;
-        }
-        const usage = geminiCliUsage(raw.tokens);
-        if (usage && !requestPlaced.has(id)) {
-          placeMessageRequest(events, seen, record, id, usage, value.model, usedIds, requestPlaced);
-        }
-        skipped.push({ reason: "message-update", source: sourceOf(record) });
-      } else {
-        const assistant = baseEvent(record, "assistant", content === undefined ? {} : { text: content }, {
-          id: nextFree(`${lineId(record)}:${events.length + 1}`),
-          ts
+    switch (item.kind) {
+      case "header":
+        // The chat's header line names the session id (already taken) and no item.
+        skip("chat-header");
+        break;
+      case "user":
+        emit("user", item.text === undefined ? {} : { text: item.text });
+        break;
+      case "thinking":
+        emit("reasoning", item.text === undefined ? {} : { text: item.text });
+        break;
+      case "compression":
+        emit("compaction", {
+          trigger: "auto",
+          ...(item.preTokens === undefined ? {} : { preTokens: item.preTokens }),
+          ...(item.postTokens === undefined ? {} : { postTokens: item.postTokens })
         });
-        events.push(assistant);
-        usedIds.add(assistant.id);
-        chats.set(id, assistant);
-        const usage = geminiCliUsage(raw.tokens);
-        if (usage) {
-          placeMessageRequest(events, assistant, record, id, usage, value.model, usedIds, requestPlaced);
-        }
-      }
-      const toolCalls = raw.toolCalls;
-      if (Array.isArray(toolCalls)) {
-        for (const rawCall of toolCalls) {
-          const call = geminiCliToolCallOf(rawCall);
-          if (call === undefined) {
-            continue;
+        break;
+      case "compression-pending":
+        skip("compact-pending");
+        break;
+      case "notice":
+        emit("system", { type: item.type, ...(item.text === undefined ? {} : { text: item.text }) });
+        break;
+      case "unknown":
+        emit("unknown", { type: item.type });
+        break;
+      case "gemini": {
+        let assistant = chats.get(item.id);
+        if (assistant === undefined) {
+          assistant = baseEvent(record, "assistant", item.text === undefined ? {} : { text: item.text }, {
+            id: nextFree(`${lineId(record)}:${events.length + 1}`),
+            ts
+          });
+          events.push(assistant);
+          usedIds.add(assistant.id);
+          chats.set(item.id, assistant);
+        } else {
+          // The CLI appends the message again when it changes; the last record is its final text.
+          if (item.text !== undefined) {
+            assistant.payload.text = item.text;
           }
-          const callId = String(call.id ?? "");
-          const done = isGeminiCliToolDone(call.status);
-          const seen = tools.get(callId) ?? {};
-          tools.set(callId, seen);
+          skip("message-update");
+        }
+        if (item.usage !== undefined) {
+          placeMessageRequest(events, assistant, record, item.id, item.usage, item.model, usedIds, requestPlaced);
+        }
+        for (let invalid = 0; invalid < item.invalidToolCalls; invalid++) {
+          skip("invalid-tool-call");
+        }
+        for (const call of item.toolCalls) {
+          const seen = tools.get(call.id) ?? {};
+          tools.set(call.id, seen);
           // The payload is replaced whole, not merged field by field: a later record can take `args` away again.
           if (!seen.call) {
             const event = baseEvent(record, "tool_call", toolCallPayload(call), {
-              id: nextFree(`${lineId(record)}:${callId}:${events.length + 1}`),
+              id: nextFree(`${lineId(record)}:${call.id}:${events.length + 1}`),
               ts
             });
             events.push(event);
@@ -329,61 +273,27 @@ export function translateGeminiCliRecords(
           } else {
             seen.call.payload = toolCallPayload(call);
           }
-          if (!done) {
-            skipped.push({ reason: "tool-progress", source: sourceOf(record) });
+          if (call.result === undefined) {
+            skip("tool-progress");
             continue;
           }
-          const result = toolResultPayload(call, isGeminiCliToolError(call.status));
+          const result = toolResultPayload(call.id, call.result);
           if (seen.result) {
             Object.assign(seen.result.payload, result);
-            skipped.push({ reason: "tool-progress", source: sourceOf(record) });
+            skip("tool-progress");
             continue;
           }
           const event = baseEvent(record, "tool_result", result, {
-            id: nextFree(`${lineId(record)}:${callId}:result:${events.length + 1}`),
+            id: nextFree(`${lineId(record)}:${call.id}:result:${events.length + 1}`),
             ts
           });
           events.push(event);
           usedIds.add(event.id);
           seen.result = event;
         }
+        break;
       }
-      continue;
     }
-
-    if (kind === "thinking") {
-      const thought = raw.thought as { subject?: unknown; description?: unknown } | undefined;
-      const description = typeof thought?.description === "string" ? thought.description : undefined;
-      const subject = typeof thought?.subject === "string" ? thought.subject : undefined;
-      const body = description ?? subject;
-      emit("reasoning", body === undefined ? {} : { text: body });
-      continue;
-    }
-
-    if (kind === "compression") {
-      const compression = raw.compression as
-        | { isPending?: unknown; originalTokenCount?: unknown; newTokenCount?: unknown }
-        | undefined;
-      if (compression?.isPending === true) {
-        skipped.push({ reason: "compact-pending", source: sourceOf(record) });
-        continue;
-      }
-      const pre = typeof compression?.originalTokenCount === "number" ? compression.originalTokenCount : undefined;
-      const post = typeof compression?.newTokenCount === "number" ? compression.newTokenCount : undefined;
-      emit("compaction", {
-        trigger: "auto",
-        ...(pre === undefined ? {} : { preTokens: pre }),
-        ...(post === undefined ? {} : { postTokens: post })
-      });
-      continue;
-    }
-
-    if (kind === "info" || kind === "warning" || kind === "error") {
-      emit("system", { type: kind, ...(content === undefined ? {} : { text: content }) });
-      continue;
-    }
-
-    emit("unknown", { type: kind ?? "unknown" });
   }
 
   for (const compaction of events) {

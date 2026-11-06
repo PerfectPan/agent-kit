@@ -3,6 +3,7 @@ import { GEMINI_CLI_DISPLAY_NAME, GEMINI_CLI_ID } from "./facts.js";
 import { GEMINI_CLI_CHAT_FILES, isGeminiCliChat, isGeminiCliLegacyChat, geminiCliUsageRoots } from "./layout.js";
 import { GEMINI_CLI_CAPABILITIES, geminiCapabilities, translateGeminiCliRecords } from "./sessions/events.js";
 import { previewGeminiCliRecords } from "./sessions/preview.js";
+import { geminiCliLegacyChat } from "./usage.js";
 import {
   catchIoFailure,
   createTranscript,
@@ -12,63 +13,49 @@ import {
   type SessionPlatform,
   type SessionReadError,
   type SessionRef,
+  type SkippedRecord,
   type SourcedRecord,
   type Transcript,
   readJsonlRecords,
   readText
 } from "@rivus/agent-kit-sessions/spi";
 
-/** The legacy session id a `.json` chat carries in its object, and the records the chat holds. */
+/** A chat file's records, the input that is not JSON, and the session id a `.json` chat's object carries. */
 interface ChatFile {
   records: SourcedRecord[];
-  legacySessionId?: string;
+  skipped: SkippedRecord[];
+  legacySessionId?: string | undefined;
 }
 
 /**
  * Reads a chat file's records: a `.jsonl` chat is one record per line, an older `.json` chat is one object with a
- * `messages` array whose entries become per-line records, each carrying the file as its source and the message's
- * index as its line.
+ * `messages` array whose entries become per-line records, each carrying the whole file as its source and the
+ * message's index as its line.
  */
-async function readChatRecords(
+function readChatRecords(
   platform: SessionPlatform,
   path: string,
   options: LoadOptions
 ): Promise<Result<ChatFile, SessionReadError>> {
-  if (isGeminiCliLegacyChat(path)) {
-    const read = await catchIoFailure(platform, path, options.signal, async (guarded): Promise<ChatFile> => {
-      const text = await readText(guarded, path, options);
-      let value: unknown;
-      try {
-        value = JSON.parse(text) as unknown;
-      } catch {
-        return { records: [] };
-      }
-      const messages =
-        typeof value === "object" && value !== null && Array.isArray((value as { messages?: unknown }).messages)
-          ? (value as { messages: unknown[] }).messages
-          : [];
-      const legacySessionId =
-        typeof value === "object" && value !== null && typeof (value as { sessionId?: unknown }).sessionId === "string"
-          ? (value as { sessionId: string }).sessionId
-          : undefined;
-      return {
-        records: messages.map((message, index) => ({
-          value: message,
-          file: path,
-          offset: 0,
-          length: text.length,
-          line: index + 1
-        })),
-        ...(legacySessionId === undefined ? {} : { legacySessionId })
-      };
-    });
-    if (!read.ok) {
-      return read;
+  return catchIoFailure(platform, path, options.signal, async (guarded): Promise<ChatFile> => {
+    if (!isGeminiCliLegacyChat(path)) {
+      return readJsonlRecords(guarded, path, options);
     }
-    return ok(read.value);
-  }
-  const lines = await readJsonlRecords(platform, path, options);
-  return ok({ records: lines.records });
+    const text = await readText(guarded, path, options);
+    const source = { file: path, offset: 0, length: new TextEncoder().encode(text).byteLength, line: 1 };
+    let value: unknown;
+    try {
+      value = JSON.parse(text) as unknown;
+    } catch {
+      return { records: [], skipped: [{ reason: "invalid-json", source }] };
+    }
+    const chat = geminiCliLegacyChat(value);
+    return {
+      records: (chat?.messages ?? []).map((message, index) => ({ ...source, line: index + 1, value: message })),
+      skipped: [],
+      legacySessionId: chat?.sessionId
+    };
+  });
 }
 
 /**
@@ -84,14 +71,12 @@ async function loadGeminiCli(
   if (!read.ok) {
     return read;
   }
-  const { records, legacySessionId } = read.value;
-  const translated = translateGeminiCliRecords(records, {
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
-    ...(legacySessionId === undefined ? {} : { legacySessionId })
-  });
+  const { records, skipped, legacySessionId } = read.value;
+  const translated = translateGeminiCliRecords(records, { sessionId: legacySessionId ?? ref.sessionId });
   if (!translated.ok) {
     return translated;
   }
+  translated.value.skipped.push(...skipped);
   options.signal?.throwIfAborted();
   return ok(createTranscript(GEMINI_CLI_ID, geminiCapabilities(translated.value.events), translated.value));
 }
