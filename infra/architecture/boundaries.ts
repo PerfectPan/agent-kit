@@ -157,7 +157,7 @@ export const boundaries: BoundaryRules = {
     [GEMINI_CLI]: {
       siblingEntries: [],
       providerFacts: "packages/providers/gemini-cli/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING],

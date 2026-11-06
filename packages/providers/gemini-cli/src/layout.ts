@@ -25,7 +25,7 @@ export const GEMINI_CLI_CHAT_FILES: { match(name: string): boolean; maxDepth: nu
   maxDepth: 4
 };
 
-function isGeminiCliChat(path: string): boolean {
+export function isGeminiCliChat(path: string): boolean {
   return path.includes(`/${GEMINI_CLI_CHATS_DIR}/`);
 }
 

@@ -1,0 +1,9 @@
+{"sessionId":"g1","projectHash":"projhash","startTime":"2026-01-01T00:00:00.000Z","lastUpdated":"2026-01-01T00:00:06.000Z","kind":"main"}
+{"id":"u1","type":"user","content":"Run the tests","timestamp":"2026-01-01T00:00:00.000Z"}
+{"id":"th1","type":"thinking","thought":{"subject":"Plan","description":"Run the test suite first."},"timestamp":"2026-01-01T00:00:00.500Z"}
+{"id":"g1","type":"gemini","content":"","model":"gemini-test","toolCalls":[{"id":"t1","name":"shell","args":{"command":"npm test"}}],"timestamp":"2026-01-01T00:00:01.000Z"}
+{"id":"g1","type":"gemini","content":"","model":"gemini-test","toolCalls":[{"id":"t1","name":"shell","status":"error","resultDisplay":"1 failed"}],"timestamp":"2026-01-01T00:00:02.000Z"}
+{"id":"g1","type":"gemini","content":"The tests failed.","model":"gemini-test","tokens":{"input":1200,"output":80,"cached":0,"thoughts":10,"tool":0,"total":1290},"timestamp":"2026-01-01T00:00:03.000Z"}
+{"id":"u2","type":"user","content":"Fix it","timestamp":"2026-01-01T00:00:04.000Z"}
+{"id":"g2","type":"gemini","content":"Fixed.","model":"gemini-test","tokens":{"input":1400,"output":60,"cached":0,"thoughts":0,"tool":0,"total":1460},"timestamp":"2026-01-01T00:00:05.000Z"}
+{"$set":{"lastUpdated":"2026-01-01T00:00:06.000Z"}}
