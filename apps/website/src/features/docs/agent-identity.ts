@@ -66,5 +66,11 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
       en: "PI_CODING_AGENT_DIR (expands ~), ~/.pi/agent",
       zh: "PI_CODING_AGENT_DIR（展开 ~），~/.pi/agent"
     }
+  },
+  {
+    id: "zcode",
+    name: "ZCode",
+    aliases: [],
+    home: { en: "ZCODE_STORAGE_DIR, ~/.zcode", zh: "ZCODE_STORAGE_DIR，~/.zcode" }
   }
 ];

@@ -15,5 +15,11 @@ export const unsupported: Readonly<
   },
   "gemini-cli": {},
   opencode: { sessions: "Session storage has no supported reader." },
-  pi: { sessions: "Session storage has no supported reader.", acp: "No supported ACP transport." }
+  pi: { sessions: "Session storage has no supported reader.", acp: "No supported ACP transport." },
+  zcode: {
+    sessions: "Session storage has no supported reader.",
+    hooks: "Hook configuration has no supported dialect.",
+    install: "Installation has no supported adapter.",
+    acp: "No supported ACP transport."
+  }
 };
