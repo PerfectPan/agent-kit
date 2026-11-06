@@ -57,7 +57,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | codex       | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | cursor      | yes      | yes                              | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
 | dsh         | yes      | No supported installation probe. | No supported hook dialect. | No supported installation adapter. | yes                                      | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes                              | yes                        | yes                                | Session storage has no supported reader. | yes                                     | yes                         |
+| gemini-cli  | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | grok        | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | pi          | yes      | yes                              | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
@@ -452,15 +452,16 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                           |
-| ----------- | ------------------------------- | ----------------------------------------------------------------- |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
-| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| Agent            | Id                              | Home: override, default                                           |
+| ---------------- | ------------------------------- | ----------------------------------------------------------------- |
+| Claude Code      | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
+| Codex            | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
+| Grok             | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Gemini CLI       | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| opencode         | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi               | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Cursor           | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
 
 Every agent in the table has a hook dialect in `/harness/events`. `/acp` has a launch profile for
 Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the

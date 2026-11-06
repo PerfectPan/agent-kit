@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "",
-    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
+    "lint": "vp lint 2>&1 && effect-tsgo diagnostics --project tsconfig.production.json --strict && effect-tsgo diagnostics --project test/tsconfig.json --strict",
     "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vp test 2>&1",
     "format": "vp fmt .",

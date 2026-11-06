@@ -4,6 +4,7 @@ import { type ArtifactLocatorSnapshot, locatorKey } from "../../install-plan/val
 import type { LedgerEntry, LedgerEntrySnapshot } from "../entities/ledger-entry.js";
 import { Ledger } from "../aggregates/ledger.js";
 import type { ContentHash } from "../value-objects/content-hash.js";
+import type { VerifyStatus } from "../value-objects/drift.js";
 import { markAcknowledged, threeWayVerify, verifyOwner } from "./three-way-verify.js";
 
 const L: ContentHash = `sha256:${"1".repeat(64)}`;
@@ -116,5 +117,40 @@ describe("markAcknowledged", () => {
       { locator: drifted, agents: ["claude-code"], status: "in-sync" }
     ]);
     expect(report.behind).toEqual([]);
+  });
+});
+
+describe("three-way verify", () => {
+  // The three-way comparison table, written out independently of the implementation.
+  function oracle(ledger?: string, actual?: string, desired?: string): VerifyStatus {
+    if (ledger !== undefined && actual === undefined) {
+      return "deleted-externally";
+    }
+    if (ledger === undefined) {
+      if (actual === undefined) {
+        return desired === undefined ? "in-sync" : "missing";
+      }
+      return actual === desired ? "adoptable" : "unmanaged";
+    }
+    if (actual === ledger) {
+      return desired !== undefined && desired !== ledger ? "outdated" : "in-sync";
+    }
+    return actual === desired ? "ledger-behind" : "user-modified";
+  }
+
+  it("matches every row of the table for every combination of ledger, disk and desired content", () => {
+    const values = [undefined, L, D, X];
+    for (const ledger of values) {
+      for (const actual of values) {
+        for (const desired of values) {
+          expect({ ledger, actual, desired, status: threeWayVerify({ ledger, actual, desired }) }).toEqual({
+            ledger,
+            actual,
+            desired,
+            status: oracle(ledger, actual, desired)
+          });
+        }
+      }
+    }
   });
 });

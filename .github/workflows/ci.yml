@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: check
     runs-on: ubuntu-latest
     timeout-minutes: 20

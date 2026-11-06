@@ -62,7 +62,7 @@ type GeminiCliRecordValue = z.output<typeof GeminiCliRecord>;
  * includes the cached tokens; tool-use prompt tokens (`tool`) are input billed like it, and `total` includes them, so
  * they are added to the input. `thoughts` are reasoning, billed as output and not part of `output`.
  */
-function geminiCliUsage(value: unknown): Usage | undefined {
+export function geminiCliUsage(value: unknown): Usage | undefined {
   const tokens = z.safeParse(GeminiCliTokens, value).data;
   return compactUsage({
     inputTokens: tokens?.input === undefined ? undefined : tokens.input + (tokens.tool ?? 0),
@@ -173,12 +173,17 @@ const GeminiCliLegacyChat = z.looseObject({
   messages: lenient(z.array(z.unknown()))
 });
 
+/** An older chat's session id and messages, or `undefined` when the value is not a JSON object. */
+export function geminiCliLegacyChat(value: unknown): { sessionId?: string; messages?: unknown[] } | undefined {
+  return z.safeParse(GeminiCliLegacyChat, value).data;
+}
+
 /**
  * The usage of an older chat file, one JSON object with a `messages` array, read whole. Every record points at the
  * whole file; a message id that repeats counts once.
  */
 export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: SourcePointer): UsageRecord[] {
-  const chat = z.safeParse(GeminiCliLegacyChat, value).data;
+  const chat = geminiCliLegacyChat(value);
   const messages = chat?.messages ?? [];
   const sessionId = chat?.sessionId ?? file.sessionId;
   const seen = new Set<string>();

@@ -90,6 +90,19 @@ gh repo-checks protect --repo OWNER/REPO
 pnpm run publish:dry-run
 ```
 
+The full `CI` job named `check` runs when a non-Draft PR is opened, receives new commits (`synchronize`), is
+reopened, or is marked Ready for review. It also continues to run on pushes to `main`. Keep work in Draft until
+local checks are finished; ordinary and Renovate PRs opened directly as Ready get CI automatically.
+
+The separate lightweight `Review` workflow continues to check repository metadata, PR titles and descriptions
+on Draft PRs and description edits. It does not install project dependencies or run the full test suite. Bot
+authors remain exempt only from the description check.
+
+When a Draft PR event starts CI, `check` is skipped. GitHub reports skipped jobs as successful, so a green skipped
+status is not validation evidence, even when `check` is required by branch protection. After marking the PR Ready,
+confirm that `check` actually ran and passed for the current head and merge result before merging. Metadata edits
+do not restart full CI; a changed base or comparison still needs a fresh PR validation when the head has not moved.
+
 ## Changesets
 
 pnpm builds changelogs and version bumps from changesets in `.changeset/`. A PR that changes what a published
@@ -222,7 +235,14 @@ The review checks come from [`PerfectPan/gh-repo-checks`](https://github.com/Per
 
 Run `gh repo-checks repository` locally before opening review. This generic check does not replace stack-specific tests, but it catches missing template files, tracked local artifacts, obvious secrets, private paths, and drift in review templates.
 
-Workflows reference actions by their latest major version tag, such as `actions/checkout@v7`, not by commit SHA. Workflow files copied from this template take action upgrades from the template rather than local edits.
+Workflows reference actions by their latest major version tag, such as `actions/checkout@v7`, not by commit SHA.
+Renovate is enabled for routine action version updates in every workflow, including files originally copied from
+the template. The two-stage handoff retains the existing Dependabot Actions configuration while Renovate's hosted
+workflow-update coverage is verified, so duplicate PRs are possible during this transition. After that verification
+and successful CI, a separate follow-up PR removes Dependabot's Actions version-update configuration. Review major
+upgrades individually and require the PR checks before merging. When syncing a template workflow, preserve action
+versions already reviewed here. See [Bot Pull Requests](docs/development/release.md#bot-pull-requests) for the
+handoff evidence and rollback steps.
 
 ## Local Git Hooks
 
