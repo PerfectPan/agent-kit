@@ -373,6 +373,10 @@ describe("connectAgent", () => {
       const denied = yield* run((yield* invented.newSession()).prompt([text("permission")]));
       expect(eventTexts(denied)).toEqual(['permission {"outcome":"selected","optionId":"reject"}']);
 
+      const cancelled = yield* connectFake({ onPermission: () => Effect.succeed({ outcome: "cancelled" }) });
+      const cancelledParts = yield* run((yield* cancelled.newSession()).prompt([text("permission")]));
+      expect(eventTexts(cancelledParts)).toEqual(['permission {"outcome":"cancelled"}']);
+
       const broken = yield* connectFake({ onPermission: () => Effect.die("callback bug") });
       const deniedAgain = yield* run((yield* broken.newSession()).prompt([text("permission")]));
       expect(eventTexts(deniedAgain)).toEqual(['permission {"outcome":"selected","optionId":"reject"}']);

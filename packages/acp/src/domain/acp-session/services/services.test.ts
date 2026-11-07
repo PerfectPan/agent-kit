@@ -39,6 +39,12 @@ describe("permissionOutcome", () => {
     expect(permissionOutcome(offered, optionOfKind(offered, "allow_once"), true)).toEqual({ outcome: "cancelled" });
     expect(optionOfKind(offered, "allow_always")).toBeUndefined();
   });
+
+  it("passes an explicit cancelled answer to the agent instead of denying", () => {
+    const offered = request(["allow_once", "reject_once"]);
+    expect(permissionOutcome(offered, { outcome: "cancelled" }, false)).toEqual({ outcome: "cancelled" });
+    expect(permissionOutcome(offered, { outcome: "cancelled" }, true)).toEqual({ outcome: "cancelled" });
+  });
 });
 
 describe("session setup", () => {
