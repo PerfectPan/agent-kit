@@ -30,6 +30,10 @@ const bundle = {
   legacyMarkers: ["my-app hook"] // what older versions registered without a ledger is replaced, not duplicated
 } as const;
 
+// A bundle's markers are judged against every legacy source. An adapter's `legacySources` may give one source its own
+// `markers`, so a marker an old configuration reference needs does not match a scanned directory's finds. An
+// untracked file a legacy removal deletes carries its pre-image in the apply report, so a wrong match is recoverable.
+
 const program = Effect.gen(function* () {
   const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
   // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts; plan.notes;
