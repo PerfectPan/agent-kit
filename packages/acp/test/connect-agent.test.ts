@@ -718,6 +718,34 @@ describe("session bindings", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect("detach forgets an open session locally, so a reload sends session/load with new MCP servers", () =>
+    Effect.gen(function* () {
+      const mcpA = [{ name: "tools-a", command: "/opt/a", args: [], env: [] }];
+      const mcpB = [{ name: "tools-b", command: "/opt/b", args: [], env: [] }];
+      const stderr: string[] = [];
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_LOAD: "load" },
+        mcpServers: mcpA,
+        onStderr: (text) => {
+          stderr.push(text);
+        }
+      });
+      const session = yield* connection.newSession();
+      const first = JSON.parse(eventTexts(yield* run(session.prompt([text("inspect")])))[0] ?? "{}");
+      expect(first.mcpServers).toEqual(mcpA);
+
+      yield* session.detach();
+      expect((yield* session.snapshot).state).toBe("closed");
+      // The agent kept the session and heard no session/close; the reload re-sent session/load, and the agent
+      // recorded the new MCP servers of that call.
+      const reloaded = yield* connection.loadSession({ sessionId: session.sessionId }, { mcpServers: mcpB });
+      const report = JSON.parse(eventTexts(yield* run(reloaded.prompt([text("inspect")])))[0] ?? "{}");
+      expect(report.mcpServers).toEqual(mcpB);
+      expect(report.loads).toBe(1);
+      expect(stderr.join("")).not.toContain(`closed ${session.sessionId}`);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("sends one session/load for concurrent loads of a session, which share it", () =>
     Effect.gen(function* () {
       const state = join(workDir(), "agent-state.json");
