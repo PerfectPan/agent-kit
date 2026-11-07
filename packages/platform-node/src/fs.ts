@@ -76,11 +76,18 @@ async function writeAtomic(path: string, data: Uint8Array | string, options?: { 
 
 export const nodeFs: PlatformFs = {
   async stat(path, options) {
-    const stats = await absentAsUndefined(options?.followSymlinks === true ? stat(path) : lstat(path));
+    const stats = await absentAsUndefined(
+      options?.followSymlinks === true ? stat(path, { bigint: true }) : lstat(path, { bigint: true })
+    );
     if (stats === undefined) {
       return undefined;
     }
-    return { kind: kindOf(stats), size: stats.size, mtimeMs: stats.mtimeMs };
+    return {
+      kind: kindOf(stats),
+      size: Number(stats.size),
+      mtimeMs: Number(stats.mtimeMs),
+      identity: { dev: stats.dev, ino: stats.ino, birthtimeNs: stats.birthtimeNs }
+    };
   },
   realpath(path) {
     return absentAsUndefined(realpath(path));

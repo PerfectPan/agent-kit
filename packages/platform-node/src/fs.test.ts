@@ -38,7 +38,18 @@ describe("stat", () => {
     await mkdir(join(dir, "sub"));
     await symlink(join(dir, "file"), join(dir, "link"));
 
-    expect(await nodeFs.stat(join(dir, "file"))).toEqual({ kind: "file", size: 3, mtimeMs: expect.any(Number) });
+    expect(await nodeFs.stat(join(dir, "file"))).toEqual({
+      kind: "file",
+      size: 3,
+      mtimeMs: expect.any(Number),
+      identity: { dev: expect.any(BigInt), ino: expect.any(BigInt), birthtimeNs: expect.any(BigInt) }
+    });
+    const direct = (await nodeFs.stat(join(dir, "file")))?.identity;
+    const followed = (await nodeFs.stat(join(dir, "link"), { followSymlinks: true }))?.identity;
+    if (direct === undefined || followed === undefined) {
+      throw new Error("stat reported no identity");
+    }
+    expect(direct).toEqual(followed);
     expect((await nodeFs.stat(join(dir, "sub")))?.kind).toBe("dir");
     expect((await nodeFs.stat(join(dir, "link")))?.kind).toBe("symlink");
     expect(await nodeFs.stat(join(dir, "link"), { followSymlinks: true })).toMatchObject({ kind: "file", size: 3 });

@@ -6,6 +6,7 @@ export type {
   DirEntry,
   Env,
   ExitStatus,
+  FileIdentity,
   FileKind,
   FileStat,
   OperatingSystem,
