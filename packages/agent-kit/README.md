@@ -424,7 +424,9 @@ neither awaited nor let to fail the connection. Interrupting a turn's
 stream, or `session.cancel()`, sends `session/cancel` and waits for the turn to end within `cancelTimeoutMs` (5 s by
 default); when it does not end in time, the session's binding is removed and the connection is closed, which fails its
 other sessions with `ConnectionClosed` — `unsettledCancel: "session"` closes only that session instead, with
-`session/close` when the agent supports it, and keeps the others running. `sessionKey` binds a key to the session in
+`session/close` when the agent supports it, and keeps the others running. Stopping the connection's process sends
+SIGTERM first and SIGKILL after `killGraceMs` (2 s by default), which a host that terminates on its own schedule
+sets shorter. `sessionKey` binds a key to the session in
 the `SessionBindingStore`
 (`MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`), so a later connection can
 `loadSession({ sessionKey })`. Client file reads and writes are off unless `fileSystem` turns them on, and then stay
