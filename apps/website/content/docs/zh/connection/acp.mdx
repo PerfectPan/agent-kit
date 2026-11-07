@@ -50,7 +50,7 @@ Agent 的 stderr 会按到达顺序以解码后的文本交给 `onStderr`，错�
 
 中断回合的流，或调用 `session.cancel()`，会发送 `session/cancel`，并在 `cancelTimeoutMs` 内等待回合结束。默认是 5 秒。没有按时结束时，会话的绑定被移除，连接被关闭。它的其他会话以 `ConnectionClosed` 失败；设置 `unsettledCancel: "session"` 后只关闭该会话（Agent 支持 `session/close` 时会发送），其他会话继续运行。停止连接的进程时先发 SIGTERM，`killGraceMs`（默认 2 秒）后升级为 SIGKILL；自己管理终止时限的主机可以把这个值调短。
 
-`sessionKey` 在 `SessionBindingStore` 里把一个键绑定到会话。实现是 `MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`。后来的连接可以 `loadSession({ sessionKey })`。
+`sessionKey` 在 `SessionBindingStore` 里把一个键绑定到会话。实现是 `MemorySessionBindingStoreLive` 或 `FileSessionBindingStoreLive(path)`。后来的连接可以 `loadSession({ sessionKey })`。连接上已打开的会话会被原样返回；`session.detach()` 把它从本地忘记而不通知 Agent，下一次 `loadSession` 会重新发送 `session/load`——带上该调用的 MCP servers，也不发 `session/close`（有的 Agent 在收到它之后不允许再加载）。
 
 客户端的文件读写默认关闭。`fileSystem` 打开它们之后，解析链接后仍须留在会话目录内。
 

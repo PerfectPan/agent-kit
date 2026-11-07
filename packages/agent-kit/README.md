@@ -438,7 +438,9 @@ SIGTERM first and SIGKILL after `killGraceMs` (2 s by default), which a host tha
 sets shorter. `sessionKey` binds a key to the session in
 the `SessionBindingStore`
 (`MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`), so a later connection can
-`loadSession({ sessionKey })`. Client file reads and writes are off unless `fileSystem` turns them on, and then stay
+`loadSession({ sessionKey })`. A session already open on the connection is returned as is; `session.detach()` forgets it locally instead, so the next `loadSession` re-sends `session/load` — with the MCP servers of that call,
+and no `session/close` to an agent that may not allow loading after one. Client file reads and writes are off
+unless `fileSystem` turns them on, and then stay
 inside the session's directory after links are resolved. `probeAgent` opens one trial session and reports `ready`,
 `needs-login` or `unavailable`.
 
