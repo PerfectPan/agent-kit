@@ -1,1 +1,1 @@
-export type { Platform } from "@rivus/agent-kit-platform/public";
+export type { FileStat, Platform } from "@rivus/agent-kit-platform/public";
