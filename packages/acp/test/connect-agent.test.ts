@@ -71,6 +71,43 @@ describe("connectAgent", () => {
     )
   );
 
+  it.effect("streams a running tool call's output so far as tool-output-partial parts", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const parts = yield* run(session.prompt([text("partial")]));
+      const deltas = parts.filter((part) => part.type !== "event");
+      expect(deltas.map((part) => part.type)).toEqual([
+        "tool-input-start",
+        "tool-input-available",
+        "tool-output-partial",
+        "tool-output-partial",
+        "tool-output-available",
+        "finish"
+      ]);
+      expect(deltas.filter((part) => part.type === "tool-output-partial").map((part) => part.output)).toEqual([
+        "compiled src",
+        "linked"
+      ]);
+      expect(
+        deltas.flatMap((part) =>
+          part.type === "tool-output-partial"
+            ? [["partial", part.output]]
+            : part.type === "tool-output-available"
+              ? [["final", part.output]]
+              : []
+        )
+      ).toEqual([
+        ["partial", "compiled src"],
+        ["partial", "linked"],
+        ["final", "linked bin/app"]
+      ]);
+      // Folding the deltas completes the call and its result once; the partials complete no event.
+      const events = parts.flatMap((part) => (part.type === "event" ? [part.event.kind] : []));
+      expect(events.filter((kind) => kind.startsWith("tool"))).toEqual(["tool_call", "tool_result"]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S81: a turn streams deltas and completed events, and folding the deltas gives the same events", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();
