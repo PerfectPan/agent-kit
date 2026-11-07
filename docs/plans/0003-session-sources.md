@@ -22,6 +22,21 @@ part in SQLite, so neither has a byte range that reads back as one record.
 - `sqlite?: PlatformSqlite` — a read-only database open.
 - `decompress?: (format: "zstd", bytes: Uint8Array) => Uint8Array` — implemented with `node:zlib`.
 
+The Node implementation detects Zstandard support at runtime, leaving `decompress` undefined on older supported
+runtimes. Some Node versions decode only the first frame in both synchronous and streaming modes. Synchronous
+decompression with `info: true` reports consumed input through `engine.bytesWritten`; repeat on the remaining bytes
+and concatenate the decoded buffers. `finishFlush: ZSTD_e_flush` preserves earlier output when the final frame is
+incomplete. Once a frame has decoded, ignore a suffix without a Zstandard or skippable-frame magic; recognized frames
+still undergo checksum validation. This keeps the synchronous interface and avoids duplicating the provider's frame
+scanner, which remains responsible for incomplete discovery slices. Internal decoder injection tests the per-frame
+loop and missing-codec detection independently of the Node version running CI.
+
+Known runtime limit: on Node 23.10.0, 24.14.1 and 24.18.0, when the last complete frame's decoded output is a
+positive multiple of 16384 bytes, zlib may attempt to decode a following non-frame suffix in the same call and throw.
+The adapter's suffix check cannot run before that error. Such logs can load through the provider's frame scanner
+while `readOriginal` returns `ReadFailed`; suffix tolerance is not guaranteed in this case. The implementation
+retains this limit.
+
 They stay optional so browser-like and in-memory platforms keep satisfying `SessionPlatform`. `guardIo` copies both to
 its guarded view; without that copy a guarded read loses the capability and reports a decode failure.
 

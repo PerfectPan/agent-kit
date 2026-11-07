@@ -14,10 +14,10 @@ const nodeOnly = {
 // `pnpm size:update` sets every limit to the measured size plus headroom (scripts/lib/size-budgets.ts); do not edit them
 // by hand.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "48066 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "48056 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
-  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44813 B" },
+  { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44806 B" },
   { name: "@rivus/agent-kit/catalog", path: "dist/catalog.js", import: "*", limit: "966 B" },
   // Pricing and summarization are pure; their entry imports nothing.
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1584 B" },
@@ -35,8 +35,8 @@ export default [
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8082 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.
-  { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "6105 B", ...nodeOnly },
-  { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "6186 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/node", path: "dist/node.js", import: "*", limit: "6372 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/node/effect", path: "dist/node/effect.js", import: "*", limit: "6452 B", ...nodeOnly },
   { name: "@rivus/agent-kit/platform", path: "dist/platform.js", import: "*", limit: "360 B" },
   { name: "@rivus/agent-kit/platform/effect", path: "dist/platform/effect.js", import: "*", limit: "440 B" },
   // The hidden spellings' starts accept preceding escapes — JSON, URL encoding and ANSI SGR sequences — which adds

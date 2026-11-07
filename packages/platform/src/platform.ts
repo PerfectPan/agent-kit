@@ -146,7 +146,13 @@ export interface PlatformSqlite {
 /** A byte compression an agent may store its session files in. */
 export type Compression = "zstd";
 
-/** Decodes one complete compressed session file. The host supplies it when it has the codec. */
+/**
+ * Decodes the available bytes of a compressed session source, including concatenated frames. An incomplete final
+ * frame may yield partial output; a non-frame suffix after complete frames is normally ignored. Corrupt frames
+ * still throw. On Node 23.10.0, 24.14.1 and 24.18.0, a non-frame suffix can also throw when the last complete
+ * frame's decoded output is a positive multiple of 16384 bytes: zlib attempts to decode the suffix in the same
+ * call, before the adapter can ignore it. The host supplies this capability when it has the codec.
+ */
 export type Decompress = (format: Compression, bytes: Uint8Array) => Uint8Array;
 
 /**

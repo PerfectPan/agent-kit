@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@perfectpan/lint-config": "catalog:",
+    "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-testing": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",

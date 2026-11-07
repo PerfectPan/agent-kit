@@ -188,7 +188,7 @@ export const boundaries: BoundaryRules = {
       providerServices: ["identity", "discovery", "sessions", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, SESSIONS, ACP],
-      testsOnly: [TESTING],
+      testsOnly: [TESTING, PLATFORM_NODE],
       external: ["zod/mini"]
     },
     [PLATFORM]: { siblingEntries: ["public", "effect"], dependsOn: [], external: [] },
