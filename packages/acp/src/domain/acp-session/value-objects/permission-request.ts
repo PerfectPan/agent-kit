@@ -23,12 +23,11 @@ export interface PermissionRequest {
 }
 
 /**
- * The caller's answer: one of the request's options by id. An id the request did not offer counts as no answer, and
- * no answer is a denial.
+ * The caller's answer: one of the request's options by id, or `cancelled`, which the agent receives as the cancelled
+ * outcome — for a policy whose answer to an unanswered request is cancelled rather than a denial. An id the request
+ * did not offer counts as no answer, and no answer is a denial.
  */
-export interface PermissionDecision {
-  readonly optionId: string;
-}
+export type PermissionDecision = { readonly optionId: string } | { readonly outcome: "cancelled" };
 
 /** What the agent receives: the selected option, or `cancelled` when the turn is being cancelled. */
 export type PermissionOutcome =
