@@ -27,9 +27,10 @@ import { threeWayVerify } from "../../ledger/services/three-way-verify.js";
 import { type ArtifactContent, type ContentHash } from "../../ledger/value-objects/content-hash.js";
 import { type LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { type PreconditionSnapshot } from "../value-objects/precondition.js";
+import type { LegacyEvidenceMap } from "../value-objects/legacy-evidence.js";
 
 export interface PlanRequest {
-  readonly legacyTexts: ReadonlyMap<ObservedArtifact, string>;
+  readonly legacyTexts: LegacyEvidenceMap;
   /** Chosen by the caller, such as a random UUID. */
   readonly planId: string;
   /** Checked with `Bundle.restore`. */
@@ -219,7 +220,8 @@ function removalStep(state: LocatorState): PlanStepSnapshot | undefined {
           action: "remove",
           agents: [],
           precondition: preconditionOf(observed),
-          capturePreImage: false,
+          // The pre-image records what the match deleted, so a wrong marker match can be put back from the ledger.
+          capturePreImage: true,
           removal: "delete",
           legacy: true
         }
@@ -310,19 +312,28 @@ export function buildInstallPlan(
   // reads it as protected, so only a replaceable legacy Artifact names the step legacy.
   const isLegacy = (key: LocatorKey): boolean => {
     const seen = found.get(key);
+    if (seen === undefined) {
+      return false;
+    }
+    const evidence = request.legacyTexts.get(seen);
     return (
-      seen !== undefined &&
-      legacyTreatment(seen, bundle.owner, markers, ledger, observed, request.legacyTexts.get(seen)) === "replace"
+      legacyTreatment(seen, bundle.owner, evidence?.markers ?? markers, ledger, observed, evidence?.text) === "replace"
     );
   };
-  const preservedHooks = observed.filter(
-    (seen) =>
-      request.desired.length > 0 &&
-      seen.locator.memberIn === "hook-group" &&
-      !entries.has(locatorKey(seen.locator)) &&
-      protectedLegacy(seen.locator, bundle.owner, ledger, observed) &&
-      protectedReplacement(seen, bundle, target.agents, ledger, observed, request.legacyTexts.get(seen))
-  );
+  const preservedHooks = observed.filter((seen) => {
+    if (
+      !(
+        request.desired.length > 0 &&
+        seen.locator.memberIn === "hook-group" &&
+        !entries.has(locatorKey(seen.locator)) &&
+        protectedLegacy(seen.locator, bundle.owner, ledger, observed)
+      )
+    ) {
+      return false;
+    }
+    const evidence = request.legacyTexts.get(seen);
+    return protectedReplacement(seen, bundle, target.agents, ledger, observed, evidence?.text, evidence?.markers);
+  });
   const preserved: PlanConflict["conflicts"] = preservedHooks.map((seen) => ({
     step: {
       locator: seen.locator,

@@ -33,15 +33,18 @@ export interface RenderedArtifact {
 /**
  * Where an older version of an owner may have left Artifacts without a ledger: a file, each regular file directly in
  * a directory matching its optional extensions, or the entries of a configuration file under `pointer` (each hook
- * of the event lists under it for `hook-group`, each element of the list at it for `element`).
+ * of the event lists under it for `hook-group`, each element of the list at it for `element`). A source may carry
+ * its own legacy `markers`, judged against this source's finds instead of the bundle's, so a marker an old
+ * configuration reference needs but a scanned directory must not match goes on the source that needs it.
  */
 export type ArtifactSource =
-  | { readonly kind: "file"; readonly path: string }
+  | { readonly kind: "file"; readonly path: string; readonly markers?: readonly string[] }
   | {
       readonly kind: "files";
       readonly dir: string;
       /** Loaded filename suffixes including the dot, such as `.js`; absent accepts every file, empty accepts none. */
       readonly extensions?: readonly string[];
+      readonly markers?: readonly string[];
     }
   | {
       readonly kind: "entries";
@@ -49,6 +52,7 @@ export type ArtifactSource =
       readonly path: string;
       readonly pointer: string;
       readonly memberIn: "element" | "hook-group";
+      readonly markers?: readonly string[];
     };
 
 /** A file in which an agent loads command hooks, for `doctor`. */
