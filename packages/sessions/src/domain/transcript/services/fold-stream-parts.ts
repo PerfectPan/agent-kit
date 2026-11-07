@@ -138,6 +138,10 @@ export function createStreamFolder(): StreamFolder {
           const callEvents = tool.called ? [] : call(part.toolCallId, tool, ts);
           return [...callEvents, event("tool_result", `tool_result:${part.toolCallId}`, payload, ts)];
         }
+        case "tool-output-partial":
+          // Display-only, like the deltas: a running call's output so far completes no event, and the call stays
+          // open until its result arrives.
+          return [];
         case "update":
           return [event(part.kind, `update:${part.id}`, { ...part.payload }, ts, part.original)];
         case "finish": {
