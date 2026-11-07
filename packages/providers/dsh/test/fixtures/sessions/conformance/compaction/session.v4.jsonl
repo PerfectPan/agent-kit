@@ -1,0 +1,10 @@
+{"type":"session","version":4,"id":"dsh-compaction","createdAt":1767229200000,"cwd":"/u/me/work"}
+{"type":"system/message","seq":1,"time":1767229201000,"data":{"turn":1,"step":1,"message":{"role":"system","content":[{"type":"text","text":"You are helpful."}]}}}
+{"type":"user/message","seq":2,"time":1767229202000,"data":{"role":"user","content":[{"type":"text","text":"first"}],"source":{"kind":"user"},"id":"u1"}}
+{"type":"assistant/message","seq":3,"time":1767229203000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"a"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m1"},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}
+{"type":"user/message","seq":4,"time":1767229204000,"data":{"role":"user","content":[{"type":"text","text":"second"}],"source":{"kind":"user"},"id":"u2"}}
+{"type":"assistant/message","seq":5,"time":1767229205000,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"b"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m2"},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}
+{"type":"compaction/summary","seq":6,"time":1767229206000,"data":{"compactionId":"c1","summary":[{"type":"text","text":"the earlier turns"}],"shadowedSeqs":[2,3],"shadowedTokenCount":100,"provider":"test","model":"test-model"}}
+{"type":"user/message","seq":7,"time":1767229207000,"data":{"role":"user","content":[{"type":"text","text":"the earlier turns"}],"source":{"kind":"compact-checkpoint","compactionId":"c1"},"id":"u3"}}
+{"type":"assistant/message","seq":8,"time":1767229208000,"data":{"turn":3,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"c"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m3"},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}
+{"type":"session/title","seq":9,"time":1767229209000,"data":{"title":"Compaction session"}}

@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { zstdDecompressSync } from "node:zlib";
 
 import type { Env, OperatingSystem, Platform } from "@rivus/agent-kit-platform/public";
 
@@ -32,6 +33,9 @@ export function createNodePlatform(options: NodePlatformOptions = {}): Platform 
     fs: nodeFs,
     process: createNodeProcess(env, os),
     clock: { now: Date.now, monotonic: () => performance.now() },
-    sqlite: nodeSqlite
+    sqlite: nodeSqlite,
+    decompress(_format, bytes) {
+      return zstdDecompressSync(bytes);
+    }
   };
 }

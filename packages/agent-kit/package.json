@@ -122,6 +122,7 @@
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-provider-claude-code": "workspace:*",
+    "@rivus/agent-kit-provider-dsh": "workspace:*",
     "@rivus/agent-kit-provider-codex": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",
     "@rivus/agent-kit-provider-gemini-cli": "workspace:*",

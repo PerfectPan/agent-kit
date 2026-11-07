@@ -74,7 +74,9 @@ export function guardIo(platform: SessionPlatform): GuardedIo {
             mark(error);
           }
         }
-      }
+      },
+      ...(platform.sqlite === undefined ? {} : { sqlite: platform.sqlite }),
+      ...(platform.decompress === undefined ? {} : { decompress: platform.decompress })
     },
     failure(error, path) {
       // The membership check goes first: a non-fs error never has its properties read, so a throwing `code` or

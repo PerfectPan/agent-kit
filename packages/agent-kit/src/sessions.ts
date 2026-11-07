@@ -4,7 +4,7 @@ import { sessionsTable } from "./providers/sessions.js";
 import { identityTable } from "./providers/identity.js";
 import type { ProviderOptions, Provider } from "./providers/types.js";
 
-export { isSessionHead } from "@rivus/agent-kit-sessions/public";
+export { isSessionHead, readOriginal } from "@rivus/agent-kit-sessions/public";
 export type {
   SessionAdapter,
   SessionAdapters,

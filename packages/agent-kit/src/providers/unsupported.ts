@@ -7,6 +7,13 @@ export const unsupported: Readonly<
 > = {
   "claude-code": {},
   codex: {},
+  dsh: {
+    discovery: "No supported installation probe.",
+    hooks: "No supported hook dialect.",
+    install: "No supported installation adapter.",
+    usage: "Usage storage has no supported decoder.",
+    acp: "No supported ACP transport."
+  },
   grok: {},
   cursor: {
     sessions: "Session storage has no supported reader.",
@@ -14,6 +21,6 @@ export const unsupported: Readonly<
     acp: "No supported ACP transport."
   },
   "gemini-cli": {},
-  opencode: { sessions: "Session storage has no supported reader." },
-  pi: { sessions: "Session storage has no supported reader.", acp: "No supported ACP transport." }
+  opencode: {},
+  pi: { acp: "No supported ACP transport." }
 };

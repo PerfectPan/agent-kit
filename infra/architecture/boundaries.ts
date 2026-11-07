@@ -114,6 +114,7 @@ const OPENCODE = "@rivus/agent-kit-provider-opencode";
 const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
+const DSH = "@rivus/agent-kit-provider-dsh";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
@@ -148,7 +149,7 @@ export const boundaries: BoundaryRules = {
     [OPENCODE]: {
       siblingEntries: [],
       providerFacts: "packages/providers/opencode/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "usage", "acp"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING, PLATFORM_NODE],
@@ -175,9 +176,18 @@ export const boundaries: BoundaryRules = {
     [PI]: {
       siblingEntries: [],
       providerFacts: "packages/providers/pi/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
+    [DSH]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/dsh/src/facts.ts",
+      providerServices: ["identity", "sessions"],
+      dependsOn: [],
+      spiImports: [CATALOG, SESSIONS],
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },
