@@ -2,6 +2,7 @@ import type {
   ByteRange,
   DirEntry,
   Env,
+  FileIdentity,
   FileStat,
   OperatingSystem,
   Platform,
@@ -59,6 +60,12 @@ export type MemoryPlatform = Pick<Platform, "env" | "home" | "os" | "fs" | "cloc
 interface StoredFile {
   bytes: Uint8Array;
   mtimeMs: number;
+  identity: FileIdentity;
+}
+
+interface StoredDir {
+  mtimeMs: number;
+  identity: FileIdentity;
 }
 
 function normalize(path: string): string {
@@ -90,6 +97,16 @@ function fsError(code: string, path: string): Error {
   return Object.assign(new Error(`${code}: ${path}`), { code, path });
 }
 
+/** One device for every memory platform; the inode counter never repeats, so a replaced file gets a new identity. */
+const MEMORY_DEV = 1n;
+let nextIno = 1n;
+
+function nextIdentity(now: () => number): FileIdentity {
+  const ino = nextIno;
+  nextIno += 1n;
+  return { dev: MEMORY_DEV, ino, birthtimeNs: BigInt(Math.round(now())) * 1_000_000n };
+}
+
 /**
  * An in-memory Platform for tests. Paths are normalized (`//`, `.`, `..` and a trailing `/`); there are no special
  * files or symlinks, so `followSymlinks` changes nothing. `list` rejects for a missing path or a file; writing a file
@@ -103,14 +120,14 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
   const now = options.now ?? Date.now;
   const chunkSize = options.chunkSize ?? 64 * 1024;
   const files = new Map<string, StoredFile>();
-  const dirs = new Map<string, number>([["/", now()]]);
+  const dirs = new Map<string, StoredDir>([["/", { mtimeMs: now(), identity: nextIdentity(now) }]]);
 
   const addParents = (path: string): void => {
     for (let dir = parentOf(path); !dirs.has(dir); dir = parentOf(dir)) {
       if (files.has(dir)) {
         throw fsError("ENOTDIR", dir);
       }
-      dirs.set(dir, now());
+      dirs.set(dir, { mtimeMs: now(), identity: nextIdentity(now) });
     }
   };
   const putFile = (path: string, bytes: Uint8Array, mtimeMs: number): void => {
@@ -118,7 +135,7 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
       throw fsError("EISDIR", path);
     }
     addParents(path);
-    files.set(path, { bytes, mtimeMs });
+    files.set(path, { bytes, mtimeMs, identity: nextIdentity(now) });
   };
   const hasChildren = (dir: string): boolean =>
     [...dirs.keys(), ...files.keys()].some((other) => other !== dir && parentOf(other) === dir);
@@ -150,10 +167,10 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
       const key = normalize(path);
       const file = files.get(key);
       if (file) {
-        return { kind: "file", size: file.bytes.byteLength, mtimeMs: file.mtimeMs };
+        return { kind: "file", size: file.bytes.byteLength, mtimeMs: file.mtimeMs, identity: file.identity };
       }
-      const mtimeMs = dirs.get(key);
-      return mtimeMs === undefined ? undefined : { kind: "dir", size: 0, mtimeMs };
+      const dir = dirs.get(key);
+      return dir === undefined ? undefined : { kind: "dir", size: 0, mtimeMs: dir.mtimeMs, identity: dir.identity };
     },
     async realpath(path) {
       const key = normalize(path);
@@ -194,7 +211,7 @@ export function createMemoryPlatform(options: MemoryPlatformOptions = {}): Memor
       }
       addParents(key);
       if (!dirs.has(key)) {
-        dirs.set(key, now());
+        dirs.set(key, { mtimeMs: now(), identity: nextIdentity(now) });
       }
     },
     async createExclusive(path) {
