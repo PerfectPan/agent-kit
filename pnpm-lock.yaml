@@ -186,8 +186,8 @@ catalogs:
       specifier: 5.3.0
       version: 5.3.0
     '@perfectpan/lint-config':
-      specifier: github:PerfectPan/lint-config#v0.6.1
-      version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279
+      specifier: github:PerfectPan/lint-config#v0.7.0
+      version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a
     '@radix-ui/react-slot':
       specifier: 1.5.0
       version: 1.5.0
@@ -367,7 +367,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
@@ -419,7 +419,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(typescript@6.0.3)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@6.0.3))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(typescript@6.0.3)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -431,7 +431,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -483,7 +483,7 @@ importers:
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -529,7 +529,7 @@ importers:
         version: 0.18.5
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-acp':
         specifier: workspace:*
         version: link:../acp
@@ -623,7 +623,7 @@ importers:
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../agent-kit
@@ -659,7 +659,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -681,7 +681,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -703,7 +703,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-provider-codex':
         specifier: workspace:*
         version: link:../providers/codex
@@ -749,7 +749,7 @@ importers:
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
@@ -797,7 +797,7 @@ importers:
         version: 0.57.0
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       effect:
         specifier: 'catalog:'
         version: 4.0.6
@@ -825,7 +825,7 @@ importers:
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -865,7 +865,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -902,7 +902,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -933,7 +933,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -970,7 +970,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -1007,7 +1007,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-platform':
         specifier: workspace:*
         version: link:../../platform
@@ -1047,7 +1047,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../../platform-node
@@ -1084,7 +1084,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-testing':
         specifier: workspace:*
         version: link:../../testing
@@ -1106,7 +1106,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1128,7 +1128,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1159,7 +1159,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit-acp':
         specifier: workspace:*
         version: link:../acp
@@ -1207,7 +1207,7 @@ importers:
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -1228,7 +1228,7 @@ importers:
         version: 4.0.6(effect@4.0.6)(vitest@5.0.5)
       '@perfectpan/lint-config':
         specifier: 'catalog:'
-        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       '@rivus/agent-kit':
         specifier: workspace:*
         version: link:../../packages/agent-kit
@@ -2147,16 +2147,19 @@ packages:
     resolution: {integrity: sha512-G2xbfWTrbqYRhR/vfeKNMQf/sS3/ti0iKJAAkRxHuXWZH/hne/dyIb9QKk5LuR6cJLARxsL6FMoAYmfspd74MQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279':
-    resolution: {gitHosted: true, integrity: sha512-u/mf1/DjwOecrOcC7qCVaDNGtX84L2wa169usT+hFj/9OcYSfx8hhEUMEUgyn/F1QtZ2cHS52yiQjYHxnzUm1w==, tarball: https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279}
-    version: 0.6.1
+  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a':
+    resolution: {gitHosted: true, integrity: sha512-T2hLOKjF4qd5nozShphpP/mWbQOvRmB+CaFaYxULqyBSNqvbnwNnzIX3i7pYCFXj4xQc4DUN7ez8btw8pc1ZaA==, tarball: https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a}
+    version: 0.7.0
     peerDependencies:
+      eslint-plugin-better-tailwindcss: '>=4.10.0'
       oxfmt: '>=0.57.0'
       oxlint: '>=1.79.0'
       oxlint-tsgolint: '>=0.24.0'
       typescript: '>=6.0.0'
       vite-plus: '>=0.2.4'
     peerDependenciesMeta:
+      eslint-plugin-better-tailwindcss:
+        optional: true
       oxfmt:
         optional: true
       oxlint:
@@ -6210,16 +6213,18 @@ snapshots:
 
   '@oxlint/plugins@1.88.0': {}
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(typescript@6.0.3)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))':
-    optionalDependencies:
+  ? '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@6.0.3))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(typescript@6.0.3)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))'
+  : optionalDependencies:
+      eslint-plugin-better-tailwindcss: 4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@6.0.3)
       oxfmt: 0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))
       oxlint: 1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))
       oxlint-tsgolint: 7.0.2004
       typescript: 6.0.3
       vite-plus: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)
 
-  '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/a88384087f2f250d372e651d0be3d064300eb279(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))':
-    optionalDependencies:
+  ? '@perfectpan/lint-config@https://codeload.github.com/PerfectPan/lint-config/tar.gz/3baf6b329d15236aaa4900b786f29cc497a60d1a(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))'
+  : optionalDependencies:
+      eslint-plugin-better-tailwindcss: 4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2)
       oxfmt: 0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       oxlint: 1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
       oxlint-tsgolint: 7.0.2004
@@ -7228,6 +7233,11 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
+  '@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@6.0.3))':
+    dependencies:
+      valibot: 1.5.0(typescript@6.0.3)
+    optional: true
+
   '@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2))':
     dependencies:
       valibot: 1.5.0(typescript@7.0.2)
@@ -7771,6 +7781,25 @@ snapshots:
       eslint-import-resolver-typescript: 4.4.5(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
     transitivePeerDependencies:
       - supports-color
+
+  eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@6.0.3):
+    dependencies:
+      '@eslint/css-tree': 4.1.2
+      '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@6.0.3))
+      enhanced-resolve: 5.26.0
+      jiti: 2.7.0
+      synckit: 0.12.3
+      tailwind-csstree: 0.3.3
+      tailwindcss: 4.3.3
+      tsconfig-paths-webpack-plugin: 4.2.0
+      valibot: 1.5.0(typescript@6.0.3)
+    optionalDependencies:
+      eslint: 10.13.0(jiti@2.7.0)(supports-color@7.2.0)
+      oxlint: 1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@6.0.3)(yaml@2.9.1))
+    transitivePeerDependencies:
+      - '@eslint/css'
+      - typescript
+    optional: true
 
   eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2):
     dependencies:
@@ -9643,6 +9672,11 @@ snapshots:
   use-sync-external-store@1.7.0(react@19.3.1):
     dependencies:
       react: 19.3.1
+
+  valibot@1.5.0(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
+    optional: true
 
   valibot@1.5.0(typescript@7.0.2):
     optionalDependencies:
