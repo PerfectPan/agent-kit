@@ -137,6 +137,24 @@ describe("spawn", () => {
     expect(performance.now() - started).toBeGreaterThanOrEqual(1900);
   }, 10_000);
 
+  it("S?: escalates an abort to SIGKILL after the killGraceMs a caller sets", async () => {
+    const controller = new AbortController();
+    const script = 'process.on("SIGTERM", () => {}); console.log("ready"); setInterval(() => {}, 1000)';
+    const child = platform.process.spawn(node, ["-e", script], {
+      cwd,
+      env: {},
+      signal: controller.signal,
+      killGraceMs: 100
+    });
+    await waitFor(child.stdout, "ready");
+
+    const started = performance.now();
+    controller.abort();
+    expect(await child.exited).toEqual({ code: null, signal: "SIGKILL" });
+    expect(performance.now() - started).toBeGreaterThanOrEqual(90);
+    expect(performance.now() - started).toBeLessThan(1_500);
+  }, 10_000);
+
   it("S24: ends a child with SIGTERM on abort and ignores kill() after exit", async () => {
     const controller = new AbortController();
     const child: ChildHandle = platform.process.spawn(node, ["-e", "setInterval(() => {}, 1000)"], {

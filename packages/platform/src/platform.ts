@@ -95,6 +95,11 @@ export interface SpawnOptions {
   readonly env: Env;
   /** Aborting sends SIGTERM, then SIGKILL after a grace period. */
   readonly signal?: AbortSignal;
+  /**
+   * How long an aborted child may take to exit after SIGTERM before it gets SIGKILL; 2 s by default. A host that
+   * terminates on its own schedule sets a shorter one so its escalation does not wait out the platform's.
+   */
+  readonly killGraceMs?: number;
 }
 
 export interface ChildHandle {
