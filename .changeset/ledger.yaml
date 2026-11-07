@@ -28,6 +28,10 @@
   intents:
     - effect-peer-4-0-5
     - shiny-trains-sip
+"@rivus/agent-kit-collab@0.24.0":
+  dir: packages/agent-kit-collab
+  intents:
+    - effect-peer-4-0-6
 "@rivus/agent-kit@0.19.1":
   dir: packages/agent-kit
   intents:
@@ -79,3 +83,17 @@
   intents:
     - loud-bears-roll
     - purple-carrots-arrive
+"@rivus/agent-kit@0.24.0":
+  dir: packages/agent-kit
+  intents:
+    - acp-idle-updates-held
+    - acp-stderr-callback
+    - acp-unsettled-cancel-scope
+    - ancient-roses-drop
+    - codex-timeless-usage-stamp
+    - effect-peer-4-0-6
+    - fluffy-zebras-sleep
+    - gemini-cli-sessions
+    - grok-claude-code-id-serials
+    - renovate-378cf63
+    - renovate-c5abd13
