@@ -492,6 +492,7 @@ export function buildPlan(
       }
     }
     const foreignHooks: ForeignHookObservation[] = [];
+    const sourceMarkers = new Map<ObservedArtifact, readonly string[]>();
     if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
       for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
         const found = observation.observed;
@@ -500,6 +501,9 @@ export function buildPlan(
         }
         if (!observed.has(locatorKey(found.locator))) {
           observed.set(locatorKey(found.locator), found);
+          if (observation.markers !== undefined) {
+            sourceMarkers.set(found, observation.markers);
+          }
         }
       }
     }
@@ -526,7 +530,8 @@ export function buildPlan(
           dialects: setup.dialects
         },
         ledger,
-        [...observed.values()]
+        [...observed.values()],
+        sourceMarkers
       )
     );
     const view = yield* describePlan(scope, aggregate, ledger, observed, input);

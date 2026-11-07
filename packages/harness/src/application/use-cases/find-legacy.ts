@@ -136,7 +136,7 @@ export function findLegacy(
         const treatment = legacyTreatment(
           observation.observed,
           owner,
-          options.legacyMarkers,
+          observation.markers ?? options.legacyMarkers,
           ledger,
           [...observed.values()],
           legacyText(observation.observed.content)

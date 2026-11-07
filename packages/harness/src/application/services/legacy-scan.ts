@@ -19,6 +19,11 @@ export interface LegacyObservation {
   readonly runner?: CodingAgentId;
   /** The event that fires the find, as the runner names it, when the source renames events. */
   readonly event?: string;
+  /**
+   * The legacy markers of the source the find came from, judged against it instead of the bundle's; absent when the
+   * source declares none, so the bundle's markers apply.
+   */
+  readonly markers?: readonly string[];
 }
 
 /**
@@ -37,6 +42,7 @@ export function scanLegacy(
         source.kind === "files"
           ? { ...source, dir: yield* resolvePath(source.dir, true) }
           : { ...source, path: yield* resolvePath(source.path) };
+      const markers = source.markers;
       for (const { locator, read } of yield* files.scan(resolved)) {
         const event = pointerTail(locator.pointer);
         if (events === undefined || (event !== undefined && events.has(event))) {
@@ -44,7 +50,8 @@ export function scanLegacy(
             observed: yield* observation(locator, read),
             agent,
             ...(runner === undefined ? {} : { runner }),
-            ...(event === undefined || runAs?.[event] === undefined ? {} : { event: runAs[event] })
+            ...(event === undefined || runAs?.[event] === undefined ? {} : { event: runAs[event] }),
+            ...(markers === undefined ? {} : { markers })
           });
         }
       }
