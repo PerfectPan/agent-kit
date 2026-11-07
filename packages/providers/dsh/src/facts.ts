@@ -14,19 +14,20 @@ export const DSH_COMMAND = "dsh";
 /** The profile that serves ACP v1 over stdio. */
 export const DSH_ACP_ARGS: readonly string[] = ["--profile", "acp"];
 /**
- * The variables the harness reads from its launch environment: its own settings, without the markers it sets for its
- * own subprocesses (`DSH_SUBPROCESS_CONTROL`, `DSH_SUBPROCESS_RUNNER`), and DeepSeek's API settings, such as
- * `DEEPSEEK_BASE_URL`, which only the launch environment may set.
+ * Known launch settings for the built-in ACP profile and DeepSeek API. Internal subprocess markers and the
+ * speech worker's generated token are excluded. User-configured pi-ai `apiKeyEnv` names are not enumerable;
+ * callers must explicitly forward a referenced key only when it is available solely in their own environment.
  */
 export const DSH_ACP_ENV: readonly string[] = [
   HOME_ENV,
   "DSH_AGENTS_HOME",
+  "DSH_BUNDLED_SKILL_DIR",
+  "DSH_PERMISSION_MODE",
   "DSH_TELEMETRY_DISABLED",
   "DSH_TELEMETRY_MODE",
   "DSH_TELEMETRY_OTLP_URL",
   "DSH_WEB_SEARCH_PROVIDER",
   "DSH_WEB_FETCH_PROVIDER",
-  "DSH_SPEECH_TOKEN",
   "DEEPSEEK_*"
 ];
 /** Where `dsh` stores the API key a login saves, under `refs.DEEPSEEK_API_KEY`; YAML, so never parsed here. */
