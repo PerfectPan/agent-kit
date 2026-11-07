@@ -51,16 +51,16 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks                                        | install                                | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | -------------------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
-| grok        | yes      | yes       | yes                                          | yes                                    | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes                                          | yes                                    | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | Hook configuration has no supported dialect. | Installation has no supported adapter. | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery | hooks | install                                | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | ----- | -------------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| gemini-cli  | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | yes                                     | yes                         |
+| pi          | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes   | Installation has no supported adapter. | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -461,6 +461,7 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 | opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
 | Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
 | Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| ZCode       | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
 Every agent in the table has a hook dialect in `/harness/events`. `/acp` has a launch profile for
 Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the

@@ -18,4 +18,9 @@ export const ZCODE_CREDENTIAL_KEYS: readonly string[] = [
   "zcodejwttoken"
 ];
 
+/** The session id ZCode exports to every hook process, beside Claude Code's `CLAUDE_CODE_SESSION_ID`. */
+export const ZCODE_SESSION_ENV = "ZCODE_SESSION_ID";
+/** A payload field only ZCode's hook input carries; see the hook dialect. */
+export const ZCODE_HOST_FIELD = "traceId";
+
 export const agentMarkers: readonly string[] = [ZCODE_ID, HOME_DIR, HOME_ENV];

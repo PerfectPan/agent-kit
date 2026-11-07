@@ -185,9 +185,9 @@ export const boundaries: BoundaryRules = {
     [ZCODE]: {
       siblingEntries: [],
       providerFacts: "packages/providers/zcode/src/facts.ts",
-      providerServices: ["identity", "discovery", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "usage"],
       dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, SESSIONS],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
       testsOnly: [TESTING, PLATFORM_NODE],
       external: ["zod/mini"]
     },
@@ -246,7 +246,7 @@ export const boundaries: BoundaryRules = {
       siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ACP, PLATFORM_NODE],
+      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE, ACP, PLATFORM_NODE],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

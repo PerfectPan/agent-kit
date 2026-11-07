@@ -1109,6 +1109,9 @@ importers:
       '@rivus/agent-kit-discovery':
         specifier: workspace:*
         version: link:../../discovery
+      '@rivus/agent-kit-harness':
+        specifier: workspace:*
+        version: link:../../harness
       '@rivus/agent-kit-sessions':
         specifier: workspace:*
         version: link:../../sessions
@@ -1227,6 +1230,9 @@ importers:
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi
+      '@rivus/agent-kit-provider-zcode':
+        specifier: workspace:*
+        version: link:../providers/zcode
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2

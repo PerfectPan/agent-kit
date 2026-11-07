@@ -18,7 +18,6 @@ export const unsupported: Readonly<
   pi: { sessions: "Session storage has no supported reader.", acp: "No supported ACP transport." },
   zcode: {
     sessions: "Session storage has no supported reader.",
-    hooks: "Hook configuration has no supported dialect.",
     install: "Installation has no supported adapter.",
     acp: "No supported ACP transport."
   }
