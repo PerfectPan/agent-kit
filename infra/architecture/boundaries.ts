@@ -185,9 +185,9 @@ export const boundaries: BoundaryRules = {
     [DSH]: {
       siblingEntries: [],
       providerFacts: "packages/providers/dsh/src/facts.ts",
-      providerServices: ["identity", "sessions"],
+      providerServices: ["identity", "discovery", "sessions", "acp"],
       dependsOn: [],
-      spiImports: [CATALOG, SESSIONS],
+      spiImports: [CATALOG, DISCOVERY, SESSIONS, ACP],
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },

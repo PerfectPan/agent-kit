@@ -7,11 +7,11 @@ user's login, so they may spend tokens; CI never runs them (the project's `test`
 pnpm install
 pnpm run build
 cd tests/smoke
-AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok pnpm run smoke
+AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok,dsh pnpm run smoke
 ```
 
 `AGENT_KIT_SMOKE_AGENTS` names the agents to run, by `CodingAgentId`; the others are skipped. Each agent needs its ACP
-program on `PATH`: `claude-agent-acp`, `codex-acp`, `opencode`, `gemini` and `grok`. An agent gets only the variables
+program on `PATH`: `claude-agent-acp`, `codex-acp`, `opencode`, `gemini`, `grok` and `dsh`. An agent gets only the variables
 its `acp` profile lists in `builtinProviders`, taken from the shell's environment.
 
 For each agent, `acp.smoke.test.ts` probes it (a trial session reports `ready` or `needs-login`), sends one prompt

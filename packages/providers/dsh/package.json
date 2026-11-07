@@ -2,13 +2,15 @@
   "name": "@rivus/agent-kit-provider-dsh",
   "version": "0.0.0",
   "private": true,
-  "description": "DeepSeek Harness identity and sessions. Bundled into @rivus/agent-kit.",
+  "description": "DeepSeek Harness identity, discovery, sessions and ACP. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
     "./identity": "./src/identity.ts",
-    "./sessions": "./src/sessions.ts"
+    "./discovery": "./src/discovery.ts",
+    "./sessions": "./src/sessions.ts",
+    "./acp": "./src/acp.ts"
   },
   "scripts": {
     "build": "",
@@ -19,7 +21,9 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
+    "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
+    "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-sessions": "workspace:*",
     "zod": "catalog:"
   },

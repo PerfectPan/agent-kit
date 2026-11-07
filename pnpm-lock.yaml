@@ -952,9 +952,15 @@ importers:
 
   packages/providers/dsh:
     dependencies:
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../../acp
       '@rivus/agent-kit-catalog':
         specifier: workspace:*
         version: link:../../catalog
+      '@rivus/agent-kit-discovery':
+        specifier: workspace:*
+        version: link:../../discovery
       '@rivus/agent-kit-sessions':
         specifier: workspace:*
         version: link:../../sessions

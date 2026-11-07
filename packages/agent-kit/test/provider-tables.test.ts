@@ -69,7 +69,7 @@ it("exports builtinProviders with the same ids and services as the individual ta
   }
 });
 
-it("keeps exactly the seven built-in ids and accepts third-party ids in the public type", () => {
+it("keeps exactly the eight built-in ids and accepts third-party ids in the public type", () => {
   expectTypeOf<BuiltinCodingAgentId>().toEqualTypeOf<
     "claude-code" | "codex" | "cursor" | "dsh" | "gemini-cli" | "grok" | "opencode" | "pi"
   >();

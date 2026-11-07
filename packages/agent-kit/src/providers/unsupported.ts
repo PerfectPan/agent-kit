@@ -8,11 +8,9 @@ export const unsupported: Readonly<
   "claude-code": {},
   codex: {},
   dsh: {
-    discovery: "No supported installation probe.",
     hooks: "No supported hook dialect.",
     install: "No supported installation adapter.",
-    usage: "Usage storage has no supported decoder.",
-    acp: "No supported ACP transport."
+    usage: "Usage storage has no supported decoder."
   },
   grok: {},
   cursor: {
