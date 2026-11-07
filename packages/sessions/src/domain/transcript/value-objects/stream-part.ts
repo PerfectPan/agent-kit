@@ -26,7 +26,8 @@ type UpdatePart = {
 /**
  * One part of a live turn's stream. The deltas are named after AI SDK's UI message stream parts: text and reasoning
  * arrive as `*-start`, `*-delta`, `*-end` with a shared `id`; a tool call as `tool-input-start`, then
- * `tool-input-available` whenever its input is known or changes, then `tool-output-available` once it has completed
+ * `tool-input-available` whenever its input is known or changes, then `tool-output-partial` while a running call
+ * reports the output it has produced so far, then `tool-output-available` once it has completed
  * or `tool-output-error` once it has failed, with `errorText` for display and the output the agent gave, if any.
  * `update` is an update that becomes one event as it is, such as a plan or a mode change. `finish` ends the turn.
  * `event` carries a completed event; folding a session's parts in order gives its `event` parts, so the live session
@@ -67,6 +68,11 @@ export type TranscriptStreamPart =
       readonly toolCallId: string;
       readonly errorText: string;
       readonly output?: unknown;
+    }
+  | {
+      readonly type: "tool-output-partial";
+      readonly toolCallId: string;
+      readonly output: unknown;
     }
   | UpdatePart
   | { readonly type: "finish"; readonly id: string; readonly finishReason: string; readonly usage?: Usage }

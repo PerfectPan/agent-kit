@@ -289,7 +289,9 @@ export interface AcpPartTranslator {
 /**
  * A translator for one session. Part ids start with `prefix` and count up, so they stay unique across the turns of
  * the session. A text or reasoning part runs until another kind of update arrives, or a chunk names another
- * `messageId`; a tool call reports its input whenever an update supplies one and its output once, when it ends.
+ * `messageId`; a tool call reports its input whenever an update supplies one, its output so far as
+ * `tool-output-partial` while an update supplies `content` or `rawOutput` for a running call, and its output once,
+ * when it ends.
  *
  * `state` lets a caller create one translator per turn and still keep the tool state with the session; without it
  * the maps are the translator's own. A turn's deltas stay self-contained: the first update a turn carries for an
@@ -383,6 +385,10 @@ export function createAcpPartTranslator(
           ? { type: "tool-output-error", toolCallId, errorText: errorText(state), ...output }
           : { type: "tool-output-available", toolCallId, ...output }
       );
+    } else if (supplied(update.content) || supplied(update.rawOutput)) {
+      // A running call's output so far, from this update's `content` or `rawOutput`; the output that ends the call
+      // replaces it. An update without either re-emits nothing.
+      parts.push({ type: "tool-output-partial", toolCallId, output: state.output });
     }
     // The result is out: later updates for this call can emit nothing, so its input and output are not kept.
     if (ended.has(toolCallId)) {
