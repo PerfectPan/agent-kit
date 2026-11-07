@@ -167,7 +167,8 @@ const program = Effect.gen(function* () {
   return yield* applyInstall(plan);
 });
 await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
-// Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
+// Later: uninstall("my-app") removes only what the ledger records, keeps files the user changed, and removes
+// the empty directories the install recorded as created once their last owner leaves.
 ```
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when

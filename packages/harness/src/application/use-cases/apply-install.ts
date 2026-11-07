@@ -1,5 +1,5 @@
 import { AgentKitError } from "@rivus/agent-kit-catalog/public";
-import type { PlatformService } from "@rivus/agent-kit-platform/effect";
+import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
 import { type ArtifactLocatorSnapshot, locatorKey } from "../../domain/install-plan/value-objects/artifact-locator.js";
@@ -31,11 +31,14 @@ import {
   type AgentCliFailure,
   ArtifactFiles,
   type ArtifactFailure,
+  ExternalOwner,
   LedgerRepository,
   type LedgerRepositoryFailure,
   type RevisionConflict
 } from "../ports.js";
 import { TOOL_VERSION } from "../services/tool-version.js";
+
+const parentOf = (path: string): string => path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 
 export interface ApplyInstallOptions {
   /** How long to wait for another holder of the LedgerLock; 10 s by default. Interrupting stops the wait. */
@@ -196,7 +199,11 @@ type StepResult =
 export function applyLocked(
   record: PlanRecord,
   start: LoadedLedger
-): Effect.Effect<ApplyReport, ApplyInstallError, ArtifactFiles | AgentCli | LedgerRepository | PlatformService> {
+): Effect.Effect<
+  ApplyReport,
+  ApplyInstallError,
+  ArtifactFiles | AgentCli | LedgerRepository | ExternalOwner | PlatformService
+> {
   return Effect.gen(function* () {
     const plan = record.aggregate;
     const { planId, steps } = plan;
@@ -209,6 +216,7 @@ export function applyLocked(
     const files = yield* ArtifactFiles;
     const registrations = registrationLookup(record.adapters, record.context);
     const preImages: Record<string, PreImage> = {};
+    const createdDirs = new Set<string>();
     const configPaths = new Set(
       steps
         .filter((step) => step.locator.kind === "json-entry" || step.locator.kind === "toml-entry")
@@ -241,6 +249,30 @@ export function applyLocked(
     }
     const absentConfigFiles = new Set<string>();
     const inspectedConfigFiles = new Set<string>();
+    // What each writing step's recursive mkdir is missing, observed before anything is written: the ancestors the
+    // install will have created within the resolved installation roots. Only these, once the step that creates them
+    // has run, become ledger claims; a step that never runs, or an apply that dies first, stays unclaimed.
+    const platform = yield* PlatformService;
+    const statNow = (path: string) => Effect.promise(() => platform.fs.stat(path));
+    const roots = plan.toSnapshot().target.roots;
+    const withinRoots = (dir: string): boolean => roots.some((root) => dir === root || dir.startsWith(`${root}/`));
+    const missingAncestors = new Map<string, string[]>();
+    for (const step of steps) {
+      if (step.action === "remove" || !step.touchesDisk()) {
+        continue;
+      }
+      const missing: string[] = [];
+      for (let dir = parentOf(step.locator.path); withinRoots(dir); dir = parentOf(dir)) {
+        if ((yield* statNow(dir)) !== undefined) {
+          // The directory and every ancestor above it were already there.
+          break;
+        }
+        missing.push(dir);
+      }
+      if (missing.length > 0) {
+        missingAncestors.set(locatorKey(step.locator), missing);
+      }
+    }
     for (const step of steps) {
       const check = yield* checkPrecondition(step, ledger.entry(step.locator), registrations);
       if (!check.matches) {
@@ -364,6 +396,76 @@ export function applyLocked(
         ...(step.removal === undefined ? {} : { removal: step.removal }),
         ...(preImages[key] === undefined ? {} : { preImage: preImages[key] })
       });
+      // The step wrote, so the ancestors it was missing exist now: their creation is certain, and they become
+      // claims with the save below. An apply that fails or dies before it claims nothing, however much it created.
+      for (const dir of missingAncestors.get(key) ?? []) {
+        createdDirs.add(dir);
+      }
+    }
+    // Directory claims and cleanup, in one ledger save: the ancestors this apply positively created, and the
+    // release of the claimed ancestors this apply emptied, per owner, so an uninstall removes a directory only
+    // after its last owner's use ends. The walk goes upward through positively claimed directories only and stops
+    // at pre-existing, unknown, nonempty, symlinked or externally managed paths; the removal itself is
+    // nonrecursive and refuses a nonempty directory.
+    const releasedDirs: string[] = [];
+    const removals = applied.filter((step) => step.action === "remove");
+    if (removals.length > 0) {
+      const directories = loaded.ledger.toSnapshot().directories ?? {};
+      const chains = removals.map((step) => {
+        const chain: { readonly path: string; readonly last: boolean }[] = [];
+        for (let dir = parentOf(step.locator.path); ; dir = parentOf(dir)) {
+          const claim = directories[dir];
+          if (claim === undefined) {
+            break;
+          }
+          const last = claim.owners.length === 1;
+          chain.push({ path: dir, last });
+          if (!last) {
+            break;
+          }
+        }
+        return chain;
+      });
+      const managed = yield* (yield* ExternalOwner).managedPaths(chains.flat().map((dir) => dir.path));
+      for (const chain of chains) {
+        for (const { path, last } of chain) {
+          if (!last) {
+            // Other owners still use the directory: this owner's claim ends, the directory stays.
+            releasedDirs.push(path);
+            break;
+          }
+          if (managed.has(path)) {
+            break;
+          }
+          const found = yield* statNow(path);
+          if (found === undefined) {
+            // Gone already, by an interrupted cleanup: release the claim and keep walking.
+            releasedDirs.push(path);
+            continue;
+          }
+          if (found.kind !== "dir") {
+            break;
+          }
+          // A nonempty directory refuses the nonrecursive removal: its claim stays for a later cleanup.
+          const removed = yield* Effect.match(
+            Effect.tryPromise(() => platform.fs.remove(path)),
+            {
+              onFailure: () => undefined,
+              onSuccess: () => true as const
+            }
+          );
+          if (removed !== true) {
+            break;
+          }
+          releasedDirs.push(path);
+        }
+      }
+    }
+    if (createdDirs.size > 0 || releasedDirs.length > 0) {
+      const transition = loaded.ledger.updateDirectories(plan.bundle.owner, [...createdDirs], releasedDirs.toSorted());
+      if (transition.state !== loaded.ledger) {
+        loaded = yield* saveLedger(record.scope, loaded, transition);
+      }
     }
     return { planId, ledgerRevision: loaded.ledger.revision, steps: applied, events };
   });

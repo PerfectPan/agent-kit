@@ -61,13 +61,20 @@ const Pending = z.object({
 
 const Kept = z.object({ locator: Locator, owner: z.string(), keptAt: z.string() });
 
+const DirClaim = z.object({
+  path: z.string(),
+  owners: z.array(z.string()),
+  entryRevision: z.number()
+});
+
 const Snapshot = z.object({
   schemaVersion: z.number(),
   lineage: z.string(),
   revision: z.number(),
   entries: z.record(z.string(), Entry),
   pending: z.array(Pending),
-  kept: z.optional(z.record(z.string(), Kept))
+  kept: z.optional(z.record(z.string(), Kept)),
+  directories: z.optional(z.record(z.string(), DirClaim))
 });
 
 /**
