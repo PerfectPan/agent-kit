@@ -855,7 +855,7 @@ describe("uninstall of configuration files created by install", () => {
   }
 
   it.effect(
-    "round-trips a seven-agent bundle, removes owned directories and retains user files and untracked parents",
+    "round-trips a seven-agent bundle, removes owned directories and their recorded ancestors, and retains user files",
     () => {
       const home = testHome();
       const agents = ["claude-code", "codex", "gemini-cli", "grok", "cursor", "opencode", "pi"] as const;
@@ -896,17 +896,28 @@ describe("uninstall of configuration files created by install", () => {
         ]) {
           expect(existsSync(home.path(path))).toBe(false);
         }
-        // Ancestor directories have no creation records, so their cleanup remains deferred.
+        // The ancestors the install positively recorded leave with the artifacts, empty; the user's kept directory
+        // keeps its ancestors, and what the ledger predates stays as it is.
         for (const path of [
+          ".claude",
           ".claude/skills",
           ".codex",
-          ".gemini/extensions",
+          ".grok",
           ".grok/hooks",
+          ".cursor",
+          ".cursor/plugins",
           ".cursor/plugins/local",
+          ".agents",
           ".agents/skills",
+          ".config/opencode",
           ".config/opencode/plugins",
+          ".pi/agent",
           ".pi/agent/extensions"
         ]) {
+          expect(existsSync(home.path(path))).toBe(false);
+        }
+        // The roots themselves and the user's kept directory stay: a claim covers ancestors within the roots only.
+        for (const path of [".config", ".pi", ".gemini", ".gemini/extensions", ".gemini/extensions/demo-app"]) {
           expect(existsSync(home.path(path))).toBe(true);
         }
         expect((yield* inventory()).entries).toEqual([]);

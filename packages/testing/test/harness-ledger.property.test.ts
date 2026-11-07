@@ -357,7 +357,7 @@ describe("Ledger invariants", () => {
   it("an unknown schema version is refused and the stored data is never cleared or rewritten", () => {
     const { found, check } = violations();
     const { pick } = generator(42);
-    const versions: unknown[] = [0, 2, 3, 1.5, -1, "1", "2", null, undefined, true, {}, [1]];
+    const versions: unknown[] = [0, 3, 1.5, -1, "1", "2", null, undefined, true, {}, [1]];
     for (const seed of SEEDS) {
       const schemaVersion = pick(versions);
       const stored = {

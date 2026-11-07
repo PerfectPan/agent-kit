@@ -75,6 +75,6 @@ A plan handle cannot be serialized and applied by a later process. Re-plan after
 
 Planning may settle an earlier holder's pending operations under the ledger lock. `verify` may acknowledge a ledger that is behind the disk. `doctor`'s lock check may create lock files in the harness state directory. None of these rewrite Agent targets.
 
-`uninstall("my-app")` removes only what the ledger records and keeps files the user changed.
+`uninstall("my-app")` removes only what the ledger records and keeps files the user changed. The directories an install positively created within the agents' roots are recorded in the ledger, and an uninstall removes them when they are empty and their last owner leaves — never a pre-existing, unknown, nonempty, symlinked or externally managed one.
 
 Hook payloads themselves are read with [Hook events](/docs/connection/hook-events). Paths that an install creates are not discovery evidence. See [Agent detection](/docs/connection/discovery).
