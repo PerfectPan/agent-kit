@@ -1,5 +1,16 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.24.0
+
+### Minor Changes
+
+- Require the exact optional Effect peer 4.0.6. Hosts pinning effect 4.0.5 fail to install under npm; update the host to 4.0.6 alongside these packages.
+
+### Patch Changes
+
+- Updated dependencies:
+  - @rivus/agent-kit@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes
