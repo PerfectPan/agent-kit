@@ -236,13 +236,11 @@ The review checks come from [`PerfectPan/gh-repo-checks`](https://github.com/Per
 Run `gh repo-checks repository` locally before opening review. This generic check does not replace stack-specific tests, but it catches missing template files, tracked local artifacts, obvious secrets, private paths, and drift in review templates.
 
 Workflows reference actions by their latest major version tag, such as `actions/checkout@v7`, not by commit SHA.
-Renovate is enabled for routine action version updates in every workflow, including files originally copied from
-the template. The two-stage handoff retains the existing Dependabot Actions configuration while Renovate's hosted
-workflow-update coverage is verified, so duplicate PRs are possible during this transition. After that verification
-and successful CI, a separate follow-up PR removes Dependabot's Actions version-update configuration. Review major
-upgrades individually and require the PR checks before merging. When syncing a template workflow, preserve action
-versions already reviewed here. See [Bot Pull Requests](docs/development/release.md#bot-pull-requests) for the
-handoff evidence and rollback steps.
+Renovate owns routine action version updates in every workflow, including files originally copied from the
+template. Review major upgrades individually and require the PR checks before merging. When syncing a template
+workflow, preserve action versions already reviewed here. Removing Dependabot's routine version-update configuration
+does not change dependency graph, alerts or security-update settings. See
+[Bot Pull Requests](docs/development/release.md#bot-pull-requests) for the update policy and rollback steps.
 
 ## Local Git Hooks
 
