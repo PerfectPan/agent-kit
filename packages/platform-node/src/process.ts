@@ -15,7 +15,7 @@ import type {
 
 import { createIdentify } from "./process-identity.js";
 
-/** How long an aborted or timed-out child may take to exit after SIGTERM before it gets SIGKILL. */
+/** How long an aborted or timed-out child may take to exit after SIGTERM before it gets SIGKILL, without a setting. */
 const KILL_GRACE_MS = 2_000;
 /** Per stream. `run` is for short commands, so more output than this fails the run instead of being truncated. */
 const MAX_RUN_OUTPUT_BYTES = 4 * 1024 * 1024;
@@ -30,16 +30,19 @@ function isRunning(child: ChildProcess): boolean {
   return child.pid !== undefined && child.exitCode === null && child.signalCode === null;
 }
 
-function terminate(child: ChildProcess): void {
+function terminate(child: ChildProcess, graceMs: number): void {
   if (!isRunning(child)) {
     return;
   }
   child.kill("SIGTERM");
-  const escalation = setTimeout(() => {
-    if (isRunning(child)) {
-      child.kill("SIGKILL");
-    }
-  }, KILL_GRACE_MS);
+  const escalation = setTimeout(
+    () => {
+      if (isRunning(child)) {
+        child.kill("SIGKILL");
+      }
+    },
+    Math.min(graceMs, MAX_TIMER_MS)
+  );
   child.once("exit", () => clearTimeout(escalation));
 }
 
@@ -76,7 +79,7 @@ function run(command: string, args: readonly string[], options: RunOptions, defa
     const stop = () => {
       if (!stopped) {
         stopped = true;
-        terminate(child);
+        terminate(child, KILL_GRACE_MS);
       }
     };
     const overflow = (stream: string) => () => {
@@ -124,6 +127,7 @@ function run(command: string, args: readonly string[], options: RunOptions, defa
 
 function spawn(command: string, args: readonly string[], options: SpawnOptions): ChildHandle {
   const { signal } = options;
+  const killGraceMs = options.killGraceMs ?? KILL_GRACE_MS;
   const child = spawnChild(command, args, { cwd: options.cwd, env: options.env, stdio: "pipe", windowsHide: true });
   const exited = new Promise<ExitStatus>((resolve, reject) => {
     child.on("error", (error) => {
@@ -136,7 +140,7 @@ function spawn(command: string, args: readonly string[], options: SpawnOptions):
   // A caller that never awaits `exited` must not get an unhandled rejection for a failed spawn.
   exited.catch(() => undefined);
   if (signal !== undefined) {
-    const abort = () => terminate(child);
+    const abort = () => terminate(child, killGraceMs);
     if (signal.aborted) {
       abort();
     } else {

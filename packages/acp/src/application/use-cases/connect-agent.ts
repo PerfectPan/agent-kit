@@ -83,6 +83,11 @@ export interface ConnectAgentOptions {
    */
   readonly unsettledCancel?: "connection" | "session";
   /**
+   * How long the agent may take to exit after the abort that stops it sends SIGTERM, before SIGKILL; 2 s by default. A
+   * host that terminates on its own schedule sets a shorter one so its escalation does not wait out the platform's.
+   */
+  readonly killGraceMs?: number;
+  /**
    * Receives the agent's stderr as decoded text arrives, in order, so a host can log a running agent. It may return a
    * promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection.
    */
@@ -468,7 +473,8 @@ function open(
             platform.process.spawn(profile.command, profile.args, {
               cwd: options.cwd,
               env: options.env,
-              signal: controller.signal
+              signal: controller.signal,
+              ...(options.killGraceMs === undefined ? {} : { killGraceMs: options.killGraceMs })
             }),
           catch: unavailable
         });
