@@ -499,10 +499,20 @@ export function buildPlan(
         if (observation.runner !== undefined && observation.event !== undefined) {
           foreignHooks.push({ observed: found, runner: observation.runner, event: observation.event });
         }
-        if (!observed.has(locatorKey(found.locator))) {
-          observed.set(locatorKey(found.locator), found);
+        const key = locatorKey(found.locator);
+        const retained = observed.get(key);
+        if (retained === undefined) {
+          observed.set(key, found);
           if (observation.markers !== undefined) {
             sourceMarkers.set(found, observation.markers);
+          }
+        } else if (observation.markers !== undefined) {
+          // The locator was already observed as a desired or held Artifact, and a scoped source also found it: its
+          // markers govern the classification of the retained observation too, so a file the source's scope does not
+          // consider legacy is not adopted over the bundle's broader list without a conflict or a pre-image. The
+          // first scoped source that reaches the locator claims it, as the scan's own first-wins does.
+          if (!sourceMarkers.has(retained)) {
+            sourceMarkers.set(retained, observation.markers);
           }
         }
       }

@@ -105,6 +105,41 @@ describe("legacy markers scoped to their source", () => {
     }
   );
 
+  it.effect("a desired locator a scoped source found is judged by that source's markers, not the bundle's", () => {
+    const home = testHome();
+    // The bundle installs the grok hooks file; the file there matches the bundle's broad marker but not the
+    // scoped source's exact command marker, so it is not the owner's legacy install.
+    home.write(".grok/hooks/demo-app.json", "// mentions legacy-demo hook in a comment\n");
+    const desired: InstallAdapters = {
+      ...testInstall,
+      grok: {
+        ...testInstall.grok,
+        legacySources: (context) => [
+          { kind: "files", dir: `${context.home}/.grok/hooks`, markers: [LEGACY] }
+        ]
+      }
+    };
+    return Effect.gen(function* () {
+      // Not legacy: the plan does not adopt over it as the owner's older install — it conflicts instead, and a
+      // chosen backup captures a pre-image.
+      const conflicted = yield* Effect.flip(
+        planInstall(demoBundle("2.0.0", { legacyMarkers: ["legacy-demo hook"] }), {
+          agents: ["grok"],
+          providers: { install: desired, hooks: testHooks }
+        })
+      );
+      expect(conflicted).toMatchObject({
+        _tag: "PlanConflict",
+        conflicts: [
+          {
+            step: { locator: { path: home.path(".grok/hooks/demo-app.json") }, conflict: "unmanaged-exists" },
+            choices: ["adopt", "backup"]
+          }
+        ]
+      });
+    }).pipe(Effect.provide(home.layer()));
+  });
+
   it.effect("a source without its own markers is still judged by the bundle's markers", () => {
     const home = testHome();
     home.write(".grok/legacy-default/old.js", `// ${LEGACY}\n`);
