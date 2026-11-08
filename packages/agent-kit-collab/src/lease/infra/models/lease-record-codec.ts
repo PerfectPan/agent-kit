@@ -20,6 +20,31 @@ export function decodeSnapshot(value: unknown): LeaseSnapshot | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+/** One stored row's columns, as the table holds them. */
+interface LeaseRowColumns {
+  readonly key: string;
+  readonly generation: number;
+  readonly revision: number;
+  readonly holder: string | null;
+  readonly holder_id: string | null;
+  readonly renewed_at: number;
+}
+
+/** The columns of one stored row, in the database's snake_case: the repository reads the row at the boundary through this schema. */
+const rowSchema = z.object({
+  key: z.string(),
+  generation: z.number(),
+  revision: z.number(),
+  holder: z.union([z.string(), z.null()]),
+  holder_id: z.nullable(z.string()),
+  renewed_at: z.number()
+});
+
+/** The columns of one stored row, or `undefined` when the row is not the shape the table holds. */
+export function decodeLeaseRow(row: unknown): LeaseRowColumns | undefined {
+  return rowSchema.safeParse(row).data;
+}
+
 export function decodeHolder(json: string | null): HolderSnapshot | null | undefined {
   if (json === null) {
     return null;

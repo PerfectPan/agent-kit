@@ -16,6 +16,8 @@ const landingFactsId = "virtual:landing-facts";
 async function importSizeLimits(packageName: string): Promise<readonly SizeLimitEntry[]> {
   const url = pathToFileURL(join(dirname(require.resolve(`${packageName}/package.json`)), ".size-limit.ts"));
   const imported: unknown = await import(url.href);
+  // A build-time guard, not a runtime shape reader: the site build fails with the file and field that missed the
+  // shape, so the budgets and provider facts cannot silently go stale.
   if (
     typeof imported !== "object" ||
     imported === null ||

@@ -163,15 +163,23 @@ function shadowCompactions(
 /** A spawn result: the spawn_agent tool's JSON output, or the object it already was. */
 const SpawnResult = z.looseObject({ agent_id: lenient(z.string()), task_name: lenient(z.string()) });
 
+/** The spawn result as the transcript carries it: the object, or the JSON text of one. */
+const SpawnOutput = z.union([SpawnResult, lenient(z.string())]);
+
 function spawnResultOf(output: unknown): z.output<typeof SpawnResult> | undefined {
-  if (typeof output !== "string") {
-    return z.safeParse(SpawnResult, output).data;
-  }
-  try {
-    return z.safeParse(SpawnResult, JSON.parse(output)).data;
-  } catch {
+  const decoded = z.safeParse(SpawnOutput, output).data;
+  if (decoded === undefined) {
     return undefined;
   }
+  // A string member of the known union: the result's JSON text, which the schema cannot parse itself.
+  if (typeof decoded === "string") {
+    try {
+      return z.safeParse(SpawnResult, JSON.parse(decoded)).data ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return decoded;
 }
 
 /**

@@ -22,7 +22,7 @@ import {
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
-import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "../records/record.js";
+import { type ClaudeCodeRecordValue, claudeCodeRecordVersion, parseClaudeCodeRecord } from "../records/record.js";
 import { type ClaudeCodeAgentMeta, claudeCodeSessionStem } from "../layout.js";
 import { applySnapshots, snapshotCapabilities } from "./prompt-snapshot.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../records/usage.js";
@@ -304,9 +304,7 @@ export function translateClaudeCodeRecords(
     }
     sessionId ||= rec.sessionId;
     cwd ||= rec.cwd;
-    if (!agentVersion && typeof rec.version === "string") {
-      agentVersion = rec.version;
-    }
+    agentVersion ||= claudeCodeRecordVersion(rec.version);
     const agentId = claudeCodeLaneOf(rec, record.file, options.agentForFile);
     const parentId = rec.parentUuid;
     if (uuid) {

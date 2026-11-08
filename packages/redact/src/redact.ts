@@ -154,6 +154,8 @@ export function redactText(text: string, options: RedactOptions): string {
 }
 
 function redactValue(value: unknown, options: RedactOptions): unknown {
+  // A deep walker over values of an unknown shape, like the deep-freeze helpers: the string, array and plain-object
+  // decisions are the walk itself, not a shape guard on one record.
   if (typeof value === "string") {
     return redactText(value, options);
   }

@@ -227,6 +227,8 @@ export function createLanes<E = never, R = never>(
                 )
               );
         return Effect.map(timed, (result): ActivationExit<E> => {
+          // Narrowing the race's known union: a string is the stop reason the stop or the timeout delivered; the
+          // other member is the activation's own exit.
           if (typeof result !== "string") {
             return exitOf(key, result);
           }
