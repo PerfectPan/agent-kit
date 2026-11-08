@@ -253,7 +253,7 @@ export function applyLocked(
     // install will have created within the resolved installation roots. Only these, once the step that creates them
     // has run, become ledger claims; a step that never runs, or an apply that dies first, stays unclaimed.
     const platform = yield* PlatformService;
-    const statNow = (path: string) => Effect.promise(() => platform.fs.stat(path));
+    const statNow = (path: string) => Effect.tryPromise(() => platform.fs.stat(path));
     const roots = plan.toSnapshot().target.roots;
     const withinRoots = (dir: string): boolean => roots.some((root) => dir === root || dir.startsWith(`${root}/`));
     const missingAncestors = new Map<string, string[]>();
@@ -263,7 +263,17 @@ export function applyLocked(
       }
       const missing: string[] = [];
       for (let dir = parentOf(step.locator.path); withinRoots(dir); dir = parentOf(dir)) {
-        if ((yield* statNow(dir)) !== undefined) {
+        const seen = yield* Effect.match(statNow(dir), {
+          onFailure: () => null,
+          onSuccess: (stat) => stat
+        });
+        if (seen === null) {
+          // The stat failed, so whether this directory exists is unknown: the walk stops, and nothing unknown is
+          // claimed — the entries the walk already proved missing stay, since their claims only land when the
+          // step that creates them succeeds.
+          break;
+        }
+        if (seen !== undefined) {
           // The directory and every ancestor above it were already there.
           break;
         }
@@ -407,20 +417,20 @@ export function applyLocked(
     // after its last owner's use ends. The walk goes upward through positively claimed directories only and stops
     // at pre-existing, unknown, nonempty, symlinked or externally managed paths; the removal itself is
     // nonrecursive and refuses a nonempty directory.
-    const releasedDirs: string[] = [];
+    const releasedDirs = new Set<string>();
     const removals = applied.filter((step) => step.action === "remove");
     if (removals.length > 0) {
+      const owner = plan.bundle.owner;
       const directories = loaded.ledger.toSnapshot().directories ?? {};
       const chains = removals.map((step) => {
-        const chain: { readonly path: string; readonly last: boolean }[] = [];
+        const chain: { readonly path: string; readonly last: boolean; readonly claimed: boolean }[] = [];
         for (let dir = parentOf(step.locator.path); ; dir = parentOf(dir)) {
           const claim = directories[dir];
           if (claim === undefined) {
             break;
           }
-          const last = claim.owners.length === 1;
-          chain.push({ path: dir, last });
-          if (!last) {
+          chain.push({ path: dir, last: claim.owners.length === 1, claimed: claim.owners.includes(owner) });
+          if (claim.owners.length > 1) {
             break;
           }
         }
@@ -428,19 +438,31 @@ export function applyLocked(
       });
       const managed = yield* (yield* ExternalOwner).managedPaths(chains.flat().map((dir) => dir.path));
       for (const chain of chains) {
-        for (const { path, last } of chain) {
+        for (const { path, last, claimed } of chain) {
+          if (!last && !claimed) {
+            // The claim names other owners only: the directory stays, and this apply releases nothing of it.
+            break;
+          }
           if (!last) {
             // Other owners still use the directory: this owner's claim ends, the directory stays.
-            releasedDirs.push(path);
+            releasedDirs.add(path);
             break;
           }
           if (managed.has(path)) {
             break;
           }
-          const found = yield* statNow(path);
+          const found = yield* Effect.match(statNow(path), {
+            onFailure: () => null,
+            onSuccess: (stat) => stat
+          });
+          if (found === null) {
+            // The stat failed, so the directory's state is unknown: stop the chain without releasing its claim,
+            // rather than failing the apply after its steps have been saved.
+            break;
+          }
           if (found === undefined) {
             // Gone already, by an interrupted cleanup: release the claim and keep walking.
-            releasedDirs.push(path);
+            releasedDirs.add(path);
             continue;
           }
           if (found.kind !== "dir") {
@@ -457,12 +479,16 @@ export function applyLocked(
           if (removed !== true) {
             break;
           }
-          releasedDirs.push(path);
+          releasedDirs.add(path);
         }
       }
     }
-    if (createdDirs.size > 0 || releasedDirs.length > 0) {
-      const transition = loaded.ledger.updateDirectories(plan.bundle.owner, [...createdDirs], releasedDirs.toSorted());
+    if (createdDirs.size > 0 || releasedDirs.size > 0) {
+      const transition = loaded.ledger.updateDirectories(
+        plan.bundle.owner,
+        [...createdDirs],
+        [...releasedDirs].toSorted()
+      );
       if (transition.state !== loaded.ledger) {
         loaded = yield* saveLedger(record.scope, loaded, transition);
       }
