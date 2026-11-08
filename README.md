@@ -13,10 +13,10 @@ so your code does not change when a new Agent arrives.
 
 Guides and the API reference, in English and Chinese: [perfectpan.github.io/agent-kit](https://perfectpan.github.io/agent-kit/).
 
-| Package                                                          | Role                               | What it holds                                                                                |
-| ---------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time    | Agent detection, sessions and transcripts, token usage and cost (with a LiteLLM price snapshot), hook events, harness installation, ACP, redaction |
-| [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md) | Coordination: many Agents at once  | Single-instance process locks, fenced leases, keyed scheduling lanes                         |
+| Package                                                          | Role                              | What it holds                                                                                                                                      |
+| ---------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@rivus/agent-kit`](packages/agent-kit/README.md)               | Connection: one Agent at a time   | Agent detection, sessions and transcripts, token usage and cost (with a LiteLLM price snapshot), hook events, harness installation, ACP, redaction |
+| [`@rivus/agent-kit-collab`](packages/agent-kit-collab/README.md) | Coordination: many Agents at once | Single-instance process locks, fenced leases, keyed scheduling lanes                                                                               |
 
 Both packages release together at one version. Status: 0.x; a minor release may contain breaking changes. This README
 follows `main`, and the npm release can lag behind it until the next release; each package's `CHANGELOG.md` lists what
@@ -97,7 +97,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
 | pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | yes | Installation has no supported adapter. | Session storage has no supported reader. | yes | No supported ACP transport. |
+| zcode       | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 These are today's built-in providers. Any other Agent plugs in as a provider descriptor
 (`providers: [{ id: "my-agent", sessions: adapter }]`) and is checked with the conformance suites in `/testing`.

@@ -51,16 +51,16 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks | install                                | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | -------------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes                                    | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes                                    | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | yes   | Installation has no supported adapter. | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| gemini-cli  | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
+| pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -173,7 +173,11 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
-and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
+and Pi a bridge that forwards their events to the command. ZCode gets an owner-specific plugin under
+`~/.agents/agent-kit/zcode`, registered in the fixed `~/.zcode/cli/config.json` `plugins.dirs`; it does not change
+plugin or hook switches. This plugin can also activate existing user hook events that are not explicitly disabled.
+
+Events the dialect reads as ending something (phase
 `finish`: opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle; Pi `agent_end`,
 `agent_settled` and `session_shutdown`) are delivered synchronously: the bridge hands them to the command and waits
 for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded. A send that fails or

@@ -14,7 +14,7 @@ const nodeOnly = {
 // `pnpm size:update` sets every limit to the measured size plus headroom (scripts/lib/size-budgets.ts); do not edit them
 // by hand.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "42202 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "42480 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44697 B" },
@@ -31,7 +31,7 @@ export default [
   // command's first word for doctor, is counted with the entry. Configuration cleanup also carries the ledger
   // creation proof and its invalidation when the original entries disappear. Install-plan and bundle values own
   // validation and copy their inputs before freezing; legacy command content is parsed at the application boundary.
-  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "84577 B" },
+  { name: "@rivus/agent-kit/harness", path: "dist/harness.js", import: "*", limit: "84982 B" },
   // The entry keeps parsing to zod schemas, so it now carries zod/mini, bundled in by `vp pack`.
   { name: "@rivus/agent-kit/harness/events", path: "dist/harness/events.js", import: "*", limit: "8197 B" },
   // The Node platform parses system-error codes with zod/mini, which size-limit counts into the entry.

@@ -13,6 +13,8 @@ import { cursorHookDialect } from "@rivus/agent-kit-provider-cursor/hooks";
 // Complete built-ins for cross-agent integration tests while providers move out of contexts.
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
+import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
+import { zcodeInstallAdapter } from "@rivus/agent-kit-provider-zcode/install";
 export const builtinHookDialects: {
   readonly codex: typeof codexHookDialect;
   readonly "claude-code": typeof claudeCodeHookDialect;
@@ -21,7 +23,9 @@ export const builtinHookDialects: {
   readonly "gemini-cli": typeof geminiCliHookDialect;
   readonly cursor: typeof cursorHookDialect;
   readonly pi: typeof piHookDialect;
+  readonly zcode: typeof zcodeHookDialect;
 } = {
+  zcode: zcodeHookDialect,
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
   cursor: cursorHookDialect,
@@ -38,6 +42,7 @@ export const builtinInstallAdapters: {
   readonly "gemini-cli": typeof geminiCliInstallAdapter;
   readonly cursor: typeof cursorInstallAdapter;
   readonly pi: typeof piInstallAdapter;
+  readonly zcode: typeof zcodeInstallAdapter;
 } = {
   "claude-code": claudeCodeInstallAdapter,
   codex: codexInstallAdapter,
@@ -45,5 +50,6 @@ export const builtinInstallAdapters: {
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,
   opencode: opencodeInstallAdapter,
-  pi: piInstallAdapter
+  pi: piInstallAdapter,
+  zcode: zcodeInstallAdapter
 };

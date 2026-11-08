@@ -777,6 +777,9 @@ importers:
       '@rivus/agent-kit-provider-pi':
         specifier: workspace:*
         version: link:../providers/pi
+      '@rivus/agent-kit-provider-zcode':
+        specifier: workspace:*
+        version: link:../providers/zcode
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2

@@ -91,6 +91,30 @@ describe("document values", () => {
 });
 
 describe("JSONC entries", () => {
+  it.each(["plugin", 12, true, { key: "value" }, ["nested"]].map((value) => ({ value })))(
+    "removes the entire last inline array element: $value",
+    ({ value }) => {
+      const text = JSON.stringify({ plugins: { dirs: ["keep", value] }, enabled: false });
+      const removed = editJsonc(text, [{ path: ["plugins", "dirs", 1], value: undefined }]);
+      expect(removed).toBe('{"plugins":{"dirs":["keep"]},"enabled":false}');
+      expect(JSON.parse(removed)).toEqual({ plugins: { dirs: ["keep"] }, enabled: false });
+    }
+  );
+
+  it("preserves trailing single-line array trivia when removing the last element", () => {
+    const text = '{"dirs":["keep", "remove" /* trailing comment */ ], "other":true}';
+    expect(editJsonc(text, [{ path: ["dirs", 1], value: undefined }])).toBe(
+      '{"dirs":["keep" /* trailing comment */ ], "other":true}'
+    );
+  });
+
+  it("keeps the parser's multiline array deletion behavior with end-of-line comments", () => {
+    const text = '{\n  "dirs": [\n    "a", // note a\n    "b" // note b\n  ],\n  "enabled": false\n}\n';
+    expect(editJsonc(text, [{ path: ["dirs", 1], value: undefined }])).toBe(
+      '{\n  "dirs": [\n    "a"\n  ],\n  "enabled": false\n}\n'
+    );
+  });
+
   it("reads a document whose __proto__ key the parser turned into the prototype, and edits it", () => {
     const text = '{"__proto__": {"x": 1}, "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "a"}]}]}}';
     const parsed = parseJsonc(text);

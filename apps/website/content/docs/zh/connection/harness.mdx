@@ -47,11 +47,23 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Gemini CLI 写入一个扩展。
 - Grok 在 `~/.grok/hooks` 里写入一个文件。
 - Cursor 写入一个本地插件。
+- ZCode 在 `~/.agents/agent-kit/zcode` 下写入 kit 自己的插件，并将绝对路径登记到 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
 - opencode 和 Pi 写入一座桥，把它们的事件转发给命令。
 
 方言读作结束某事的事件（阶段 `finish`）同步送达。这些事件是 opencode 的 `session.idle`、`session.error`、`session.deleted`，以及空闲时的 `session.status`，还有 Pi 的 `agent_end`、`agent_settled` 和 `session_shutdown`。桥把它们交给命令，并等待它退出，最多 5 秒。因此结束事件会在下一个事件转发之前到达命令。
 
 发送失败或超时仍然不会向 Agent 抛出。其他事件转发时不等待。超时会杀掉桥启动的 shell，因此更长的结束 hook 会被截断。同一拍里刚好在结束之前转发的活动事件，仍可能在结束之后到达命令。
+
+## ZCode 插件
+
+插件和用户配置路径不随 `ZCODE_STORAGE_DIR` 变化，skill 放在 `~/.agents/skills`。安装不修改
+`hooks.enabled`、`plugins.enabled` 或逐插件的 `enabledPlugins`，也不会退回用户配置开关路线。
+已禁用的插件保持禁用。带 hook 的插件启用后，ZCode 还会运行用户已有的 `hooks.events`，除非该配置
+显式设置了 `enabled: false`。
+
+`verify` 检查安装文件和目录登记，不代表 ZCode 已启用插件。doctor 扫描 kit 插件的 hook 文件，
+但无法检查嵌套的用户 `hooks.events`、插件启用状态或 `timeoutMs`。hook 不运行时，检查用户配置中的
+`plugins.enabled` 和 `enabledPlugins["<manifest-name>@inline"]`。
 
 ## opencode 桥
 

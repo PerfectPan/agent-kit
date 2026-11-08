@@ -8,6 +8,11 @@ export const ZCODE_HOME: HomeRule = { envVar: HOME_ENV, defaultPath: [HOME_DIR] 
 export const ZCODE_DB_DIR = "cli/db";
 export const ZCODE_DATABASE = "db.sqlite";
 export const ZCODE_WAL_SUFFIX = "-wal";
+export const ZCODE_CONFIG_FILE = "cli/config.json";
+export const ZCODE_KIT_PLUGINS = "agent-kit/zcode";
+export const ZCODE_PLUGIN_MANIFEST = ".zcode-plugin/plugin.json";
+export const ZCODE_PLUGIN_HOOKS = "hooks/hooks.json";
+export const ZCODE_PLUGIN_DIRS_POINTER = "/plugins/dirs";
 // The login the CLI shares with the app sits under ZCODE_DATA_BASE_DIR (default the home directory), not under
 // ZCODE_STORAGE_DIR; the variable-named base is what a probe path cannot express.
 export const ZCODE_CREDENTIAL_FILE = "~/.zcode/v2/credentials.json";

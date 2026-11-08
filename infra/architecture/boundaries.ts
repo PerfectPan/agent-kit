@@ -185,7 +185,7 @@ export const boundaries: BoundaryRules = {
     [ZCODE]: {
       siblingEntries: [],
       providerFacts: "packages/providers/zcode/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "install", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
       testsOnly: [TESTING, PLATFORM_NODE],
@@ -219,7 +219,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX]
+      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
