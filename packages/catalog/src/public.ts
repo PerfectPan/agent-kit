@@ -17,3 +17,4 @@ export { requireService, lookupService } from "./domain/coding-agent/services/se
 export { type ServiceTable } from "./domain/coding-agent/value-objects/service-table.js";
 export { homeRuleOf } from "./domain/coding-agent/services/identity.js";
 export { type CapabilityUnsupported } from "./domain/coding-agent/errors/capability-unsupported.js";
+export { definedFields, type DefinedFields } from "./lib/defined-fields.js";
