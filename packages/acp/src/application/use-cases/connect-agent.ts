@@ -83,6 +83,11 @@ export interface ConnectAgentOptions {
    */
   readonly unsettledCancel?: "connection" | "session";
   /**
+   * How long the agent may take to exit after the abort that stops it sends SIGTERM, before SIGKILL; 2 s by default. A
+   * host that terminates on its own schedule sets a shorter one so its escalation does not wait out the platform's.
+   */
+  readonly killGraceMs?: number;
+  /**
    * Receives the agent's stderr as decoded text arrives, in order, so a host can log a running agent. It may return a
    * promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection.
    */
@@ -140,7 +145,7 @@ export interface AcpConnection {
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 30_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_CANCEL_TIMEOUT_MS = 5_000;
-/** How long closing waits for the process to exit after the platform stopped it. */
+/** How long closing waits for the agent to exit after the abort, past the SIGTERM-to-SIGKILL grace a caller may set. */
 const CLOSE_WAIT_MS = 10_000;
 /** How long a connection whose stream closed waits for the process's exit status. */
 const EXIT_STATUS_WAIT_MS = 1_000;
@@ -427,6 +432,12 @@ function timeoutsOf(options: ConnectAgentOptions): Timeouts {
       throw invalidOption(`${name} must be a positive number of milliseconds, got ${value}`);
     }
   }
+  const { killGraceMs } = options;
+  // Zero is a valid grace: the abort escalates to SIGKILL at once. Anything negative or non-finite would make the
+  // close wait shorter than the process stop needs, and a nonsensical one says the caller meant something else.
+  if (killGraceMs !== undefined && (!Number.isFinite(killGraceMs) || killGraceMs < 0)) {
+    throw invalidOption(`killGraceMs must be a non-negative number of milliseconds, got ${killGraceMs}`);
+  }
   return timeouts;
 }
 
@@ -450,6 +461,9 @@ function open(
   scope: Scope.Closeable
 ): Effect.Effect<AcpConnection, ConnectError> {
   return Effect.gen(function* () {
+    // The grace is captured once: the spawn passes it to the platform and the close wait covers it, so a caller
+    // that reuses and mutates its options object cannot make the two disagree.
+    const killGraceMs = options.killGraceMs;
     const unavailable = (cause: unknown): AgentUnavailable => ({
       _tag: "AgentUnavailable",
       agent,
@@ -468,7 +482,8 @@ function open(
             platform.process.spawn(profile.command, profile.args, {
               cwd: options.cwd,
               env: options.env,
-              signal: controller.signal
+              signal: controller.signal,
+              ...(killGraceMs === undefined ? {} : { killGraceMs })
             }),
           catch: unavailable
         });
@@ -488,7 +503,9 @@ function open(
             } else {
               shutdown(conn, "closed");
             }
-            return Effect.promise(() => settled).pipe(Effect.timeoutOption(CLOSE_WAIT_MS));
+            // The wait must cover the grace the caller set: an agent that ignores SIGTERM does not exit until the
+            // platform's SIGKILL lands, which is `killGraceMs` after the abort, so a long grace needs a longer wait.
+            return Effect.promise(() => settled).pipe(Effect.timeoutOption(CLOSE_WAIT_MS + (killGraceMs ?? 0)));
           })
         );
         return { child: spawned, exited: settled };
