@@ -746,6 +746,24 @@ describe("session bindings", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.effect("detach keeps the unsent first-block system prompt for the reload", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_LOAD: "load" },
+        profile: { systemPrompt: { in: "first-block" } }
+      });
+      const session = yield* connection.newSession({ systemPrompt: "be brief" });
+      yield* session.detach();
+      const reloaded = yield* connection.loadSession({ sessionId: session.sessionId });
+      const report = JSON.parse(eventTexts(yield* run(reloaded.prompt([text("inspect")])))[0] ?? "{}");
+      // The prompt the session never sent goes out with the reload's first prompt, as it would have originally.
+      expect(report.prompt).toEqual([
+        { type: "text", text: "be brief" },
+        { type: "text", text: "inspect" }
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("sends one session/load for concurrent loads of a session, which share it", () =>
     Effect.gen(function* () {
       const state = join(workDir(), "agent-state.json");

@@ -108,6 +108,11 @@ export interface ConnectionState {
    * request and share its LiveSession.
    */
   readonly loading: Map<string, Deferred.Deferred<LiveSession, LoadFailure>>;
+  /**
+   * Unsent first-block prompts of detached sessions, by session id: a `detach` before the first prompt keeps the
+   * system prompt here, and the reload of that session sends it again.
+   */
+  readonly detachedPromptBlocks: Map<string, readonly PromptBlock[]>;
   /** The connection's own Scope, a child of the caller's: closing it ends the process. */
   readonly scope: Scope.Closeable;
   readonly ended: Deferred.Deferred<ConnectionClosed>;
