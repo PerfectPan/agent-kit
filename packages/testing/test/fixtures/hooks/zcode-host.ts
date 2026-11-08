@@ -4,7 +4,7 @@ import { zcodePayload } from "../../../../providers/zcode/test/fixtures/hooks.js
 const payload = zcodePayload({
   cwd: "/u/me/work",
   hookEventName: "PreToolUse",
-  mode: "default",
+  mode: "build",
   riskLevel: "medium",
   sessionId: "ses_zc02",
   sideEffectScope: "workspace",

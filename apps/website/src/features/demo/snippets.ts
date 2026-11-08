@@ -78,7 +78,8 @@ const TURN_START: Record<string, string> = {
   "gemini-cli": "BeforeAgent",
   opencode: "session.status",
   pi: "before_agent_start",
-  cursor: "beforeSubmitPrompt"
+  cursor: "beforeSubmitPrompt",
+  zcode: "UserPromptSubmit"
 };
 
 const PROVIDER_FIELD: Record<Exclude<TaskKey, "coordinate">, string> = {

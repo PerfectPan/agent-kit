@@ -40,7 +40,7 @@ export function zcodePayload(input: Readonly<Record<string, unknown>>): Record<s
 
 const scope = {
   cwd: "/u/me/work",
-  mode: "default",
+  mode: "build",
   sessionId: "ses_zc01",
   timestamp: "2026-11-01T10:00:00.000Z",
   traceId: "trace-zc01",

@@ -3,10 +3,12 @@ import { ZCODE_HOST_FIELD, ZCODE_ID, ZCODE_SESSION_ENV } from "./facts.js";
 
 // Read from ZCode 3.17.2's engine (Contents/Resources/glm/zcode.cjs); ZCode documents no hook reference. Command hooks
 // come from `hooks.events.<Event>[]` in the user config `~/.zcode/cli/config.json` and in the workspace's `zcode.json`
-// and `.zcode/config.json` files from the git root down, and from an enabled plugin's `hooks/hooks.json` in Claude
-// Code's plugin format. Hooks run only when some config sets `hooks.enabled: true`; the shipped default is off. Each run
-// gets the payload as JSON on stdin: Claude Code's snake_case fields next to the camelCase hook input ZCode passes
-// through, and the environment carries `ZCODE_SESSION_ID` and `ZCODE_PROJECT_DIR` beside their `CLAUDE_*` equivalents.
+// and `.zcode/config.json` files from the git root down, and from an enabled plugin's `hooks/hooks.json` or
+// `plugin.json` `hooks` field in Claude Code's plugin format. Plugin hooks need no `hooks.enabled` switch and also
+// enable user events whose config omits it. The user switch independently enables user hooks and brings workspace
+// declarations into digest review; it does not control plugin hooks. See the provider README for the enabled gates.
+// Each run gets the payload as JSON on stdin: Claude Code's snake_case fields next to the camelCase hook input ZCode
+// passes through, and the environment carries `ZCODE_SESSION_ID` and `ZCODE_PROJECT_DIR` beside their `CLAUDE_*` equivalents.
 
 /** Every event reads the same top-level JSON fields. */
 const FIELDS: readonly string[] = [
