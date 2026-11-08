@@ -44,7 +44,7 @@ const turn = Effect.scoped(
 await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
 ```
 
-权限请求交给 `onPermission`。没有该回调，或没有给出回答时，请求被拒绝。
+权限请求交给 `onPermission`。没有该回调，或没有给出回答时，请求被拒绝。策略要回答“已取消”的回调可以返回 `{ outcome: "cancelled" }`，Agent 收到的是 cancelled 结果而不是拒绝。
 
 Agent 的 stderr 会按到达顺序以解码后的文本交给 `onStderr`，错误上附带的尾部日志保持不变。该回调不会被等待，也不会影响连接。
 
