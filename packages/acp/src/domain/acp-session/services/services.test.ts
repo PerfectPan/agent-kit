@@ -73,7 +73,9 @@ describe("session setup", () => {
     expect(sessionMeta(block, setup)).toEqual({ extra: 1 });
     expect(sessionMeta(block, {})).toBeUndefined();
     const blocks = [{ type: "text", text: "hi" }] as const;
-    expect(firstPromptBlocks(block, blocks, setup)).toEqual([{ type: "text", text: "be brief" }, ...blocks]);
+    // The blank line keeps the boundary for agents that join adjacent text blocks (dsh-acp).
+    expect(firstPromptBlocks(block, blocks, setup)).toEqual([{ type: "text", text: "be brief\n\n" }, ...blocks]);
+    expect(firstPromptBlocks(block, [], setup)).toEqual([{ type: "text", text: "be brief\n\n" }]);
     expect(firstPromptBlocks(meta, blocks, setup)).toEqual(blocks);
   });
 });
