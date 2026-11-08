@@ -19,8 +19,11 @@ function tokens(namespace: string): string[] {
 }
 
 it.each(tokens("text"))("merges text-%s as a font size", (name) => {
-  expect(cn(`text-${name}`, "text-ink")).toBe(`text-${name} text-ink`);
-  expect(cn("text-sm", `text-${name}`)).toBe(`text-${name}`);
+  // The utility is assembled from a theme token on purpose; the Tailwind compiler never scans this test file, so
+  // no CSS can be purged here. tailwind-merge sees the finished string either way.
+  const utility = `text-${name}`;
+  expect(cn(utility, "text-ink")).toBe(`${utility} text-ink`);
+  expect(cn("text-sm", utility)).toBe(utility);
 });
 
 it.each([
@@ -31,6 +34,8 @@ it.each([
   ["container", "max-w-md", "max-w"]
 ] as const)("merges every --%s token over a default of the same kind", (namespace, fallback, prefix) => {
   for (const name of tokens(namespace)) {
-    expect(cn(fallback, `${prefix}-${name}`)).toBe(`${prefix}-${name}`);
+    // Same as above: the token sweep builds the class from the theme, which the compiler never sees here.
+    const utility = `${prefix}-${name}`;
+    expect(cn(fallback, utility)).toBe(utility);
   }
 });
