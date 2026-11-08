@@ -146,6 +146,7 @@ const DEFAULT_HANDSHAKE_TIMEOUT_MS = 30_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_CANCEL_TIMEOUT_MS = 5_000;
 /** How long closing waits for the process to exit after the platform stopped it. */
+/** How long closing waits for the agent to exit after the abort, past the SIGTERM-to-SIGKILL grace a caller may set. */
 const CLOSE_WAIT_MS = 10_000;
 /** How long a connection whose stream closed waits for the process's exit status. */
 const EXIT_STATUS_WAIT_MS = 1_000;
@@ -494,7 +495,11 @@ function open(
             } else {
               shutdown(conn, "closed");
             }
-            return Effect.promise(() => settled).pipe(Effect.timeoutOption(CLOSE_WAIT_MS));
+            // The wait must cover the grace the caller set: an agent that ignores SIGTERM does not exit until the
+            // platform's SIGKILL lands, which is `killGraceMs` after the abort, so a long grace needs a longer wait.
+            return Effect.promise(() => settled).pipe(
+              Effect.timeoutOption(CLOSE_WAIT_MS + (options.killGraceMs ?? 0))
+            );
           })
         );
         return { child: spawned, exited: settled };
