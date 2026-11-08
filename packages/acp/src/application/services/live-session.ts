@@ -55,6 +55,15 @@ export interface AcpSessionHandle {
    * runs to the end, also when the caller is interrupted, such as a permission callback that closes its own session.
    */
   close(): Effect.Effect<void>;
+  /**
+   * Cancels a running turn, then forgets the session on this connection without telling the agent: no `session/close`
+   * goes out, the agent keeps the session and runs it, and a later `loadSession` for its id sends `session/load`
+   * again — with the MCP servers of that call. A host that rotates per-session MCP credentials after a cancel thus
+   * reloads without closing the agent's session first, which some agents do not allow after `session/close`. The
+   * handle ends with this call. A cancel that does not settle within `cancelTimeoutMs` fails with `CancelUnsettled`
+   * and the session stays on the connection as it was.
+   */
+  detach(): Effect.Effect<void, CancelUnsettled | SessionClosed>;
 }
 
 /**
@@ -118,9 +127,15 @@ function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effec
 
 /**
  * The cancel protocol: `session/cancel`, then wait for the turn to end. The deadline covers both steps and the wait
- * cannot be interrupted, so the turn is either settled or invalidated when it returns.
+ * cannot be interrupted, so the turn is either settled or invalidated when it returns. With `onUnsettled: "fail"`,
+ * an unsettled cancel fails without the invalidation's side effects — no `session/close`, no connection shutdown, the
+ * session stays where it is — for a caller that judges the aftermath itself, as `detach` does.
  */
-function cancelTurn(conn: ConnectionState, live: LiveSession): Effect.Effect<void, CancelUnsettled | SessionClosed> {
+function cancelTurn(
+  conn: ConnectionState,
+  live: LiveSession,
+  options: { readonly onUnsettled?: "invalidate" | "fail" } = {}
+): Effect.Effect<void, CancelUnsettled | SessionClosed> {
   return Effect.suspend((): Effect.Effect<void, CancelUnsettled | SessionClosed> => {
     const turn = live.turn;
     const cancelled = step(live, live.session.cancel());
@@ -143,6 +158,16 @@ function cancelTurn(conn: ConnectionState, live: LiveSession): Effect.Effect<voi
       if (Option.isSome(settled)) {
         Deferred.doneUnsafe(outcome, Effect.void);
         return;
+      }
+      if (options.onUnsettled === "fail") {
+        const unsettled: CancelUnsettled = {
+          _tag: "CancelUnsettled",
+          sessionId: live.sessionId,
+          ...(primaryKey(live) === undefined ? {} : { sessionKey: primaryKey(live) }),
+          timeoutMs: conn.cancelTimeoutMs
+        };
+        Deferred.doneUnsafe(outcome, Effect.fail(unsettled));
+        return yield* Effect.fail(unsettled);
       }
       const unsettled = yield* invalidate(conn, live, turn);
       Deferred.doneUnsafe(outcome, Effect.fail(unsettled));
@@ -230,6 +255,32 @@ function closeSession(conn: ConnectionState, live: LiveSession): Effect.Effect<v
   }).pipe(Effect.uninterruptible);
 }
 
+/**
+ * Detaches like `closeSession`, but leaves the agent's session alone: it cancels a running turn, closes the session
+ * locally, and removes it from the connection, and no `session/close` goes out. The agent keeps the session, so a
+ * later `session/load` for its id runs against the session it kept, with whatever MCP servers that call carries.
+ * The unsent first-block prompt, if any, moves to the connection so the reload sends it with its first prompt.
+ */
+function detachSession(conn: ConnectionState, live: LiveSession): Effect.Effect<void, CancelUnsettled | SessionClosed> {
+  return Effect.gen(function* () {
+    if (live.session.toSnapshot().state === "closed") {
+      return;
+    }
+    // A cancel that does not settle fails the detach: invalidating here could send `session/close` or end the
+    // connection, which the detach contract promises not to do, and the turn would still be running on the agent
+    // while the caller reloads. The caller decides what an unsettled detach leaves behind.
+    yield* cancelTurn(conn, live, { onUnsettled: "fail" });
+    if (live.session.toSnapshot().state === "closed") {
+      return;
+    }
+    if (live.pendingBlocks.length > 0) {
+      conn.detachedPromptBlocks.set(live.sessionId, live.pendingBlocks);
+    }
+    step(live, { ok: true, value: live.session.close("closed") });
+    conn.sessions.delete(live.sessionId);
+  }).pipe(Effect.uninterruptible);
+}
+
 /** A handle on `live`; `sessionKey` is the key the caller opened it with, else the session's first key. */
 export function sessionHandle(
   conn: ConnectionState,
@@ -242,7 +293,8 @@ export function sessionHandle(
     snapshot: Effect.sync(() => live.session.toSnapshot()),
     prompt: (blocks) => prompt(conn, live, blocks),
     cancel: () => cancelTurn(conn, live),
-    close: () => closeSession(conn, live)
+    close: () => closeSession(conn, live),
+    detach: () => detachSession(conn, live)
   };
 }
 

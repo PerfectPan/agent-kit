@@ -313,6 +313,9 @@ function openLoaded(
     }
     const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
     conn.loading.set(sessionId, done);
+    // A detached session's unsent first-block prompt goes out with the reload's first prompt, as it would have with
+    // the original session's.
+    const detachedBlocks = conn.detachedPromptBlocks.get(sessionId);
     const load = request(
       conn,
       method,
@@ -321,7 +324,18 @@ function openLoaded(
         mcpServers: sessionMcpServers(options, defaults),
         ...metaOf(conn.profile, options)
       })
-    ).pipe(Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, [])));
+    ).pipe(
+      Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, detachedBlocks ?? [])),
+      // The stash is dropped only once the reload registered the session: a failed or interrupted load keeps it, so
+      // the retried load still sends the unsent first-block prompt.
+      Effect.tap(() =>
+        Effect.sync(() => {
+          if (detachedBlocks !== undefined) {
+            conn.detachedPromptBlocks.delete(sessionId);
+          }
+        })
+      )
+    );
     // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
     // it before it runs.
     return load.pipe(
@@ -596,6 +610,7 @@ function open(
       bindings,
       sessions: new Map(),
       loading: new Map(),
+      detachedPromptBlocks: new Map(),
       features: handshake.features,
       authMethods: handshake.authMethods,
       ...(options.onPermission === undefined ? {} : { onPermission: options.onPermission }),
