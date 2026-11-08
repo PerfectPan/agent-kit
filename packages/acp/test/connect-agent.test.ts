@@ -441,7 +441,7 @@ describe("connectAgent", () => {
       const first = JSON.parse(eventTexts(yield* run(blockSession.prompt([text("inspect")])))[0] ?? "{}");
       expect(first.meta).toBeNull();
       expect(first.prompt).toEqual([
-        { type: "text", text: "be brief" },
+        { type: "text", text: "be brief\n\n" },
         { type: "text", text: "inspect" }
       ]);
       const second = JSON.parse(eventTexts(yield* run(blockSession.prompt([text("inspect")])))[0] ?? "{}");
@@ -758,7 +758,7 @@ describe("session bindings", () => {
       const report = JSON.parse(eventTexts(yield* run(reloaded.prompt([text("inspect")])))[0] ?? "{}");
       // The prompt the session never sent goes out with the reload's first prompt, as it would have originally.
       expect(report.prompt).toEqual([
-        { type: "text", text: "be brief" },
+        { type: "text", text: "be brief\n\n" },
         { type: "text", text: "inspect" }
       ]);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
