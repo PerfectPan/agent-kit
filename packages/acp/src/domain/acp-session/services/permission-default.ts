@@ -28,11 +28,21 @@ export function permissionOutcome(
     return { outcome: "cancelled" };
   }
   if (decision !== undefined) {
-    if ("outcome" in decision) {
+    // An explicit cancelled outcome takes precedence over any option id the
+    // answer may still carry, such as one spread from an earlier allow: the
+    // agent must read a cancellation as one, never as the approval it names.
+    const outcome: string | undefined = "outcome" in decision ? decision.outcome : undefined;
+    if (outcome === "cancelled") {
       return { outcome: "cancelled" };
     }
-    if (request.options.some((option) => option.optionId === decision.optionId)) {
-      return { outcome: "selected", optionId: decision.optionId };
+    // An option the request offered selects it, even when the answer arrived
+    // in ACP's own selected shape (`{ outcome: "selected", optionId }`, which
+    // structurally fits the option-id arm); the outcome is read as a plain
+    // string, since an answer shaped by the agent's dialect may name another
+    // outcome at run time.
+    const optionId = "optionId" in decision ? decision.optionId : undefined;
+    if (optionId !== undefined && request.options.some((option) => option.optionId === optionId)) {
+      return { outcome: "selected", optionId };
     }
   }
   const reject = optionOfKind(request, "reject_once") ?? optionOfKind(request, "reject_always");

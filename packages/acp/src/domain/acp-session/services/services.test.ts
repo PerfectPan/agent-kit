@@ -45,6 +45,23 @@ describe("permissionOutcome", () => {
     expect(permissionOutcome(offered, { outcome: "cancelled" }, false)).toEqual({ outcome: "cancelled" });
     expect(permissionOutcome(offered, { outcome: "cancelled" }, true)).toEqual({ outcome: "cancelled" });
   });
+
+  it("selects an offered option that arrives in the agent's own selected shape", () => {
+    const offered = request(["allow_once", "reject_once"]);
+    expect(permissionOutcome(offered, { outcome: "selected", optionId: "allow_once" } as never, false)).toEqual({
+      outcome: "selected",
+      optionId: "allow_once"
+    });
+    // A cancellation that still carries a spread-in option id cancels, never approves.
+    expect(permissionOutcome(offered, { outcome: "cancelled", optionId: "allow_once" } as never, false)).toEqual({
+      outcome: "cancelled"
+    });
+    // A selected shape naming an option that was not offered still denies.
+    expect(permissionOutcome(offered, { outcome: "selected", optionId: "invented" } as never, false)).toEqual({
+      outcome: "selected",
+      optionId: "reject_once"
+    });
+  });
 });
 
 describe("session setup", () => {
