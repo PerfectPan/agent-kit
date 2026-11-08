@@ -14,6 +14,7 @@ import { threeWayVerify } from "../../domain/ledger/services/three-way-verify.js
 import { lenient } from "../../lib/lenient.js";
 import {
   duplicateHooks,
+  type CommandHook,
   type HookFinding,
   hookHealth,
   type HookProblem
@@ -197,14 +198,52 @@ function agentHooks(
 }
 
 /**
+ * Every bridge file `agent` loads from its declared bridge directories, as one registration of its owner per event
+ * each forwards: a bridge carries no configuration entry, so its owner shows in the file's content, which the
+ * duplicate check matches the caller's markers against. A directory that does not exist or a file the agent's
+ * suffixes do not cover loads nothing.
+ */
+function bridgeHooks(
+  agent: CodingAgentId,
+  setup: PlanSetup
+): Effect.Effect<readonly CommandHook[], never, ArtifactFiles | PlatformService> {
+  return Effect.gen(function* () {
+    const adapter = lookupService(agent, setup.adapters);
+    const sources = adapter.ok ? (adapter.value.bridgeSources?.(setup.context) ?? []) : [];
+    const files = yield* ArtifactFiles;
+    const found: CommandHook[] = [];
+    for (const source of sources) {
+      const dir = yield* Effect.orElseSucceed(resolvePath(source.dir, true), () => source.dir);
+      // A directory that cannot be read loads nothing; doctor stays a report of what an agent runs.
+      const scanned = yield* Effect.orElseSucceed(
+        files.scan({
+          kind: "files",
+          dir,
+          ...(source.extensions === undefined ? {} : { extensions: source.extensions })
+        }),
+        () => []
+      );
+      for (const { locator, read } of scanned) {
+        const content = read.content;
+        const text = typeof content === "string" ? content : "";
+        for (const event of source.events) {
+          found.push({ event, command: locator.path, locator, markerText: text });
+        }
+      }
+    }
+    return found;
+  });
+}
+
+/**
  * Reports, without changing anything an agent reads: whether the ledger is readable and has unfinished operations,
  * whether the LedgerLock is free (and what its holder recorded), owned Artifacts that drifted from the ledger or are
  * broken symlinks, and the command hooks each agent loads (its settings files and every plugin's or extension's hooks
  * file, plus the other agents' files it runs) that never run (unknown events), use the wrong timeout unit, point at a
  * missing program whose first word `shell-quote` reads as a certain absolute path, or fire twice for one event: the
  * same command twice, or, given `markers`, two hooks of one application, such as an old hook in a settings file next
- * to the plugin that replaced it. Taking the lock to test it creates the lock files in the harness state directory
- * and nothing else.
+ * to the plugin that replaced it, or two bridges of one owner in a plugin directory. Taking the lock to test it
+ * creates the lock files in the harness state directory and nothing else.
  */
 export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], never, HarnessServices> {
   return Effect.gen(function* () {
@@ -297,7 +336,8 @@ export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], 
           )
         );
       }
-      findings.push(...duplicateHooks(agent, hooks, options.markers ?? []));
+      const bridges = yield* bridgeHooks(agent, setup);
+      findings.push(...duplicateHooks(agent, [...hooks, ...bridges], options.markers ?? []));
       checks.push(...findings.map(hookCheck));
     }
     return checks;

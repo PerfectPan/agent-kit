@@ -259,6 +259,61 @@ describe("doctor", () => {
   );
 
   it.effect(
+    "S140: counts a second bridge of one owner in a plugin directory as a duplicate, for every event it forwards",
+    () => {
+      const home = testHome();
+      return Effect.gen(function* () {
+        yield* applyInstall(
+          yield* planInstall(demoBundle("1.0.0", { legacyMarkers: [] }), {
+            agents: ["opencode", "pi"],
+            providers: { install: testInstall, hooks: testHooks }
+          })
+        );
+        // One bridge of the owner alone is clean, wherever the markers match its content.
+        expect(
+          (yield* doctor({
+            agents: ["opencode", "pi"],
+            markers: ["demo-hook"],
+            providers: { install: testInstall, hooks: testHooks }
+          })).filter((check) => check.name === "duplicate-hook")
+        ).toEqual([]);
+        // An older release's bridge under another name fires twice for every event, next to the installed one;
+        // a file the agent does not load (other suffixes) is not counted.
+        home.write(
+          ".config/opencode/plugins/demo-app-duplicate.js",
+          `// Generated for demo-app by @rivus/agent-kit\nconst COMMAND = "/opt/demo/bin/demo-hook --agent opencode"\n`
+        );
+        home.write(".config/opencode/plugins/demo-app-notes.txt", "/opt/demo/bin/demo-hook\n");
+        home.write(
+          ".pi/agent/extensions/demo-app-duplicate.ts",
+          `// Generated for demo-app by @rivus/agent-kit\nconst COMMAND = "/opt/demo/bin/demo-hook --agent pi"\n`
+        );
+        const duplicates = (yield* doctor({
+          agents: ["opencode", "pi"],
+          markers: ["demo-hook"],
+          providers: { install: testInstall, hooks: testHooks }
+        })).filter((check) => check.name === "duplicate-hook");
+        expect(
+          duplicates.filter((check) => check.message.startsWith("opencode ")).map((check) => check.message)
+        ).toEqual(
+          Object.keys(testHooks.opencode.events)
+            .toSorted()
+            .map((event) => `opencode runs 2 hooks of one application for ${event}`)
+        );
+        expect(duplicates.filter((check) => check.message.startsWith("pi ")).map((check) => check.message)).toEqual(
+          Object.keys(testHooks.pi.events)
+            .toSorted()
+            .map((event) => `pi runs 2 hooks of one application for ${event}`)
+        );
+        // The copy and the installed bridge carry the finding; the unloaded file never appears.
+        expect(
+          duplicates.every((check) => check.locator?.path.endsWith(".js") || check.locator?.path.endsWith(".ts"))
+        ).toBe(true);
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
+
+  it.effect(
     "audits Claude Code's settings.local.json in the runner that loads it too, not in Claude Code's own audit",
     () => {
       const home = testHome();
