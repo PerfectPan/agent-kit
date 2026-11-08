@@ -45,6 +45,14 @@ it("puts grok before cursor in the shell hooks table and resolves competing payl
   );
 });
 
+it("puts zcode before grok in the shell hooks table, since ZCode's payloads also carry Grok's marker", () => {
+  const ordered = Object.keys(tables.hooks);
+  expect(ordered.indexOf("zcode")).toBeLessThan(ordered.indexOf("grok"));
+  const zcode = { hook_event_name: "Stop", hookEventName: "Stop", session_id: "s1", sessionId: "s1", traceId: "t1" };
+  expect(readHookEvent("zcode", zcode, {}).agent).toBe("zcode");
+  expect(readHookEvent("grok", { hookEventName: "stop", sessionId: "s1" }, {}).agent).toBe("grok");
+});
+
 it("accounts for every built-in service with an implementation or an unsupported reason", () => {
   expect(Object.keys(unsupported).toSorted()).toEqual(ids);
   for (const id of ids) {
@@ -69,9 +77,9 @@ it("exports builtinProviders with the same ids and services as the individual ta
   }
 });
 
-it("keeps exactly the eight built-in ids and accepts third-party ids in the public type", () => {
+it("keeps exactly the nine built-in ids and accepts third-party ids in the public type", () => {
   expectTypeOf<BuiltinCodingAgentId>().toEqualTypeOf<
-    "claude-code" | "codex" | "cursor" | "dsh" | "gemini-cli" | "grok" | "opencode" | "pi"
+    "claude-code" | "codex" | "cursor" | "dsh" | "gemini-cli" | "grok" | "opencode" | "pi" | "zcode"
   >();
   expectTypeOf<"third-party">().toExtend<CodingAgentId>();
   for (const id of ids) {

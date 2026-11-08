@@ -115,6 +115,7 @@ const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
 const DSH = "@rivus/agent-kit-provider-dsh";
+const ZCODE = "@rivus/agent-kit-provider-zcode";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
@@ -182,6 +183,15 @@ export const boundaries: BoundaryRules = {
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },
+    [ZCODE]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/zcode/src/facts.ts",
+      providerServices: ["identity", "discovery", "hooks", "install", "usage"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      testsOnly: [TESTING, PLATFORM_NODE],
+      external: ["zod/mini"]
+    },
     [DSH]: {
       siblingEntries: [],
       providerFacts: "packages/providers/dsh/src/facts.ts",
@@ -219,7 +229,7 @@ export const boundaries: BoundaryRules = {
       dependsOn: [CATALOG, PLATFORM],
       external: ["zod/mini", "es-toolkit", "jsonc-parser", "@decimalturn/toml-patch", "shell-quote"],
       externalOnlyIn: { "shell-quote": ["src/application/services/hook-program.ts"] },
-      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX]
+      testsOnly: [PLATFORM_NODE, PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE]
     },
     // cost is pure computation that takes nothing but types from sessions, in its entry files too; check-dist keeps
     // the built `/cost` entry free of imports. Its LiteLLM adapter parses the price list with zod/mini, which `vp pack`
@@ -246,7 +256,7 @@ export const boundaries: BoundaryRules = {
       siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ACP, PLATFORM_NODE],
+      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE, ACP, PLATFORM_NODE],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

@@ -47,11 +47,23 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Gemini CLI gets an extension.
 - Grok gets a file in `~/.grok/hooks`.
 - Cursor gets a local plugin.
+- ZCode gets a kit-owned plugin under `~/.agents/agent-kit/zcode`, registered by absolute path in `~/.zcode/cli/config.json` `plugins.dirs`.
 - opencode and Pi get a bridge that forwards their events to the command.
 
 Events the dialect reads as ending something (phase `finish`) are delivered synchronously. Those events are opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle, and Pi `agent_end`, `agent_settled` and `session_shutdown`. The bridge hands them to the command and waits for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded.
 
 A send that fails or times out still does not throw into the Agent, and the other events are forwarded without waiting. The timeout kills the shell the bridge started, so a longer finish hook is cut off, and an activity event forwarded in the same tick just before a finish can still reach the command after it.
+
+## ZCode plugins
+
+The plugin and user config paths do not follow `ZCODE_STORAGE_DIR`; skills go in `~/.agents/skills`.
+Installation never changes `hooks.enabled`, `plugins.enabled` or per-plugin `enabledPlugins` values, and has no
+shared-config fallback. A disabled plugin stays disabled. Once a plugin with hooks is enabled, ZCode also runs
+existing user `hooks.events` unless their config explicitly sets `enabled: false`.
+
+`verify` checks installed files and the directory registration, not whether ZCode enabled the plugin. Doctor scans
+kit plugin hook files but cannot inspect the nested user `hooks.events`, plugin enablement or `timeoutMs` values.
+Check `plugins.enabled` and `enabledPlugins["<manifest-name>@inline"]` in the user config when hooks do not run.
 
 ## opencode bridge
 

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "msg_1",
+    "session_id": "ses_1",
+    "time_created": 1767225600000,
+    "data": {
+      "role": "assistant",
+      "modelId": "GLM-test",
+      "providerId": "account:bigmodel-test",
+      "cost": 0,
+      "tokens": { "input": 1000, "output": 200, "reasoning": 80, "cache": { "read": 900, "write": 50 }, "total": 1200 },
+      "time": { "created": 1767225600000, "completed": 1767225601000 }
+    }
+  },
+  { "id": "msg_2", "session_id": "ses_1", "time_created": 1767225602000, "data": { "role": "user" } },
+  {
+    "id": "msg_3",
+    "session_id": "ses_1",
+    "time_created": 1767225603000,
+    "data": {
+      "role": "assistant",
+      "modelId": "GLM-test",
+      "providerId": "account:bigmodel-test",
+      "cost": 0,
+      "tokens": { "input": 10, "output": 5, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+      "time": { "created": 1767225603000, "completed": 1767225604000 }
+    }
+  },
+  {
+    "id": "msg_4",
+    "session_id": "ses_2",
+    "time_created": 1767225605000,
+    "data": {
+      "role": "assistant",
+      "modelId": "GLM-test",
+      "providerId": "account:bigmodel-test",
+      "cost": 0,
+      "tokens": { "input": 999, "output": 1, "reasoning": 0, "cache": { "read": 0, "write": 0 }, "total": 1000 },
+      "time": { "created": 1764547200000, "completed": 1764547201000 }
+    }
+  },
+  {
+    "id": "msg_5",
+    "session_id": "ses_2",
+    "time_created": 1767225606000,
+    "data": {
+      "role": "assistant",
+      "modelId": "GLM-test",
+      "providerId": "account:bigmodel-test",
+      "cost": 0,
+      "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 }, "total": 0 },
+      "time": { "created": 1767225606000 }
+    }
+  },
+  {
+    "id": "msg_6",
+    "session_id": "ses_1",
+    "time_created": 1767225607000,
+    "data": {
+      "role": "assistant",
+      "modelId": "GLM-test",
+      "providerId": "account:bigmodel-test",
+      "cost": 0,
+      "time": { "created": 1767225607000, "completed": 1767225608000 }
+    }
+  }
+]

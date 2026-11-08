@@ -36,6 +36,7 @@ import { piProbe } from "@rivus/agent-kit-provider-pi/discovery";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
+import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -54,7 +55,9 @@ export const builtinProbeRecipes = {
   "gemini-cli": geminiCliProbe,
   grok: grokProbe
 };
+// ZCode first, as in the shell: its payloads also carry Grok's payload marker.
 export const builtinHookDialects = {
+  zcode: zcodeHookDialect,
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
   cursor: cursorHookDialect,

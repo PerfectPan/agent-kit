@@ -61,6 +61,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -173,7 +174,11 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
-and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
+and Pi a bridge that forwards their events to the command. ZCode gets an owner-specific plugin under
+`~/.agents/agent-kit/zcode`, registered in the fixed `~/.zcode/cli/config.json` `plugins.dirs`; it does not change
+plugin or hook switches. This plugin can also activate existing user hook events that are not explicitly disabled.
+
+Events the dialect reads as ending something (phase
 `finish`: opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle; Pi `agent_end`,
 `agent_settled` and `session_shutdown`) are delivered synchronously: the bridge hands them to the command and waits
 for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded. A send that fails or
@@ -462,6 +467,7 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 | Pi               | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
 | Cursor           | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
 | DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
+| ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
 Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp` has a launch
 profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI,
@@ -482,7 +488,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the eight agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each of the nine agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each
