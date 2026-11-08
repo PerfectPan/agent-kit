@@ -1,0 +1,2 @@
+{"type":"session","version":3,"id":"dsh-future","createdAt":1767236400000,"cwd":"/u/me/work"}
+{"type":"user/message","seq":1,"time":1767236401000,"data":{"role":"user","content":[{"type":"text","text":"future"}],"source":{"kind":"user"}}}

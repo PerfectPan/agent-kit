@@ -11,7 +11,7 @@ const builtinCodingAgents = Object.fromEntries(
 const home = "/u/me";
 
 /** Every built-in identity with a verified home, sorted. */
-const HOMED = ["claude-code", "codex", "gemini-cli", "grok", "opencode", "pi", "zcode"];
+const HOMED = ["claude-code", "codex", "dsh", "gemini-cli", "grok", "opencode", "pi", "zcode"];
 
 describe("built-in home rules", () => {
   it.each([
@@ -21,6 +21,7 @@ describe("built-in home rules", () => {
     ["grok", "/u/me/.grok"],
     ["opencode", "/u/me/.local/share/opencode"],
     ["pi", "/u/me/.pi/agent"],
+    ["dsh", "/u/me/.dsh"],
     ["zcode", "/u/me/.zcode"]
   ] as const)("defaults %s to %s", (id, path) => {
     expect(homeFromRule(id, builtinCodingAgents[id]!.home!, { env: {}, home })).toEqual({
@@ -99,7 +100,7 @@ describe("built-in home rules", () => {
   it("has a home rule exactly for the verified agents", () => {
     const withHome = Object.values(builtinCodingAgents).filter((agent) => agent.home !== undefined);
     expect(withHome.map((agent) => agent.id).toSorted()).toEqual(HOMED);
-    expect(Object.keys(builtinCodingAgents)).toHaveLength(8);
+    expect(Object.keys(builtinCodingAgents)).toHaveLength(9);
   });
 });
 

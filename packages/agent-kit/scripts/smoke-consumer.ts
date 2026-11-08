@@ -55,6 +55,21 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     target: ".grok/sessions/%2Fu%2Fme%2Fwork/smoke-session"
   },
   {
+    agent: "pi",
+    fixture: "packages/providers/pi/test/fixtures/sessions/conformance/plain",
+    target: ".pi/agent/sessions/plain"
+  },
+  {
+    agent: "dsh",
+    fixture: "packages/providers/dsh/test/fixtures/sessions/conformance/plain",
+    target: ".dsh/sessions/plain"
+  },
+  {
+    agent: "opencode",
+    fixture: "packages/providers/opencode/test/fixtures/sessions/conformance/opencode.db",
+    target: ".local/share/opencode/opencode.db"
+  },
+  {
     agent: "gemini-cli",
     fixture: "packages/providers/gemini-cli/test/fixtures/sessions/conformance/plain",
     target: ".gemini/tmp/smokeproject/chats"
@@ -285,6 +300,7 @@ const platform: Platform = createNodePlatform({ home: ${JSON.stringify(home)}, e
 const pricing = createPricing({
   "claude-test": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75, cacheWrite1h: 6 },
   "gpt-test": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
+  "test-model": { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1 },
   "gemini-test": { input: 2, output: 8, cacheRead: 0.2, cacheWrite: 2, cacheWrite1h: 4 }
 });
 for (const agent of seeded) {
@@ -304,6 +320,10 @@ for (const agent of seeded) {
     assert.fail(\`\${agent}: loadTranscript failed with \${transcript.error._tag}\`);
   }
   assert.ok(transcript.value.events.length > 0, \`\${agent}: the transcript has no events\`);
+  if (builtinProviders.find((provider) => provider.id === agent)?.usage === undefined) {
+    console.log(\`\${agent}: \${transcript.value.events.length} events (no usage decoder)\`);
+    continue;
+  }
   const requests = transcript.value.events.filter((event) => event.kind === "request");
   const expected: Usage = {};
   for (const event of requests) {

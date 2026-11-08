@@ -51,16 +51,17 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes                         |
+| gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -456,21 +457,22 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                           |
-| ----------- | ------------------------------- | ----------------------------------------------------------------- |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
-| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
-| ZCode       | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
+| Agent            | Id                              | Home: override, default                                           |
+| ---------------- | ------------------------------- | ----------------------------------------------------------------- |
+| Claude Code      | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
+| Codex            | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
+| Grok             | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Gemini CLI       | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| opencode         | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi               | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Cursor           | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
+| ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
-Every agent in the table has a hook dialect in `/harness/events`. `/acp` has a launch profile for
-Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the
-facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the table except
-Cursor.
+Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp` has a launch
+profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI,
+Grok and opencode; a profile's `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads
+the usage of every agent in the table except Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
@@ -486,7 +488,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the eight agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each of the nine agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each

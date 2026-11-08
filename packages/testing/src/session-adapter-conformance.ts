@@ -26,10 +26,17 @@ import { isEqual, isPlainObject } from "es-toolkit";
 export interface ConformanceSession {
   /** The session file `discover` must return. */
   readonly path: string;
+  /** The session id, for a source that keeps several sessions in one file or database. */
+  readonly sessionId?: string;
   /** Every JSONL file of the session; defaults to `[path]`. */
   readonly files?: readonly string[];
-  /** Non-blank lines across `files`. */
+  /** Non-blank lines across `files`. Ignored when `recordKeys` names the records. */
   readonly records: number;
+  /**
+   * The records of a source with no lines to count, such as a SQLite database, as `${file}\0${line}` keys. When
+   * present, the record accounting checks these keys instead of reading the files.
+   */
+  readonly recordKeys?: readonly string[];
   /** Capabilities this session demonstrates. `compaction` also requires at least one shadowed event. */
   readonly capabilities: readonly Capability[];
 }
@@ -39,8 +46,11 @@ export interface SessionAdapterFixtures {
   /** A root whose sessions are exactly `sessions`. */
   readonly root: string;
   readonly sessions: readonly ConformanceSession[];
-  /** A root that lists `file`, a session larger than 128 KB, such as one built by `oversizedSession`. */
-  readonly oversized: { readonly root: string; readonly file: string };
+  /**
+   * A root that lists `file`, a session larger than 128 KB, such as one built by `oversizedSession`. A source that
+   * has no file ends, such as a database, leaves it undefined and skips the edge-budget check.
+   */
+  readonly oversized?: { readonly root: string; readonly file: string };
 }
 
 /** One named check; `run` rejects with an `Error` describing the first violation. */
@@ -144,7 +154,9 @@ function readLog(platform: SessionPlatform): ReadLog {
             }
           }
         }
-      }
+      },
+      ...(platform.sqlite === undefined ? {} : { sqlite: platform.sqlite }),
+      ...(platform.decompress === undefined ? {} : { decompress: platform.decompress })
     }
   };
 }
@@ -158,7 +170,11 @@ export function sessionAdapterConformance(
   fixtures: SessionAdapterFixtures
 ): ConformanceCheck[] {
   const { platform } = fixtures;
-  const refOf = (session: ConformanceSession): SessionRef => ({ agent: adapter.agent, path: session.path });
+  const refOf = (session: ConformanceSession): SessionRef => ({
+    agent: adapter.agent,
+    path: session.path,
+    ...(session.sessionId === undefined ? {} : { sessionId: session.sessionId })
+  });
   const load = async (session: ConformanceSession): Promise<Transcript> =>
     value(await adapter.load(platform, refOf(session)), `load ${session.path}`);
   const eachTranscript = async (
@@ -198,6 +214,9 @@ export function sessionAdapterConformance(
     {
       name: "reads at most 64 KB from each end of a large session",
       run: async () => {
+        if (fixtures.oversized === undefined) {
+          return;
+        }
         const { file, root } = fixtures.oversized;
         const { found, reads } = await discover(root);
         check(found.includes(file), `discover ${root} did not list ${file}`);
@@ -249,6 +268,12 @@ export function sessionAdapterConformance(
           for (const skip of transcript.skipped) {
             check(skip.reason.length > 0, `${skip.source.file}:${skip.source.line}: skipped without a reason`);
             covered.add(`${skip.source.file}\0${skip.source.line}`);
+          }
+          if (session.recordKeys !== undefined) {
+            for (const key of session.recordKeys) {
+              check(covered.has(key), `${key.replace("\0", ":")} is neither an event nor skipped`);
+            }
+            return;
           }
           let records = 0;
           for (const file of session.files ?? [session.path]) {

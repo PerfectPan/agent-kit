@@ -18,17 +18,17 @@ README 的支持表在单元格不是「是」时使用这些说法：
 - Cursor 的会话：会话存储没有受支持的读取器。
 - Cursor 的用量：用量存储没有受支持的解码器。
 - Cursor 的 ACP：没有受支持的 ACP 传输。
-- opencode 的会话：会话存储没有受支持的读取器。
-- Pi 的会话：会话存储没有受支持的读取器。
+- DeepSeek Harness 的 hook：没有受支持的 hook 方言。
+- DeepSeek Harness 的安装：没有受支持的安装适配器。
 - Pi 的 ACP：没有受支持的 ACP 传输。
 - ZCode 的会话：会话存储没有受支持的读取器。
 - ZCode 的 ACP：没有受支持的 ACP 传输。
 
 ## 主目录与名称
 
-表里的每个 Agent 在 `/harness/events` 里都有 hook 方言。
+表里除 DeepSeek Harness 外，每个 Agent 在 `/harness/events` 里都有 hook 方言。
 
-`/acp` 为 Claude Code（`claude-agent-acp`）、Codex（`codex-acp`）、Gemini CLI、Grok 和 opencode 提供启动配置。配置的 `warnings` 列出尚未对照该 Agent 核对过的事实。
+`/acp` 为 Claude Code（`claude-agent-acp`）、Codex（`codex-acp`）、DeepSeek Harness（`dsh --profile acp`）、Gemini CLI、Grok 和 opencode 提供启动配置。配置的 `warnings` 列出尚未对照该 Agent 核对过的事实。
 
 `/transcript/usage` 读取表里除 Cursor 以外每个 Agent 的用量。
 

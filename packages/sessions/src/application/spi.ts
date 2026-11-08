@@ -6,7 +6,7 @@ import type {
   HomeRule,
   Result
 } from "@rivus/agent-kit-catalog/public";
-import type { PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform/public";
+import type { Decompress, PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform/public";
 import type { ReadFailed, SessionNotFound } from "../domain/session/errors/session-read-error.js";
 import type {
   SessionHead,
@@ -30,6 +30,10 @@ import type { UsageRecord } from "../domain/usage/value-objects/usage-record.js"
  */
 export interface SessionPlatform {
   readonly fs: Pick<PlatformFs, "stat" | "list" | "read">;
+  /** Present when the host has SQLite, for an agent whose sessions live in a database. */
+  readonly sqlite?: PlatformSqlite;
+  /** Present when the host can decode a compressed session file. */
+  readonly decompress?: Decompress;
 }
 
 export interface DiscoverOptions {

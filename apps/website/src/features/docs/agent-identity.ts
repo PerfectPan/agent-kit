@@ -35,6 +35,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     }
   },
   {
+    id: "dsh",
+    name: "DeepSeek Harness",
+    aliases: [],
+    home: { en: "DSH_HOME (expands ~), ~/.dsh", zh: "DSH_HOME（展开 ~），~/.dsh" }
+  },
+  {
     id: "gemini-cli",
     name: "Gemini CLI",
     aliases: ["gemini"],

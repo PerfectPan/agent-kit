@@ -1,5 +1,6 @@
 import { codexCases } from "./provider-codex-cases.ts";
 import { claudeCodeCases } from "./provider-claude-code-cases.ts";
+import { dshCases } from "./provider-dsh-cases.ts";
 import { allowed, rejects, fresh, type Case } from "./case.ts";
 
 const PI = "@rivus/agent-kit-provider-pi";
@@ -7,6 +8,7 @@ const PI = "@rivus/agent-kit-provider-pi";
 export const providerCases: Case[] = [
   ...claudeCodeCases,
   ...codexCases,
+  ...dshCases,
   rejects(
     "discovery: gemini-cli is tests-only",
     "discovery",

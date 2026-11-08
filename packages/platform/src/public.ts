@@ -3,6 +3,8 @@ export type { Line, SplitLinesOptions } from "./lines.js";
 export type {
   ByteRange,
   ChildHandle,
+  Compression,
+  Decompress,
   DirEntry,
   Env,
   ExitStatus,
