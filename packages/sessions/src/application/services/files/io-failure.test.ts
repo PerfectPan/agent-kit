@@ -112,4 +112,30 @@ describe("catchIoFailure", () => {
     const unmarkedCode = getterThrows(new Error("x"), "code");
     await expect(read(throwing(() => unmarkedCode))).rejects.toThrow("getter code");
   });
+
+  it("keeps the sqlite and decompress capabilities on the guarded view", async () => {
+    // The plan calls this copy load-bearing: without it a guarded read of a database or compressed session loses
+    // the capability and reports a decode failure instead of reading the source.
+    const sqlite: NonNullable<SessionPlatform["sqlite"]> = {
+      open: () => {
+        throw new Error("not called");
+      }
+    };
+    const decompress: NonNullable<SessionPlatform["decompress"]> = (_format, bytes) => bytes;
+    const platform: SessionPlatform = {
+      fs: {
+        stat: async () => undefined,
+        list: async () => [],
+        read: async function* () {}
+      },
+      sqlite,
+      decompress
+    };
+    const result = await catchIoFailure(platform, "/caller/path", undefined, async (guarded) => {
+      expect(guarded.sqlite).toBe(sqlite);
+      expect(guarded.decompress).toBe(decompress);
+      return 1;
+    });
+    expect(result).toStrictEqual({ ok: true, value: 1 });
+  });
 });

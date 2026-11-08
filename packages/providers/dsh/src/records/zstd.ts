@@ -17,6 +17,19 @@ export interface DshText {
   codec?: "zstd";
 }
 
+/** Why a compressed source cannot be read: the host has no decompressor, or the bytes do not decode. */
+export type DshUndecodable = "no-decompressor" | "decode-failed";
+
+/** A whole-file read: the decoded text, or why a compressed file cannot be read. */
+export type DshTextRead = DshText | { readonly undecodable: DshUndecodable } | undefined;
+
+/** A head-slice read: the decoded prefix, or what a compressed head without previewable text holds. */
+export type DshHeadRead =
+  | { readonly text: string }
+  | { readonly zstd: true }
+  | { readonly undecodable: DshUndecodable }
+  | undefined;
+
 function u32(bytes: Uint8Array, at: number): number {
   return (bytes[at]! | (bytes[at + 1]! << 8) | (bytes[at + 2]! << 16) | (bytes[at + 3]! << 24)) >>> 0;
 }
@@ -139,25 +152,35 @@ export function decodeDshFrame(platform: SessionPlatform, bytes: Uint8Array, fra
   }
 }
 
-/** The whole text the complete frames decode to, joined. Undefined when the host cannot decode them. */
-function decodeFrames(platform: SessionPlatform, bytes: Uint8Array, frames: readonly DshFrame[]): string | undefined {
+/**
+ * The whole text the complete frames decode to, joined. A failure tells the caller why: the platform has no
+ * decompressor at all, or the decompressor rejected the bytes, so a caller can report each case honestly.
+ */
+function decodeFrames(
+  platform: SessionPlatform,
+  bytes: Uint8Array,
+  frames: readonly DshFrame[]
+): { ok: true; text: string } | { ok: false; reason: DshUndecodable } {
+  if (platform.decompress === undefined) {
+    return { ok: false, reason: "no-decompressor" };
+  }
   const texts: string[] = [];
   for (const frame of frames) {
     const text = decodeDshFrame(platform, bytes, frame);
     if (text === undefined) {
-      return undefined;
+      return { ok: false, reason: "decode-failed" };
     }
     texts.push(text);
   }
-  return texts.join("");
+  return { ok: true, text: texts.join("") };
 }
 
-/** The whole file's text, with `codec` set when it was compressed. Undefined when the host cannot decode it. */
+/** The whole file's text, with `codec` set when it was compressed. Undefined when the head is no zstd frame at all. */
 export async function readDshText(
   platform: SessionPlatform,
   path: string,
   options: { readonly signal?: AbortSignal } = {}
-): Promise<DshText | undefined> {
+): Promise<DshTextRead> {
   const bytes = await readBytes(platform, path, { start: 0 }, options);
   if (!dshIsCompressed(path)) {
     return { text: new TextDecoder().decode(bytes) };
@@ -166,28 +189,58 @@ export async function readDshText(
   if (frames === undefined || frames.length === 0) {
     return undefined;
   }
-  const text = decodeFrames(platform, bytes, frames);
-  return text === undefined ? undefined : { text, codec: "zstd" };
+  const decoded = decodeFrames(platform, bytes, frames);
+  return decoded.ok ? { text: decoded.text, codec: "zstd" } : { undecodable: decoded.reason };
 }
 
 /**
+ * The decoded-byte ceiling of a compressed head slice. A plain-file head previews at most `EDGE_BYTES` (64 KB) of
+ * text, so a compressed head must not let the same 64 KB of input expand without bound: a crafted head of a few
+ * thousand minimal RLE frames (each decoding to 128 KB) would otherwise make discovery allocate hundreds of
+ * megabytes from a 64 KB read. The same `EDGE_BYTES` ceiling keeps the compressed preview no larger than the plain
+ * one; a head whose prefix decodes past it degrades like a torn frame, to the mtime-only head.
+ */
+const HEAD_DECODED_BYTES = EDGE_BYTES;
+
+/**
  * As much text as the frames in the file's first 64 KB decode to. Discovery reads only this; a caller that needs
- * every record calls `readDshText`.
+ * every record calls `readDshText`. A compressed head that holds no complete frame, or whose decoded prefix passes
+ * `HEAD_DECODED_BYTES`, comes back as `{ zstd: true }` instead of a decode failure: the file is a compressed dsh
+ * log the head slice cannot preview, and its file mtime is its only known activity.
  */
 export async function readDshHead(
   platform: SessionPlatform,
   path: string,
   size: number,
   options: { readonly signal?: AbortSignal } = {}
-): Promise<string | undefined> {
+): Promise<DshHeadRead> {
   if (!dshIsCompressed(path)) {
     const bytes = await readBytes(platform, path, { start: 0, end: Math.min(size, EDGE_BYTES) }, options);
-    return new TextDecoder().decode(bytes);
+    return { text: new TextDecoder().decode(bytes) };
   }
   const head = await readBytes(platform, path, { start: 0, end: Math.min(size, EDGE_BYTES) }, options);
   const frames = scanDshFrames(head);
-  if (frames === undefined || frames.length === 0) {
+  if (frames === undefined) {
     return undefined;
   }
-  return decodeFrames(platform, head, frames);
+  if (frames.length === 0) {
+    return { zstd: true };
+  }
+  if (platform.decompress === undefined) {
+    return { undecodable: "no-decompressor" };
+  }
+  let text = "";
+  let decodedBytes = 0;
+  for (const frame of frames) {
+    const piece = decodeDshFrame(platform, head, frame);
+    if (piece === undefined) {
+      return { undecodable: "decode-failed" };
+    }
+    text += piece;
+    decodedBytes += new TextEncoder().encode(piece).byteLength;
+    if (decodedBytes > HEAD_DECODED_BYTES) {
+      return { zstd: true };
+    }
+  }
+  return { text };
 }

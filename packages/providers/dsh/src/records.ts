@@ -48,6 +48,22 @@ export function dshHeaderOf(value: unknown): DshHeaderValue | undefined {
   return z.safeParse(DshHeader, value).data;
 }
 
+/**
+ * The fields every dsh session generation's header carries. Detection reads them without pinning a generation, so
+ * an old-generation file still lists at discovery and fails `load` with `UnknownFormatGeneration`; a schema bound to
+ * one generation would hide it from detection.
+ */
+const DshSessionHeaderShape = z.looseObject({
+  type: z.literal("session"),
+  version: z.number(),
+  createdAt: z.number()
+});
+
+/** Whether `value` is a dsh session header of some generation: the shape `detect` accepts. */
+export function isDshSessionHeader(value: unknown): boolean {
+  return z.safeParse(DshSessionHeaderShape, value).data !== undefined;
+}
+
 const DshUsage = z.looseObject({
   inputTokens: lenient(z.number()),
   outputTokens: lenient(z.number()),

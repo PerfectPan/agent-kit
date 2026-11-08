@@ -74,6 +74,9 @@ async function detectPi(platform: SessionPlatform, ref: SessionRef): Promise<boo
   try {
     const value: unknown = JSON.parse(line);
     const record = z.safeParse(z.record(z.string(), z.unknown()), value).data;
+    // Hand-written field checks instead of `piHeaderOf`, which accepts a header missing `version` or `timestamp`
+    // and one carrying `createdAt`: detection must confirm a complete Pi header and tell it from a DeepSeek Harness
+    // header (both are `type: "session"` in a `.jsonl` file), and `createdAt` is the distinguishing field.
     return (
       record !== undefined &&
       record.type === "session" &&

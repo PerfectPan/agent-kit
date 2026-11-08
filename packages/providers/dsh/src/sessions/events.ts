@@ -402,7 +402,10 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         if (BOOKKEEPING.has(event.type)) {
           skip(record, event.type);
         } else {
-          skip(record, `event:${event.type}`);
+          // A type outside the bookkeeping set is content the harness recorded that this reader does not
+          // understand: like pi, codex and claude-code, it becomes an `unknown` event instead of vanishing, so a
+          // future harness event type stays visible in transcripts.
+          emit(baseEvent(record, "unknown", { type: event.type }, { ts }));
         }
         break;
     }

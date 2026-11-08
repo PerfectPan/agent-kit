@@ -30,6 +30,28 @@ export function dshVersionOf(path: string): number | undefined {
   return match[1] === undefined ? 0 : Number(match[1]);
 }
 
+/**
+ * After a format migration both generations stay in the `<id>` directory (`resolveGenerationInDirectory` in
+ * dsh-session-persistence-jsonl selects the numerically highest one, and the migration publishes the new file
+ * without removing the old), so only the highest generation counts. The maximum per directory is computed once,
+ * not per path. Discovery and the usage decoder share this keeper so a file one side lists is one the other reads.
+ */
+export function latestGenerationKeeper(): (path: string, all: ReadonlySet<string>) => boolean {
+  let listed: ReadonlySet<string> | undefined;
+  let highest = new Map<string, number>();
+  return (path, all) => {
+    if (all !== listed) {
+      listed = all;
+      highest = new Map<string, number>();
+      for (const candidate of all) {
+        const dir = dirnamePath(candidate);
+        highest.set(dir, Math.max(highest.get(dir) ?? -1, dshVersionOf(candidate) ?? -1));
+      }
+    }
+    return (dshVersionOf(path) ?? -1) === (highest.get(dirnamePath(path)) ?? -1);
+  };
+}
+
 /** The session id a file's records name when the header names none: the `<id>` directory the file lives in. */
 export function dshSessionIdOf(path: string): string {
   return basenamePath(dirnamePath(path));

@@ -6,6 +6,7 @@ import type { ProviderOptions, Provider } from "./providers/types.js";
 
 export { isSessionHead, readOriginal } from "@rivus/agent-kit-sessions/public";
 export type {
+  ReadOriginalError,
   SessionAdapter,
   SessionAdapters,
   SessionHead,

@@ -19,7 +19,6 @@ import {
   basenamePath,
   decodeIsFinal,
   decodeJsonlUsage,
-  dirnamePath,
   drain,
   fileSources,
   guardIo,
@@ -31,7 +30,7 @@ import {
 } from "@rivus/agent-kit-sessions/spi";
 
 import { DSH_ID, DSH_SESSION_VERSION } from "./facts.js";
-import { DSH_SESSION_FILES, dshIsCompressed, dshRoots, dshSessionIdOf, dshVersionOf } from "./layout.js";
+import { DSH_SESSION_FILES, dshIsCompressed, dshRoots, dshSessionIdOf, latestGenerationKeeper } from "./layout.js";
 import { dshAssistantOf, dshCompactionOf, dshEventOf, dshHeaderOf, dshRequestHeaderOf, dshUsageOf } from "./records.js";
 import { decodeDshFrame, isDshFramePrefix, scanDshFrames, startsDshFrame } from "./records/zstd.js";
 
@@ -200,28 +199,6 @@ const layout: JsonlUsageLayout = {
   file: sameFile((path) => ({ sessionId: dshSessionIdOf(path) })),
   decoder: dshUsageLines
 };
-
-/**
- * After a format migration both generations stay in the `<id>` directory (`resolveGenerationInDirectory` in
- * dsh-session-persistence-jsonl selects the numerically highest one, and the migration publishes the new file
- * without removing the old), so only the highest generation counts. The maximum per directory is computed once,
- * not per path.
- */
-function latestGenerationKeeper(): (path: string, all: ReadonlySet<string>) => boolean {
-  let listed: ReadonlySet<string> | undefined;
-  let highest = new Map<string, number>();
-  return (path, all) => {
-    if (all !== listed) {
-      listed = all;
-      highest = new Map<string, number>();
-      for (const candidate of all) {
-        const dir = dirnamePath(candidate);
-        highest.set(dir, Math.max(highest.get(dir) ?? -1, dshVersionOf(candidate) ?? -1));
-      }
-    }
-    return (dshVersionOf(path) ?? -1) === (highest.get(dirnamePath(path)) ?? -1);
-  };
-}
 
 const encoder = new TextEncoder();
 

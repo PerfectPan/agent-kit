@@ -1,6 +1,6 @@
 import zlib from "node:zlib";
 
-import type { Decompress } from "@rivus/agent-kit-platform/public";
+import type { Compression, Decompress } from "@rivus/agent-kit-platform/public";
 
 type DecodedChunk = { buffer: Uint8Array; bytesWritten: number };
 
@@ -40,7 +40,7 @@ export function createNodeDecompress(
   if (typeof decode !== "function") {
     return undefined;
   }
-  return (_format, bytes) =>
+  const decodeZstd = (bytes: Uint8Array): Uint8Array =>
     decompressFrames(bytes, (remaining) => {
       // Flush preserves available output from a torn final frame, so earlier record pointers remain readable.
       // Some Node versions stop after one frame; info reports the consumed input. Node's types omit this overload.
@@ -50,6 +50,19 @@ export function createNodeDecompress(
       }) as unknown as { buffer: Uint8Array; engine: { bytesWritten: number } };
       return { buffer, bytesWritten: engine.bytesWritten };
     });
+  // Exhaustive over `Compression`: a codec added to the union leaves its key missing here and fails the typecheck,
+  // so this capability cannot keep answering every format with zstd. The declared `undefined` keeps the lookup
+  // honest at runtime: a host passing a format outside the union finds no decoder and gets a clear error instead.
+  const decoders: { readonly [format in Compression]: ((bytes: Uint8Array) => Uint8Array) | undefined } = {
+    zstd: decodeZstd
+  };
+  return (format, bytes) => {
+    const decoder = decoders[format];
+    if (decoder === undefined) {
+      throw new Error(`unsupported compression format: ${format}`);
+    }
+    return decoder(bytes);
+  };
 }
 
 // The default import also works on Node releases with no Zstandard exports.

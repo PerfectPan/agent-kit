@@ -27,7 +27,6 @@ import {
   emptyPrompts,
   emptyTotals,
   finishPass,
-  isPrompt,
   joinPath,
   markOrphanToolResults,
   requestUsage
@@ -195,6 +194,8 @@ function translate(rows: SessionRows, dbPath: string): Transcript {
 
   for (const messageRow of rows.messages) {
     const messageSource = source(dbPath, "message", "data", messageRow.rowid, line++);
+    const parts = partsByMessage.get(messageRow.id) ?? [];
+    partsByMessage.delete(messageRow.id);
     let messageValue: unknown;
     try {
       messageValue = JSON.parse(messageRow.data) as unknown;
@@ -207,7 +208,6 @@ function translate(rows: SessionRows, dbPath: string): Transcript {
       skip(messageSource, "invalid-message");
       continue;
     }
-    const parts = partsByMessage.get(messageRow.id) ?? [];
     const created = message.time?.created ?? messageRow.time_created;
 
     if (message.role === "user") {
@@ -321,6 +321,15 @@ function translate(rows: SessionRows, dbPath: string): Transcript {
     }
   }
 
+  // A part no message consumed — its message row is missing, or the row was skipped before its parts (invalid
+  // JSON, an unknown shape, a role nothing translates) — is a skipped record, not a silent drop, so the record
+  // accounting sees every input row.
+  for (const parts of partsByMessage.values()) {
+    for (const partRow of parts) {
+      skip(source(dbPath, "part", "data", partRow.rowid, line++), "orphaned-part");
+    }
+  }
+
   markOrphanToolResults(events);
   assignSeq(events);
   const session: TranscriptSession = {
@@ -431,28 +440,108 @@ async function loadOpenCode(
   }
 }
 
+/**
+ * The summary of one OpenCode session in a bounded pass: message rows stream one at a time — the message list
+ * carries only ids and times, each message's `data` is fetched by rowid, and only that message's parts are loaded —
+ * so a large database session never materializes the whole transcript, the way the pi and dsh summaries run their
+ * `retain: false` translations.
+ */
 async function summarizeOpenCode(
   platform: SessionPlatform,
   ref: SessionRef,
   options: { signal?: AbortSignal; prompts?: SessionPromptsOptions } = {}
 ): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
-  const loaded = await loadOpenCode(platform, ref, options);
-  if (!loaded.ok) {
-    return loaded;
+  if (ref.sessionId === undefined) {
+    return err(readFailed(ref.path, "an OpenCode session needs its session id"));
   }
-  const totals = emptyTotals();
-  const prompts = emptyPrompts(options.prompts);
-  for (const event of loaded.value.events) {
-    if (event.kind === "request") {
-      addRequest(totals, requestUsage(event));
-    } else if (event.kind === "tool_result" && event.payload.isError === true) {
-      totals.failedTools += 1;
-    } else if (event.kind === "user" && isPrompt(event)) {
-      totals.turns += 1;
-      prompts.add(event.payload.text ?? "");
+  const database = openDatabase(platform, ref.path);
+  if (!database.ok) {
+    return database;
+  }
+  try {
+    options.signal?.throwIfAborted();
+    const session = database.value.prepare(`SELECT rowid FROM session WHERE id = ?`).get(ref.sessionId);
+    if (session === undefined) {
+      return err({ _tag: "SessionNotFound", path: ref.path });
     }
+    const totals = emptyTotals();
+    const prompts = emptyPrompts(options.prompts);
+    const seen = new Set<Capability>();
+    const messageRows = database.value
+      .prepare(`SELECT rowid, id, time_created FROM message WHERE session_id = ? ORDER BY time_created, id`)
+      .all(ref.sessionId)
+      .map((row) => ({ rowid: number(row.rowid), id: text(row.id) }));
+    const messageData = database.value.prepare(`SELECT data FROM message WHERE rowid = ?`);
+    const partsOf = database.value.prepare(
+      `SELECT rowid, time_created, data FROM part WHERE session_id = ? AND message_id = ? ORDER BY time_created, id`
+    );
+    for (const row of messageRows) {
+      options.signal?.throwIfAborted();
+      const data = messageData.get(row.rowid)?.data;
+      let messageValue: unknown;
+      try {
+        messageValue = JSON.parse(text(data)) as unknown;
+      } catch {
+        continue;
+      }
+      const message = opencodeMessageOf(messageValue);
+      if (message === undefined) {
+        continue;
+      }
+      if (message.role === "user") {
+        for (const partRow of partsOf.all(ref.sessionId, row.id)) {
+          let partValue: unknown;
+          try {
+            partValue = JSON.parse(text(partRow.data)) as unknown;
+          } catch {
+            continue;
+          }
+          const part = opencodePartOf(partValue);
+          if (part?.type === "text" && part.text) {
+            totals.turns += 1;
+            prompts.add(part.text);
+          }
+        }
+        continue;
+      }
+      if (message.role !== "assistant") {
+        continue;
+      }
+      seen.add("requests");
+      const usage = opencodeUsageOf(message.tokens);
+      if (usage !== undefined) {
+        seen.add("usage");
+      }
+      const payload: Parameters<typeof requestUsage>[0]["payload"] = usage === undefined ? {} : { usage };
+      addRequest(totals, requestUsage({ payload }));
+      for (const partRow of partsOf.all(ref.sessionId, row.id)) {
+        let partValue: unknown;
+        try {
+          partValue = JSON.parse(text(partRow.data)) as unknown;
+        } catch {
+          continue;
+        }
+        const part = opencodePartOf(partValue);
+        if (part?.type === "reasoning") {
+          seen.add("reasoning");
+        } else if (part?.type === "tool") {
+          const state = part.state;
+          if (
+            (state?.status === "completed" || state?.status === "error") &&
+            (state.status === "error" || state.error !== undefined)
+          ) {
+            totals.failedTools += 1;
+          }
+        }
+      }
+    }
+    const capabilities = OPENCODE_CAPABILITIES.filter((capability) => seen.has(capability));
+    return ok(finishPass(totals, capabilities, 0, prompts.list));
+  } catch (error) {
+    return err(readFailed(ref.path, error instanceof Error ? error.message : String(error), error));
+  } finally {
+    database.value.close();
   }
-  return ok(finishPass(totals, loaded.value.capabilities, 0, prompts.list));
 }
 
 async function detectOpenCode(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type SessionPlatform } from "@rivus/agent-kit-sessions/public";
+import { type SessionPlatform, isSessionHead } from "@rivus/agent-kit-sessions/public";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createMemoryPlatform } from "@rivus/agent-kit-testing/public";
@@ -64,5 +64,18 @@ describe("pi unknown generations fail loud", () => {
     if (!result.ok) {
       expect(result.error._tag).toBe("UnknownFormatGeneration");
     }
+  });
+});
+
+describe("pi discovery preview", () => {
+  it("carries the fixture's session_info title on the discovered head", async () => {
+    const platform = createMemoryPlatform({ files: await readTree(fixtures, "/pi") });
+    const heads = [];
+    for await (const item of adapter.discover(platform, "/pi/conformance")) {
+      heads.push(item);
+    }
+    const plain = heads.find((item) => item.ref.path === "/pi/conformance/plain/session.jsonl");
+    expect(plain).toBeDefined();
+    expect(plain !== undefined && isSessionHead(plain) && plain.title).toBe("Plain session");
   });
 });

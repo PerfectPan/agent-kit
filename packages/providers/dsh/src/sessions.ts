@@ -27,11 +27,9 @@ import {
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
 
-import * as z from "zod/mini";
-
 import { DSH_DISPLAY_NAME, DSH_ID } from "./facts.js";
-import { DSH_SESSION_FILES, dshIsCompressed, dshRoots } from "./layout.js";
-import { dshEventOf, dshHeaderOf } from "./records.js";
+import { DSH_SESSION_FILES, dshIsCompressed, dshRoots, latestGenerationKeeper } from "./layout.js";
+import { dshEventOf, dshHeaderOf, isDshSessionHeader } from "./records.js";
 import { DSH_CAPABILITIES, createDshTranslation, dshCapabilities } from "./sessions/events.js";
 import { previewDshText } from "./sessions/preview.js";
 import { splitDshRecords } from "./sessions/read.js";
@@ -44,6 +42,16 @@ function readFailed(path: string, message: string, cause?: unknown): ReadFailed 
     message,
     ...(cause === undefined ? {} : { cause })
   };
+}
+
+/** The failure a compressed source reports when the host has no decoder or the bytes do not decode. */
+function undecodable(path: string, reason: "no-decompressor" | "decode-failed"): ReadFailed {
+  return readFailed(
+    path,
+    reason === "no-decompressor"
+      ? "zstd decompression is not available on this platform"
+      : "the session file could not be decoded"
+  );
 }
 
 function failure(path: string, error: ReadFailed): SessionListFailure {
@@ -99,6 +107,13 @@ async function* discoverDsh(
   for (const item of failures) {
     yield item;
   }
+  // After a format migration both generations stay in the `<id>` directory, so only the newest generation lists:
+  // the selection `latestGenerationKeeper` makes, shared with the usage decoder, so a file discovery previews is one
+  // `load` can open. A directory that holds only an older generation still lists it, and `load` reports
+  // `UnknownFormatGeneration` for it.
+  const keep = latestGenerationKeeper();
+  const listed = new Set(paths);
+  paths = paths.filter((path) => keep(path, listed));
   options.onTotal?.(paths.length);
   for (const path of paths) {
     options.signal?.throwIfAborted();
@@ -107,12 +122,19 @@ async function* discoverDsh(
       if (stat?.kind !== "file") {
         continue;
       }
-      const text = await readDshHead(platform, path, stat.size, { signal: options.signal });
-      if (text === undefined) {
-        yield failure(path, readFailed(path, "the session file could not be decoded"));
+      const head = await readDshHead(platform, path, stat.size, { signal: options.signal });
+      if (head === undefined || "undecodable" in head) {
+        yield failure(
+          path,
+          head === undefined
+            ? readFailed(path, "the session file could not be decoded")
+            : undecodable(path, head.undecodable)
+        );
         continue;
       }
-      const preview = previewDshText(text);
+      // A compressed head that holds no complete frame, or whose decoded prefix exceeds the preview budget, has
+      // nothing to preview: the head keeps the file's mtime as its last activity, like a compressed tail does.
+      const preview = previewDshText("text" in head ? head.text : "");
       // A plain log's tail holds its last activity; the head alone would report only the start. A compressed tail is
       // not a frame boundary, so a compressed log keeps the file's mtime as its last activity.
       if (!dshIsCompressed(path) && stat.size > EDGE_BYTES) {
@@ -160,6 +182,9 @@ async function loadDsh(
   if (decoded.value === undefined) {
     return err(readFailed(ref.path, "the session file could not be decoded"));
   }
+  if ("undecodable" in decoded.value) {
+    return err(undecodable(ref.path, decoded.value.undecodable));
+  }
   const { records, skipped } = splitDshRecords(decoded.value.text, ref.path, decoded.value.codec);
   if (records.length === 0) {
     return err(unknownFormatGeneration(DSH_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
@@ -197,6 +222,9 @@ async function summarizeDsh(
   }
   if (decoded.value === undefined) {
     return err(readFailed(ref.path, "the session file could not be decoded"));
+  }
+  if ("undecodable" in decoded.value) {
+    return err(undecodable(ref.path, decoded.value.undecodable));
   }
   const { records } = splitDshRecords(decoded.value.text, ref.path, decoded.value.codec);
   const translation = createDshTranslation({
@@ -260,28 +288,26 @@ async function detectDsh(platform: SessionPlatform, ref: SessionRef): Promise<bo
   if (!ref.path.includes("session")) {
     return false;
   }
-  let text: string | undefined;
+  let head: Awaited<ReturnType<typeof readDshHead>>;
   try {
-    text = await readDshHead(platform, ref.path, Number.MAX_SAFE_INTEGER);
+    head = await readDshHead(platform, ref.path, Number.MAX_SAFE_INTEGER);
   } catch {
     return false;
   }
-  if (text === undefined) {
+  if (head === undefined || "undecodable" in head) {
     return false;
   }
-  const line = text.split("\n").find((candidate) => candidate.trim().length > 0);
+  if (!("text" in head)) {
+    // A compressed session whose first frame spans past the head cap decodes no text, but the file name pattern
+    // and the zstd frame magic identify it; decoding the whole file would cost a read detection does not need.
+    return true;
+  }
+  const line = head.text.split("\n").find((candidate) => candidate.trim().length > 0);
   if (line === undefined) {
     return false;
   }
   try {
-    const value: unknown = JSON.parse(line);
-    const record = z.safeParse(z.record(z.string(), z.unknown()), value).data;
-    return (
-      record !== undefined &&
-      record.type === "session" &&
-      typeof record.version === "number" &&
-      typeof record.createdAt === "number"
-    );
+    return isDshSessionHeader(JSON.parse(line) as unknown);
   } catch {
     return false;
   }
