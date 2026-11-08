@@ -12,12 +12,13 @@ export type DefinedFields<T> = {
 /**
  * The object without its `undefined`-valued keys: the conditional-spread builders `...(x === undefined ? {} : { key: x })`
  * and `...(x ? { key: x } : {})` become one literal with every key written out, so a key is never dropped and a
- * `""` or `0` is not lost to a truthiness test. Symbol keys and inherited fields survive, as the spread copies them;
- * the assertion is the helper's own boundary, where the shape read out of the value is the point.
+ * `""` or `0` is not lost to a truthiness test. The input is a plain record — the literal a spread would have copied —
+ * whose own enumerable fields, string- or symbol-keyed, are what the copy and the strip see; prototype fields are not
+ * part of a record. The assertion is the helper's own boundary, where the shape read out of the value is the point.
  */
-export function definedFields<T extends object>(value: T): DefinedFields<T> {
+export function definedFields<T extends Record<string, unknown>>(value: T): DefinedFields<T> {
   const fields = { ...value } as Record<string | symbol, unknown>;
-  for (const key of Object.keys(value)) {
+  for (const key of Reflect.ownKeys(fields)) {
     if (fields[key] === undefined) {
       delete fields[key];
     }

@@ -8,6 +8,14 @@ describe("definedFields", () => {
     expect(fields).toEqual({ a: 1, c: "", d: 0 });
   });
 
+  it("drops an undefined-valued symbol key too, and keeps a defined one", () => {
+    const defined = Symbol("defined");
+    const missing = Symbol("missing");
+    const fields = definedFields({ [defined]: 1, [missing]: undefined, a: "a" });
+    expect(fields[defined]).toBe(1);
+    expect(missing in fields).toBe(false);
+  });
+
   it("types a field that may be undefined optional without undefined, and a certain field required", () => {
     const build = (id: string | undefined, name: string) => definedFields({ id, name });
     const fields = build(undefined, "n");
