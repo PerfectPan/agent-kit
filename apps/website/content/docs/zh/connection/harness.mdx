@@ -87,6 +87,6 @@ opencode 桥按 opencode 发出的样子转发每条总线事件，并加上插�
 
 计划过程可能在账本锁下了结先前持有者尚未完成的操作。`verify` 可能确认一份落后于磁盘的账本。`doctor` 的锁检查可能在 harness 状态目录里创建锁文件。这些都不会改写 Agent 目标。
 
-`uninstall("my-app")` 只移除账本记录的内容，并保留用户改过的文件。
+`uninstall("my-app")` 只移除账本记录的内容，并保留用户改过的文件。安装在 agents 根目录内确证创建的目录会记入账本；卸载时，空的、且最后一个持有者离开的这类目录会被删除——预先存在、来历不明、非空、符号链接或被外部工具管理的目录绝不删除。
 
 Hook 载荷本身用 [Hook 事件](/docs/connection/hook-events) 读取。安装创建的路径不是发现证据。见 [Agent 检测](/docs/connection/discovery)。
