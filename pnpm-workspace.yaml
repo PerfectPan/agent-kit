@@ -21,7 +21,7 @@ catalog:
   '@arethetypeswrong/cli': 0.18.5
   '@decimalturn/toml-patch': ^3.3.1
   '@effect/tsgo': 0.57.0
-  '@effect/vitest': 4.0.6
+  '@effect/vitest': 4.1.1
   '@fontsource-variable/bricolage-grotesque': 5.3.0
   '@fontsource/jetbrains-mono': 5.3.0
   '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.7.0
@@ -40,7 +40,7 @@ catalog:
   '@vitejs/plugin-react': 6.1.2
   class-variance-authority: 0.7.1
   clsx: 2.1.1
-  effect: 4.0.6
+  effect: 4.1.1
   es-toolkit: ^1.53.0
   eslint-plugin-better-tailwindcss: 4.10.0
   fumadocs-core: 16.17.8
