@@ -9,8 +9,7 @@ export const unsupported: Readonly<
   codex: {},
   dsh: {
     hooks: "No supported hook dialect.",
-    install: "No supported installation adapter.",
-    usage: "Usage storage has no supported decoder."
+    install: "No supported installation adapter."
   },
   grok: {},
   cursor: {

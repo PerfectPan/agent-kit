@@ -350,7 +350,6 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         );
         break;
       }
-      case "compaction/summary":
       case "compaction/prune": {
         const compaction = dshCompactionOf(event.data);
         const eventValue = baseEvent(
@@ -364,6 +363,34 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         );
         emit(eventValue);
         shadow(compaction?.shadowedSeqs, eventValue);
+        break;
+      }
+      case "compaction/summary": {
+        const compaction = dshCompactionOf(event.data);
+        const eventValue = baseEvent(
+          record,
+          "compaction",
+          {
+            ...(compaction?.shadowedTokenCount === undefined ? {} : { preTokens: compaction.shadowedTokenCount }),
+            ...(compaction?.summary === undefined ? {} : { summary: compaction.summary })
+          },
+          { ts }
+        );
+        emit(eventValue);
+        shadow(compaction?.shadowedSeqs, eventValue);
+        // The summarization call never goes through the agent loop, so its usage rides on the event itself; count it
+        // as its own request, as the usage decoder does, so the summary's totals and the usage totals agree. A prune
+        // records no model call and never carries usage, so it produces no request.
+        const usage = dshUsageOf(compaction?.usage);
+        if (usage !== undefined) {
+          const id = lineId(record, 1);
+          const request: RequestPayload = {
+            granularity: "request",
+            ...(compaction?.model === undefined ? {} : { model: compaction.model }),
+            usage
+          };
+          emit(baseEvent(record, "request", request, { id, ts, requestId: `request:${id}` }));
+        }
         break;
       }
       case "session/title": {

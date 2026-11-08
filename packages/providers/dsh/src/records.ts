@@ -28,7 +28,8 @@ const DshHeader = z.looseObject({
   cwd: lenient(z.string()),
   parentSession: lenient(z.string()),
   delegationDepth: lenient(z.number()),
-  agentPreset: lenient(z.string())
+  agentPreset: lenient(z.string()),
+  isSeeded: lenient(z.boolean())
 });
 
 export interface DshHeaderValue {
@@ -40,6 +41,7 @@ export interface DshHeaderValue {
   parentSession?: string;
   delegationDepth?: number;
   agentPreset?: string;
+  isSeeded?: boolean;
 }
 
 export function dshHeaderOf(value: unknown): DshHeaderValue | undefined {
@@ -64,18 +66,26 @@ export interface DshUsageValue {
   reasoningTokens?: number;
 }
 
+/**
+ * The `usage` of a model call, in agent-kit's `Usage` convention. DeepSeek Harness counts `inputTokens` without the
+ * cache: its DeepSeek adapter stores the wire `input_tokens` as is and derives `totalTokens` as input + output +
+ * cacheRead + cacheWrite, and the Pi adapter maps `usage.input` the same way. `Usage.inputTokens` includes cache
+ * reads and writes, so they are added back; `totalTokens` keeps the logged value.
+ */
 export function dshUsageOf(value: unknown): Usage | undefined {
   const parsed = z.safeParse(DshUsage, value).data;
   if (!parsed) {
     return undefined;
   }
+  const input = parsed.inputTokens;
   return compactUsage({
-    ...(parsed.inputTokens === undefined ? {} : { inputTokens: parsed.inputTokens }),
-    ...(parsed.outputTokens === undefined ? {} : { outputTokens: parsed.outputTokens }),
-    ...(parsed.totalTokens === undefined ? {} : { totalTokens: parsed.totalTokens }),
-    ...(parsed.cacheReadTokens === undefined ? {} : { cacheReadTokens: parsed.cacheReadTokens }),
-    ...(parsed.cacheWriteTokens === undefined ? {} : { cacheWriteTokens: parsed.cacheWriteTokens }),
-    ...(parsed.reasoningTokens === undefined ? {} : { reasoningTokens: parsed.reasoningTokens })
+    inputTokens:
+      input === undefined ? undefined : input + (parsed.cacheReadTokens ?? 0) + (parsed.cacheWriteTokens ?? 0),
+    outputTokens: parsed.outputTokens,
+    totalTokens: parsed.totalTokens,
+    cacheReadTokens: parsed.cacheReadTokens,
+    cacheWriteTokens: parsed.cacheWriteTokens,
+    reasoningTokens: parsed.reasoningTokens
   });
 }
 
@@ -208,13 +218,21 @@ export function dshRequestHeaderOf(value: unknown): DshRequestHeaderValue | unde
 const DshCompaction = z.looseObject({
   shadowedSeqs: lenient(z.array(z.number())),
   shadowedTokenCount: lenient(z.number()),
-  summary: lenient(z.array(z.unknown()))
+  summary: lenient(z.array(z.unknown())),
+  // The compaction plugin's summarization call (`purpose: "compaction"`) never goes through the agent loop, so the
+  // call's provider, model and usage land on the `compaction/summary` event itself.
+  provider: lenient(z.string()),
+  model: lenient(z.string()),
+  usage: lenient(DshUsage)
 });
 
 export interface DshCompactionValue {
   shadowedSeqs?: number[];
   shadowedTokenCount?: number;
   summary?: readonly unknown[];
+  provider?: string;
+  model?: string;
+  usage?: DshUsageValue;
 }
 
 export function dshCompactionOf(value: unknown): DshCompactionValue | undefined {

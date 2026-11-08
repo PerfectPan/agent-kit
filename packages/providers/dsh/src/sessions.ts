@@ -35,7 +35,7 @@ import { dshEventOf, dshHeaderOf } from "./records.js";
 import { DSH_CAPABILITIES, createDshTranslation, dshCapabilities } from "./sessions/events.js";
 import { previewDshText } from "./sessions/preview.js";
 import { splitDshRecords } from "./sessions/read.js";
-import { readDshHead, readDshText } from "./zstd.js";
+import { readDshHead, readDshText } from "./records/zstd.js";
 
 function readFailed(path: string, message: string, cause?: unknown): ReadFailed {
   return {

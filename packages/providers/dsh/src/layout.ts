@@ -1,5 +1,5 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
-import { basenamePath, joinPath, type WalkSpec } from "@rivus/agent-kit-sessions/spi";
+import { basenamePath, dirnamePath, joinPath, type WalkSpec } from "@rivus/agent-kit-sessions/spi";
 
 import { DSH_SESSIONS_DIR } from "./facts.js";
 
@@ -28,4 +28,9 @@ export function dshVersionOf(path: string): number | undefined {
     return undefined;
   }
   return match[1] === undefined ? 0 : Number(match[1]);
+}
+
+/** The session id a file's records name when the header names none: the `<id>` directory the file lives in. */
+export function dshSessionIdOf(path: string): string {
+  return basenamePath(dirnamePath(path));
 }

@@ -1,6 +1,6 @@
 import { EDGE_BYTES, readBytes, type SessionPlatform } from "@rivus/agent-kit-sessions/spi";
 
-import { dshIsCompressed } from "./layout.js";
+import { dshIsCompressed } from "../layout.js";
 
 /** The Zstandard frame magic, little endian. */
 const MAGIC = 0xfd2fb528;
@@ -100,21 +100,56 @@ export function scanDshFrames(bytes: Uint8Array): DshFrame[] | undefined {
   return frames;
 }
 
-function decodeFrames(platform: SessionPlatform, bytes: Uint8Array, frames: readonly DshFrame[]): string | undefined {
+/** Whether `bytes` start at a frame: at least the magic number. A torn frame may still fail to complete. */
+export function startsDshFrame(bytes: Uint8Array): boolean {
+  return bytes.length >= 4 && u32(bytes, 0) === MAGIC;
+}
+
+/** The frame magic as bytes, little endian. */
+const MAGIC_BYTES = [0x28, 0xb5, 0x2f, 0xfd];
+
+/** Whether `bytes` are the first 1-3 bytes of a frame the writer just started appending: a torn magic prefix. */
+export function isDshFramePrefix(bytes: Uint8Array): boolean {
+  if (bytes.length === 0 || bytes.length >= 4) {
+    return false;
+  }
+  for (let at = 0; at < bytes.length; at++) {
+    if (bytes[at] !== MAGIC_BYTES[at]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * The text one complete frame decodes to, one frame per `decompress` call, so a caller that advances frame by frame
+ * gets each frame's own decoded length; the frames are never combined. Undefined when the host cannot decode it.
+ * The writer appends one frame per durable event batch and never splits a JSONL line across frames, so a frame's
+ * text is whole lines.
+ */
+export function decodeDshFrame(platform: SessionPlatform, bytes: Uint8Array, frame: DshFrame): string | undefined {
   const decompress = platform.decompress;
   if (decompress === undefined) {
     return undefined;
   }
-  const decoder = new TextDecoder();
-  let text = "";
   try {
-    for (const frame of frames) {
-      text += decoder.decode(decompress("zstd", bytes.subarray(frame.start, frame.end)), { stream: true });
-    }
+    return new TextDecoder().decode(decompress("zstd", bytes.subarray(frame.start, frame.end)));
   } catch {
     return undefined;
   }
-  return text + decoder.decode();
+}
+
+/** The whole text the complete frames decode to, joined. Undefined when the host cannot decode them. */
+function decodeFrames(platform: SessionPlatform, bytes: Uint8Array, frames: readonly DshFrame[]): string | undefined {
+  const texts: string[] = [];
+  for (const frame of frames) {
+    const text = decodeDshFrame(platform, bytes, frame);
+    if (text === undefined) {
+      return undefined;
+    }
+    texts.push(text);
+  }
+  return texts.join("");
 }
 
 /** The whole file's text, with `codec` set when it was compressed. Undefined when the host cannot decode it. */

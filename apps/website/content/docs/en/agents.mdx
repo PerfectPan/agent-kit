@@ -20,7 +20,6 @@ The README's support table uses these words where a cell is not "yes":
 - Cursor ACP: no supported ACP transport.
 - DeepSeek Harness hooks: no supported hook dialect.
 - DeepSeek Harness install: no supported installation adapter.
-- DeepSeek Harness usage: usage storage has no supported decoder.
 - Pi ACP: no supported ACP transport.
 
 ## Homes and names
@@ -29,7 +28,7 @@ Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness
 
 `/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor and DeepSeek Harness.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 

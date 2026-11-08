@@ -56,7 +56,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | Usage storage has no supported decoder. | yes                         |
+| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes                         |
 | gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
@@ -466,7 +466,7 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp` has a launch
 profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI,
 Grok and opencode; a profile's `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads
-the usage of every agent in the table except Cursor and DeepSeek Harness.
+the usage of every agent in the table except Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
