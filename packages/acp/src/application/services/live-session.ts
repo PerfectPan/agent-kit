@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import { createAcpPartTranslator, type TranscriptStreamPart } from "@rivus/agent-kit-sessions/public";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
@@ -108,13 +109,13 @@ function invalidate(conn: ConnectionState, live: LiveSession, turn: Turn): Effec
       { concurrency: "unbounded" }
     );
     const binding = outcomes.includes("failed") ? "failed" : outcomes.includes("removed") ? "removed" : outcomes[0];
-    const unsettled: CancelUnsettled = {
+    const unsettled: CancelUnsettled = definedFields({
       _tag: "CancelUnsettled",
       sessionId,
-      ...(sessionKey === undefined ? {} : { sessionKey }),
+      sessionKey,
       timeoutMs: conn.cancelTimeoutMs,
-      ...(binding === undefined ? {} : { binding })
-    };
+      binding
+    } satisfies CancelUnsettled);
     if (owned) {
       // A cancel that never settles fails the turn like a failed prompt: its open text and reasoning close into its
       // own stream first, so the partial text is this turn's event.
@@ -160,12 +161,12 @@ function cancelTurn(
         return;
       }
       if (options.onUnsettled === "fail") {
-        const unsettled: CancelUnsettled = {
+        const unsettled: CancelUnsettled = definedFields({
           _tag: "CancelUnsettled",
           sessionId: live.sessionId,
-          ...(primaryKey(live) === undefined ? {} : { sessionKey: primaryKey(live) }),
+          sessionKey: primaryKey(live),
           timeoutMs: conn.cancelTimeoutMs
-        };
+        } satisfies CancelUnsettled);
         Deferred.doneUnsafe(outcome, Effect.fail(unsettled));
         return yield* Effect.fail(unsettled);
       }
@@ -287,15 +288,15 @@ export function sessionHandle(
   live: LiveSession,
   sessionKey: string | undefined = primaryKey(live)
 ): AcpSessionHandle {
-  return {
+  return definedFields({
     sessionId: live.sessionId,
-    ...(sessionKey === undefined ? {} : { sessionKey }),
+    sessionKey,
     snapshot: Effect.sync(() => live.session.toSnapshot()),
     prompt: (blocks) => prompt(conn, live, blocks),
     cancel: () => cancelTurn(conn, live),
     close: () => closeSession(conn, live),
     detach: () => detachSession(conn, live)
-  };
+  } satisfies AcpSessionHandle);
 }
 
 /**

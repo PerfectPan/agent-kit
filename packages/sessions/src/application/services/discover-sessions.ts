@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import {
@@ -8,7 +9,7 @@ import {
 import { type SessionPreview } from "../../domain/session/value-objects/session-preview.js";
 import { sessionHead } from "../../domain/session/factories/session-head.js";
 import { edgeRecords, readEdges } from "./files/edges.js";
-import { walkFiles, type WalkSpec } from "./files/walk.js";
+import { walkFiles, type WalkOptions, type WalkSpec } from "./files/walk.js";
 import type { DiscoverOptions, SessionPlatform } from "../spi.js";
 
 export interface DiscoverSessionsOptions extends DiscoverOptions {
@@ -39,7 +40,7 @@ async function readHead(
     return undefined;
   }
   const preview = options.preview(edgeRecords(edges));
-  const head = sessionHead({ agent, path, ...(preview.sessionId ? { sessionId: preview.sessionId } : {}) }, preview, {
+  const head = sessionHead(definedFields({ agent, path, sessionId: preview.sessionId }), preview, {
     sizeBytes: edges.size,
     mtimeMs: edges.mtimeMs
   });
@@ -66,10 +67,15 @@ export async function* discoverSessions(
   let paths: string[];
   const unreadable: SessionListFailure[] = [];
   try {
-    paths = await walkFiles(platform, root, options.files, {
-      ...(signal ? { signal } : {}),
-      onError: (dir, error) => unreadable.push(failure(agent, dir, readFailed(dir, error)))
-    });
+    paths = await walkFiles(
+      platform,
+      root,
+      options.files,
+      definedFields({
+        signal,
+        onError: (dir, error) => unreadable.push(failure(agent, dir, readFailed(dir, error)))
+      } satisfies WalkOptions)
+    );
   } catch (error) {
     signal?.throwIfAborted();
     yield failure(agent, root, readFailed(root, error));

@@ -1,3 +1,5 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
+
 /** The SQLite row an event's original is, when the session lives in a database. */
 export interface SqliteSourcePointer {
   /** Table and column names; the reader validates both as SQL identifiers. */
@@ -38,12 +40,12 @@ export interface SkippedRecord {
 }
 
 export function sourceOf(record: SourcePointer): SourcePointer {
-  return {
+  return definedFields({
     file: record.file,
     offset: record.offset,
     length: record.length,
     line: record.line,
-    ...(record.codec === undefined ? {} : { codec: record.codec }),
-    ...(record.sqlite === undefined ? {} : { sqlite: record.sqlite })
-  };
+    codec: record.codec,
+    sqlite: record.sqlite
+  });
 }

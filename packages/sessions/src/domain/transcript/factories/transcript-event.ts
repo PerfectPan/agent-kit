@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import { basenamePath } from "../../../lib/paths.js";
@@ -24,15 +25,15 @@ export function createTranscript(
   capabilities: readonly Capability[],
   parsed: ParsedTranscript
 ): Transcript {
-  return {
+  return definedFields({
     agent,
-    ...(parsed.agentVersion === undefined ? {} : { agentVersion: parsed.agentVersion }),
+    agentVersion: parsed.agentVersion,
     session: parsed.session,
     capabilities: [...capabilities],
     agents: parsed.agents,
     events: parsed.events,
     skipped: parsed.skipped
-  };
+  });
 }
 
 /** `<file name>:<line>`, plus `:<part>` for the second and later events of one record. Stable across loads. */

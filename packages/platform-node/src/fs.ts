@@ -43,10 +43,10 @@ async function* readRange(path: string, range?: ByteRange): AsyncGenerator<Uint8
   if (end !== undefined && end <= start) {
     return;
   }
-  // Node's `end` is inclusive.
+  // Node's `end` is inclusive; an explicit `end: undefined` reads to the end of the file like an absent one.
   yield* createReadStream(path, {
     start,
-    ...(end === undefined ? {} : { end: end - 1 }),
+    end: end === undefined ? undefined : end - 1,
     highWaterMark: READ_CHUNK_BYTES
   });
 }

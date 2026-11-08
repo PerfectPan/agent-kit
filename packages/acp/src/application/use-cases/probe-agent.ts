@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -31,7 +31,7 @@ export function probeAgent(
   return Effect.scoped(
     Effect.gen(function* () {
       const connection = yield* connectAgent(agent, options);
-      const info = connection.agentInfo === undefined ? {} : { agentInfo: connection.agentInfo };
+      const info = definedFields({ agentInfo: connection.agentInfo });
       return yield* connection.newSession().pipe(
         Effect.flatMap((session) => session.close()),
         Effect.as<AgentProbe>({

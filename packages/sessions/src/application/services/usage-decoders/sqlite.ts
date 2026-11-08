@@ -1,4 +1,4 @@
-import { type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { type CodingAgentId, definedFields } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 
 import { basenamePath } from "../../../lib/paths.js";
@@ -80,13 +80,13 @@ function restoreSqliteSettlement(saved: unknown): SqliteSettlementState {
   const ids = (value: readonly (string | undefined)[] | undefined): string[] =>
     value?.filter((id): id is string => id !== undefined) ?? [];
   const row = state?.row;
-  return {
+  return definedFields({
     updated: state?.updated ?? 0,
     id: state?.id ?? "",
-    ...(row === undefined ? {} : { row }),
+    row,
     running: ids(state?.running),
     reported: ids(state?.reported)
-  };
+  });
 }
 
 /** When an agent's messages count as usage, over the rows the queries feed it. */
@@ -147,12 +147,15 @@ export function createSqliteSettlement(
     } catch {
       return undefined;
     }
-    return decode(value, {
-      id: row.id,
-      ...(row.sessionId === undefined ? {} : { sessionId: row.sessionId }),
-      source: { file: options.path, offset: 0, length: 0, line: row.row },
-      ...(options.final ? { settledAt: row.created } : {})
-    });
+    return decode(
+      value,
+      definedFields({
+        id: row.id,
+        sessionId: row.sessionId,
+        source: { file: options.path, offset: 0, length: 0, line: row.row },
+        settledAt: options.final ? row.created : undefined
+      })
+    );
   };
   const settle = (row: SqliteTableRow, out: UsageRecord[]): void => {
     const message = messageOf(row);
@@ -186,7 +189,7 @@ export function createSqliteSettlement(
     return out;
   };
   return {
-    position: () => ({ ...(state.row === undefined ? {} : { row: state.row }), updated: state.updated, id: state.id }),
+    position: () => definedFields({ row: state.row, updated: state.updated, id: state.id }),
     endByRow: () => {
       delete state.row;
     },
@@ -241,10 +244,11 @@ const messageRow = z.looseObject({ session_id: lenient(z.string()) });
 
 /**
  * The database's source when the file exists: the newer of the database's and its WAL's mtimes, so a change in either
- * is seen, with the database's size. `undefined` when there is no database file.
+ * is seen, with the database's size. `undefined` when there is no database file. Only `fs` is read, so a caller may
+ * pass the guarded view whose stat errors it can turn into failures.
  */
 export async function sqliteMessageSource(
-  platform: UsagePlatform,
+  platform: Pick<UsagePlatform, "fs">,
   agent: CodingAgentId,
   path: string,
   walSuffix: string
@@ -298,7 +302,8 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
     const io = guardIo(platform);
     let source: UsageSource | undefined;
     try {
-      source = await sqliteMessageSource(platform, agent, path, walSuffix);
+      // The guarded view: a stat errno is marked, so the catch maps it to a failure instead of rethrowing it.
+      source = await sqliteMessageSource(io.platform, agent, path, walSuffix);
     } catch (error) {
       signal?.throwIfAborted();
       const failure = io.failure(error, path);
@@ -314,19 +319,23 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
     }
     const changed = source.mtimeMs;
     const final = decodeIsFinal(options, changed);
-    const settlement = createSqliteSettlement(decode, {
-      path,
-      ...(from?.state !== undefined ? { state: from.state } : {}),
-      final
-    });
+    const settlement = createSqliteSettlement(
+      decode,
+      definedFields({
+        path,
+        state: from?.state,
+        final
+      })
+    );
     const queue: UsageRecord[] = [...(from?.queue ?? [])];
-    position.cursor = () => ({
-      agent,
-      offset: 0,
-      line: 0,
-      state: settlement.save(),
-      ...(queue.length > 0 ? { queue: [...queue] } : {})
-    });
+    position.cursor = () =>
+      definedFields({
+        agent,
+        offset: 0,
+        line: 0,
+        state: settlement.save(),
+        queue: queue.length > 0 ? [...queue] : undefined
+      });
     yield* drain(queue);
     const sqliteErrors = new WeakSet<object>();
     let db: SqliteDatabase | undefined;
@@ -346,14 +355,14 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
     const toRows = (rows: Record<string, SqliteValue>[]): SqliteTableRow[] =>
       rows.map((row) => {
         const sessionId = z.safeParse(messageRow, row).data?.session_id;
-        return {
+        return definedFields({
           id: String(row.id),
           row: Number(row.row),
           updated: Number(row.time_updated),
           created: Number(row.time_created),
-          ...(sessionId === undefined ? {} : { sessionId }),
+          sessionId,
           data: String(row.data)
-        };
+        });
       });
     try {
       // The first read goes by row id, a single pass over the table; the following pages go by the newest change.

@@ -1,4 +1,4 @@
-import { lookupService } from "@rivus/agent-kit-catalog/public";
+import { definedFields, lookupService } from "@rivus/agent-kit-catalog/public";
 import type { InstallProviders } from "../providers.js";
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect";
 import * as z from "zod/mini";
 
 import { foreignHookFiles } from "../../domain/bundle/services/hook-registrations.js";
-import { type HookSource } from "../../domain/bundle/spi/install-adapter.js";
+import { type ArtifactSource, type HookSource } from "../../domain/bundle/spi/install-adapter.js";
 import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
 import { type ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isBrokenSymlink } from "../../domain/install-plan/services/observation.js";
@@ -216,11 +216,7 @@ function bridgeHooks(
       const dir = yield* Effect.orElseSucceed(resolvePath(source.dir, true), () => source.dir);
       // A directory that cannot be read loads nothing; doctor stays a report of what an agent runs.
       const scanned = yield* Effect.orElseSucceed(
-        files.scan({
-          kind: "files",
-          dir,
-          ...(source.extensions === undefined ? {} : { extensions: source.extensions })
-        }),
+        files.scan(definedFields({ kind: "files", dir, extensions: source.extensions } satisfies ArtifactSource)),
         () => []
       );
       for (const { locator, read } of scanned) {
@@ -293,10 +289,7 @@ export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], 
             locator: entry.locator
           });
         }
-        const status = threeWayVerify({
-          ledger: entry.contentHash,
-          ...(seen === undefined ? {} : { actual: seen.hash })
-        });
+        const status = threeWayVerify(definedFields({ ledger: entry.contentHash, actual: seen?.hash }));
         if (status !== "in-sync") {
           checks.push({ name: "drift", status: "warn", message: status, locator: entry.locator });
         }

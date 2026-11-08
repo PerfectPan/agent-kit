@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import { RegistrationState } from "../../domain/bundle/value-objects/registration-state.js";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
@@ -56,18 +57,17 @@ export function registrationState(
       const root = roots.find((root) => isWithin(path, root.path));
       return root === undefined ? path : `${root.resolved}${path.slice(root.path.length)}`;
     };
-    const normalized: CliRegistration = {
+    const normalized: CliRegistration = definedFields({
       ...registration,
-      ...(registration.installedCopy === undefined ? {} : { installedCopy: normalize(registration.installedCopy) }),
-      ...(registration.recorded === undefined
-        ? {}
-        : {
-            recorded: {
+      installedCopy: registration.installedCopy === undefined ? undefined : normalize(registration.installedCopy),
+      recorded:
+        registration.recorded === undefined
+          ? undefined
+          : {
               entries: registration.recorded.entries.map((entry) => ({ ...entry, path: normalize(entry.path) })),
               copies: registration.recorded.copies.map(normalize)
             }
-          })
-    };
+    });
     // Bind the command's own record path to the planned locator, not to any other allowed root containing it.
     const ownRecord = ownRecordOfRule(normalized, { pointer: locator.pointer, member: locator.member });
     let symlinkTarget =
@@ -90,23 +90,25 @@ export function registrationState(
         ? undefined
         : yield* files.read({ kind: "file", path: normalized.installedCopy });
     symlinkTarget ??= copy?.symlinkTarget;
-    return {
+    return definedFields({
       registration: normalized,
-      ...(copy === undefined ? {} : { copy }),
-      ...(symlinkTarget === undefined ? {} : { symlinkTarget })
-    };
+      copy,
+      symlinkTarget
+    });
   });
 }
 
 /** What was found at a locator, as the domain observes it: the kind found, its hash and its content. */
 export function observation(locator: ArtifactLocatorSnapshot, read: ArtifactRead): Effect.Effect<ObservedArtifact> {
   const kind = locator.kind === "file" || locator.kind === "dir" ? read.kind : locator.kind;
-  return Effect.map(hashContent(read.kind, read.content), (hash) => ({
-    locator: kind === locator.kind ? locator : { ...locator, kind },
-    hash,
-    content: read.content,
-    ...(read.symlinkTarget === undefined ? {} : { symlinkTarget: read.symlinkTarget })
-  }));
+  return Effect.map(hashContent(read.kind, read.content), (hash) =>
+    definedFields({
+      locator: kind === locator.kind ? locator : { ...locator, kind },
+      hash,
+      content: read.content,
+      symlinkTarget: read.symlinkTarget
+    })
+  );
 }
 
 /**
@@ -136,6 +138,6 @@ export function observe(
           }).content() ?? read.content)
         : read.content;
     const symlinkTarget = read.symlinkTarget ?? state.symlinkTarget;
-    return yield* observation(locator, { ...read, content, ...(symlinkTarget === undefined ? {} : { symlinkTarget }) });
+    return yield* observation(locator, definedFields({ ...read, content, symlinkTarget }));
   });
 }

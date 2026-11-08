@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { Price, PriceTier } from "../value-objects/price.js";
 
 /**
@@ -43,22 +44,24 @@ function tierOf(entry: LiteLLMEntry, tier: LiteLLMLongContext): PriceTier {
   const cacheRead = tier.cache_read_input_token_cost;
   const cacheWrite = tier.cache_creation_input_token_cost;
   const cacheWrite1h = tier.cache_creation_input_token_cost_above_1hr;
-  return {
+  return definedFields({
     thresholdTokens: tier.above_tokens,
     input,
-    ...(tier.output_cost_per_token === undefined ? {} : { output: perMillion(tier.output_cost_per_token) }),
-    ...(cacheRead === undefined
-      ? entry.cache_read_input_token_cost === undefined
-        ? { cacheRead: input }
-        : {}
-      : { cacheRead: perMillion(cacheRead) }),
-    ...(cacheWrite === undefined
-      ? entry.cache_creation_input_token_cost === undefined
-        ? { cacheWrite: input }
-        : {}
-      : { cacheWrite: perMillion(cacheWrite) }),
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h: perMillion(cacheWrite1h) })
-  };
+    output: tier.output_cost_per_token === undefined ? undefined : perMillion(tier.output_cost_per_token),
+    cacheRead:
+      cacheRead === undefined
+        ? entry.cache_read_input_token_cost === undefined
+          ? input
+          : undefined
+        : perMillion(cacheRead),
+    cacheWrite:
+      cacheWrite === undefined
+        ? entry.cache_creation_input_token_cost === undefined
+          ? input
+          : undefined
+        : perMillion(cacheWrite),
+    cacheWrite1h: cacheWrite1h === undefined ? undefined : perMillion(cacheWrite1h)
+  });
 }
 
 /**
@@ -69,13 +72,13 @@ export function priceOfEntry(entry: LiteLLMEntry): Price {
   const input = perMillion(entry.input_cost_per_token);
   const cacheWrite1h = entry.cache_creation_input_token_cost_above_1hr;
   const tier = entry.long_context;
-  return {
+  return definedFields({
     input,
     output: perMillion(entry.output_cost_per_token),
     cacheRead: entry.cache_read_input_token_cost === undefined ? input : perMillion(entry.cache_read_input_token_cost),
     cacheWrite:
       entry.cache_creation_input_token_cost === undefined ? input : perMillion(entry.cache_creation_input_token_cost),
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h: perMillion(cacheWrite1h) }),
-    ...(tier === undefined ? {} : { longContext: tierOf(entry, tier) })
-  };
+    cacheWrite1h: cacheWrite1h === undefined ? undefined : perMillion(cacheWrite1h),
+    longContext: tier === undefined ? undefined : tierOf(entry, tier)
+  });
 }

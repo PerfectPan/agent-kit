@@ -1,4 +1,10 @@
-import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
+import {
+  AgentKitError,
+  type CodingAgentId,
+  definedFields,
+  lookupService,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog/public";
 import type { Platform } from "@rivus/agent-kit-platform/public";
 
 import { QUIET_MS } from "../../domain/usage/services/quiet.js";
@@ -93,14 +99,19 @@ export function scanUsage(
   let current: { readonly key: string; readonly entry: () => UsageScanSource } | undefined;
 
   const decode = (source: UsageSource, from: UsageCursor | undefined): UsageStream =>
-    decodeUsage(platform, source.agent, source, {
-      providers: options.providers,
-      ...(from ? { from } : {}),
-      ...(since === undefined ? {} : { since }),
-      ...(until === undefined ? {} : { until }),
-      quietBefore: platform.clock.now() - QUIET_MS,
-      ...(signal ? { signal } : {})
-    });
+    decodeUsage(
+      platform,
+      source.agent,
+      source,
+      definedFields({
+        providers: options.providers,
+        from,
+        since,
+        until,
+        quietBefore: platform.clock.now() - QUIET_MS,
+        signal
+      })
+    );
 
   return {
     get state() {
@@ -120,12 +131,15 @@ export function scanUsage(
       // The listing first, to see which ids it finds at several paths.
       const listing: UsageSource[] = [];
       const failed: string[] = [];
-      for await (const item of listUsageSources(platform, {
-        providers: options.providers,
-        ...(agents ? { agents } : {}),
-        ...(since === undefined ? {} : { since }),
-        ...(signal ? { signal } : {})
-      })) {
+      for await (const item of listUsageSources(
+        platform,
+        definedFields({
+          providers: options.providers,
+          agents,
+          since,
+          signal
+        })
+      )) {
         if (isUsageSource(item)) {
           listing.push(item);
         } else {
@@ -145,13 +159,14 @@ export function scanUsage(
         let skip: UsageScanMark | undefined;
         for (;;) {
           const stream = decode(source, from);
-          const entry = (): UsageScanSource => ({
-            agent: source.agent,
-            path: source.path,
-            mtimeMs: source.mtimeMs,
-            ...(stream.cursor ? { cursor: stream.cursor } : {}),
-            ...(mark ? { mark } : {})
-          });
+          const entry = (): UsageScanSource =>
+            definedFields({
+              agent: source.agent,
+              path: source.path,
+              mtimeMs: source.mtimeMs,
+              cursor: stream.cursor,
+              mark
+            });
           current = { key, entry };
           let changed = false;
           let skipped = 0;
@@ -186,7 +201,7 @@ export function scanUsage(
           skip = mark ?? { time: Number.NEGATIVE_INFINITY, count: 0 };
         }
       }
-      sources.prune({ scanned, failed, ...(since === undefined ? {} : { since }) });
+      sources.prune(definedFields({ scanned, failed, since }));
     }
   };
 }
