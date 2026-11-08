@@ -30,8 +30,10 @@ export interface ProcessLockOptions {
    * leave one file per item behind. With SQLite, the release removes `<path>` (and `<path>.holder`) while the lock is
    * still held, then unlocks; the acquisition verifies that the file it locked is still the one at `path`, by the
    * device, inode and birth time it read before opening, and retries when it is not, so a waiter that locked an
-   * unlinked inode never holds the lock while its successor holds the file at `path`. Without SQLite the lock file is
-   * always removed on release, so the setting changes nothing there.
+   * unlinked inode never holds the lock while its successor holds the file at `path`. A filesystem that reports no
+   * birth time yields no identity to compare, so the verification never passes and the lock is not taken (a waiting
+   * call keeps trying). Without SQLite the lock file is always removed on release, so the setting changes nothing
+   * there.
    */
   readonly removeOnRelease?: boolean;
 }

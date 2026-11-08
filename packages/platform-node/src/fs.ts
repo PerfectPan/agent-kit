@@ -84,9 +84,14 @@ export const nodeFs: PlatformFs = {
     }
     return {
       kind: kindOf(stats),
+      // The ns fields keep the sub-millisecond precision the non-bigint stat carries in its fraction.
       size: Number(stats.size),
-      mtimeMs: Number(stats.mtimeMs),
-      identity: { dev: stats.dev, ino: stats.ino, birthtimeNs: stats.birthtimeNs }
+      mtimeMs: Number(stats.mtimeNs) / 1e6,
+      // A filesystem that reports no birth time (birthtimeNs 0) yields no identity at all: dev and inode alone
+      // cannot tell a replacement from the file they name, so a use case that compares identities fails closed.
+      ...(stats.birthtimeNs === 0n
+        ? {}
+        : { identity: { dev: stats.dev, ino: stats.ino, birthtimeNs: stats.birthtimeNs } })
     };
   },
   realpath(path) {
