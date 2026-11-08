@@ -154,10 +154,12 @@ export function createOpencodeSettlement(
 /** The cursor state of a legacy session directory: the last file name read. */
 const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
 
+/** The `ReadFailed` a decode yields for an error the platform did not classify: the thrown value's message, kept for the report. */
 function readFailed(path: string, cause: unknown): ReadFailed {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
 }
 
+/** The database's source when it exists; otherwise each session directory of the older JSON layout, and a missing home is a `RootMissing` failure. */
 async function listSources(
   platform: UsagePlatform,
   home: AgentHome,

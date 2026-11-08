@@ -137,10 +137,12 @@ export function createZcodeSettlement(
   return createSqliteSettlement(zcodeMessageUsage, { path, ...options });
 }
 
+/** The `ReadFailed` a decode yields for an error the platform did not classify: the thrown value's message, kept for the report. */
 function readFailed(path: string, cause: unknown): ReadFailed {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
 }
 
+/** The database's source; a missing database is no source, and a missing home is a `RootMissing` failure. */
 async function listSources(platform: UsagePlatform, home: AgentHome): Promise<(UsageSource | UsageSourceFailure)[]> {
   const source = await sqliteMessageSource(platform, AGENT, zcodeDatabasePath(home), ZCODE_WAL_SUFFIX);
   if (source !== undefined) {

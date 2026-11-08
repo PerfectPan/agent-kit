@@ -273,6 +273,7 @@ export interface SqliteMessagesRequest {
   readonly options: DecodeUsageOptions;
 }
 
+/** The `ReadFailed` a decode yields for a SQLite error the platform did not classify: the thrown value's message, kept for the report. */
 function readFailed(path: string, cause: unknown): ReadFailed {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
 }
