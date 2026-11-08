@@ -114,9 +114,7 @@ describe("legacy markers scoped to their source", () => {
       ...testInstall,
       grok: {
         ...testInstall.grok,
-        legacySources: (context) => [
-          { kind: "files", dir: `${context.home}/.grok/hooks`, markers: [LEGACY] }
-        ]
+        legacySources: (context) => [{ kind: "files", dir: `${context.home}/.grok/hooks`, markers: [LEGACY] }]
       }
     };
     return Effect.gen(function* () {
@@ -137,6 +135,33 @@ describe("legacy markers scoped to their source", () => {
           }
         ]
       });
+    }).pipe(Effect.provide(home.layer()));
+  });
+
+  it.effect("the first source that reaches a locator claims it, against a later scoped one", () => {
+    const home = testHome();
+    // A file that matches the bundle's broad marker and the scoped source's exact command marker alike: which list
+    // judges it decides whether the uninstall deletes it.
+    home.write(".grok/hooks/mixed.json", `// ${LEGACY}\n`);
+    const overlapping: InstallAdapters = {
+      ...testInstall,
+      grok: {
+        ...testInstall.grok,
+        legacySources: (context) => [
+          { kind: "files", dir: `${context.home}/.grok/hooks` },
+          { kind: "files", dir: `${context.home}/.grok/hooks`, markers: [LEGACY] }
+        ]
+      }
+    };
+    return Effect.gen(function* () {
+      const finds = yield* findLegacy(OWNER, {
+        agents: ["grok"],
+        legacyMarkers: ["legacy-demo hook"],
+        providers: { install: overlapping, hooks: testHooks }
+      });
+      // The unscoped source claimed the file first, so the broad bundle marker judges it — the same answer the
+      // listing gives when the scoped source's own markers are absent.
+      expect(finds.map((find) => find.locator.path)).toEqual([home.path(".grok/hooks/mixed.json")]);
     }).pipe(Effect.provide(home.layer()));
   });
 

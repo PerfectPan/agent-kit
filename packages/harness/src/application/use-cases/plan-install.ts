@@ -493,6 +493,8 @@ export function buildPlan(
     }
     const foreignHooks: ForeignHookObservation[] = [];
     const sourceMarkers = new Map<ObservedArtifact, readonly string[]>();
+    /** The locators whose classification a source has claimed, so the first one decides what the markers are. */
+    const claimedBySource = new Set<LocatorKey>();
     if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
       for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
         const found = observation.observed;
@@ -506,12 +508,13 @@ export function buildPlan(
           if (observation.markers !== undefined) {
             sourceMarkers.set(found, observation.markers);
           }
-        } else if (observation.markers !== undefined) {
-          // The locator was already observed as a desired or held Artifact, and a scoped source also found it: its
-          // markers govern the classification of the retained observation too, so a file the source's scope does not
-          // consider legacy is not adopted over the bundle's broader list without a conflict or a pre-image. The
-          // first scoped source that reaches the locator claims it, as the scan's own first-wins does.
-          if (!sourceMarkers.has(retained)) {
+        } else if (!claimedBySource.has(key)) {
+          // The locator was already observed as a desired or held Artifact, and a source also found it: the first
+          // source to reach the locator claims its classification — a scoped source's markers govern it, and an
+          // unscoped source's claim keeps the bundle's fallback against a later scoped one — so the judgment here
+          // stays what the read-only listing's first-wins would give the same file.
+          claimedBySource.add(key);
+          if (observation.markers !== undefined) {
             sourceMarkers.set(retained, observation.markers);
           }
         }
