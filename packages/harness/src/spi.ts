@@ -12,6 +12,7 @@ export { type PlacedRegistration } from "./domain/bundle/services/hook-placement
 export { type HookRegistration } from "./domain/bundle/services/hook-registrations.js";
 export {
   type ArtifactSource,
+  type BridgeSource,
   type CliRegistration,
   type CommandLine,
   type HookSource,

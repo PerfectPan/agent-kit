@@ -212,5 +212,12 @@ export const opencodeInstallAdapter: InstallAdapter = {
       pointer: OPENCODE_PLUGINS_POINTER,
       memberIn: "element"
     }
+  ],
+  bridgeSources: (context) => [
+    {
+      dir: opencodePluginsDir(context),
+      extensions: OPENCODE_PLUGIN_SUFFIXES,
+      events: Object.keys(opencodeHookDialect.events).toSorted()
+    }
   ]
 };

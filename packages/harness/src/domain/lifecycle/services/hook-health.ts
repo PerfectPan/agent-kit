@@ -39,6 +39,11 @@ export interface CommandHook {
   readonly event: string;
   readonly command: string;
   readonly locator: ArtifactLocatorSnapshot;
+  /**
+   * The text the caller's markers match against, when it is not the command: a bridge file's content, the whole
+   * file being one registration of its owner. Absent for a registration read from a configuration file.
+   */
+  readonly markerText?: string;
 }
 
 /** The event a locator addresses, as the file names it: the pointer's last segment, unescaped. No pointer names none. */
@@ -80,7 +85,8 @@ export function hookHealth(
 /**
  * Problems with hooks that fire twice for one event in one agent: the same command twice, or, given an application's
  * markers, more than one hook carrying one of them — an old hook left in a settings file next to the plugin that
- * replaced it. Markers match the way `isLegacyArtifact` matches: blank ones never match.
+ * replaced it. A bridge hook's markers match its content, so two bridges of one owner are caught too. Markers match
+ * the way `isLegacyArtifact` matches: blank ones never match.
  */
 export function duplicateHooks(
   agent: CodingAgentId,
@@ -97,7 +103,7 @@ export function duplicateHooks(
       }
       seen.add(hook.command);
     }
-    const marked = here.filter((hook) => hasLegacyMarker(markers, hook.command));
+    const marked = here.filter((hook) => hasLegacyMarker(markers, hook.markerText ?? hook.command));
     const last = marked.at(-1);
     if (last !== undefined && new Set(marked.map((hook) => hook.command)).size > 1) {
       findings.push({ problem: "duplicate-hook", locator: last.locator, agent, event, markedCount: marked.length });
