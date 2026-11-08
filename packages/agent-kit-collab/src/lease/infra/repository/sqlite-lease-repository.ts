@@ -131,6 +131,7 @@ function retryBusy<T>(effect: Effect.Effect<T, LeaseRepositoryFailure>): Effect.
   );
 }
 
+/** The snapshot of one stored row, read through the boundary schema; a row of another shape fails as `invalid-record`, and a missing row reads as no lease. */
 function decodeRow(
   key: string,
   row: Record<string, unknown> | undefined

@@ -166,6 +166,7 @@ const SpawnResult = z.looseObject({ agent_id: lenient(z.string()), task_name: le
 /** The spawn result as the transcript carries it: the object, or the JSON text of one. */
 const SpawnOutput = z.union([SpawnResult, lenient(z.string())]);
 
+/** The spawn result of a `spawn_agent` call, whichever way the transcript carried it; a malformed one reads as absent. */
 function spawnResultOf(output: unknown): z.output<typeof SpawnResult> | undefined {
   const decoded = z.safeParse(SpawnOutput, output).data;
   if (decoded === undefined) {
