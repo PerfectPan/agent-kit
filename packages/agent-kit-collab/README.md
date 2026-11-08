@@ -69,6 +69,15 @@ stamp leaves an empty file that counts as held for 30 s, and a holder stalled lo
 can end up holding the lock together with its reclaimer. Pass `{ wait: true, signal }` to wait for the holder
 instead of getting `ProcessLockHeld` at once.
 
+Pass `{ removeOnRelease: true }` to remove the lock file when the lock is released, for a caller that takes one lock
+per item and would otherwise leave one file per item behind. The release removes `<path>` (and `<path>.holder`) while
+the lock is still held, then unlocks. So that the removal cannot break mutual exclusion, the acquisition verifies,
+before it reports the lock, that the file it locked is still the one at `path`: it compares the device, inode and
+birth time it read before opening against a reading after the lock, and retries when they disagree — a waiter that
+locked an unlinked inode never holds the lock while a successor holds the file at the path. A missing path or a
+missing identity retries too, never passes. Without SQLite the lock file is always removed on release, so the setting
+changes nothing there.
+
 Acquisitions of one lock inside a process take turns in memory, so a lock can be taken from many concurrent tasks
 without a queue of your own. While one task holds the lock or is attempting it, the next waits for it to release the
 lock or give up, and only then makes its own attempt; it never opens SQLite against a holder in its own process, whose

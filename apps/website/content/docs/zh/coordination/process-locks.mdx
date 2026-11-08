@@ -33,6 +33,8 @@ await lock.value.release();
 
 传入 `{ wait: true, signal }` 可以等待持有者，而不是立刻得到 `ProcessLockHeld`。
 
+传入 `{ removeOnRelease: true }` 可以在释放锁时删掉锁文件，适合每个条目拿一把锁、否则会留下一个条目一个文件的调用方。释放会在锁仍然被持有时删掉 `<path>`（以及 `<path>.holder`），然后再解锁。为了让删除不破坏互斥，获取会在报告拿到锁之前验证它锁住的文件仍是路径上的那个文件：它把打开前读到的设备号、inode 号和出生时间与加锁之后的一次读取比较，不一致就重试——锁到已被取消链接的 inode 的等待者，绝不会在后继者持有路径上的文件时持有这把锁。没有 SQLite 时锁文件本来就总在释放时删除，该设置不改变任何行为。
+
 在 win32 上，平台无法识别进程（boot id、pid 和启动时间）。SQLite 进程锁仍然可以取得，此时 `holder` 为 `undefined`。NFS、容器和被改名的主机见 [安装](/docs/installation)。
 
 ## 同一进程内的轮次

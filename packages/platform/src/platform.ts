@@ -5,10 +5,24 @@ export type OperatingSystem = "darwin" | "linux" | "win32";
 /** `other` covers sockets, FIFOs and devices. */
 export type FileKind = "file" | "dir" | "symlink" | "other";
 
+/**
+ * The identity of one file on one device. A replacement at the same path gets a new identity, and the birth time at
+ * nanosecond resolution keeps the identity of a freed inode from recurring when its number is reused, so comparing the
+ * identities of two `stat` readings tells whether the second names the file the first saw. A filesystem with a coarse
+ * birth-time clock narrows this to a residual window, never widens it.
+ */
+export interface FileIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly birthtimeNs: bigint;
+}
+
 export interface FileStat {
   readonly kind: FileKind;
   readonly size: number;
   readonly mtimeMs: number;
+  /** The file's identity, when the platform knows one; a use case that must tell a replacement from the file it saw reads it. */
+  readonly identity?: FileIdentity;
 }
 
 export interface DirEntry {

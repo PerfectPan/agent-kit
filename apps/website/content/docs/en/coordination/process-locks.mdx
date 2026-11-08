@@ -33,6 +33,8 @@ Two limits of that fallback:
 
 Pass `{ wait: true, signal }` to wait for the holder instead of getting `ProcessLockHeld` at once.
 
+Pass `{ removeOnRelease: true }` to remove the lock file when the lock is released, for a caller that takes one lock per item and would otherwise leave one file per item behind. The release removes `<path>` (and `<path>.holder`) while the lock is still held, then unlocks. So that the removal cannot break mutual exclusion, the acquisition verifies, before it reports the lock, that the file it locked is still the one at `path`: it compares the device, inode and birth time it read before opening against a reading after the lock, and retries when they disagree — a waiter that locked an unlinked inode never holds the lock while a successor holds the file at the path. Without SQLite the lock file is always removed on release, so the setting changes nothing there.
+
 On win32 the platform cannot identify processes (boot id, pid and start time). A SQLite process lock is still taken, with `holder` undefined. See [Installation](/docs/installation) for NFS, containers and a renamed host.
 
 ## Turns inside one process
