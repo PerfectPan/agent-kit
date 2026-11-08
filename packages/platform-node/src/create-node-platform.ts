@@ -5,6 +5,7 @@ import type { Env, OperatingSystem, Platform } from "@rivus/agent-kit-platform/p
 import { nodeFs } from "./fs.js";
 import { createNodeProcess } from "./process.js";
 import { nodeSqlite } from "./sqlite.js";
+import { nodeDecompress } from "./zstd.js";
 
 export interface NodePlatformOptions {
   /** Defaults to a frozen snapshot of `process.env` taken when the platform is created. */
@@ -32,6 +33,7 @@ export function createNodePlatform(options: NodePlatformOptions = {}): Platform 
     fs: nodeFs,
     process: createNodeProcess(env, os),
     clock: { now: Date.now, monotonic: () => performance.now() },
-    sqlite: nodeSqlite
+    sqlite: nodeSqlite,
+    decompress: nodeDecompress
   };
 }

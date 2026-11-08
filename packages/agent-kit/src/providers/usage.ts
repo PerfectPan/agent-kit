@@ -1,5 +1,6 @@
 import { codexUsageDecoder } from "@rivus/agent-kit-provider-codex/usage";
 import { claudeCodeUsageDecoder } from "@rivus/agent-kit-provider-claude-code/usage";
+import { dshUsageDecoder } from "@rivus/agent-kit-provider-dsh/usage";
 import { grokUsageDecoder } from "@rivus/agent-kit-provider-grok/usage";
 import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
 import { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";
@@ -10,6 +11,7 @@ import type { Provider } from "./types.js";
 const builtinUsageDecoders: {
   readonly codex: typeof codexUsageDecoder;
   readonly "claude-code": typeof claudeCodeUsageDecoder;
+  readonly dsh: typeof dshUsageDecoder;
   readonly grok: typeof grokUsageDecoder;
   readonly opencode: typeof opencodeUsageDecoder;
   readonly "gemini-cli": typeof geminiCliUsageDecoder;
@@ -17,6 +19,7 @@ const builtinUsageDecoders: {
 } = {
   "claude-code": claudeCodeUsageDecoder,
   codex: codexUsageDecoder,
+  dsh: dshUsageDecoder,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,

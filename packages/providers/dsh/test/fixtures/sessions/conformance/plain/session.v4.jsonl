@@ -1,0 +1,9 @@
+{"type":"session","version":4,"id":"dsh-plain","createdAt":1767225600000,"cwd":"/u/me/work"}
+{"type":"system/message","seq":1,"time":1767225601000,"data":{"turn":1,"step":1,"message":{"role":"system","content":[{"type":"text","text":"You are helpful."}]}}}
+{"type":"request/header","seq":2,"time":1767225602000,"data":{"header":{"config":{"provider":"test","model":"test-model"},"tools":[{"name":"read"}]},"reason":"start"}}
+{"type":"user/message","seq":3,"time":1767225603000,"data":{"role":"user","content":[{"type":"text","text":"hello"}],"source":{"kind":"user"},"id":"u1"}}
+{"type":"assistant/message","seq":4,"time":1767225604000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"reasoning","text":"think"},{"type":"text","text":"hi"},{"type":"tool-call","id":"call-1","name":"read","arguments":"{\"path\":\"/u/me/a\"}"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m1"},"usage":{"inputTokens":10,"outputTokens":5,"totalTokens":15}}}
+{"type":"tool/result","seq":5,"time":1767225605000,"data":{"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call-1"},"toolCallId":"call-1","content":[{"type":"text","text":"ok"}],"isError":false}}}
+{"type":"user/message","seq":6,"time":1767225606000,"data":{"role":"user","content":[{"type":"text","text":"again"}],"source":{"kind":"user"},"id":"u2"}}
+{"type":"assistant/message","seq":7,"time":1767225607000,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"done"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m2"},"usage":{"inputTokens":3,"outputTokens":2,"totalTokens":5}}}
+{"type":"session/title","seq":8,"time":1767225608000,"data":{"title":"Plain session"}}

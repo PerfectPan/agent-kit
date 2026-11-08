@@ -18,16 +18,15 @@ The README's support table uses these words where a cell is not "yes":
 - Cursor sessions: session storage has no supported reader.
 - Cursor usage: usage storage has no supported decoder.
 - Cursor ACP: no supported ACP transport.
-- Gemini CLI sessions: session storage has no supported reader.
-- opencode sessions: session storage has no supported reader.
-- Pi sessions: session storage has no supported reader.
+- DeepSeek Harness hooks: no supported hook dialect.
+- DeepSeek Harness install: no supported installation adapter.
 - Pi ACP: no supported ACP transport.
 
 ## Homes and names
 
-Every Agent in the table has a hook dialect in `/harness/events`.
+Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`.
 
-`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent.
+`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent.
 
 `/transcript/usage` reads the usage of every Agent in the table except Cursor.
 

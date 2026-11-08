@@ -7,7 +7,9 @@ description: connectAgent drives one Agent session over ACP.
 
 `@rivus/agent-kit/acp` exports `connectAgent`, `probeAgent`, `agentEnv`, and `SessionBindingStore` and its Layers. It runs with `effect` and a platform that spawns.
 
-`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent. Cursor and Pi have no supported ACP transport. The generated support flags are on [Supported Agents](/docs/agents).
+`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent. Cursor and Pi have no supported ACP transport. The generated support flags are on [Supported Agents](/docs/agents).
+
+DeepSeek Harness resolves credentials in the order `.credentials.yaml`, inherited environment, `<cwd>/.env`, then `$DSH_HOME/.env`; custom pi-ai `apiKeyEnv` names are not in the built-in `agentEnv` filter, so explicitly add a referenced key to the launch environment only if it exists solely in the caller’s environment.
 
 ## Sessions and turns
 

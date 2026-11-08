@@ -1,0 +1,3 @@
+{"type":"session","version":4,"id":"dsh-unknown","createdAt":1767232800000,"cwd":"/u/me/work"}
+{"type":"extension/thing","seq":1,"time":1767232801000,"data":{"value":1}}
+{"type":"session/title","seq":2,"time":1767232802000,"data":{"title":"Unknown type"}}
