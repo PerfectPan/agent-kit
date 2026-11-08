@@ -30,6 +30,10 @@ const bundle = {
   legacyMarkers: ["my-app hook"] // what older versions registered without a ledger is replaced, not duplicated
 } as const;
 
+// Bundle 的 markers 会对每个 legacy 源做匹配。Adapter 的 `legacySources` 可以给某个源单独声明 `markers`，
+// 让识别旧配置引用的 marker 不会误匹配扫描目录里的文件。Legacy 删除掉的未跟踪文件会在 apply 报告里带上
+// pre-image，匹配错了也能从它恢复。
+
 const program = Effect.gen(function* () {
   const plan = yield* planInstall(bundle, { agents: ["claude-code", "codex"] });
   // plan.changes: each file's text before and after; plan.commands; plan.expectedTrustPrompts; plan.notes;

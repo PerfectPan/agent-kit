@@ -46,6 +46,8 @@ export interface AppliedStep {
   readonly locator: ArtifactLocatorSnapshot;
   readonly action: PlanAction;
   readonly removal?: Removal;
+  /** The step's pre-image, when it captured one, so a legacy removal can be undone from it. */
+  readonly preImage?: PreImage;
 }
 
 export interface ApplyReport {
@@ -355,10 +357,12 @@ export function applyLocked(
         }
         return yield* Effect.fail(result.failure);
       }
+      const key = locatorKey(step.locator);
       applied.push({
         locator: step.locator,
         action: step.action,
-        ...(step.removal === undefined ? {} : { removal: step.removal })
+        ...(step.removal === undefined ? {} : { removal: step.removal }),
+        ...(preImages[key] === undefined ? {} : { preImage: preImages[key] })
       });
     }
     return { planId, ledgerRevision: loaded.ledger.revision, steps: applied, events };

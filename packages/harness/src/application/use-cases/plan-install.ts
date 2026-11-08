@@ -492,14 +492,31 @@ export function buildPlan(
       }
     }
     const foreignHooks: ForeignHookObservation[] = [];
+    const sourceMarkers = new Map<ObservedArtifact, readonly string[]>();
+    /** The locators whose classification a source has claimed, so the first one decides what the markers are. */
+    const claimedBySource = new Set<LocatorKey>();
     if (evidenceScope.scanLegacy && evidenceScope.legacySources.length > 0) {
       for (const observation of yield* scanLegacy(evidenceScope.legacySources)) {
         const found = observation.observed;
         if (observation.runner !== undefined && observation.event !== undefined) {
           foreignHooks.push({ observed: found, runner: observation.runner, event: observation.event });
         }
-        if (!observed.has(locatorKey(found.locator))) {
-          observed.set(locatorKey(found.locator), found);
+        const key = locatorKey(found.locator);
+        const retained = observed.get(key);
+        if (retained === undefined) {
+          observed.set(key, found);
+          if (observation.markers !== undefined) {
+            sourceMarkers.set(found, observation.markers);
+          }
+        } else if (!claimedBySource.has(key)) {
+          // The locator was already observed as a desired or held Artifact, and a source also found it: the first
+          // source to reach the locator claims its classification — a scoped source's markers govern it, and an
+          // unscoped source's claim keeps the bundle's fallback against a later scoped one — so the judgment here
+          // stays what the read-only listing's first-wins would give the same file.
+          claimedBySource.add(key);
+          if (observation.markers !== undefined) {
+            sourceMarkers.set(retained, observation.markers);
+          }
         }
       }
     }
@@ -526,7 +543,8 @@ export function buildPlan(
           dialects: setup.dialects
         },
         ledger,
-        [...observed.values()]
+        [...observed.values()],
+        sourceMarkers
       )
     );
     const view = yield* describePlan(scope, aggregate, ledger, observed, input);

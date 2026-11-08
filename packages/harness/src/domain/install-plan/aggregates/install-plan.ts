@@ -18,6 +18,7 @@ import { PlanStep, type PlanStepSnapshot, type StepNote, type PlanAction } from 
 import { type TrustPrompt } from "../value-objects/trust-prompt.js";
 import { type OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import { hasLegacyMarker } from "../../bundle/services/legacy-markers.js";
+import type { LegacyEvidenceMap } from "../value-objects/legacy-evidence.js";
 import { type Ledger } from "../../ledger/aggregates/ledger.js";
 import { type LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import { type ObservedArtifact } from "../spi/observed-artifact.js";
@@ -47,7 +48,7 @@ export type InstallPlanTransition = { readonly state: InstallPlan; readonly even
 
 /** What a plan's steps are checked against: the ledger it was built on and what the application observed. */
 export interface PlanEvidence {
-  readonly legacyTexts: ReadonlyMap<ObservedArtifact, string>;
+  readonly legacyTexts: LegacyEvidenceMap;
   readonly ledger: Ledger;
   readonly observed: readonly ObservedArtifact[];
   /** The bundle's legacy markers, which a step marked `legacy` must match again. */
@@ -77,13 +78,14 @@ function ownershipProblem(
 ): string | undefined {
   const entry = evidence.ledger.entry(step.locator);
   if (step.legacy === true) {
-    const text = observed === undefined ? undefined : evidence.legacyTexts.get(observed);
+    const evidenceEntry = observed === undefined ? undefined : evidence.legacyTexts.get(observed);
+    const text = evidenceEntry?.text;
     const matches =
       entry === undefined &&
       observed !== undefined &&
       !protectedLegacy(step.locator, owner, evidence.ledger, evidence.observed) &&
       text !== undefined &&
-      hasLegacyMarker(evidence.legacyMarkers, text) &&
+      hasLegacyMarker(evidenceEntry?.markers ?? evidence.legacyMarkers, text) &&
       "hash" in step.precondition &&
       step.precondition.hash === observed.hash;
     if (!matches) {
