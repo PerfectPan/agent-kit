@@ -18,7 +18,7 @@
     "es-toolkit": "catalog:",
     "eslint": "10.13.0",
     "eslint-import-resolver-typescript": "4.4.5",
-    "eslint-plugin-boundaries": "7.2.0",
+    "eslint-plugin-boundaries": "7.3.0",
     "oxc-parser": "catalog:",
     "oxlint-plugin-eslint": "1.88.0",
     "typescript": "catalog:",
