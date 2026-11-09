@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { AgentHome, CodingAgentId, HomeContext, CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog/public";
 import type { Platform } from "@rivus/agent-kit-platform/public";
 
@@ -52,7 +53,7 @@ export async function* listSessions(
   for (const adapter of adapters) {
     for (const root of adapter.roots(sessionAdapterHome(adapter, platform, options.providers.identity))) {
       options.signal?.throwIfAborted();
-      yield* adapter.discover(platform, root, { ...(options.signal ? { signal: options.signal } : {}), onTotal });
+      yield* adapter.discover(platform, root, definedFields({ signal: options.signal, onTotal }));
     }
   }
 }

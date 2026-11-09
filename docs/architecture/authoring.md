@@ -379,7 +379,9 @@ These rules apply to every domain layer and to the contexts that do not use Effe
 
 - Validate unknown data with a `zod/mini` schema at the boundary instead of hand-written shape readers or guards. For a non-null, non-array object check that must preserve the value without copying it or reading getters, use `z.custom(z.util.isObject)`; it accepts custom prototypes, class instances and built-in objects.
 - Use es-toolkit's `isPlainObject` where the package already depends on es-toolkit and the decision needs its prototype check, including container decisions on `JSON.parse` output.
-- The allowed exceptions each carry their reason in a comment at the site: brand-symbol guards, deep-freeze helpers, narrowing a known union, and object checks used only for `WeakSet`/`WeakMap` bookkeeping. Review enforces this rule.
+- The allowed exceptions each carry their reason in a comment at the site: brand-symbol guards, deep-freeze helpers, narrowing a known union, and object checks used only for `WeakSet`/`WeakMap` bookkeeping.
+- An object literal that spreads a conditional — `...(x === undefined ? {} : { key: x })` — is written as one literal with every key named and passed through catalog's `definedFields`, which drops the `undefined`-valued keys and types them optional without `undefined`, keeping the keys that cannot be undefined required. A truthiness condition before such a spread silently drops `""` and `0`; each site is judged before it is replaced.
+- These rules are enforced by the type-aware unknown-data check, `typescript/no-unsafe-type-assertion` and the empty-object-branch check, all with their exceptions listed in comments at the sites; a site without its reason is a lint error, not a review note.
 
 ## Effect Rules
 

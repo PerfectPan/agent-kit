@@ -39,6 +39,29 @@ describe("permissionOutcome", () => {
     expect(permissionOutcome(offered, optionOfKind(offered, "allow_once"), true)).toEqual({ outcome: "cancelled" });
     expect(optionOfKind(offered, "allow_always")).toBeUndefined();
   });
+
+  it("passes an explicit cancelled answer to the agent instead of denying", () => {
+    const offered = request(["allow_once", "reject_once"]);
+    expect(permissionOutcome(offered, { outcome: "cancelled" }, false)).toEqual({ outcome: "cancelled" });
+    expect(permissionOutcome(offered, { outcome: "cancelled" }, true)).toEqual({ outcome: "cancelled" });
+  });
+
+  it("selects an offered option that arrives in the agent's own selected shape", () => {
+    const offered = request(["allow_once", "reject_once"]);
+    expect(permissionOutcome(offered, { outcome: "selected", optionId: "allow_once" } as never, false)).toEqual({
+      outcome: "selected",
+      optionId: "allow_once"
+    });
+    // A cancellation that still carries a spread-in option id cancels, never approves.
+    expect(permissionOutcome(offered, { outcome: "cancelled", optionId: "allow_once" } as never, false)).toEqual({
+      outcome: "cancelled"
+    });
+    // A selected shape naming an option that was not offered still denies.
+    expect(permissionOutcome(offered, { outcome: "selected", optionId: "invented" } as never, false)).toEqual({
+      outcome: "selected",
+      optionId: "reject_once"
+    });
+  });
 });
 
 describe("session setup", () => {
@@ -50,7 +73,9 @@ describe("session setup", () => {
     expect(sessionMeta(block, setup)).toEqual({ extra: 1 });
     expect(sessionMeta(block, {})).toBeUndefined();
     const blocks = [{ type: "text", text: "hi" }] as const;
-    expect(firstPromptBlocks(block, blocks, setup)).toEqual([{ type: "text", text: "be brief" }, ...blocks]);
+    // The blank line keeps the boundary for agents that join adjacent text blocks (dsh-acp).
+    expect(firstPromptBlocks(block, blocks, setup)).toEqual([{ type: "text", text: "be brief\n\n" }, ...blocks]);
+    expect(firstPromptBlocks(block, [], setup)).toEqual([{ type: "text", text: "be brief\n\n" }]);
     expect(firstPromptBlocks(meta, blocks, setup)).toEqual(blocks);
   });
 });

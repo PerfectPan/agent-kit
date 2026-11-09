@@ -10,8 +10,10 @@ import { grokSamples } from "../../providers/grok/test/fixtures/hooks.js";
 import { opencodeSamples } from "../../providers/opencode/test/fixtures/hooks.js";
 import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
 import { codexSamples } from "../../providers/codex/test/fixtures/hooks.js";
+import { zcodeSamples } from "../../providers/zcode/test/fixtures/hooks.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { grokHostSamples } from "./fixtures/hooks/grok-host.js";
+import { zcodeHostSamples } from "./fixtures/hooks/zcode-host.js";
 
 const samples: Record<keyof typeof testHooks, readonly HookDialectSample[]> = {
   "claude-code": claudeCodeSamples,
@@ -20,7 +22,8 @@ const samples: Record<keyof typeof testHooks, readonly HookDialectSample[]> = {
   "gemini-cli": geminiCliSamples,
   grok: grokSamples,
   opencode: opencodeSamples,
-  pi: piSamples
+  pi: piSamples,
+  zcode: zcodeSamples
 };
 
 for (const [agent, dialect] of Object.entries(testHooks)) {
@@ -52,6 +55,16 @@ describe("Cursor running Claude Code hooks", () => {
 
 describe("Grok running Claude Code hooks", () => {
   for (const sample of grokHostSamples) {
+    it(`${sample.name}`, () => {
+      expect(
+        readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })
+      ).toStrictEqual(sample.expected);
+    });
+  }
+});
+
+describe("ZCode running hooks registered for another agent", () => {
+  for (const sample of zcodeHostSamples) {
     it(`${sample.name}`, () => {
       expect(
         readHookEvent(sample.declaredAgent!, sample.payload, sample.env ?? {}, { providers: { hooks: testHooks } })

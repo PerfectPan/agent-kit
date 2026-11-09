@@ -93,12 +93,13 @@ export function protectedReplacement(
   agents: readonly CodingAgentId[],
   ledger: Ledger,
   observed: readonly ObservedArtifact[],
-  legacyText: string | undefined
+  legacyText: string | undefined,
+  markers?: readonly string[]
 ): boolean {
   return (
     ledger.kept(seen.locator, bundle.owner) !== undefined ||
     missingOwnedHook(seen.locator, bundle.owner, ledger, observed) ||
-    (legacyText !== undefined && hasLegacyMarker(bundle.legacyMarkers ?? [], legacyText)) ||
+    (legacyText !== undefined && hasLegacyMarker(markers ?? bundle.legacyMarkers ?? [], legacyText)) ||
     bundle.artifacts.some(
       (spec) =>
         spec.type === "hooks" &&

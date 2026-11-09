@@ -197,6 +197,36 @@ const app = acp
             usage: { totalTokens: 21, inputTokens: 10, outputTokens: 5, thoughtTokens: 2, cachedReadTokens: 4 }
           };
         }
+        case "partial": {
+          const callId = `call-${session.turns}`;
+          await update(client, sessionId, {
+            sessionUpdate: "tool_call",
+            toolCallId: callId,
+            title: "build",
+            kind: "execute",
+            status: "pending",
+            rawInput: { target: "all" }
+          });
+          await update(client, sessionId, {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "in_progress",
+            content: [{ type: "content", content: { type: "text", text: "compiled src" } }]
+          });
+          await update(client, sessionId, {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "in_progress",
+            content: [{ type: "content", content: { type: "text", text: "linked" } }]
+          });
+          await update(client, sessionId, {
+            sessionUpdate: "tool_call_update",
+            toolCallId: callId,
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "linked bin/app" } }]
+          });
+          return { stopReason: "end_turn" };
+        }
         case "inspect": {
           const report = {
             pid: process.pid,

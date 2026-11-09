@@ -22,7 +22,8 @@ export function sessionMeta(
 
 /**
  * The blocks of a new session's first prompt: for an agent without a system prompt channel, the system prompt goes
- * first. A loaded session already has it in its history.
+ * first, ending in a blank line — agents that join adjacent text blocks (dsh-acp's prompt handler) would otherwise
+ * run it into the first user text. A loaded session already has it in its history.
  */
 export function firstPromptBlocks(
   profile: Pick<AcpProfile, "systemPrompt">,
@@ -30,6 +31,6 @@ export function firstPromptBlocks(
   setup: SessionSetup
 ): readonly PromptBlock[] {
   return setup.systemPrompt && profile.systemPrompt.in === "first-block"
-    ? [{ type: "text", text: setup.systemPrompt }, ...blocks]
+    ? [{ type: "text", text: `${setup.systemPrompt}\n\n` }, ...blocks]
     : blocks;
 }

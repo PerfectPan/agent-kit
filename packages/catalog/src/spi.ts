@@ -6,3 +6,4 @@ export { type CodingAgent, type CodingAgentWithHome } from "./domain/coding-agen
 export { type ServiceTable } from "./domain/coding-agent/value-objects/service-table.js";
 export { AgentKitError } from "./domain/result/errors/agent-kit-error.js";
 export { ok, err, type Result } from "./domain/result/value-objects/result.js";
+export { definedFields, type DefinedFields } from "./lib/defined-fields.js";

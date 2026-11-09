@@ -609,7 +609,7 @@ describe("readHookEvent", () => {
 });
 
 describe("hook dialect facts", () => {
-  it("S44 (agent-presence#85): every command dialect states its timeout unit; only Gemini CLI uses milliseconds", () => {
+  it("S44 (agent-presence#85): every command dialect states its timeout unit; Gemini CLI and ZCode use milliseconds", () => {
     const units = Object.fromEntries(
       Object.values(builtinHookDialects).map((dialect) => [dialect.agent, dialect.timeout?.unit])
     );
@@ -618,6 +618,7 @@ describe("hook dialect facts", () => {
       codex: "seconds",
       cursor: "seconds",
       "gemini-cli": "milliseconds",
+      zcode: "milliseconds",
       grok: "seconds",
       opencode: undefined,
       pi: undefined

@@ -17,9 +17,30 @@ describe("createMemoryPlatform", () => {
       files: { "/a/b/z.txt": "z", "/a//b/./c/../y.txt": { content: "yy", mtimeMs: 5 } },
       now: () => 9
     });
-    expect(await platform.fs.stat("/a/b/y.txt")).toEqual({ kind: "file", size: 2, mtimeMs: 5 });
-    expect(await platform.fs.stat("/a/b/z.txt")).toEqual({ kind: "file", size: 1, mtimeMs: 9 });
-    expect(await platform.fs.stat("/a/b/")).toEqual({ kind: "dir", size: 0, mtimeMs: 9 });
+    expect(await platform.fs.stat("/a/b/y.txt")).toEqual({
+      kind: "file",
+      size: 2,
+      mtimeMs: 5,
+      identity: { dev: 1n, ino: expect.any(BigInt), birthtimeNs: 9_000_000n }
+    });
+    expect(await platform.fs.stat("/a/b/z.txt")).toEqual({
+      kind: "file",
+      size: 1,
+      mtimeMs: 9,
+      identity: { dev: 1n, ino: expect.any(BigInt), birthtimeNs: 9_000_000n }
+    });
+    expect(await platform.fs.stat("/a/b/")).toEqual({
+      kind: "dir",
+      size: 0,
+      mtimeMs: 9,
+      identity: { dev: 1n, ino: expect.any(BigInt), birthtimeNs: 9_000_000n }
+    });
+    // A replaced file gets a new identity: writing over the path mints a fresh inode and birth time.
+    const first = await platform.fs.stat("/a/b/y.txt");
+    await platform.fs.writeAtomic("/a/b/y.txt", "new");
+    const second = await platform.fs.stat("/a/b/y.txt");
+    expect(second?.identity).toBeDefined();
+    expect(second?.identity).not.toEqual(first?.identity);
     expect(await platform.fs.stat("/a/missing")).toBeUndefined();
     expect(await platform.fs.realpath("/a/x/../b")).toBe("/a/b");
     expect(await platform.fs.realpath("/a/x")).toBeUndefined();

@@ -6,6 +6,7 @@ import type {
 } from "../../session/value-objects/session-summary.js";
 import { capPromptText, mainAgentId, promptStarts, requestUsage } from "./turns.js";
 import type { Capability, Transcript } from "../value-objects/transcript.js";
+import { PayloadText } from "../../../lib/payload-text.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
 
@@ -46,16 +47,16 @@ export function addRequest(totals: SummaryTotals, usage: { inputTokens?: number;
   totals.usage.push(usage);
 }
 
-/** Counts a recorded turn duration. A duration that is not a number was never recorded. */
-export function addTurnDuration(totals: SummaryTotals, durationMs: unknown): void {
-  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+/** Counts a recorded turn duration. A duration that was never recorded is absent, and a non-finite one is not charted. */
+export function addTurnDuration(totals: SummaryTotals, durationMs?: number): void {
+  if (durationMs !== undefined && Number.isFinite(durationMs)) {
     totals.turnDurations.push(durationMs);
   }
 }
 
 /** Counts a request's own duration, the fallback `durationMs` uses when no turn names one. */
-export function addRequestDuration(totals: SummaryTotals, durationMs: unknown): void {
-  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+export function addRequestDuration(totals: SummaryTotals, durationMs?: number): void {
+  if (durationMs !== undefined && Number.isFinite(durationMs)) {
     totals.requestDurations.push(durationMs);
   }
 }
@@ -133,7 +134,7 @@ export function emptyPrompts(options?: SessionPromptsOptions): PromptSink {
   return {
     list,
     add(text) {
-      const own = typeof text === "string" ? text.trim() : "";
+      const own = (PayloadText.safeParse(text).data ?? "").trim();
       if (list !== undefined && list.length < limit && own !== "") {
         list.push({ text: capPromptText(own, maxChars) });
       }

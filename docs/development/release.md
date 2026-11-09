@@ -174,12 +174,12 @@ the run fails at it with an authentication error. Configure the publisher and re
 3. A breaking release is one whose change records remove or change a public export or a documented behavior.
    In 0.x, such a change is recorded as `minor`. For these releases, follow the
    [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
-   Review the version and changelog diff, then select
-   **Ready for review**. Pull requests created with the
-   workflow's `github.token` do not trigger workflows, and the `ready_for_review` event starts CI (closing and
-   reopening the PR also works). Wait for green checks and squash-merge. To skip the extra click, pass a GitHub App
-   token or a fine-grained PAT to the action's `github-token` input, never through the `GITHUB_TOKEN` environment
-   variable, which the action rejects when it differs from the input.
+   Every version update leaves the release PR in Draft (`pr-draft: always`). Review the version and changelog diff,
+   then select **Ready for review** to start full PR CI. Closing and reopening a Draft PR does not bypass the Draft
+   guard. Confirm that `check` actually ran and passed for the current head and merge result before squash-merging;
+   a skipped check is not validation evidence. PR events created with `github.token` may create runs that require
+   maintainer approval; follow any GitHub approval prompt rather than assuming no run exists. Changing token type
+   does not remove the release PR's Draft gate, and this flow needs no new token permissions.
 4. The merge push runs Publish npm on the merge commit. After waiting for any other run of the same version, it
    checks the state again, creates the annotated tag `vX.Y.Z` locally, and runs `release:check --verify-git`: the
    tag equals the version of every published package, no changesets remain and the commit is on `origin/main`. It
@@ -369,9 +369,12 @@ Run it after `pnpm run check` so `dist` exists.
   and blocks the version number permanently; prefer deprecation.
 - Once any package of a version is on npm, do not move or reuse its tag. Fix forward with a new version.
 
-## CI Trigger Options
+## CI Triggers
 
-`ci.yml` runs on ordinary `pull_request` and `push` events, which is enough for a single-maintainer repository. A
-repository that wants CI to validate an exact head/base pair, or to skip CI on drafts, can replace it with a
-`workflow_dispatch` workflow that takes `head_sha`/`base_sha` inputs and re-checks the PR head before and after the
-run. That design costs a manual trigger per PR; adopt it only when stale or racing CI results are a real problem.
+`ci.yml` runs full checks for Ready PRs on `opened`, `synchronize`, `reopened` and `ready_for_review`, and retains
+the existing `push` trigger on `main`. Draft PR events skip the full `check` job; lightweight `Review` checks still
+run. Release PRs keep their manual Draft-to-Ready handoff. There is no manual dispatch in this CI workflow.
+
+Verify an executed successful `check` for the current head and merge result, not a skipped Draft check or a result
+for an older comparison. If only the base changed, update the branch or select Draft then Ready to request fresh
+PR validation. See [Required Checks](../../CONTRIBUTING.md#required-checks) for the shared PR policy.

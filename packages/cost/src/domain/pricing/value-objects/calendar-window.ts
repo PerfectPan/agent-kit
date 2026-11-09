@@ -1,4 +1,4 @@
-import { AgentKitError } from "@rivus/agent-kit-catalog/public";
+import { AgentKitError, definedFields } from "@rivus/agent-kit-catalog/public";
 
 /**
  * A span of time in epoch milliseconds, `since` included and `until` excluded: the `since` and `until` of the usage
@@ -69,16 +69,19 @@ export function calendarWindow(days: number, options: CalendarWindowOptions): Ca
   }
   let clock: Intl.DateTimeFormat;
   try {
-    clock = new Intl.DateTimeFormat("en-US", {
-      ...(timeZone === undefined ? {} : { timeZone }),
-      hourCycle: "h23",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric"
-    });
+    clock = new Intl.DateTimeFormat(
+      "en-US",
+      definedFields({
+        timeZone,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric"
+      } satisfies Intl.DateTimeFormatOptions)
+    );
   } catch (cause) {
     throw new AgentKitError<CostErrorCode>("invalid-window", `Unknown time zone "${timeZone}"`, { cause });
   }

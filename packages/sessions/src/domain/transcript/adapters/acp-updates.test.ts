@@ -411,6 +411,35 @@ describe("tool names and args across updates", () => {
     });
   });
 
+  it("reports a running call's output so far as tool-output-partial, and the ending output replaces it", () => {
+    const parts = translate([
+      { sessionUpdate: "tool_call", toolCallId: "c1", title: "bash", status: "pending", rawInput: { cmd: "ls" } },
+      {
+        sessionUpdate: "tool_call_update",
+        toolCallId: "c1",
+        status: "in_progress",
+        content: [{ type: "content", content: { type: "text", text: "compiled" } }]
+      },
+      { sessionUpdate: "tool_call_update", toolCallId: "c1", status: "in_progress" },
+      {
+        sessionUpdate: "tool_call_update",
+        toolCallId: "c1",
+        status: "completed",
+        content: [{ type: "content", content: { type: "text", text: "compiled bin/app" } }]
+      }
+    ]);
+    expect(parts).toEqual([
+      { type: "tool-input-start", toolCallId: "c1", toolName: "bash" },
+      { type: "tool-input-available", toolCallId: "c1", toolName: "bash", input: { cmd: "ls" } },
+      { type: "tool-output-partial", toolCallId: "c1", output: "compiled" },
+      { type: "tool-output-available", toolCallId: "c1", output: "compiled bin/app" },
+      { type: "finish", id: "t.0", finishReason: "end_turn" }
+    ]);
+    // The folder completes no event for the partial; the call and its result come out once.
+    const kinds = foldStreamParts(parts, () => 1).map((event) => event.kind);
+    expect(kinds).toEqual(["tool_call", "tool_result", "request"]);
+  });
+
   it("reports a title change without new input as tool-input-available, clearing it when the name returns", () => {
     const translator = createAcpPartTranslator("t.");
     translator.update({ sessionUpdate: "tool_call", toolCallId: "c1", title: "bash", rawInput: { command: "ls" } });

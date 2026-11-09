@@ -347,6 +347,45 @@ describe("the connection's end", () => {
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 
+  it.live("detach fails with CancelUnsettled when the running cancel does not settle, and touches nothing", () =>
+    Effect.gen(function* () {
+      const stderr: string[] = [];
+      const connection = yield* connectFake({
+        cancelTimeoutMs: 500,
+        onStderr: (line) => {
+          stderr.push(line);
+        }
+      });
+      const session = yield* connection.newSession();
+      const stuck = yield* start(session.prompt([text("stubborn")]));
+      yield* eventually(said(stuck.parts, "working"));
+
+      const detached = yield* Effect.exit(session.detach());
+      expect(Exit.isFailure(detached) && Exit.findErrorOption(detached)).toMatchObject({
+        value: { _tag: "CancelUnsettled", sessionId: session.sessionId }
+      });
+      // The detach contract holds even on failure: no session/close went out, the session is not closed locally.
+      expect(stderr.join("")).not.toContain(`closed ${session.sessionId}`);
+      expect((yield* session.snapshot).state).not.toBe("closed");
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("closing escalates to SIGKILL after the killGraceMs the host sets", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_IGNORE_SIGTERM: "1" },
+        killGraceMs: 100
+      });
+      yield* connection.newSession();
+      const started = Date.now();
+      yield* connection.close();
+      // Without the setting the host waits out the 2 s platform grace; with it the escalation lands at once.
+      expect(Date.now() - started).toBeLessThan(1_500);
+      const ended = yield* connection.ended;
+      expect(alive(pidIn(ended.stderr))).toBe(false);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.live(
     "S88: a connection leaves no process, timer or pipe behind",
     () =>

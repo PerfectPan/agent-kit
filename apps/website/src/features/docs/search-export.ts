@@ -1,5 +1,7 @@
 /** Narrow Fumadocs' `export()` result to the per-locale map from `localeMap`. */
 export function i18nSearchData(value: unknown): Record<string, unknown> {
+  // A build-time guard, not a runtime shape reader: the check throws the mismatched export's kind in the message, so
+  // the site build fails with the shape it found instead of a schema issue list.
   if (
     typeof value !== "object" ||
     value === null ||

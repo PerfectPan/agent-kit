@@ -43,10 +43,10 @@ async function* readRange(path: string, range?: ByteRange): AsyncGenerator<Uint8
   if (end !== undefined && end <= start) {
     return;
   }
-  // Node's `end` is inclusive.
+  // Node's `end` is inclusive; an explicit `end: undefined` reads to the end of the file like an absent one.
   yield* createReadStream(path, {
     start,
-    ...(end === undefined ? {} : { end: end - 1 }),
+    end: end === undefined ? undefined : end - 1,
     highWaterMark: READ_CHUNK_BYTES
   });
 }
@@ -76,11 +76,23 @@ async function writeAtomic(path: string, data: Uint8Array | string, options?: { 
 
 export const nodeFs: PlatformFs = {
   async stat(path, options) {
-    const stats = await absentAsUndefined(options?.followSymlinks === true ? stat(path) : lstat(path));
+    const stats = await absentAsUndefined(
+      options?.followSymlinks === true ? stat(path, { bigint: true }) : lstat(path, { bigint: true })
+    );
     if (stats === undefined) {
       return undefined;
     }
-    return { kind: kindOf(stats), size: stats.size, mtimeMs: stats.mtimeMs };
+    return {
+      kind: kindOf(stats),
+      // The ns fields keep the sub-millisecond precision the non-bigint stat carries in its fraction.
+      size: Number(stats.size),
+      mtimeMs: Number(stats.mtimeNs) / 1e6,
+      // A filesystem that reports no birth time (birthtimeNs 0) yields no identity at all: dev and inode alone
+      // cannot tell a replacement from the file they name, so a use case that compares identities fails closed.
+      ...(stats.birthtimeNs === 0n
+        ? {}
+        : { identity: { dev: stats.dev, ino: stats.ino, birthtimeNs: stats.birthtimeNs } })
+    };
   },
   realpath(path) {
     return absentAsUndefined(realpath(path));

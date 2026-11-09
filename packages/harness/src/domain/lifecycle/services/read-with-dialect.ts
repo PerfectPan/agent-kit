@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import { type Env, readField } from "./payload-fields.js";
 import { ownValue } from "../../../lib/own-value.js";
 import {
@@ -74,7 +75,7 @@ export function readWithDialect(dialect: HookDialect, payload: PayloadView, env:
   if (spec?.subagent === true || marker !== undefined) {
     const id = read("subagentId");
     const type = read("subagentType");
-    event.subagent = { ...(id === undefined ? {} : { id }), ...(type === undefined ? {} : { type }) };
+    event.subagent = definedFields({ id, type });
   }
   const toolName = read("toolName");
   if (toolName !== undefined) {

@@ -35,6 +35,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     }
   },
   {
+    id: "dsh",
+    name: "DeepSeek Harness",
+    aliases: [],
+    home: { en: "DSH_HOME (expands ~), ~/.dsh", zh: "DSH_HOME（展开 ~），~/.dsh" }
+  },
+  {
     id: "gemini-cli",
     name: "Gemini CLI",
     aliases: ["gemini"],
@@ -66,5 +72,11 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
       en: "PI_CODING_AGENT_DIR (expands ~), ~/.pi/agent",
       zh: "PI_CODING_AGENT_DIR（展开 ~），~/.pi/agent"
     }
+  },
+  {
+    id: "zcode",
+    name: "ZCode",
+    aliases: [],
+    home: { en: "ZCODE_STORAGE_DIR, ~/.zcode", zh: "ZCODE_STORAGE_DIR，~/.zcode" }
   }
 ];

@@ -1,5 +1,5 @@
 import type { ServiceTable } from "@rivus/agent-kit-catalog/public";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { LifecycleMapping } from "../value-objects/lifecycle-event.js";
 
@@ -185,13 +185,12 @@ function finishSelectorOf(lifecycle: LifecycleMapping | LifecycleSwitch): Finish
   if (values.length === 0 && !otherwise) {
     return undefined;
   }
-  return {
+  return definedFields({
     path: lifecycle.field,
     values,
-    ...(otherwise
-      ? { others: entries.filter(([, mapping]) => mapping.phase !== "finish").map(([value]) => value), otherwise: true }
-      : {})
-  };
+    others: otherwise ? entries.filter(([, mapping]) => mapping.phase !== "finish").map(([value]) => value) : undefined,
+    otherwise: otherwise ? true : undefined
+  } satisfies FinishSelector);
 }
 
 /**

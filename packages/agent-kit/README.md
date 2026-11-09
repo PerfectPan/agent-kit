@@ -51,15 +51,17 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| gemini-cli  | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes                         |
+| gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -167,12 +169,17 @@ const program = Effect.gen(function* () {
   return yield* applyInstall(plan);
 });
 await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.provideMerge(NodePlatformLive)))));
-// Later: uninstall("my-app") removes only what the ledger records and keeps files the user changed.
+// Later: uninstall("my-app") removes only what the ledger records, keeps files the user changed, and removes
+// the empty directories the install recorded as created once their last owner leaves.
 ```
 
 Claude Code gets a skills-dir plugin, Codex a plugin (through `codex plugin`, or `config.toml` hook groups when
 `codex` is not on `PATH`), Gemini CLI an extension, Grok a file in `~/.grok/hooks`, Cursor a local plugin, and opencode
-and Pi a bridge that forwards their events to the command. Events the dialect reads as ending something (phase
+and Pi a bridge that forwards their events to the command. ZCode gets an owner-specific plugin under
+`~/.agents/agent-kit/zcode`, registered in the fixed `~/.zcode/cli/config.json` `plugins.dirs`; it does not change
+plugin or hook switches. This plugin can also activate existing user hook events that are not explicitly disabled.
+
+Events the dialect reads as ending something (phase
 `finish`: opencode `session.idle`, `session.error`, `session.deleted` and `session.status` at idle; Pi `agent_end`,
 `agent_settled` and `session_shutdown`) are delivered synchronously: the bridge hands them to the command and waits
 for it to exit, at most 5 s, so a finish reaches the command before the next event is forwarded. A send that fails or
@@ -387,7 +394,8 @@ For another `env` or `home`, provide `Layer.succeed(PlatformService, createNodeP
 `connectAgent` starts an agent's ACP program with exactly the environment you pass, completes the handshake and
 returns a connection that belongs to your Scope; closing the Scope closes its sessions and stops the process. A
 session runs one turn at a time, and `prompt` streams the turn: deltas named after AI SDK's stream parts
-(`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-available`, `tool-output-error`, `finish`) and `event` parts carrying the
+(`text-delta`, `reasoning-delta`, `tool-input-*`, `tool-output-partial`, `tool-output-available`, `tool-output-error`,
+`finish`) and `event` parts carrying the
 completed `TranscriptEvent`s. The turn opens with the updates that arrived while no turn ran, so a background
 call's result that lands between turns reaches its parts.
 
@@ -418,16 +426,22 @@ const turn = Effect.scoped(
 await Effect.runPromiseExit(turn.pipe(Effect.provide(Layer.mergeAll(NodePlatformLive, MemorySessionBindingStoreLive))));
 ```
 
-Permission requests go to `onPermission`; without it, or without an answer, they are denied. The agent's stderr
+Permission requests go to `onPermission`; without it, or without an answer, they are denied. A callback whose
+policy answers cancelled returns `{ outcome: "cancelled" }`, which the agent receives as the cancelled outcome
+instead of a denial. The agent's stderr
 reaches `onStderr` as decoded text arrives, in order, and the tail already attached to errors stays; the callback is
 neither awaited nor let to fail the connection. Interrupting a turn's
 stream, or `session.cancel()`, sends `session/cancel` and waits for the turn to end within `cancelTimeoutMs` (5 s by
 default); when it does not end in time, the session's binding is removed and the connection is closed, which fails its
 other sessions with `ConnectionClosed` — `unsettledCancel: "session"` closes only that session instead, with
-`session/close` when the agent supports it, and keeps the others running. `sessionKey` binds a key to the session in
+`session/close` when the agent supports it, and keeps the others running. Stopping the connection's process sends
+SIGTERM first and SIGKILL after `killGraceMs` (2 s by default), which a host that terminates on its own schedule
+sets shorter. `sessionKey` binds a key to the session in
 the `SessionBindingStore`
 (`MemorySessionBindingStoreLive` or `FileSessionBindingStoreLive(path)`), so a later connection can
-`loadSession({ sessionKey })`. Client file reads and writes are off unless `fileSystem` turns them on, and then stay
+`loadSession({ sessionKey })`. A session already open on the connection is returned as is; `session.detach()` forgets it locally instead, so the next `loadSession` re-sends `session/load` — with the MCP servers of that call,
+and no `session/close` to an agent that may not allow loading after one. Client file reads and writes are off
+unless `fileSystem` turns them on, and then stay
 inside the session's directory after links are resolved. `probeAgent` opens one trial session and reports `ready`,
 `needs-login` or `unavailable`.
 
@@ -451,20 +465,22 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Agents
 
-| Agent       | Id                              | Home: override, default                                           |
-| ----------- | ------------------------------- | ----------------------------------------------------------------- |
-| Claude Code | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
-| Codex       | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
-| Grok        | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
-| Gemini CLI  | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
-| opencode    | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
-| Pi          | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
-| Cursor      | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| Agent            | Id                              | Home: override, default                                           |
+| ---------------- | ------------------------------- | ----------------------------------------------------------------- |
+| Claude Code      | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
+| Codex            | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
+| Grok             | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Gemini CLI       | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| opencode         | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi               | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Cursor           | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
+| ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
-Every agent in the table has a hook dialect in `/harness/events`. `/acp` has a launch profile for
-Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Gemini CLI, Grok and opencode; a profile's `warnings` name the
-facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the table except
-Cursor.
+Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp` has a launch
+profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI,
+Grok and opencode; a profile's `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads
+the usage of every agent in the table except Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
@@ -480,7 +496,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the seven agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each of the nine agents above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each

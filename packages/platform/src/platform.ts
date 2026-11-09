@@ -5,10 +5,24 @@ export type OperatingSystem = "darwin" | "linux" | "win32";
 /** `other` covers sockets, FIFOs and devices. */
 export type FileKind = "file" | "dir" | "symlink" | "other";
 
+/**
+ * The identity of one file on one device. A replacement at the same path gets a new identity, and the birth time at
+ * nanosecond resolution keeps the identity of a freed inode from recurring when its number is reused, so comparing the
+ * identities of two `stat` readings tells whether the second names the file the first saw. A filesystem with a coarse
+ * birth-time clock narrows this to a residual window, never widens it.
+ */
+export interface FileIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly birthtimeNs: bigint;
+}
+
 export interface FileStat {
   readonly kind: FileKind;
   readonly size: number;
   readonly mtimeMs: number;
+  /** The file's identity, when the platform knows one; a use case that must tell a replacement from the file it saw reads it. */
+  readonly identity?: FileIdentity;
 }
 
 export interface DirEntry {
@@ -81,6 +95,11 @@ export interface SpawnOptions {
   readonly env: Env;
   /** Aborting sends SIGTERM, then SIGKILL after a grace period. */
   readonly signal?: AbortSignal;
+  /**
+   * How long an aborted child may take to exit after SIGTERM before it gets SIGKILL; 2 s by default. A host that
+   * terminates on its own schedule sets a shorter one so its escalation does not wait out the platform's.
+   */
+  readonly killGraceMs?: number;
 }
 
 export interface ChildHandle {
@@ -143,6 +162,18 @@ export interface PlatformSqlite {
   open(path: string, options?: { readonly readonly?: boolean }): SqliteDatabase;
 }
 
+/** A byte compression an agent may store its session files in. */
+export type Compression = "zstd";
+
+/**
+ * Decodes the available bytes of a compressed session source, including concatenated frames. An incomplete final
+ * frame may yield partial output; a non-frame suffix after complete frames is normally ignored. Corrupt frames
+ * still throw. On Node 23.10.0, 24.14.1 and 24.18.0, a non-frame suffix can also throw when the last complete
+ * frame's decoded output is a positive multiple of 16384 bytes: zlib attempts to decode the suffix in the same
+ * call, before the adapter can ignore it. The host supplies this capability when it has the codec.
+ */
+export type Decompress = (format: Compression, bytes: Uint8Array) => Uint8Array;
+
 /**
  * Host capabilities injected into use cases. A use case declares only the part it needs, for example
  * `Pick<Platform, "fs" | "env" | "home">`.
@@ -155,4 +186,6 @@ export interface Platform {
   readonly process: PlatformProcess;
   readonly clock: PlatformClock;
   readonly sqlite?: PlatformSqlite;
+  /** Present when the host can decode a compressed session source; absent otherwise. */
+  readonly decompress?: Decompress;
 }

@@ -1,4 +1,5 @@
 import { codex } from "@rivus/agent-kit-provider-codex/identity";
+import { dsh } from "@rivus/agent-kit-provider-dsh/identity";
 import { claudeCode } from "@rivus/agent-kit-provider-claude-code/identity";
 import { grok } from "@rivus/agent-kit-provider-grok/identity";
 import { opencode } from "@rivus/agent-kit-provider-opencode/identity";
@@ -6,25 +7,30 @@ import { geminiCli } from "@rivus/agent-kit-provider-gemini-cli/identity";
 import { cursor } from "@rivus/agent-kit-provider-cursor/identity";
 import { validateIdentities } from "@rivus/agent-kit-catalog/public";
 import { pi } from "@rivus/agent-kit-provider-pi/identity";
+import { zcode } from "@rivus/agent-kit-provider-zcode/identity";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
 export const builtinCodingAgents: {
   readonly codex: typeof codex;
+  readonly dsh: typeof dsh;
   readonly "claude-code": typeof claudeCode;
   readonly grok: typeof grok;
   readonly opencode: typeof opencode;
   readonly "gemini-cli": typeof geminiCli;
   readonly cursor: typeof cursor;
   readonly pi: typeof pi;
+  readonly zcode: typeof zcode;
 } = {
   "claude-code": claudeCode,
   codex: codex,
+  dsh: dsh,
   cursor: cursor,
   "gemini-cli": geminiCli,
   grok: grok,
   opencode: opencode,
-  pi: pi
+  pi: pi,
+  zcode: zcode
 };
 
 export const identityTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"identity">> => {

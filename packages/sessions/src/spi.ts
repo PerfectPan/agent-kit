@@ -20,6 +20,20 @@ export {
   usageStreamOf
 } from "./application/services/usage-decoders/files.js";
 export {
+  type SqliteMessageDecode,
+  type SqliteMessageRow,
+  type SqliteMessagesRequest,
+  type SqliteSettlement,
+  type SqliteSettlementState,
+  type SqliteTableRow,
+  SQLITE_LONGEST_MESSAGE_MS,
+  SQLITE_RUNNING_IDS,
+  createSqliteSettlement,
+  decodeSqliteMessages,
+  sqliteMessageSource,
+  sqliteQueryFloor
+} from "./application/services/usage-decoders/sqlite.js";
+export {
   type DecodeUsageOptions,
   type DiscoverOptions,
   type LoadOptions,
@@ -37,10 +51,14 @@ export {
   type UsageStream,
   type UsageTarget
 } from "./application/spi.js";
-export { type ReadFailed } from "./domain/session/errors/session-read-error.js";
+export { type ReadFailed, type SessionNotFound } from "./domain/session/errors/session-read-error.js";
 export { SESSION_TITLE_MAX } from "./domain/session/factories/session-head.js";
 export { basenamePath, belowRoot, dirnamePath, joinPath } from "./lib/paths.js";
-export { type SessionHead, type SessionListError } from "./domain/session/value-objects/session-head.js";
+export {
+  type SessionHead,
+  type SessionListError,
+  type SessionListFailure
+} from "./domain/session/value-objects/session-head.js";
 export { type SessionPreview } from "./domain/session/value-objects/session-preview.js";
 export { type SessionRef } from "./domain/session/value-objects/session-ref.js";
 export {

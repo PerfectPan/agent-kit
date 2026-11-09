@@ -1,4 +1,4 @@
-import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { Env, ExitStatus } from "@rivus/agent-kit-platform/public";
 import { createStreamFolder } from "@rivus/agent-kit-sessions/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
@@ -51,7 +51,8 @@ import {
   ClientFileError,
   openWire,
   PROTOCOL_VERSION,
-  type WireFailure
+  type WireFailure,
+  type WireHandlers
 } from "../services/wire.js";
 
 export interface ConnectAgentOptions {
@@ -82,6 +83,11 @@ export interface ConnectAgentOptions {
    * `session/close` when the agent supports it — removes its bindings, and keeps the other sessions running.
    */
   readonly unsettledCancel?: "connection" | "session";
+  /**
+   * How long the agent may take to exit after the abort that stops it sends SIGTERM, before SIGKILL; 2 s by default. A
+   * host that terminates on its own schedule sets a shorter one so its escalation does not wait out the platform's.
+   */
+  readonly killGraceMs?: number;
   /**
    * Receives the agent's stderr as decoded text arrives, in order, so a host can log a running agent. It may return a
    * promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection.
@@ -140,7 +146,7 @@ export interface AcpConnection {
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 30_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_CANCEL_TIMEOUT_MS = 5_000;
-/** How long closing waits for the process to exit after the platform stopped it. */
+/** How long closing waits for the agent to exit after the abort, past the SIGTERM-to-SIGKILL grace a caller may set. */
 const CLOSE_WAIT_MS = 10_000;
 /** How long a connection whose stream closed waits for the process's exit status. */
 const EXIT_STATUS_WAIT_MS = 1_000;
@@ -189,7 +195,7 @@ function sessionMcpServers(
 
 function metaOf(profile: AcpProfile, setup: SessionSetup): { meta?: Record<string, unknown> } {
   const meta = sessionMeta(profile, setup);
-  return meta === undefined ? {} : { meta };
+  return definedFields({ meta });
 }
 
 /** A session request bounded by the connection's request timeout. */
@@ -241,7 +247,7 @@ function register(
     if (conn.closed !== undefined) {
       return yield* Effect.fail(conn.closed);
     }
-    const created = AcpSession.create({ agent: conn.agent, ...(sessionKey === undefined ? {} : { sessionKey }) });
+    const created = AcpSession.create(definedFields({ agent: conn.agent, sessionKey }));
     if (!created.ok) {
       return yield* Effect.die(invalidOption(created.error.message));
     }
@@ -253,7 +259,7 @@ function register(
         message: `the agent named an invalid session id "${sessionId}"`
       });
     }
-    const live: LiveSession = {
+    const live: LiveSession = definedFields({
       sessionId,
       cwd,
       keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
@@ -262,8 +268,8 @@ function register(
       idleUpdates: [],
       toolState: { tools: new Map(), ended: new Set(), closed: new Set() },
       folder: createStreamFolder(),
-      ...(root === undefined ? {} : { root })
-    };
+      root
+    } satisfies LiveSession);
     conn.sessions.set(sessionId, live);
     return live;
   });
@@ -308,6 +314,9 @@ function openLoaded(
     }
     const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
     conn.loading.set(sessionId, done);
+    // A detached session's unsent first-block prompt goes out with the reload's first prompt, as it would have with
+    // the original session's.
+    const detachedBlocks = conn.detachedPromptBlocks.get(sessionId);
     const load = request(
       conn,
       method,
@@ -316,7 +325,18 @@ function openLoaded(
         mcpServers: sessionMcpServers(options, defaults),
         ...metaOf(conn.profile, options)
       })
-    ).pipe(Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, [])));
+    ).pipe(
+      Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, detachedBlocks ?? [])),
+      // The stash is dropped only once the reload registered the session: a failed or interrupted load keeps it, so
+      // the retried load still sends the unsent first-block prompt.
+      Effect.tap(() =>
+        Effect.sync(() => {
+          if (detachedBlocks !== undefined) {
+            conn.detachedPromptBlocks.delete(sessionId);
+          }
+        })
+      )
+    );
     // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
     // it before it runs.
     return load.pipe(
@@ -427,6 +447,12 @@ function timeoutsOf(options: ConnectAgentOptions): Timeouts {
       throw invalidOption(`${name} must be a positive number of milliseconds, got ${value}`);
     }
   }
+  const { killGraceMs } = options;
+  // Zero is a valid grace: the abort escalates to SIGKILL at once. Anything negative or non-finite would make the
+  // close wait shorter than the process stop needs, and a nonsensical one says the caller meant something else.
+  if (killGraceMs !== undefined && (!Number.isFinite(killGraceMs) || killGraceMs < 0)) {
+    throw invalidOption(`killGraceMs must be a non-negative number of milliseconds, got ${killGraceMs}`);
+  }
   return timeouts;
 }
 
@@ -450,6 +476,9 @@ function open(
   scope: Scope.Closeable
 ): Effect.Effect<AcpConnection, ConnectError> {
   return Effect.gen(function* () {
+    // The grace is captured once: the spawn passes it to the platform and the close wait covers it, so a caller
+    // that reuses and mutates its options object cannot make the two disagree.
+    const killGraceMs = options.killGraceMs;
     const unavailable = (cause: unknown): AgentUnavailable => ({
       _tag: "AgentUnavailable",
       agent,
@@ -465,11 +494,16 @@ function open(
       Effect.gen(function* () {
         const spawned = yield* Effect.try({
           try: () =>
-            platform.process.spawn(profile.command, profile.args, {
-              cwd: options.cwd,
-              env: options.env,
-              signal: controller.signal
-            }),
+            platform.process.spawn(
+              profile.command,
+              profile.args,
+              definedFields({
+                cwd: options.cwd,
+                env: options.env,
+                signal: controller.signal,
+                killGraceMs
+              })
+            ),
           catch: unavailable
         });
         const settled: Promise<ExitStatus | Error> = spawned.exited.then(
@@ -488,7 +522,9 @@ function open(
             } else {
               shutdown(conn, "closed");
             }
-            return Effect.promise(() => settled).pipe(Effect.timeoutOption(CLOSE_WAIT_MS));
+            // The wait must cover the grace the caller set: an agent that ignores SIGTERM does not exit until the
+            // platform's SIGKILL lands, which is `killGraceMs` after the abort, so a long grace needs a longer wait.
+            return Effect.promise(() => settled).pipe(Effect.timeoutOption(CLOSE_WAIT_MS + (killGraceMs ?? 0)));
           })
         );
         return { child: spawned, exited: settled };
@@ -504,36 +540,40 @@ function open(
       }
       return root;
     };
-    const opened = openWire(child, options.clientInfo?.name ?? CLIENT_INFO.name, {
-      onUpdate: (sessionId, update) => {
-        const live = conn?.sessions.get(sessionId);
-        if (conn !== undefined && live !== undefined) {
-          deliverUpdate(conn, live, update);
-        }
-      },
-      onPermission: (request, signal) =>
-        conn === undefined
-          ? Promise.resolve(permissionOutcome(request, undefined, false))
-          : answerPermission(conn, request, signal),
-      ...(fileSystem.read
-        ? { readTextFile: (request) => readClientFile(platform.fs, rootOf(request.sessionId), request) }
-        : {}),
-      ...(fileSystem.write
-        ? { writeTextFile: (request) => writeClientFile(platform.fs, rootOf(request.sessionId), request) }
-        : {})
-    });
+    const opened = openWire(
+      child,
+      options.clientInfo?.name ?? CLIENT_INFO.name,
+      definedFields({
+        onUpdate: (sessionId, update) => {
+          const live = conn?.sessions.get(sessionId);
+          if (conn !== undefined && live !== undefined) {
+            deliverUpdate(conn, live, update);
+          }
+        },
+        onPermission: (request, signal) =>
+          conn === undefined
+            ? Promise.resolve(permissionOutcome(request, undefined, false))
+            : answerPermission(conn, request, signal),
+        readTextFile: fileSystem.read
+          ? (request) => readClientFile(platform.fs, rootOf(request.sessionId), request)
+          : undefined,
+        writeTextFile: fileSystem.write
+          ? (request) => writeClientFile(platform.fs, rootOf(request.sessionId), request)
+          : undefined
+      } satisfies WireHandlers)
+    );
     wire = opened;
 
     const handshakeFailed = (reason: HandshakeFailed["reason"], message: string): HandshakeFailed => {
       const tail = stderr();
-      return {
+      return definedFields({
         _tag: "HandshakeFailed",
         agent,
         reason,
         message,
-        ...(exitStatus === undefined ? {} : { exit: exitStatus }),
-        ...(tail ? { stderr: tail } : {})
-      };
+        exit: exitStatus,
+        stderr: tail
+      } satisfies HandshakeFailed);
     };
     const ended = Effect.promise(() => exited).pipe(
       Effect.flatMap((result) =>
@@ -570,7 +610,7 @@ function open(
     }
 
     const runPromise = yield* FiberSet.makeRuntimePromise<never>().pipe(Scope.provide(scope));
-    const state: ConnectionState = {
+    const state: ConnectionState = definedFields({
       agent,
       profile,
       platform,
@@ -579,20 +619,21 @@ function open(
       bindings,
       sessions: new Map(),
       loading: new Map(),
+      detachedPromptBlocks: new Map(),
       features: handshake.features,
       authMethods: handshake.authMethods,
-      ...(options.onPermission === undefined ? {} : { onPermission: options.onPermission }),
+      onPermission: options.onPermission,
       fileSystem,
       requestTimeoutMs: timeouts.requestTimeoutMs,
       cancelTimeoutMs: timeouts.cancelTimeoutMs,
       unsettledCancel,
       scope,
-      ended: Deferred.makeUnsafe(),
+      ended: Deferred.makeUnsafe<ConnectionClosed>(),
       kill: () => controller.abort(),
       stderr,
       exit: () => exitStatus,
       runPromise
-    };
+    });
     conn = state;
     // The process exit carries the exit status; a stream that closes first waits a little for it.
     yield* Effect.promise(() => exited).pipe(
@@ -611,16 +652,16 @@ function open(
       Effect.sync(() => markClosed(state, connectionClosed(state, "closed")))
     );
 
-    return {
+    return definedFields({
       agent,
-      ...(handshake.agentInfo === undefined ? {} : { agentInfo: handshake.agentInfo }),
+      agentInfo: handshake.agentInfo,
       features: handshake.features,
       authMethods: handshake.authMethods,
       newSession: (sessionOptions) => newSession(state, options, sessionOptions ?? {}),
       loadSession: (target, sessionOptions) => loadSession(state, options, target, sessionOptions ?? {}),
       ended: Deferred.await(state.ended),
       close: () => Scope.close(scope, Exit.void)
-    } satisfies AcpConnection;
+    } satisfies AcpConnection);
   });
 }
 

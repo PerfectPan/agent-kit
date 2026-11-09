@@ -2,6 +2,7 @@
 // no SDK type reaches the public surface.
 
 import * as acp from "@agentclientprotocol/sdk";
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 import * as z from "zod/mini";
 
@@ -156,11 +157,11 @@ function acpMcpServer(server: McpServerConfig): acp.McpServer {
 }
 
 function sessionRequest(params: SessionParams): acp.NewSessionRequest {
-  return {
+  return definedFields({
     cwd: params.cwd,
     mcpServers: params.mcpServers.map(acpMcpServer),
-    ...(params.meta === undefined ? {} : { _meta: params.meta })
-  };
+    _meta: params.meta
+  });
 }
 
 function acpBlock(block: PromptBlock): acp.ContentBlock {
@@ -182,7 +183,7 @@ function handshakeOf(response: acp.InitializeResponse): Handshake {
   const sessions = capabilities?.sessionCapabilities;
   const mcp = capabilities?.mcpCapabilities;
   const info = response.agentInfo;
-  return {
+  return definedFields({
     protocolVersion: response.protocolVersion,
     features: {
       loadSession: capabilities?.loadSession === true,
@@ -194,29 +195,32 @@ function handshakeOf(response: acp.InitializeResponse): Handshake {
       mcpHttp: mcp?.http === true,
       mcpSse: mcp?.sse === true
     },
-    authMethods: (response.authMethods ?? []).map((method) => ({
-      id: method.id,
-      name: method.name,
-      ...(method.description ? { description: method.description } : {})
-    })),
-    ...(info
-      ? { agentInfo: { name: info.name, version: info.version, ...(info.title ? { title: info.title } : {}) } }
-      : {})
-  };
+    authMethods: (response.authMethods ?? []).map((method) =>
+      definedFields({
+        id: method.id,
+        name: method.name,
+        description: method.description ?? undefined
+      })
+    ),
+    agentInfo:
+      info == null
+        ? undefined
+        : definedFields({ name: info.name, version: info.version, title: info.title ?? undefined })
+  });
 }
 
 function permissionRequestOf(params: acp.RequestPermissionRequest): PermissionRequest {
   const { toolCall } = params;
-  return {
+  return definedFields({
     sessionId: params.sessionId,
-    toolCall: {
+    toolCall: definedFields({
       callId: toolCall.toolCallId,
-      ...(toolCall.title ? { title: toolCall.title } : {}),
-      ...(toolCall.kind ? { kind: toolCall.kind } : {}),
-      ...(toolCall.rawInput === undefined ? {} : { rawInput: toolCall.rawInput })
-    },
+      title: toolCall.title ?? undefined,
+      kind: toolCall.kind ?? undefined,
+      rawInput: toolCall.rawInput
+    }),
     options: params.options.map(({ optionId, name, kind }) => ({ optionId, name, kind }))
-  };
+  });
 }
 
 /**
@@ -256,12 +260,14 @@ export function openWire(
   if (readTextFile) {
     app = app.onRequest(acp.methods.client.fs.readTextFile, async ({ params }) => ({
       content: await fileCall(() =>
-        readTextFile({
-          sessionId: params.sessionId,
-          path: params.path,
-          ...(typeof params.line === "number" ? { line: params.line } : {}),
-          ...(typeof params.limit === "number" ? { limit: params.limit } : {})
-        })
+        readTextFile(
+          definedFields({
+            sessionId: params.sessionId,
+            path: params.path,
+            line: params.line ?? undefined,
+            limit: params.limit ?? undefined
+          })
+        )
       )
     }));
   }
@@ -278,12 +284,12 @@ export function openWire(
       return { kind: "closed" };
     }
     if (error instanceof acp.RequestError) {
-      return {
+      return definedFields({
         kind: "rejected",
         code: error.code,
         message: error.message,
-        ...(error.data === undefined ? {} : { data: error.data })
-      };
+        data: error.data
+      } satisfies WireFailure);
     }
     return { kind: "rejected", message: error instanceof Error ? error.message : String(error) };
   };
@@ -323,10 +329,12 @@ export function openWire(
       // A rejection before the Effect runs must not surface as unhandled.
       answer.catch(() => undefined);
       return Effect.tryPromise({ try: () => answer, catch: failure }).pipe(
-        Effect.map((response) => ({
-          stopReason: response.stopReason,
-          ...(response.usage == null ? {} : { usage: response.usage })
-        }))
+        Effect.map((response) =>
+          definedFields({
+            stopReason: response.stopReason,
+            usage: response.usage ?? undefined
+          })
+        )
       );
     },
     cancel: (sessionId) =>

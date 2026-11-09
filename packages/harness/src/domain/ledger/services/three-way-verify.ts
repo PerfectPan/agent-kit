@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import {
   type ArtifactLocatorSnapshot,
@@ -101,11 +101,13 @@ export function verifyOwner(
     const key = locatorKey(entry.locator);
     const actual = observed.get(key);
     const want = wanted.get(key);
-    const status = threeWayVerify({
-      ledger: entry.contentHash,
-      ...(actual === undefined ? {} : { actual }),
-      ...(want === undefined ? {} : { desired: want.hash })
-    });
+    const status = threeWayVerify(
+      definedFields({
+        ledger: entry.contentHash,
+        actual,
+        desired: want?.hash
+      })
+    );
     artifacts.push({ locator: entry.locator, agents: entry.agents, status });
     if (status === "ledger-behind" && actual !== undefined) {
       behind.push({ locator: entry.locator, contentHash: actual });
@@ -119,7 +121,7 @@ export function verifyOwner(
     artifacts.push({
       locator: want.locator,
       agents: want.agents,
-      status: threeWayVerify({ ...(actual === undefined ? {} : { actual }), desired: want.hash })
+      status: threeWayVerify(definedFields({ actual, desired: want.hash }))
     });
   }
   return { artifacts, behind };

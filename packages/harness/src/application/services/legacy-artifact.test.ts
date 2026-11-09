@@ -20,9 +20,16 @@ describe("legacy content boundary", () => {
     const other = { locator, hash, content: { other: "example hook" } };
     const last = { locator, hash, content: "new hook" };
     const texts = legacyTexts([first, bare, other, last]);
-    expect(texts.get(first)).toBe("example hook");
+    expect(texts.get(first)).toEqual({ text: "example hook" });
     expect(texts.get(bare)).toBeUndefined();
     expect(texts.get(other)).toBeUndefined();
-    expect(texts.get(last)).toBe("new hook");
+    expect(texts.get(last)).toEqual({ text: "new hook" });
+  });
+
+  it("carries the source's markers onto the evidence of the finds they are judged against", () => {
+    const seen = { locator, hash, content: "example hook" };
+    const markers = ["example hook"];
+    const texts = legacyTexts([seen], new Map([[seen, markers]]));
+    expect(texts.get(seen)).toEqual({ text: "example hook", markers });
   });
 });

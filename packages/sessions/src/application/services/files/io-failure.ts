@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 
 import type { ReadFailed, SessionNotFound } from "../../../domain/session/errors/session-read-error.js";
@@ -63,7 +63,7 @@ export function guardIo(platform: SessionPlatform): GuardedIo {
   };
   const { fs } = platform;
   return {
-    platform: {
+    platform: definedFields({
       fs: {
         stat: (target, options) => fs.stat(target, options).catch(mark),
         list: (dir) => fs.list(dir).catch(mark),
@@ -74,8 +74,10 @@ export function guardIo(platform: SessionPlatform): GuardedIo {
             mark(error);
           }
         }
-      }
-    },
+      },
+      sqlite: platform.sqlite,
+      decompress: platform.decompress
+    } satisfies SessionPlatform),
     failure(error, path) {
       // The membership check goes first: a non-fs error never has its properties read, so a throwing `code` or
       // `path` getter cannot replace the original throw with the getter's error.

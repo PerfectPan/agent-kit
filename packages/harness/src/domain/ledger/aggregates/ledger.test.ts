@@ -9,7 +9,7 @@ import type { ObservedArtifact } from "../../install-plan/spi/observed-artifact.
 import type { ContentHash } from "../value-objects/content-hash.js";
 import type { LedgerEntrySnapshot } from "../entities/ledger-entry.js";
 import type { PendingOperationSnapshot } from "../entities/pending-operation.js";
-import { checkLedgerVersion, Ledger, type LedgerSnapshot } from "./ledger.js";
+import { checkLedgerVersion, LEDGER_SCHEMA_VERSION, Ledger, type LedgerSnapshot } from "./ledger.js";
 
 const HOME = "/u/me";
 const OWNER = "agent-presence";
@@ -42,7 +42,7 @@ function snapshot(
   overrides: Partial<LedgerSnapshot> = {}
 ): LedgerSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     lineage: "lineage-1",
     revision: 3,
     entries: Object.fromEntries(entries.map((item) => [locatorKey(item.locator), item])),
@@ -226,7 +226,7 @@ describe("Ledger", () => {
   it("starts empty at revision 0 and refuses an empty lineage", () => {
     const created = Ledger.create("lineage-1");
     expect(created.ok && created.value.toSnapshot()).toEqual({
-      schemaVersion: 1,
+      schemaVersion: LEDGER_SCHEMA_VERSION,
       lineage: "lineage-1",
       revision: 0,
       entries: {},
@@ -236,20 +236,37 @@ describe("Ledger", () => {
   });
 
   it("refuses an unknown schema version and leaves the stored data as it was", () => {
-    const stored = { ...snapshot([entry(file("a"))]), schemaVersion: 2 };
+    const stored = { ...snapshot([entry(file("a"))]), schemaVersion: 3 };
     const before = JSON.stringify(stored);
     expect(Ledger.restore(stored)).toEqual({
       ok: false,
-      error: { _tag: "LedgerVersionUnsupported", schemaVersion: 2, supported: [1] }
+      error: { _tag: "LedgerVersionUnsupported", schemaVersion: 3, supported: [1, LEDGER_SCHEMA_VERSION] }
     });
     expect(JSON.stringify(stored)).toBe(before);
-    for (const schemaVersion of ["1", 0, undefined]) {
+    for (const schemaVersion of ["2", 0, undefined]) {
       expect(checkLedgerVersion({ schemaVersion })).toMatchObject({
         ok: false,
         error: { _tag: "LedgerVersionUnsupported" }
       });
     }
     expect(checkLedgerVersion({ schemaVersion: 1 })).toEqual({ ok: true, value: 1 });
+    expect(checkLedgerVersion({ schemaVersion: 2 })).toEqual({ ok: true, value: 2 });
+  });
+
+  it("migrates a schema-1 ledger on load without claiming its directories", () => {
+    const stored = { ...snapshot([entry(file("a"))]), schemaVersion: 1 };
+    const restored = Ledger.restore(stored);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      throw new Error("not restored");
+    }
+    const migrated = restored.value.toSnapshot();
+    // Provenance stays unknown: the directories a schema-1 ledger predates are never inferred from emptiness.
+    expect(migrated.schemaVersion).toBe(LEDGER_SCHEMA_VERSION);
+    expect(migrated.directories).toBeUndefined();
+    expect(migrated.lineage).toBe(stored.lineage);
+    expect(migrated.revision).toBe(stored.revision);
+    expect(migrated.entries).toEqual(stored.entries);
   });
 
   it.each([

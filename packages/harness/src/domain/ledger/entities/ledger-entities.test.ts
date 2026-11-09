@@ -13,7 +13,7 @@ const key = locatorKey(locator);
 
 function snapshot(overrides: Partial<LedgerEntrySnapshot> = {}): LedgerSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     lineage: "fixture",
     revision: 2,
     entries: {

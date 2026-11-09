@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { LiveTranscriptEvent, LiveTranscriptEventOf, TranscriptStreamPart } from "../value-objects/stream-part.js";
 import type {
   RequestPayload,
@@ -41,14 +42,17 @@ export function createStreamFolder(): StreamFolder {
     payload: TranscriptEventPayloads[K],
     ts: number,
     original?: unknown
-  ): LiveTranscriptEventOf<K> => ({
-    id,
-    seq: seq++,
-    ts,
-    kind,
-    payload,
-    ...(original === undefined ? {} : { original })
-  });
+  ): LiveTranscriptEventOf<K> =>
+    // The assertion is the boundary where `definedFields`' mapped type meets the generic kind: the helper drops
+    // `original` when it is undefined, and `kind` and `payload` are never undefined, so the shape stays the literal's.
+    definedFields({
+      id,
+      seq: seq++,
+      ts,
+      kind,
+      payload,
+      original
+    }) as LiveTranscriptEventOf<K>;
 
   const closeText = (id: string, ts: number): LiveTranscriptEvent[] => {
     const open = texts.get(id);
@@ -56,7 +60,7 @@ export function createStreamFolder(): StreamFolder {
       return [];
     }
     texts.delete(id);
-    return [event(open.kind, `${open.kind}:${id}`, open.text ? { text: open.text } : {}, ts)];
+    return [event(open.kind, `${open.kind}:${id}`, definedFields({ text: open.text }), ts)];
   };
 
   const call = (callId: string, tool: ToolFold, ts: number): LiveTranscriptEvent[] => {
@@ -64,12 +68,12 @@ export function createStreamFolder(): StreamFolder {
       return [];
     }
     tool.called = true;
-    const payload = {
+    const payload = definedFields({
       callId,
       name: tool.name,
-      ...(tool.title === undefined ? {} : { title: tool.title }),
-      ...(tool.input === undefined ? {} : { args: tool.input })
-    };
+      title: tool.title,
+      args: tool.input
+    });
     return [event("tool_call", `tool_call:${callId}`, payload, ts)];
   };
 
@@ -129,25 +133,29 @@ export function createStreamFolder(): StreamFolder {
           const tool = toolOf(part.toolCallId);
           tools.delete(part.toolCallId);
           ended.add(part.toolCallId);
-          const payload = {
+          const payload = definedFields({
             callId: part.toolCallId,
             isError: part.type === "tool-output-error",
-            ...(part.output === undefined ? {} : { output: part.output })
-          };
+            output: part.output
+          });
           // A result for a call this folder already finished repeats only the result, never the call.
           const callEvents = tool.called ? [] : call(part.toolCallId, tool, ts);
           return [...callEvents, event("tool_result", `tool_result:${part.toolCallId}`, payload, ts)];
         }
+        case "tool-output-partial":
+          // Display-only, like the deltas: a running call's output so far completes no event, and the call stays
+          // open until its result arrives.
+          return [];
         case "update":
           return [event(part.kind, `update:${part.id}`, { ...part.payload }, ts, part.original)];
         case "finish": {
           const closed = [...texts.keys()].flatMap((id) => closeText(id, ts));
           const calls = [...tools].flatMap(([callId, tool]) => call(callId, tool, ts));
-          const payload: RequestPayload = {
+          const payload: RequestPayload = definedFields({
             granularity: "turn",
             finishReason: part.finishReason,
-            ...(part.usage === undefined ? {} : { usage: part.usage })
-          };
+            usage: part.usage
+          } satisfies RequestPayload);
           const out = [...closed, ...calls, event("request", `request:${part.id}`, payload, ts)];
           // Numbering restarts after each `finish`: the next turn's events number from their start, as a
           // folder per turn numbered them. A turn that fails sends no finish, so the turn after it continues

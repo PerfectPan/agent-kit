@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -19,6 +19,11 @@ export interface LegacyObservation {
   readonly runner?: CodingAgentId;
   /** The event that fires the find, as the runner names it, when the source renames events. */
   readonly event?: string;
+  /**
+   * The legacy markers of the source the find came from, judged against it instead of the bundle's; absent when the
+   * source declares none, so the bundle's markers apply.
+   */
+  readonly markers?: readonly string[];
 }
 
 /**
@@ -37,15 +42,19 @@ export function scanLegacy(
         source.kind === "files"
           ? { ...source, dir: yield* resolvePath(source.dir, true) }
           : { ...source, path: yield* resolvePath(source.path) };
+      const markers = source.markers;
       for (const { locator, read } of yield* files.scan(resolved)) {
         const event = pointerTail(locator.pointer);
         if (events === undefined || (event !== undefined && events.has(event))) {
-          found.push({
-            observed: yield* observation(locator, read),
-            agent,
-            ...(runner === undefined ? {} : { runner }),
-            ...(event === undefined || runAs?.[event] === undefined ? {} : { event: runAs[event] })
-          });
+          found.push(
+            definedFields({
+              observed: yield* observation(locator, read),
+              agent,
+              runner,
+              event: event === undefined ? undefined : runAs?.[event],
+              markers
+            })
+          );
         }
       }
     }

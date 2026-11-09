@@ -1,6 +1,8 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
 import { hasLegacyMarker } from "../../domain/bundle/services/legacy-markers.js";
+import type { LegacyEvidence, LegacyEvidenceMap } from "../../domain/install-plan/value-objects/legacy-evidence.js";
 import type { ObservedArtifact } from "../../domain/install-plan/spi/observed-artifact.js";
 
 const commandSchema = z.object({ command: z.string() });
@@ -19,13 +21,21 @@ export function isLegacyArtifact(markers: readonly string[], content: ArtifactCo
   return text !== undefined && hasLegacyMarker(markers, text);
 }
 
-/** Keep evidence per observation: a locator's final observation and its preserved hooks need different selections. */
-export function legacyTexts(observed: readonly ObservedArtifact[]): ReadonlyMap<ObservedArtifact, string> {
-  const texts = new Map<ObservedArtifact, string>();
+/**
+ * Keep evidence per observation: a locator's final observation and its preserved hooks need different selections.
+ * `sourceMarkers` carries the markers of the source each scanned find came from, judged against it instead of the
+ * bundle's markers when the source declares its own.
+ */
+export function legacyTexts(
+  observed: readonly ObservedArtifact[],
+  sourceMarkers: ReadonlyMap<ObservedArtifact, readonly string[]> = new Map()
+): LegacyEvidenceMap {
+  const texts = new Map<ObservedArtifact, LegacyEvidence>();
   for (const artifact of observed) {
     const text = legacyText(artifact.content);
+    const markers = sourceMarkers.get(artifact);
     if (text !== undefined) {
-      texts.set(artifact, text);
+      texts.set(artifact, definedFields({ text, markers }));
     }
   }
   return texts;

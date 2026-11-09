@@ -97,6 +97,11 @@ const recordFor = (
 const replaceFixture = (home: TestHome, agent: CodingAgentId, installed: BundleSnapshot = bundle()) =>
   Effect.gen(function* () {
     switch (agent) {
+      case "zcode": {
+        home.write(".zcode/cli/config.json", JSON.stringify({ hooks: { events: { Stop: legacyGroup("Stop") } } }));
+        home.write(".claude/settings.json", claudeGrouped({ Stop: legacyGroup("Stop") }));
+        return;
+      }
       case "claude-code": {
         yield* recordFor("claude-code", SHARED_CLAUDE, installed);
         const shim = hook(SHIM.replaceAll("{agent}", "claude-code"), 5);
@@ -199,6 +204,7 @@ interface ExpectedEntry {
 
 /** What each adapter's replace fixture must list. Cursor and Grok see the event under their own name. */
 const expectedReplace: Readonly<Record<keyof typeof testInstall, readonly ExpectedEntry[]>> = {
+  zcode: [],
   "claude-code": [
     {
       file: "/.claude/settings.json",

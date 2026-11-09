@@ -71,6 +71,43 @@ describe("connectAgent", () => {
     )
   );
 
+  it.effect("streams a running tool call's output so far as tool-output-partial parts", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const session = yield* connection.newSession();
+      const parts = yield* run(session.prompt([text("partial")]));
+      const deltas = parts.filter((part) => part.type !== "event");
+      expect(deltas.map((part) => part.type)).toEqual([
+        "tool-input-start",
+        "tool-input-available",
+        "tool-output-partial",
+        "tool-output-partial",
+        "tool-output-available",
+        "finish"
+      ]);
+      expect(deltas.filter((part) => part.type === "tool-output-partial").map((part) => part.output)).toEqual([
+        "compiled src",
+        "linked"
+      ]);
+      expect(
+        deltas.flatMap((part) =>
+          part.type === "tool-output-partial"
+            ? [["partial", part.output]]
+            : part.type === "tool-output-available"
+              ? [["final", part.output]]
+              : []
+        )
+      ).toEqual([
+        ["partial", "compiled src"],
+        ["partial", "linked"],
+        ["final", "linked bin/app"]
+      ]);
+      // Folding the deltas completes the call and its result once; the partials complete no event.
+      const events = parts.flatMap((part) => (part.type === "event" ? [part.event.kind] : []));
+      expect(events.filter((kind) => kind.startsWith("tool"))).toEqual(["tool_call", "tool_result"]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
   it.effect("S81: a turn streams deltas and completed events, and folding the deltas gives the same events", () =>
     Effect.gen(function* () {
       const connection = yield* connectFake();
@@ -373,6 +410,10 @@ describe("connectAgent", () => {
       const denied = yield* run((yield* invented.newSession()).prompt([text("permission")]));
       expect(eventTexts(denied)).toEqual(['permission {"outcome":"selected","optionId":"reject"}']);
 
+      const cancelled = yield* connectFake({ onPermission: () => Effect.succeed({ outcome: "cancelled" }) });
+      const cancelledParts = yield* run((yield* cancelled.newSession()).prompt([text("permission")]));
+      expect(eventTexts(cancelledParts)).toEqual(['permission {"outcome":"cancelled"}']);
+
       const broken = yield* connectFake({ onPermission: () => Effect.die("callback bug") });
       const deniedAgain = yield* run((yield* broken.newSession()).prompt([text("permission")]));
       expect(eventTexts(deniedAgain)).toEqual(['permission {"outcome":"selected","optionId":"reject"}']);
@@ -400,7 +441,7 @@ describe("connectAgent", () => {
       const first = JSON.parse(eventTexts(yield* run(blockSession.prompt([text("inspect")])))[0] ?? "{}");
       expect(first.meta).toBeNull();
       expect(first.prompt).toEqual([
-        { type: "text", text: "be brief" },
+        { type: "text", text: "be brief\n\n" },
         { type: "text", text: "inspect" }
       ]);
       const second = JSON.parse(eventTexts(yield* run(blockSession.prompt([text("inspect")])))[0] ?? "{}");
@@ -674,6 +715,52 @@ describe("session bindings", () => {
       expect(Exit.isFailure(unknown) && Exit.findErrorOption(unknown)).toMatchObject({
         value: { _tag: "AcpRequestFailed", method: "session/load" }
       });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("detach forgets an open session locally, so a reload sends session/load with new MCP servers", () =>
+    Effect.gen(function* () {
+      const mcpA = [{ name: "tools-a", command: "/opt/a", args: [], env: [] }];
+      const mcpB = [{ name: "tools-b", command: "/opt/b", args: [], env: [] }];
+      const stderr: string[] = [];
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_LOAD: "load" },
+        mcpServers: mcpA,
+        onStderr: (text) => {
+          stderr.push(text);
+        }
+      });
+      const session = yield* connection.newSession();
+      const first = JSON.parse(eventTexts(yield* run(session.prompt([text("inspect")])))[0] ?? "{}");
+      expect(first.mcpServers).toEqual(mcpA);
+
+      yield* session.detach();
+      expect((yield* session.snapshot).state).toBe("closed");
+      // The agent kept the session and heard no session/close; the reload re-sent session/load, and the agent
+      // recorded the new MCP servers of that call.
+      const reloaded = yield* connection.loadSession({ sessionId: session.sessionId }, { mcpServers: mcpB });
+      const report = JSON.parse(eventTexts(yield* run(reloaded.prompt([text("inspect")])))[0] ?? "{}");
+      expect(report.mcpServers).toEqual(mcpB);
+      expect(report.loads).toBe(1);
+      expect(stderr.join("")).not.toContain(`closed ${session.sessionId}`);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("detach keeps the unsent first-block system prompt for the reload", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        fake: { FAKE_ACP_LOAD: "load" },
+        profile: { systemPrompt: { in: "first-block" } }
+      });
+      const session = yield* connection.newSession({ systemPrompt: "be brief" });
+      yield* session.detach();
+      const reloaded = yield* connection.loadSession({ sessionId: session.sessionId });
+      const report = JSON.parse(eventTexts(yield* run(reloaded.prompt([text("inspect")])))[0] ?? "{}");
+      // The prompt the session never sent goes out with the reload's first prompt, as it would have originally.
+      expect(report.prompt).toEqual([
+        { type: "text", text: "be brief\n\n" },
+        { type: "text", text: "inspect" }
+      ]);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 

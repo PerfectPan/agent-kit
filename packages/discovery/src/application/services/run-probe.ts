@@ -1,4 +1,5 @@
 import * as z from "zod/mini";
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 
 import type { CommandFailed } from "../../domain/installation/value-objects/probe-problem.js";
 import type { CommandOutput } from "../../domain/installation/value-objects/version.js";
@@ -49,11 +50,15 @@ export async function runProbe<T>(
   }
   let output: CommandOutput;
   try {
-    const result = await platform.process.run(path, args, {
-      cwd: platform.home,
-      timeoutMs: options.timeoutMs,
-      ...(options.signal ? { signal: options.signal } : {})
-    });
+    const result = await platform.process.run(
+      path,
+      args,
+      definedFields({
+        cwd: platform.home,
+        timeoutMs: options.timeoutMs,
+        signal: options.signal
+      })
+    );
     if (result.timedOut) {
       return failed("timed-out");
     }

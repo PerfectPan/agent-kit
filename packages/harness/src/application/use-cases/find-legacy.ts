@@ -1,6 +1,6 @@
 import { legacyText } from "../services/legacy-artifact.js";
 import type { InstallProviders } from "../providers.js";
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -102,17 +102,19 @@ export function findLegacy(
     }
     const scope = yield* ledgerScope(options);
     const { ledger } = yield* loadLedger(scope);
-    const evidence = planEvidenceScope({
-      owner,
-      legacyMarkers: options.legacyMarkers,
-      agents: options.agents,
-      desired: [],
-      ledger,
-      adapters: setup.adapters,
-      dialects: setup.dialects,
-      context: setup.context,
-      ...(options.compat === undefined ? {} : { compat: options.compat })
-    });
+    const evidence = planEvidenceScope(
+      definedFields({
+        owner,
+        legacyMarkers: options.legacyMarkers,
+        agents: options.agents,
+        desired: [],
+        ledger,
+        adapters: setup.adapters,
+        dialects: setup.dialects,
+        context: setup.context,
+        compat: options.compat
+      })
+    );
     const registrations = registrationLookup(setup.adapters, setup.context);
     // The observed set the plan judges legacy against: what the owner tracks, then the scan's finds, first wins.
     const observed = new Map<string, ObservedArtifact>();
@@ -136,7 +138,7 @@ export function findLegacy(
         const treatment = legacyTreatment(
           observation.observed,
           owner,
-          options.legacyMarkers,
+          observation.markers ?? options.legacyMarkers,
           ledger,
           [...observed.values()],
           legacyText(observation.observed.content)
@@ -146,14 +148,16 @@ export function findLegacy(
         }
         const { locator } = observation.observed;
         const hook = hookOf(locator, observation);
-        finds.push({
-          agent: observation.agent,
-          locator,
-          kind: locator.kind,
-          treatment,
-          ...(hook === undefined ? {} : { event: hook.event }),
-          ...(hook === undefined || locator.member === undefined ? {} : { command: locator.member })
-        });
+        finds.push(
+          definedFields({
+            agent: observation.agent,
+            locator,
+            kind: locator.kind,
+            treatment,
+            event: hook?.event,
+            command: hook === undefined ? undefined : locator.member
+          })
+        );
       }
     }
     return finds;

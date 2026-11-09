@@ -33,15 +33,18 @@ export interface RenderedArtifact {
 /**
  * Where an older version of an owner may have left Artifacts without a ledger: a file, each regular file directly in
  * a directory matching its optional extensions, or the entries of a configuration file under `pointer` (each hook
- * of the event lists under it for `hook-group`, each element of the list at it for `element`).
+ * of the event lists under it for `hook-group`, each element of the list at it for `element`). A source may carry
+ * its own legacy `markers`, judged against this source's finds instead of the bundle's, so a marker an old
+ * configuration reference needs but a scanned directory must not match goes on the source that needs it.
  */
 export type ArtifactSource =
-  | { readonly kind: "file"; readonly path: string }
+  | { readonly kind: "file"; readonly path: string; readonly markers?: readonly string[] }
   | {
       readonly kind: "files";
       readonly dir: string;
       /** Loaded filename suffixes including the dot, such as `.js`; absent accepts every file, empty accepts none. */
       readonly extensions?: readonly string[];
+      readonly markers?: readonly string[];
     }
   | {
       readonly kind: "entries";
@@ -49,6 +52,7 @@ export type ArtifactSource =
       readonly path: string;
       readonly pointer: string;
       readonly memberIn: "element" | "hook-group";
+      readonly markers?: readonly string[];
     };
 
 /** A file in which an agent loads command hooks, for `doctor`. */
@@ -61,6 +65,23 @@ export interface HookSource {
    * `{ "hooks": { "<event>": [{ "command" … }] } }`, as Cursor does.
    */
   readonly layout: "grouped" | "flat";
+}
+
+/**
+ * A directory of bridge files the agent loads without a configuration entry (an opencode plugin, a Pi extension):
+ * every file in it forwards the agent's events to hook commands on its owner's behalf. `doctor` counts every file it
+ * loads — the suffixes it accepts, carrying one of the caller's markers — as one registration of that owner for each
+ * of `events`, so a second bridge of one owner, an older release's or a copy under another name, is a
+ * `duplicate-hook`. The events are the agent's own names a bridge can forward; a bridge's real set is its bundle's,
+ * which `doctor` cannot read out of the file.
+ */
+export interface BridgeSource {
+  /** The directory the agent loads bridge files from, as `roots` paths are written. */
+  readonly dir: string;
+  /** Loaded filename suffixes including the dot, such as `.js`; absent accepts every file. */
+  readonly extensions?: readonly string[];
+  /** The events a bridge forwards, in the agent's own names; each loaded file counts once per event. */
+  readonly events: readonly string[];
 }
 
 /** An agent command line, run without a shell; `command` is looked up on `PATH`. */
@@ -125,6 +146,11 @@ export interface InstallAdapter {
   renderSkill(strategy: Strategy, skill: SkillSpec, context: InstallContext): readonly RenderedArtifact[];
   /** Every file this agent loads command hooks from, any owner's, so that `doctor` can find an event firing twice. */
   hookSources?(context: InstallContext): readonly HookSource[];
+  /**
+   * The directories of bridge files this agent loads without a configuration entry, so that `doctor` can find an
+   * event firing twice when two bridges of one owner coexist in one of them.
+   */
+  bridgeSources?(context: InstallContext): readonly BridgeSource[];
   /** Where older versions of this owner may have installed things for this agent without a ledger. */
   legacySources?(context: InstallContext, owner: OwnerSnapshot): readonly ArtifactSource[];
   /** The command lines behind a `cli-registration` locator this adapter renders, `undefined` for any other. */

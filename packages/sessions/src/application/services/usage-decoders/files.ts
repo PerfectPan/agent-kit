@@ -1,4 +1,4 @@
-import { type CodingAgentId, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { type CodingAgentId, definedFields, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { UsageFile, UsageLineDecoder } from "../../../domain/usage/adapters/usage-lines.js";
 import type { SessionListError } from "../../../domain/session/value-objects/session-head.js";
@@ -7,7 +7,7 @@ import { decodeIsFinal } from "../../../domain/usage/services/quiet.js";
 import { type UsageRecord } from "../../../domain/usage/value-objects/usage-record.js";
 import { guardIo } from "../files/io-failure.js";
 import { readBytes, readLines } from "../files/read-file.js";
-import { walkFiles, type WalkSpec } from "../files/walk.js";
+import { walkFiles, type WalkOptions, type WalkSpec } from "../files/walk.js";
 import type { SessionPlatform } from "../../spi.js";
 import type {
   UsageCursor,
@@ -51,7 +51,7 @@ async function continuesAt(
   if (offset === 0) {
     return true;
   }
-  const [byte] = await readBytes(platform, path, { start: offset - 1, end: offset }, signal ? { signal } : {});
+  const [byte] = await readBytes(platform, path, { start: offset - 1, end: offset }, definedFields({ signal }));
   return byte === 0x0a || byte === 0x7d;
 }
 
@@ -101,10 +101,15 @@ export async function* fileSources(
         yield { agent, path: root, error: { _tag: "RootMissing", path: root } };
         continue;
       }
-      paths = await walkFiles(platform, root, spec, {
-        ...(signal ? { signal } : {}),
-        onError: (dir, error) => failures.push({ agent, path: dir, error: readFailed(dir, error) })
-      });
+      paths = await walkFiles(
+        platform,
+        root,
+        spec,
+        definedFields({
+          signal,
+          onError: (dir, error) => failures.push({ agent, path: dir, error: readFailed(dir, error) })
+        } satisfies WalkOptions)
+      );
     } catch (error) {
       signal?.throwIfAborted();
       yield { agent, path: root, error: readFailed(root, error) };
@@ -177,15 +182,16 @@ export function decodeJsonlUsage(
       const final = decodeIsFinal(options, info.mtimeMs);
       const decoder = layout.decoder({ ...located.value, mtimeMs: info.mtimeMs }, from?.state);
       const queue: UsageRecord[] = [...(from?.queue ?? [])];
-      cursor = () => ({
-        agent,
-        offset,
-        line,
-        state: decoder.save(),
-        ...(queue.length > 0 ? { queue: [...queue] } : {})
-      });
+      cursor = () =>
+        definedFields({
+          agent,
+          offset,
+          line,
+          state: decoder.save(),
+          queue: queue.length > 0 ? [...queue] : undefined
+        });
       yield* drain(queue);
-      const lines = readLines(io.platform, path, signal ? { signal } : {}, { offset, line: line + 1 }, info.size);
+      const lines = readLines(io.platform, path, definedFields({ signal }), { offset, line: line + 1 }, info.size);
       for await (const text of lines) {
         const end = text.offset + text.byteLength + text.terminator.length;
         let value: unknown;

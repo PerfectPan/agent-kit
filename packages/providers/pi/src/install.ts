@@ -139,5 +139,12 @@ export const piInstallAdapter: InstallAdapter = {
       pointer: PI_EXTENSIONS_POINTER,
       memberIn: "element"
     }
+  ],
+  bridgeSources: (context) => [
+    {
+      dir: piExtensionsDir(context),
+      extensions: PI_EXTENSION_SUFFIXES,
+      events: Object.keys(piHookDialect.events).toSorted()
+    }
   ]
 };

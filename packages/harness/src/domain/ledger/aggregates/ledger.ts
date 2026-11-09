@@ -1,5 +1,12 @@
 import { deepFreeze } from "../../../lib/deep-freeze.js";
-import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import {
+  AgentKitError,
+  definedFields,
+  type CodingAgentId,
+  err,
+  ok,
+  type Result
+} from "@rivus/agent-kit-catalog/public";
 
 import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
@@ -27,8 +34,12 @@ import {
 } from "../entities/pending-operation.js";
 import { KeptArtifact, type KeptArtifactSnapshot } from "../entities/kept-artifact.js";
 import type { PreImage } from "../value-objects/pre-image.js";
+import { type DirClaimSnapshot, dirClaimProblem } from "../value-objects/dir-claim.js";
 
-export const LEDGER_SCHEMA_VERSION = 1;
+export const LEDGER_SCHEMA_VERSION = 2;
+
+/** The versions this binary reads: a schema-1 ledger migrates on load, an older binary refuses schema 2 as it is. */
+export const LEDGER_SCHEMA_VERSIONS_READ: readonly [1, 2] = [1, LEDGER_SCHEMA_VERSION];
 
 export interface LedgerSnapshot {
   readonly schemaVersion: number;
@@ -41,6 +52,11 @@ export interface LedgerSnapshot {
   readonly pending: readonly PendingOperationSnapshot[];
   /** Artifacts kept on removal as the user's, by locator key; absent in a ledger that has none. */
   readonly kept?: Readonly<Record<LocatorKey, KeptArtifactSnapshot>>;
+  /**
+   * The directories installs of this ledger positively created, by path; absent in a ledger that claims none. A
+   * schema-1 ledger migrates without claims: its directories' provenance is unknown and stays so.
+   */
+  readonly directories?: Readonly<Record<string, DirClaimSnapshot>>;
 }
 
 export type LedgerEvent = ArtifactInstalled | ArtifactRemoved;
@@ -74,11 +90,11 @@ export interface BeginContext {
  */
 export function checkLedgerVersion(stored: {
   readonly schemaVersion: unknown;
-}): Result<typeof LEDGER_SCHEMA_VERSION, LedgerVersionUnsupported> {
+}): Result<(typeof LEDGER_SCHEMA_VERSIONS_READ)[number], LedgerVersionUnsupported> {
   const { schemaVersion } = stored;
-  return schemaVersion === LEDGER_SCHEMA_VERSION
-    ? ok(LEDGER_SCHEMA_VERSION)
-    : err({ _tag: "LedgerVersionUnsupported", schemaVersion, supported: [LEDGER_SCHEMA_VERSION] });
+  return LEDGER_SCHEMA_VERSIONS_READ.includes(schemaVersion as (typeof LEDGER_SCHEMA_VERSIONS_READ)[number])
+    ? ok(schemaVersion as (typeof LEDGER_SCHEMA_VERSIONS_READ)[number])
+    : err({ _tag: "LedgerVersionUnsupported", schemaVersion, supported: [...LEDGER_SCHEMA_VERSIONS_READ] });
 }
 
 const samePreImage = (a: PreImage, b: PreImage): boolean =>
@@ -124,11 +140,17 @@ export class Ledger {
         );
   }
 
-  static restore(snapshot: LedgerSnapshot): Result<Ledger, LedgerVersionUnsupported | InvalidLedger> {
-    const version = checkLedgerVersion(snapshot);
+  static restore(stored: LedgerSnapshot): Result<Ledger, LedgerVersionUnsupported | InvalidLedger> {
+    const version = checkLedgerVersion(stored);
     if (!version.ok) {
       return version;
     }
+    // A schema-1 ledger migrates as it is, with no directory claims: what it predates has unknown provenance, which
+    // stays unknown, never inferred from today's emptiness. Lineage, revision, entries and pre-images carry over.
+    const snapshot: LedgerSnapshot =
+      version.value === LEDGER_SCHEMA_VERSION
+        ? stored
+        : (({ directories: _unknown, ...rest }) => ({ ...rest, schemaVersion: LEDGER_SCHEMA_VERSION }))(stored);
     const invalid = (reason: string, key?: LocatorKey): Result<never, InvalidLedger> =>
       err(key === undefined ? { _tag: "InvalidLedger", reason } : { _tag: "InvalidLedger", reason, key });
     if (snapshot.lineage === "") {
@@ -176,6 +198,18 @@ export class Ledger {
     }
     if (new Set(pending.map((op) => locatorKey(op.locator))).size !== pending.length) {
       return invalid("two pending operations on one locator");
+    }
+    for (const [path, claim] of Object.entries(snapshot.directories ?? {})) {
+      const problem = dirClaimProblem(claim);
+      if (problem !== undefined) {
+        return invalid(problem.reason);
+      }
+      if (claim.path !== path) {
+        return invalid("a directory claim is not keyed by its path");
+      }
+      if (claim.entryRevision > snapshot.revision) {
+        return invalid("directory claim revision is not between 0 and the ledger revision");
+      }
     }
     return ok(new Ledger(snapshot, entries, pending, kept));
   }
@@ -296,7 +330,7 @@ export class Ledger {
       ) {
         throw new AgentKitError("pre-image-missing", `No pre-image matching the precondition was captured for ${key}`);
       }
-      return {
+      return definedFields({
         planId,
         owner: plan.bundle.owner,
         bundleVersion: plan.bundle.version,
@@ -305,16 +339,17 @@ export class Ledger {
         action: step.action,
         agents: step.agents,
         precondition: step.precondition,
-        ...(step.desired === undefined ? {} : { resultHash: step.desired.hash }),
-        ...(step.removal === undefined ? {} : { removal: step.removal }),
-        ...(preImage === undefined ? {} : { preImage }),
-        ...((step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
-        context.createdConfigFiles?.includes(step.locator.path) === true
-          ? { createdConfigFile: true }
-          : {}),
-        ...(step.legacy === undefined ? {} : { legacy: step.legacy }),
+        resultHash: step.desired?.hash,
+        removal: step.removal,
+        preImage,
+        createdConfigFile:
+          (step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
+          context.createdConfigFiles?.includes(step.locator.path) === true
+            ? true
+            : undefined,
+        legacy: step.legacy,
         startedAt: context.at
-      };
+      } satisfies PendingOperationSnapshot);
     });
     const entries = Object.fromEntries(
       Object.entries(this.snapshot.entries).map(([key, entry]) => {
@@ -400,6 +435,52 @@ export class Ledger {
     return ok({ state: changed ? this.next(entries, []) : this, events: [] });
   }
 
+  /**
+   * Records the directories an install positively created and releases the claims of the directories a removal
+   * emptied, in one transition, so the claim of a directory whose removal is under way never outlives the save that
+   * records it. A claim gains the owner when the directory is new to it and keeps the others; a release hands the
+   * directory to the owners that remain and drops the claim of one whose last owner leaves. Releasing an unclaimed
+   * path, and claiming an already claimed one, change only what they must. An install that died before this save
+   * records nothing, so its uncertain creation stays unclaimed.
+   */
+  updateDirectories(owner: OwnerSnapshot, claim: readonly string[], release: readonly string[]): LedgerTransition {
+    const dirs: Record<string, DirClaimSnapshot> = { ...this.snapshot.directories };
+    const revision = this.revision + 1;
+    for (const path of claim) {
+      const existing = dirs[path];
+      dirs[path] =
+        existing === undefined
+          ? { path, owners: [owner], entryRevision: revision }
+          : existing.owners.includes(owner)
+            ? existing
+            : { ...existing, owners: [...existing.owners, owner].toSorted(), entryRevision: revision };
+    }
+    for (const path of release) {
+      const existing = dirs[path];
+      if (existing === undefined) {
+        continue;
+      }
+      const owners = existing.owners.filter((other) => other !== owner);
+      // The owner released its use: other owners keep the claim, and a directory the owner removed under a claim
+      // that never named it — an empty one, so nobody's use ends with it — loses the stale claim.
+      if (owners.length === 0 || !existing.owners.includes(owner)) {
+        delete dirs[path];
+      } else {
+        dirs[path] = { ...existing, owners, entryRevision: revision };
+      }
+    }
+    const unchanged =
+      claim.every((path) => dirs[path] === (this.snapshot.directories ?? {})[path]) &&
+      release.every((path) => dirs[path] === (this.snapshot.directories ?? {})[path]);
+    if (unchanged) {
+      return { state: this, events: [] };
+    }
+    return {
+      state: this.next(this.snapshot.entries, this.snapshot.pending, this.snapshot.kept ?? {}, dirs),
+      events: []
+    };
+  }
+
   toSnapshot(): LedgerSnapshot {
     return this.snapshot;
   }
@@ -461,15 +542,17 @@ export class Ledger {
   private next(
     entries: Readonly<Record<LocatorKey, LedgerEntrySnapshot>>,
     pending: readonly PendingOperationSnapshot[],
-    kept: Readonly<Record<LocatorKey, KeptArtifactSnapshot>> = this.snapshot.kept ?? {}
+    kept: Readonly<Record<LocatorKey, KeptArtifactSnapshot>> = this.snapshot.kept ?? {},
+    directories: Readonly<Record<string, DirClaimSnapshot>> = this.snapshot.directories ?? {}
   ): Ledger {
-    const { kept: _previous, ...rest } = this.snapshot;
+    const { kept: _previous, directories: _previousDirs, ...rest } = this.snapshot;
     const snapshot: LedgerSnapshot = {
       ...rest,
       revision: this.revision + 1,
       entries,
       pending,
-      ...(Object.keys(kept).length === 0 ? {} : { kept })
+      ...(Object.keys(kept).length === 0 ? {} : { kept }),
+      ...(Object.keys(directories).length === 0 ? {} : { directories })
     };
     const restored = Ledger.restore(snapshot);
     if (!restored.ok) {
@@ -518,7 +601,7 @@ export class Ledger {
     }
     const unchanged = entry !== undefined && entry.contentHash === op.resultHash;
     const activeOwner = unchanged ? entry.activeOwner : op.owner;
-    const next: LedgerEntrySnapshot = {
+    const next: LedgerEntrySnapshot = definedFields({
       locator: op.locator,
       owners: unchanged ? [...new Set([...entry.owners, op.owner])].toSorted() : [op.owner],
       activeOwner,
@@ -527,10 +610,10 @@ export class Ledger {
       toolVersion: unchanged ? entry.toolVersion : op.toolVersion,
       contentHash: op.resultHash,
       preImage: entry?.preImage ?? op.preImage ?? { existed: false },
-      ...(entry?.createdConfigFile === true || op.createdConfigFile === true ? { createdConfigFile: true } : {}),
+      createdConfigFile: entry?.createdConfigFile === true || op.createdConfigFile === true ? true : undefined,
       appliedAt: at,
       entryRevision: revision
-    };
+    } satisfies LedgerEntrySnapshot);
     if (entry !== undefined && sameRecord(entry, next)) {
       return { entry };
     }

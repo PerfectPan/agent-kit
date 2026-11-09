@@ -2,6 +2,7 @@ import {
   type CodingAgentId,
   type CodingAgent,
   type ServiceTable,
+  definedFields,
   requireService,
   parseCodingAgentId
 } from "@rivus/agent-kit-catalog/public";
@@ -218,19 +219,19 @@ async function detectOne(run: Run, recipe: ProbeRecipe): Promise<Installation> {
     ? await detectAuth(run, recipe, versionFailed ? undefined : command?.path, problems)
     : ({ status: "unknown" } as const);
 
-  return {
+  return definedFields({
     agent: recipe.agent,
     displayName: recipe.displayName,
     kind: recipe.kind,
     status,
-    ...(command ? { command: command.path } : {}),
-    ...(appPath === undefined ? {} : { appPath }),
-    ...(version ? { version } : {}),
+    command: command?.path,
+    appPath,
+    version,
     auth,
     evidence,
     problems,
     warnings: installationWarnings(recipe, problems)
-  };
+  });
 }
 
 /**
