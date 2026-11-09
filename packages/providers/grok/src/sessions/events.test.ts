@@ -426,6 +426,60 @@ describe("grok coalesce fallback", () => {
     expect(requests[3]?.requestId).toBe("0");
   });
 
+  it("places each request before its call's first output and stamps that call's outputs", () => {
+    const first = Date.parse("2026-01-01T00:00:01.000Z");
+    const second = Date.parse("2026-01-01T00:00:03.000Z");
+    const calls = {
+      turns: new Map([
+        [
+          0,
+          [
+            { ts: first, model: "grok-a" },
+            { ts: second, model: "grok-b" }
+          ]
+        ]
+      ])
+    };
+    const parsed = value(
+      translateGrokRecords(
+        [
+          grokRecord(
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },
+            1
+          ),
+          {
+            value: {
+              timestamp: "2026-01-01T00:00:02.000Z",
+              params: { update: { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "partial" } } }
+            },
+            file: "updates.jsonl",
+            line: 2,
+            offset: 1,
+            length: 1
+          },
+          grokRecord(
+            {
+              sessionUpdate: "turn_completed",
+              usage: { inputTokens: 30, outputTokens: 6, modelCalls: 2 }
+            },
+            3
+          )
+        ],
+        { calls }
+      )
+    );
+    const placed = parsed.events.filter((event) => event.kind === "request" || event.kind === "assistant");
+    expect(placed.map((event) => event.kind)).toEqual(["request", "assistant", "request", "request"]);
+    // The first call's request sits before the output it produced; the output is its member.
+    expect(placed[0]?.ts).toBe(first);
+    expect(placed[0]?.payload).toEqual({ granularity: "request", model: "grok-a" });
+    const output = placed[1]!;
+    expect(output.requestId).toBe("0#0");
+    // The second call's request comes after the output, before the turn's aggregate usage.
+    expect(placed[2]?.ts).toBe(second);
+    expect(placed[3]?.requestId).toBe("0");
+  });
+
   it("keeps the turn-level request when the join names one call or none", () => {
     const single = { turns: new Map([[0, [{ ts: 1000, model: "grok-a" }]]]) };
     const records = [

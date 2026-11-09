@@ -160,14 +160,21 @@ async function readGrokCalls(
 ): Promise<GrokSessionCalls | undefined> {
   const paths = [joinPath(dir, GROK_EVENTS_FILE), joinPath(dir, GROK_CHAT_HISTORY_FILE)];
   const texts: (string | undefined)[] = [];
-  for (const path of paths) {
-    const info = await platform.fs.stat(path, { followSymlinks: true });
-    if (info?.kind !== "file" || info.size > GROK_CALLS_FILE_BYTES) {
-      return undefined;
+  try {
+    for (const path of paths) {
+      const info = await platform.fs.stat(path, { followSymlinks: true });
+      if (info?.kind !== "file" || info.size > GROK_CALLS_FILE_BYTES) {
+        return undefined;
+      }
+      texts.push(await readText(platform, path, options));
     }
-    texts.push(await readText(platform, path, options));
+    return grokCallsOf(texts[0], texts[1]);
+  } catch {
+    // An unreadable join file is an optional enrichment, not a read failure: cancellation still
+    // reaches the caller, and everything else keeps the turn-level request.
+    options.signal?.throwIfAborted();
+    return undefined;
   }
-  return grokCallsOf(texts[0], texts[1]);
 }
 
 async function readSession(
