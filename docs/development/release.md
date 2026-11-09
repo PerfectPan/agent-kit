@@ -202,9 +202,12 @@ Run it after `pnpm run check` so `dist` exists.
 - **Renovate dependency PRs**: `renovate.json` enables the npm and GitHub Actions managers. Renovate owns routine
   npm/pnpm and Actions updates. There is no Dependabot routine version-update configuration; security ownership
   remains separate as described below.
-  Renovate checks on Mondays from 00:00 to 06:59 in Asia/Shanghai, waits seven days after a release, and opens at
+  Renovate checks on Mondays from 00:00 to 06:59 in Asia/Shanghai, waits one day after a release, and opens at
   most five concurrent version-update PRs. Automerge is disabled; require the PR checks and review major updates
-  separately before merging. The waiting period stays above the workspace's one-day install policy.
+  separately before merging. The wait equals the workspace's one-day `minimumReleaseAge` install policy: lock file
+  maintenance leaves version choice to pnpm, so a longer Renovate wait would hold its `renovate/stability-days`
+  check pending on versions that pnpm already accepts. Renovate adds its default 30-minute buffer, so pnpm accepts
+  every version it proposes.
   `rangeStrategy: "bump"` updates declared ranges and regenerates the pnpm lockfile through `pnpm install`.
   `ignorePaths` excludes only `node_modules`, so the smoke-test workspace is included.
 
@@ -213,7 +216,7 @@ Run it after `pnpm run check` so `dist` exists.
   group, `effect` and `@effect/vitest` an effect group, and the root `packageManager` pin a pnpm group.
   `@effect/vitest` requires a minimum `effect` version, so they must move together to satisfy strict peer checks;
   `@effect/tsgo` has no effect peer and stays in the catch-all group. Renovate updates both size-limit catalog
-  pins together only when both releases have passed the seven-day wait in the same run. Different release dates
+  pins together only when both releases have passed the one-day wait in the same run. Different release dates
   can leave only one eligible, so review their exact peer requirements before merging. Keep
   `strictPeerDependencies: true`. Size budgets keep 2% (at least 256 B) of headroom, so most updates pass unchanged;
   when one exceeds a budget, compare every entry's size against main and run `pnpm size:update` on the branch.
