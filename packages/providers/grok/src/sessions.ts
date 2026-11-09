@@ -1,6 +1,9 @@
 import {
   GROK_DISPLAY_NAME,
   GROK_ID,
+  GROK_CHAT_HISTORY_FILE,
+  GROK_CALLS_FILE_BYTES,
+  GROK_EVENTS_FILE,
   GROK_SUBAGENTS_DIR,
   GROK_SUBAGENT_META_FILE,
   GROK_SYSTEM_PROMPT_FILE,
@@ -21,6 +24,7 @@ import {
 } from "./layout.js";
 import { applyGrokSummary, previewGrokRecords } from "./sessions/preview.js";
 import { GROK_CAPABILITIES, grokCapabilities, translateGrokRecords } from "./sessions/events.js";
+import { grokCallsOf, type GrokSessionCalls } from "./sessions/calls.js";
 import { summarizeGrokRecords } from "./sessions/summarize.js";
 import {
   joinPath,
@@ -144,6 +148,28 @@ async function readSubagentMetas(
   return out;
 }
 
+/**
+ * The per-turn model calls the session's `events.jsonl` and `chat_history.jsonl` join, when both sit within the
+ * join budget. A missing file, an oversized one, or an unreadable one joins no calls; the transcript keeps its
+ * turn-level request and nothing fails.
+ */
+async function readGrokCalls(
+  platform: SessionPlatform,
+  dir: string,
+  options: { signal?: AbortSignal; progress: ReadProgress }
+): Promise<GrokSessionCalls | undefined> {
+  const paths = [joinPath(dir, GROK_EVENTS_FILE), joinPath(dir, GROK_CHAT_HISTORY_FILE)];
+  const texts: (string | undefined)[] = [];
+  for (const path of paths) {
+    const info = await platform.fs.stat(path, { followSymlinks: true });
+    if (info?.kind !== "file" || info.size > GROK_CALLS_FILE_BYTES) {
+      return undefined;
+    }
+    texts.push(await readText(platform, path, options));
+  }
+  return grokCallsOf(texts[0], texts[1]);
+}
+
 async function readSession(
   platform: SessionPlatform,
   ref: SessionRef,
@@ -155,7 +181,8 @@ async function readSession(
   const meta = await loadMeta(platform, dir, options);
   const main = await readJsonlRecords(platform, grokUpdatesPath(ref.path), options);
   const subagents = await readSubagentMetas(platform, dir, options, meta.skipped);
-  return { ...meta, main, subagents };
+  const calls = await readGrokCalls(platform, dir, options);
+  return { ...meta, main, subagents, calls };
 }
 
 async function loadGrok(
@@ -170,14 +197,15 @@ async function loadGrok(
   if (!files.ok) {
     return files;
   }
-  const { meta, skipped, generation, main, subagents } = files.value;
+  const { meta, skipped, generation, main, subagents, calls } = files.value;
   if (generation) {
     return err(generation);
   }
   const translated = translateGrokRecords(main.records, {
     ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
     meta,
-    subagents
+    subagents,
+    ...(calls === undefined ? {} : { calls })
   });
   if (!translated.ok) {
     return translated;
@@ -325,6 +353,8 @@ interface GrokSessionFiles {
   generation?: UnknownFormatGeneration;
   main: JsonlRecords;
   subagents: Map<string, GrokSubagentMeta>;
+  /** The per-turn model calls the session's `events.jsonl` and `chat_history.jsonl` join, when readable. */
+  calls?: GrokSessionCalls;
 }
 
 export { GROK_CAPABILITIES, translateGrokRecords, type GrokTranslateOptions } from "./sessions/events.js";

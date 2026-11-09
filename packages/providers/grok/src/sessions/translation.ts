@@ -21,6 +21,7 @@ import {
   mergeAcpToolUpdate
 } from "@rivus/agent-kit-sessions/spi";
 import { isInjectedChunk } from "./chunks.js";
+import { type GrokCall, type GrokSessionCalls } from "./calls.js";
 import { type GrokSubagentMeta } from "../layout.js";
 import {
   followGrokTurn,
@@ -62,6 +63,20 @@ function requestPayload(update: GrokUpdateValue, turnModel: string | undefined):
     ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
     ...(byModel ? { usageByModel: byModel } : {})
   };
+}
+
+/** The calls of the turn the prompt index names, or none when the join is absent or the turn names no index. */
+function turnCalls(calls: GrokSessionCalls | undefined, prompt: string | undefined): readonly GrokCall[] {
+  if (calls === undefined || prompt === undefined) {
+    return [];
+  }
+  const index = Number(prompt);
+  return Number.isInteger(index) ? (calls.turns.get(index) ?? []) : [];
+}
+
+/** The payload of one model call: its model and no usage, since Grok logs usage per turn, never per call. */
+function callRequestPayload(call: GrokCall): RequestPayload {
+  return { granularity: "request", ...(call.model === undefined ? {} : { model: call.model }) };
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -194,10 +209,24 @@ export interface BoundedGrokTranslation extends GrokTranslation {
   step(record: SourcedRecord): GrokStep;
 }
 
-export function createGrokTranslation(options: { readonly retain: true }): RetainGrokTranslation;
-export function createGrokTranslation(options: { readonly retain: false }): BoundedGrokTranslation;
-export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation;
-export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation {
+export interface GrokTranslationOptions {
+  readonly retain: boolean;
+  /**
+   * The per-turn model calls joined from `events.jsonl` and `chat_history.jsonl`. A turn the join names more
+   * than one call for emits one request per call; without the join, or for a single-call turn, the translation
+   * keeps its turn-level request. The bounded pass reads no calls either way.
+   */
+  readonly calls?: GrokSessionCalls;
+}
+
+export function createGrokTranslation(
+  options: GrokTranslationOptions & { readonly retain: true }
+): RetainGrokTranslation;
+export function createGrokTranslation(
+  options: GrokTranslationOptions & { readonly retain: false }
+): BoundedGrokTranslation;
+export function createGrokTranslation(options: GrokTranslationOptions): GrokTranslation;
+export function createGrokTranslation(options: GrokTranslationOptions): GrokTranslation {
   const retain = options.retain;
   const events: TranscriptEvent[] = [];
   const skips: GrokSkip[] = [];
@@ -363,22 +392,44 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         delete turn.model;
         const durationMs = update.elapsed_ms;
         if (retain) {
-          // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
-          // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
-          // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
-          // already used, now checked like the Codex translator checks its own.
-          const requestId = `request:${key}`;
-          const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
-          usedIds.add(id);
-          segment = placeRequest(
-            events,
-            segment,
-            baseEvent(record, "request", payload, {
-              id,
-              ts,
-              requestId: key
-            })
-          );
+          const calls = turnCalls(options.calls, prompt);
+          if (calls.length > 1) {
+            // One request per model call, each at its response start; the turn's aggregate usage comes whole
+            // behind them, since Grok records usage per turn and no call is split by estimate.
+            for (let index = 0; index < calls.length; index++) {
+              const call = calls[index]!;
+              const callId = `${key}#${index}`;
+              const id = nextFree(`request:${callId}`);
+              usedIds.add(id);
+              pushEvent(
+                baseEvent(record, "request", callRequestPayload(call), {
+                  id,
+                  ts: call.ts ?? ts,
+                  requestId: callId
+                })
+              );
+            }
+            const id = nextFree(`request:${key}`);
+            usedIds.add(id);
+            pushEvent(baseEvent(record, "request", payload, { id, ts, requestId: key }));
+          } else {
+            // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
+            // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
+            // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
+            // already used, now checked like the Codex translator checks its own.
+            const requestId = `request:${key}`;
+            const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
+            usedIds.add(id);
+            segment = placeRequest(
+              events,
+              segment,
+              baseEvent(record, "request", payload, {
+                id,
+                ts,
+                requestId: key
+              })
+            );
+          }
           if (durationMs !== undefined) {
             emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
           }
