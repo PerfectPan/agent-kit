@@ -204,10 +204,13 @@ Run it after `pnpm run check` so `dist` exists.
   remains separate as described below.
   Renovate checks on Mondays from 00:00 to 06:59 in Asia/Shanghai, waits one day after a release, and opens at
   most five concurrent version-update PRs. Automerge is disabled; require the PR checks and review major updates
-  separately before merging. The wait equals the workspace's one-day `minimumReleaseAge` install policy: lock file
-  maintenance leaves version choice to pnpm, so a longer Renovate wait would hold its `renovate/stability-days`
-  check pending on versions that pnpm already accepts. Renovate adds its default 30-minute buffer, so pnpm accepts
-  every version it proposes.
+  separately before merging. The wait equals the workspace's one-day `minimumReleaseAge` install policy, and
+  Renovate adds its default 30-minute buffer, so pnpm accepts every version it proposes.
+  Lock file maintenance has no single release to time: pnpm picks every version, transitive ones included, under its
+  own one-day policy and verifies the lockfile on install. Renovate's default `timestamp-required` behaviour marks an
+  update without a release timestamp as pending, so `lockFileMaintenance` sets
+  `minimumReleaseAgeBehaviour: "timestamp-optional"` to keep `renovate/stability-days` from staying pending, and
+  `logLevelRemap` lowers the notice Renovate then logs so it stays off the Dependency Dashboard.
   `rangeStrategy: "bump"` updates declared ranges and regenerates the pnpm lockfile through `pnpm install`.
   `ignorePaths` excludes only `node_modules`, so the smoke-test workspace is included.
 
