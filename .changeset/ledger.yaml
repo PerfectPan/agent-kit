@@ -28,6 +28,12 @@
   intents:
     - effect-peer-4-0-5
     - shiny-trains-sip
+"@rivus/agent-kit-collab@0.24.0":
+  dir: packages/agent-kit-collab
+  intents:
+    - effect-peer-4-0-6
+    - effect-peer-4-1-1
+    - orange-falcons-stare
 "@rivus/agent-kit@0.19.1":
   dir: packages/agent-kit
   intents:
@@ -79,3 +85,39 @@
   intents:
     - loud-bears-roll
     - purple-carrots-arrive
+"@rivus/agent-kit@0.24.0":
+  dir: packages/agent-kit
+  intents:
+    - acp-first-block-separator
+    - acp-idle-updates-held
+    - acp-stderr-callback
+    - acp-unsettled-cancel-scope
+    - ancient-roses-drop
+    - boundary-parsing
+    - bright-swans-do
+    - codex-timeless-usage-stamp
+    - defined-fields
+    - defined-fields-spreads
+    - doctor-bridge-duplicates
+    - dsh-discovery-acp
+    - dsh-session-reader
+    - dsh-usage-decoder
+    - eager-stars-deny
+    - effect-peer-4-0-6
+    - effect-peer-4-1-1
+    - fluffy-hounds-juggle
+    - fluffy-zebras-sleep
+    - gemini-cli-sessions
+    - grok-claude-code-id-serials
+    - heavy-pens-destroy
+    - khaki-pigs-draw
+    - new-clouds-dress
+    - opencode-session-reader
+    - pi-session-reader
+    - quick-bats-smile
+    - renovate-378cf63
+    - renovate-c5abd13
+    - renovate-ec0b24d
+    - session-sources
+    - smart-jokes-fry
+    - sqlite-shared-usage-reader

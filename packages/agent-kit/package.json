@@ -1,6 +1,6 @@
 {
   "name": "@rivus/agent-kit",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Connect to third-party coding agents: identity, installed-agent detection, session logs, transcripts, driving agents over ACP and the host platform port.",
   "license": "MIT",
   "repository": {
@@ -122,9 +122,9 @@
     "@rivus/agent-kit-platform": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
     "@rivus/agent-kit-provider-claude-code": "workspace:*",
-    "@rivus/agent-kit-provider-dsh": "workspace:*",
     "@rivus/agent-kit-provider-codex": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",
+    "@rivus/agent-kit-provider-dsh": "workspace:*",
     "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
     "@rivus/agent-kit-provider-grok": "workspace:*",
     "@rivus/agent-kit-provider-opencode": "workspace:*",
