@@ -1,5 +1,91 @@
 # Change Log - @rivus/agent-kit
 
+## 0.24.0
+
+### Minor Changes
+
+- `connectAgent` takes an optional `onStderr` callback that receives the agent's stderr as decoded text arrives, in order, with a multi-byte character split across chunks reassembled, so a host can log a running agent. The callback may return a promise; neither it nor the reading awaits it, and one that throws or rejects does not affect the connection. The stderr tail already attached to errors stays.
+
+- `connectAgent` takes an optional `unsettledCancel` that chooses what a cancel which does not settle within `cancelTimeoutMs` invalidates. The default `"connection"` is today's behavior: the session closes, its bindings go, and the connection with its process ends, failing its other sessions with `ConnectionClosed`. With `"session"`, the process and the other sessions keep running: the cancelled session closes — with `session/close` when the agent supports it — its bindings go, later updates for it are ignored, and its later calls fail as on a closed session.
+
+- The connectAgent permission callback may answer { outcome: "cancelled" }, which the agent receives as the cancelled outcome instead of a denial.
+
+- `doctor` now counts bridge files: the opencode and Pi adapters declare the directories of plugins and extensions their agents load without a configuration entry, and every loaded file carrying one of the caller's markers is one registration of its owner for each event the bridge forwards. A second bridge of one owner — an older release's, or a copy under another name — is reported as a `duplicate-hook`, alongside the settings-file duplicates `doctor` already found. Install adapters can declare the same for their own agents with the new `bridgeSources`.
+
+- Detect DeepSeek Harness and launch it over ACP. `detectAgents` finds the `dsh` command and its version, follows `DSH_HOME` (default `~/.dsh`), and counts a stored `.credentials.yaml` or `DEEPSEEK_API_KEY` as a login without reading the file's values; `/acp` launches `dsh --profile acp`, which needs no authentication and takes the system prompt in the first prompt block.
+
+  The launch profile preserves `DSH_PERMISSION_MODE` and `DSH_BUNDLED_SKILL_DIR`, and excludes internal subprocess markers and generated speech-worker tokens. Custom pi-ai `apiKeyEnv` keys need explicit forwarding only when they are available solely in the caller’s environment.
+
+- Read DeepSeek Harness sessions. The new `dsh` adapter lists and loads `<home>/sessions/<encoded cwd>/<id>/session.v4.jsonl.zstd`, decoding the concatenated Zstandard frames the harness writes (and plain `session.v4.jsonl` when compression is off): the v4 header, system and developer messages, user prompts and injected context, assistant text, reasoning and tool calls, tool results, request headers with their tool schemas, and compaction summaries that shadow the seqs they replaced. Discovery reads only the frames in a file's first 64 KB, and a plain log's tail supplies its last activity. Unknown format generations fail as `UnknownFormatGeneration`, and the adapter passes the shared session conformance suite.
+
+  Discovery caps the decoded bytes of a compressed head at the plain-file preview budget, and a compressed session whose first frame spans past the 64 KB head cap — or whose head decodes past the cap — still lists with its file mtime as the last activity instead of failing, and detection recognizes it. A host without a decoder is told apart from undecodable bytes. Event types outside the bookkeeping set become `unknown` events instead of being skipped, and after a format migration discovery lists only the newest generation per session directory, the same selection the usage decoder makes.
+
+  Reading compressed dsh logs requires Node with Zstandard support (22.15+ on the Node 22 line, or 23.8+). The Node platform remains importable on older supported runtimes, where `decompress` is absent and compressed reads return `ReadFailed`. Complete frames and their original record pointers remain readable with an incomplete final frame or, subject to the runtime limit below, a non-frame suffix; checksum failures still reject corrupted frames.
+
+  On Node 23.10.0, 24.14.1 and 24.18.0, a non-frame suffix can make original-record reads return `ReadFailed` when the last complete frame decodes to a positive multiple of 16384 bytes. In that case zlib tries to decode the suffix in the same call, before the adapter can ignore it.
+
+- Read DeepSeek Harness token usage. The new `dsh` usage decoder turns each `assistant/message` with usage and each `compaction/summary` carrying its summarization call's usage of `<home>/sessions/<encoded cwd>/<id>/session.v4.jsonl[.zstd]` into a `request` usage record, adding the cache-read and cache-write tokens the harness keeps out of `inputTokens` back into the input; sessions reading `dsh` get the same corrected count, and a compaction summary's call counts in the sessions totals too. A seeded session's inherited events are the parent's copies, already counted in its file, so the leading run of events whose time precedes the fork's `createdAt` is skipped — which also covers a fork of a fork, whose inherited prefix carries the parent's own inherited marker in the middle and ends with its own; the model falls back to the most recent `request/header`. Sources are keyed by the `<id>` directory name plus the file name, unique because dsh refuses the same id in several project directories, and only the newest format generation counts when a migration leaves the old file. Compressed logs resume after the last complete frame without replaying records, with the same source pointers as the sessions reader, report `SourceChanged` when the file was rewritten, `UnknownFormatGeneration` for a header of another generation, `ReadFailed` without a host decoder, and pass the shared usage conformance suite on plain and compressed fixtures.
+
+- An install adapter's legacySources may scope legacy markers to one source, so a marker an old configuration reference needs does not match another source's finds, and a legacy removal of an untracked file captures its pre-image, which the apply report carries for recovery.
+
+- Require the exact optional Effect peer 4.0.6. Hosts pinning effect 4.0.5 fail to install under npm; update the host to 4.0.6 alongside these packages.
+
+- Require the exact optional Effect peer 4.1.1. Hosts pinning effect 4.0.6 fail to install under npm; update the host to 4.1.1 alongside these packages.
+
+- acquireProcessLock takes removeOnRelease, which removes the lock file when the lock is released; the acquisition verifies the file it locked against a pre-open reading of device, inode and birth time, so the removal cannot break mutual exclusion. FileStat carries the file identity.
+
+- A running tool call's output so far streams as tool-output-partial parts between tool-input-available and the final tool-output-available, so a host can show the progress of a running tool.
+
+- The ledger records the directories an install positively created within the installation roots (schema 2, migrated from schema 1 with provenance unknown), and an uninstall removes a claimed directory once it is empty and its last owner leaves, never a pre-existing, unknown, nonempty, symlinked or externally managed one. The ledger schema moves from 1 to 2: once this version saves a ledger, older kit versions reject it as an unsupported version, and uninstalling with this version does not restore that compatibility.
+
+- Detect ZCode, read its usage from its sessions database, and read its command hooks: `readHookEvent` maps ZCode's `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PostToolUseFailure` and `Stop` payloads to lifecycle events, and attributes a payload carrying ZCode's `traceId` to ZCode even when the hook was registered for another agent.
+
+  Install ZCode hooks as owner-specific plugins, register their absolute paths in the fixed user config, and install skills in the shared directory. Preserve existing plugin enablement and unrelated registrations; write hook timeouts as positive integer milliseconds with `timeoutMs`. Enabled plugins can also activate existing user hook events that are not explicitly disabled.
+
+  Keep JSON valid when uninstalling the last element of a single-line configuration array, preserving unrelated entries and trailing comments. Multiline arrays keep the parser's existing deletion and formatting behavior.
+
+- Read OpenCode sessions from `opencode.db`. The new `opencode` session adapter lists `session` rows and loads one from its `message` and `part` rows: user text, assistant requests with per-message token usage, assistant text, reasoning, tool calls and their results, and the session's title, cwd, times and OpenCode version. Each event carries a source pointer at its SQLite row, so `readOriginal` reads the stored JSON back through `platform.sqlite`; the adapter fails with `ReadFailed` when SQLite is unavailable rather than returning a partial transcript. A part whose message row is missing is counted as skipped instead of silently dropped, and the summary streams the session one message at a time instead of loading the whole transcript. It passes the shared session conformance suite against a temporary database. Legacy `storage/message` files remain usage-only.
+
+- Read Pi sessions. The new `pi` session adapter lists and loads `<home>/sessions/<cwd>/<time>_<id>.jsonl` files: the v3 session header, message entries (user, assistant text, reasoning and tool calls, tool results), model and thinking-level changes, compaction entries whose `firstKeptEntryId` shadows the context they removed, branch summaries, and extension messages. Usage comes from each assistant message, and unknown format versions fail as `UnknownFormatGeneration` instead of being read as a guess. The adapter passes the shared session conformance suite.
+
+- AcpSessionHandle takes detach, which forgets an open session on the connection without sending session/close, so the next loadSession re-sends session/load with the MCP servers of that call.
+
+- Session sources beyond plain files. `SourcePointer` gains an optional `codec: "zstd"` (offsets index the decoded stream) and an optional `sqlite: { table, column, rowid }`; `readOriginal` resolves both, validating the SQL identifiers and reporting a missing platform capability as `ReadFailed`. `SessionPlatform` and `Platform` gain optional `sqlite` and `decompress` capabilities, and platform-node implements `zstd` with `node:zlib`, refusing any other compression format with an exhaustive check. The guarded platform used by IO failure handling now keeps both capabilities. The session conformance fixtures accept `recordKeys` for sources with no lines and an optional `oversized` fixture for sources with no file ends, and the shell's `/sessions` entry re-exports the `ReadOriginalError` type.
+
+- connectAgent takes killGraceMs, the time an aborted agent process may take to exit after SIGTERM before SIGKILL (2 s by default), and platform.spawn takes it for its own children.
+
+- The incremental SQLite message reading moves into the sessions SPI as shared helpers — the settlement of a decode (the first pass by row id, then the pages by newest change, the final look at running messages), the `message`-table queries, the paging batches and the WAL-aware change detection — which the opencode and ZCode usage decoders both use, keeping each agent's row decoding in its provider. New exports: `createSqliteSettlement`, `decodeSqliteMessages`, `sqliteMessageSource`, `sqliteQueryFloor`, `SqliteMessageRow`, `SqliteTableRow`, `SqliteSettlement`, `SqliteSettlementState`, `SqliteMessagesRequest`, `SqliteMessageDecode`, `SQLITE_LONGEST_MESSAGE_MS`, `SQLITE_RUNNING_IDS`. The records and cursor state are unchanged.
+
+### Patch Changes
+
+- A `first-block` system prompt now ends in a blank line, so agents that join adjacent text blocks — dsh-acp's prompt handler appends each block's text to one string — keep the boundary between the instructions and the first user text. Agents that keep blocks apart are unaffected.
+
+- On the live ACP path, an update that arrives while no turn runs is no longer dropped: it is held with the session and the next turn opens with it, so a background call's result that lands after its turn ended reaches a turn's parts and the transcript's `tool_result` instead of being lost. A load's replay, which arrives while the load is in flight, is dropped as today, and folding the session's parts in order still gives its `event` parts.
+
+- Update the LiteLLM price snapshot of `/cost/prices` to `2026-11-02+ff3983c1f627ad09a5e36e45cc92a0cec91afb72+12280faa8b67`.
+
+- Unknown data is parsed only at the boundary, and the shape checks that remain carry their reason. The hand-written reads move into the schemas of their boundary: Claude Code's record version, codex's spawn result and tool-output exit code, the lease repository's SQLite row, the ledger repository's stored revision, and the transcript services' prompt and duration reads. A `Record`'s fields reach the domain services through one shared schema instead of `typeof` chains.
+
+- A Codex usage record without a readable time no longer takes the file's mtime, so decoding a file again after it is rewritten or grows keeps every call's stamp and dedupe key. The leading run without a time holds its calls until the file's first known time stamps them, the way the transcript stamps that run, or until the file is final, which stamps them 1; the fork-replay rule reads a not-yet-known stamp exactly as the transcript's batch rule does, so an incremental decode of a time-less rollout equals one decode of the whole file and counts what the transcript counts.
+
+- The conditional spreads with an empty-object branch — `...(x === undefined ? {} : { key: x })` and `...(x ? { key: x } : {})` — are replaced across the packages by one literal through catalog's `definedFields`, which drops the `undefined`-valued keys. Two behavior refinements come with it, both intended: a truthiness test no longer silently drops an empty string or zero (an empty session id or prompt text is now kept), and an object field the record carried explicitly as `undefined` reads back as absent. Sites whose condition was load-bearing — the ledger's absent `kept` and `directories` maps, a formatting-options flag, a TOML-removal guard — keep their condition.
+
+- The catalog kernel gains `definedFields`, which drops an object's `undefined`-valued keys and types them optional without `undefined` while the keys that cannot be undefined stay required. Conditional spreads — `...(x === undefined ? {} : { key: x })` and `...(x ? { key: x } : {})` — can become one literal through it, so a key is never silently dropped and a `""` or `0` is not lost to a truthiness test. The authoring guide names it and the checks that enforce its shape-guard rules.
+
+- Updated the shared lint toolchain dependency `@perfectpan/lint-config` to `v0.7.0`.
+
+- The built-in gemini-cli provider now reads the CLI's chat recordings as sessions: `sessions` lists the chats under the home's `tmp/` project directories, translates a chat's records into the transcript's user prompts, replies, thinking, tool calls and results, compactions and notices, and prices each `gemini` message that carries `tokens` as one request. A legacy single-object `.json` chat loads when its `.jsonl` replacement does not exist, and the shell's sessions table registers the adapter, removing gemini-cli's "no supported reader" entry.
+
+- Event ids stay unique in translated Grok and Claude Code transcripts. A Grok `turn_completed` whose `request:<prompt_id>` another request already holds moves to the first free serial of `request:<line>`, where the fallback id went unchecked before; a Claude Code request whose `request:<requestId>` a record uuid holds takes the first free serial of the key, and a record uuid a request event holds moves to the first free serial of its line id. Sessions without a collision keep the ids they had.
+
+- Updated dependency `es-toolkit` to `^1.53.0`.
+
+- Updated dependency `@agentclientprotocol/sdk` to `1.9.0`.
+  Updated dependency `@decimalturn/toml-patch` to `^3.3.1`.
+
+- Updated dependency `@decimalturn/toml-patch` to `^3.3.2`.
+  Updated dependency `es-toolkit` to `^1.53.1`.
+
 ## 0.23.0
 
 ### Minor Changes
