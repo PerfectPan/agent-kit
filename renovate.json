@@ -6,7 +6,7 @@
   "ignorePaths": ["**/node_modules/**"],
   "timezone": "Asia/Shanghai",
   "schedule": ["* 0-6 * * 1"],
-  "minimumReleaseAge": "1 day",
+  "minimumReleaseAge": "7 days",
   "rangeStrategy": "bump",
   "prConcurrentLimit": 5,
   "logLevelRemap": [
