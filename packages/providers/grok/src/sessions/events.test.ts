@@ -383,4 +383,64 @@ describe("grok coalesce fallback", () => {
       postTokens: 80
     });
   });
+
+  it("shows one request per model call when the joined calls name several", () => {
+    const calls = {
+      turns: new Map([[0, [{ ts: 1000, model: "grok-a" }, { ts: 2000, model: "grok-b" }, {}]]])
+    };
+    const parsed = value(
+      translateGrokRecords(
+        [
+          grokRecord(
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },
+            1
+          ),
+          grokRecord(
+            {
+              sessionUpdate: "turn_completed",
+              stop_reason: "end_turn",
+              usage: { inputTokens: 30, outputTokens: 6, modelCalls: 3 }
+            },
+            2
+          )
+        ],
+        { calls }
+      )
+    );
+    const requests = parsed.events.filter((event) => event.kind === "request");
+    expect(requests).toHaveLength(4);
+    expect(requests[0]?.payload).toEqual({ granularity: "request", model: "grok-a" });
+    expect(requests[0]?.ts).toBe(1000);
+    expect(requests[0]?.requestId).toBe("0#0");
+    expect(requests[1]?.payload).toEqual({ granularity: "request", model: "grok-b" });
+    expect(requests[1]?.ts).toBe(2000);
+    expect(requests[2]?.payload).toEqual({ granularity: "request" });
+    expect(requests[2]?.ts).toBe(requests[3]?.ts);
+    // The turn's usage comes whole on the aggregate, never split across the calls.
+    expect(requests[3]?.payload).toEqual({
+      granularity: "turn",
+      usage: { inputTokens: 30, outputTokens: 6, totalTokens: 36 },
+      finishReason: "end_turn",
+      modelCalls: 3
+    });
+    expect(requests[3]?.requestId).toBe("0");
+  });
+
+  it("keeps the turn-level request when the join names one call or none", () => {
+    const single = { turns: new Map([[0, [{ ts: 1000, model: "grok-a" }]]]) };
+    const records = [
+      grokRecord(
+        { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },
+        1
+      ),
+      grokRecord({ sessionUpdate: "turn_completed", usage: { inputTokens: 30, outputTokens: 6, modelCalls: 1 } }, 2)
+    ];
+    for (const calls of [undefined, single]) {
+      const parsed = value(translateGrokRecords(records, ...(calls === undefined ? [] : [{ calls }])));
+      const requests = parsed.events.filter((event) => event.kind === "request");
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.payload.granularity).toBe("turn");
+      expect(requests[0]?.payload.usage).toEqual({ inputTokens: 30, outputTokens: 6, totalTokens: 36 });
+    }
+  });
 });
