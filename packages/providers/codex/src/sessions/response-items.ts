@@ -81,14 +81,18 @@ const EXIT_LINE = /^(?:Exit code: |Process exited with code )(-?\d+)$/m;
 /** `metadata.exit_code` of a JSON output, read through the schema of that output object. */
 const ExitCodeOutput = z.looseObject({ metadata: lenient(z.looseObject({ exit_code: lenient(z.number()) })) });
 
+/** The text a tool's output carries its exit code in; an output of another shape carries none. */
+const ToolOutputText = lenient(z.string());
+
 /** `metadata.exit_code` of a JSON output, else the `Exit code:` header line in the lines before `Output:`. */
 function exitCodeOf(output: unknown): number | undefined {
-  if (typeof output !== "string") {
+  const text = z.safeParse(ToolOutputText, output).data;
+  if (text === undefined) {
     return undefined;
   }
-  if (output.startsWith("{")) {
+  if (text.startsWith("{")) {
     try {
-      const code = z.safeParse(ExitCodeOutput, JSON.parse(output)).data?.metadata?.exit_code;
+      const code = z.safeParse(ExitCodeOutput, JSON.parse(text)).data?.metadata?.exit_code;
       if (code !== undefined) {
         return code;
       }
@@ -96,7 +100,7 @@ function exitCodeOf(output: unknown): number | undefined {
       // Not JSON; read the text header below.
     }
   }
-  const header = output.split("\nOutput:", 1)[0]!.split("\n", 6).join("\n");
+  const header = text.split("\nOutput:", 1)[0]!.split("\n", 6).join("\n");
   const match = EXIT_LINE.exec(header);
   return match ? Number(match[1]) : undefined;
 }
