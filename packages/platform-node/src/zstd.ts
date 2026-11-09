@@ -37,6 +37,8 @@ export function createNodeDecompress(
   module: Partial<Pick<typeof zlib, "zstdDecompressSync" | "constants">>
 ): Decompress | undefined {
   const decode = module.zstdDecompressSync;
+  // Feature detection, not a shape guard: the zstd binding exists only on some Node builds, and a caller without it
+  // reads the records it can.
   if (typeof decode !== "function") {
     return undefined;
   }

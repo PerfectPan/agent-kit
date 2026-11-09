@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { Price } from "./price.js";
 
 /**
@@ -59,15 +60,15 @@ function complete(price: Partial<Price>): Price | undefined {
   if (input === undefined || output === undefined || cacheRead === undefined || cacheWrite === undefined) {
     return undefined;
   }
-  return {
+  return definedFields({
     input,
     output,
     cacheRead,
     cacheWrite,
-    ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }),
+    cacheWrite1h,
     // The tier is one field: an override that lacks it keeps the model's own, one that has it replaces it.
-    ...(longContext === undefined ? {} : { longContext })
-  };
+    longContext
+  });
 }
 
 /**

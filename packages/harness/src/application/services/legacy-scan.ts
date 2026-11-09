@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -46,13 +46,15 @@ export function scanLegacy(
       for (const { locator, read } of yield* files.scan(resolved)) {
         const event = pointerTail(locator.pointer);
         if (events === undefined || (event !== undefined && events.has(event))) {
-          found.push({
-            observed: yield* observation(locator, read),
-            agent,
-            ...(runner === undefined ? {} : { runner }),
-            ...(event === undefined || runAs?.[event] === undefined ? {} : { event: runAs[event] }),
-            ...(markers === undefined ? {} : { markers })
-          });
+          found.push(
+            definedFields({
+              observed: yield* observation(locator, read),
+              agent,
+              runner,
+              event: event === undefined ? undefined : runAs?.[event],
+              markers
+            })
+          );
         }
       }
     }

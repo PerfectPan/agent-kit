@@ -153,7 +153,10 @@ export function redactText(text: string, options: RedactOptions): string {
   return result.replace(SECRET, REDACTED);
 }
 
+/** The copy of one value with every string it holds redacted, walking arrays and plain objects; other values pass as they are. */
 function redactValue(value: unknown, options: RedactOptions): unknown {
+  // A deep walker over values of an unknown shape, like the deep-freeze helpers: the string, array and plain-object
+  // decisions are the walk itself, not a shape guard on one record.
   if (typeof value === "string") {
     return redactText(value, options);
   }

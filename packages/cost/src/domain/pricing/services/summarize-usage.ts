@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { type CodingAgentId, definedFields } from "@rivus/agent-kit-catalog/public";
 import type { Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Pricing } from "../value-objects/pricing-table.js";
@@ -47,19 +47,19 @@ function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
 }
 
 function tally(agent?: CodingAgentId, model?: string): Tally {
-  return {
-    ...(agent === undefined ? {} : { agent }),
-    ...(model === undefined ? {} : { model }),
+  return definedFields({
+    agent,
+    model,
     entries: 0,
     usage: {}
-  };
+  });
 }
 
 function totals({ costUsd, ...rest }: Tally): UsageGroup {
-  return {
+  return definedFields({
     ...rest,
-    ...(costUsd === undefined ? {} : { costUsd })
-  };
+    costUsd
+  });
 }
 
 /**

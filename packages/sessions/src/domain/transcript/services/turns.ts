@@ -1,6 +1,8 @@
 import type { SessionPrompt, SessionPromptsOptions } from "../../session/value-objects/session-summary.js";
 import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
+import { PayloadText } from "../../../lib/payload-text.js";
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 
 /** The lane id of the root agent when `agents` names none. */
 export const MAIN_LANE_ID = "main";
@@ -66,14 +68,10 @@ export function requestUsage(event: Pick<TranscriptEventOf<"request">, "payload"
   outputTokens?: number;
 } {
   const usage = event.payload.usage;
-  const out: { inputTokens?: number; outputTokens?: number } = {};
-  if (typeof usage?.inputTokens === "number") {
-    out.inputTokens = usage.inputTokens;
-  }
-  if (typeof usage?.outputTokens === "number") {
-    out.outputTokens = usage.outputTokens;
-  }
-  return out;
+  return definedFields({
+    inputTokens: usage?.inputTokens,
+    outputTokens: usage?.outputTokens
+  });
 }
 
 /**
@@ -100,7 +98,7 @@ export function sessionPrompts(
     if (!isPrompt(event) || laneOf(event, mainId) !== mainId) {
       continue;
     }
-    const text = typeof event.payload.text === "string" ? event.payload.text.trim() : "";
+    const text = (PayloadText.safeParse(event.payload.text).data ?? "").trim();
     if (text === "") {
       continue;
     }

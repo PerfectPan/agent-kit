@@ -176,6 +176,14 @@ const knownVersion = z.optional(
     )
 );
 
+/** The record's `version` as the agent version string the identity reads; the envelope keeps the field unknown, so the string read is a schema of its own. */
+const RecordVersion = lenient(z.string());
+
+/** The agent version a record names, when it names it as a string. */
+export function claudeCodeRecordVersion(value: unknown): string | undefined {
+  return z.safeParse(RecordVersion, value).data;
+}
+
 /** A record that carries its own envelope generation, in any form, is one this kit does not know. */
 function withoutFormatVersion(record: Record<string, unknown>): boolean {
   return !("formatVersion" in record);

@@ -55,7 +55,8 @@ export type TranscriptStreamPart =
       readonly type: "tool-input-available";
       readonly toolCallId: string;
       readonly toolName: string;
-      readonly input: unknown;
+      /** The merged input, `undefined` when no update of the turn supplied one. */
+      readonly input?: unknown;
       /**
        * The agent's display title while it differs from `toolName`, such as `` Read `/u/me/x.md` ``; this is the
        * call's current title, so leaving it out clears an earlier one.
