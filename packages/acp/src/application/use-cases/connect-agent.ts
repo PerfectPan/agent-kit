@@ -1,4 +1,4 @@
-import { requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, requireService, type ServiceTable, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { Env, ExitStatus } from "@rivus/agent-kit-platform/public";
 import { createStreamFolder } from "@rivus/agent-kit-sessions/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
@@ -51,7 +51,8 @@ import {
   ClientFileError,
   openWire,
   PROTOCOL_VERSION,
-  type WireFailure
+  type WireFailure,
+  type WireHandlers
 } from "../services/wire.js";
 
 export interface ConnectAgentOptions {
@@ -194,7 +195,7 @@ function sessionMcpServers(
 
 function metaOf(profile: AcpProfile, setup: SessionSetup): { meta?: Record<string, unknown> } {
   const meta = sessionMeta(profile, setup);
-  return meta === undefined ? {} : { meta };
+  return definedFields({ meta });
 }
 
 /** A session request bounded by the connection's request timeout. */
@@ -246,7 +247,7 @@ function register(
     if (conn.closed !== undefined) {
       return yield* Effect.fail(conn.closed);
     }
-    const created = AcpSession.create({ agent: conn.agent, ...(sessionKey === undefined ? {} : { sessionKey }) });
+    const created = AcpSession.create(definedFields({ agent: conn.agent, sessionKey }));
     if (!created.ok) {
       return yield* Effect.die(invalidOption(created.error.message));
     }
@@ -258,7 +259,7 @@ function register(
         message: `the agent named an invalid session id "${sessionId}"`
       });
     }
-    const live: LiveSession = {
+    const live: LiveSession = definedFields({
       sessionId,
       cwd,
       keys: new Set(sessionKey === undefined ? [] : [sessionKey]),
@@ -267,8 +268,8 @@ function register(
       idleUpdates: [],
       toolState: { tools: new Map(), ended: new Set(), closed: new Set() },
       folder: createStreamFolder(),
-      ...(root === undefined ? {} : { root })
-    };
+      root
+    } satisfies LiveSession);
     conn.sessions.set(sessionId, live);
     return live;
   });
@@ -493,12 +494,16 @@ function open(
       Effect.gen(function* () {
         const spawned = yield* Effect.try({
           try: () =>
-            platform.process.spawn(profile.command, profile.args, {
-              cwd: options.cwd,
-              env: options.env,
-              signal: controller.signal,
-              ...(killGraceMs === undefined ? {} : { killGraceMs })
-            }),
+            platform.process.spawn(
+              profile.command,
+              profile.args,
+              definedFields({
+                cwd: options.cwd,
+                env: options.env,
+                signal: controller.signal,
+                killGraceMs
+              })
+            ),
           catch: unavailable
         });
         const settled: Promise<ExitStatus | Error> = spawned.exited.then(
@@ -535,36 +540,40 @@ function open(
       }
       return root;
     };
-    const opened = openWire(child, options.clientInfo?.name ?? CLIENT_INFO.name, {
-      onUpdate: (sessionId, update) => {
-        const live = conn?.sessions.get(sessionId);
-        if (conn !== undefined && live !== undefined) {
-          deliverUpdate(conn, live, update);
-        }
-      },
-      onPermission: (request, signal) =>
-        conn === undefined
-          ? Promise.resolve(permissionOutcome(request, undefined, false))
-          : answerPermission(conn, request, signal),
-      ...(fileSystem.read
-        ? { readTextFile: (request) => readClientFile(platform.fs, rootOf(request.sessionId), request) }
-        : {}),
-      ...(fileSystem.write
-        ? { writeTextFile: (request) => writeClientFile(platform.fs, rootOf(request.sessionId), request) }
-        : {})
-    });
+    const opened = openWire(
+      child,
+      options.clientInfo?.name ?? CLIENT_INFO.name,
+      definedFields({
+        onUpdate: (sessionId, update) => {
+          const live = conn?.sessions.get(sessionId);
+          if (conn !== undefined && live !== undefined) {
+            deliverUpdate(conn, live, update);
+          }
+        },
+        onPermission: (request, signal) =>
+          conn === undefined
+            ? Promise.resolve(permissionOutcome(request, undefined, false))
+            : answerPermission(conn, request, signal),
+        readTextFile: fileSystem.read
+          ? (request) => readClientFile(platform.fs, rootOf(request.sessionId), request)
+          : undefined,
+        writeTextFile: fileSystem.write
+          ? (request) => writeClientFile(platform.fs, rootOf(request.sessionId), request)
+          : undefined
+      } satisfies WireHandlers)
+    );
     wire = opened;
 
     const handshakeFailed = (reason: HandshakeFailed["reason"], message: string): HandshakeFailed => {
       const tail = stderr();
-      return {
+      return definedFields({
         _tag: "HandshakeFailed",
         agent,
         reason,
         message,
-        ...(exitStatus === undefined ? {} : { exit: exitStatus }),
-        ...(tail ? { stderr: tail } : {})
-      };
+        exit: exitStatus,
+        stderr: tail
+      } satisfies HandshakeFailed);
     };
     const ended = Effect.promise(() => exited).pipe(
       Effect.flatMap((result) =>
@@ -601,7 +610,7 @@ function open(
     }
 
     const runPromise = yield* FiberSet.makeRuntimePromise<never>().pipe(Scope.provide(scope));
-    const state: ConnectionState = {
+    const state: ConnectionState = definedFields({
       agent,
       profile,
       platform,
@@ -613,18 +622,18 @@ function open(
       detachedPromptBlocks: new Map(),
       features: handshake.features,
       authMethods: handshake.authMethods,
-      ...(options.onPermission === undefined ? {} : { onPermission: options.onPermission }),
+      onPermission: options.onPermission,
       fileSystem,
       requestTimeoutMs: timeouts.requestTimeoutMs,
       cancelTimeoutMs: timeouts.cancelTimeoutMs,
       unsettledCancel,
       scope,
-      ended: Deferred.makeUnsafe(),
+      ended: Deferred.makeUnsafe<ConnectionClosed>(),
       kill: () => controller.abort(),
       stderr,
       exit: () => exitStatus,
       runPromise
-    };
+    });
     conn = state;
     // The process exit carries the exit status; a stream that closes first waits a little for it.
     yield* Effect.promise(() => exited).pipe(
@@ -643,16 +652,16 @@ function open(
       Effect.sync(() => markClosed(state, connectionClosed(state, "closed")))
     );
 
-    return {
+    return definedFields({
       agent,
-      ...(handshake.agentInfo === undefined ? {} : { agentInfo: handshake.agentInfo }),
+      agentInfo: handshake.agentInfo,
       features: handshake.features,
       authMethods: handshake.authMethods,
       newSession: (sessionOptions) => newSession(state, options, sessionOptions ?? {}),
       loadSession: (target, sessionOptions) => loadSession(state, options, target, sessionOptions ?? {}),
       ended: Deferred.await(state.ended),
       close: () => Scope.close(scope, Exit.void)
-    } satisfies AcpConnection;
+    } satisfies AcpConnection);
   });
 }
 

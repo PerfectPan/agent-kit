@@ -21,8 +21,12 @@ import {
   storedLedgerEnvelope
 } from "../models/ledger-file.js";
 import { harnessStateDir } from "../services/state-dir.js";
+import * as z from "zod/mini";
 
 type RepositoryPlatform = Pick<Platform, "env" | "home" | "fs">;
+
+/** The revision a stored ledger carries, when it is a number: the envelope of another shape may hold anything. */
+const StoredRevision = z.catch(z.optional(z.number()), undefined);
 
 function failure(
   scope: LedgerScope,
@@ -76,9 +80,8 @@ function makeRepository(platform: RepositoryPlatform): LedgerRepositoryShape {
           return yield* Effect.fail(version.error);
         }
         if (envelope.revision !== expectedRevision) {
-          const storedRevision = envelope.revision;
           return yield* Effect.fail(
-            conflict(scope, expectedRevision, typeof storedRevision === "number" ? storedRevision : undefined)
+            conflict(scope, expectedRevision, z.safeParse(StoredRevision, envelope.revision).data)
           );
         }
       } else if (expectedRevision !== undefined) {

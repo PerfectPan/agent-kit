@@ -8,7 +8,7 @@ import type { LeaseSnapshot } from "../../domain/lease/value-objects/lease-snaps
 import { LeaseRepository, type LeaseRepositoryFailure, type RevisionConflict } from "../../application/ports.js";
 import { repositoryFailure, revisionConflict } from "../../application/services/repository-failure.js";
 import { keyFileName } from "../models/key-file-name.js";
-import { decodeHolder, decodeSnapshot, encodeHolder } from "../models/lease-record-codec.js";
+import { decodeHolder, decodeLeaseRow, decodeSnapshot, encodeHolder } from "../models/lease-record-codec.js";
 import { holdProcessLock } from "../adapters/process-fence.js";
 
 type SqliteStatement = ReturnType<SqliteDatabase["prepare"]>;
@@ -131,6 +131,7 @@ function retryBusy<T>(effect: Effect.Effect<T, LeaseRepositoryFailure>): Effect.
   );
 }
 
+/** The snapshot of one stored row, read through the boundary schema; a row of another shape fails as `invalid-record`, and a missing row reads as no lease. */
 function decodeRow(
   key: string,
   row: Record<string, unknown> | undefined
@@ -138,17 +139,18 @@ function decodeRow(
   if (row === undefined) {
     return Effect.succeed(undefined);
   }
-  const holder = typeof row.holder === "string" || row.holder === null ? decodeHolder(row.holder) : undefined;
+  const columns = decodeLeaseRow(row);
+  const holder = columns === undefined ? undefined : decodeHolder(columns.holder);
   const snapshot =
-    holder === undefined
+    columns === undefined || holder === undefined
       ? undefined
       : decodeSnapshot({
-          key: row.key,
-          generation: row.generation,
-          revision: row.revision,
+          key: columns.key,
+          generation: columns.generation,
+          revision: columns.revision,
           holder,
-          holderId: row.holder_id,
-          renewedAt: row.renewed_at
+          holderId: columns.holder_id,
+          renewedAt: columns.renewed_at
         });
   return snapshot === undefined
     ? Effect.fail(repositoryFailure(key, "invalid-record", `the stored record for ${key} has an unexpected shape`))

@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import { ArtifactSpec, type ArtifactSpecSnapshot } from "./artifact-spec.js";
 import { Owner, type OwnerSnapshot } from "./owner.js";
@@ -34,12 +34,14 @@ export class Bundle {
     const snapshot = structuredClone(metadata);
     this.#owner = owner;
     this.#artifacts = Object.freeze([...artifacts]);
-    this.#snapshot = Object.freeze({
-      ...snapshot,
-      owner: owner.toSnapshot(),
-      artifacts: Object.freeze(this.#artifacts.map((spec) => spec.toSnapshot())),
-      ...(snapshot.legacyMarkers === undefined ? {} : { legacyMarkers: Object.freeze(snapshot.legacyMarkers) })
-    });
+    this.#snapshot = Object.freeze(
+      definedFields({
+        ...snapshot,
+        owner: owner.toSnapshot(),
+        artifacts: Object.freeze(this.#artifacts.map((spec) => spec.toSnapshot())),
+        legacyMarkers: snapshot.legacyMarkers === undefined ? undefined : Object.freeze(snapshot.legacyMarkers)
+      })
+    );
     Object.freeze(this);
   }
 

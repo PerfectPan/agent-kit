@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 import type { ArtifactContent } from "../../domain/ledger/value-objects/content-hash.js";
 import { hasLegacyMarker } from "../../domain/bundle/services/legacy-markers.js";
@@ -34,7 +35,7 @@ export function legacyTexts(
     const text = legacyText(artifact.content);
     const markers = sourceMarkers.get(artifact);
     if (text !== undefined) {
-      texts.set(artifact, { text, ...(markers === undefined ? {} : { markers }) });
+      texts.set(artifact, definedFields({ text, markers }));
     }
   }
   return texts;

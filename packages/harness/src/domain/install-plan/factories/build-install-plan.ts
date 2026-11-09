@@ -1,4 +1,4 @@
-import { err, type Result, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, err, type Result, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import { type BundleSnapshot } from "../../bundle/value-objects/bundle.js";
 import { type HookDialects } from "../../lifecycle/spi/hook-dialect.js";
 import { type PendingOperations } from "../../ledger/errors/pending-operations.js";
@@ -352,10 +352,7 @@ export function buildInstallPlan(
   const foreignOf = (path: string | undefined) => {
     const managedBy = at(managed, path);
     const symlinkTarget = at(linked, path);
-    return {
-      ...(managedBy === undefined ? {} : { managedBy }),
-      ...(symlinkTarget === undefined ? {} : { symlinkTarget })
-    };
+    return definedFields({ managedBy, symlinkTarget });
   };
   const keys = new Set([...desired.keys(), ...entries.keys(), ...[...found.keys()].filter(isLegacy)]);
   const steps = [...keys].flatMap((key) => {

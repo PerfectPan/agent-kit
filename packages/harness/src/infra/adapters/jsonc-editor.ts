@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import {
   applyEdits,
   type Edit,
@@ -96,10 +96,16 @@ export function editJsonc(text: string | undefined, edits: readonly EntryEdit[])
     const formatted = !inlineContainer(next, edit);
     const changes =
       (formatted ? undefined : removeLastInlineArrayElement(next, edit)) ??
-      modify(next, [...edit.path], edit.value, {
-        ...(formatted ? { formattingOptions } : {}),
-        ...(edit.insert === true ? { isArrayInsertion: true } : {})
-      });
+      modify(
+        next,
+        [...edit.path],
+        edit.value,
+        definedFields({
+          // An edit inside a one-line container is left unformatted: no formatting options means no reformatting.
+          formattingOptions: formatted ? formattingOptions : undefined,
+          isArrayInsertion: edit.insert
+        })
+      );
     next = applyEdits(next, changes);
   }
   return empty && !next.endsWith("\n") ? `${next}${formattingOptions.eol ?? "\n"}` : next;

@@ -1,7 +1,13 @@
 import type { InstallProviders } from "../providers.js";
 import { isPlainObject } from "es-toolkit";
 
-import { AgentKitError, requireService, lookupService, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import {
+  AgentKitError,
+  definedFields,
+  requireService,
+  lookupService,
+  type CodingAgentId
+} from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -226,12 +232,14 @@ export function renderBundle(
           }
           const adapter = adapterOf(setup, agent);
           const strategy = yield* fromResult(
-            chooseStrategy(adapter, "hooks", {
-              ...(options.strategies?.[agent]?.hooks === undefined
-                ? {}
-                : { override: options.strategies[agent]!.hooks }),
-              available: options.available.get(agent) ?? new Set<string>()
-            })
+            chooseStrategy(
+              adapter,
+              "hooks",
+              definedFields({
+                override: options.strategies?.[agent]?.hooks,
+                available: options.available.get(agent) ?? new Set<string>()
+              })
+            )
           );
           placements.push({ agent, file: adapter.hookFile(strategy, bundle.toSnapshot()), strategy });
         }
@@ -240,7 +248,7 @@ export function renderBundle(
             spec,
             placements.map(({ agent, file }) => ({ agent, file })),
             setup.dialects,
-            options.compat === undefined ? {} : { compat: options.compat }
+            definedFields({ compat: options.compat })
           )
         );
         for (const [index, hooks] of placed.entries()) {
@@ -264,12 +272,14 @@ export function renderBundle(
       for (const agent of agents) {
         const adapter = adapterOf(setup, agent);
         const strategy = yield* fromResult(
-          chooseStrategy(adapter, "skill", {
-            ...(options.strategies?.[agent]?.skills === undefined
-              ? {}
-              : { override: options.strategies[agent]!.skills }),
-            available: options.available.get(agent) ?? new Set<string>()
-          })
+          chooseStrategy(
+            adapter,
+            "skill",
+            definedFields({
+              override: options.strategies?.[agent]?.skills,
+              available: options.available.get(agent) ?? new Set<string>()
+            })
+          )
         );
         for (const artifact of adapter.renderSkill(strategy, spec, setup.context)) {
           rendered.push({ agent, artifact });
@@ -290,14 +300,16 @@ export function desiredArtifacts(
       const locator = { ...artifact.locator, path: yield* resolvePath(artifact.locator.path) };
       const hash = yield* hashContent(locator.kind, artifact.content);
       for (const user of artifact.agents ?? [agent]) {
-        desired.push({
-          agent: user,
-          locator,
-          content: artifact.content,
-          hash,
-          strategy: artifact.strategy,
-          ...(artifact.trust === undefined ? {} : { trust: artifact.trust })
-        });
+        desired.push(
+          definedFields({
+            agent: user,
+            locator,
+            content: artifact.content,
+            hash,
+            strategy: artifact.strategy,
+            trust: artifact.trust
+          })
+        );
       }
     }
     return desired;
@@ -400,11 +412,13 @@ function describePlan(
             const beforeText = textOf(was[name]);
             const afterText = textOf(will[name]);
             if (beforeText !== afterText) {
-              changes.push({
-                path: `${locator.path}/${name}`,
-                ...(beforeText === undefined ? {} : { before: beforeText }),
-                ...(afterText === undefined ? {} : { after: afterText })
-              });
+              changes.push(
+                definedFields({
+                  path: `${locator.path}/${name}`,
+                  before: beforeText,
+                  after: afterText
+                })
+              );
             }
           }
           break;
@@ -425,11 +439,13 @@ function describePlan(
         default: {
           const beforeText = textOf(before);
           const afterText = textOf(after);
-          changes.push({
-            path: locator.path,
-            ...(beforeText === undefined ? {} : { before: beforeText }),
-            ...(afterText === undefined ? {} : { after: afterText })
-          });
+          changes.push(
+            definedFields({
+              path: locator.path,
+              before: beforeText,
+              after: afterText
+            })
+          );
         }
       }
     }
@@ -469,17 +485,19 @@ export function buildPlan(
   return Effect.gen(function* () {
     const { bundle, agents, setup } = input;
     const { ledger } = loaded;
-    const evidenceScope = planEvidenceScope({
-      owner: bundle.owner,
-      legacyMarkers: bundle.legacyMarkers ?? [],
-      agents,
-      desired: input.desired,
-      ledger,
-      adapters: setup.adapters,
-      dialects: setup.dialects,
-      context: setup.context,
-      ...(input.compat === undefined ? {} : { compat: input.compat })
-    });
+    const evidenceScope = planEvidenceScope(
+      definedFields({
+        owner: bundle.owner,
+        legacyMarkers: bundle.legacyMarkers ?? [],
+        agents,
+        desired: input.desired,
+        ledger,
+        adapters: setup.adapters,
+        dialects: setup.dialects,
+        context: setup.context,
+        compat: input.compat
+      })
+    );
     const locators = new Map<LocatorKey, ArtifactLocatorSnapshot>();
     for (const locator of evidenceScope.locators) {
       locators.set(locatorKey(locator), locator);
@@ -531,17 +549,17 @@ export function buildPlan(
     }
     const aggregate = yield* fromResult(
       buildInstallPlan(
-        {
+        definedFields({
           planId: crypto.randomUUID(),
           bundle,
           target: { scope: scope.scope, agents, roots: [...new Set(roots)] },
           desired: input.desired,
-          ...(input.choices === undefined ? {} : { choices: input.choices }),
+          choices: input.choices,
           managedPaths: Object.fromEntries(managed),
           linkedPaths: linked,
           foreignHooks,
           dialects: setup.dialects
-        },
+        }),
         ledger,
         [...observed.values()],
         sourceMarkers
@@ -583,14 +601,18 @@ export function planInstall(
       available
     });
     const desired = yield* desiredArtifacts(rendered);
-    return yield* buildPlan(scope, loaded, {
-      bundle: checked.toSnapshot(),
-      agents: options.agents,
-      setup,
-      desired,
-      droppedHooks,
-      ...(options.compat === undefined ? {} : { compat: options.compat }),
-      ...(options.choices === undefined ? {} : { choices: options.choices })
-    });
+    return yield* buildPlan(
+      scope,
+      loaded,
+      definedFields({
+        bundle: checked.toSnapshot(),
+        agents: options.agents,
+        setup,
+        desired,
+        droppedHooks,
+        compat: options.compat,
+        choices: options.choices
+      })
+    );
   });
 }

@@ -244,6 +244,8 @@ export function editToml(
       current = patch(current, expected);
       continue;
     }
+    // Chevrotain types its cst as the parser's own node union, but the document was built without a parser class, so
+    // only the concrete node shape is known here; removalRanges reads exactly that shape.
     const cst = new TomlDocument(current).cst as unknown as readonly TomlNode[];
     const ranges = removalRanges(current, cst, edit.path);
     if (ranges === undefined) {

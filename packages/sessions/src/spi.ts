@@ -20,6 +20,20 @@ export {
   usageStreamOf
 } from "./application/services/usage-decoders/files.js";
 export {
+  type SqliteMessageDecode,
+  type SqliteMessageRow,
+  type SqliteMessagesRequest,
+  type SqliteSettlement,
+  type SqliteSettlementState,
+  type SqliteTableRow,
+  SQLITE_LONGEST_MESSAGE_MS,
+  SQLITE_RUNNING_IDS,
+  createSqliteSettlement,
+  decodeSqliteMessages,
+  sqliteMessageSource,
+  sqliteQueryFloor
+} from "./application/services/usage-decoders/sqlite.js";
+export {
   type DecodeUsageOptions,
   type DiscoverOptions,
   type LoadOptions,

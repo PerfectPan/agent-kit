@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { AuthReading } from "../../domain/installation/value-objects/auth-state.js";
 import type { CredentialFileFailed } from "../../domain/installation/value-objects/probe-problem.js";
 import type { DiscoveryPlatform } from "../platform.js";
@@ -16,8 +17,16 @@ export async function readCredentialFile(
   parse: (json: unknown) => AuthReading | undefined,
   signal: AbortSignal | undefined
 ): Promise<{ readonly reading: AuthReading } | { readonly problem: CredentialFileFailed } | undefined> {
-  const failed = (reason: CredentialFileFailed["reason"], code?: string) => ({
-    problem: { _tag: "CredentialFileFailed", path, reason, ...(code === undefined ? {} : { code }) } as const
+  const failed = (
+    reason: CredentialFileFailed["reason"],
+    code?: string
+  ): { readonly problem: CredentialFileFailed } => ({
+    problem: definedFields({
+      _tag: "CredentialFileFailed",
+      path,
+      reason,
+      code
+    } satisfies CredentialFileFailed)
   });
   const file = await readSmallFile(platform, path, MAX_CREDENTIAL_BYTES, signal);
   switch (file.kind) {
