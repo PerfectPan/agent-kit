@@ -4,6 +4,7 @@ import {
   lineId,
   MAIN_LANE_ID,
   type MessagePayload,
+  OUTPUT_KINDS,
   placeRequest,
   type RequestPayload,
   type SourcedRecord,
@@ -77,6 +78,29 @@ function turnCalls(calls: GrokSessionCalls | undefined, prompt: string | undefin
 /** The payload of one model call: its model and no usage, since Grok logs usage per turn, never per call. */
 function callRequestPayload(call: GrokCall): RequestPayload {
   return { granularity: "request", ...(call.model === undefined ? {} : { model: call.model }) };
+}
+
+/**
+ * The call whose window holds `ts`: the recorded response starts bound the windows, and an output
+ * before every recorded start belongs to the first call. `undefined` when no window can hold it —
+ * a log that wrote no response start at all places its requests at the turn's end.
+ */
+function callWindowOf(ts: number, calls: readonly GrokCall[]): number | undefined {
+  const first = calls[0]?.ts;
+  if (first !== undefined && ts < first) {
+    return 0;
+  }
+  let owner = 0;
+  let reached = first;
+  for (let k = 1; k < calls.length; k++) {
+    const start = calls[k]?.ts;
+    if (start === undefined || ts < start) {
+      continue;
+    }
+    owner = k;
+    reached = start;
+  }
+  return reached === undefined ? undefined : owner;
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -394,20 +418,58 @@ export function createGrokTranslation(options: GrokTranslationOptions): GrokTran
         if (retain) {
           const calls = turnCalls(options.calls, prompt);
           if (calls.length > 1) {
-            // One request per model call, each at its response start; the turn's aggregate usage comes whole
+            // One request per model call, each before its call's first output at the response start, with
+            // the outputs the window holds stamped as its members; the turn's aggregate usage comes whole
             // behind them, since Grok records usage per turn and no call is split by estimate.
-            for (let index = 0; index < calls.length; index++) {
-              const call = calls[index]!;
+            const callRequests = calls.map((call, index) => {
               const callId = `${key}#${index}`;
               const id = nextFree(`request:${callId}`);
               usedIds.add(id);
-              pushEvent(
-                baseEvent(record, "request", callRequestPayload(call), {
-                  id,
-                  ts: call.ts ?? ts,
-                  requestId: callId
-                })
-              );
+              return baseEvent(record, "request", callRequestPayload(call), {
+                id,
+                ts: call.ts ?? ts,
+                requestId: callId
+              });
+            });
+            // The turn's events start at `segment`. Each output event joins the call whose window holds its
+            // time, and the request goes before that window's first output. Windows are the recorded
+            // response starts; an output before every recorded start belongs to the first call, and a call
+            // whose start the log never wrote owns whatever the previous window left.
+            const placements: number[] = calls.map(() => -1);
+            for (let index = segment; index < events.length; index++) {
+              const event = events[index]!;
+              if (!OUTPUT_KINDS.has(event.kind)) {
+                continue;
+              }
+              const call = callWindowOf(event.ts, calls);
+              if (call === undefined) {
+                continue;
+              }
+              if (placements[call] === -1) {
+                placements[call] = index;
+              }
+              if (event.requestId === undefined) {
+                event.requestId = `${key}#${call}`;
+              }
+            }
+            // Insert from the end, so the earlier indices stay valid. A request goes before the turn's
+            // first event at or after its response start; a call the timestamps never reach sits next to
+            // the call after it, so the requests still read in call order.
+            let tail = events.length;
+            for (let call = calls.length - 1; call >= 0; call--) {
+              const start = calls[call]?.ts;
+              let at = tail;
+              if (start !== undefined) {
+                at = events.length;
+                for (let index = segment; index < events.length; index++) {
+                  if (events[index]!.ts >= start) {
+                    at = index;
+                    break;
+                  }
+                }
+              }
+              events.splice(at, 0, callRequests[call]!);
+              tail = at;
             }
             const id = nextFree(`request:${key}`);
             usedIds.add(id);
