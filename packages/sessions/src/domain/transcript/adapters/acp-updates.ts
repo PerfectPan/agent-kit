@@ -3,6 +3,7 @@
 // leniently. It is bundled into the zero-dependency `/transcript/usage` entry, whose built files import nothing
 // because `vp pack` bundles `zod/mini` into that entry and keeps it external for every other entry.
 
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import * as z from "zod/mini";
 
 import { timeOf } from "../../../lib/time.js";
@@ -207,20 +208,20 @@ export function isAcpToolError(state: AcpToolState): boolean {
 }
 
 export function acpToolCallPayload(state: AcpToolState): ToolCallPayload {
-  return {
+  return definedFields({
     callId: state.callId,
     name: state.name,
-    ...(state.title === undefined ? {} : { title: state.title }),
-    ...(state.args === undefined ? {} : { args: state.args })
-  };
+    title: state.title,
+    args: state.args
+  });
 }
 
 export function acpToolResultPayload(state: AcpToolState): ToolResultPayload {
-  return {
+  return definedFields({
     callId: state.callId,
     isError: isAcpToolError(state),
-    ...(state.output === undefined ? {} : { output: state.output })
-  };
+    output: state.output
+  });
 }
 
 /** The text a UI shows for a failed call: its text output, else its status. */
@@ -358,32 +359,65 @@ export function createAcpPartTranslator(
     const { state, first } = mergeAcpToolUpdate(tools, update);
     const { callId: toolCallId, name: toolName } = state;
     // mergeAcpToolUpdate keeps `title` different from `name`, and clears it when a later title equals the name.
-    const title = state.title === undefined ? {} : { title: state.title };
+    const title = state.title;
     if (first) {
       mentioned.add(toolCallId);
-      parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
+      parts.push(
+        definedFields({ type: "tool-input-start", toolCallId, toolName, title } satisfies TranscriptStreamPart)
+      );
       // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
       // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
       if (supplied(update.rawInput) || state.title !== prevTitle) {
-        parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
+        parts.push(
+          definedFields({
+            type: "tool-input-available",
+            toolCallId,
+            toolName,
+            input: state.args,
+            title
+          } satisfies TranscriptStreamPart)
+        );
       }
     } else if (!mentioned.has(toolCallId)) {
       // A turn's deltas are self-contained: a call an earlier turn introduced still opens with its start and its
       // merged input here, so no consumer meets an output without the call it belongs to. The session's folder
       // emits the `tool_call` once; folding this turn alone repeats it with the full input.
       mentioned.add(toolCallId);
-      parts.push({ type: "tool-input-start", toolCallId, toolName, ...title });
-      parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
+      parts.push(
+        definedFields({ type: "tool-input-start", toolCallId, toolName, title } satisfies TranscriptStreamPart)
+      );
+      parts.push(
+        definedFields({
+          type: "tool-input-available",
+          toolCallId,
+          toolName,
+          input: state.args,
+          title
+        } satisfies TranscriptStreamPart)
+      );
     } else if (supplied(update.rawInput) || state.title !== prevTitle) {
-      parts.push({ type: "tool-input-available", toolCallId, toolName, input: state.args, ...title });
+      parts.push(
+        definedFields({
+          type: "tool-input-available",
+          toolCallId,
+          toolName,
+          input: state.args,
+          title
+        } satisfies TranscriptStreamPart)
+      );
     }
     if (isAcpToolDone(state) && !ended.has(toolCallId)) {
       ended.add(toolCallId);
-      const output = state.output === undefined ? {} : { output: state.output };
+      const output = state.output;
       parts.push(
         isAcpToolError(state)
-          ? { type: "tool-output-error", toolCallId, errorText: errorText(state), ...output }
-          : { type: "tool-output-available", toolCallId, ...output }
+          ? definedFields({
+              type: "tool-output-error",
+              toolCallId,
+              errorText: errorText(state),
+              output
+            } satisfies TranscriptStreamPart)
+          : definedFields({ type: "tool-output-available", toolCallId, output } satisfies TranscriptStreamPart)
       );
     } else if (supplied(update.content) || supplied(update.rawOutput)) {
       // A running call's output so far, from this update's `content` or `rawOutput`; the output that ends the call
@@ -438,25 +472,36 @@ export function createAcpPartTranslator(
         if (ended.has(callId) || closed.has(callId)) {
           continue;
         }
-        const title = state.title === undefined ? {} : { title: state.title };
+        const title = state.title;
         if (!mentioned.has(callId)) {
-          parts.push({ type: "tool-input-start", toolCallId: callId, toolName: state.name, ...title });
-          parts.push({
-            type: "tool-input-available",
-            toolCallId: callId,
-            toolName: state.name,
-            input: state.args,
-            ...title
-          });
+          parts.push(
+            definedFields({
+              type: "tool-input-start",
+              toolCallId: callId,
+              toolName: state.name,
+              title
+            } satisfies TranscriptStreamPart)
+          );
+          parts.push(
+            definedFields({
+              type: "tool-input-available",
+              toolCallId: callId,
+              toolName: state.name,
+              input: state.args,
+              title
+            } satisfies TranscriptStreamPart)
+          );
         }
         closed.add(callId);
       }
-      parts.push({
-        type: "finish",
-        id: nextId(),
-        finishReason: response.stopReason,
-        ...(usage === undefined ? {} : { usage })
-      });
+      parts.push(
+        definedFields({
+          type: "finish",
+          id: nextId(),
+          finishReason: response.stopReason,
+          usage
+        } satisfies TranscriptStreamPart)
+      );
       return parts;
     },
     closeOpen: () => close()

@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import type { SqliteDatabase, SqliteValue } from "@rivus/agent-kit-platform/public";
 
 import type { ReadFailed, SessionNotFound } from "../../domain/session/errors/session-read-error.js";
@@ -17,12 +17,7 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
 function readFailed(source: SourcePointer, message: string, cause?: unknown): ReadFailed {
-  return {
-    _tag: "ReadFailed",
-    path: source.file,
-    message,
-    ...(cause === undefined ? {} : { cause })
-  };
+  return definedFields({ _tag: "ReadFailed", path: source.file, message, cause } satisfies ReadFailed);
 }
 
 /** The bytes of one SQLite row's column, or a failure naming why they are not readable. */

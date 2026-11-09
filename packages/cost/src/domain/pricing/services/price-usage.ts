@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { CostSource, ModelUsage, Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
 
 import type { Cost } from "../value-objects/cost.js";
@@ -108,12 +109,12 @@ export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord
         record.pricingMultiplier,
         record.granularity === "request" || part.modelCalls === 1 || record.modelCalls === 1
       );
-      return {
-        ...(part.model === undefined ? {} : { model: part.model }),
+      return definedFields({
+        model: part.model,
         usage: part.usage,
-        ...(part.modelCalls === undefined ? {} : { modelCalls: part.modelCalls }),
-        ...(cost === undefined ? {} : { cost })
-      };
+        modelCalls: part.modelCalls,
+        cost
+      });
     })
   };
 }

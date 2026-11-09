@@ -1,4 +1,4 @@
-import { AgentKitError, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { AgentKitError, definedFields, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import type { Platform } from "@rivus/agent-kit-platform/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
@@ -161,10 +161,11 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
     Effect.gen(function* () {
       const { path } = locator;
       const { stat, symlinkTarget } = yield* inspect(path);
-      const link = symlinkTarget === undefined ? {} : { symlinkTarget };
       if (stat === undefined) {
         // A dangling link still occupies the path.
-        return symlinkTarget === undefined ? undefined : { kind: "symlink", content: "", ...link };
+        return symlinkTarget === undefined
+          ? undefined
+          : definedFields({ kind: "symlink", content: "", symlinkTarget } satisfies ArtifactRead);
       }
       switch (locator.kind) {
         case "file":
@@ -173,18 +174,20 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
             const links: string[] = [];
             const content = yield* attempt(path, "read", () => readTree(platform, path, "", links));
             const target = symlinkTarget ?? links[0];
-            return { kind: "dir", content, ...(target === undefined ? {} : { symlinkTarget: target }) };
+            return definedFields({ kind: "dir", content, symlinkTarget: target } satisfies ArtifactRead);
           }
-          return {
+          return definedFields({
             kind: "file",
             content: (yield* attempt(path, "read", () => readText(platform, path))) ?? "",
-            ...link
-          };
+            symlinkTarget
+          } satisfies ArtifactRead);
         case "json-entry":
         case "toml-entry": {
           const { data } = yield* document(path, formatOf(locator));
           const value = yield* fromParse(path, entryValue(data, locator));
-          return value === undefined ? undefined : { kind: locator.kind, content: value, ...link };
+          return value === undefined
+            ? undefined
+            : definedFields({ kind: locator.kind, content: value, symlinkTarget } satisfies ArtifactRead);
         }
         case "cli-registration": {
           // An explicitly disabled registration cannot run even when its cached content is unchanged.
@@ -195,7 +198,9 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
             entryValue(data, { kind: "json-entry", path, pointer: locatorPointer(locator) })
           );
           const enabled = value === undefined || !DisabledRegistration.safeParse(value).success;
-          return value === undefined ? undefined : { kind: "cli-registration", content: enabled, ...link };
+          return value === undefined
+            ? undefined
+            : definedFields({ kind: "cli-registration", content: enabled, symlinkTarget } satisfies ArtifactRead);
         }
         default:
           return unsupported(locator);
@@ -351,11 +356,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
       const kind = format === "toml" ? "toml-entry" : "json-entry";
       return listEntries(data, pointer, memberIn).map((entry) => ({
         locator: { kind, path, ...entry.locator } as ArtifactLocatorSnapshot,
-        read: {
-          kind,
-          content: entry.value,
-          ...(symlinkTarget === undefined ? {} : { symlinkTarget })
-        } satisfies ArtifactRead
+        read: definedFields({ kind, content: entry.value, symlinkTarget } satisfies ArtifactRead)
       }));
     });
 
@@ -367,7 +368,7 @@ function makeArtifactFiles(platform: FilesPlatform): ArtifactFilesShape {
         const data = after === undefined ? undefined : yield* fromParse(path, parseDocument(format, after));
         after = yield* fromParse(path, editDocument(format, after, data, change.locator, change.content));
       }
-      return { ...(before === undefined ? {} : { before }), ...(after === undefined ? {} : { after }) };
+      return definedFields({ before, after });
     });
 
   return { read, write, remove, scan, preview };

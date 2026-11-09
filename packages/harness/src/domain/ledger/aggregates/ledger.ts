@@ -1,5 +1,12 @@
 import { deepFreeze } from "../../../lib/deep-freeze.js";
-import { AgentKitError, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import {
+  AgentKitError,
+  definedFields,
+  type CodingAgentId,
+  err,
+  ok,
+  type Result
+} from "@rivus/agent-kit-catalog/public";
 
 import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { InstallPlan } from "../../install-plan/aggregates/install-plan.js";
@@ -323,7 +330,7 @@ export class Ledger {
       ) {
         throw new AgentKitError("pre-image-missing", `No pre-image matching the precondition was captured for ${key}`);
       }
-      return {
+      return definedFields({
         planId,
         owner: plan.bundle.owner,
         bundleVersion: plan.bundle.version,
@@ -332,16 +339,17 @@ export class Ledger {
         action: step.action,
         agents: step.agents,
         precondition: step.precondition,
-        ...(step.desired === undefined ? {} : { resultHash: step.desired.hash }),
-        ...(step.removal === undefined ? {} : { removal: step.removal }),
-        ...(preImage === undefined ? {} : { preImage }),
-        ...((step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
-        context.createdConfigFiles?.includes(step.locator.path) === true
-          ? { createdConfigFile: true }
-          : {}),
-        ...(step.legacy === undefined ? {} : { legacy: step.legacy }),
+        resultHash: step.desired?.hash,
+        removal: step.removal,
+        preImage,
+        createdConfigFile:
+          (step.locator.kind === "json-entry" || step.locator.kind === "toml-entry") &&
+          context.createdConfigFiles?.includes(step.locator.path) === true
+            ? true
+            : undefined,
+        legacy: step.legacy,
         startedAt: context.at
-      };
+      } satisfies PendingOperationSnapshot);
     });
     const entries = Object.fromEntries(
       Object.entries(this.snapshot.entries).map(([key, entry]) => {
@@ -593,7 +601,7 @@ export class Ledger {
     }
     const unchanged = entry !== undefined && entry.contentHash === op.resultHash;
     const activeOwner = unchanged ? entry.activeOwner : op.owner;
-    const next: LedgerEntrySnapshot = {
+    const next: LedgerEntrySnapshot = definedFields({
       locator: op.locator,
       owners: unchanged ? [...new Set([...entry.owners, op.owner])].toSorted() : [op.owner],
       activeOwner,
@@ -602,10 +610,10 @@ export class Ledger {
       toolVersion: unchanged ? entry.toolVersion : op.toolVersion,
       contentHash: op.resultHash,
       preImage: entry?.preImage ?? op.preImage ?? { existed: false },
-      ...(entry?.createdConfigFile === true || op.createdConfigFile === true ? { createdConfigFile: true } : {}),
+      createdConfigFile: entry?.createdConfigFile === true || op.createdConfigFile === true ? true : undefined,
       appliedAt: at,
       entryRevision: revision
-    };
+    } satisfies LedgerEntrySnapshot);
     if (entry !== undefined && sameRecord(entry, next)) {
       return { entry };
     }

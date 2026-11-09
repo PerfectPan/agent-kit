@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -27,13 +28,13 @@ function failure(
   sessionKey: string | undefined,
   cause?: unknown
 ): SessionBindingStoreFailure {
-  return {
+  return definedFields({
     _tag: "SessionBindingStoreFailure",
-    ...(sessionKey === undefined ? {} : { sessionKey }),
+    sessionKey,
     reason,
     message,
-    ...(cause === undefined ? {} : { cause })
-  };
+    cause
+  } satisfies SessionBindingStoreFailure);
 }
 
 function readBindings(

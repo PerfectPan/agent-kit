@@ -2,6 +2,7 @@ import {
   AgentKitError,
   type CapabilityUnsupported,
   type CodingAgentId,
+  definedFields,
   type Result,
   lookupService,
   err,
@@ -55,11 +56,12 @@ async function resolveTarget(
   if (info.value === undefined) {
     return err({ _tag: "SessionNotFound", path: target.path });
   }
-  const ref = (agent: CodingAgentId): SessionRef => ({
-    agent,
-    path: target.path,
-    ...(target.sessionId === undefined ? {} : { sessionId: target.sessionId })
-  });
+  const ref = (agent: CodingAgentId): SessionRef =>
+    definedFields({
+      agent,
+      path: target.path,
+      sessionId: target.sessionId
+    });
   const named = target.agent === undefined ? undefined : parseCodingAgentId(target.agent, options.providers.identity);
   if (named?.ok) {
     const found = lookupService(named.value, table);
@@ -100,10 +102,11 @@ export async function loadTranscript(
     return resolved;
   }
   const { adapter, ref } = resolved.value;
-  const transcript = await adapter.load(platform, ref, {
-    ...(options.signal ? { signal: options.signal } : {}),
-    ...(options.onProgress ? { onProgress: options.onProgress } : {})
-  });
+  const transcript = await adapter.load(
+    platform,
+    ref,
+    definedFields({ signal: options.signal, onProgress: options.onProgress })
+  );
   options.signal?.throwIfAborted();
   return transcript;
 }
@@ -148,7 +151,7 @@ export async function summarizeSession(
     return resolved;
   }
   const { adapter, ref } = resolved.value;
-  const signal = options.signal ? { signal: options.signal } : {};
+  const signal = definedFields({ signal: options.signal });
   const asked = prompts === undefined ? signal : { ...signal, prompts };
   if (adapter.summarize) {
     const summary = await adapter.summarize(platform, ref, asked);

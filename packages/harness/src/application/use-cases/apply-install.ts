@@ -1,4 +1,4 @@
-import { AgentKitError } from "@rivus/agent-kit-catalog/public";
+import { AgentKitError, definedFields } from "@rivus/agent-kit-catalog/public";
 import { PlatformService } from "@rivus/agent-kit-platform/effect";
 import * as Effect from "effect/Effect";
 
@@ -85,7 +85,7 @@ function checkPrecondition(
     const found = "ownedAt" in step.precondition ? undefined : yield* observe(step.locator, registrations);
     const matches = step.preconditionHolds({ entry, observed: found });
     if (found === undefined || found.content === undefined) {
-      return { matches, ...(found?.hash === undefined ? {} : { actual: found.hash }) };
+      return definedFields({ matches, actual: found?.hash });
     }
     return { matches, actual: found.hash, content: found.content };
   });
@@ -286,14 +286,16 @@ export function applyLocked(
     for (const step of steps) {
       const check = yield* checkPrecondition(step, ledger.entry(step.locator), registrations);
       if (!check.matches) {
-        return yield* Effect.fail({
-          _tag: "TargetChanged",
-          planId,
-          locator: step.locator,
-          expected: step.precondition,
-          ...(check.actual === undefined ? {} : { actual: check.actual }),
-          completed: 0
-        } satisfies TargetChanged);
+        return yield* Effect.fail(
+          definedFields({
+            _tag: "TargetChanged",
+            planId,
+            locator: step.locator,
+            expected: step.precondition,
+            actual: check.actual,
+            completed: 0
+          } satisfies TargetChanged)
+        );
       }
       if (step.capturePreImage && check.actual !== undefined && check.content !== undefined) {
         const blobRef = yield* repository.putPreImage(record.scope, check.content);
@@ -346,14 +348,14 @@ export function applyLocked(
           const fileAppeared =
             createsConfigFile && (yield* files.read({ kind: "file", path: step.locator.path })) !== undefined;
           if (!check.matches || fileAppeared) {
-            const failure: TargetChanged = {
+            const failure: TargetChanged = definedFields({
               _tag: "TargetChanged",
               planId,
               locator: step.locator,
               expected: step.precondition,
-              ...(check.actual === undefined ? {} : { actual: check.actual }),
+              actual: check.actual,
               completed: index
-            };
+            } satisfies TargetChanged);
             return {
               status: "skipped",
               loaded: yield* recordOutcome({ locator: step.locator, status: "skipped" }, loaded),
@@ -400,12 +402,14 @@ export function applyLocked(
         return yield* Effect.fail(result.failure);
       }
       const key = locatorKey(step.locator);
-      applied.push({
-        locator: step.locator,
-        action: step.action,
-        ...(step.removal === undefined ? {} : { removal: step.removal }),
-        ...(preImages[key] === undefined ? {} : { preImage: preImages[key] })
-      });
+      applied.push(
+        definedFields({
+          locator: step.locator,
+          action: step.action,
+          removal: step.removal,
+          preImage: preImages[key]
+        })
+      );
       // The step wrote, so the ancestors it was missing exist now: their creation is certain, and they become
       // claims with the save below. An apply that fails or dies before it claims nothing, however much it created.
       for (const dir of missingAncestors.get(key) ?? []) {

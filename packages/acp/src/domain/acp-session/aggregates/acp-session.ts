@@ -1,10 +1,10 @@
-import { type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId, err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { AcpSessionInvalid } from "../errors/acp-session-invalid.js";
 import type { IllegalTransition } from "../errors/illegal-transition.js";
 import type { SessionClosed } from "../errors/session-closed.js";
 import type { TurnInProgress } from "../errors/turn-in-progress.js";
-import type { AcpSessionEvent } from "../events/acp-session-events.js";
+import type { AcpSessionEvent, BindingInvalidated, SessionEnded } from "../events/acp-session-events.js";
 import type { AcpSessionSnapshot, AcpSessionState, SessionCloseReason } from "../value-objects/acp-session-snapshot.js";
 
 export interface CreateAcpSessionInput {
@@ -46,13 +46,15 @@ function invalidity(snapshot: AcpSessionSnapshot): string | undefined {
  */
 export class AcpSession {
   static create(input: CreateAcpSessionInput): Result<AcpSession, AcpSessionInvalid> {
-    return AcpSession.restore({
-      agent: input.agent,
-      ...(input.sessionKey === undefined ? {} : { sessionKey: input.sessionKey }),
-      state: "starting",
-      turns: 0,
-      pendingPermissions: 0
-    });
+    return AcpSession.restore(
+      definedFields({
+        agent: input.agent,
+        sessionKey: input.sessionKey,
+        state: "starting",
+        turns: 0,
+        pendingPermissions: 0
+      } satisfies AcpSessionSnapshot)
+    );
   }
 
   static restore(snapshot: AcpSessionSnapshot): Result<AcpSession, AcpSessionInvalid> {
@@ -161,7 +163,7 @@ export class AcpSession {
     const sessionId = this.sessionId;
     return ok(
       this.next({ state: "closed", pendingPermissions: 0, closeReason: "cancel-unsettled" }, [
-        { _tag: "BindingInvalidated", sessionId, ...(sessionKey === undefined ? {} : { sessionKey }) },
+        definedFields({ _tag: "BindingInvalidated", sessionId, sessionKey } satisfies BindingInvalidated),
         { _tag: "SessionEnded", sessionId, reason: "cancel-unsettled" }
       ])
     );
@@ -174,7 +176,7 @@ export class AcpSession {
     }
     const { sessionId } = this.snapshot;
     return this.next({ state: "closed", pendingPermissions: 0, closeReason: reason }, [
-      { _tag: "SessionEnded", ...(sessionId === undefined ? {} : { sessionId }), reason }
+      definedFields({ _tag: "SessionEnded", sessionId, reason } satisfies SessionEnded)
     ]);
   }
 
@@ -202,7 +204,7 @@ export class AcpSession {
 
   private closedError(): SessionClosed {
     const { sessionId, closeReason = "closed" } = this.snapshot;
-    return { _tag: "SessionClosed", ...(sessionId === undefined ? {} : { sessionId }), reason: closeReason };
+    return definedFields({ _tag: "SessionClosed", sessionId, reason: closeReason } satisfies SessionClosed);
   }
 
   private illegal(transition: string): IllegalTransition {

@@ -1,4 +1,4 @@
-import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
+import { definedFields, type CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { ExitStatus } from "@rivus/agent-kit-platform/public";
 import type {
   AcpPartTranslator,
@@ -209,13 +209,13 @@ export function markClosed(conn: ConnectionState, closed: ConnectionClosed): Con
 export function connectionClosed(conn: ConnectionState, reason: ConnectionClosed["reason"]): ConnectionClosed {
   const exit = conn.exit();
   const stderr = conn.stderr();
-  return {
+  return definedFields({
     _tag: "ConnectionClosed",
     agent: conn.agent,
     reason,
-    ...(exit === undefined ? {} : { exit }),
-    ...(stderr ? { stderr } : {})
-  };
+    exit,
+    stderr
+  } satisfies ConnectionClosed);
 }
 
 /** Ends the connection now: marks it closed, closes the SDK connection and stops the process. */
@@ -238,11 +238,11 @@ export function requestError(
   if (isAuthRequired(failure)) {
     return { _tag: "AuthRequired", agent: conn.agent, authMethods: conn.authMethods, message: failure.message };
   }
-  return {
+  return definedFields({
     _tag: "AcpRequestFailed",
     method,
-    ...(failure.code === undefined ? {} : { code: failure.code }),
+    code: failure.code,
     message: failure.message,
-    ...(failure.data === undefined ? {} : { data: failure.data })
-  };
+    data: failure.data
+  } satisfies AcpRequestFailed);
 }

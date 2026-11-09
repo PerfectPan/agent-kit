@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { LifecycleEvent } from "../value-objects/lifecycle-event.js";
 import type { BlockSource, LifecycleClock, LifecycleState, LifecycleStatus } from "../value-objects/lifecycle-state.js";
 
@@ -83,17 +84,22 @@ export function reduceLifecycle(state: LifecycleState, event: LifecycleEvent, cl
       event.subagent.id === undefined
         ? { kind: "subagent", raisedAt: clock.now }
         : { kind: "subagent", id: event.subagent.id };
-    // An open id-less block's events are not signs of life (see `BlockSource`).
-    const alive = unmatchable(open) ? {} : { updatedAt: clock.now };
+    // An open id-less block's events are not signs of life (see `BlockSource`): its update time stays as it was.
+    const updatedAt = unmatchable(open) ? current.updatedAt : clock.now;
     if (event.phase === "blocked" && event.blocker === "permission" && current.status !== "idle") {
-      return { ...current, status: "blocked", blockedBy: withBlocker(open, source), ...alive };
+      return definedFields({
+        ...current,
+        status: "blocked",
+        blockedBy: withBlocker(open, source),
+        updatedAt
+      } satisfies LifecycleState);
     }
     if (!busy || event.phase === "unknown") {
       return current;
     }
     const still = event.phase === "blocked" ? open : open.filter((blocker) => !answers(blocker, source));
     if (still.length > 0) {
-      return { ...current, blockedBy: still, ...alive };
+      return definedFields({ ...current, blockedBy: still, updatedAt });
     }
     const working: LifecycleState = { status: "working", endedTurns: current.endedTurns, updatedAt: clock.now };
     return current.turnId === undefined ? working : { ...working, turnId: current.turnId };

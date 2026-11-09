@@ -1,4 +1,4 @@
-import type { Result } from "@rivus/agent-kit-catalog/public";
+import { type Result, definedFields } from "@rivus/agent-kit-catalog/public";
 import type { ByteRange } from "@rivus/agent-kit-platform/public";
 import {
   CAPABILITIES,
@@ -136,7 +136,7 @@ function readLog(platform: SessionPlatform): ReadLog {
   return {
     bytes,
     ranges,
-    platform: {
+    platform: definedFields({
       fs: {
         stat: (path, options) => fs.stat(path, options),
         list: (dir) => fs.list(dir),
@@ -155,9 +155,9 @@ function readLog(platform: SessionPlatform): ReadLog {
           }
         }
       },
-      ...(platform.sqlite === undefined ? {} : { sqlite: platform.sqlite }),
-      ...(platform.decompress === undefined ? {} : { decompress: platform.decompress })
-    }
+      sqlite: platform.sqlite,
+      decompress: platform.decompress
+    } satisfies SessionPlatform)
   };
 }
 
@@ -170,11 +170,12 @@ export function sessionAdapterConformance(
   fixtures: SessionAdapterFixtures
 ): ConformanceCheck[] {
   const { platform } = fixtures;
-  const refOf = (session: ConformanceSession): SessionRef => ({
-    agent: adapter.agent,
-    path: session.path,
-    ...(session.sessionId === undefined ? {} : { sessionId: session.sessionId })
-  });
+  const refOf = (session: ConformanceSession): SessionRef =>
+    definedFields({
+      agent: adapter.agent,
+      path: session.path,
+      sessionId: session.sessionId
+    });
   const load = async (session: ConformanceSession): Promise<Transcript> =>
     value(await adapter.load(platform, refOf(session)), `load ${session.path}`);
   const eachTranscript = async (

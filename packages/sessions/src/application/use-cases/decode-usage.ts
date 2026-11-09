@@ -1,4 +1,10 @@
-import { AgentKitError, type CodingAgentId, lookupService, parseCodingAgentId } from "@rivus/agent-kit-catalog/public";
+import {
+  AgentKitError,
+  type CodingAgentId,
+  definedFields,
+  lookupService,
+  parseCodingAgentId
+} from "@rivus/agent-kit-catalog/public";
 import type { Platform } from "@rivus/agent-kit-platform/public";
 
 import type { UsageRecord } from "../../domain/usage/value-objects/usage-record.js";
@@ -58,13 +64,17 @@ export function decodeUsage(
       `A cursor of "${from.agent}" cannot continue a decode of "${decoder.agent}"`
     );
   }
-  const inner = decoder.decode(platform, target, {
-    ...(from ? { from } : {}),
-    ...(since === undefined ? {} : { since }),
-    ...(options.final ? { final: true } : {}),
-    ...(options.quietBefore === undefined ? {} : { quietBefore: options.quietBefore }),
-    ...(signal ? { signal } : {})
-  });
+  const inner = decoder.decode(
+    platform,
+    target,
+    definedFields({
+      from,
+      since,
+      final: options.final ? true : undefined,
+      quietBefore: options.quietBefore,
+      signal
+    })
+  );
   let stoppedAt: UsageCursor | undefined;
   return {
     get cursor() {
@@ -116,10 +126,10 @@ export async function* listUsageSources(
     "usage decoder",
     options.providers.identity
   );
-  const sourceOptions = {
-    ...(options.since === undefined ? {} : { since: options.since }),
-    ...(options.signal ? { signal: options.signal } : {})
-  };
+  const sourceOptions = definedFields({
+    since: options.since,
+    signal: options.signal
+  });
   for (const decoder of decoders) {
     options.signal?.throwIfAborted();
     yield* decoder.sources(
