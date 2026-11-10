@@ -1,5 +1,11 @@
 # Change Log - @rivus/agent-kit
 
+## 0.24.1
+
+### Patch Changes
+
+- Detect Claude sessions from one complete Claude record so Gemini JSONL and legacy JSON chats load through their own reader, including when session readers are extended.
+
 ## 0.24.0
 
 ### Minor Changes

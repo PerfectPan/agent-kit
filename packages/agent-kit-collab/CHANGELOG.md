@@ -1,5 +1,7 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.24.1
+
 ## 0.24.0
 
 ### Minor Changes
