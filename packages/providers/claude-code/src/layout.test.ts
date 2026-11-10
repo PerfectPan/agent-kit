@@ -25,7 +25,9 @@ describe("claude-code session detection", () => {
     for (const record of [
       { type: "user", sessionId: "s", uuid: "u", message: { role: "user", content: "hello" } },
       { type: "assistant", sessionId: "s", message: { content: [] } },
-      { type: "user", sessionId: "s", uuid: "u", formatVersion: 2 }
+      { type: "user", sessionId: "s", uuid: "u", formatVersion: 2 },
+      { type: "user", sessionId: "s", uuid: "u", version: 2 },
+      { type: "user", sessionId: "s", uuid: "u", version: "2.1" }
     ]) {
       expect(looksLikeClaudeCodeSession("/logs/moved.jsonl", JSON.stringify(record))).toBe(true);
     }
@@ -47,6 +49,9 @@ describe("claude-code session detection", () => {
       )
     ).toBe(false);
     expect(looksLikeClaudeCodeSession("/logs/chat.jsonl", JSON.stringify({ text: records }))).toBe(false);
+    expect(
+      looksLikeClaudeCodeSession("/logs/chat.jsonl", JSON.stringify({ type: "user", sessionId: "s", uuid: "u" }))
+    ).toBe(false);
     expect(looksLikeClaudeCodeSession("/logs/chat.jsonl", '{"type":"user","sessionId":"s","uuid":')).toBe(false);
   });
 });

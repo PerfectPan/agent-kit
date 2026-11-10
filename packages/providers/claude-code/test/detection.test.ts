@@ -24,9 +24,12 @@ it.each(["/logs/noise.jsonl", "/logs/foreign.db"])(
   }
 );
 
-it("keeps binary sources bounded even when they have no newline", async () => {
-  const path = "/logs/foreign.db";
-  const base = createMemoryPlatform({ files: { [path]: "x".repeat(400_000) }, chunkSize: 1024 });
+it.each([
+  ["/logs/foreign.db", "x".repeat(400_000)],
+  ["/logs/foreign.jsonl", JSON.stringify("x".repeat(400_000))],
+  ["/logs/foreign.jsonl", "\r\n  " + JSON.stringify(["x".repeat(400_000)])]
+])("keeps disqualified first records bounded: %s", async (path, content) => {
+  const base = createMemoryPlatform({ files: { [path]: content }, chunkSize: 1024 });
   let bytes = 0;
   const platform = {
     ...base,

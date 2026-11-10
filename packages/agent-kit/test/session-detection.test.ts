@@ -47,6 +47,21 @@ it.each(["jsonl", "json", "pretty-json"])(
   }
 );
 
+it("does not select Claude for a Gemini user record with an extra UUID", async () => {
+  const path = "/logs/chats/session-1.jsonl";
+  const text = [
+    geminiHeader,
+    { content: "x".repeat(5_000), id: "u1", type: "user", sessionId: "g1", uuid: "extra" },
+    geminiMessages[1]
+  ]
+    .map((record) => JSON.stringify(record))
+    .join("\n");
+  const platform = createMemoryPlatform({ files: { [path]: text } });
+  const named = await loadTranscript(platform, { path, agent: "gemini-cli" });
+  expect(named.ok && named.value.events.length).toBeGreaterThan(0);
+  expect(await loadTranscript(platform, { path })).toEqual(named);
+});
+
 it.each([
   [10, ""],
   [100_000, ""],
@@ -67,13 +82,18 @@ it.each([
   expect(await loadTranscript(platform, { path })).toEqual(named);
 });
 
-it("keeps recognizable unknown Claude generations on the fail-loud path", async () => {
-  const path = "/logs/moved.jsonl";
-  const platform = createMemoryPlatform({
-    files: { [path]: JSON.stringify({ type: "user", sessionId: "c1", uuid: "u1", formatVersion: 2 }) }
-  });
-  expect(await loadTranscript(platform, { path })).toMatchObject({
-    ok: false,
-    error: { _tag: "UnknownFormatGeneration", agent: "claude-code" }
-  });
-});
+it.each([{ formatVersion: 2 }, { version: 2 }, { version: "2.1" }])(
+  "keeps recognizable unknown Claude generations on the fail-loud path: %j",
+  async (generation) => {
+    const path = "/logs/moved.jsonl";
+    const platform = createMemoryPlatform({
+      files: { [path]: JSON.stringify({ type: "user", sessionId: "c1", uuid: "u1", ...generation }) }
+    });
+    const inferred = await loadTranscript(platform, { path });
+    expect(inferred).toMatchObject({
+      ok: false,
+      error: { _tag: "UnknownFormatGeneration", agent: "claude-code" }
+    });
+    expect(inferred).toEqual(await loadTranscript(platform, { path, agent: "claude-code" }));
+  }
+);

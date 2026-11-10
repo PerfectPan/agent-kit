@@ -259,7 +259,7 @@ export const claudeCodeSessionAdapter: SessionAdapter = {
     }
     const lines = text.split("\n");
     const unfinished = lines.pop();
-    if (!unfinished?.trim() || lines.some((line) => line.trim())) {
+    if (!unfinished?.trimStart().startsWith("{") || lines.some((line) => line.trim())) {
       return false;
     }
     // Only finish an oversized first nonblank record; a foreign header must not pull in its long next message.

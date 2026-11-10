@@ -10,6 +10,7 @@ import {
 } from "./facts.js";
 import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
+import { hasUnknownClaudeCodeGeneration } from "./records/record.js";
 
 import { basenamePath, belowRoot, dirnamePath, joinPath } from "@rivus/agent-kit-sessions/spi";
 import { lenient } from "@rivus/agent-kit-sessions/spi";
@@ -106,7 +107,7 @@ export function claudeCodeAgentMeta(value: unknown): ClaudeCodeAgentMeta {
 
 const SessionIdentity = { type: z.enum(["user", "assistant"]), sessionId: z.string() };
 const SessionRecord = z.union([
-  z.looseObject({ ...SessionIdentity, uuid: z.string() }),
+  z.looseObject({ ...SessionIdentity, uuid: z.string() }).check(z.refine(hasUnknownClaudeCodeGeneration)),
   z.looseObject({ ...SessionIdentity, message: z.looseObject({}) })
 ]);
 
