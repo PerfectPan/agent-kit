@@ -40,10 +40,22 @@ const ZcodeTokens = z.looseObject({
   cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
 });
 
-type ZcodeTokensValue = z.output<typeof ZcodeTokens>;
+/** The `tokens` of a stored message, as the schema reads them; the schema itself stays module-private. */
+export interface ZcodeTokensValue {
+  input?: number;
+  output?: number;
+  reasoning?: number;
+  total?: number;
+  cache?: { read?: number; write?: number };
+}
+
+/** The parsed `tokens` of a stored message, or undefined when the field is absent or malformed. */
+export function zcodeTokensOf(value: unknown): ZcodeTokensValue | undefined {
+  return z.safeParse(ZcodeTokens, value).data;
+}
 
 /** The Usage of a stored message's parsed `tokens`, which already count the way the kit's Usage convention does. */
-function zcodeUsage(tokens: ZcodeTokensValue | undefined): Usage | undefined {
+export function zcodeUsage(tokens: ZcodeTokensValue | undefined): Usage | undefined {
   return compactUsage({
     inputTokens: tokens?.input,
     outputTokens: tokens?.output,

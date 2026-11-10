@@ -186,7 +186,7 @@ export const boundaries: BoundaryRules = {
     [ZCODE]: {
       siblingEntries: [],
       providerFacts: "packages/providers/zcode/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
       testsOnly: [TESTING, PLATFORM_NODE],
