@@ -121,3 +121,7 @@
     - session-sources
     - smart-jokes-fry
     - sqlite-shared-usage-reader
+"@rivus/agent-kit@0.24.1":
+  dir: packages/agent-kit
+  intents:
+    - sweet-snails-boil
