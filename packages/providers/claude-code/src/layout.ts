@@ -10,6 +10,7 @@ import {
 } from "./facts.js";
 import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
+import { hasUnknownClaudeCodeGeneration } from "./records/record.js";
 
 import { basenamePath, belowRoot, dirnamePath, joinPath } from "@rivus/agent-kit-sessions/spi";
 import { lenient } from "@rivus/agent-kit-sessions/spi";
@@ -104,7 +105,16 @@ export function claudeCodeAgentMeta(value: unknown): ClaudeCodeAgentMeta {
   };
 }
 
-/** A path under the default projects directory, or a head that reads like a Claude Code session. */
+const SessionIdentity = { type: z.enum(["user", "assistant"]), sessionId: z.string() };
+const SessionRecord = z.union([
+  z.looseObject({ ...SessionIdentity, uuid: z.string() }).check(z.refine(hasUnknownClaudeCodeGeneration)),
+  z.looseObject({ ...SessionIdentity, message: z.looseObject({}) })
+]);
+
+/**
+ * Detect one Claude envelope, not unrelated fields from separate records. Leave generation checks to the loader
+ * so a recognizable record from an unsupported generation still reports UnknownFormatGeneration.
+ */
 export function looksLikeClaudeCodeSession(path: string, head: string | undefined): boolean {
   if (path.includes(`/${CLAUDE_CODE_HOME_DIR}/${CLAUDE_CODE_PROJECTS_DIR}/`)) {
     return true;
@@ -112,10 +122,17 @@ export function looksLikeClaudeCodeSession(path: string, head: string | undefine
   if (head === undefined) {
     return false;
   }
-  const start = head.slice(0, 4000);
-  const user = start.includes('"type":"user"') || start.includes('"type": "user"');
-  const assistant = start.includes('"type":"assistant"') || start.includes('"type": "assistant"');
-  return (user || assistant) && start.includes('"sessionId"');
+  for (const line of head.split("\n")) {
+    try {
+      const value: unknown = JSON.parse(line);
+      if (z.safeParse(SessionRecord, value).success) {
+        return true;
+      }
+    } catch {
+      // A partial or invalid JSON line cannot establish this file's format.
+    }
+  }
+  return false;
 }
 
 /** How the usage walk finds a session's files: the session files, and the subagent transcripts below them. */

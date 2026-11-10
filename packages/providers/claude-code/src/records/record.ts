@@ -189,6 +189,11 @@ function withoutFormatVersion(record: Record<string, unknown>): boolean {
   return !("formatVersion" in record);
 }
 
+/** Whether a recognizable Claude identity carries an envelope this reader must fail loudly on. */
+export function hasUnknownClaudeCodeGeneration(record: Record<string, unknown>): boolean {
+  return !withoutFormatVersion(record) || !z.safeParse(knownVersion, record.version).success;
+}
+
 /**
  * A record schema under the envelope this adapter knows — a string `type`, a `version` as `knownVersion`
  * accepts, and no `formatVersion` key — over the `fields` a reader opens. Only the envelope decides whether the
