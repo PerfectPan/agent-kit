@@ -1,4 +1,4 @@
-import { CLAUDE_CODE_ID, CLAUDE_CODE_DISPLAY_NAME } from "./facts.js";
+import { CLAUDE_CODE_ID, CLAUDE_CODE_DISPLAY_NAME, CLAUDE_CODE_SESSION_SUFFIX } from "./facts.js";
 import { ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
@@ -30,7 +30,7 @@ import {
 import { timedRecord } from "@rivus/agent-kit-sessions/spi";
 import { discoverSessions } from "@rivus/agent-kit-sessions/spi";
 import { catchIoFailure } from "@rivus/agent-kit-sessions/spi";
-import { readEdges } from "@rivus/agent-kit-sessions/spi";
+import { EDGE_BYTES, readLines } from "@rivus/agent-kit-sessions/spi";
 import { readJsonlRecords, readJsonlStream } from "@rivus/agent-kit-sessions/spi";
 import { readBytes, type ReadProgress, readProgress } from "@rivus/agent-kit-sessions/spi";
 import { walkFiles } from "@rivus/agent-kit-sessions/spi";
@@ -245,8 +245,30 @@ export const claudeCodeSessionAdapter: SessionAdapter = {
     if (looksLikeClaudeCodeSession(ref.path, undefined)) {
       return true;
     }
-    // A head in another format is `false`; an IO error must reach the caller's `catchIoFailure`.
-    return looksLikeClaudeCodeSession(ref.path, (await readEdges(platform, ref.path))?.head);
+    const info = await platform.fs.stat(ref.path, { followSymlinks: true });
+    if (info?.kind !== "file") {
+      return false;
+    }
+    const head = await readBytes(platform, ref.path, { start: 0, end: EDGE_BYTES });
+    const text = new TextDecoder().decode(head);
+    if (looksLikeClaudeCodeSession(ref.path, text)) {
+      return true;
+    }
+    if (!ref.path.endsWith(CLAUDE_CODE_SESSION_SUFFIX) || info.size <= head.byteLength) {
+      return false;
+    }
+    const lines = text.split("\n");
+    const unfinished = lines.pop();
+    if (!unfinished?.trim() || lines.some((line) => line.trim())) {
+      return false;
+    }
+    // Only finish an oversized first nonblank record; a foreign header must not pull in its long next message.
+    for await (const line of readLines(platform, ref.path)) {
+      if (line.text.trim()) {
+        return looksLikeClaudeCodeSession(ref.path, line.text);
+      }
+    }
+    return false;
   },
   load: loadClaudeCode,
   summarize: (platform, ref, options = {}) => summarizeClaudeCode(platform, ref, options.signal, options.prompts)
