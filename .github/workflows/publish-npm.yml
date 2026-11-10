@@ -1,115 +1,77 @@
-name: Publish npm
+# npm Trusted Publishing for both public packages is registered against this file name; renaming it requires
+# changing each package's trusted publisher on npmjs.com first.
+name: Release
 
 on:
   push:
     branches: [main]
-  # Manual re-publish of an existing tag; see "Failure Recovery" in docs/development/release.md.
-  release:
-    types: [published]
+  # Rebuilds the version pull request from the current main, or retries a failed publish.
+  workflow_dispatch: {}
 
 permissions: {}
 
-jobs:
-  decide:
-    name: decide release state
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    outputs:
-      state: ${{ steps.state.outputs.state }}
-      tag: ${{ steps.state.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v7
-      # release-state.ts asks pnpm for the workspace packages and the versioning.fixed group; it needs no
-      # dependencies, so this job installs none.
-      - uses: pnpm/setup@v3
-        with:
-          node-version-file: .node-version
-          install: false
-      - id: state
-        run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
-  publish:
-    name: publish release set
-    needs: decide
-    # A release event skips decide and publishes the tag of a non-prerelease GitHub Release.
-    if: >-
-      !cancelled() && (
-        needs.decide.outputs.state == 'publish' ||
-        (github.event_name == 'release' && github.event.release.prerelease == false)
-      )
+jobs:
+  release:
+    name: version or publish packages
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      # Pushes the release tag and creates the GitHub Release.
+      # Pushes the version branch, release tags and GitHub Releases.
       contents: write
+      pull-requests: write
       # npm Trusted Publishing exchanges the workflow's OIDC token for a publish credential.
       id-token: write
-    concurrency:
-      group: publish-npm-${{ github.event.release.tag_name || needs.decide.outputs.tag }}
-      cancel-in-progress: false
-    env:
-      RELEASE_TAG: ${{ github.event.release.tag_name || needs.decide.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
+          # changelog-github looks up the commit that added each change record.
           fetch-depth: 0
-          ref: ${{ github.event.release.tag_name || github.sha }}
-          # Keeps the write token out of .git/config while repository dependencies run; the tag push passes it.
+          # Keeps the write token out of .git/config while repository code runs; the action pushes through the
+          # GitHub API with its own token input.
           persist-credentials: false
+      # The setup step runs in ci.yml too, so the release gates run on the same Node.js and pnpm.
+      # pnpm/setup installs the pnpm from `packageManager`, installs Node.js from `.node-version` and runs
+      # `pnpm install --frozen-lockfile`.
       - uses: pnpm/setup@v3
         with:
           node-version-file: .node-version
-          # Dependencies are installed below, once this run is known to release.
-          install: false
-      - name: Confirm no concurrent run released this version
-        # This job may have waited in the concurrency group for a run of the same version. Every later step
-        # skips when this reports none; a release event skips this step and runs them.
-        id: pending
-        if: github.event_name == 'push'
-        run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
-      - name: Tag the release commit
-        if: steps.pending.outputs.state == 'publish'
+          cache: true
+          require-lockfile: true
+
+      # Lists the public package versions that npm does not have yet. It is empty while every committed version is
+      # on npm, so the release gates run for a merged version pull request, a retried publish, or pushes that follow a
+      # version that is still unpublished.
+      - name: Find packages to publish
+        id: plan
         run: |
-          if ! git rev-parse --quiet --verify "refs/tags/$RELEASE_TAG" > /dev/null; then
-            git -c user.name='github-actions[bot]' \
-              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-              tag --annotate "$RELEASE_TAG" --message "$RELEASE_TAG"
-          fi
-      - name: Verify tag, versions and main ancestry
-        if: steps.pending.outputs.state != 'none'
-        run: node scripts/check-release.ts "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
-      - name: Install dependencies
-        if: steps.pending.outputs.state != 'none'
-        # The command pnpm/setup runs in ci.yml. pnpm/setup already installed Node.js from .node-version, and
-        # --no-runtime keeps pnpm from installing the runtimes in devEngines.runtime again.
-        run: pnpm install --frozen-lockfile --no-runtime
+          pnpm exec changeset publish-plan --output "$RUNNER_TEMP/publish-plan.json"
+          echo "count=$(jq '[.plan[][]] | length' "$RUNNER_TEMP/publish-plan.json")" >> "$GITHUB_OUTPUT"
+
       - name: Run release gates
-        if: steps.pending.outputs.state != 'none'
+        if: steps.plan.outputs.count != '0'
         run: pnpm run check
-      - name: Push the tag and create the GitHub Release
-        if: steps.pending.outputs.state == 'publish'
-        env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
-        # The remote refuses to move an existing tag, so a run that lost a race for this version stops here. Pushing
-        # the tag an earlier run of this commit already pushed is a no-op, as is creating its existing Release.
-        run: |
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$RELEASE_TAG"
-          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --verify-tag --generate-notes --title "$RELEASE_TAG"
-          fi
-      - name: Publish packages
-        if: steps.pending.outputs.state != 'none'
-        # Publishes every package that is not private, in dependency order: @rivus/agent-kit first, then
-        # @rivus/agent-kit-collab, whose peer range (`workspace:^`, packed as ^<version>) names it, so the peer is on
-        # npm before the package that needs it. pnpm stops at the first package that fails and skips versions that
-        # already exist on npm. Each package needs its own trusted publisher; a missing one stops the publish at that
-        # package, and once it is configured a re-run publishes only what is missing (see
-        # docs/development/release.md). pnpm exchanges the job's OIDC token for the publish credential and attaches
-        # provenance on its own when both the repository and the package are public, and skips it otherwise.
-        # `--no-git-checks` only skips pnpm's own branch and clean-tree checks, which a tag or commit checkout fails;
-        # the release:check step above verified the tag, the clean worktree and main ancestry.
-        run: pnpm publish -r --access public --no-git-checks
+      - name: Audit production dependencies
+        if: steps.plan.outputs.count != '0'
+        run: pnpm audit --prod --audit-level=high
+
+      # With pending change records, runs version-packages and opens or updates the draft pull request
+      # changeset-release/main -> main; its body lists each package's new changelog section. Select Ready for review
+      # to run CI before merging. Without pending records, `changeset publish` runs `pnpm publish` for each
+      # unpublished public version through Trusted Publishing, and the action creates one tag and one GitHub Release
+      # per published package; with nothing unpublished it publishes nothing. The version commit goes through the
+      # GitHub API, so GitHub signs it. The publish script stays set even when the gates were skipped: without one,
+      # the action's version pull request body tells maintainers to publish by hand.
+      - name: Create the version pull request or publish
+        uses: changesets/action@v2.1.2
+        with:
+          # The action runs these commands without a shell.
+          version-script: pnpm run version-packages
+          publish-script: pnpm exec changeset publish
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
+          pr-draft: always

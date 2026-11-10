@@ -104,7 +104,7 @@ interface Companion {
 }
 
 /**
- * The other packages of the shell's `versioning.fixed` group in pnpm-workspace.yaml, released and installed together
+ * The other packages of the shell's `fixed` group in `.changeset/config.json`, released and installed together
  * with it. The smoke test fails when the group has a package this table lacks.
  */
 const COMPANIONS: Readonly<Record<string, Companion>> = {
@@ -621,14 +621,14 @@ function typecheck(cwd: string, lib: readonly string[]): void {
 }
 
 /**
- * The shell first, then the other packages of its `versioning.fixed` group, which are released with it. pnpm reads
- * the group from pnpm-workspace.yaml (it prints `null` when no versioning is set) and lists the workspace folders.
+ * The shell first, then the other packages of its `fixed` group in `.changeset/config.json`, which are released with
+ * it. Changesets reads the group from that config and the smoke test lists the workspace folders.
  */
 function releaseSet(shell: Manifest): ReleasePackage[] {
-  const versioning = JSON.parse(run(pnpm, ["config", "get", "versioning", "--json"], repoRoot)) as {
+  const config = JSON.parse(readFileSync(join(repoRoot, ".changeset", "config.json"), "utf8")) as {
     fixed?: string[][];
-  } | null;
-  const group = versioning?.fixed?.find((names) => names.includes(shell.name)) ?? [];
+  };
+  const group = config.fixed?.find((names) => names.includes(shell.name)) ?? [];
   const projects = JSON.parse(run(pnpm, ["ls", "-r", "--depth", "-1", "--json"], repoRoot)) as {
     name: string;
     path: string;
@@ -644,7 +644,7 @@ function releaseSet(shell: Manifest): ReleasePackage[] {
         }
         const folder = projects.find((project) => project.name === name)?.path;
         if (folder === undefined) {
-          throw new Error(`${name} is in the versioning.fixed group of ${shell.name} but not in the workspace`);
+          throw new Error(`${name} is in the fixed group of ${shell.name} but not in the workspace`);
         }
         const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as Manifest;
         return { folder, manifest, effectEntries: companion.effectEntries, companion };

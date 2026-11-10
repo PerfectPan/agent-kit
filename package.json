@@ -12,11 +12,9 @@
     "format:check": "pnpm -r run format:check",
     "check:package": "pnpm -r run check:package",
     "size:update": "node scripts/update-size-budgets.ts",
-    "change": "pnpm change",
-    "check": "pnpm run format:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:package",
-    "release:version": "pnpm version -r && pnpm run check",
-    "release:check": "node scripts/check-release.ts",
-    "publish:dry-run": "pnpm publish -r --access public --no-git-checks --dry-run --json"
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "check": "pnpm run format:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:package && node scripts/check-release-plan.mjs"
   },
   "engines": {
     "node": "^24.11.0"
@@ -29,5 +27,10 @@
         "onFail": "error"
       }
     ]
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@changesets/get-release-plan": "5.0.2"
   }
 }

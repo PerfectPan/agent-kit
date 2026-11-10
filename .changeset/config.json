@@ -1,4 +1,12 @@
 {
-  "$comment": "Only changesets-renovate reads this file. pnpm native versioning is configured in pnpm-workspace.yaml.",
-  "privatePackages": false
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "PerfectPan/agent-kit" }],
+  "commit": false,
+  "fixed": [["@rivus/agent-kit", "@rivus/agent-kit-collab"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": { "version": false, "tag": false }
 }

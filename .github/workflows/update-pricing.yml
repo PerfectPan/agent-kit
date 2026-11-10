@@ -132,8 +132,8 @@ jobs:
           body="$(printf '%s\n\n%s\n' \
             "Regenerates the \`/cost/prices\` snapshot with \`scripts/update-pricing.ts\`; its version is now \`${version}\`." \
             "Opened by update-pricing.yml with the workflow token: mark it ready for review to run CI.")"
-          pnpm change @rivus/agent-kit --bump patch \
-            --summary "Update the LiteLLM price snapshot of \`/cost/prices\` to \`${version}\`."
+          pnpm changeset add --patch @rivus/agent-kit -m \
+            "Update the LiteLLM price snapshot of \`/cost/prices\` to \`${version}\`."
           git switch --create "$BRANCH"
           git add -- "$SNAPSHOT" .changeset
           git commit --message "$title" --message "LiteLLM price snapshot ${version}."
