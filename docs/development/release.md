@@ -23,13 +23,13 @@ workflow is not a published package.
 
 `publish-npm.yml` runs on every push to `main` (a PR merge is a push) and on manual dispatch. One job:
 
-1. `changeset publish-plan` lists the public package versions npm does not have yet. While that list is empty —
-   for example a docs push after a release — the workflow stops after it.
-2. With something to publish, the repository's complete gate (`pnpm run check`, which includes
-   `scripts/check-release-plan.mjs`) and a production-dependency audit run before anything is published.
-3. `changesets/action` then decides: with pending change records it runs `version-packages` and opens or updates
-   the draft version PR; with none it publishes the unpublished versions and tags each published package. The
-   version commit goes through the GitHub API, so GitHub signs it.
+1. `changesets/action/select-mode@v2.1.2` chooses `version` when non-empty changesets are pending,
+   `publish` when there are no changesets and unpublished versions exist, or `none` when no work is needed.
+2. Only `publish` mode runs the repository's complete gate (`pnpm run check`, which includes
+   `scripts/check-release-plan.mjs`) and a production-dependency audit before publishing.
+3. For `version` or `publish`, `changesets/action` runs its native version/publish path: it opens or updates
+   the draft version PR from pending change records, or publishes unpublished versions when no records remain.
+   The version commit goes through the GitHub API, so GitHub signs it. Mode `none` skips the action.
 
 Runs share one concurrency group with `cancel-in-progress: false`: a push waits for the running run, and GitHub
 keeps only the newest waiting run, cancelling older waiting ones.
@@ -70,10 +70,11 @@ The summary becomes the changelog entry, so write it for users of the package. R
 
 `.changeset/config.json` sets `privatePackages: { version: false, tag: false }`, so the private packages are never
 versioned or tagged, and `changelog-github` writes PR links and author thanks into each package's `CHANGELOG.md`.
-A new published package joins the `fixed` group, which `check-release-plan.mjs` enforces: a change record naming a
-package outside the group is never consumed by `changeset version`, so it stays pending and the workflow would
-never publish again. Versioning the packages independently means setting `fixed: []`, choosing a tag scheme for
-each, and documenting it here.
+Keep the two published packages in the same `fixed` group to preserve their shared version. A public package
+outside the group would version independently; group membership does not decide whether a package is consumed.
+`check-release-plan.mjs` uses Changesets' package-skipping rules to reject records naming private or ignored
+packages, including `none` entries, because those records are never consumed. Versioning the packages independently
+means setting `fixed: []` and documenting that choice here.
 
 Two packages in one group:
 
@@ -159,8 +160,8 @@ are not published either.
    guard. Confirm that `check` actually ran and passed for the current head and merge result before squash-merging;
    a skipped check is not validation evidence. PR events created with `github.token` may create runs that require
    maintainer approval; follow any GitHub approval prompt rather than assuming no run exists.
-4. The merge push runs the Release workflow on the merge commit, where no record is pending: `publish-plan` lists
-   the new versions, the gates run, and `changeset publish` publishes each unpublished public version in dependency
+4. The merge push runs the Release workflow on the merge commit, where no record is pending: `select-mode` chooses
+   `publish`, the gates run, and `changeset publish` publishes each unpublished public version in dependency
    order through Trusted Publishing, skipping versions that are already on npm. The action pushes one tag per
    published package (`@rivus/agent-kit@X.Y.Z`, `@rivus/agent-kit-collab@X.Y.Z`) and creates one GitHub Release per
    package with its changelog section. Merging the version PR is the release decision.
@@ -337,8 +338,7 @@ it can.
   tags the rest on the run's commit. **Run workflow** on `main` does the same only while no record is pending, and
   it tags the current `main` commit instead of the release commit. Never bump the version to retry, and never
   unpublish.
-- **Published but the tag or Release is missing**: `publish-plan` no longer lists the version, so re-runs do not
-  add them. Create them by hand on the release commit:
+- **Published but the tag or Release is missing**: `select-mode` finds nothing to publish, so re-runs do not add them. Create them by hand on the release commit:
   `gh release create '@rivus/agent-kit@X.Y.Z' --target <release commit>` (the tag format from step 4) with the
   package's changelog section as notes.
 - **Version PR closed by hand or out of date**: **Run workflow** on `main` rebuilds it from the pending records.
