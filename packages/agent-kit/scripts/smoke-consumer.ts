@@ -70,6 +70,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     target: ".local/share/opencode/opencode.db"
   },
   {
+    agent: "zcode",
+    fixture: "packages/providers/zcode/test/fixtures/sessions/conformance/db.sqlite",
+    target: ".zcode/cli/db/db.sqlite"
+  },
+  {
     agent: "gemini-cli",
     fixture: "packages/providers/gemini-cli/test/fixtures/sessions/conformance/plain",
     target: ".gemini/tmp/smokeproject/chats"

@@ -61,7 +61,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
 
 ## Usage
 

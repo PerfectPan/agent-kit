@@ -42,5 +42,5 @@ it cannot express the nested `/hooks/events` source, inspect enablement, or vali
 default to loading other agents' hook locations, so this adapter has no `legacySources` and the dialect has no
 `runsHooksOf` relation.
 
-There is no session adapter or ACP profile yet. Tests run the discovery and usage conformance suites with synthetic
+There is no ACP profile yet. Tests run the discovery, sessions and usage conformance suites with synthetic
 SQLite fixtures, provider rendering checks and harness installation round trips; the testing package runs hook samples.

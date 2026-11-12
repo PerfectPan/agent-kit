@@ -11,6 +11,7 @@
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",
+    "./sessions": "./src/sessions.ts",
     "./usage": "./src/usage.ts"
   },
   "scripts": {
