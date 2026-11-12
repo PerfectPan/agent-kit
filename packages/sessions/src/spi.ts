@@ -12,6 +12,11 @@ export {
 } from "./application/services/files/read-file.js";
 export { type WalkSpec, walkFiles } from "./application/services/files/walk.js";
 export {
+  type SqliteSessionLayout,
+  type SqliteSessionMessage,
+  createSqliteSessionAdapter
+} from "./application/services/session-adapters/sqlite.js";
+export {
   type JsonlUsageLayout,
   decodeJsonlUsage,
   drain,

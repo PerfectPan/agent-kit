@@ -1,4 +1,4 @@
-import { compactUsage, lenient, type Usage } from "@rivus/agent-kit-sessions/spi";
+import { type SqliteSessionMessage, type Usage, compactUsage, lenient } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
 const Tokens = z.looseObject({
@@ -9,16 +9,8 @@ const Tokens = z.looseObject({
   cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
 });
 
-export interface OpenCodeTokensValue {
-  input?: number;
-  output?: number;
-  reasoning?: number;
-  total?: number;
-  cache?: { read?: number; write?: number };
-}
-
 /** OpenCode counts the cache beside `input`; the kit counts cache reads and writes inside `inputTokens`. */
-export function opencodeUsageOf(tokens: OpenCodeTokensValue | undefined): Usage | undefined {
+function opencodeUsageOf(tokens: z.infer<typeof Tokens> | undefined): Usage | undefined {
   if (!tokens) {
     return undefined;
   }
@@ -44,53 +36,17 @@ const MessageData = z.looseObject({
   time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) }))
 });
 
-export interface OpenCodeMessageValue {
-  role: string;
-  tokens?: OpenCodeTokensValue;
-  modelID?: string;
-  providerID?: string;
-  finish?: string;
-  time?: { created?: number; completed?: number };
-}
-
-export function opencodeMessageOf(value: unknown): OpenCodeMessageValue | undefined {
-  return z.safeParse(MessageData, value).data;
-}
-
-const ToolState = z.looseObject({
-  status: lenient(z.string()),
-  input: lenient(z.unknown()),
-  output: lenient(z.unknown()),
-  error: lenient(z.unknown()),
-  time: lenient(z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) }))
-});
-
-export interface OpenCodeToolState {
-  status?: string;
-  input?: unknown;
-  output?: unknown;
-  error?: unknown;
-  time?: { start?: number; end?: number };
-}
-
-const PartData = z.looseObject({
-  type: z.string(),
-  text: lenient(z.string()),
-  tool: lenient(z.string()),
-  callID: lenient(z.string()),
-  state: lenient(ToolState),
-  time: lenient(z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) }))
-});
-
-export interface OpenCodePartValue {
-  type: string;
-  text?: string;
-  tool?: string;
-  callID?: string;
-  state?: OpenCodeToolState;
-  time?: { start?: number; end?: number };
-}
-
-export function opencodePartOf(value: unknown): OpenCodePartValue | undefined {
-  return z.safeParse(PartData, value).data;
+/** A stored message's JSON as the shared SQLite session reader reads it, with OpenCode's token counting. */
+export function opencodeMessageOf(value: unknown): SqliteSessionMessage | undefined {
+  const message = z.safeParse(MessageData, value).data;
+  if (message === undefined) {
+    return undefined;
+  }
+  return {
+    role: message.role,
+    model: message.modelID,
+    finish: message.finish,
+    created: message.time?.created,
+    usage: opencodeUsageOf(message.tokens)
+  };
 }

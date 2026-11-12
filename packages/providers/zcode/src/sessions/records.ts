@@ -1,9 +1,7 @@
-import { lenient } from "@rivus/agent-kit-sessions/spi";
+import { type SqliteSessionMessage, lenient } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
-import { type ZcodeTokensValue, zcodeTokensOf } from "../usage.js";
-
-export type { ZcodeTokensValue };
+import { zcodeTokensOf, zcodeUsage } from "../usage.js";
 
 /**
  * A stored `message` row's parsed `data`. The model and provider arrive under the AI SDK spellings `modelId` and
@@ -17,62 +15,21 @@ const ZcodeMessageData = z.looseObject({
   providerId: lenient(z.string()),
   providerID: lenient(z.string()),
   finish: lenient(z.string()),
-  time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) }))
+  time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) })),
+  tokens: lenient(z.unknown())
 });
 
-export interface ZcodeMessageValue {
-  role: string;
-  modelId?: string;
-  modelID?: string;
-  providerId?: string;
-  providerID?: string;
-  finish?: string;
-  time?: { created?: number; completed?: number };
-  tokens?: ZcodeTokensValue;
-}
-
-export function zcodeMessageOf(value: unknown): ZcodeMessageValue | undefined {
+/** A stored message's JSON as the shared SQLite session reader reads it; ZCode's tokens already count the kit's way. */
+export function zcodeMessageOf(value: unknown): SqliteSessionMessage | undefined {
   const message = z.safeParse(ZcodeMessageData, value).data;
   if (message === undefined) {
     return undefined;
   }
-  const tokens = zcodeTokensOf((value as Record<string, unknown> | undefined)?.tokens);
-  return { ...message, ...(tokens === undefined ? {} : { tokens }) };
-}
-
-const ToolState = z.looseObject({
-  status: lenient(z.string()),
-  input: lenient(z.unknown()),
-  output: lenient(z.unknown()),
-  error: lenient(z.unknown()),
-  time: lenient(z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) }))
-});
-
-/** A stored `part` row's parsed `data`; the fields a transcript reads. */
-const ZcodePartData = z.looseObject({
-  type: z.string(),
-  text: lenient(z.string()),
-  tool: lenient(z.string()),
-  callID: lenient(z.string()),
-  state: lenient(ToolState),
-  time: lenient(z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) }))
-});
-
-export interface ZcodePartValue {
-  type: string;
-  text?: string;
-  tool?: string;
-  callID?: string;
-  state?: {
-    status?: string;
-    input?: unknown;
-    output?: unknown;
-    error?: unknown;
-    time?: { start?: number; end?: number };
+  return {
+    role: message.role,
+    model: message.modelId ?? message.modelID,
+    finish: message.finish,
+    created: message.time?.created,
+    usage: zcodeUsage(zcodeTokensOf(message.tokens))
   };
-  time?: { start?: number; end?: number };
-}
-
-export function zcodePartOf(value: unknown): ZcodePartValue | undefined {
-  return z.safeParse(ZcodePartData, value).data;
 }
