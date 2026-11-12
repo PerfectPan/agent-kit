@@ -26,7 +26,7 @@ jobs:
       # dependencies, so this job installs none.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           install: false
       - id: state
         run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
@@ -61,7 +61,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           # Dependencies are installed below, once this run is known to release.
           install: false
       - name: Confirm no concurrent run released this version
@@ -83,7 +83,7 @@ jobs:
         run: node scripts/check-release.ts "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --verify-git
       - name: Install dependencies
         if: steps.pending.outputs.state != 'none'
-        # The command pnpm/setup runs in ci.yml. pnpm/setup already installed Node.js from .node-version, and
+        # The command pnpm/setup runs in ci.yml. pnpm/setup already resolved Node.js from devEngines.runtime, and
         # --no-runtime keeps pnpm from installing the runtimes in devEngines.runtime again.
         run: pnpm install --frozen-lockfile --no-runtime
       - name: Run release gates

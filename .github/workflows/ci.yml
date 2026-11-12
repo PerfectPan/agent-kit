@@ -21,11 +21,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      # Installs the pnpm from `packageManager` and the Node.js version from .node-version, then runs
+      # Installs the pnpm from `packageManager` and the Node.js range from `devEngines.runtime`, then runs
       # `pnpm install --frozen-lockfile`.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           require-lockfile: true
           # The store cache is keyed on the lockfile content hash; the action restores before installing.
           cache: true
