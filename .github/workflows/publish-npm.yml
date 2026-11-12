@@ -35,11 +35,11 @@ jobs:
           # GitHub API with its own token input.
           persist-credentials: false
       # The setup step runs in ci.yml too, so the release gates run on the same Node.js and pnpm.
-      # pnpm/setup installs the pnpm from `packageManager`, installs Node.js from `.node-version` and runs
+      # pnpm/setup installs the pnpm from `packageManager` and the Node.js range in `devEngines.runtime`, then runs
       # `pnpm install --frozen-lockfile`.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           cache: true
           require-lockfile: true
 
