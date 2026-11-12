@@ -26,7 +26,9 @@ workflow is not a published package.
 1. `changesets/action/select-mode@v2.1.2` chooses `version` when non-empty changesets are pending,
    `publish` when there are no changesets and unpublished versions exist, or `none` when no work is needed.
 2. Only `publish` mode runs the repository's complete gate (`pnpm run check`, which includes
-   `scripts/check-release-plan.mjs`) and a production-dependency audit before publishing.
+   `scripts/check-release-plan.mjs`) and a production-dependency audit before publishing. The audit
+   (`pnpm --filter '!./apps/**' audit --prod --audit-level=high`) covers the workspace packages and leaves out the
+   website apps, which are never published.
 3. For `version` or `publish`, `changesets/action` runs its native version/publish path: it opens or updates
    the draft version PR from pending change records, or publishes unpublished versions when no records remain.
    The version commit goes through the GitHub API, so GitHub signs it. Mode `none` skips the action.

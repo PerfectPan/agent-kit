@@ -50,9 +50,10 @@ jobs:
       - name: Run release gates
         if: steps.mode.outputs.mode == 'publish'
         run: pnpm run check
+      # The website apps under apps/ never reach npm, so their advisories do not block a package release.
       - name: Audit production dependencies
         if: steps.mode.outputs.mode == 'publish'
-        run: pnpm audit --prod --audit-level=high
+        run: pnpm --filter '!./apps/**' audit --prod --audit-level=high
 
       # With pending change records, runs version-packages and opens or updates the draft pull request
       # changeset-release/main -> main; its body lists each package's new changelog section. Select Ready for review
