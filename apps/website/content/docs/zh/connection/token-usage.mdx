@@ -38,6 +38,8 @@ state = scan.state;
 
 一条 `UsageRecord` 是一次模型请求（`granularity: "request"`）。Agent 只记录回合合计时，它是一个回合。Grok 就是这样，并带 `modelCalls` 和 `usageByModel`。
 
+会话的 `events.jsonl` 和 `chat_history.jsonl` 记下了每次模型调用时，加载出的 Grok 转录仍按调用各显示一个 `request`。这些请求本身不带用量：回合的最后一次调用带上整个回合的合计（`granularity: "turn"`），扫描报告的也还是这条回合记录。
+
 日志里有 Agent 自己的费用时，记录带上 `costUsd` 和 `costSource: "agent"`。Codex 的优先层级还会带上 `pricingMultiplier`。
 
 多个文件持有的同一次请求只计一次。这包括开头复制了另一份记录的 Claude Code 子 Agent 文件，以及迁移进 `.jsonl` 文件的较旧 Gemini CLI 对话。
