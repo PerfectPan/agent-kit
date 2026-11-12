@@ -139,6 +139,31 @@ describe("grok translation", () => {
     }
   });
 
+  it("shows one request per model call when events.jsonl and chat_history.jsonl join several", async () => {
+    const transcript = await load("conformance/per-call");
+    const requests = transcript.events.filter((event) => event.kind === "request");
+    // Turn 0 ran two calls; its repeated `turn_completed` and the single-call turn 1 keep turn-level requests.
+    expect(requests.map((event) => [event.requestId, event.payload.granularity, event.payload.model])).toEqual([
+      ["0#0", "request", "grok-test-build"],
+      ["0#1", "turn", "grok-test"],
+      ["0", "turn", undefined],
+      ["1", "turn", "grok-test"]
+    ]);
+    // `updates.jsonl` names whole seconds: a request takes its first output's time when the `first_token` falls later.
+    expect(requests[1]?.ts).toBe(Date.parse("2026-01-01T00:00:03.000Z"));
+    expect(requests[0]?.ts).toBe(Date.parse("2026-01-01T00:00:01.000Z"));
+    expect(requests[1]?.payload.usage).toEqual({ inputTokens: 15, outputTokens: 4, totalTokens: 19 });
+    const members = (id: string) =>
+      transcript.events
+        .filter((event) => event.requestId === id && event.kind !== "request")
+        .map((event) => event.kind);
+    expect(members("0#0")).toEqual(["user", "reasoning", "tool_call", "tool_result", "hook"]);
+    expect(members("0#1")).toEqual(["assistant"]);
+    const summary = foldTranscript(transcript);
+    expect(summary.requests).toBe(4);
+    expect(summary.contextShape).toEqual([15, 30]);
+  });
+
   it("lists systemPrompt and toolSchemas only when the session directory has the side files", async () => {
     for (const name of ["compaction", "subagent", "unknown-type"]) {
       const transcript = await load(`conformance/${name}`);

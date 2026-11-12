@@ -9,7 +9,7 @@ import {
   GROK_SYSTEM_PROMPT_FILE,
   GROK_TOOLS_FILE
 } from "./facts.js";
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   GROK_SESSION_FILES,
@@ -151,24 +151,23 @@ async function readSubagentMetas(
 /**
  * The per-turn model calls the session's `events.jsonl` and `chat_history.jsonl` join, when both sit within the
  * join budget. A missing file, an oversized one, or an unreadable one joins no calls; the transcript keeps its
- * turn-level request and nothing fails.
+ * turn-level request and nothing fails. Load and summarize both read it, so they count the same requests.
  */
 async function readGrokCalls(
   platform: SessionPlatform,
   dir: string,
-  options: { signal?: AbortSignal; progress: ReadProgress }
+  options: { signal?: AbortSignal; progress?: ReadProgress }
 ): Promise<GrokSessionCalls | undefined> {
-  const paths = [joinPath(dir, GROK_EVENTS_FILE), joinPath(dir, GROK_CHAT_HISTORY_FILE)];
-  const texts: (string | undefined)[] = [];
+  const events = joinPath(dir, GROK_EVENTS_FILE);
+  const history = joinPath(dir, GROK_CHAT_HISTORY_FILE);
   try {
-    for (const path of paths) {
+    for (const path of [events, history]) {
       const info = await platform.fs.stat(path, { followSymlinks: true });
       if (info?.kind !== "file" || info.size > GROK_CALLS_FILE_BYTES) {
         return undefined;
       }
-      texts.push(await readText(platform, path, options));
     }
-    return grokCallsOf(texts[0], texts[1]);
+    return await grokCallsOf(readJsonlStream(platform, events, options), readJsonlStream(platform, history, options));
   } catch {
     // An unreadable join file is an optional enrichment, not a read failure: cancellation still
     // reaches the caller, and everything else keeps the turn-level request.
@@ -208,12 +207,10 @@ async function loadGrok(
   if (generation) {
     return err(generation);
   }
-  const translated = translateGrokRecords(main.records, {
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
-    meta,
-    subagents,
-    ...(calls === undefined ? {} : { calls })
-  });
+  const translated = translateGrokRecords(
+    main.records,
+    definedFields({ sessionId: ref.sessionId, meta, subagents, calls })
+  );
   if (!translated.ok) {
     return translated;
   }
@@ -304,7 +301,8 @@ async function grokGenerationError(
 /**
  * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
  * `loadGrok` it holds no records: `summary.json` is read for the generation check alone, the subagent metas for
- * the lane count, and `updates.jsonl` streams straight into the pass — one file in file order needs no time merge,
+ * the lane count, the call join (a few numbers per model call) for the per-call requests load places, and
+ * `updates.jsonl` streams straight into the pass — one file in file order needs no time merge,
  * and the pass reads no record times, so nothing buffers a session whose records name none.
  */
 async function summarizeGrok(
@@ -321,10 +319,11 @@ async function summarizeGrok(
       return err(generation);
     }
     const subagents = await readSubagentMetas(guarded, dir, { signal, progress: readProgress(undefined) }, []);
-    const summarized = await summarizeGrokRecords(readJsonlStream(guarded, grokUpdatesPath(ref.path), { signal }), {
-      subagents,
-      ...(prompts === undefined ? {} : { prompts })
-    });
+    const calls = await readGrokCalls(guarded, dir, { signal });
+    const summarized = await summarizeGrokRecords(
+      readJsonlStream(guarded, grokUpdatesPath(ref.path), { signal }),
+      definedFields({ subagents, prompts, calls })
+    );
     signal?.throwIfAborted();
     return summarized;
   });

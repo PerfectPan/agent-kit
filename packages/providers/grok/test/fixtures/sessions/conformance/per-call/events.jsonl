@@ -1,0 +1,12 @@
+{"ts":"2026-01-01T00:00:00.050Z","type":"turn_started","turn_number":0,"model_id":"grok-test"}
+{"ts":"2026-01-01T00:00:00.100Z","type":"loop_started","loop_index":0}
+{"ts":"2026-01-01T00:00:01.300Z","type":"first_token"}
+{"ts":"2026-01-01T00:00:01.300Z","type":"phase_changed","phase":"streaming_text"}
+{"ts":"2026-01-01T00:00:02.100Z","type":"tool_started","tool_name":"shell"}
+{"ts":"2026-01-01T00:00:03.000Z","type":"tool_completed","tool_name":"shell","outcome":"failure","tool_call_id":"call-1"}
+{"ts":"2026-01-01T00:00:03.050Z","type":"loop_started","loop_index":1}
+{"ts":"2026-01-01T00:00:03.400Z","type":"first_token"}
+{"ts":"2026-01-01T00:00:04.000Z","type":"turn_ended"}
+{"ts":"2026-01-01T00:00:06.050Z","type":"turn_started","turn_number":1,"model_id":"grok-test"}
+{"ts":"2026-01-01T00:00:06.100Z","type":"loop_started","loop_index":0}
+{"ts":"2026-01-01T00:00:07.200Z","type":"first_token"}

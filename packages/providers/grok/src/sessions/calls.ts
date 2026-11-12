@@ -5,13 +5,21 @@
  * Grok records usage per turn only, so the join names calls; it never invents per-call usage.
  */
 
-import { timeOf } from "@rivus/agent-kit-sessions/spi";
+import * as z from "zod/mini";
+
+import { lenient, logTimestamp, timeOf } from "@rivus/agent-kit-sessions/spi";
 
 export interface GrokCall {
   /** The call's response start, its `first_token` (else its `loop_started`), in epoch ms. */
-  ts?: number;
+  ts: number | undefined;
   /** The model the call's assistant entry named. */
-  model?: string;
+  model: string | undefined;
+  /**
+   * The ids of the tool calls the call made, from the `tool_completed` records of its loop; `undefined` when the
+   * event log has no loop for the call. A response may stream a tool call after an earlier one's result, so these
+   * ids, not the result order, say which call a tool call belongs to.
+   */
+  toolCallIds: readonly string[] | undefined;
 }
 
 export interface GrokSessionCalls {
@@ -19,144 +27,131 @@ export interface GrokSessionCalls {
   readonly turns: ReadonlyMap<number, readonly GrokCall[]>;
 }
 
-/** A parsed line the join reads, or `undefined` when the line is not JSON. */
-function jsonLine(text: string | undefined): unknown[] {
-  if (text === undefined) {
-    return [];
-  }
-  const out: unknown[] = [];
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed === "") {
-      continue;
-    }
-    try {
-      out.push(JSON.parse(trimmed) as unknown);
-    } catch {
-      // A torn or foreign line joins nothing; the rest of the file still does.
-    }
-  }
-  return out;
-}
+/** The `events.jsonl` fields the join reads. Strip mode keeps no other key of a record. */
+const EventRecord = z.object({
+  type: lenient(z.string()),
+  ts: logTimestamp,
+  turn_number: lenient(z.number()),
+  tool_call_id: lenient(z.string())
+});
 
-function str(value: unknown): string | undefined {
-  return typeof value === "string" && value !== "" ? value : undefined;
-}
+/** The `chat_history.jsonl` fields the join reads; the entries' content is never kept. */
+const HistoryRecord = z.object({
+  type: lenient(z.string()),
+  prompt_index: lenient(z.number()),
+  model_id: lenient(z.string())
+});
 
-function num(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-/** The record's time field, which the event log writes as an ISO string or epoch seconds. */
-function timeField(value: unknown): number | undefined {
-  return typeof value === "string" || typeof value === "number" ? timeOf(value) : undefined;
+/**
+ * One loop of a turn: the `loop_started` a `first_token` may complete. `first_token` records carry no index, so a
+ * token closes the turn's latest loop — the loop whose response is streaming.
+ */
+interface Loop {
+  startedTs: number | undefined;
+  firstTokenTs: number | undefined;
+  toolCallIds: string[];
 }
 
 /**
- * One open loop: the `loop_started` a `first_token` may complete. `first_token` records carry no index, so a
- * token closes the turn's still-open loop — the loop whose response is streaming.
+ * The loops each turn ran, from the event log alone, each with the first `first_token` a token record gave it and
+ * the tool calls it completed. A loop whose response never streamed keeps only its start.
  */
-interface OpenLoop {
-  startedTs?: number;
-  firstTokenTs?: number;
-}
-
-/**
- * The calls each turn ran, from the event log alone: the turn's open loops, in order, each with the first
- * `first_token` a token record gave it. A loop whose response never streamed keeps only its start.
- */
-function callsFromEvents(records: readonly unknown[]): Map<number, OpenLoop[]> {
-  const turns = new Map<number, OpenLoop[]>();
-  let turn: number | undefined;
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) {
-      continue;
-    }
-    const value = record as Record<string, unknown>;
-    const type = str(value.type);
-    if (type === "turn_started") {
-      const number = num(value.turn_number);
-      if (number !== undefined && !turns.has(number)) {
-        turns.set(number, []);
+async function loopsFromEvents(records: AsyncIterable<{ value: unknown }>): Promise<Map<number, Loop[]>> {
+  const turns = new Map<number, Loop[]>();
+  let loops: Loop[] | undefined;
+  for await (const record of records) {
+    const event = z.safeParse(EventRecord, record.value).data;
+    if (event?.type === "turn_started") {
+      const number = event.turn_number;
+      loops = number === undefined ? undefined : (turns.get(number) ?? []);
+      if (number !== undefined && loops !== undefined) {
+        turns.set(number, loops);
       }
-      turn = number;
       continue;
     }
-    if (turn === undefined) {
+    if (loops === undefined) {
       continue;
     }
-    const loops = turns.get(turn)!;
-    if (type === "loop_started") {
-      loops.push({ startedTs: timeField(value.ts) });
-      continue;
-    }
-    if (type === "first_token") {
-      const open = loops[loops.length - 1];
+    if (event?.type === "loop_started") {
+      loops.push({ startedTs: timeOf(event.ts), firstTokenTs: undefined, toolCallIds: [] });
+    } else if (event?.type === "first_token") {
+      const open = loops.at(-1);
       if (open !== undefined && open.firstTokenTs === undefined) {
-        open.firstTokenTs = timeField(value.ts);
+        open.firstTokenTs = timeOf(event.ts);
       }
-    }
-  }
-  return turns;
-}
-
-/** The model of each turn's calls, from the chat history's `assistant` entries under a numbered prompt. */
-function modelsFromChatHistory(records: readonly unknown[]): Map<number, string[]> {
-  const turns = new Map<number, string[]>();
-  let turn: number | undefined;
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) {
-      continue;
-    }
-    const value = record as Record<string, unknown>;
-    if (value.type === "user") {
-      const index = num(value.prompt_index);
-      turn = index !== undefined && !turns.has(index) ? index : undefined;
-      continue;
-    }
-    if (value.type === "assistant" && turn !== undefined) {
-      const model = str(value.model_id);
-      const models = turns.get(turn) ?? [];
-      if (turns.get(turn) === undefined) {
-        turns.set(turn, models);
-      }
-      models.push(model ?? "");
+    } else if (event?.type === "tool_completed" && event.tool_call_id !== undefined) {
+      loops.at(-1)?.toolCallIds.push(event.tool_call_id);
     }
   }
   return turns;
 }
 
 /**
- * The join, or `undefined` when neither file names a second call: the assistant entries are the calls (they name
- * the model), each timed by its event log loop. A turn whose counts disagree keeps the entries; a turn the chat
- * history never reached keeps the loops alone. A single-call join is `undefined` so the translation keeps its
- * turn-level request unchanged.
+ * The model of each turn's calls, from the chat history's `assistant` entries under a numbered prompt; an entry
+ * that names no model is `undefined`. A `user` entry without a `prompt_index`, such as a reminder the CLI adds
+ * within a turn, keeps the turn going; a prompt index the history already holds starts no second turn.
  */
-export function grokCallsOf(
-  eventsText: string | undefined,
-  historyText: string | undefined
-): GrokSessionCalls | undefined {
-  const loopsByTurn = callsFromEvents(jsonLine(eventsText));
-  const modelsByTurn = modelsFromChatHistory(jsonLine(historyText));
+async function modelsFromHistory(
+  records: AsyncIterable<{ value: unknown }>
+): Promise<Map<number, (string | undefined)[]>> {
+  const turns = new Map<number, (string | undefined)[]>();
+  let models: (string | undefined)[] | undefined;
+  for await (const record of records) {
+    const entry = z.safeParse(HistoryRecord, record.value).data;
+    if (entry?.type === "user") {
+      const index = entry.prompt_index;
+      if (index !== undefined) {
+        models = turns.has(index) ? undefined : [];
+        if (models !== undefined) {
+          turns.set(index, models);
+        }
+      }
+      continue;
+    }
+    if (entry?.type === "assistant" && models !== undefined) {
+      models.push(entry.model_id === "" ? undefined : entry.model_id);
+    }
+  }
+  return turns;
+}
+
+/**
+ * The join, or `undefined` when no turn names a second call: the assistant entries are the calls (they name the
+ * model), each timed by its event log loop. A turn whose counts disagree keeps the entries; a turn the chat history
+ * never reached, or reached without an assistant entry, keeps the loops alone. A single-call join is `undefined` so the translation keeps its turn-level
+ * request unchanged. The records stream: the join holds a few numbers per call, never a file's text.
+ */
+export async function grokCallsOf(
+  events: AsyncIterable<{ value: unknown }>,
+  history: AsyncIterable<{ value: unknown }>
+): Promise<GrokSessionCalls | undefined> {
+  const loopsByTurn = await loopsFromEvents(events);
+  const modelsByTurn = await modelsFromHistory(history);
   const turns = new Map<number, readonly GrokCall[]>();
   for (const [turn, models] of modelsByTurn) {
-    const loops = loopsByTurn.get(turn) ?? [];
-    const calls: GrokCall[] = [];
-    for (let index = 0; index < models.length; index++) {
-      const loop = loops[index];
-      const model = models[index];
-      calls.push({
-        ...(loop === undefined ? {} : { ts: loop.firstTokenTs ?? loop.startedTs }),
-        ...(model === "" ? {} : { model })
-      });
+    if (models.length === 0) {
+      continue;
     }
-    turns.set(turn, calls);
+    const loops = loopsByTurn.get(turn) ?? [];
+    turns.set(
+      turn,
+      models.map((model, index) => {
+        const loop = loops[index];
+        return loop === undefined
+          ? { ts: undefined, model, toolCallIds: undefined }
+          : { ts: loop.firstTokenTs ?? loop.startedTs, model, toolCallIds: loop.toolCallIds };
+      })
+    );
   }
   for (const [turn, loops] of loopsByTurn) {
     if (!turns.has(turn) && loops.length > 1) {
       turns.set(
         turn,
-        loops.map((loop) => ({ ts: loop.firstTokenTs ?? loop.startedTs }))
+        loops.map((loop) => ({
+          ts: loop.firstTokenTs ?? loop.startedTs,
+          model: undefined,
+          toolCallIds: loop.toolCallIds
+        }))
       );
     }
   }

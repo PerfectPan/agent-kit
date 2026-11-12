@@ -1,5 +1,5 @@
 import { GROK_ID } from "../facts.js";
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   assignSeq,
@@ -70,8 +70,8 @@ export interface GrokTranslateOptions {
  * first output. `elapsed_ms` is the turn duration and stays on a `turn_duration` marker.
  *
  * A turn the joined calls name more than one model call for (see `grokCallsOf`) shows one request per call
- * instead, each at its response start with its model, and the turn's aggregate usage comes whole behind them —
- * the calls name no per-call usage, and none is invented.
+ * instead, each before its call's first output with its model; the last call carries the turn's aggregate usage
+ * whole, since the calls name no per-call usage and none is invented.
  *
  * The record dispatch — chunk kinds, the injected-chunk rule, `continued` prompts by prompt index, the tool
  * merges, `turn_completed` requests and `elapsed_ms` durations, `auto_compact_*`, subagent ids — is
@@ -83,10 +83,7 @@ export function translateGrokRecords(
   options: GrokTranslateOptions = {}
 ): Result<ParsedTranscript, UnknownFormatGeneration> {
   const meta = options.meta ?? {};
-  const translation = createGrokTranslation({
-    retain: true,
-    ...(options.calls === undefined ? {} : { calls: options.calls })
-  });
+  const translation = createGrokTranslation(definedFields({ retain: true as const, calls: options.calls }));
   let startedAt = meta.startedAt;
   let endedAt = meta.endedAt;
   const times = inheritTimes(records.map(recordTime));

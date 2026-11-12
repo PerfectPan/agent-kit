@@ -384,9 +384,18 @@ describe("grok coalesce fallback", () => {
     });
   });
 
-  it("shows one request per model call when the joined calls name several", () => {
+  it("shows one request per model call, the last carrying the turn's aggregate", () => {
     const calls = {
-      turns: new Map([[0, [{ ts: 1000, model: "grok-a" }, { ts: 2000, model: "grok-b" }, {}]]])
+      turns: new Map([
+        [
+          0,
+          [
+            { ts: 1000, model: "grok-a", toolCallIds: undefined },
+            { ts: 2000, model: "grok-b", toolCallIds: undefined },
+            { ts: undefined, model: undefined, toolCallIds: undefined }
+          ]
+        ]
+      ])
     };
     const parsed = value(
       translateGrokRecords(
@@ -408,34 +417,90 @@ describe("grok coalesce fallback", () => {
       )
     );
     const requests = parsed.events.filter((event) => event.kind === "request");
-    expect(requests).toHaveLength(4);
+    // The aggregate is no model call of its own: three calls, three requests.
+    expect(requests.map((event) => event.requestId)).toEqual(["0#0", "0#1", "0#2"]);
     expect(requests[0]?.payload).toEqual({ granularity: "request", model: "grok-a" });
     expect(requests[0]?.ts).toBe(1000);
-    expect(requests[0]?.requestId).toBe("0#0");
     expect(requests[1]?.payload).toEqual({ granularity: "request", model: "grok-b" });
     expect(requests[1]?.ts).toBe(2000);
-    expect(requests[2]?.payload).toEqual({ granularity: "request" });
-    expect(requests[2]?.ts).toBe(requests[3]?.ts);
-    // The turn's usage comes whole on the aggregate, never split across the calls.
-    expect(requests[3]?.payload).toEqual({
+    // The turn's usage comes whole on the last call, never split across the calls.
+    expect(requests[2]?.payload).toEqual({
       granularity: "turn",
       usage: { inputTokens: 30, outputTokens: 6, totalTokens: 36 },
       finishReason: "end_turn",
       modelCalls: 3
     });
-    expect(requests[3]?.requestId).toBe("0");
+    expect(requests[2]?.ts).toBe(Date.parse("2026-01-01T00:00:00.000Z"));
+    // The prompt joins the first call, as the turn-level request's prompt joins it.
+    expect(parsed.events.find((event) => event.kind === "user")?.requestId).toBe("0#0");
   });
 
-  it("places each request before its call's first output and stamps that call's outputs", () => {
-    const first = Date.parse("2026-01-01T00:00:01.000Z");
-    const second = Date.parse("2026-01-01T00:00:03.000Z");
+  it("splits the calls at tool results, not at whole-second record times", () => {
+    // `updates.jsonl` writes epoch seconds; the second call's `first_token` (ms) falls after its first output's second.
+    const secondCall = 1_767_225_602_400;
+    const at = (update: Record<string, unknown>, line: number, timestamp: number) => ({
+      value: { timestamp, params: { update } },
+      file: "updates.jsonl",
+      line,
+      offset: line,
+      length: 1
+    });
     const calls = {
       turns: new Map([
         [
           0,
           [
-            { ts: first, model: "grok-a" },
-            { ts: second, model: "grok-b" }
+            { ts: 1_767_225_601_200, model: "grok-a", toolCallIds: undefined },
+            { ts: secondCall, model: "grok-b", toolCallIds: undefined }
+          ]
+        ]
+      ])
+    };
+    const parsed = value(
+      translateGrokRecords(
+        [
+          at(
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Go" }, _meta: { promptIndex: 0 } },
+            1,
+            1_767_225_600
+          ),
+          at({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "Look." } }, 2, 1_767_225_601),
+          at({ sessionUpdate: "tool_call", toolCallId: "c1", title: "shell", status: "pending" }, 3, 1_767_225_601),
+          at({ sessionUpdate: "tool_call_update", toolCallId: "c1", status: "completed" }, 4, 1_767_225_602),
+          at({ sessionUpdate: "hook_execution", event_name: "PostToolUse", tool_name: "shell" }, 5, 1_767_225_602),
+          at({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Done." } }, 6, 1_767_225_602),
+          at(
+            { sessionUpdate: "turn_completed", usage: { inputTokens: 30, outputTokens: 6, modelCalls: 2 } },
+            7,
+            1_767_225_603
+          )
+        ],
+        { calls }
+      )
+    );
+    expect(parsed.events.map((event) => [event.kind, event.requestId])).toEqual([
+      ["user", "0#0"],
+      ["request", "0#0"],
+      ["reasoning", "0#0"],
+      ["tool_call", "0#0"],
+      ["tool_result", "0#0"],
+      ["hook", "0#0"],
+      ["request", "0#1"],
+      ["assistant", "0#1"]
+    ]);
+    // The request never sits later than the output it precedes: the record's whole second wins over `first_token`.
+    expect(parsed.events[6]?.ts).toBe(parsed.events[7]?.ts);
+    expect(parsed.events[1]?.ts).toBe(1_767_225_601_000);
+  });
+
+  it("keeps a tool call streamed after an earlier result in the call whose loop completed it", () => {
+    const calls = {
+      turns: new Map([
+        [
+          0,
+          [
+            { ts: 1000, model: "grok-a", toolCallIds: ["c1", "c2"] },
+            { ts: 5000, model: "grok-a", toolCallIds: [] }
           ]
         ]
       ])
@@ -444,44 +509,70 @@ describe("grok coalesce fallback", () => {
       translateGrokRecords(
         [
           grokRecord(
-            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Go" }, _meta: { promptIndex: 0 } },
             1
           ),
-          {
-            value: {
-              timestamp: "2026-01-01T00:00:02.000Z",
-              params: { update: { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "partial" } } }
-            },
-            file: "updates.jsonl",
-            line: 2,
-            offset: 1,
-            length: 1
-          },
-          grokRecord(
-            {
-              sessionUpdate: "turn_completed",
-              usage: { inputTokens: 30, outputTokens: 6, modelCalls: 2 }
-            },
-            3
-          )
+          grokRecord({ sessionUpdate: "tool_call", toolCallId: "c1", title: "read", status: "pending" }, 2),
+          grokRecord({ sessionUpdate: "tool_call_update", toolCallId: "c1", status: "completed" }, 3),
+          grokRecord({ sessionUpdate: "tool_call", toolCallId: "c2", title: "read", status: "pending" }, 4),
+          grokRecord({ sessionUpdate: "tool_call_update", toolCallId: "c2", status: "completed" }, 5),
+          grokRecord({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Done." } }, 6),
+          grokRecord({ sessionUpdate: "turn_completed", usage: { inputTokens: 9, outputTokens: 1, modelCalls: 2 } }, 7)
         ],
         { calls }
       )
     );
-    const placed = parsed.events.filter((event) => event.kind === "request" || event.kind === "assistant");
-    expect(placed.map((event) => event.kind)).toEqual(["request", "assistant", "request", "request"]);
-    // The first call's request sits before the output it produced; the output is its member.
-    expect(placed[0]?.ts).toBe(first);
-    expect(placed[0]?.payload).toEqual({ granularity: "request", model: "grok-a" });
-    const output = placed[1]!;
-    expect(output.requestId).toBe("0#0");
-    // The second call's request comes after the output, before the turn's aggregate usage.
-    expect(placed[2]?.ts).toBe(second);
-    expect(placed[3]?.requestId).toBe("0");
+    expect(parsed.events.map((event) => [event.kind, event.requestId])).toEqual([
+      ["user", "0#0"],
+      ["request", "0#0"],
+      ["tool_call", "0#0"],
+      ["tool_result", "0#0"],
+      ["tool_call", "0#0"],
+      ["tool_result", "0#0"],
+      ["request", "0#1"],
+      ["assistant", "0#1"]
+    ]);
+  });
+
+  it("places a repeated turn_completed's request once at the end, keeping the calls placed", () => {
+    const calls = {
+      turns: new Map([
+        [
+          0,
+          [
+            { ts: 1000, model: "grok-a", toolCallIds: undefined },
+            { ts: 2000, model: "grok-b", toolCallIds: undefined }
+          ]
+        ]
+      ])
+    };
+    const completed = { sessionUpdate: "turn_completed", usage: { inputTokens: 30, outputTokens: 6, modelCalls: 2 } };
+    const parsed = value(
+      translateGrokRecords(
+        [
+          grokRecord(
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },
+            1
+          ),
+          grokRecord(completed, 2),
+          grokRecord({ sessionUpdate: "turn_completed", stop_reason: "end_turn" }, 3)
+        ],
+        { calls }
+      )
+    );
+    const requests = parsed.events.filter((event) => event.kind === "request");
+    expect(requests.map((event) => [event.requestId, event.payload.granularity])).toEqual([
+      ["0#0", "request"],
+      ["0#1", "turn"],
+      ["0", "turn"]
+    ]);
+    // The repeat is a turn-level request at its own record time, not a second set of calls.
+    expect(requests[2]?.ts).toBe(Date.parse("2026-01-01T00:00:00.000Z"));
+    expect(new Set(parsed.events.map((event) => event.id)).size).toBe(parsed.events.length);
   });
 
   it("keeps the turn-level request when the join names one call or none", () => {
-    const single = { turns: new Map([[0, [{ ts: 1000, model: "grok-a" }]]]) };
+    const single = { turns: new Map([[0, [{ ts: 1000, model: "grok-a", toolCallIds: undefined }]]]) };
     const records = [
       grokRecord(
         { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Hi" }, _meta: { promptIndex: 0 } },

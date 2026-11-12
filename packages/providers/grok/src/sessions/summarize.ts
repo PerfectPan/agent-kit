@@ -1,5 +1,5 @@
 import { GROK_ID } from "../facts.js";
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   addTurnDuration,
@@ -16,6 +16,7 @@ import {
   type SessionSummaryWithPrompts
 } from "@rivus/agent-kit-sessions/spi";
 import { type GrokSubagentMeta } from "../layout.js";
+import { type GrokSessionCalls } from "./calls.js";
 import { GROK_CAPABILITIES } from "./events.js";
 import { applyGrokSubagents, createGrokTranslation } from "./translation.js";
 
@@ -24,6 +25,8 @@ export interface GrokSummarizeOptions {
   subagents?: ReadonlyMap<string, GrokSubagentMeta>;
   /** Collect the main lane's user prompts under these caps. */
   prompts?: SessionPromptsOptions;
+  /** The per-turn model calls joined from `events.jsonl` and `chat_history.jsonl`, as the load path reads them. */
+  calls?: GrokSessionCalls;
 }
 
 /**
@@ -33,7 +36,8 @@ export interface GrokSummarizeOptions {
  * turn and places each request before the turn's output, so request order is processing order — the pass reads no
  * record times and takes the records as the file holds them. It keeps the usage of each turn, one lane per named
  * subagent, one status per tool call, and two prompt strings, so the state grows with requests, tool calls and
- * subagents, never with the session's bytes.
+ * subagents, never with the session's bytes. With the joined calls a multi-call turn counts one request per call,
+ * as the loaded transcript places them.
  *
  * The passes after the translation read nothing the summary needs: `shadowBefore` marks references, the orphan
  * flags name unpaired results, and the `request:<key>` id dedupe and spawn links only name events.
@@ -42,7 +46,7 @@ export async function summarizeGrokRecords(
   records: AsyncIterable<SourcedRecord>,
   options: GrokSummarizeOptions = {}
 ): Promise<Result<SessionSummaryWithPrompts, UnknownFormatGeneration>> {
-  const translation = createGrokTranslation({ retain: false });
+  const translation = createGrokTranslation(definedFields({ retain: false as const, calls: options.calls }));
   const totals = emptyTotals();
   const prompts = emptyPrompts(options.prompts);
 

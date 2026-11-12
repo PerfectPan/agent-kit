@@ -21,6 +21,7 @@ import {
   mergeAcpToolStatus,
   mergeAcpToolUpdate
 } from "@rivus/agent-kit-sessions/spi";
+import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import { isInjectedChunk } from "./chunks.js";
 import { type GrokCall, type GrokSessionCalls } from "./calls.js";
 import { type GrokSubagentMeta } from "../layout.js";
@@ -77,30 +78,76 @@ function turnCalls(calls: GrokSessionCalls | undefined, prompt: string | undefin
 
 /** The payload of one model call: its model and no usage, since Grok logs usage per turn, never per call. */
 function callRequestPayload(call: GrokCall): RequestPayload {
-  return { granularity: "request", ...(call.model === undefined ? {} : { model: call.model }) };
+  return definedFields({ granularity: "request" as const, model: call.model });
 }
 
 /**
- * The call whose window holds `ts`: the recorded response starts bound the windows, and an output
- * before every recorded start belongs to the first call. `undefined` when no window can hold it —
- * a log that wrote no response start at all places its requests at the turn's end.
+ * The request payloads of a turn the join names several calls for, in call order. The last call carries the turn's
+ * aggregate whole (`granularity: "turn"`, its usage, `modelCalls` and per-model split, and the turn's model, which
+ * names the usage like the scan's turn record does): the turn ends with that call, and the aggregate is no model
+ * call of its own, so `requests` counts the calls the join names.
  */
-function callWindowOf(ts: number, calls: readonly GrokCall[]): number | undefined {
-  const first = calls[0]?.ts;
-  if (first !== undefined && ts < first) {
-    return 0;
-  }
-  let owner = 0;
-  let reached = first;
-  for (let k = 1; k < calls.length; k++) {
-    const start = calls[k]?.ts;
-    if (start === undefined || ts < start) {
+function callPayloads(calls: readonly GrokCall[], aggregate: RequestPayload): RequestPayload[] {
+  return calls.map((call, index) => {
+    if (index < calls.length - 1) {
+      return callRequestPayload(call);
+    }
+    return aggregate.model === undefined && call.model !== undefined ? { ...aggregate, model: call.model } : aggregate;
+  });
+}
+
+/**
+ * The index of the first output of each call among `events[from..]`, by structure rather than time: `updates.jsonl`
+ * stamps whole seconds, which cannot order a call's first output against the `first_token` of the call before. A
+ * tool call the join names belongs to its call. Any other output after a tool result begins the next call once the
+ * current one has made every tool call its loop completed (a response may stream a tool call after an earlier one's
+ * result); a call whose loop the join lacks ends at its first result. Calls never go back, outputs past the last call
+ * stay with it, and a call no output reached has no start.
+ */
+function callStarts(
+  events: readonly TranscriptEvent[],
+  from: number,
+  calls: readonly GrokCall[]
+): (number | undefined)[] {
+  const owners = new Map<string, number>();
+  calls.forEach((call, index) => {
+    for (const id of call.toolCallIds ?? []) {
+      owners.set(id, index);
+    }
+  });
+  const starts: (number | undefined)[] = calls.map(() => undefined);
+  let call = -1;
+  let toolCalls = 0;
+  let resulted = false;
+  for (let index = from; index < events.length; index++) {
+    const event = events[index]!;
+    if (event.kind === "tool_result") {
+      resulted = true;
       continue;
     }
-    owner = k;
-    reached = start;
+    if (!OUTPUT_KINDS.has(event.kind)) {
+      continue;
+    }
+    const owner = event.kind === "tool_call" ? owners.get(event.payload.callId) : undefined;
+    const done = call >= 0 && toolCalls >= (calls[call]!.toolCallIds?.length ?? 0);
+    let next = call;
+    if (owner !== undefined) {
+      next = Math.max(call, owner);
+    } else if (call === -1 || (resulted && done)) {
+      next = call + 1;
+    }
+    next = Math.min(next, calls.length - 1);
+    if (next !== call) {
+      call = next;
+      starts[call] = index;
+      toolCalls = 0;
+    }
+    if (event.kind === "tool_call") {
+      toolCalls += 1;
+    }
+    resulted = false;
   }
-  return reached === undefined ? undefined : owner;
+  return starts;
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -237,8 +284,9 @@ export interface GrokTranslationOptions {
   readonly retain: boolean;
   /**
    * The per-turn model calls joined from `events.jsonl` and `chat_history.jsonl`. A turn the join names more
-   * than one call for emits one request per call; without the join, or for a single-call turn, the translation
-   * keeps its turn-level request. The bounded pass reads no calls either way.
+   * than one call for emits one request per call, the last carrying the turn's aggregate usage; without the join,
+   * or for a single-call turn, the translation keeps its turn-level request. Both modes read the same join, so the
+   * bounded pass counts the requests the retained one places.
    */
   readonly calls?: GrokSessionCalls;
 }
@@ -265,6 +313,8 @@ export function createGrokTranslation(options: GrokTranslationOptions): GrokTran
   const turn: GrokTurn = {};
   let lastUserPrompt: string | undefined;
   let segment = 0;
+  /** The prompts whose calls got their own requests, so a repeated `turn_completed` places them only once. */
+  const callTurns = new Set<string>();
 
   const rememberAgent = (id: string, title?: string, spawnEventId?: string): void => {
     const existing = agents.find((agent) => agent.id === id);
@@ -415,95 +465,74 @@ export function createGrokTranslation(options: GrokTranslationOptions): GrokTran
         const payload = requestPayload(update, turn.model);
         delete turn.model;
         const durationMs = update.elapsed_ms;
-        if (retain) {
-          const calls = turnCalls(options.calls, prompt);
-          if (calls.length > 1) {
-            // One request per model call, each before its call's first output at the response start, with
-            // the outputs the window holds stamped as its members; the turn's aggregate usage comes whole
-            // behind them, since Grok records usage per turn and no call is split by estimate.
-            const callRequests = calls.map((call, index) => {
-              const callId = `${key}#${index}`;
-              const id = nextFree(`request:${callId}`);
-              usedIds.add(id);
-              return baseEvent(record, "request", callRequestPayload(call), {
-                id,
-                ts: call.ts ?? ts,
-                requestId: callId
-              });
-            });
-            // The turn's events start at `segment`. Each output event joins the call whose window holds its
-            // time, and the request goes before that window's first output. Windows are the recorded
-            // response starts; an output before every recorded start belongs to the first call, and a call
-            // whose start the log never wrote owns whatever the previous window left.
-            const placements: number[] = calls.map(() => -1);
-            for (let index = segment; index < events.length; index++) {
-              const event = events[index]!;
-              if (!OUTPUT_KINDS.has(event.kind)) {
-                continue;
-              }
-              const call = callWindowOf(event.ts, calls);
-              if (call === undefined) {
-                continue;
-              }
-              if (placements[call] === -1) {
-                placements[call] = index;
-              }
-              if (event.requestId === undefined) {
-                event.requestId = `${key}#${call}`;
-              }
-            }
-            // Insert from the end, so the earlier indices stay valid. A request goes before the turn's
-            // first event at or after its response start; a call the timestamps never reach sits next to
-            // the call after it, so the requests still read in call order.
-            let tail = events.length;
-            for (let call = calls.length - 1; call >= 0; call--) {
-              const start = calls[call]?.ts;
-              let at = tail;
-              if (start !== undefined) {
-                at = events.length;
-                for (let index = segment; index < events.length; index++) {
-                  if (events[index]!.ts >= start) {
-                    at = index;
-                    break;
-                  }
-                }
-              }
-              events.splice(at, 0, callRequests[call]!);
-              tail = at;
-            }
-            const id = nextFree(`request:${key}`);
+        // A turn's calls are placed once: a repeated `turn_completed` for the same prompt has no calls of its own
+        // left to show, so it keeps the turn-level request, in both modes alike.
+        const calls = prompt === undefined || callTurns.has(prompt) ? [] : turnCalls(options.calls, prompt);
+        const payloads = calls.length > 1 ? callPayloads(calls, payload) : [payload];
+        if (prompt !== undefined && calls.length > 1) {
+          callTurns.add(prompt);
+        }
+        if (retain && payloads.length > 1) {
+          // One request per model call, before the call's first output, with the turn's events from `segment` on
+          // stamped as the members of the call they follow (the prompt and anything before the first output join
+          // the first call). A call no output reached sits just before the next call's request, or at the end.
+          const callRequests = calls.map((call, index) => {
+            const requestId = `${key}#${index}`;
+            const id = nextFree(`request:${requestId}`);
             usedIds.add(id);
-            pushEvent(baseEvent(record, "request", payload, { id, ts, requestId: key }));
-          } else {
-            // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
-            // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
-            // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
-            // already used, now checked like the Codex translator checks its own.
-            const requestId = `request:${key}`;
-            const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
-            usedIds.add(id);
-            segment = placeRequest(
-              events,
-              segment,
-              baseEvent(record, "request", payload, {
-                id,
-                ts,
-                requestId: key
-              })
-            );
+            return baseEvent(record, "request", payloads[index]!, { id, ts: call.ts ?? ts, requestId });
+          });
+          const starts = callStarts(events, segment, calls);
+          let tail = events.length;
+          for (let call = calls.length - 1; call >= 0; call--) {
+            const at = Math.min(starts[call] ?? tail, tail);
+            const request = callRequests[call]!;
+            // The response start, but never after the output it precedes: `updates.jsonl` may stamp that output
+            // with the whole second the `first_token` falls in.
+            if (at < events.length && request.ts > events[at]!.ts) {
+              request.ts = events[at]!.ts;
+            }
+            events.splice(at, 0, request);
+            tail = at;
           }
-          if (durationMs !== undefined) {
-            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
+          let member: string | undefined = callRequests[0]!.requestId;
+          for (let index = segment; index < events.length; index++) {
+            const event = events[index]!;
+            if (event.kind === "request") {
+              member = event.requestId;
+            } else if (event.requestId === undefined) {
+              event.requestId = member;
+            }
           }
-          // The window closes past the duration marker, so a later turn's request never reaches back before it.
-          segment = events.length;
+        } else if (retain) {
+          // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
+          // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
+          // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
+          // already used, now checked like the Codex translator checks its own.
+          const requestId = `request:${key}`;
+          const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
+          usedIds.add(id);
+          placeRequest(
+            events,
+            segment,
+            baseEvent(record, "request", payload, {
+              id,
+              ts,
+              requestId: key
+            })
+          );
         } else {
-          // Requests are placed in processing order, so the streaming pass sees the context shape for free.
-          parts.push({ kind: "request", payload });
-          if (durationMs !== undefined) {
-            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
+          // Requests are placed in processing order, so the streaming pass sees the context shape for free: the
+          // call requests in call order, the last carrying the aggregate, as the retained placement orders them.
+          for (const each of payloads) {
+            parts.push({ kind: "request", payload: each });
           }
         }
+        if (durationMs !== undefined) {
+          emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
+        }
+        // The window closes past the duration marker, so a later turn's request never reaches back before it.
+        segment = events.length;
         return { ok: true, parts };
       }
 
