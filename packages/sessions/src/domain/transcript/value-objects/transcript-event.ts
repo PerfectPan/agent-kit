@@ -150,7 +150,7 @@ export interface RequestPayload {
    * and is not split into invented per-request records. A `turn` aggregate may ride on the request of the last call
    * it covers: its `modelCalls` then include the preceding sibling `granularity: "request"` requests, so adding up
    * `modelCalls ?? 1` over the requests counts those calls twice, and its `model` is the aggregate's model rather
-   * than that call's own.
+   * than that call's own, unless the aggregate names no model.
    */
   granularity?: "request" | "turn" | "session";
   /** How many model calls a `turn` or `session` aggregate covers. */
