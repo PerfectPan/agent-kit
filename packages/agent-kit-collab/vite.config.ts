@@ -23,8 +23,8 @@ const bundleProcessLockZod = (id: string, importer: string | undefined): boolean
   /^zod(\/|$)/.test(id) && importer?.includes("/process-lock/") === true;
 
 export default defineConfig({
-  // The generated changelogs are release output, not repository sources.
-  fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
+  // The shared fmt skips the generated CHANGELOG.*.
+  fmt,
   lint: withBoundaryLint(
     {
       ...lint,
