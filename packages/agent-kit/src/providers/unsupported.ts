@@ -19,9 +19,15 @@ export const unsupported: Readonly<
   },
   "gemini-cli": {},
   opencode: {},
-  pi: { acp: "No supported ACP transport." },
+  pi: {},
   zcode: {
     sessions: "Session storage has no supported reader.",
     acp: "No supported ACP transport."
-  }
+  },
+  kimi: {},
+  qoder: {
+    sessions: "The session store is not captured yet.",
+    usage: "The session store is not captured yet."
+  },
+  dim: {}
 };

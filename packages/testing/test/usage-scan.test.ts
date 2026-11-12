@@ -136,7 +136,11 @@ describe("scanUsage", () => {
       return list(dir);
     };
     const failed = await scan(denied, { since, state: first.state });
-    expect(failed.failures).toEqual(["/u/me/.codex/sessions/2026 ReadFailed"]);
+    // The memory platform has no SQLite, so the DimCode decode reports its database as unavailable every scan.
+    expect(failed.failures).toEqual([
+      "/u/me/.codex/sessions/2026 ReadFailed",
+      "/u/me/.dimcode/v2/dimcode.sqlite SqliteUnavailable"
+    ]);
     expect(Object.keys(failed.state.sources)).toEqual(Object.keys(first.state.sources));
   });
 
@@ -150,8 +154,13 @@ describe("scanUsage", () => {
     const next = await scan(platform, { since: later, state: first.state });
     expect(paths(next.state)).not.toContain(pi);
     expect(paths(next.state)).not.toContain(archived);
-    // The memory platform dates a directory at its creation, so the older opencode layout's session stays listed.
-    expect(Object.keys(next.state.sources)).toEqual(["opencode ses_legacy"]);
+    // The memory platform dates a directory at its creation, so the older opencode layout's session stays listed,
+    // and the Kimi wires stay because the `since` scan never read them.
+    expect(Object.keys(next.state.sources)).toEqual([
+      "opencode ses_legacy",
+      "kimi session_demo-1",
+      "kimi session_demo-2"
+    ]);
   });
 
   it("decides that a file is complete from the decode's own look at it, not from the listing", async () => {

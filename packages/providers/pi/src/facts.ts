@@ -15,4 +15,22 @@ export const PI_EXTENSION_SUFFIXES: readonly string[] = [".js", PI_EXTENSION_SUF
 export const PI_SESSION_SUFFIX = ".jsonl";
 export const PI_SESSION_SUFFIX_PATTERN: RegExp = /\.jsonl$/;
 
+// Pi ships no ACP server; the community adapter (npm `pi-acp`, svkozak/pi-acp) drives `pi --mode rpc`.
+export const PI_ACP_COMMAND = "pi-acp";
+export const PI_ACP_ENV: readonly string[] = [
+  "PI_*",
+  // Pi reads provider keys from the environment (or `~/.pi/agent/auth.json` and `models.json`); these globs cover
+  // the providers its documentation lists. `GEMINI_*` and `GOOGLE_*` both appear across Pi versions.
+  "ANTHROPIC_*",
+  "OPENAI_*",
+  "GEMINI_*",
+  "GOOGLE_*",
+  "DEEPSEEK_*",
+  "XAI_*",
+  "OPENROUTER_*",
+  "GROQ_*",
+  "MISTRAL_*",
+  "GOOGLE_APPLICATION_CREDENTIALS"
+];
+
 export const agentMarkers: readonly string[] = [PI_ID, HOME_DIR, HOME_ENV];

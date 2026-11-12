@@ -116,6 +116,9 @@ const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
 const DSH = "@rivus/agent-kit-provider-dsh";
 const ZCODE = "@rivus/agent-kit-provider-zcode";
+const KIMI = "@rivus/agent-kit-provider-kimi";
+const QODER = "@rivus/agent-kit-provider-qoder";
+const DIM = "@rivus/agent-kit-provider-dim";
 const TESTING = "@rivus/agent-kit-testing";
 
 export const boundaries: BoundaryRules = {
@@ -177,9 +180,9 @@ export const boundaries: BoundaryRules = {
     [PI]: {
       siblingEntries: [],
       providerFacts: "packages/providers/pi/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },
@@ -189,6 +192,33 @@ export const boundaries: BoundaryRules = {
       providerServices: ["identity", "discovery", "hooks", "install", "usage"],
       dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      testsOnly: [TESTING, PLATFORM_NODE],
+      external: ["zod/mini"]
+    },
+    [KIMI]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/kimi/src/facts.ts",
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
+    [QODER]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/qoder/src/facts.ts",
+      providerServices: ["identity", "discovery", "hooks", "install", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, ACP],
+      testsOnly: [TESTING],
+      external: []
+    },
+    [DIM]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/dim/src/facts.ts",
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING, PLATFORM_NODE],
       external: ["zod/mini"]
     },
@@ -256,7 +286,21 @@ export const boundaries: BoundaryRules = {
       siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE, ACP, PLATFORM_NODE],
+      testsOnly: [
+        PI,
+        CURSOR,
+        GEMINI_CLI,
+        OPENCODE,
+        GROK,
+        CLAUDE_CODE,
+        CODEX,
+        ZCODE,
+        KIMI,
+        QODER,
+        DIM,
+        ACP,
+        PLATFORM_NODE
+      ],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

@@ -20,7 +20,8 @@ The README's support table uses these words where a cell is not "yes":
 - Cursor ACP: no supported ACP transport.
 - DeepSeek Harness hooks: no supported hook dialect.
 - DeepSeek Harness install: no supported installation adapter.
-- Pi ACP: no supported ACP transport.
+- Qoder CLI sessions: the session store is not captured yet.
+- Qoder CLI usage: the session store is not captured yet.
 - ZCode sessions: session storage has no supported reader.
 - ZCode ACP: no supported ACP transport.
 
@@ -28,9 +29,9 @@ The README's support table uses these words where a cell is not "yes":
 
 Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`.
 
-`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok and opencode. A profile's `warnings` name the facts not yet checked against the Agent.
+`/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode, Pi (`pi-acp`), Kimi Code (`kimi acp`), Qoder CLI (`qodercli --acp`) and DimCode (`dim acp`). A profile's `warnings` name the facts not yet checked against the Agent.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI. DimCode needs `platform.sqlite`.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 

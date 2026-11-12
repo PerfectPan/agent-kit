@@ -52,6 +52,9 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Grok 在 `~/.grok/hooks` 里写入一个文件。
 - Cursor 写入一个本地插件。
 - ZCode 在 `~/.agents/agent-kit/zcode` 下写入 kit 自己的插件，并将绝对路径登记到 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
+- Kimi Code 写入 `~/.kimi-code/config.toml` 的 `[[hooks]]` 条目。
+- Qoder CLI 写入 `~/.qoder/settings.json` 的分组条目。
+- DimCode 写入 `~/.dimcode/v2/hooks.json` 的分组条目，该文件由 CLI 通过 `dim hooks` 审查。
 - opencode 和 Pi 写入一座桥，把它们的事件转发给命令。
 
 方言读作结束某事的事件（阶段 `finish`）同步送达。这些事件是 opencode 的 `session.idle`、`session.error`、`session.deleted`，以及空闲时的 `session.status`，还有 Pi 的 `agent_end`、`agent_settled` 和 `session_shutdown`。桥把它们交给命令，并等待它退出，最多 5 秒。因此结束事件会在下一个事件转发之前到达命令。

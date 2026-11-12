@@ -37,6 +37,22 @@ import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
+import { kimi } from "@rivus/agent-kit-provider-kimi/identity";
+import { kimiProbe } from "@rivus/agent-kit-provider-kimi/discovery";
+import { kimiHookDialect } from "@rivus/agent-kit-provider-kimi/hooks";
+import { kimiInstallAdapter } from "@rivus/agent-kit-provider-kimi/install";
+import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
+import { kimiSessionAdapter } from "@rivus/agent-kit-provider-kimi/sessions";
+import { qoder } from "@rivus/agent-kit-provider-qoder/identity";
+import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
+import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
+import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
+import { dim } from "@rivus/agent-kit-provider-dim/identity";
+import { dimProbe } from "@rivus/agent-kit-provider-dim/discovery";
+import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
+import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
+import { dimUsageDecoder } from "@rivus/agent-kit-provider-dim/usage";
+import { dimSessionAdapter } from "@rivus/agent-kit-provider-dim/sessions";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -44,7 +60,10 @@ export const builtinCodingAgents = {
   "gemini-cli": geminiCli,
   grok: grok,
   opencode: opencode,
-  pi: pi
+  pi: pi,
+  kimi,
+  qoder,
+  dim
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
@@ -53,18 +72,24 @@ export const builtinProbeRecipes = {
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
-  grok: grokProbe
+  grok: grokProbe,
+  kimi: kimiProbe,
+  qoder: qoderProbe,
+  dim: dimProbe
 };
 // ZCode first, as in the shell: its payloads also carry Grok's payload marker.
 export const builtinHookDialects = {
   zcode: zcodeHookDialect,
+  kimi: kimiHookDialect,
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
-  pi: piHookDialect
+  pi: piHookDialect,
+  qoder: qoderHookDialect,
+  dim: dimHookDialect
 };
 export const builtinInstallAdapters = {
   "claude-code": claudeCodeInstallAdapter,
@@ -73,7 +98,10 @@ export const builtinInstallAdapters = {
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,
   opencode: opencodeInstallAdapter,
-  pi: piInstallAdapter
+  pi: piInstallAdapter,
+  kimi: kimiInstallAdapter,
+  qoder: qoderInstallAdapter,
+  dim: dimInstallAdapter
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
@@ -81,11 +109,15 @@ export const builtinUsageDecoders = {
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
-  pi: piUsageDecoder
+  pi: piUsageDecoder,
+  kimi: kimiUsageDecoder,
+  dim: dimUsageDecoder
 };
 
 export const builtinSessionAdapters = {
   "claude-code": claudeCodeSessionAdapter,
   codex: codexSessionAdapter,
-  grok: grokSessionAdapter
+  grok: grokSessionAdapter,
+  kimi: kimiSessionAdapter,
+  dim: dimSessionAdapter
 };

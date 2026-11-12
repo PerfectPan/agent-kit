@@ -8,7 +8,10 @@ import * as z from "zod/mini";
 import { foreignHookFiles } from "../../domain/bundle/services/hook-registrations.js";
 import { type ArtifactSource, type HookSource } from "../../domain/bundle/spi/install-adapter.js";
 import { type OwnerSnapshot } from "../../domain/bundle/value-objects/owner.js";
-import { type ArtifactLocatorSnapshot } from "../../domain/install-plan/value-objects/artifact-locator.js";
+import {
+  type ArtifactLocatorSnapshot,
+  elementMember
+} from "../../domain/install-plan/value-objects/artifact-locator.js";
 import { isBrokenSymlink } from "../../domain/install-plan/services/observation.js";
 import { threeWayVerify } from "../../domain/ledger/services/three-way-verify.js";
 import { lenient } from "../../lib/lenient.js";
@@ -92,6 +95,12 @@ const HookList = lenient(z.array(z.unknown()), []);
 const HookEvents = lenient(z.record(z.string(), HookList), {});
 const HookGroup = lenient(z.looseObject({ hooks: HookList }), { hooks: [] });
 const HookRegistration = z.looseObject({ command: z.string(), timeout: lenient(z.optional(z.number()), undefined) });
+/** One element of an `event-list` source, such as Kimi's `[[hooks]]` entries: the element carries its own event. */
+const HookListElement = z.looseObject({
+  event: z.string(),
+  command: z.string(),
+  timeout: lenient(z.optional(z.number()), undefined)
+});
 
 /** The paths a source names, with each `*` segment expanded to the entries of its directory. */
 function expand(pattern: string): Effect.Effect<readonly string[], never, PlatformService> {
@@ -127,10 +136,31 @@ function hooksInFile(
 ): Effect.Effect<readonly Omit<FoundHook, "own">[], never, ArtifactFiles> {
   return Effect.gen(function* () {
     const kind = source.format === "toml" ? "toml-entry" : "json-entry";
-    const read = yield* Effect.orElseSucceed(
-      (yield* ArtifactFiles).read({ kind, path, pointer: "/hooks" }),
-      () => undefined
-    );
+    const pointer = source.pointer ?? (source.layout === "event-map" ? "" : "/hooks");
+    const read = yield* Effect.orElseSucceed((yield* ArtifactFiles).read({ kind, path, pointer }), () => undefined);
+    if (source.layout === "event-list") {
+      const list = z.array(HookListElement).safeParse(read?.content);
+      const found: Omit<FoundHook, "own">[] = [];
+      if (!list.success) {
+        return found;
+      }
+      for (const { event, command, timeout } of list.data) {
+        found.push({
+          event,
+          command,
+          hook: { timeout },
+          locator: {
+            kind,
+            path,
+            pointer,
+            member: elementMember([event, command]),
+            memberIn: "element",
+            memberKeys: ["event", "command"]
+          }
+        });
+      }
+      return found;
+    }
     const events = HookEvents.safeParse(read?.content);
     const found: Omit<FoundHook, "own">[] = [];
     if (!events.success) {
@@ -138,20 +168,18 @@ function hooksInFile(
     }
     for (const [event, entries] of Object.entries(events.data)) {
       const hooks =
-        source.layout === "grouped"
-          ? entries.flatMap((group) => HookGroup.safeParse(group).data?.hooks ?? [])
-          : entries;
+        source.layout === "flat" ? entries : entries.flatMap((group) => HookGroup.safeParse(group).data?.hooks ?? []);
       for (const hook of hooks) {
         const registration = HookRegistration.safeParse(hook);
         if (registration.success) {
           const { command, timeout } = registration.data;
-          const pointer = `/hooks/${event.replaceAll("~", "~0").replaceAll("/", "~1")}`;
-          const memberIn = source.layout === "grouped" ? "hook-group" : "element";
+          const escaped = event.replaceAll("~", "~0").replaceAll("/", "~1");
+          const memberIn = source.layout === "flat" ? "element" : "hook-group";
           found.push({
             event,
             command,
             hook: { timeout },
-            locator: { kind, path, pointer, member: command, memberIn }
+            locator: { kind, path, pointer: `${pointer}/${escaped}`, member: command, memberIn }
           });
         }
       }

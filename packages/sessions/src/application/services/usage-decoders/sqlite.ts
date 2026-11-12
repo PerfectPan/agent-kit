@@ -405,3 +405,188 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
     }
   }, from);
 }
+
+/** One row of an append-only usage log, as the ledger rules read it. */
+export interface SqliteAppendRow {
+  /** The row's id column, which becomes the record's request id when the decode has no better one. */
+  readonly id: string;
+  /** The row's position in the table, which a record's source line keeps. */
+  readonly row: number;
+  readonly sessionId?: string;
+  /** When the row was written, as epoch ms; a row whose column does not parse counts at 0. */
+  readonly created: number;
+  /** The row's JSON payload column; a row whose payload is not JSON is skipped. */
+  readonly data: string;
+  /** The row's other columns as the driver returned them, for the ids and numbers beside the JSON. */
+  readonly raw: Readonly<Record<string, SqliteValue>>;
+  /** Where the row came from. */
+  readonly source: SourcePointer;
+}
+
+/** The usage of one appended log row's parsed JSON, with where it came from. */
+export type SqliteAppendDecode = (value: unknown, row: SqliteAppendRow) => UsageRecord | undefined;
+
+/** The columns of an append-only usage log, as the queries name them. */
+export interface SqliteAppendColumns {
+  readonly table: string;
+  readonly id: string;
+  readonly sessionId?: string;
+  /** A creation timestamp column; epoch ms or an ISO text, filtered in JavaScript to accept both. */
+  readonly created?: string;
+  readonly data: string;
+  /** The row's other columns the decode reads beside the JSON, carried on the row's `raw` as named. */
+  readonly extras?: readonly string[];
+}
+
+export interface SqliteAppendLogRequest {
+  readonly agent: CodingAgentId;
+  readonly platform: UsagePlatform;
+  /** The database file's path; its WAL file is it plus `walSuffix`. */
+  readonly path: string;
+  readonly walSuffix: string;
+  readonly columns: SqliteAppendColumns;
+  readonly options: DecodeUsageOptions;
+}
+
+/** The `SELECT` list of one ledger page, from the columns the agent declares. */
+function sqliteAppendPage(columns: SqliteAppendColumns, count: number): string {
+  const quote = (name: string): string => `"${name.replaceAll('"', '""')}"`;
+  const list = [`${quote(columns.id)} AS id`, "rowid AS row"];
+  if (columns.sessionId !== undefined) {
+    list.push(`${quote(columns.sessionId)} AS session_id`);
+  }
+  if (columns.created !== undefined) {
+    list.push(`${quote(columns.created)} AS created`);
+  }
+  for (const extra of columns.extras ?? []) {
+    list.push(quote(extra));
+  }
+  list.push(`${quote(columns.data)} AS data`);
+  return `SELECT ${list.join(", ")} FROM ${quote(columns.table)} WHERE rowid > ? ORDER BY rowid LIMIT ${count}`;
+}
+
+/** A ledger page row; only `session_id` is read by type, the other columns are coerced in the loop. */
+const appendRow = z.looseObject({ session_id: lenient(z.optional(z.string())) });
+
+/** The creation time of an appended row: an epoch ms number, an ISO text, or 0 when neither parses. */
+function appendCreated(value: SqliteValue | undefined): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return 0;
+}
+
+/**
+ * The appended rows of an agent's usage ledger, in insert order, through the rowid cursor a previous decode saved:
+ * the table only grows, so a continuing decode reads the rows appended after the last one it saw, and `since` filters
+ * the cold scan's rows by their creation time in JavaScript. The records go through `queue`, so the ones a caller
+ * left early keeps are saved with the cursor.
+ */
+export function decodeSqliteAppendLog(decode: SqliteAppendDecode, request: SqliteAppendLogRequest): UsageStream {
+  const { agent, platform, path, walSuffix, columns, options } = request;
+  const { from, since, signal } = options;
+  const fail = (error: UsageDecodeError): UsageDecodeFailure => ({ agent, path, error });
+  return usageStreamOf(async function* (position) {
+    const sqlite = platform.sqlite;
+    if (!sqlite) {
+      yield fail({ _tag: "SqliteUnavailable", path });
+      return;
+    }
+    const io = guardIo(platform);
+    let source: UsageSource | undefined;
+    try {
+      source = await sqliteMessageSource(io.platform, agent, path, walSuffix);
+    } catch (error) {
+      signal?.throwIfAborted();
+      const failure = io.failure(error, path);
+      if (!failure) {
+        throw error;
+      }
+      yield fail(failure);
+      return;
+    }
+    if (source === undefined) {
+      yield fail({ _tag: "SessionNotFound", path });
+      return;
+    }
+    // The ledger cursor is the row id it last read; an absent or unparsable row rescans the table from the start.
+    const saved = z.safeParse(SqliteSavedSettlement, from?.state).data;
+    let lastRow = typeof saved?.row === "number" ? saved.row : undefined;
+    let lastId = typeof saved?.row === "number" ? (saved.id ?? "") : "";
+    const queue: UsageRecord[] = [...(from?.queue ?? [])];
+    position.cursor = () =>
+      definedFields({
+        agent,
+        offset: 0,
+        line: 0,
+        state: definedFields({ updated: 0, id: lastId, row: lastRow }),
+        queue: queue.length > 0 ? [...queue] : undefined
+      });
+    yield* drain(queue);
+    const sqliteErrors = new WeakSet<object>();
+    let db: SqliteDatabase | undefined;
+    const query = (sql: string, ...params: SqliteValue[]): Record<string, SqliteValue>[] => {
+      try {
+        db ??= sqlite.open(path, { readonly: true });
+        return db.prepare(sql).all(...params);
+      } catch (error) {
+        // WeakSet bookkeeping only; the thrown value is not parsed or changed.
+        if (typeof error === "object" && error !== null) {
+          sqliteErrors.add(error);
+        }
+        throw error;
+      }
+    };
+    const page = sqliteAppendPage(columns, SQLITE_PAGE_ROWS);
+    try {
+      for (;;) {
+        signal?.throwIfAborted();
+        const rows = query(page, lastRow ?? 0);
+        for (const raw of rows) {
+          const row: SqliteAppendRow = {
+            id: String(raw.id),
+            row: Number(raw.row),
+            sessionId: z.safeParse(appendRow, raw).data?.session_id,
+            created: appendCreated(raw.created),
+            data: String(raw.data),
+            raw,
+            source: { file: path, offset: 0, length: 0, line: Number(raw.row) }
+          };
+          lastRow = row.row;
+          lastId = row.id;
+          if (since !== undefined && row.created < since) {
+            continue;
+          }
+          let value: unknown;
+          try {
+            value = JSON.parse(row.data) as unknown;
+          } catch {
+            continue;
+          }
+          const record = decode(value, row);
+          if (record) {
+            queue.push(record);
+          }
+        }
+        yield* drain(queue);
+        if (rows.length < SQLITE_PAGE_ROWS) {
+          break;
+        }
+      }
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (typeof error !== "object" || error === null || !sqliteErrors.has(error)) {
+        throw error;
+      }
+      yield fail(readFailed(path, error));
+    } finally {
+      db?.close();
+    }
+  }, from);
+}

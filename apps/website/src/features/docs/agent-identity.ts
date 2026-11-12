@@ -35,6 +35,15 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     }
   },
   {
+    id: "dim",
+    name: "DimCode",
+    aliases: ["dimcode"],
+    home: {
+      en: "DIMCODE_HOME (names the v2 dir), ~/.dimcode/v2",
+      zh: "DIMCODE_HOME（指向 v2 目录本身），~/.dimcode/v2"
+    }
+  },
+  {
     id: "dsh",
     name: "DeepSeek Harness",
     aliases: [],
@@ -56,6 +65,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     home: { en: "GROK_HOME, ~/.grok", zh: "GROK_HOME，~/.grok" }
   },
   {
+    id: "kimi",
+    name: "Kimi Code",
+    aliases: [],
+    home: { en: "KIMI_CODE_HOME, ~/.kimi-code", zh: "KIMI_CODE_HOME，~/.kimi-code" }
+  },
+  {
     id: "opencode",
     name: "opencode",
     aliases: [],
@@ -72,6 +87,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
       en: "PI_CODING_AGENT_DIR (expands ~), ~/.pi/agent",
       zh: "PI_CODING_AGENT_DIR（展开 ~），~/.pi/agent"
     }
+  },
+  {
+    id: "qoder",
+    name: "Qoder CLI",
+    aliases: [],
+    home: { en: "QODER_CONFIG_DIR, ~/.qoder", zh: "QODER_CONFIG_DIR，~/.qoder" }
   },
   {
     id: "zcode",

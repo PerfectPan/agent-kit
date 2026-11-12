@@ -6,6 +6,8 @@ import { opencodeUsageDecoder } from "@rivus/agent-kit-provider-opencode/usage";
 import { geminiCliUsageDecoder } from "@rivus/agent-kit-provider-gemini-cli/usage";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 import { zcodeUsageDecoder } from "@rivus/agent-kit-provider-zcode/usage";
+import { dimUsageDecoder } from "@rivus/agent-kit-provider-dim/usage";
+import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -18,6 +20,8 @@ const builtinUsageDecoders: {
   readonly "gemini-cli": typeof geminiCliUsageDecoder;
   readonly pi: typeof piUsageDecoder;
   readonly zcode: typeof zcodeUsageDecoder;
+  readonly dim: typeof dimUsageDecoder;
+  readonly kimi: typeof kimiUsageDecoder;
 } = {
   "claude-code": claudeCodeUsageDecoder,
   codex: codexUsageDecoder,
@@ -26,7 +30,9 @@ const builtinUsageDecoders: {
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
   pi: piUsageDecoder,
-  zcode: zcodeUsageDecoder
+  zcode: zcodeUsageDecoder,
+  dim: dimUsageDecoder,
+  kimi: kimiUsageDecoder
 };
 
 export const usageTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"usage">> =>

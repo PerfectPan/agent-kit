@@ -87,21 +87,20 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 [`@rivus/agent-kit-collab` reference](packages/agent-kit-collab/README.md).
 
 ## Built-in support
-
-| Agent       | identity | discovery | hooks | install | sessions                                 | usage                                   | acp                         |
-| ----------- | -------- | --------- | ----- | ------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
-| claude-code | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| codex       | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| cursor      | yes      | yes       | yes   | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
-| dsh         | yes      | yes | No supported hook dialect. | No supported installation adapter. | yes | yes | yes |
-| gemini-cli  | yes      | yes       | yes   | yes     | yes | yes                                     | yes                         |
-| grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| opencode    | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | yes                                      | yes                                     | No supported ACP transport. |
-| zcode       | yes      | yes       | yes   | yes     | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
-
-These are today's built-in providers. Any other Agent plugs in as a provider descriptor
-(`providers: [{ id: "my-agent", sessions: adapter }]`) and is checked with the conformance suites in `/testing`.
+| Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| dim         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes                         |
+| gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| kimi        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| qoder       | yes      | yes       | yes                        | yes                                | The session store is not captured yet.   | The session store is not captured yet.  | yes                         |
+| zcode       | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | yes                                     | No supported ACP transport. |
 
 ## Entries
 
