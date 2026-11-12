@@ -36,11 +36,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      # Installs the pnpm from `packageManager` and the Node.js major from .node-version, then runs
+      # Installs the pnpm from `packageManager` and the Node.js range from `devEngines.runtime`, then runs
       # `pnpm install --frozen-lockfile`: the generator parses LiteLLM's list with zod.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           require-lockfile: true
       - name: Regenerate the snapshot
         # The token only lifts the GitHub API rate limit for the commit lookup; the data is public.
@@ -120,7 +120,7 @@ jobs:
       # `pnpm change` reads only the workspace manifests, so no dependencies are installed.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           install: false
       - name: Commit, push and open or update the pull request
         env:

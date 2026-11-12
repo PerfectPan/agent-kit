@@ -47,7 +47,7 @@ jobs:
           git rev-parse HEAD > "$RUNNER_TEMP/renovate-changesets/head-sha"
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           install: false
       - name: Install changesets-renovate
         run: >-

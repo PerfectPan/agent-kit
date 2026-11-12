@@ -32,7 +32,7 @@ The source exports 17 agent-kit entries and three collab entries (20 in total). 
 | `@rivus/agent-kit-collab/lease` | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect |
 | `@rivus/agent-kit-collab/lanes` | `createLanes` | Effect, process-local |
 
-The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node 24. Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
+The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node.js `^26.13.1` (26.13.1 or a newer 26.x release). Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
 
 Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/agent-kit/providers` alongside
 `builtinProviders`. Replace `adapters`, `dialects`, `recipes` and `profiles` with descriptors such as

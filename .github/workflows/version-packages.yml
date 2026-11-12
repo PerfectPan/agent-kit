@@ -28,7 +28,7 @@ jobs:
       # dependencies, so this job installs none.
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           install: false
       - id: state
         run: node scripts/release-state.ts >> "$GITHUB_OUTPUT"
@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
       - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
+          runtime: node
           require-lockfile: true
       - name: Confirm main has not moved on
         # A re-run keeps its original commit. Once main has moved on, the newer push's run owns the release PR, and
