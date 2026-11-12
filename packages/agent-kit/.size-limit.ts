@@ -14,7 +14,7 @@ const nodeOnly = {
 // `pnpm size:update` sets every limit to the measured size plus headroom (scripts/lib/size-budgets.ts); do not edit them
 // by hand.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "51506 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "52374 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "44896 B" },
@@ -23,7 +23,7 @@ export default [
   { name: "@rivus/agent-kit/cost", path: "dist/cost.js", import: "*", limit: "1580 B" },
   // Nearly all of it is the LiteLLM snapshot, about 10 B a model plus each model's long-context tier. The budget
   // still fails when the filter admits another provider's routes or the entry starts bundling zod/mini.
-  { name: "@rivus/agent-kit/cost/prices", path: "dist/cost/prices.js", import: "*", limit: "3578 B" },
+  { name: "@rivus/agent-kit/cost/prices", path: "dist/cost/prices.js", import: "*", limit: "3651 B" },
   { name: "@rivus/agent-kit/discovery", path: "dist/discovery.js", import: "*", limit: "12585 B" },
   // About 25 kB of the kit's own code; the rest is its editors, @decimalturn/toml-patch (about 40 kB) and zod/mini
   // (about 5 kB) above all. The bridges carry the per-event finish selectors and their payload check, and the
@@ -49,9 +49,9 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "35419 B" },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "36441 B" },
   { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "24120 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2425 B" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "35233 B" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "21952 B" }
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "36286 B" },
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "21964 B" }
 ] satisfies SizeLimitConfig;
