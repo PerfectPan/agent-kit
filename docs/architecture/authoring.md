@@ -119,8 +119,8 @@ its agent-specific case files. Keep parsing shared by sessions and usage in `rec
 npm access. The `shell-entry` rule binds each service subpath only from its matching shell table module.
 
 Relations between agents are data: a HookDialect names `foreignHooks` by agent id rather than importing another
-provider. Formats used by several agents belong to their context's SPI: ACP update translation in sessions,
-command-hook configuration and shared skills-directory rendering in harness, and base ACP environment rules in acp.
+provider. Formats used by several agents belong to their context's SPI: ACP update translation and the session and
+usage readers of OpenCode's SQLite table layout in sessions, command-hook configuration and shared skills-directory rendering in harness, and base ACP environment rules in acp.
 Add an SPI helper only when a provider imports it. Agent layouts, records and translators stay in the provider;
 cost has no provider consumer and no SPI entry.
 
