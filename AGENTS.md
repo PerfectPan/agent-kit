@@ -47,13 +47,9 @@ pnpm --filter website build
 pnpm --filter website typecheck
 
 # Record a release note for changed packages. Non-interactive form (works without a terminal):
-pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
-# Interactive prompt (needs a terminal); preview with `pnpm change status`:
-pnpm change
-
-# Release identity check and publish dry run (dry run never uploads):
-pnpm run release:check -- vX.Y.Z --repository OWNER/REPO
-pnpm run publish:dry-run
+pnpm changeset add --patch @rivus/agent-kit -m "Update runtime dependencies."
+# Interactive prompt (needs a terminal); preview with `pnpm changeset status --verbose`:
+pnpm changeset
 
 # Repository, PR/MR title and description checks:
 gh repo-checks repository
@@ -74,7 +70,7 @@ Workspace members are the folders that the globs in `pnpm-workspace.yaml` match 
 - `packages/agent-kit-collab` is `@rivus/agent-kit-collab`, the second published package, with its own code: each
   entry lives in `src/<entry>/` (layers at `src/<entry>/<layer>/`, entry file `src/<entry>/public.ts`). It reaches
   `@rivus/agent-kit` only through the public entries listed in `boundaries.ts`, as a peer (`workspace:^`). Both
-  packages are the one `versioning.fixed` group in `pnpm-workspace.yaml`: one version, one tag, one release.
+  packages are the one `fixed` group in `.changeset/config.json`: one version, one release PR, one publish run.
 - The other folders under `packages/`, such as `packages/platform`, are private internal packages named
   `@rivus/agent-kit-<folder>`, one per bounded context, with `"private": true`. Each exports `src/public.ts`
   for sibling packages and the shell, plus `src/spi.ts` where provider helpers are needed, straight from TypeScript source, and is a `workspace:*`
@@ -120,13 +116,13 @@ For non-trivial changes:
 - A PR that changes a published package's source, manifest or build config, an internal package that the shell
   bundles, or the lockfile, includes a changeset under `.changeset/`. A change in an internal package needs a
   changeset for `@rivus/agent-kit`. A lockfile change that only adds or updates the private website's or
-  `website-api`'s dependencies needs none. Create it with `pnpm change <package> --bump <patch|minor|major> --summary "<text>"`
+  `website-api`'s dependencies needs none. Create it with `pnpm changeset add --<patch|minor|major> <package> -m "<text>"`
   (format in `CONTRIBUTING.md`); while the packages are 0.x, a breaking change is `minor`, never `major`. CI does not
   check for missing changesets; adding one is the author's and the reviewer's call.
-- Never bump versions, edit `CHANGELOG.md`, create release tags, or publish by hand. Every push to `main` runs both
-  release workflows: `version-packages.yml` opens or updates the release PR while changesets are pending, and once
-  the merged release PR has consumed them, `publish-npm.yml` tags the release, creates the GitHub Release and
-  publishes. Follow `docs/development/release.md`.
+- Never bump versions, edit `CHANGELOG.md`, create release tags, or publish by hand. Every push to `main` runs the
+  one Release workflow (`publish-npm.yml`): while changesets are pending it opens or updates the draft version PR,
+  and once a merged version PR has consumed them it publishes the new versions and tags and releases each package.
+  Follow `docs/development/release.md`.
 - Workspace dependencies between packages use `workspace:*`; pnpm replaces them with exact versions when packing.
 
 ## Repository Architecture
@@ -154,7 +150,7 @@ For non-trivial changes:
 - Use `CONTRIBUTING.md` for contribution workflow.
 - Use `docs/specs/` for active product behavior and `docs/plans/` for active technical decisions and detailed execution plans. Current-state documentation owns implemented behavior.
 - Use `docs/` for durable current-state knowledge such as architecture, development guides, operational runbooks, references, and onboarding tutorials.
-- Record user-facing changes with changesets (`.changeset/*.md`, written by `pnpm change`) in the same PR; do not edit generated changelogs or add a hand-written root `CHANGELOG.md`.
+- Record user-facing changes with changesets (`.changeset/*.md`, written by `pnpm changeset`) in the same PR; do not edit generated changelogs or add a hand-written root `CHANGELOG.md`.
 - When behavior, configuration, commands, APIs, deployment, architecture, or operations change, update the relevant docs in the same PR/MR or explain why no docs changed.
 
 ## AI Delivery Workflow

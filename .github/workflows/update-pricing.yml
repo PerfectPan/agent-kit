@@ -117,23 +117,25 @@ jobs:
           jq -e '(.version | type == "string") and (.prices | type == "object")' \
             "$artifact/litellm-snapshot.json" > /dev/null
           cp -- "$artifact/litellm-snapshot.json" "$SNAPSHOT"
-      # `pnpm change` reads only the workspace manifests, so no dependencies are installed.
-      - uses: pnpm/setup@v3
-        with:
-          runtime: node
-          install: false
       - name: Commit, push and open or update the pull request
         env:
           GH_TOKEN: ${{ github.token }}
           GIT_TERMINAL_PROMPT: "0"
         run: |
           version="$(jq -r .version "$SNAPSHOT")"
+          # The version names the change record and goes into its summary, so it must stay one plain token.
+          if [[ ! "$version" =~ ^[A-Za-z0-9.+-]+$ ]]; then
+            echo "::error::The snapshot version is not a plain token"
+            exit 1
+          fi
           title="chore(cost): update the LiteLLM price snapshot"
           body="$(printf '%s\n\n%s\n' \
             "Regenerates the \`/cost/prices\` snapshot with \`scripts/update-pricing.ts\`; its version is now \`${version}\`." \
             "Opened by update-pricing.yml with the workflow token: mark it ready for review to run CI.")"
-          pnpm change @rivus/agent-kit --bump patch \
-            --summary "Update the LiteLLM price snapshot of \`/cost/prices\` to \`${version}\`."
+          # The change record is written directly: `changeset add` needs installed dependencies, and this job with a
+          # write token installs none (the generate job is the one that runs repository code).
+          printf -- '---\n"@rivus/agent-kit": patch\n---\n\nUpdate the LiteLLM price snapshot of `/cost/prices` to `%s`.\n' \
+            "$version" > ".changeset/update-pricing-${version//[^A-Za-z0-9]/-}.md"
           git switch --create "$BRANCH"
           git add -- "$SNAPSHOT" .changeset
           git commit --message "$title" --message "LiteLLM price snapshot ${version}."

@@ -1,43 +1,40 @@
 # npm Release Runbook
 
-pnpm owns change records (`pnpm change`), version bumps and changelogs (`pnpm version -r`) and publishing
-(`pnpm publish -r`). Two packages are published to npm, both in the one `versioning.fixed` group of
-`pnpm-workspace.yaml`: `@rivus/agent-kit` (`packages/agent-kit`) and `@rivus/agent-kit-collab`
-(`packages/agent-kit-collab`). They share one version, one tag `v<version>`, one release PR and one publish run,
-by GitHub Actions with npm Trusted Publishing (OIDC) and provenance. The internal packages under `packages/` are
-private (`"private": true`) and ship inside the shell's `dist`; collab bundles only its own code and names
-`@rivus/agent-kit` as a peer. No long-lived npm token is stored in the repository or its secrets.
-
-This repository releases automatically: every push to `main` with pending changesets opens or updates the release
-PR, and merging it tags and publishes. [PerfectPan/project-template-pnpm](https://github.com/PerfectPan/project-template-pnpm),
-whose release setup this repository otherwise follows, releases by manual dispatch of Version Packages and a
-hand-made GitHub Release instead.
+Changesets owns change records (`pnpm changeset`), version bumps and changelogs (`changeset version`) and
+publishing (`changeset publish`), configured in `.changeset/config.json`. Two packages are published to npm, both
+in the one `fixed` group of that config: `@rivus/agent-kit` (`packages/agent-kit`) and `@rivus/agent-kit-collab`
+(`packages/agent-kit-collab`). They share one version, one release PR and one publish run, by GitHub Actions with
+npm Trusted Publishing (OIDC) and provenance. Each published package gets its own tag `<name>@<version>` and its
+own GitHub Release. The internal packages under `packages/` are private (`"private": true`) and ship inside the
+shell's `dist`; collab bundles only its own code and names `@rivus/agent-kit` as a peer. No long-lived npm token is
+stored in the repository or its secrets.
 
 | Step | Where | Result |
 | --- | --- | --- |
-| Changeset | feature PR | `.changeset/<name>.md`, written with `pnpm change` or by hand; CI does not check for it |
-| Version Packages | `version-packages.yml`, on each push to `main` with pending changesets | draft PR `chore(release): version packages` on `changeset-release/main`, whose body lists each package's changelog section, opened or updated only after `pnpm run check` passes on the bumped tree |
-| Release PR merge | GitHub, the only manual step | bumped `package.json` versions, `CHANGELOG.md` per package and `.changeset/ledger.yaml` on `main`, no pending changesets |
-| Tag and GitHub Release | `publish-npm.yml`, on the merge push | annotated tag `vX.Y.Z` and a GitHub Release with generated notes on the release commit |
-| Publish | `publish-npm.yml`, same run | packages on npm with provenance |
+| Changeset | feature PR | `.changeset/<name>.md`, written with `pnpm changeset` or by hand; CI does not check for it |
+| Version PR | `publish-npm.yml`, on each push to `main` with pending changesets | draft PR `chore(release): version packages` from `changeset-release/main`, whose body lists each package's new changelog section |
+| Version PR merge | GitHub, the only manual step | bumped `package.json` versions and `CHANGELOG.md` per package on `main`, no pending changesets |
+| Publish | `publish-npm.yml`, on the merge push | the release gates run, packages publish, and the action pushes one tag and creates one GitHub Release per published package |
 
-Each row is a separate completion state. A merged release PR is not a published release, and a started publish
+Each row is a separate completion state. A merged version PR is not a published release, and a started publish
 workflow is not a published package.
 
-Both workflows run on every push to `main` (a PR merge is a push) and first run `scripts/release-state.ts` in a
-small job that installs pnpm but no dependencies. It reads the pending changesets, the shared version of the
-`versioning.fixed` group (through `pnpm ls` and `pnpm config get versioning`) and the remote tag, and prints one
-state; only the matching workflow does further work:
+## The Release Workflow
 
-| State | When | Version Packages | Publish npm |
-| --- | --- | --- | --- |
-| `version` | `.changeset/` contains changesets (`*.md` other than a README) | opens or updates the release PR | skips |
-| `publish` | no changesets, the group version is not `0.0.0`, and `v<version>` is not on the remote or is on this commit | skips | tags, creates the Release, publishes |
-| `none` | otherwise, for example a docs push after a release | skips | skips |
+`publish-npm.yml` runs on every push to `main` (a PR merge is a push) and on manual dispatch. One job:
 
-A tag on the pushed commit itself means an earlier run of that commit pushed it and then failed, so a re-run
-resumes the release. `release-state.ts` fails when there is not exactly one `versioning.fixed` group or its members
-disagree on the version. Pushes to `changeset-release/main` and tags start neither workflow.
+1. `changesets/action/select-mode@v2.1.2` chooses `version` when non-empty changesets are pending,
+   `publish` when there are no changesets and unpublished versions exist, or `none` when no work is needed.
+2. Only `publish` mode runs the repository's complete gate (`pnpm run check`, which includes
+   `scripts/check-release-plan.mjs`) and a production-dependency audit before publishing. The audit
+   (`pnpm --filter '!./apps/**' audit --prod --audit-level=high`) covers the workspace packages and leaves out the
+   website apps, which are never published.
+3. For `version` or `publish`, `changesets/action` runs its native version/publish path: it opens or updates
+   the draft version PR from pending change records, or publishes unpublished versions when no records remain.
+   The version commit goes through the GitHub API, so GitHub signs it. Mode `none` skips the action.
+
+Runs share one concurrency group with `cancel-in-progress: false`: a push waits for the running run, and GitHub
+keeps only the newest waiting run, cancelling older waiting ones.
 
 ## Changesets
 
@@ -46,13 +43,12 @@ shell bundles) or the lockfile carries a changeset. CI does not check for a miss
 reviewer looks for it. Write it with:
 
 ```bash
-pnpm change @rivus/agent-kit --bump patch --summary "Correct the Codex session title."
+pnpm changeset add --patch @rivus/agent-kit -m "Correct the Codex session title."
 ```
 
-Name the package as an argument: without one, `pnpm change` prompts for the packages, the bump and the message and
-needs a terminal, and `pnpm --filter <package> change -y` fails without one too. Name both packages when a change
-affects both. The command writes `.changeset/<random-name>.md`, which you can also write by hand under any short
-kebab-case name:
+Interactive form: `pnpm changeset` prompts for the packages, the bump and the message, and needs a terminal. Name
+both packages when a change affects both. The command writes `.changeset/<name>.md`, which you can also write by
+hand under any short kebab-case name:
 
 ```markdown
 ---
@@ -67,33 +63,33 @@ The summary becomes the changelog entry, so write it for users of the package. R
 
 - A change inside an internal package ships in the shell's `dist`; its changeset names `@rivus/agent-kit`.
 - The group releases at one shared version: the largest bump across the pending changesets applies to both
-  packages, and a package without a changeset of its own gets an empty section for that version.
-- While the packages are 0.x, a breaking change is `minor`. `major` would release 1.0.0.
-- `pnpm change status` prints the pending changesets and the versions they would release.
+  packages. A package without a changeset of its own still gets a section for that version: `@rivus/agent-kit-collab`
+  lists the `@rivus/agent-kit` release under "Updated dependencies" because it peers on it, and `@rivus/agent-kit`
+  gets a section that says "No changes in this release."
+- While the packages are 0.x, a breaking change is `minor`. `major` would release 1.0.0; `check-release-plan.mjs`
+  rejects major bumps until a reviewed PR lifts the cap.
+- `pnpm changeset status --verbose` prints the pending changesets and the versions they would release.
 
 ## Versioning Configuration
 
-`pnpm-workspace.yaml` sets `versioning.changelog.storage: repository`, so `pnpm version -r` deletes consumed
-changesets immediately, writes each package's `CHANGELOG.md` and records what it consumed in
-`.changeset/ledger.yaml`. The default (`registry`) keeps changesets until the registry confirms publication; the
-release PR would then never stop reappearing, because the changesets action and `release-state.ts` decide from the
-remaining `.changeset/*.md` files.
-
-`versioning.fixed` holds one group with both published packages. A new published package joins the group, which
-`scripts/check-release.ts` enforces indirectly: it requires every published package to carry the tag's version.
-`release-state.ts` accepts only one group, so versioning the packages independently means choosing a tag scheme
-(for example `release-2026-10-01`), teaching `release-state.ts` and `check-release.ts` when it is due, and
-documenting it here.
+`.changeset/config.json` sets `privatePackages: { version: false, tag: false }`, so the private packages are never
+versioned or tagged, and `changelog-github` writes PR links and author thanks into each package's `CHANGELOG.md`.
+Keep the two published packages in the same `fixed` group to preserve their shared version. A public package
+outside the group would version independently; group membership does not decide whether a package is consumed.
+`check-release-plan.mjs` uses Changesets' package-skipping rules to reject records naming private or ignored
+packages, including `none` entries, because those records are never consumed. Versioning the packages independently
+means setting `fixed: []` and documenting that choice here.
 
 Two packages in one group:
 
-- Collab names `@rivus/agent-kit` as a peer with `"workspace:^"`. `pnpm publish` replaces it with `^<version>` of
-  the same release, so the published pair always matches. `release:check` refuses a published package that names
-  another published package without the `workspace:` protocol, and one that installs a private workspace package
-  (bundle it as a devDependency instead).
-- `pnpm publish -r` publishes in dependency order: `@rivus/agent-kit` first, then collab, which depends on it, so the
-  peer a collab release needs is on npm before collab is. A package that fails to publish stops the run before the
-  packages after it.
+- Collab names `@rivus/agent-kit` as a peer with `"workspace:^"`. Publishing replaces it with `^<version>` of
+  the same release, so the published pair always matches. Keep the `workspace:` protocol on every dependency
+  between published packages, and keep private workspace packages out of a published package's installable
+  dependency fields (bundle them as devDependencies instead); the packed-manifest checks in `check:package`
+  (publint, attw) and the consumer smoke test guard this on review.
+- `changeset publish` publishes in dependency order: `@rivus/agent-kit` first, then collab, which depends on it,
+  so the peer a collab release needs is on npm before collab is. A package that fails to publish stops the run
+  before the packages after it.
 - The consumer smoke test in `packages/agent-kit/scripts/smoke-consumer.ts` packs every package of the group with
   pnpm, installs the tarballs together, and checks that collab resolves the consumer's copies of `@rivus/agent-kit`
   and `effect`. A new member of the group needs a row in its `COMPANIONS` table.
@@ -105,10 +101,10 @@ Two packages in one group:
 1. Keep the repository public. pnpm attaches provenance only when the repository and the package are public; from a
    private repository it publishes without provenance.
 2. Every published `package.json` has `repository.url` pointing at this GitHub repository (`git+https://github.com/OWNER/REPO.git`)
-   and `publishConfig.access: "public"`. npm rejects provenance when the repository does not match, and
-   `pnpm run release:check` enforces both.
+   and `publishConfig.access: "public"`, and lists published files in `files`. npm rejects provenance when the
+   repository does not match, and a scoped package without public access cannot publish.
 3. Let GitHub Actions create pull requests: **Settings → Actions → General → Workflow permissions → Allow GitHub
-   Actions to create and approve pull requests**. Version Packages fails without it, on the first push to `main`
+   Actions to create and approve pull requests**. The Release workflow fails without it, on the first push to `main`
    that leaves changesets pending, and so does Update Pricing on its first price change.
 
 ### npm Trusted Publisher, per package
@@ -141,64 +137,47 @@ exists. For each package:
    ```
 
    A new configuration expires unless a publish uses it within 2 days, so create it right before merging the first
-   release PR, not days ahead.
+   version PR, not days ahead.
 3. Under **Publishing access**, select "Require two-factor authentication and disallow tokens" so that only the
    trusted workflow can publish.
 
 One package's trusted publisher does not authorize another. A publish for an unconfigured package fails with an
-authentication error for that package; since `pnpm publish -r` stops at the first failure, the packages after it
+authentication error for that package; since publishing stops at the first failure, the packages after it
 are not published either.
-
-#### `@rivus/agent-kit-collab`
-
-Collab first shipped with the release after `0.2.0`. A new published package goes through the same steps before
-the merge of its first release PR: publish the placeholder `0.0.0` (step 1 above, with its name) and deprecate it,
-configure its trusted publisher within 2 days of the merge (step 2), and set **Publishing access** (step 3).
-
-If the merge publishes before the new package's trusted publisher exists, the packages before it are published and
-the run fails at it with an authentication error. Configure the publisher and re-run the failed run, as under
-[Failure Recovery](#failure-recovery); the tag and Release stay, and pnpm publishes only what is missing.
 
 ## Cutting a Release
 
 1. Merge feature PRs with changesets (see [Changesets](#changesets)).
-2. Each such merge runs Version Packages. `changesets/action` runs `pnpm run release:version`: `pnpm version -r`
-   consumes the changesets, bumps both packages to the new shared version and writes their changelogs, then
-   `pnpm run check` runs on the bumped tree. Only when both pass does the action commit the result through the
-   GitHub API (signed) and open or update the draft PR `chore(release): version packages` from
-   `changeset-release/main`; the PR body lists each package's new `CHANGELOG.md` section. Every later push with
-   changesets regenerates the PR from the new `main`, and a re-run on a `main` that has moved on leaves the PR to the
-   newer run. **Actions → Version Packages → Run workflow** on `main` regenerates it on demand, for example after the
-   PR was closed by hand. The bump comes only from the changesets: to release a different bump, merge a changeset
-   with that bump.
+2. Each such merge runs the Release workflow. With pending records, `changesets/action` runs `pnpm run
+   version-packages`: `changeset version` consumes the changesets, bumps both packages to the new shared version,
+   writes their changelogs (with PR links and author thanks) and deletes the consumed records. The action then
+   commits the result through the GitHub API (signed) and opens or updates the draft PR `chore(release): version
+   packages` from `changeset-release/main`; the PR body lists each package's new `CHANGELOG.md` section. Every later
+   push with changesets regenerates the PR from the new `main`. **Actions → Release → Run workflow** on `main`
+   rebuilds it on demand, for example after the PR was closed by hand. The bump comes only from the changesets: to
+   release a different bump, merge a changeset with that bump.
 3. A breaking release is one whose change records remove or change a public export or a documented behavior.
    In 0.x, such a change is recorded as `minor`. For these releases, follow the
    [application comparison and upgrade procedure](adoption.md#application-comparison-before-release).
-   Every version update leaves the release PR in Draft (`pr-draft: always`). Review the version and changelog diff,
+   Every version update leaves the version PR in Draft (`pr-draft: always`). Review the version and changelog diff,
    then select **Ready for review** to start full PR CI. Closing and reopening a Draft PR does not bypass the Draft
    guard. Confirm that `check` actually ran and passed for the current head and merge result before squash-merging;
    a skipped check is not validation evidence. PR events created with `github.token` may create runs that require
-   maintainer approval; follow any GitHub approval prompt rather than assuming no run exists. Changing token type
-   does not remove the release PR's Draft gate, and this flow needs no new token permissions.
-4. The merge push runs Publish npm on the merge commit. After waiting for any other run of the same version, it
-   checks the state again, creates the annotated tag `vX.Y.Z` locally, and runs `release:check --verify-git`: the
-   tag equals the version of every published package, no changesets remain and the commit is on `origin/main`. It
-   then runs `pnpm install --frozen-lockfile --no-runtime` and `pnpm run check`, pushes the tag, creates a GitHub
-   Release with generated notes, and runs `pnpm publish -r --access public --no-git-checks`. pnpm skips private
-   packages and versions that already exist on npm. The remote refuses to move an existing tag, so two runs cannot
-   release one version from different commits.
+   maintainer approval; follow any GitHub approval prompt rather than assuming no run exists.
+4. The merge push runs the Release workflow on the merge commit, where no record is pending: `select-mode` chooses
+   `publish`, the gates run, and `changeset publish` publishes each unpublished public version in dependency
+   order through Trusted Publishing, skipping versions that are already on npm. The action pushes one tag per
+   published package (`@rivus/agent-kit@X.Y.Z`, `@rivus/agent-kit-collab@X.Y.Z`) and creates one GitHub Release per
+   package with its changelog section. Merging the version PR is the release decision.
 5. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z`,
-   `npm view @rivus/agent-kit-collab@X.Y.Z` and a clean `npm install @rivus/agent-kit @rivus/agent-kit-collab` in a
-   scratch project. Registry reads can lag the publish by a minute; retry the read, not the
-   publish. The npm package page shows a provenance badge linking to the workflow run.
-
-`pnpm run publish:dry-run` runs the same `pnpm publish -r` command with `--dry-run --json`: it does everything a
-publish would do except uploading, and prints, per package a publish would upload, the version and the file list.
-Run it after `pnpm run check` so `dist` exists.
+   `npm view @rivus/agent-kit-collab@X.Y.Z`, `git ls-remote --tags origin`, the two GitHub Releases, and a clean
+   `npm install @rivus/agent-kit @rivus/agent-kit-collab` in a scratch project. Registry reads can lag the publish
+   by a minute; retry the read, not the publish. The npm package page shows a provenance badge linking to the
+   workflow run.
 
 ## Bot Pull Requests
 
-- **Release PR**: see step 3 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
+- **Version PR**: see step 3 above. Its title already passes `gh repo-checks pr-title`; bot PRs skip the description check.
 - **Renovate dependency PRs**: `renovate.json` enables the npm and GitHub Actions managers. Renovate owns routine
   npm/pnpm and Actions updates. There is no Dependabot routine version-update configuration; security ownership
   remains separate as described below.
@@ -277,9 +256,9 @@ Run it after `pnpm run check` so `dist` exists.
   and default pnpm catalog changes, and generates a sorted patch changeset for affected published packages. The
   workflow filters every `Updated dependency` line, from manifests or catalogs, to dependencies, optional
   dependencies and peers of non-private workspace packages; if none would remain, it preserves the original file.
-  If the commit already changes `.changeset/`, the tool skips generation. `.changeset/config.json` is only for this
-  tool and excludes private packages; pnpm still owns `pnpm change`, versioning, changelogs and the ledger through
-  `pnpm-workspace.yaml`.
+  If the commit already changes `.changeset/`, the tool skips generation. The tool reads
+  `.changeset/config.json`, which is also the Changesets CLI configuration; the `fixed` group and the private
+  packages it declares there are the same ones the release flow versions.
 
   Store a fine-grained personal access token as `RENOVATE_CHANGESET_TOKEN`, limited to the repositories that use
   it, with **Contents: read and write**. The `generate` job uses only the read-only `GITHUB_TOKEN`, without persisted
@@ -320,7 +299,7 @@ Run it after `pnpm run check` so `dist` exists.
   another branch, the workflow reports in a notice whether the snapshot changed, keeps the new file as the run's
   artifact, and pushes nothing. Pull requests
   created with the workflow's `github.token` do not trigger workflows, so select **Ready for review** to start CI, as
-  for the release PR. Review the diff for models that disappeared, then squash-merge; the next release ships it. A
+  for the version PR. Review the diff for models that disappeared, then squash-merge; the next release ships it. A
   failing check needs a fix on the branch: the fixture-pricing test in `packages/cost/test` when LiteLLM renamed or
   dropped a model, `pnpm size:update` when it added enough models to exceed the `/cost/prices` budget. The next run replaces commits pushed to the
   branch by hand, so merge or close the PR within the week.
@@ -344,26 +323,33 @@ Run it after `pnpm run check` so `dist` exists.
 
 ## Failure Recovery
 
-- **Version Packages fails**: nothing is released, and the release PR stays as it was, because the action pushes
-  only after `pnpm version -r` and `pnpm run check` pass; the run is red. Re-run it for a transient failure.
-  Otherwise fix the cause in a new PR with or without a changeset, and its merge regenerates the release PR.
-- **Validation fails before publishing** (`release:check`, `pnpm run check` in Publish npm): nothing was tagged or
-  published. Re-run the run for a transient failure. Otherwise fix the cause in a new PR: a fix without changesets
-  releases the same version from its merge commit, and a fix with changesets goes into the next release PR,
-  leaving the unpublished version out.
-- **Tag pushed, nothing published, and a re-run cannot fix it**: delete the GitHub Release and the tag
-  (`gh release delete vX.Y.Z --cleanup-tag`) and merge the fix; the next push without changesets releases the
-  version from its commit. This and the previous case are the only ones where a version's tag may move.
-- **Authentication fails for a package**: configure its trusted publisher, then re-run the run (all jobs or only the
-  failed ones). The tag is on the run's commit, so the re-run keeps the tag and Release, and pnpm publishes only what
-  is missing at that version.
-- **Partial publish**: multi-package publishing is not atomic. Re-run the run; never hand-publish a different
-  artifact under the same version.
-- **Manual re-publish**: GitHub re-runs a run only within 30 days. After that, publishing a non-prerelease GitHub
-  Release for the existing tag starts Publish npm on the `release` event, which checks out the tag and runs the
-  same checks and `pnpm publish -r`. When the Release already exists, delete only the Release (`gh release delete
-  vX.Y.Z`) and create it again with `gh release create vX.Y.Z --verify-tag --generate-notes`. Do not create
-  Releases for new versions by hand; the merge push tags them.
+The action publishes only when no record is pending; with records pending it prepares the version PR instead, even
+if an earlier version is still unpublished. Recovery therefore re-runs the run of the release commit itself whenever
+it can.
+
+- **Version step failed** (`changeset version`, changelog lookup): nothing changed on `main` or the release branch.
+  Re-run the latest run for a transient failure; otherwise fix the cause in a reviewed PR, whose merge regenerates
+  the version PR. A missing `GITHUB_TOKEN` fails this step.
+- **Gates failed before publication**: nothing is tagged or published. Re-run for a transient failure. Otherwise fix
+  the cause in a reviewed PR: a fix without records publishes the same version from its merge push; a fix with
+  records goes into the next version PR and that unpublished version is skipped. GitHub allows re-running a run for
+  30 days; after that, only **Run workflow** on `main` remains, and only while no record is pending.
+- **The version PR's merge run was cancelled or failed**: re-run that run. It keeps the merge commit, where no
+  record is pending, so it publishes. If a later push with records ran instead, it prepared the next version PR and
+  the merged version stays unpublished until this re-run. Avoid merging PRs with records while the merge run is
+  still waiting.
+- **Publication stopped part-way**: re-run the failed run; `changeset publish` skips versions already on npm and
+  tags the rest on the run's commit. **Run workflow** on `main` does the same only while no record is pending, and
+  it tags the current `main` commit instead of the release commit. Never bump the version to retry, and never
+  unpublish.
+- **Published but the tag or Release is missing**: `select-mode` finds nothing to publish, so re-runs do not add them. Create them by hand on the release commit:
+  `gh release create '@rivus/agent-kit@X.Y.Z' --target <release commit>` (the tag format from step 4) with the
+  package's changelog section as notes.
+- **Version PR closed by hand or out of date**: **Run workflow** on `main` rebuilds it from the pending records.
+- **Trusted Publishing rejected one package**: fix that package's trusted publisher on npmjs.com (owner,
+  repository, workflow file name, environment) and re-run. One package's authorization does not cover the others.
+- **A record is never consumed**: it names a private or ignored package. Remove it or move its note to a released
+  package; `check-release-plan.mjs` names it.
 - **Bad published contents**: npm versions are immutable. Deprecate the version and release a fix:
 
   ```bash
@@ -379,7 +365,7 @@ Run it after `pnpm run check` so `dist` exists.
 
 `ci.yml` runs full checks for Ready PRs on `opened`, `synchronize`, `reopened` and `ready_for_review`, and retains
 the existing `push` trigger on `main`. Draft PR events skip the full `check` job; lightweight `Review` checks still
-run. Release PRs keep their manual Draft-to-Ready handoff. There is no manual dispatch in this CI workflow.
+run. Version PRs keep their manual Draft-to-Ready handoff. There is no manual dispatch in this CI workflow.
 
 Verify an executed successful `check` for the current head and merge result, not a skipped Draft check or a result
 for an older comparison. If only the base changed, update the branch or select Draft then Ready to request fresh

@@ -29,7 +29,7 @@ pnpm --filter @rivus/agent-kit-platform run test
 ```
 
 The publishable packages are `packages/agent-kit` (`@rivus/agent-kit`) and `packages/agent-kit-collab`
-(`@rivus/agent-kit-collab`), released together through the `versioning.fixed` group in `pnpm-workspace.yaml`. The
+(`@rivus/agent-kit-collab`), released together through the `fixed` group in `.changeset/config.json`. The
 shell bundles private context packages; collab owns its entry code and uses agent-kit's public subpaths through a
 peer dependency. See
 [Authoring Conventions](docs/architecture/authoring.md) for their layouts and dependency boundaries.
@@ -49,7 +49,7 @@ that imports them, use caret ranges such as `^4.6.5` so that consumers can dedup
 copies; the catalog gives every package the same range, and packing writes that range into the published manifest.
 An optional peer such as `effect` stays exact, because two different Effect versions in one process can fail at
 runtime. A new published package needs a stable `version`, a `repository.url` pointing at this GitHub repository,
-`publishConfig.access: "public"`, a `files` list, and a place in the `versioning.fixed` group.
+`publishConfig.access: "public"`, a `files` list, and a place in the `fixed` group of `.changeset/config.json`.
 
 ## Contribution Flow
 
@@ -85,9 +85,6 @@ gh repo-checks pr-body pr-body.md
 
 # GitHub repository setup dry run:
 gh repo-checks protect --repo OWNER/REPO
-
-# Package or release dry-run:
-pnpm run publish:dry-run
 ```
 
 The full `CI` job named `check` runs when a non-Draft PR is opened, receives new commits (`synchronize`), is
@@ -105,17 +102,16 @@ do not restart full CI; a changed base or comparison still needs a fresh PR vali
 
 ## Changesets
 
-pnpm builds changelogs and version bumps from changesets in `.changeset/`. A PR that changes what a published
+Changesets build changelogs and version bumps from change records in `.changeset/`. A PR that changes what a published
 package ships (source, manifest, build config, or an internal package that it bundles) or the lockfile needs one.
 A change inside an internal package ships in the shell's `dist`, so its changeset names `@rivus/agent-kit`:
 
 ```bash
-pnpm change @rivus/agent-kit --bump patch --summary "Update runtime dependencies."
+pnpm changeset add --patch @rivus/agent-kit -m "Update runtime dependencies."
 ```
 
-Pass the package name as an argument; `pnpm change` without arguments asks for the packages, the bump type and the
-message, and needs a terminal (`pnpm --filter <package> change -y` fails without one). The command writes a file
-like this, which you can also write by hand:
+`pnpm changeset` without arguments asks for the packages, the bump type and the message, and needs a terminal. The
+command writes a file like this, which you can also write by hand:
 
 ```markdown
 ---
@@ -127,10 +123,10 @@ Update runtime dependencies.
 
 The file name is a short kebab-case slug, and one file may name both published packages. Both packages release at
 one shared version, the largest bump across the pending changesets; while they are 0.x, record a breaking change as
-`minor`, because `major` would release 1.0.0. `pnpm change status` previews what the pending changesets would
-release. CI does not check for missing changesets: tests, fixtures and Markdown need none, and whether a change rides
-a release is the author's and the reviewer's call. See [`docs/development/release.md`](docs/development/release.md)
-for the release procedure.
+`minor`, because `major` would release 1.0.0. `pnpm changeset status --verbose` previews what the pending changesets
+would release. CI does not check for missing changesets: tests, fixtures and Markdown need none, and whether a
+change rides a release is the author's and the reviewer's call. See
+[`docs/development/release.md`](docs/development/release.md) for the release procedure.
 
 ## SDD Workflow And Document Lifecycle
 
@@ -214,7 +210,7 @@ Update the description when review feedback, rebases, or follow-up commits chang
 
 ## Release Notes
 
-Release notes come from the release tool. `pnpm version -r` writes each published package's `CHANGELOG.md` from the changesets in `.changeset/` (see [Changesets](#changesets)). Do not edit generated changelogs or keep a hand-written root `CHANGELOG.md` beside them.
+Release notes come from the release tool. The Release workflow's version pull request runs `changeset version`, which writes each published package's `CHANGELOG.md` from the changesets in `.changeset/` (see [Changesets](#changesets)). Do not edit generated changelogs or keep a hand-written root `CHANGELOG.md` beside them.
 
 ## License
 
