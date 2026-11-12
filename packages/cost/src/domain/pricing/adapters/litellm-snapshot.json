@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-02+ff3983c1f627ad09a5e36e45cc92a0cec91afb72+12280faa8b67",
+  "version": "2026-11-12+db8ad3b13e7320bf835205cae58be5a58e0ff366+bcbf284275fd",
   "prices": {
     "MiniMax-M2": {
       "input_cost_per_token": 3e-7,
@@ -42,6 +42,11 @@
         "cache_read_input_token_cost": 1.2e-7
       }
     },
+    "MiniMax-M3.1-Flash": {
+      "input_cost_per_token": 1.5e-7,
+      "output_cost_per_token": 6e-7,
+      "cache_read_input_token_cost": 1.5e-8
+    },
     "chat-latest": {
       "input_cost_per_token": 0.000005,
       "output_cost_per_token": 0.00003,
@@ -60,6 +65,13 @@
       "cache_creation_input_token_cost": 0.0000125,
       "cache_creation_input_token_cost_above_1hr": 0.00002,
       "cache_read_input_token_cost": 2.5e-7
+    },
+    "claude-fable-5-2": {
+      "input_cost_per_token": 0.000008,
+      "output_cost_per_token": 0.00004,
+      "cache_creation_input_token_cost": 0.00001,
+      "cache_creation_input_token_cost_above_1hr": 0.000016,
+      "cache_read_input_token_cost": 2e-7
     },
     "claude-haiku-4-5": {
       "input_cost_per_token": 0.000001,
@@ -103,6 +115,13 @@
       "cache_creation_input_token_cost": 0.0000125,
       "cache_creation_input_token_cost_above_1hr": 0.00002,
       "cache_read_input_token_cost": 2.5e-7
+    },
+    "claude-mythos-5-2": {
+      "input_cost_per_token": 0.000008,
+      "output_cost_per_token": 0.00004,
+      "cache_creation_input_token_cost": 0.00001,
+      "cache_creation_input_token_cost_above_1hr": 0.000016,
+      "cache_read_input_token_cost": 2e-7
     },
     "claude-mythos-preview": {
       "input_cost_per_token": 0.00001,
@@ -403,8 +422,7 @@
         "above_tokens": 200000,
         "input_cost_per_token": 0.0000025,
         "output_cost_per_token": 0.000015,
-        "cache_read_input_token_cost": 2.5e-7,
-        "cache_creation_input_token_cost": 2.5e-7
+        "cache_read_input_token_cost": 2.5e-7
       }
     },
     "gemini-2.5-pro-preview-tts": {
@@ -435,8 +453,7 @@
         "above_tokens": 200000,
         "input_cost_per_token": 0.000004,
         "output_cost_per_token": 0.000018,
-        "cache_read_input_token_cost": 4e-7,
-        "cache_creation_input_token_cost": 2.5e-7
+        "cache_read_input_token_cost": 4e-7
       }
     },
     "gemini-3.1-pro-preview-customtools": {
@@ -447,8 +464,7 @@
         "above_tokens": 200000,
         "input_cost_per_token": 0.000004,
         "output_cost_per_token": 0.000018,
-        "cache_read_input_token_cost": 4e-7,
-        "cache_creation_input_token_cost": 2.5e-7
+        "cache_read_input_token_cost": 4e-7
       }
     },
     "gemini-3.5-flash": {
@@ -486,6 +502,11 @@
       "output_cost_per_token": 0.00001,
       "cache_read_input_token_cost": 1e-7
     },
+    "gemini-4-carbon": {
+      "input_cost_per_token": 0.000002,
+      "output_cost_per_token": 0.00001,
+      "cache_read_input_token_cost": 1e-7
+    },
     "gemini-exp-1114": {
       "input_cost_per_token": 0,
       "output_cost_per_token": 0,
@@ -519,6 +540,10 @@
       "output_cost_per_token": 0.00000105
     },
     "gemini-omni-1.1-flash": {
+      "input_cost_per_token": 0.0000015,
+      "output_cost_per_token": 0.000009
+    },
+    "gemini-omni-1.2-flash": {
       "input_cost_per_token": 0.0000015,
       "output_cost_per_token": 0.000009
     },
@@ -1105,6 +1130,18 @@
       "input_cost_per_token": 0.00001,
       "output_cost_per_token": 0.00005,
       "cache_read_input_token_cost": 0.000001
+    },
+    "gpt-6-cyber": {
+      "input_cost_per_token": 0.00002,
+      "output_cost_per_token": 0.0001,
+      "cache_creation_input_token_cost": 0.000025,
+      "cache_read_input_token_cost": 0.000002,
+      "long_context": {
+        "above_tokens": 272000,
+        "input_cost_per_token": 0.00004,
+        "output_cost_per_token": 0.00015,
+        "cache_read_input_token_cost": 0.000004
+      }
     },
     "gpt-6-luna": {
       "input_cost_per_token": 1e-7,
@@ -1731,6 +1768,13 @@
       "output_cost_per_token": 0.00001,
       "cache_creation_input_token_cost": 0.000002,
       "cache_creation_input_token_cost_above_1hr": 0.000004,
+      "cache_read_input_token_cost": 2e-7
+    },
+    "kimi-k3.1-pro-highspeed": {
+      "input_cost_per_token": 0.000004,
+      "output_cost_per_token": 0.00002,
+      "cache_creation_input_token_cost": 0.000004,
+      "cache_creation_input_token_cost_above_1hr": 0.000008,
       "cache_read_input_token_cost": 2e-7
     },
     "learnlm-1.5-pro-experimental": {
