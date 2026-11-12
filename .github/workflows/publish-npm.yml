@@ -1,5 +1,6 @@
 # npm Trusted Publishing for both public packages is registered against this file name; renaming it requires
-# changing each package's trusted publisher on npmjs.com first.
+# changing each package's trusted publisher on npmjs.com first. The release jobs come from the shared workflow in
+# PerfectPan/gh-repo-checks; docs/development/release.md describes how this repository uses it.
 name: Release
 
 on:
@@ -16,57 +17,12 @@ concurrency:
 
 jobs:
   release:
-    name: version or publish packages
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    uses: PerfectPan/gh-repo-checks/.github/workflows/npm-release.yml@v1
+    # The shared workflow narrows these per job; only its publish job can request an OIDC token.
     permissions:
-      # Pushes the version branch, release tags and GitHub Releases.
       contents: write
       pull-requests: write
-      # npm Trusted Publishing exchanges the workflow's OIDC token for a publish credential.
       id-token: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # changelog-github looks up the commit that added each change record.
-          fetch-depth: 0
-          # Keeps the write token out of .git/config while repository code runs; the action pushes through the
-          # GitHub API with its own token input.
-          persist-credentials: false
-      # The setup step runs in ci.yml too, so the release gates run on the same Node.js and pnpm.
-      # pnpm/setup installs the pnpm from `packageManager` and the Node.js range in `devEngines.runtime`, then runs
-      # `pnpm install --frozen-lockfile`.
-      - uses: pnpm/setup@v3
-        with:
-          runtime: node
-          cache: true
-          require-lockfile: true
-
-      - name: Select release mode
-        id: mode
-        uses: changesets/action/select-mode@v2.1.2
-
-      - name: Run release gates
-        if: steps.mode.outputs.mode == 'publish'
-        run: pnpm run check
+    with:
       # The website apps under apps/ never reach npm, so their advisories do not block a package release.
-      - name: Audit production dependencies
-        if: steps.mode.outputs.mode == 'publish'
-        run: pnpm --filter '!./apps/**' audit --prod --audit-level=high
-
-      # With pending change records, runs version-packages and opens or updates the draft pull request
-      # changeset-release/main -> main; its body lists each package's new changelog section. Select Ready for review
-      # to run CI before merging. Without pending records, `changeset publish` runs `pnpm publish` for each
-      # unpublished public version through Trusted Publishing, and the action creates one tag and one GitHub Release
-      # per published package. The version commit goes through the GitHub API, so GitHub signs it.
-      - name: Create the version pull request or publish
-        if: steps.mode.outputs.mode != 'none'
-        uses: changesets/action@v2.1.2
-        with:
-          # The action runs these commands without a shell.
-          version-script: pnpm run version-packages
-          publish-script: pnpm exec changeset publish
-          commit-message: "chore(release): version packages"
-          pr-title: "chore(release): version packages"
-          pr-draft: always
+      audit-command: pnpm --filter '!./apps/**' audit --prod --audit-level=high
