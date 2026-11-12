@@ -534,6 +534,51 @@ describe("grok coalesce fallback", () => {
     ]);
   });
 
+  it("keeps a server-side tool's call and result in the call that made them", () => {
+    const calls = {
+      turns: new Map([
+        [
+          0,
+          [
+            { ts: 1000, model: "grok-a", toolCallIds: ["call-1"] },
+            { ts: 5000, model: "grok-a", toolCallIds: [] }
+          ]
+        ]
+      ])
+    };
+    const parsed = value(
+      translateGrokRecords(
+        [
+          grokRecord(
+            { sessionUpdate: "user_message_chunk", content: { type: "text", text: "Go" }, _meta: { promptIndex: 0 } },
+            1
+          ),
+          grokRecord({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "Search." } }, 2),
+          grokRecord({ sessionUpdate: "tool_call", toolCallId: "ws_1", title: "web search", status: "pending" }, 3),
+          grokRecord({ sessionUpdate: "tool_call_update", toolCallId: "ws_1", status: "completed" }, 4),
+          grokRecord({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "Read." } }, 5),
+          grokRecord({ sessionUpdate: "tool_call", toolCallId: "call-1", title: "read", status: "pending" }, 6),
+          grokRecord({ sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed" }, 7),
+          grokRecord({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Done." } }, 8),
+          grokRecord({ sessionUpdate: "turn_completed", usage: { inputTokens: 9, outputTokens: 1, modelCalls: 2 } }, 9)
+        ],
+        { calls }
+      )
+    );
+    expect(parsed.events.map((event) => [event.kind, event.requestId])).toEqual([
+      ["user", "0#0"],
+      ["request", "0#0"],
+      ["reasoning", "0#0"],
+      ["tool_call", "0#0"],
+      ["tool_result", "0#0"],
+      ["reasoning", "0#0"],
+      ["tool_call", "0#0"],
+      ["tool_result", "0#0"],
+      ["request", "0#1"],
+      ["assistant", "0#1"]
+    ]);
+  });
+
   it("places a repeated turn_completed's request once at the end, keeping the calls placed", () => {
     const calls = {
       turns: new Map([

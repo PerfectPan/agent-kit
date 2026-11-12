@@ -92,6 +92,7 @@ function callPayloads(calls: readonly GrokCall[], aggregate: RequestPayload): Re
     if (index < calls.length - 1) {
       return callRequestPayload(call);
     }
+    // The last call shows the turn's model, not its own, so the model stays the name the scan prices the usage by.
     return aggregate.model === undefined && call.model !== undefined ? { ...aggregate, model: call.model } : aggregate;
   });
 }
@@ -119,10 +120,16 @@ function callStarts(
   let call = -1;
   let toolCalls = 0;
   let resulted = false;
+  // A server-side tool (a `ws_` web search) runs inside the response and writes no `tool_completed`, so once the
+  // current call's loop names its tool calls, only those calls and their results move the boundary.
+  const counts = (callId: string): boolean =>
+    call === -1 || calls[call]!.toolCallIds === undefined || owners.has(callId);
   for (let index = from; index < events.length; index++) {
     const event = events[index]!;
     if (event.kind === "tool_result") {
-      resulted = true;
+      if (counts(event.payload.callId)) {
+        resulted = true;
+      }
       continue;
     }
     if (!OUTPUT_KINDS.has(event.kind)) {
@@ -142,7 +149,7 @@ function callStarts(
       starts[call] = index;
       toolCalls = 0;
     }
-    if (event.kind === "tool_call") {
+    if (event.kind === "tool_call" && counts(event.payload.callId)) {
       toolCalls += 1;
     }
     resulted = false;
