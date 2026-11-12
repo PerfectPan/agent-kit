@@ -117,6 +117,19 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   );
   part.run("prt_z1", "msg_a2", "ses_unknown", 5100, JSON.stringify({ type: "mystery" }), 0);
 
+  // The app's `sequence` orders messages, not `time_created`: the reply was stored with an earlier clock.
+  session.run("ses_order", "Sequence order", "/u/me/work", 8000, 9000, "3.17.2", null);
+  message.run("msg_u4", "ses_order", 9000, JSON.stringify({ role: "user", time: { created: 9000 } }), 0);
+  part.run("prt_t4", "msg_u4", "ses_order", 9000, JSON.stringify({ type: "text", text: "first" }), 0);
+  message.run(
+    "msg_a4",
+    "ses_order",
+    8000,
+    JSON.stringify({ role: "assistant", modelId: "test-model", finish: "stop", time: { created: 8000 } }),
+    1
+  );
+  part.run("prt_x4", "msg_a4", "ses_order", 8000, JSON.stringify({ type: "text", text: "second" }), 0);
+
   // A soft-deleted session stays undiscovered, undetectable and unloadable.
   session.run("ses_deleted", "Deleted session", "/u/me/work", 6000, 7000, "3.17.2", 7000);
   message.run("msg_u3", "ses_deleted", 6000, JSON.stringify({ role: "user", time: { created: 6000 } }), 0);
@@ -164,6 +177,13 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
       records: 5,
       recordKeys: keysFor("ses_unknown"),
       capabilities: ["requests", "usage"]
+    },
+    {
+      path: dbPath,
+      sessionId: "ses_order",
+      records: 4,
+      recordKeys: keysFor("ses_order"),
+      capabilities: ["requests"]
     }
   ];
   rows.close();
@@ -222,6 +242,22 @@ describe("zcode adapter", () => {
     const orphaned = result.value.skipped.filter((skip) => skip.reason === "orphaned-part");
     expect(orphaned).toHaveLength(1);
     expect(orphaned[0]).toMatchObject({ source: { sqlite: { table: "part", rowid: ghostPartRowid } } });
+  });
+
+  it("orders messages by the app's sequence before their creation time", async () => {
+    const result = await zcodeSessionAdapter.load(platform, {
+      agent: "zcode",
+      path: dbPath,
+      sessionId: "ses_order"
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const texts = result.value.events.flatMap((event) =>
+      "text" in event.payload && typeof event.payload.text === "string" ? [event.payload.text] : []
+    );
+    expect(texts).toStrictEqual(["first", "second"]);
   });
 
   it("treats a soft-deleted session as gone", async () => {
