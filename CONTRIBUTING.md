@@ -85,7 +85,6 @@ gh repo-checks pr-body pr-body.md
 
 # GitHub repository setup dry run:
 gh repo-checks protect --repo OWNER/REPO
-
 ```
 
 The full `CI` job named `check` runs when a non-Draft PR is opened, receives new commits (`synchronize`), is

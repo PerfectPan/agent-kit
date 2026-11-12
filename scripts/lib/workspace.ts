@@ -6,9 +6,6 @@ export interface PackageManifest {
   name?: string;
   version?: string;
   private?: boolean;
-  files?: string[];
-  publishConfig?: { access?: string };
-  repository?: string | { url?: string };
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
@@ -50,8 +47,8 @@ export function readWorkspacePackages(root: string): WorkspacePackage[] {
 }
 
 /**
- * A package publishes when it is not private. Private packages and ignored packages are never versioned or
- * released, so release notes must not name them; the renovate changeset filter relies on that.
+ * A package publishes when it is not private. `.changeset/config.json` never versions or releases private packages,
+ * so release notes must not name them; the renovate changeset filter relies on that.
  */
 export function isPublishable(pkg: WorkspacePackage): boolean {
   return pkg.manifest.private !== true;

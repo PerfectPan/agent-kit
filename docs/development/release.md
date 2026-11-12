@@ -61,7 +61,9 @@ The summary becomes the changelog entry, so write it for users of the package. R
 
 - A change inside an internal package ships in the shell's `dist`; its changeset names `@rivus/agent-kit`.
 - The group releases at one shared version: the largest bump across the pending changesets applies to both
-  packages, and a package without a changeset of its own gets an empty section for that version.
+  packages. A package without a changeset of its own still gets a section for that version: `@rivus/agent-kit-collab`
+  lists the `@rivus/agent-kit` release under "Updated dependencies" because it peers on it, and `@rivus/agent-kit`
+  gets a section that says "No changes in this release."
 - While the packages are 0.x, a breaking change is `minor`. `major` would release 1.0.0; `check-release-plan.mjs`
   rejects major bumps until a reviewed PR lifts the cap.
 - `pnpm changeset status --verbose` prints the pending changesets and the versions they would release.
@@ -253,7 +255,7 @@ are not published either.
   workflow filters every `Updated dependency` line, from manifests or catalogs, to dependencies, optional
   dependencies and peers of non-private workspace packages; if none would remain, it preserves the original file.
   If the commit already changes `.changeset/`, the tool skips generation. The tool reads
-  `.changeset/config.json`, which now is the Changesets CLI configuration; the `fixed` group and the private
+  `.changeset/config.json`, which is also the Changesets CLI configuration; the `fixed` group and the private
   packages it declares there are the same ones the release flow versions.
 
   Store a fine-grained personal access token as `RENOVATE_CHANGESET_TOKEN`, limited to the repositories that use
