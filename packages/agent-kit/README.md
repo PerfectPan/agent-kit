@@ -227,7 +227,10 @@ state = scan.state;
 
 A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the agent logs only turn totals (Grok,
 with `modelCalls` and `usageByModel`); it carries the agent's own cost when the log has one (`costUsd`,
-`costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier. A request that several files hold (a Claude
+`costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier. A loaded Grok transcript still shows one
+`request` per model call when the session's `events.jsonl` and `chat_history.jsonl` name the calls. Those requests
+carry no usage of their own: the last call of the turn carries the turn's totals (`granularity: "turn"`), and the scan
+reports the same turn record. A request that several files hold (a Claude
 Code subagent file that starts with a copy of another's records, an older Gemini CLI chat migrated into a `.jsonl`
 file) counts once. Assistant entries Claude Code wrote itself (`model: "<synthetic>"`, with zero usage and no request
 behind them) are not model requests and yield no record. Claude Code writes a response as several records, so the

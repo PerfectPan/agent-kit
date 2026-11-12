@@ -1,0 +1,8 @@
+{"type":"system","content":"You are a test agent."}
+{"type":"user","content":[{"type":"text","text":"Run the tests now"}],"prompt_index":0}
+{"type":"reasoning","content":null}
+{"type":"assistant","content":"","model_id":"grok-test-build"}
+{"type":"tool_result","content":"1 failed"}
+{"type":"assistant","content":"The suite failed.","model_id":"grok-test-build"}
+{"type":"user","content":[{"type":"text","text":"Thanks"}],"prompt_index":1}
+{"type":"assistant","content":"Any time.","model_id":"grok-test-build"}

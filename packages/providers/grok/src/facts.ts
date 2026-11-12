@@ -15,7 +15,14 @@ export const GROK_API_KEY_ENV = "XAI_API_KEY";
 export const GROK_HOOKS_DIR = "hooks";
 export const GROK_HOOK_SUFFIX = ".json";
 export const GROK_UPDATES_FILE = "updates.jsonl";
+export const GROK_EVENTS_FILE = "events.jsonl";
+export const GROK_CHAT_HISTORY_FILE = "chat_history.jsonl";
 export const GROK_SUMMARY_FILE = "summary.json";
+/**
+ * The join files read for per-call requests (`events.jsonl` and `chat_history.jsonl`) are context echoes, not
+ * transcripts: a session past this size joins no calls and the translation keeps its turn-level request.
+ */
+export const GROK_CALLS_FILE_BYTES: number = 32 * 1024 * 1024;
 export const GROK_SYSTEM_PROMPT_FILE = "system_prompt.txt";
 export const GROK_TOOLS_FILE = "tool_definitions.json";
 export const GROK_SUBAGENTS_DIR = "subagents";

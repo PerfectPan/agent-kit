@@ -1,5 +1,5 @@
 import { GROK_ID } from "../facts.js";
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
+import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 
 import {
   assignSeq,
@@ -17,6 +17,7 @@ import {
   recordTime
 } from "@rivus/agent-kit-sessions/spi";
 import { type GrokSessionMeta, type GrokSubagentMeta } from "../layout.js";
+import { type GrokSessionCalls } from "./calls.js";
 import { applyGrokSubagents, createGrokTranslation } from "./translation.js";
 
 /** Recorded by every Grok session. */
@@ -58,6 +59,8 @@ export interface GrokTranslateOptions {
   meta?: GrokSessionMeta;
   /** `meta.json` of each `<session>/subagents/<id>/` directory, keyed by the directory name. */
   subagents?: ReadonlyMap<string, GrokSubagentMeta>;
+  /** The per-turn model calls joined from `events.jsonl` and `chat_history.jsonl`; absent keeps one request per turn. */
+  calls?: GrokSessionCalls;
 }
 
 /**
@@ -65,6 +68,10 @@ export interface GrokTranslateOptions {
  * (`turn_completed.usage` sums that turn's model calls), so each `request` is one turn: `granularity` is `turn`,
  * `modelCalls` is the count, and `usageByModel` is the per-model split. The request is placed before the turn's
  * first output. `elapsed_ms` is the turn duration and stays on a `turn_duration` marker.
+ *
+ * A turn the joined calls name more than one model call for (see `grokCallsOf`) shows one request per call
+ * instead, each before its call's first output with its model; the last call carries the turn's aggregate usage
+ * whole, since the calls name no per-call usage and none is invented.
  *
  * The record dispatch — chunk kinds, the injected-chunk rule, `continued` prompts by prompt index, the tool
  * merges, `turn_completed` requests and `elapsed_ms` durations, `auto_compact_*`, subagent ids — is
@@ -76,7 +83,7 @@ export function translateGrokRecords(
   options: GrokTranslateOptions = {}
 ): Result<ParsedTranscript, UnknownFormatGeneration> {
   const meta = options.meta ?? {};
-  const translation = createGrokTranslation({ retain: true });
+  const translation = createGrokTranslation(definedFields({ retain: true as const, calls: options.calls }));
   let startedAt = meta.startedAt;
   let endedAt = meta.endedAt;
   const times = inheritTimes(records.map(recordTime));

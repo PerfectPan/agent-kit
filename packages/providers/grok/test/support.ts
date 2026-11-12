@@ -26,7 +26,13 @@ export function grokSessions(root: string): ConformanceSession[] {
       records: 4,
       capabilities: ["requests", "usage", "durations", "subagents"]
     },
-    { path: at("request-id-collision/updates.jsonl"), records: 2, capabilities: ["requests", "usage"] }
+    { path: at("request-id-collision/updates.jsonl"), records: 2, capabilities: ["requests", "usage"] },
+    {
+      // `events.jsonl` and `chat_history.jsonl` name two calls for the first turn: one request per call.
+      path: at("per-call/updates.jsonl"),
+      records: 11,
+      capabilities: ["requests", "usage", "durations", "reasoning", "hooks"]
+    }
   ];
 }
 

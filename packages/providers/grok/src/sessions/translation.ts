@@ -4,6 +4,7 @@ import {
   lineId,
   MAIN_LANE_ID,
   type MessagePayload,
+  OUTPUT_KINDS,
   placeRequest,
   type RequestPayload,
   type SourcedRecord,
@@ -20,7 +21,9 @@ import {
   mergeAcpToolStatus,
   mergeAcpToolUpdate
 } from "@rivus/agent-kit-sessions/spi";
+import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import { isInjectedChunk } from "./chunks.js";
+import { type GrokCall, type GrokSessionCalls } from "./calls.js";
 import { type GrokSubagentMeta } from "../layout.js";
 import {
   followGrokTurn,
@@ -62,6 +65,97 @@ function requestPayload(update: GrokUpdateValue, turnModel: string | undefined):
     ...(raw?.modelCalls === undefined ? {} : { modelCalls: raw.modelCalls }),
     ...(byModel ? { usageByModel: byModel } : {})
   };
+}
+
+/** The calls of the turn the prompt index names, or none when the join is absent or the turn names no index. */
+function turnCalls(calls: GrokSessionCalls | undefined, prompt: string | undefined): readonly GrokCall[] {
+  if (calls === undefined || prompt === undefined) {
+    return [];
+  }
+  const index = Number(prompt);
+  return Number.isInteger(index) ? (calls.turns.get(index) ?? []) : [];
+}
+
+/** The payload of one model call: its model and no usage, since Grok logs usage per turn, never per call. */
+function callRequestPayload(call: GrokCall): RequestPayload {
+  return definedFields({ granularity: "request" as const, model: call.model });
+}
+
+/**
+ * The request payloads of a turn the join names several calls for, in call order. The last call carries the turn's
+ * aggregate whole (`granularity: "turn"`, its usage, `modelCalls` and per-model split, and the turn's model, which
+ * names the usage like the scan's turn record does): the turn ends with that call, and the aggregate is no model
+ * call of its own, so `requests` counts the calls the join names.
+ */
+function callPayloads(calls: readonly GrokCall[], aggregate: RequestPayload): RequestPayload[] {
+  return calls.map((call, index) => {
+    if (index < calls.length - 1) {
+      return callRequestPayload(call);
+    }
+    // The last call shows the turn's model, not its own, so the model stays the name the scan prices the usage by.
+    // Only a turn that names no model falls back to the call's own model.
+    return aggregate.model === undefined && call.model !== undefined ? { ...aggregate, model: call.model } : aggregate;
+  });
+}
+
+/**
+ * The index of the first output of each call among `events[from..]`, by structure rather than time: `updates.jsonl`
+ * stamps whole seconds, which cannot order a call's first output against the `first_token` of the call before. A
+ * tool call the join names belongs to its call. Any other output after a tool result begins the next call once the
+ * current one has made every tool call its loop completed (a response may stream a tool call after an earlier one's
+ * result); a call whose loop the join lacks ends at its first result. Calls never go back, outputs past the last call
+ * stay with it, and a call no output reached has no start.
+ */
+function callStarts(
+  events: readonly TranscriptEvent[],
+  from: number,
+  calls: readonly GrokCall[]
+): (number | undefined)[] {
+  const owners = new Map<string, number>();
+  calls.forEach((call, index) => {
+    for (const id of call.toolCallIds ?? []) {
+      owners.set(id, index);
+    }
+  });
+  const starts: (number | undefined)[] = calls.map(() => undefined);
+  let call = -1;
+  let toolCalls = 0;
+  let resulted = false;
+  // A server-side tool (a `ws_` web search or a `ctc_` X search) runs inside the response and writes no `tool_completed`, so once the
+  // current call's loop names its tool calls, only those calls and their results move the boundary.
+  const counts = (callId: string): boolean =>
+    call === -1 || calls[call]!.toolCallIds === undefined || owners.has(callId);
+  for (let index = from; index < events.length; index++) {
+    const event = events[index]!;
+    if (event.kind === "tool_result") {
+      if (counts(event.payload.callId)) {
+        resulted = true;
+      }
+      continue;
+    }
+    if (!OUTPUT_KINDS.has(event.kind)) {
+      continue;
+    }
+    const owner = event.kind === "tool_call" ? owners.get(event.payload.callId) : undefined;
+    const done = call >= 0 && toolCalls >= (calls[call]!.toolCallIds?.length ?? 0);
+    let next = call;
+    if (owner !== undefined) {
+      next = Math.max(call, owner);
+    } else if (call === -1 || (resulted && done)) {
+      next = call + 1;
+    }
+    next = Math.min(next, calls.length - 1);
+    if (next !== call) {
+      call = next;
+      starts[call] = index;
+      toolCalls = 0;
+    }
+    if (event.kind === "tool_call" && counts(event.payload.callId)) {
+      toolCalls += 1;
+    }
+    resulted = false;
+  }
+  return starts;
 }
 
 /** The fields of one hook run the event keeps; a field the run does not record stays absent. */
@@ -194,10 +288,25 @@ export interface BoundedGrokTranslation extends GrokTranslation {
   step(record: SourcedRecord): GrokStep;
 }
 
-export function createGrokTranslation(options: { readonly retain: true }): RetainGrokTranslation;
-export function createGrokTranslation(options: { readonly retain: false }): BoundedGrokTranslation;
-export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation;
-export function createGrokTranslation(options: { readonly retain: boolean }): GrokTranslation {
+export interface GrokTranslationOptions {
+  readonly retain: boolean;
+  /**
+   * The per-turn model calls joined from `events.jsonl` and `chat_history.jsonl`. A turn the join names more
+   * than one call for emits one request per call, the last carrying the turn's aggregate usage; without the join,
+   * or for a single-call turn, the translation keeps its turn-level request. Both modes read the same join, so the
+   * bounded pass counts the requests the retained one places.
+   */
+  readonly calls?: GrokSessionCalls;
+}
+
+export function createGrokTranslation(
+  options: GrokTranslationOptions & { readonly retain: true }
+): RetainGrokTranslation;
+export function createGrokTranslation(
+  options: GrokTranslationOptions & { readonly retain: false }
+): BoundedGrokTranslation;
+export function createGrokTranslation(options: GrokTranslationOptions): GrokTranslation;
+export function createGrokTranslation(options: GrokTranslationOptions): GrokTranslation {
   const retain = options.retain;
   const events: TranscriptEvent[] = [];
   const skips: GrokSkip[] = [];
@@ -212,6 +321,8 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
   const turn: GrokTurn = {};
   let lastUserPrompt: string | undefined;
   let segment = 0;
+  /** The prompts whose calls got their own requests, so a repeated `turn_completed` places them only once. */
+  const callTurns = new Set<string>();
 
   const rememberAgent = (id: string, title?: string, spawnEventId?: string): void => {
     const existing = agents.find((agent) => agent.id === id);
@@ -362,7 +473,46 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
         const payload = requestPayload(update, turn.model);
         delete turn.model;
         const durationMs = update.elapsed_ms;
-        if (retain) {
+        // A turn's calls are placed once: a repeated `turn_completed` for the same prompt has no calls of its own
+        // left to show, so it keeps the turn-level request, in both modes alike.
+        const calls = prompt === undefined || callTurns.has(prompt) ? [] : turnCalls(options.calls, prompt);
+        const payloads = calls.length > 1 ? callPayloads(calls, payload) : [payload];
+        if (prompt !== undefined && calls.length > 1) {
+          callTurns.add(prompt);
+        }
+        if (retain && payloads.length > 1) {
+          // One request per model call, before the call's first output, with the turn's events from `segment` on
+          // stamped as the members of the call they follow (the prompt and anything before the first output join
+          // the first call). A call no output reached sits just before the next call's request, or at the end.
+          const callRequests = calls.map((call, index) => {
+            const requestId = `${key}#${index}`;
+            const id = nextFree(`request:${requestId}`);
+            usedIds.add(id);
+            return baseEvent(record, "request", payloads[index]!, { id, ts: call.ts ?? ts, requestId });
+          });
+          const starts = callStarts(events, segment, calls);
+          let tail = events.length;
+          for (let call = calls.length - 1; call >= 0; call--) {
+            const at = Math.min(starts[call] ?? tail, tail);
+            const request = callRequests[call]!;
+            // The response start, but never after the output it precedes: `updates.jsonl` may stamp that output
+            // with the whole second the `first_token` falls in.
+            if (at < events.length && request.ts > events[at]!.ts) {
+              request.ts = events[at]!.ts;
+            }
+            events.splice(at, 0, request);
+            tail = at;
+          }
+          let member: string | undefined = callRequests[0]!.requestId;
+          for (let index = segment; index < events.length; index++) {
+            const event = events[index]!;
+            if (event.kind === "request") {
+              member = event.requestId;
+            } else if (event.requestId === undefined) {
+              event.requestId = member;
+            }
+          }
+        } else if (retain) {
           // The `request:<key>` id dedupe changes ids only: a repeated key still makes its own request. Event ids
           // stay unique because every id is taken only while `usedIds` does not hold it: the request keeps
           // `request:<key>` when free, else the first free serial of `request:<line>` — the fallback a taken key
@@ -370,7 +520,7 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
           const requestId = `request:${key}`;
           const id = usedIds.has(requestId) ? nextFree(`request:${lineId(record)}`) : requestId;
           usedIds.add(id);
-          segment = placeRequest(
+          placeRequest(
             events,
             segment,
             baseEvent(record, "request", payload, {
@@ -379,18 +529,18 @@ export function createGrokTranslation(options: { readonly retain: boolean }): Gr
               requestId: key
             })
           );
-          if (durationMs !== undefined) {
-            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
-          }
-          // The window closes past the duration marker, so a later turn's request never reaches back before it.
-          segment = events.length;
         } else {
-          // Requests are placed in processing order, so the streaming pass sees the context shape for free.
-          parts.push({ kind: "request", payload });
-          if (durationMs !== undefined) {
-            emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
+          // Requests are placed in processing order, so the streaming pass sees the context shape for free: the
+          // call requests in call order, the last carrying the aggregate, as the retained placement orders them.
+          for (const each of payloads) {
+            parts.push({ kind: "request", payload: each });
           }
         }
+        if (durationMs !== undefined) {
+          emit({ kind: "system", payload: { type: "turn_duration", durationMs } });
+        }
+        // The window closes past the duration marker, so a later turn's request never reaches back before it.
+        segment = events.length;
         return { ok: true, parts };
       }
 
