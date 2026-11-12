@@ -41,8 +41,8 @@ const shared = (entryNames: string[]): PackUserConfig => ({
 });
 
 export default defineConfig({
-  // The generated changelog is release output, not a repository source; dist is build output.
-  fmt: { ...fmt, ignorePatterns: ["CHANGELOG.*"] },
+  // The shared fmt skips the generated CHANGELOG.*; dist is build output.
+  fmt,
   lint: withBoundaryLint({ ...lint, ignorePatterns: ["dist/**"] }, import.meta.url),
   // One pack per zero-dependency entry: sharing a pack would let the bundler put zod/mini into a common chunk the
   // entries import, and the built entry files must inline it instead.
