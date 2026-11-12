@@ -21,20 +21,26 @@ workflow is not a published package.
 
 ## The Release Workflow
 
-`publish-npm.yml` runs on every push to `main` (a PR merge is a push) and on manual dispatch. One job:
+`publish-npm.yml` runs on every push to `main` (a PR merge is a push) and on manual dispatch. It calls the shared
+workflow `PerfectPan/gh-repo-checks/.github/workflows/npm-release.yml@v1`; its jobs, permissions and general failure
+handling are described in the [shared runbook](https://github.com/PerfectPan/gh-repo-checks/blob/v1/docs/npm-release.md).
+npm validates the calling file, so the trusted publishers stay bound to `publish-npm.yml`.
 
-1. `changesets/action/select-mode@v2.1.2` chooses `version` when non-empty changesets are pending,
-   `publish` when there are no changesets and unpublished versions exist, or `none` when no work is needed.
-2. Only `publish` mode runs the repository's complete gate (`pnpm run check`, which includes
-   `scripts/check-release-plan.mjs`) and a production-dependency audit before publishing. The audit
-   (`pnpm --filter '!./apps/**' audit --prod --audit-level=high`) covers the workspace packages and leaves out the
-   website apps, which are never published.
-3. For `version` or `publish`, `changesets/action` runs its native version/publish path: it opens or updates
-   the draft version PR from pending change records, or publishes unpublished versions when no records remain.
-   The version commit goes through the GitHub API, so GitHub signs it. Mode `none` skips the action.
+1. **select release mode** (read-only) runs `changesets/action/select-mode`: `version` when non-empty changesets
+   are pending, `publish` when there are none and unpublished versions exist, `none` otherwise. It also runs
+   `gh repo-checks release-plan` in `version` mode and `gh repo-checks first-publish` in both modes.
+2. **version packages** opens or updates the draft version PR with `pnpm run version-packages`. The version commit
+   goes through the GitHub API, so GitHub signs it.
+3. **check and pack packages** (read-only, `publish` mode) runs the repository's complete gate,
+   `pnpm run check`, which includes `scripts/check-release-plan.mjs` and its 0.x major-bump cap. It then runs the
+   one input this repository sets, `audit-command: pnpm --filter '!./apps/**' audit --prod --audit-level=high`,
+   which covers the workspace packages and leaves out the website apps, which are never published. Finally it packs
+   the unpublished versions.
+4. **publish packages** is the only job with the OIDC permission. It publishes the packed tarballs through Trusted
+   Publishing and creates the tags and Releases.
 
-Runs share one concurrency group with `cancel-in-progress: false`: a push waits for the running run, and GitHub
-keeps only the newest waiting run, cancelling older waiting ones.
+The caller keeps one concurrency group with `cancel-in-progress: false`: a push waits for the running run, and
+GitHub keeps only the newest waiting run, cancelling older waiting ones.
 
 ## Changesets
 
@@ -165,8 +171,8 @@ are not published either.
    a skipped check is not validation evidence. PR events created with `github.token` may create runs that require
    maintainer approval; follow any GitHub approval prompt rather than assuming no run exists.
 4. The merge push runs the Release workflow on the merge commit, where no record is pending: `select-mode` chooses
-   `publish`, the gates run, and `changeset publish` publishes each unpublished public version in dependency
-   order through Trusted Publishing, skipping versions that are already on npm. The action pushes one tag per
+   `publish`, the pack job runs the gates and the audit and packs both packages, and the publish job publishes each
+   packed version in dependency order through Trusted Publishing, skipping versions that are already on npm. The action pushes one tag per
    published package (`@rivus/agent-kit@X.Y.Z`, `@rivus/agent-kit-collab@X.Y.Z`) and creates one GitHub Release per
    package with its changelog section. Merging the version PR is the release decision.
 5. Verify every package at the new version, for example `npm view @rivus/agent-kit@X.Y.Z`,
@@ -327,6 +333,9 @@ The action publishes only when no record is pending; with records pending it pre
 if an earlier version is still unpublished. Recovery therefore re-runs the run of the release commit itself whenever
 it can.
 
+- **select release mode failed**: `repo-checks release-plan` names a record that would never be consumed, and
+  `repo-checks first-publish` names a package without a version on npm or reports a failed registry lookup; see the
+  [shared runbook](https://github.com/PerfectPan/gh-repo-checks/blob/v1/docs/npm-release.md) for both. Nothing was versioned or published.
 - **Version step failed** (`changeset version`, changelog lookup): nothing changed on `main` or the release branch.
   Re-run the latest run for a transient failure; otherwise fix the cause in a reviewed PR, whose merge regenerates
   the version PR. A missing `GITHUB_TOKEN` fails this step.
@@ -349,7 +358,8 @@ it can.
 - **Trusted Publishing rejected one package**: fix that package's trusted publisher on npmjs.com (owner,
   repository, workflow file name, environment) and re-run. One package's authorization does not cover the others.
 - **A record is never consumed**: it names a private or ignored package. Remove it or move its note to a released
-  package; `check-release-plan.mjs` names it.
+  package; `repo-checks release-plan` in select release mode and `check-release-plan.mjs` in `pnpm run check` name
+  it.
 - **Bad published contents**: npm versions are immutable. Deprecate the version and release a fix:
 
   ```bash
