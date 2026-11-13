@@ -1,5 +1,4 @@
 import {
-  KIMI_CONFIG_FILE,
   KIMI_CREDENTIALS_DIR,
   KIMI_DISPLAY_NAME,
   KIMI_HOME,
@@ -8,18 +7,11 @@ import {
   KIMI_MODEL_API_KEY_ENV,
   KIMI_SESSIONS_DIR
 } from "./facts.js";
-import type { AuthReading, ProbeRecipe } from "@rivus/agent-kit-discovery/spi";
+import type { ProbeRecipe } from "@rivus/agent-kit-discovery/spi";
 import { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";
 
 // https://www.kimi.com/code/docs/en/kimi-code-cli/configuration/data-locations.html (directory layout) and
 // /configuration/env-vars.html (KIMI_MODEL_* is the only credential the CLI reads from the environment).
-
-/** Whether the JSON the CLI writes under `credentials/` holds any entry. */
-export function parseKimiCredentials(value: unknown): AuthReading | undefined {
-  return typeof value === "object" && value !== null
-    ? { loggedIn: Object.keys(value).length > 0, method: "oauth" }
-    : undefined;
-}
 
 export const kimiProbe: ProbeRecipe = {
   specificationVersion: "discovery-v1",
@@ -29,14 +21,18 @@ export const kimiProbe: ProbeRecipe = {
   commands: ["kimi"],
   appPaths: [],
   configPaths: [
-    { agentHome: KIMI_ID, path: KIMI_CONFIG_FILE },
     { agentHome: KIMI_ID, path: KIMI_SESSIONS_DIR },
     { agentHome: KIMI_ID, path: KIMI_CREDENTIALS_DIR }
   ],
   mcpConfigPaths: [{ agentHome: KIMI_ID, path: KIMI_MCP_FILE }],
   version: { ...VERSION_FLAG },
   auth: {
-    credentialFiles: [{ path: { agentHome: KIMI_ID, path: KIMI_CREDENTIALS_DIR }, parse: parseKimiCredentials }],
+    // Provider credentials sit at credentials/<name>.json; the kit cannot list the directory, so it probes the
+    // documented names and leaves the directory as config evidence.
+    credentialFiles: [
+      { path: { agentHome: KIMI_ID, path: "credentials/kimi-code.json" } },
+      { path: { agentHome: KIMI_ID, path: "credentials/kimi.json" } }
+    ],
     env: [{ name: KIMI_MODEL_API_KEY_ENV, method: "api-key" }]
   },
   warnings: [],

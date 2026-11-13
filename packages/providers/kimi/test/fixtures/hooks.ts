@@ -26,7 +26,11 @@ export const kimiSamples: readonly HookDialectSample[] = [
   sample("SessionStart", { source: "compact" }, { phase: "activity" }),
   sample("SessionEnd", { source: "exit" }, { phase: "finish", scope: "session" }),
   sample("UserPromptSubmit", { prompt: "list files" }, { phase: "start", scope: "turn" }),
-  sample("TurnStarted", { turn_id: "t1", origin_kind: "user", origin_name: "u", prompt: "list files" }, { phase: "activity" }),
+  sample(
+    "TurnStarted",
+    { turn_id: "t1", origin_kind: "user", origin_name: "u", prompt: "list files" },
+    { phase: "start", scope: "turn", turnId: "t1" }
+  ),
   sample(
     "PreToolUse",
     { tool_name: "Bash", tool_use_id: "tc_3", tool_input: { command: "ls" } },

@@ -121,7 +121,7 @@ export const kimiUsageLayout: JsonlUsageLayout = {
   agent: KIMI_ID,
   file: sameFile((path) => {
     const parts = path.split("/").filter((part) => part !== "");
-    return { sessionId: parts.at(-3) ?? "unknown" };
+    return { sessionId: parts.at(-4) ?? "unknown" };
   }),
   decoder: kimiUsageLines
 };

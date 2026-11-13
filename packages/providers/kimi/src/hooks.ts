@@ -30,6 +30,7 @@ export const kimiHookDialect: HookDialect = {
   fields: {
     event: { paths: [["hook_event_name"]] },
     sessionId: { paths: [["session_id"]] },
+    turnId: { paths: [["turn_id"]] },
     cwd: { paths: [["cwd"]] },
     transcriptPath: { paths: [["transcript_path"]] },
     toolName: { paths: [["tool_name"]] },
@@ -50,7 +51,7 @@ export const kimiHookDialect: HookDialect = {
     UserPromptQueued: { lifecycle: { phase: "activity" } },
     UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: OUTPUT_WITH_CONTEXT },
     // The payload names the turn origin (user, task, system_trigger) and carries turn_id.
-    TurnStarted: { lifecycle: { phase: "activity" } },
+    TurnStarted: { lifecycle: { phase: "start", scope: "turn" } },
     PreToolUse: {
       lifecycle: { phase: "activity" },
       gate: true,
