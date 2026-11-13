@@ -43,6 +43,13 @@ export interface ArtifactLocatorSnapshot {
    * hook in an event; once a bundle can set matchers, the group's matcher belongs in `member` too. Not part of the key.
    */
   readonly memberIn?: "element" | "hook-group";
+  /**
+   * For an `element` locator whose elements are objects with more than one identity field, such as Kimi's `[[hooks]]`
+   * entries (which repeat one command across events): the element keys whose string values, joined with a unit
+   * separator, make up `member`. Absent keeps the default identity — a string element is itself; an object one its
+   * `command`, else its `name`. Not part of the key.
+   */
+  readonly memberKeys?: readonly string[];
 }
 
 /**
@@ -65,6 +72,16 @@ export function locatorKey(locator: ArtifactLocatorSnapshot): LocatorKey {
   return JSON.stringify(
     pointer === undefined ? [path] : member === undefined ? [path, pointer] : [path, pointer, member]
   );
+}
+
+const MEMBER_SEPARATOR = "\u001f";
+
+/**
+ * The `member` an element locator with `memberKeys` matches: the element's named string values, joined with a unit
+ * separator, such as Kimi's `[[hooks]]` entry's event and command.
+ */
+export function elementMember(values: readonly string[]): string {
+  return values.join(MEMBER_SEPARATOR);
 }
 
 /** The pointer text, or `""` when the locator kind has none. */
@@ -165,6 +182,14 @@ export class ArtifactLocator {
     }
     if (locator.memberIn !== undefined && locator.member === undefined) {
       return "memberIn without a member";
+    }
+    if (locator.memberKeys !== undefined) {
+      if (locator.memberIn !== "element") {
+        return "memberKeys only address an element";
+      }
+      if (locator.memberKeys.length === 0 || locator.memberKeys.some((key) => key === "")) {
+        return "memberKeys has an empty key";
+      }
     }
     return locator.pointer === "" ? "pointer is empty" : undefined;
   }
