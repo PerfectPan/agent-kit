@@ -51,18 +51,38 @@ function parseState(text: string): KimiStateValue | undefined {
   }
 }
 
-/** Reads `state.json` when it is small enough for the listing budget; a missing or unreadable one is optional. */
+/**
+ * Reads `state.json` when it is small enough for the listing budget. The file is metadata, not the session: a
+ * missing, unreadable or unparseable one leaves the head and the transcript without its fields, and never fails the
+ * wire file the session is. An aborted read still fails, so cancellation keeps working.
+ */
 async function readState(
   platform: SessionPlatform,
   sessionDir: string,
   signal: AbortSignal | undefined
 ): Promise<KimiStateValue | undefined> {
   const path = `${sessionDir}/${KIMI_SESSION_STATE_FILE}`;
-  const info = await platform.fs.stat(path, { followSymlinks: true });
+  let info = undefined;
+  try {
+    info = await platform.fs.stat(path, { followSymlinks: true });
+  } catch (error) {
+    if (signal?.aborted) {
+      throw error;
+    }
+    return undefined;
+  }
   if (info?.kind !== "file" || info.size > EDGE_BYTES) {
     return undefined;
   }
-  const text: string = await readText(platform, path, { signal });
+  let text: string;
+  try {
+    text = await readText(platform, path, { signal });
+  } catch (error) {
+    if (signal?.aborted) {
+      throw error;
+    }
+    return undefined;
+  }
   return parseState(text);
 }
 
@@ -110,6 +130,9 @@ async function loadKimi(
     }),
     []
   );
+  // Lines that were never JSON never became records, so only this merge accounts for them; the translation's own
+  // skips cover the records that produced no event. Both lists carry their records' source pointers.
+  parsed.skipped = [...records.skipped, ...parsed.skipped];
   options.signal?.throwIfAborted();
   return ok(createTranscript(KIMI_ID, KIMI_CAPABILITIES, parsed));
 }

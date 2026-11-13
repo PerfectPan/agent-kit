@@ -15,6 +15,7 @@ export const kimiAcpProfile: AcpProfile = {
   systemPrompt: { in: "first-block" },
   warnings: [
     "unverified: session/new may gain _meta fields, such as a system prompt, in newer releases",
-    "Kimi reads model credentials from config.toml, not the environment; an unconfigured install reports auth_required"
+    "Kimi reads model credentials from config.toml, not the environment; an unconfigured install reports auth_required",
+    "a config.toml provider whose api_key_env names a variable outside KIMI_* is not forwarded, because the profile's environment is a static allowlist; name the variable KIMI_* or store the key in config.toml"
   ]
 };
