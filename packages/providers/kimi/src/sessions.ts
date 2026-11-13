@@ -170,11 +170,13 @@ export const kimiSessionAdapter: SessionAdapter = {
     return info?.kind === "file" && ref.path.endsWith("/agents/main/wire.jsonl");
   },
   load: loadKimi,
-  summarize: async (platform, ref, options = {}) =>
-    summarizeKimiRecords(
-      readJsonlStream(platform, ref.path, definedFields({ signal: options.signal })),
-      options.prompts
-    )
+  summarize: (platform, ref, options = {}) =>
+    catchIoFailure(platform, ref.path, options.signal, (guarded) =>
+      summarizeKimiRecords(
+        readJsonlStream(guarded, ref.path, definedFields({ signal: options.signal })),
+        options.prompts
+      )
+    ).then((outcome) => (outcome.ok ? outcome.value : err(outcome.error as SessionReadError)))
 };
 
 export type { Capability, SessionHead };

@@ -1,8 +1,10 @@
+import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
   assignSeq,
   baseEvent,
   inheritTimes,
   markOrphanToolResults,
+  OUTPUT_KINDS,
   placeRequest,
   skipRecord,
   sourceOf,
@@ -49,6 +51,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
   const skipped: ParsedTranscript["skipped"] = [];
   const turnPrompts = new Map<string, string>();
   let tools: unknown;
+  let systemPrompt: string | undefined;
   let generation: SourcedRecord | undefined;
 
   const translate = (record: SourcedRecord, ts: number): StepResult => {
@@ -162,30 +165,38 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
             return { parts: [body] };
           }
           case "step.end": {
-            const usage = loop.usage === undefined ? undefined : kimiUsageOf(loop.usage);
+            const usage = kimiUsageOf(loop.usage ?? {});
             if (usage === undefined) {
               return { parts: [] };
             }
-            void usage;
-            const requestId = loop.turnId === undefined ? undefined : turnPrompts.get(String(loop.turnId));
+            // One model call, one id: the step's own uuid, with the turn's prompt id kept beside it in the payload.
+            const requestId =
+              loop.uuid ?? (loop.turnId === undefined ? undefined : turnPrompts.get(String(loop.turnId)));
             const body: TranscriptEventBody = {
               kind: "request",
               payload: {
                 ...(loop.messageId !== undefined ? { responseId: loop.messageId } : {}),
                 ...(loop.finishReason !== undefined ? { finishReason: loop.finishReason } : {}),
+                ...(requestId !== undefined && turnPrompts.has(String(loop.turnId))
+                  ? { promptId: turnPrompts.get(String(loop.turnId)) }
+                  : {}),
                 usage,
                 granularity: "request"
               }
             };
             if (retain) {
               const event = baseEvent(record, body.kind, body.payload, definedRequestFields(ts, requestId));
-              // The request sits before the step's own output: everything after the previous request is its input.
+              // The request sits before the step's own output: past the previous request and the outputs it
+              // already owns, so an earlier step's events stay its own.
               let anchor = 0;
               for (let index = events.length - 1; index >= 0; index--) {
                 if (events[index]!.kind === "request") {
                   anchor = index + 1;
                   break;
                 }
+              }
+              while (anchor < events.length && OUTPUT_KINDS.has(events[anchor]!.kind)) {
+                anchor += 1;
               }
               placeRequest(events, anchor, event);
             }
@@ -221,6 +232,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
         if (profile?.systemPrompt === undefined) {
           return { parts: [] };
         }
+        systemPrompt = profile.systemPrompt;
         const body: TranscriptEventBody = {
           kind: "system",
           payload: { type: "prompt_snapshot", systemPrompt: profile.systemPrompt }
@@ -260,7 +272,11 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
       return {
         events,
         skipped,
-        session: tools === undefined ? session : { ...session, tools },
+        session: definedFields({
+          ...session,
+          ...(tools !== undefined ? { tools } : {}),
+          ...(systemPrompt !== undefined ? { systemPrompt } : {})
+        }),
         agents: [{ id: KIMI_ID }]
       };
     },

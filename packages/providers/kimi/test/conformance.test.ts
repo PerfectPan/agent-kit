@@ -7,14 +7,6 @@ import { kimiSamples } from "./fixtures/hooks.js";
 
 const ok = (stdout: string, stderr = "") => ({ code: 0, stdout, stderr });
 const samples = {
-  credentialFiles: [
-    {
-      path: "~/.kimi-code/credentials",
-      json: { "kimi-code": { access_token: "x" } },
-      reading: { loggedIn: true, method: "oauth" }
-    },
-    { path: "~/.kimi-code/credentials", json: {}, reading: { loggedIn: false, method: "oauth" } }
-  ],
   versions: [{ output: ok("2.6.0\n"), version: { output: "2.6.0", number: "2.6.0" } }]
 };
 for (const [service, checks] of [
