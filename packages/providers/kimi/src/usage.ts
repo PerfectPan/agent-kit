@@ -144,8 +144,8 @@ export const kimiUsageDecoder: UsageDecoder = {
   home: KIMI_HOME,
   usageKey: kimiUsageKey,
   sources(platform: UsagePlatform, home, options = {}) {
-    void options;
     return fileSources(platform, KIMI_ID, kimiRoots(home), KIMI_SESSION_FILES, {
+      ...options,
       // The source id is the session id, which outlives moves of the working-directory buckets.
       identify: (path) =>
         path
