@@ -1,5 +1,17 @@
 # Change Log - @rivus/agent-kit
 
+## 0.25.0
+
+### Minor Changes
+
+- [#292](https://github.com/PerfectPan/agent-kit/pull/292) [`0c7614f`](https://github.com/PerfectPan/agent-kit/commit/0c7614f4c9a7b2cd6768644d40bc8a9fc8560583) Thanks [@nyx-cell](https://github.com/nyx-cell)! - Show one Grok request per model call. The adapter joins the `loop_started`/`first_token` boundaries and the completed tool call ids in `events.jsonl` with the `assistant` entries in `chat_history.jsonl`, so a turn that made several model calls places one request per call, before the call's first output and with the model the assistant entry named. Grok records usage per turn, so no call is split by estimate: the turn's last call carries the turn's aggregate usage (`granularity: "turn"`, with the turn's model, `modelCalls` and per-model split), and the aggregate is not counted as a request of its own. The summary pass reads the same join, so its `requests` match the loaded transcript. A session without the join files, or one past the 32 MB join budget, keeps its turn-level request. Grok summaries now count `requests` per model call instead of per turn, so `SESSION_SUMMARY_VERSION` is 3 and cached summaries must be recomputed.
+
+- [#293](https://github.com/PerfectPan/agent-kit/pull/293) [`1cd79c0`](https://github.com/PerfectPan/agent-kit/commit/1cd79c06dbe3615fd41f9945cbf10823a94335be) Thanks [@nyx-cell](https://github.com/nyx-cell)! - The built-in zcode provider now reads the CLI's SQLite store as sessions: `sessions` discovers the non-deleted sessions of `<home>/cli/db/db.sqlite`, translates message and part rows into the transcript's user prompts, replies, thinking, tool calls and results, and summarizes a session in one bounded pass. Every event's source resolves through `readOriginal`, the shell's sessions table registers the adapter, and ZCode's "no supported reader" entries leave the support tables.
+
+### Patch Changes
+
+- [#281](https://github.com/PerfectPan/agent-kit/pull/281) [`e1af559`](https://github.com/PerfectPan/agent-kit/commit/e1af559485781ac25ba1d9abcdc6d19d3fe48f76) Thanks [@github-actions](https://github.com/apps/github-actions)! - Update the LiteLLM price snapshot of `/cost/prices` to `2026-11-12+db8ad3b13e7320bf835205cae58be5a58e0ff366+bcbf284275fd`.
+
 ## 0.24.1
 
 ### Patch Changes

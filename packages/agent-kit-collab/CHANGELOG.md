@@ -1,5 +1,12 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [[`0c7614f`](https://github.com/PerfectPan/agent-kit/commit/0c7614f4c9a7b2cd6768644d40bc8a9fc8560583), [`e1af559`](https://github.com/PerfectPan/agent-kit/commit/e1af559485781ac25ba1d9abcdc6d19d3fe48f76), [`1cd79c0`](https://github.com/PerfectPan/agent-kit/commit/1cd79c06dbe3615fd41f9945cbf10823a94335be)]:
+  - @rivus/agent-kit@0.25.0
+
 ## 0.24.1
 
 ## 0.24.0
