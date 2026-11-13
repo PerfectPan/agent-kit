@@ -155,7 +155,12 @@ describe("scanUsage", () => {
     expect(paths(next.state)).not.toContain(pi);
     expect(paths(next.state)).not.toContain(archived);
     // The memory platform dates a directory at its creation, so the older opencode layout's session stays listed.
-    expect(Object.keys(next.state.sources)).toEqual(["opencode ses_legacy"]);
+    // The Kimi wires stay because the `since` scan never read them.
+    expect(Object.keys(next.state.sources)).toEqual([
+      "opencode ses_legacy",
+      "kimi session_demo-1",
+      "kimi session_demo-2"
+    ]);
   });
 
   it("decides that a file is complete from the decode's own look at it, not from the listing", async () => {

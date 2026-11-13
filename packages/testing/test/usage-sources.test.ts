@@ -53,6 +53,8 @@ const ALL = [
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/session-legacy.json",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/session-migrated.jsonl",
   "grok /u/me/.grok/sessions/%2Fu%2Fme%2Fwork/gk-usage/updates.jsonl",
+  "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-1/agents/main/wire.jsonl",
+  "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl",
   "opencode /u/me/.local/share/opencode/storage/message/ses_legacy",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-01T00-00-00-000Z_pi-1.jsonl",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-02T00-00-00-000Z_pi-fork.jsonl"
@@ -72,7 +74,8 @@ describe("listUsageSources", () => {
       [".grok", "/alt/grok"],
       [".local/share/opencode", "/alt/data/opencode"],
       [".pi/agent", "/alt/pi"],
-      [".dimcode", "/alt/dim"]
+      [".dimcode", "/alt/dim"],
+      [".kimi-code", "/alt/kimi"]
     );
     const { sources, failures } = await list(
       files,
@@ -84,7 +87,8 @@ describe("listUsageSources", () => {
         GROK_HOME: "/alt/grok",
         XDG_DATA_HOME: "/alt/data",
         PI_CODING_AGENT_DIR: "/alt/pi",
-        DIMCODE_HOME: "/alt/dim"
+        DIMCODE_HOME: "/alt/dim",
+        KIMI_CODE_HOME: "/alt/kimi"
       }
     );
     expect(failures).toEqual([]);

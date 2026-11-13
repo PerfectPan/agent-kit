@@ -80,6 +80,7 @@ const TURN_START: Record<string, string> = {
   pi: "before_agent_start",
   cursor: "beforeSubmitPrompt",
   zcode: "UserPromptSubmit",
+  kimi: "UserPromptSubmit",
   qoder: "UserPromptSubmit",
   dim: "UserPromptSubmit"
 };

@@ -9,6 +9,7 @@ import { dshProbe } from "@rivus/agent-kit-provider-dsh/discovery";
 import { zcodeProbe } from "@rivus/agent-kit-provider-zcode/discovery";
 import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
 import { dimProbe } from "@rivus/agent-kit-provider-dim/discovery";
+import { kimiProbe } from "@rivus/agent-kit-provider-kimi/discovery";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -24,6 +25,7 @@ export const builtinProbeRecipes: {
   readonly zcode: typeof zcodeProbe;
   readonly qoder: typeof qoderProbe;
   readonly dim: typeof dimProbe;
+  readonly kimi: typeof kimiProbe;
 } = {
   opencode: opencodeProbe,
   "claude-code": claudeCodeProbe,
@@ -35,7 +37,8 @@ export const builtinProbeRecipes: {
   dsh: dshProbe,
   zcode: zcodeProbe,
   qoder: qoderProbe,
-  dim: dimProbe
+  dim: dimProbe,
+  kimi: kimiProbe
 };
 
 export const discoveryTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"discovery">> =>
