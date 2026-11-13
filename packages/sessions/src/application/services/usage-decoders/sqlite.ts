@@ -458,8 +458,11 @@ function sqliteAppendPage(columns: SqliteAppendColumns, count: number): string {
   if (columns.created !== undefined) {
     list.push(`${quote(columns.created)} AS created`);
   }
+  const reserved = new Set(["row", "id", "session_id", "created", "data", columns.id]);
   for (const extra of columns.extras ?? []) {
-    list.push(quote(extra));
+    if (!reserved.has(extra)) {
+      list.push(quote(extra));
+    }
   }
   list.push(`${quote(columns.data)} AS data`);
   return `SELECT ${list.join(", ")} FROM ${quote(columns.table)} WHERE rowid > ? ORDER BY rowid LIMIT ${count}`;
@@ -560,7 +563,8 @@ export function decodeSqliteAppendLog(decode: SqliteAppendDecode, request: Sqlit
           };
           lastRow = row.row;
           lastId = row.id;
-          if (since !== undefined && row.created < since) {
+          // A row of a table with no creation column must reach decode: its records carry their own timestamps.
+          if (since !== undefined && columns.created !== undefined && row.created > 0 && row.created < since) {
             continue;
           }
           let value: unknown;
