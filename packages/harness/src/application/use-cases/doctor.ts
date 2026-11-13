@@ -142,7 +142,8 @@ function hooksInFile(
       const found: Omit<FoundHook, "own">[] = [];
       // Parse each element on its own, like the grouped and flat paths do: one invalid entry drops itself, not the
       // file's other hooks.
-      for (const element of Array.isArray(read?.content) ? (read?.content as unknown[]) : []) {
+      const content = read?.content;
+      for (const element of Array.isArray(content) ? content : []) {
         const { event, command, timeout } = HookListElement.safeParse(element).data ?? {};
         if (event === undefined || command === undefined) {
           continue;
