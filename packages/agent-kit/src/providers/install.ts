@@ -5,6 +5,7 @@ import { opencodeInstallAdapter } from "@rivus/agent-kit-provider-opencode/insta
 import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/install";
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
+import { kimiInstallAdapter } from "@rivus/agent-kit-provider-kimi/install";
 import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
 import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
 import { zcodeInstallAdapter } from "@rivus/agent-kit-provider-zcode/install";
@@ -20,6 +21,7 @@ export const builtinInstallAdapters: {
   readonly cursor: typeof cursorInstallAdapter;
   readonly pi: typeof piInstallAdapter;
   readonly zcode: typeof zcodeInstallAdapter;
+  readonly kimi: typeof kimiInstallAdapter;
   readonly qoder: typeof qoderInstallAdapter;
   readonly dim: typeof dimInstallAdapter;
 } = {
@@ -31,6 +33,7 @@ export const builtinInstallAdapters: {
   opencode: opencodeInstallAdapter,
   pi: piInstallAdapter,
   zcode: zcodeInstallAdapter,
+  kimi: kimiInstallAdapter,
   qoder: qoderInstallAdapter,
   dim: dimInstallAdapter
 };

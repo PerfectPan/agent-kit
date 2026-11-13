@@ -115,6 +115,7 @@ const GEMINI_CLI = "@rivus/agent-kit-provider-gemini-cli";
 const CURSOR = "@rivus/agent-kit-provider-cursor";
 const PI = "@rivus/agent-kit-provider-pi";
 const QODER = "@rivus/agent-kit-provider-qoder";
+const KIMI = "@rivus/agent-kit-provider-kimi";
 const DIM = "@rivus/agent-kit-provider-dim";
 const DSH = "@rivus/agent-kit-provider-dsh";
 const ZCODE = "@rivus/agent-kit-provider-zcode";
@@ -212,6 +213,15 @@ export const boundaries: BoundaryRules = {
       testsOnly: [TESTING, PLATFORM_NODE],
       external: ["zod/mini"]
     },
+    [KIMI]: {
+      siblingEntries: [],
+      providerFacts: "packages/providers/kimi/src/facts.ts",
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
+      dependsOn: [],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
+      testsOnly: [TESTING],
+      external: ["zod/mini"]
+    },
     [DSH]: {
       siblingEntries: [],
       providerFacts: "packages/providers/dsh/src/facts.ts",
@@ -276,7 +286,21 @@ export const boundaries: BoundaryRules = {
       siblingEntries: ["public"],
       dependsOn: [PLATFORM, CATALOG, SESSIONS, DISCOVERY, HARNESS, COST],
       spiImports: [HARNESS],
-      testsOnly: [PI, CURSOR, GEMINI_CLI, OPENCODE, GROK, CLAUDE_CODE, CODEX, ZCODE, QODER, DIM, ACP, PLATFORM_NODE],
+      testsOnly: [
+        PI,
+        CURSOR,
+        GEMINI_CLI,
+        OPENCODE,
+        GROK,
+        CLAUDE_CODE,
+        CODEX,
+        ZCODE,
+        KIMI,
+        QODER,
+        DIM,
+        ACP,
+        PLATFORM_NODE
+      ],
       external: ["es-toolkit"]
     },
     // A utility module of pure functions; es-toolkit's isPlainObject is its one dependency.

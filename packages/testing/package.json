@@ -37,6 +37,7 @@
     "@rivus/agent-kit-provider-dim": "workspace:*",
     "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
     "@rivus/agent-kit-provider-grok": "workspace:*",
+    "@rivus/agent-kit-provider-kimi": "workspace:*",
     "@rivus/agent-kit-provider-opencode": "workspace:*",
     "@rivus/agent-kit-provider-pi": "workspace:*",
     "@rivus/agent-kit-provider-qoder": "workspace:*",

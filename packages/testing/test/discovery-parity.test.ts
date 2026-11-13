@@ -226,7 +226,7 @@ const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string
 ];
 
 describe("parity with agent-finder", () => {
-  it("has agent-finder's 26 agents in its order, and the eleven built-in agents in report order", () => {
+  it("has agent-finder's 26 agents in its order, and the twelve built-in agents in report order", () => {
     const finderOrder = cases[0]?.report.agents.map((agent) => agent.id) ?? [];
     expect(Object.keys(finderRecipes)).toEqual(finderOrder);
     // detectAgents reports in table order, so the builtin table keeps finder's relative order, with Grok at the end.
@@ -235,6 +235,7 @@ describe("parity with agent-finder", () => {
     expect(Object.keys(builtinProbeRecipes)).toEqual([
       ...finderOrder.filter((id) => builtin[id] !== undefined && id !== "qoder"),
       "grok",
+      "kimi",
       "qoder",
       "dim"
     ]);

@@ -83,6 +83,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     }
   },
   {
+    id: "kimi",
+    name: "Kimi Code",
+    aliases: [],
+    home: { en: "KIMI_CODE_HOME, ~/.kimi-code", zh: "KIMI_CODE_HOME，~/.kimi-code" }
+  },
+  {
     id: "qoder",
     name: "Qoder CLI",
     aliases: [],
