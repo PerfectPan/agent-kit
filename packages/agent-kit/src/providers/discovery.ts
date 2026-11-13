@@ -7,6 +7,7 @@ import { cursorProbe } from "@rivus/agent-kit-provider-cursor/discovery";
 import { piProbe } from "@rivus/agent-kit-provider-pi/discovery";
 import { dshProbe } from "@rivus/agent-kit-provider-dsh/discovery";
 import { zcodeProbe } from "@rivus/agent-kit-provider-zcode/discovery";
+import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -20,6 +21,7 @@ export const builtinProbeRecipes: {
   readonly pi: typeof piProbe;
   readonly dsh: typeof dshProbe;
   readonly zcode: typeof zcodeProbe;
+  readonly qoder: typeof qoderProbe;
 } = {
   opencode: opencodeProbe,
   "claude-code": claudeCodeProbe,
@@ -29,7 +31,8 @@ export const builtinProbeRecipes: {
   "gemini-cli": geminiCliProbe,
   grok: grokProbe,
   dsh: dshProbe,
-  zcode: zcodeProbe
+  zcode: zcodeProbe,
+  qoder: qoderProbe
 };
 
 export const discoveryTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"discovery">> =>
