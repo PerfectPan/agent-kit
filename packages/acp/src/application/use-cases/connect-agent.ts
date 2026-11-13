@@ -40,7 +40,8 @@ import {
   type ConnectionClosed,
   type HandshakeFailed,
   invalidOption,
-  type LoadUnsupported
+  type LoadUnsupported,
+  type TurnActive
 } from "../errors.js";
 import { type AcpSessionHandle, answerPermission, deliverUpdate, sessionHandle } from "../services/live-session.js";
 import { SessionBindingStore, type SessionBindingStoreFailure, type SessionBindingStoreShape } from "../ports.js";
@@ -119,6 +120,7 @@ export type NewSessionError =
   | AuthRequired
   | AcpRequestFailed
   | AcpTimeout
+  | TurnActive
   | SessionBindingStoreFailure;
 
 export type LoadSessionError = NewSessionError | LoadUnsupported | BindingNotFound;
@@ -285,14 +287,31 @@ function forget(conn: ConnectionState, live: LiveSession): void {
  * The open session with this id: the one already on the connection, the one a concurrent call is loading, or one
  * loaded now. The load runs in the connection's Scope, so a caller that stops waiting does not fail the others.
  */
+/**
+ * The active turn a `"single"`-session agent would strand, when a new or loaded session starts: its adapter closes
+ * the connection's other sessions, and a turn still running there settles only on the agent's answer, which the
+ * closed session never sends. The session being opened itself is exempt.
+ */
+function activeTurnOf(conn: ConnectionState, keep: string | undefined): TurnActive | undefined {
+  if (conn.profile.sessions !== "single") {
+    return undefined;
+  }
+  for (const live of conn.sessions.values()) {
+    if (live.sessionId !== keep && live.turn !== undefined) {
+      return { _tag: "TurnActive", agent: conn.agent, sessionId: live.sessionId };
+    }
+  }
+  return undefined;
+}
+
 function openLoaded(
   conn: ConnectionState,
   defaults: ConnectAgentOptions,
   sessionId: string,
   sessionKey: string | undefined,
   options: SessionOptions & { readonly cwd: string }
-): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> {
-  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> => {
+): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported | TurnActive> {
+  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported | TurnActive> => {
     const existing = conn.sessions.get(sessionId);
     if (existing !== undefined && existing.session.toSnapshot().state !== "closed") {
       return Effect.succeed(existing);
@@ -303,6 +322,10 @@ function openLoaded(
     }
     if (conn.closed !== undefined) {
       return Effect.fail(conn.closed);
+    }
+    const active = activeTurnOf(conn, sessionId);
+    if (active !== undefined) {
+      return Effect.fail(active);
     }
     const method = conn.features.loadSession
       ? "session/load"
@@ -364,6 +387,10 @@ function newSession(
   options: NewSessionOptions
 ): Effect.Effect<AcpSessionHandle, NewSessionError> {
   return Effect.gen(function* () {
+    const active = activeTurnOf(conn, undefined);
+    if (active !== undefined) {
+      return yield* Effect.fail(active);
+    }
     const { sessionKey } = options;
     const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
     const cwd = options.cwd ?? conn.cwd;

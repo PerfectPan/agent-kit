@@ -17,6 +17,7 @@ import { connectAgent, optionOfKind, probeAgent, type PromptBlock, SessionBindin
 import {
   connectFake,
   eventTexts,
+  eventually,
   fakeProfile,
   removeWorkDirs,
   TestLive,
@@ -590,6 +591,50 @@ describe("starting and stopping the agent", () => {
       expect(Exit.isFailure(exit) && Exit.findErrorOption(exit)).toMatchObject({
         value: { _tag: "AcpTimeout", method: "session/new", timeoutMs: 1_000 }
       });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  const startTurn = (parts: Stream.Stream<TranscriptStreamPart, unknown>) =>
+    Effect.gen(function* () {
+      const collected: TranscriptStreamPart[] = [];
+      const fiber = yield* Stream.runForEach(
+        Stream.tap(parts, (part) => Effect.sync(() => collected.push(part))),
+        () => Effect.void
+      ).pipe(Effect.exit, Effect.forkChild);
+      return { parts: collected, fiber };
+    });
+
+  const said = (parts: readonly TranscriptStreamPart[], words: string) => () =>
+    parts.some((part) => part.type === "text-delta" && part.delta.includes(words));
+
+  it.effect("refuses a session of a single-session agent while a turn runs elsewhere", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({ profile: { sessions: "single" } });
+      const busy = yield* connection.newSession();
+      const turn = yield* startTurn(busy.prompt([text("hang")]));
+      yield* eventually(said(turn.parts, "working"));
+      const exit = yield* connection.newSession().pipe(Effect.exit);
+      expect(Exit.isFailure(exit) && Exit.findErrorOption(exit)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent", sessionId: busy.sessionId }
+      });
+      // Once the turn ends, a second session opens again.
+      yield* busy.cancel();
+      expect(yield* Fiber.join(turn.fiber)).toEqual(Exit.void);
+      const second = yield* connection.newSession();
+      expect(second.sessionId).not.toBe(busy.sessionId);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps allowing a second session while a turn runs when sessions are multi", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const busy = yield* connection.newSession();
+      const turn = yield* startTurn(busy.prompt([text("hang")]));
+      yield* eventually(said(turn.parts, "working"));
+      const second = yield* connection.newSession();
+      expect(second.sessionId).not.toBe(busy.sessionId);
+      yield* busy.cancel();
+      expect(yield* Fiber.join(turn.fiber)).toEqual(Exit.void);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 });

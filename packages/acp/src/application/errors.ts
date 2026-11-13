@@ -80,6 +80,17 @@ export interface BindingNotFound {
 }
 
 /**
+ * A `session/new` or `session/load` that an agent of one session per connection refuses: another session of the
+ * connection still runs a turn, and the agent's adapter closes those sessions without settling them, so the turn
+ * would never end. Cancel or close the running turn first.
+ */
+export interface TurnActive {
+  readonly _tag: "TurnActive";
+  readonly agent: CodingAgentId;
+  readonly sessionId: string;
+}
+
+/**
  * Codes of the `AgentKitError` that `connectAgent` throws, as a defect, for a caller mistake: an agent without an
  * ACP profile, or an option out of range such as a timeout that is not a positive number. What the agent does is
  * reported as a value instead.
