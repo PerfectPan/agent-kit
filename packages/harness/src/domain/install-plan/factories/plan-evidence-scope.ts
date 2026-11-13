@@ -25,19 +25,21 @@ export interface LegacyHookSource {
   readonly runAs?: Readonly<Record<string, string>>;
 }
 
-const escapePointer = (event: string): string => `/hooks/${event.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+const escapePointer = (base: string, event: string): string =>
+  `${base}/${event.replaceAll("~", "~0").replaceAll("/", "~1")}`;
 
 const parentOf = (path: string): string => path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 
 function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHookSource[] {
   const events = new Set(Object.keys(file.rename));
-  const { format } = file.source;
+  const { format, layout } = file.source;
   // The file the runner actually loads (`file.path`); the matched (or fallback) source only supplies its shape.
   const path = file.path;
-  if (file.source.layout === "grouped") {
+  const base = file.source.pointer ?? (layout === "event-map" ? "" : "/hooks");
+  if (layout === "grouped" || layout === "event-map") {
     return [
       {
-        source: { kind: "entries", path, format, pointer: "/hooks", memberIn: "hook-group" },
+        source: { kind: "entries", path, format, pointer: base, memberIn: "hook-group" },
         agent: runner,
         events,
         runner,
@@ -45,8 +47,13 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
       }
     ];
   }
+  if (layout === "event-list") {
+    // The elements carry their event in an `event` field, which the entries scan cannot address; the owner's markers
+    // judge its finds instead.
+    return [];
+  }
   return [...events].map((event) => ({
-    source: { kind: "entries" as const, path, format, pointer: escapePointer(event), memberIn: "element" },
+    source: { kind: "entries" as const, path, format, pointer: escapePointer(base, event), memberIn: "element" },
     agent: runner,
     runner,
     runAs: file.rename
