@@ -77,6 +77,9 @@ Small typo corrections, narrow documentation fixes, and repository metadata upda
 # Aggregate gate: format:check, build, lint, typecheck, test, package checks:
 pnpm run check
 
+# Pending change records (CI runs it before the aggregate gate; gh-repo-checks v1.4.0 or later):
+gh repo-checks release-plan
+
 # PR/MR title:
 gh repo-checks pr-title "docs: update project template"
 

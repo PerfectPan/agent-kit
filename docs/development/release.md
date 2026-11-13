@@ -31,11 +31,10 @@ npm validates the calling file, so the trusted publishers stay bound to `publish
    `gh repo-checks release-plan` in `version` mode and `gh repo-checks first-publish` in both modes.
 2. **version packages** opens or updates the draft version PR with `pnpm run version-packages`. The version commit
    goes through the GitHub API, so GitHub signs it.
-3. **check and pack packages** (read-only, `publish` mode) runs the repository's complete gate,
-   `pnpm run check`, which includes `scripts/check-release-plan.mjs` and its 0.x major-bump cap. It then runs the
-   one input this repository sets, `audit-command: pnpm --filter '!./apps/**' audit --prod --audit-level=high`,
-   which covers the workspace packages and leaves out the website apps, which are never published. Finally it packs
-   the unpublished versions.
+3. **check and pack packages** (read-only, `publish` mode) runs the repository's complete gate, `pnpm run check`. It
+   then runs the one input this repository sets,
+   `audit-command: pnpm --filter '!./apps/**' audit --prod --audit-level=high`, which covers the workspace packages
+   and leaves out the website apps, which are never published. Finally it packs the unpublished versions.
 4. **publish packages** is the only job with the OIDC permission. It publishes the packed tarballs through Trusted
    Publishing and creates the tags and Releases.
 
@@ -72,19 +71,20 @@ The summary becomes the changelog entry, so write it for users of the package. R
   packages. A package without a changeset of its own still gets a section for that version: `@rivus/agent-kit-collab`
   lists the `@rivus/agent-kit` release under "Updated dependencies" because it peers on it, and `@rivus/agent-kit`
   gets a section that says "No changes in this release."
-- While the packages are 0.x, a breaking change is `minor`. `major` would release 1.0.0; `check-release-plan.mjs`
-  rejects major bumps until a reviewed PR lifts the cap.
+- While the packages are 0.x, a breaking change is `minor`. `major` would release 1.0.0; `gh repo-checks release-plan`
+  in CI and in select release mode rejects it unless the PR that adds the major record also lists both packages as
+  `allow-major <name>` in `.github/repo-checks.conf`. Remove those lines after 1.0.0 is published.
 - `pnpm changeset status --verbose` prints the pending changesets and the versions they would release.
 
 ## Versioning Configuration
 
 `.changeset/config.json` sets `privatePackages: { version: false, tag: false }`, so the private packages are never
 versioned or tagged, and `changelog-github` writes PR links and author thanks into each package's `CHANGELOG.md`.
-Keep the two published packages in the same `fixed` group to preserve their shared version. A public package
-outside the group would version independently; group membership does not decide whether a package is consumed.
-`check-release-plan.mjs` uses Changesets' package-skipping rules to reject records naming private or ignored
-packages, including `none` entries, because those records are never consumed. Versioning the packages independently
-means setting `fixed: []` and documenting that choice here.
+Keep the two published packages in the same `fixed` group to preserve their shared version. A public package outside
+the group would version independently; group membership does not decide whether a package is consumed. The
+`gh repo-checks release-plan` step in CI uses Changesets' package-skipping rules to reject records naming private or
+ignored packages, including `none` entries, because those records are never consumed. Versioning the packages
+independently means setting `fixed: []` and documenting that choice here.
 
 Two packages in one group:
 
@@ -333,7 +333,8 @@ The action publishes only when no record is pending; with records pending it pre
 if an earlier version is still unpublished. Recovery therefore re-runs the run of the release commit itself whenever
 it can.
 
-- **select release mode failed**: `repo-checks release-plan` names a record that would never be consumed, and
+- **select release mode failed**: `repo-checks release-plan` names a record that would never be consumed or would
+  move a 0.x package to 1.0.0, and
   `repo-checks first-publish` names a package without a version on npm or reports a failed registry lookup; see the
   [shared runbook](https://github.com/PerfectPan/gh-repo-checks/blob/v1/docs/npm-release.md) for both. Nothing was versioned or published.
 - **Version step failed** (`changeset version`, changelog lookup): nothing changed on `main` or the release branch.
@@ -358,8 +359,7 @@ it can.
 - **Trusted Publishing rejected one package**: fix that package's trusted publisher on npmjs.com (owner,
   repository, workflow file name, environment) and re-run. One package's authorization does not cover the others.
 - **A record is never consumed**: it names a private or ignored package. Remove it or move its note to a released
-  package; `repo-checks release-plan` in select release mode and `check-release-plan.mjs` in `pnpm run check` name
-  it.
+  package; `repo-checks release-plan` in CI and in select release mode names it.
 - **Bad published contents**: npm versions are immutable. Deprecate the version and release a fix:
 
   ```bash
