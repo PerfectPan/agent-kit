@@ -306,6 +306,10 @@ function translate(
   return { events, skipped, session, agents: [{ id: DIM_ID }] };
 }
 
+function parsedSessionId(ref: SessionRef): string {
+  return ref.sessionId ?? "";
+}
+
 export const dimSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: DIM_ID,
@@ -493,7 +497,3 @@ export const dimSessionAdapter: SessionAdapter = {
 };
 
 type SummaryOutcome = { readonly summary: SessionSummaryWithPrompts } | { readonly error: SessionReadError };
-
-function parsedSessionId(ref: SessionRef): string {
-  return ref.sessionId ?? "";
-}
