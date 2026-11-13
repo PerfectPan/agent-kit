@@ -28,7 +28,7 @@ export const qoderSamples: readonly HookDialectSample[] = [
   sample("SessionStart", { source: "startup" }, { phase: "start", scope: "session" }),
   sample("SessionStart", { source: "compact" }, { phase: "activity" }),
   sample("SessionEnd", { source: "exit" }, { phase: "finish", scope: "session" }),
-  sample("UserPromptSubmit", { prompt: "list files" }, { phase: "start", scope: "turn", turnId: "list files" }),
+  sample("UserPromptSubmit", { prompt: "list files" }, { phase: "start", scope: "turn" }),
   sample("PreToolUse", tool, { phase: "activity", tool: { name: "Bash", callId: "tc_3" } }),
   sample(
     "PostToolUse",

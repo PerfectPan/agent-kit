@@ -1,12 +1,4 @@
-import {
-  QODER_COMMAND,
-  QODER_DISPLAY_NAME,
-  QODER_HOME,
-  QODER_ID,
-  QODER_OAUTH_FILE,
-  QODER_PAT_ENV,
-  QODER_SETTINGS_FILE
-} from "./facts.js";
+import { QODER_COMMAND, QODER_DISPLAY_NAME, QODER_HOME, QODER_ID, QODER_OAUTH_FILE, QODER_PAT_ENV } from "./facts.js";
 import type { ProbeRecipe } from "@rivus/agent-kit-discovery/spi";
 import { VERSION_FLAG } from "@rivus/agent-kit-discovery/spi";
 
@@ -21,10 +13,7 @@ export const qoderProbe: ProbeRecipe = {
   kind: "cli",
   commands: [QODER_COMMAND],
   appPaths: [],
-  configPaths: [
-    { agentHome: QODER_ID, path: QODER_SETTINGS_FILE },
-    { agentHome: QODER_ID, path: QODER_OAUTH_FILE }
-  ],
+  configPaths: [{ agentHome: QODER_ID, path: QODER_OAUTH_FILE }],
   mcpConfigPaths: [],
   version: { ...VERSION_FLAG },
   auth: {

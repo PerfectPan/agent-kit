@@ -28,7 +28,7 @@ Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness
 
 `/acp` has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode, Pi (`pi-acp`) and Qoder CLI (`qodercli --acp`). A profile's `warnings` name the facts a caller should know; what is not yet checked against the Agent is marked `unverified`.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 

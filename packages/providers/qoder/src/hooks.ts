@@ -29,8 +29,6 @@ export const qoderHookDialect: HookDialect = {
     sessionId: { paths: [["session_id"]] },
     cwd: { paths: [["cwd"]] },
     transcriptPath: { paths: [["transcript_path"]] },
-    // The user prompt being processed, absent until the first input; it is the turn.
-    turnId: { paths: [["prompt"]] },
     toolName: { paths: [["tool_name"]] },
     toolCallId: { paths: [["tool_use_id"]] },
     subagentId: { paths: [["agent_id"]] },
