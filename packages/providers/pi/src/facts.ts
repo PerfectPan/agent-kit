@@ -30,6 +30,9 @@ export const PI_ACP_ENV: readonly string[] = [
   "OPENROUTER_*",
   "GROQ_*",
   "MISTRAL_*",
+  "ZAI_*",
+  "CEREBRAS_*",
+  "AZURE_*",
   "GOOGLE_APPLICATION_CREDENTIALS"
 ];
 
