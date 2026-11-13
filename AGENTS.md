@@ -30,6 +30,9 @@ pnpm install
 # Aggregate gate: format:check, build, lint, typecheck, test, check:package:
 pnpm run check
 
+# Pending change records (CI runs it before the aggregate gate; gh-repo-checks v1.4.0 or later):
+gh repo-checks release-plan
+
 # Individual gates (run in every workspace package that defines them, in dependency order):
 pnpm run format        # or format:check
 pnpm run build         # internal packages have no build step; the shell's vp pack bundles them
