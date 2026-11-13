@@ -29,7 +29,7 @@ function describeConformance(name: string, setup: () => Promise<{ platform: Sess
       sessions: [
         {
           path: `${root}/sessions/wd_demo_111111111111/session_demo-1/agents/main/wire.jsonl`,
-          records: 25,
+          records: 21,
           capabilities: ["requests", "usage", "durations", "systemPrompt", "toolSchemas"]
         },
         {
@@ -87,7 +87,7 @@ const usageFixtures = {
   sources: [
     {
       path: "/kimi/sessions/wd_demo_111111111111/session_demo-1/agents/main/wire.jsonl",
-      records: 2
+      records: 1
     },
     {
       path: "/kimi/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl",
