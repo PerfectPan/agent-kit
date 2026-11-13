@@ -53,7 +53,7 @@ See the Spec.
 
 All three copy `commandHook`/`groupedHooksFile` conventions; payload fields map through the same `fields` paths as claude-code. Differences:
 
-- Kimi: `[[hooks]]` in TOML → `hookStrategies: ["shared-config"]` with **toml-entry** locators (`pointer: "/hooks"`, `memberIn: "element"`, `member: command`, content `{event, matcher?, command, timeout?}`); timeout unit seconds default 30; fail-open output (`exitCode2: "block"`, `otherExitCodes: "proceed"`-like per its fail-open contract — exact HookOutput mapping chosen at implementation against the type). Marker field `client_type`.
+- Kimi: `[[hooks]]` in TOML → `hookStrategies: ["shared-config"]` with **toml-entry** locators (`pointer: "/hooks"`, `memberIn: "element"`, `memberKeys: ["event", "command"]`, `member: elementMember([event, command])`, content `{event, matcher?, command, timeout?}`); timeout unit seconds default 30; fail-open output (`exitCode2: "block"`, `otherExitCodes: "proceed"`-like per its fail-open contract — exact HookOutput mapping chosen at implementation against the type). Marker field `client_type`.
 - Qoder: grouped hooks in `settings.json` → json-entry locators at `hooks/<Event>` with `memberIn: "hook-group"`, exactly the claude-code shared-config path; decisions allow/deny/ask/defer; extra events `PermissionDenied`, `InstructionsLoaded`, `WorktreeCreate`, `WorktreeRemove`, `CwdChanged`, `FileChanged`.
 - Dim: grouped hooks in `hooks.json` with **root-keyed** event maps → json-entry at `/<Event>` with `memberIn: "hook-group"`; trust stays with the agent's own `dim hooks` review (no kit-side review claim); restricted command-file event subset.
 

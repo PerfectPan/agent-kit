@@ -139,12 +139,14 @@ function hooksInFile(
     const pointer = source.pointer ?? (source.layout === "event-map" ? "" : "/hooks");
     const read = yield* Effect.orElseSucceed((yield* ArtifactFiles).read({ kind, path, pointer }), () => undefined);
     if (source.layout === "event-list") {
-      const list = z.array(HookListElement).safeParse(read?.content);
       const found: Omit<FoundHook, "own">[] = [];
-      if (!list.success) {
-        return found;
-      }
-      for (const { event, command, timeout } of list.data) {
+      // Parse each element on its own, like the grouped and flat paths do: one invalid entry drops itself, not the
+      // file's other hooks.
+      for (const element of Array.isArray(read?.content) ? (read?.content as unknown[]) : []) {
+        const { event, command, timeout } = HookListElement.safeParse(element).data ?? {};
+        if (event === undefined || command === undefined) {
+          continue;
+        }
         found.push({
           event,
           command,
@@ -353,7 +355,8 @@ export function doctor(options: DoctorOptions): Effect.Effect<readonly Check[], 
             hook.locator,
             hook.hook,
             (target) => exists.get(target) ?? true,
-            program
+            program,
+            hook.event
           )
         );
       }

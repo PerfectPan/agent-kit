@@ -184,7 +184,7 @@ export class ArtifactLocator {
       return "memberIn without a member";
     }
     if (locator.memberKeys !== undefined) {
-      if (locator.memberIn !== "element") {
+      if (locator.memberIn !== undefined && locator.memberIn !== "element") {
         return "memberKeys only address an element";
       }
       if (locator.memberKeys.length === 0 || locator.memberKeys.some((key) => key === "")) {
