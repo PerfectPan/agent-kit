@@ -20,6 +20,7 @@ export const unsupported: Readonly<
   "gemini-cli": {},
   opencode: {},
   pi: {},
+  dim: {},
   qoder: {
     sessions: "The session store is not captured yet.",
     usage: "The session store is not captured yet."

@@ -6,6 +6,7 @@ import { geminiCliInstallAdapter } from "@rivus/agent-kit-provider-gemini-cli/in
 import { cursorInstallAdapter } from "@rivus/agent-kit-provider-cursor/install";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
+import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
 import { zcodeInstallAdapter } from "@rivus/agent-kit-provider-zcode/install";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
@@ -20,6 +21,7 @@ export const builtinInstallAdapters: {
   readonly pi: typeof piInstallAdapter;
   readonly zcode: typeof zcodeInstallAdapter;
   readonly qoder: typeof qoderInstallAdapter;
+  readonly dim: typeof dimInstallAdapter;
 } = {
   "claude-code": claudeCodeInstallAdapter,
   codex: codexInstallAdapter,
@@ -29,7 +31,8 @@ export const builtinInstallAdapters: {
   opencode: opencodeInstallAdapter,
   pi: piInstallAdapter,
   zcode: zcodeInstallAdapter,
-  qoder: qoderInstallAdapter
+  qoder: qoderInstallAdapter,
+  dim: dimInstallAdapter
 };
 
 export const installTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"install">> =>
