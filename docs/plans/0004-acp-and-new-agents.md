@@ -68,7 +68,7 @@ All three copy `commandHook`/`groupedHooksFile` conventions; payload fields map 
 
 ### 2.5 ACP profiles for the three new agents
 
-- kimi: `command: "kimi"`, `args: ["acp"]`, env `[...BASE_ENV, "KIMI_*"]`, system prompt first-block (its `session/new` documents no `_meta` system-prompt key — re-verify against the live server and switch to `meta` only with evidence).
+- kimi: `command: "kimi"`, `args: ["acp"]`, env `[...BASE_ENV, "KIMI_*"]` (profiles are static facts, so a provider whose `api_key_env` names a variable outside `KIMI_*` is not forwarded — keys belong in `config.toml` or a `KIMI_*`-named variable; the profile warns about it), system prompt first-block (its `session/new` documents no `_meta` system-prompt key — re-verify against the live server and switch to `meta` only with evidence).
 - qoder: `command: "qodercli"`, `args: ["--acp"]`, env `[...BASE_ENV, "QODER_*", "DASHSCOPE_API_KEY"]`, first-block.
 - dim: `command: "dim"`, `args: ["acp"]`, env `[...BASE_ENV, "DIMCODE_*", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "XAI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "AIHUBMIX_API_KEY"]` (catalog `environmentVariableName`s), first-block until a `_meta` channel is proven.
 - Hook sniffing order: payloads of all three are Claude-Code-like; Kimi is distinguishable by `client_type: "kimi_code_cli"` (host marker), Dim by its `run_id`/`permission_mode` combination is NOT distinctive → give Dim a conservative `hostMarkers` (or none) and order sniffing so specific markers win; verify against the shell's `sniffSource` tests.
