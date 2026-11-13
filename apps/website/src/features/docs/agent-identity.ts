@@ -76,7 +76,7 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
   {
     id: "dim",
     name: "DimCode",
-    aliases: ["dimcode"],
+    aliases: [],
     home: {
       en: "DIMCODE_HOME (names the v2 dir), ~/.dimcode/v2",
       zh: "DIMCODE_HOME（指向 v2 目录本身），~/.dimcode/v2"

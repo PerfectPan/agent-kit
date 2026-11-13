@@ -49,7 +49,8 @@ export function dimLedgerRecord(value: unknown, row: SqliteAppendRow): UsageReco
     agent: DIM_ID,
     sessionId: row.sessionId ?? "unknown",
     granularity: "turn",
-    requestId: meta?.runId ?? row.id,
+    // One settled usage event per ledger row: the row is the identity, the run stays as the response id.
+    requestId: row.id,
     timestamp: row.created,
     usage,
     source: row.source

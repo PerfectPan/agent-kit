@@ -14,16 +14,18 @@ import {
   type SessionAdapter,
   type SessionHead,
   type SessionPlatform,
-  type SessionPromptsOptions,
   type SessionReadError,
+  type SessionRef,
   type SessionSummaryWithPrompts,
   type SkippedRecord,
   type SourcePointer,
+  addRequest,
+  emptyPrompts,
+  emptyTotals,
+  finishPass,
   type Transcript,
   type TranscriptEvent,
-  type TranscriptSession,
-  foldTranscript,
-  sessionPrompts
+  type TranscriptSession
 } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 import { lenient } from "@rivus/agent-kit-sessions/spi";
@@ -155,7 +157,14 @@ export function dimMessageOf(row: unknown, rowid: number): DimMessageValue | und
       for (const part of value) {
         const read = z.safeParse(DimPart, part).data;
         if (read !== undefined) {
-          parts.push({ type: read.type, ...(read.text !== undefined ? { text: read.text } : {}) });
+          parts.push(
+            definedFields({
+              type: read.type,
+              ...(read.text !== undefined ? { text: read.text } : {}),
+              ...(read.startTime !== undefined ? { startTime: read.startTime } : {}),
+              ...(read.endTime !== undefined ? { endTime: read.endTime } : {})
+            })
+          );
         }
       }
     }
@@ -200,7 +209,12 @@ export function dimHeadOf(path: string, row: DimSessionRowValue, sizeBytes: numb
 }
 
 function translate(
-  rows: { session: DimSessionRowValue; messages: DimMessageValue[]; ledger: DimLedgerRowValue[] },
+  rows: {
+    session: DimSessionRowValue;
+    messages: DimMessageValue[];
+    ledger: (DimLedgerRowValue & { readonly rowid: number })[];
+    messageCount: number;
+  },
   dbPath: string
 ): ParsedTranscript {
   const events: TranscriptEvent[] = [];
@@ -217,7 +231,12 @@ function translate(
 
   for (const message of rows.messages) {
     for (const [index, part] of message.parts.entries()) {
-      const partSource = source(dbPath, "messages", "parts", message.rowid, message.rowid + index);
+      // The source names the message's real database row and the part's index, and the event id carries that index,
+      // so the parts of one message never share an identity.
+      const partSource = definedFields({
+        ...source(dbPath, "messages", "parts", message.rowid, message.rowid),
+        id: `${message.rowid}:${index}`
+      });
       const startedAt = iso(part.startTime);
       const ts = startedAt > 0 ? startedAt : message.createdAt;
       if (part.type === "text" && part.text !== undefined) {
@@ -227,7 +246,7 @@ function translate(
               { ...partSource, value: message.rawParts },
               "user",
               { text: part.text, ...(message.runId !== undefined ? { runId: message.runId } : {}) },
-              { ts }
+              definedFields({ ts, id: `${message.rowid}:${index}` })
             )
           );
         } else if (message.role === "assistant") {
@@ -236,7 +255,7 @@ function translate(
               { ...partSource, value: message.rawParts },
               "assistant",
               { text: part.text, ...(message.runId !== undefined ? { runId: message.runId } : {}) },
-              { ts }
+              definedFields({ ts, id: `${message.rowid}:${index}` })
             )
           );
         } else {
@@ -249,7 +268,7 @@ function translate(
   }
   // The store records each run's usage in the append-only ledger; the transcript shows one request per row, so the
   // transcript and the usage decoder agree on the same totals.
-  for (const [index, row] of rows.ledger.entries()) {
+  for (const row of rows.ledger) {
     const usage = dimLedgerUsage(row.usage);
     let ledgerJson: unknown;
     try {
@@ -260,15 +279,18 @@ function translate(
     if (usage === undefined) {
       continue;
     }
+    // One request per settled usage event: the ledger row is its identity (a run can settle more than one), and
+    // the run stays in the payload as the response id.
     events.push(
       baseEvent(
         {
-          ...source(dbPath, "usage_ledger", "usage", index + 1, rows.messages.length + index + 1),
+          ...source(dbPath, "usage_ledger", "usage", row.rowid, rows.messageCount + row.rowid),
           value: ledgerJson
         },
         "request",
         {
           granularity: "turn",
+          requestId: row.ledgerId,
           ...(row.runId !== undefined ? { responseId: row.runId } : {}),
           ...(row.modelId !== undefined ? { model: row.modelId } : {}),
           ...(row.providerId !== undefined ? { provider: row.providerId } : {}),
@@ -282,16 +304,6 @@ function translate(
   markOrphanToolResults(events);
   assignSeq(events);
   return { events, skipped, session, agents: [{ id: DIM_ID }] };
-}
-
-/**
- * The summary of one DimCode session, folded from the loaded transcript: the store holds one conversation table,
- * so the fold is the streaming pass, and the state it keeps grows with the session's requests, never with its
- * bytes.
- */
-export function summarizeDim(transcript: Transcript, prompts?: SessionPromptsOptions): SessionSummaryWithPrompts {
-  const summary = foldTranscript(transcript);
-  return prompts === undefined ? summary : { ...summary, prompts: sessionPrompts(transcript, prompts) };
 }
 
 export const dimSessionAdapter: SessionAdapter = {
@@ -371,25 +383,28 @@ export const dimSessionAdapter: SessionAdapter = {
             )
             .all(parsedSession.sessionId);
           const messages: DimMessageValue[] = [];
-          for (const [index, row] of (messageRows as Record<string, unknown>[]).entries()) {
-            const message = dimMessageOf(row, index + 1);
+          for (const row of messageRows as Record<string, unknown>[]) {
+            const message = dimMessageOf(row, Number(row.rowid));
             if (message !== undefined) {
               messages.push(message);
             }
           }
           const ledgerRows = database
             .prepare(
-              "SELECT ledgerId, sessionId, runId, providerId, modelId, usage, cost, createdAt FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid"
+              "SELECT rowid, ledgerId, sessionId, runId, providerId, modelId, usage, cost, createdAt FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid"
             )
             .all(parsedSession.sessionId);
-          const ledger: DimLedgerRowValue[] = [];
+          const ledger: (DimLedgerRowValue & { readonly rowid: number })[] = [];
           for (const row of ledgerRows as Record<string, unknown>[]) {
             const parsed = dimLedgerRowOf(row);
             if (parsed !== undefined) {
-              ledger.push(parsed);
+              ledger.push({ ...parsed, rowid: Number(row.rowid) });
             }
           }
-          const translated = translate({ session: parsedSession, messages, ledger }, ref.path);
+          const translated = translate(
+            { session: parsedSession, messages, ledger, messageCount: messages.length },
+            ref.path
+          );
           options.signal?.throwIfAborted();
           return { transcript: createTranscript(DIM_ID, DIM_SESSION_CAPABILITIES, translated) };
         } finally {
@@ -402,11 +417,83 @@ export const dimSessionAdapter: SessionAdapter = {
     }
     return "error" in outcome.value ? err(outcome.value.error) : ok(outcome.value.transcript);
   },
-  async summarize(platform, ref, options = {}) {
-    const loaded = await this.load(platform, ref, options);
-    if (!loaded.ok) {
-      return loaded;
-    }
-    return ok(summarizeDim(loaded.value, options.prompts));
-  }
+  summarize: (platform, ref, options = {}) =>
+    catchIoFailure(platform, ref.path, options.signal, async (guarded): Promise<SummaryOutcome> => {
+      const info = await guarded.fs.stat(ref.path, { followSymlinks: true });
+      if (info?.kind !== "file") {
+        return { error: { _tag: "SessionNotFound", path: ref.path } as const };
+      }
+      const opened = openDatabase(guarded, ref.path);
+      if (!opened.ok) {
+        return { error: opened.error };
+      }
+      const database = opened.value;
+      try {
+        const sessionRow = database.prepare("SELECT rowid FROM sessions WHERE sessionId = ?").get(ref.sessionId ?? "");
+        if (sessionRow === undefined) {
+          return { error: { _tag: "SessionNotFound", path: ref.path } as const };
+        }
+        // A paged pass over the two tables, keeping only the running numbers: the state grows with the session's
+        // requests, never with its bytes. The totals match the fold of the loaded transcript — the requests come
+        // from the same ledger rows in the same order.
+        const totals = emptyTotals();
+        const prompts = emptyPrompts(options.prompts);
+        const PAGE = 500;
+        for (let offset = 0; ; offset += PAGE) {
+          options.signal?.throwIfAborted();
+          const rows = database
+            .prepare(
+              "SELECT messageId, role, parts FROM messages WHERE sessionId = ? ORDER BY orderKey LIMIT ? OFFSET ?"
+            )
+            .all(parsedSessionId(ref), PAGE, offset);
+          for (const row of rows as Record<string, unknown>[]) {
+            const message = dimMessageOf(row, 0);
+            if (message === undefined || message.role !== "user") {
+              continue;
+            }
+            const texts = message.parts
+              .filter((part) => part.type === "text" && part.text !== undefined)
+              .map((part) => part.text)
+              .join("\n\n");
+            if (texts === "") {
+              continue;
+            }
+            totals.turns += 1;
+            prompts.add(texts);
+          }
+          if (rows.length < PAGE) {
+            break;
+          }
+        }
+        for (let offset = 0; ; offset += PAGE) {
+          options.signal?.throwIfAborted();
+          const rows = database
+            .prepare("SELECT usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?")
+            .all(parsedSessionId(ref), PAGE, offset);
+          for (const row of rows as Record<string, unknown>[]) {
+            const usage = dimLedgerUsage(typeof row.usage === "string" ? row.usage : undefined);
+            if (usage !== undefined) {
+              addRequest(totals, usage);
+            }
+          }
+          if (rows.length < PAGE) {
+            break;
+          }
+        }
+        return { summary: finishPass(totals, DIM_SESSION_CAPABILITIES, 0, prompts.list) };
+      } finally {
+        database.close();
+      }
+    }).then((outcome) => {
+      if (!outcome.ok) {
+        return err(outcome.error as SessionReadError);
+      }
+      return "error" in outcome.value ? err(outcome.value.error) : ok(outcome.value.summary);
+    })
 };
+
+type SummaryOutcome = { readonly summary: SessionSummaryWithPrompts } | { readonly error: SessionReadError };
+
+function parsedSessionId(ref: SessionRef): string {
+  return ref.sessionId ?? "";
+}

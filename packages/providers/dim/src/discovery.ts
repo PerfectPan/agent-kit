@@ -1,4 +1,5 @@
 import {
+  DIM_API_KEY_ENVS,
   DIM_AUTH_FILE,
   DIM_COMMAND,
   DIM_CONFIG_FILE,
@@ -34,12 +35,7 @@ export const dimProbe: ProbeRecipe = {
       { path: { agentHome: DIM_ID, path: DIM_AUTH_FILE } },
       { path: { agentHome: DIM_ID, path: DIM_PROVIDERS_FILE } }
     ],
-    env: [
-      { name: "ANTHROPIC_API_KEY", method: "api-key" },
-      { name: "OPENAI_API_KEY", method: "api-key" },
-      { name: "DEEPSEEK_API_KEY", method: "api-key" },
-      { name: "MOONSHOT_API_KEY", method: "api-key" }
-    ]
+    env: DIM_API_KEY_ENVS.map((name) => ({ name, method: "api-key" }))
   },
   warnings: [
     "the project-level provider and hook files (<cwd>/.dimcode/providers.json, .dimcode/hooks.json) are not followed"
