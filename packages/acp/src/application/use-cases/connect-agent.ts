@@ -424,40 +424,44 @@ function newSession(
   return Effect.uninterruptibleMask((restore) =>
     Effect.gen(function* () {
       // The claim and the cleanup that ends it are registered in one uninterruptible step, like `openLoaded`'s;
-      // the request below runs interruptible.
+      // the request below runs interruptible. `Effect.onExit` sits outside `restore`, so the cleanup is armed
+      // before interruption returns — an interrupt pending at the mask's edge cannot land between the two.
       const active = claimOpen(conn, undefined);
       if (active !== undefined) {
         return yield* Effect.fail(active);
       }
-      return yield* restore(
-        Effect.gen(function* () {
-          const { sessionKey } = options;
-          const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
-          const cwd = options.cwd ?? conn.cwd;
-          const sessionId = yield* request(
-            conn,
-            "session/new",
-            conn.wire.newSession({
+      return yield* Effect.onExit(
+        restore(
+          Effect.gen(function* () {
+            const { sessionKey } = options;
+            const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
+            const cwd = options.cwd ?? conn.cwd;
+            const sessionId = yield* request(
+              conn,
+              "session/new",
+              conn.wire.newSession({
+                cwd,
+                mcpServers: sessionMcpServers(options, defaults),
+                ...metaOf(conn.profile, options)
+              })
+            );
+            const live = yield* register(
+              conn,
+              "session/new",
+              sessionId,
               cwd,
-              mcpServers: sessionMcpServers(options, defaults),
-              ...metaOf(conn.profile, options)
-            })
-          );
-          const live = yield* register(
-            conn,
-            "session/new",
-            sessionId,
-            cwd,
-            sessionKey,
-            firstPromptBlocks(conn.profile, [], options)
-          );
-          if (store !== undefined && sessionKey !== undefined) {
-            yield* store
-              .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
-              .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
-          }
-          return sessionHandle(conn, live);
-        }).pipe(Effect.onExit((exit) => Effect.sync(() => endOpen(conn, exit))))
+              sessionKey,
+              firstPromptBlocks(conn.profile, [], options)
+            );
+            if (store !== undefined && sessionKey !== undefined) {
+              yield* store
+                .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
+                .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
+            }
+            return sessionHandle(conn, live);
+          })
+        ),
+        (exit) => Effect.sync(() => endOpen(conn, exit))
       );
     })
   );
