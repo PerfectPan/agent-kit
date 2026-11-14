@@ -199,6 +199,16 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
                 anchor += 1;
               }
               placeRequest(events, anchor, event);
+              // The skip moved `from` past this step's own outputs, so `placeRequest` stamped none of them; stamp
+              // the output run the request closes, back to the previous request or the turn's start.
+              if (event.requestId !== undefined) {
+                const at = events.lastIndexOf(event);
+                for (let index = at - 1; index >= 0 && OUTPUT_KINDS.has(events[index]!.kind); index--) {
+                  if (events[index]!.requestId === undefined) {
+                    events[index]!.requestId = event.requestId;
+                  }
+                }
+              }
             }
             return { parts: [body] };
           }
