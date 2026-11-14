@@ -21,6 +21,7 @@ export const unsupported: Readonly<
   opencode: {},
   pi: {},
   dim: {},
+  kimi: {},
   qoder: {
     sessions: "The session store is not captured yet.",
     usage: "The session store is not captured yet."

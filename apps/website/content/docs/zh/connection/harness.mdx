@@ -51,6 +51,7 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Gemini CLI 写入一个扩展。
 - Grok 在 `~/.grok/hooks` 里写入一个文件。
 - Cursor 写入一个本地插件。
+- Kimi Code 写入 `~/.kimi-code/config.toml` 的 `[[hooks]]` 条目。
 - Qoder CLI 写入 `~/.qoder/settings.json` 的分组条目。
 - DimCode 写入 `~/.dimcode/v2/hooks.json` 的分组条目，该文件由 CLI 通过 `dim hooks` 审查。
 - ZCode 在 `~/.agents/agent-kit/zcode` 下写入 kit 自己的插件，并将绝对路径登记到 `~/.zcode/cli/config.json` 的 `plugins.dirs`。

@@ -47,6 +47,12 @@ import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
 import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
 import { dimUsageDecoder } from "@rivus/agent-kit-provider-dim/usage";
 import { dimSessionAdapter } from "@rivus/agent-kit-provider-dim/sessions";
+import { kimi } from "@rivus/agent-kit-provider-kimi/identity";
+import { kimiProbe } from "@rivus/agent-kit-provider-kimi/discovery";
+import { kimiHookDialect } from "@rivus/agent-kit-provider-kimi/hooks";
+import { kimiInstallAdapter } from "@rivus/agent-kit-provider-kimi/install";
+import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
+import { kimiSessionAdapter } from "@rivus/agent-kit-provider-kimi/sessions";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -56,7 +62,8 @@ export const builtinCodingAgents = {
   opencode: opencode,
   pi: pi,
   qoder,
-  dim
+  dim,
+  kimi
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
@@ -66,6 +73,7 @@ export const builtinProbeRecipes = {
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
   grok: grokProbe,
+  kimi: kimiProbe,
   qoder: qoderProbe,
   dim: dimProbe
 };
@@ -78,6 +86,7 @@ export const builtinHookDialects = {
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
+  kimi: kimiHookDialect,
   pi: piHookDialect,
   qoder: qoderHookDialect,
   dim: dimHookDialect
@@ -91,7 +100,8 @@ export const builtinInstallAdapters = {
   opencode: opencodeInstallAdapter,
   pi: piInstallAdapter,
   qoder: qoderInstallAdapter,
-  dim: dimInstallAdapter
+  dim: dimInstallAdapter,
+  kimi: kimiInstallAdapter
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
@@ -100,12 +110,14 @@ export const builtinUsageDecoders = {
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
   pi: piUsageDecoder,
-  dim: dimUsageDecoder
+  dim: dimUsageDecoder,
+  kimi: kimiUsageDecoder
 };
 
 export const builtinSessionAdapters = {
   "claude-code": claudeCodeSessionAdapter,
   codex: codexSessionAdapter,
   grok: grokSessionAdapter,
-  dim: dimSessionAdapter
+  dim: dimSessionAdapter,
+  kimi: kimiSessionAdapter
 };
