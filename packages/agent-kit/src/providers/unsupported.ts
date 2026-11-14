@@ -19,6 +19,6 @@ export const unsupported: Readonly<
   },
   "gemini-cli": {},
   opencode: {},
-  pi: { acp: "No supported ACP transport." },
+  pi: {},
   zcode: { acp: "No supported ACP transport." }
 };

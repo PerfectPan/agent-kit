@@ -23,7 +23,8 @@ export type {
   BindingNotFound,
   ConnectionClosed,
   HandshakeFailed,
-  LoadUnsupported
+  LoadUnsupported,
+  TurnActive
 } from "./application/errors.js";
 export type { AcpSessionHandle } from "./application/services/live-session.js";
 export {

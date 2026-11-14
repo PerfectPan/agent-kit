@@ -40,7 +40,8 @@ import {
   type ConnectionClosed,
   type HandshakeFailed,
   invalidOption,
-  type LoadUnsupported
+  type LoadUnsupported,
+  type TurnActive
 } from "../errors.js";
 import { type AcpSessionHandle, answerPermission, deliverUpdate, sessionHandle } from "../services/live-session.js";
 import { SessionBindingStore, type SessionBindingStoreFailure, type SessionBindingStoreShape } from "../ports.js";
@@ -119,6 +120,7 @@ export type NewSessionError =
   | AuthRequired
   | AcpRequestFailed
   | AcpTimeout
+  | TurnActive
   | SessionBindingStoreFailure;
 
 export type LoadSessionError = NewSessionError | LoadUnsupported | BindingNotFound;
@@ -285,14 +287,56 @@ function forget(conn: ConnectionState, live: LiveSession): void {
  * The open session with this id: the one already on the connection, the one a concurrent call is loading, or one
  * loaded now. The load runs in the connection's Scope, so a caller that stops waiting does not fail the others.
  */
+/**
+ * Claims the connection for opening a session, in one synchronous step against a turn start (`beginTurn`): a
+ * `"single"`-session agent closes the connection's other sessions mid-open, and a turn still running there settles
+ * only on the agent's answer, which the closed session never sends — so refuse while one runs, and count the open,
+ * so a turn that would start while it runs can refuse. The session being opened itself is exempt.
+ */
+function claimOpen(conn: ConnectionState, keep: string | undefined): TurnActive | undefined {
+  if (conn.profile.sessions !== "single") {
+    return undefined;
+  }
+  for (const live of conn.sessions.values()) {
+    if (live.sessionId !== keep && live.turn !== undefined) {
+      return { _tag: "TurnActive", agent: conn.agent, sessionId: live.sessionId };
+    }
+  }
+  conn.opens += 1;
+  return undefined;
+}
+
+/**
+ * Ends an open that `claimOpen` counted, however it ended. An open the agent answered — with a session, a refusal
+ * or an error — leaves the remote operation finished, so the claim releases. A request timeout or an interrupted
+ * caller leaves it unaccounted: pi-acp can still complete it later and close the connection's other sessions
+ * mid-turn, and ACP has no request cancellation, so the connection itself ends and every session settles instead
+ * of stranding a turn.
+ */
+function endOpen(conn: ConnectionState, exit: Exit.Exit<unknown, unknown>): void {
+  if (conn.profile.sessions !== "single") {
+    return;
+  }
+  const answered =
+    Exit.isSuccess(exit) ||
+    (() => {
+      const failure = Cause.findErrorOption(exit.cause);
+      return Option.isSome(failure) && (failure.value as { readonly _tag?: string })._tag !== "AcpTimeout";
+    })();
+  if (!answered && conn.closed === undefined) {
+    shutdown(conn, "open-unsettled");
+  }
+  conn.opens -= 1;
+}
+
 function openLoaded(
   conn: ConnectionState,
   defaults: ConnectAgentOptions,
   sessionId: string,
   sessionKey: string | undefined,
   options: SessionOptions & { readonly cwd: string }
-): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> {
-  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported> => {
+): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported | TurnActive> {
+  return Effect.suspend((): Effect.Effect<LiveSession, LoadFailure | LoadUnsupported | TurnActive> => {
     const existing = conn.sessions.get(sessionId);
     if (existing !== undefined && existing.session.toSnapshot().state !== "closed") {
       return Effect.succeed(existing);
@@ -312,48 +356,62 @@ function openLoaded(
     if (method === undefined) {
       return Effect.fail<LoadUnsupported>({ _tag: "LoadUnsupported", agent: conn.agent, sessionId });
     }
-    const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
-    conn.loading.set(sessionId, done);
-    // A detached session's unsent first-block prompt goes out with the reload's first prompt, as it would have with
-    // the original session's.
-    const detachedBlocks = conn.detachedPromptBlocks.get(sessionId);
-    const load = request(
-      conn,
-      method,
-      conn.wire.loadSession(method, sessionId, {
-        cwd: options.cwd,
-        mcpServers: sessionMcpServers(options, defaults),
-        ...metaOf(conn.profile, options)
-      })
-    ).pipe(
-      Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, detachedBlocks ?? [])),
-      // The stash is dropped only once the reload registered the session: a failed or interrupted load keeps it, so
-      // the retried load still sends the unsent first-block prompt.
-      Effect.tap(() =>
-        Effect.sync(() => {
-          if (detachedBlocks !== undefined) {
-            conn.detachedPromptBlocks.delete(sessionId);
-          }
-        })
-      )
-    );
-    // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
-    // it before it runs.
-    return load.pipe(
-      Effect.forkIn(conn.scope),
-      Effect.flatMap((fiber) =>
-        Effect.sync(() =>
-          fiber.addObserver((exit) => {
-            conn.loading.delete(sessionId);
-            const interrupted = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause);
-            Deferred.doneUnsafe(
-              done,
-              interrupted ? Effect.fail(conn.closed ?? connectionClosed(conn, "closed")) : exit
-            );
+    return Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        // The claim and the cleanup that ends it are registered in one uninterruptible step, so an interrupt
+        // cannot land between claiming an open and arming its `endOpen`; it defers to the `restore` below, where
+        // the wait runs interruptible and the observer owns the claim's end.
+        const active = claimOpen(conn, sessionId);
+        if (active !== undefined) {
+          return yield* Effect.fail(active);
+        }
+        const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
+        conn.loading.set(sessionId, done);
+        // A detached session's unsent first-block prompt goes out with the reload's first prompt, as it would have
+        // with the original session's.
+        const detachedBlocks = conn.detachedPromptBlocks.get(sessionId);
+        const load = request(
+          conn,
+          method,
+          conn.wire.loadSession(method, sessionId, {
+            cwd: options.cwd,
+            mcpServers: sessionMcpServers(options, defaults),
+            ...metaOf(conn.profile, options)
           })
-        )
-      ),
-      Effect.andThen(Deferred.await(done))
+        ).pipe(
+          Effect.andThen(register(conn, method, sessionId, options.cwd, sessionKey, detachedBlocks ?? [])),
+          // The stash is dropped only once the reload registered the session: a failed or interrupted load keeps
+          // it, so the retried load still sends the unsent first-block prompt.
+          Effect.tap(() =>
+            Effect.sync(() => {
+              if (detachedBlocks !== undefined) {
+                conn.detachedPromptBlocks.delete(sessionId);
+              }
+            })
+          )
+        );
+        // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope
+        // interrupts it before it runs. The open's claim ends with the fiber: a caller that stops waiting leaves
+        // the request running in the connection's Scope, so the claim holds until the remote operation is known
+        // to have stopped.
+        yield* load.pipe(
+          Effect.forkIn(conn.scope),
+          Effect.flatMap((fiber) =>
+            Effect.sync(() =>
+              fiber.addObserver((exit) => {
+                conn.loading.delete(sessionId);
+                const interrupted = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause);
+                Deferred.doneUnsafe(
+                  done,
+                  interrupted ? Effect.fail(conn.closed ?? connectionClosed(conn, "closed")) : exit
+                );
+                endOpen(conn, exit);
+              })
+            )
+          )
+        );
+        return yield* restore(Deferred.await(done));
+      })
     );
   });
 }
@@ -363,34 +421,50 @@ function newSession(
   defaults: ConnectAgentOptions,
   options: NewSessionOptions
 ): Effect.Effect<AcpSessionHandle, NewSessionError> {
-  return Effect.gen(function* () {
-    const { sessionKey } = options;
-    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
-    const cwd = options.cwd ?? conn.cwd;
-    const sessionId = yield* request(
-      conn,
-      "session/new",
-      conn.wire.newSession({
-        cwd,
-        mcpServers: sessionMcpServers(options, defaults),
-        ...metaOf(conn.profile, options)
-      })
-    );
-    const live = yield* register(
-      conn,
-      "session/new",
-      sessionId,
-      cwd,
-      sessionKey,
-      firstPromptBlocks(conn.profile, [], options)
-    );
-    if (store !== undefined && sessionKey !== undefined) {
-      yield* store
-        .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
-        .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
-    }
-    return sessionHandle(conn, live);
-  });
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function* () {
+      // The claim and the cleanup that ends it are registered in one uninterruptible step, like `openLoaded`'s;
+      // the request below runs interruptible. `Effect.onExit` sits outside `restore`, so the cleanup is armed
+      // before interruption returns — an interrupt pending at the mask's edge cannot land between the two.
+      const active = claimOpen(conn, undefined);
+      if (active !== undefined) {
+        return yield* Effect.fail(active);
+      }
+      return yield* Effect.onExit(
+        restore(
+          Effect.gen(function* () {
+            const { sessionKey } = options;
+            const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
+            const cwd = options.cwd ?? conn.cwd;
+            const sessionId = yield* request(
+              conn,
+              "session/new",
+              conn.wire.newSession({
+                cwd,
+                mcpServers: sessionMcpServers(options, defaults),
+                ...metaOf(conn.profile, options)
+              })
+            );
+            const live = yield* register(
+              conn,
+              "session/new",
+              sessionId,
+              cwd,
+              sessionKey,
+              firstPromptBlocks(conn.profile, [], options)
+            );
+            if (store !== undefined && sessionKey !== undefined) {
+              yield* store
+                .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
+                .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
+            }
+            return sessionHandle(conn, live);
+          })
+        ),
+        (exit) => Effect.sync(() => endOpen(conn, exit))
+      );
+    })
+  );
 }
 
 function loadSession(
@@ -620,6 +694,7 @@ function open(
       sessions: new Map(),
       loading: new Map(),
       detachedPromptBlocks: new Map(),
+      opens: 0,
       features: handshake.features,
       authMethods: handshake.authMethods,
       onPermission: options.onPermission,

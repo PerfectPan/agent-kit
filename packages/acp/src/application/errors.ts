@@ -24,13 +24,14 @@ export interface HandshakeFailed {
 }
 
 /**
- * The connection ended: the caller closed it, the agent process exited, or a cancel on one of its sessions did not
- * settle and the kit closed it. Every session on it is closed.
+ * The connection ended: the caller closed it, the agent process exited, a cancel on one of its sessions did not
+ * settle, or a session open of a one-session-per-connection agent timed out or was interrupted with the remote
+ * operation unaccounted for, and the kit closed it. Every session on it is closed.
  */
 export interface ConnectionClosed {
   readonly _tag: "ConnectionClosed";
   readonly agent: CodingAgentId;
-  readonly reason: "closed" | "exited" | "cancel-unsettled";
+  readonly reason: "closed" | "exited" | "cancel-unsettled" | "open-unsettled";
   readonly exit?: ExitStatus;
   readonly stderr?: string;
 }
@@ -77,6 +78,18 @@ export interface BindingNotFound {
   readonly _tag: "BindingNotFound";
   readonly agent: CodingAgentId;
   readonly sessionKey: string;
+}
+
+/**
+ * A `session/new`, `session/load` or turn that an agent of one session per connection refuses: another session of
+ * the connection still runs a turn, or a session open is in flight — the agent's adapter closes those sessions
+ * without settling them, so the turn would never end. Cancel or close the running turn, or retry after the open.
+ */
+export interface TurnActive {
+  readonly _tag: "TurnActive";
+  readonly agent: CodingAgentId;
+  /** The session that runs the turn, when the refusal is about it; absent when a session open is in flight. */
+  readonly sessionId?: string;
 }
 
 /**
