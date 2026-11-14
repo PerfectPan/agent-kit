@@ -24,13 +24,14 @@ export interface HandshakeFailed {
 }
 
 /**
- * The connection ended: the caller closed it, the agent process exited, or a cancel on one of its sessions did not
- * settle and the kit closed it. Every session on it is closed.
+ * The connection ended: the caller closed it, the agent process exited, a cancel on one of its sessions did not
+ * settle, or a session open of a one-session-per-connection agent timed out or was interrupted with the remote
+ * operation unaccounted for, and the kit closed it. Every session on it is closed.
  */
 export interface ConnectionClosed {
   readonly _tag: "ConnectionClosed";
   readonly agent: CodingAgentId;
-  readonly reason: "closed" | "exited" | "cancel-unsettled";
+  readonly reason: "closed" | "exited" | "cancel-unsettled" | "open-unsettled";
   readonly exit?: ExitStatus;
   readonly stderr?: string;
 }

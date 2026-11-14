@@ -306,11 +306,27 @@ function claimOpen(conn: ConnectionState, keep: string | undefined): TurnActive 
   return undefined;
 }
 
-/** Ends an open that `claimOpen` counted, however the open ended. */
-function releaseOpen(conn: ConnectionState): void {
-  if (conn.profile.sessions === "single") {
-    conn.opens -= 1;
+/**
+ * Ends an open that `claimOpen` counted, however it ended. An open the agent answered — with a session, a refusal
+ * or an error — leaves the remote operation finished, so the claim releases. A request timeout or an interrupted
+ * caller leaves it unaccounted: pi-acp can still complete it later and close the connection's other sessions
+ * mid-turn, and ACP has no request cancellation, so the connection itself ends and every session settles instead
+ * of stranding a turn.
+ */
+function endOpen(conn: ConnectionState, exit: Exit.Exit<unknown, unknown>): void {
+  if (conn.profile.sessions !== "single") {
+    return;
   }
+  const answered =
+    Exit.isSuccess(exit) ||
+    (() => {
+      const failure = Cause.findErrorOption(exit.cause);
+      return Option.isSome(failure) && (failure.value as { readonly _tag?: string })._tag !== "AcpTimeout";
+    })();
+  if (!answered && conn.closed === undefined) {
+    shutdown(conn, "open-unsettled");
+  }
+  conn.opens -= 1;
 }
 
 function openLoaded(
@@ -332,10 +348,6 @@ function openLoaded(
     if (conn.closed !== undefined) {
       return Effect.fail(conn.closed);
     }
-    const active = claimOpen(conn, sessionId);
-    if (active !== undefined) {
-      return Effect.fail(active);
-    }
     const method = conn.features.loadSession
       ? "session/load"
       : conn.features.resumeSession
@@ -343,6 +355,10 @@ function openLoaded(
         : undefined;
     if (method === undefined) {
       return Effect.fail<LoadUnsupported>({ _tag: "LoadUnsupported", agent: conn.agent, sessionId });
+    }
+    const active = claimOpen(conn, sessionId);
+    if (active !== undefined) {
+      return Effect.fail(active);
     }
     const done = Deferred.makeUnsafe<LiveSession, LoadFailure>();
     conn.loading.set(sessionId, done);
@@ -370,7 +386,8 @@ function openLoaded(
       )
     );
     // An observer of the fiber settles the shared result however the fiber ends, also when a closing Scope interrupts
-    // it before it runs.
+    // it before it runs. The open's claim ends with the fiber: a caller that stops waiting leaves the request
+    // running in the connection's Scope, so the claim holds until the remote operation is known to have stopped.
     return load.pipe(
       Effect.forkIn(conn.scope),
       Effect.flatMap((fiber) =>
@@ -382,11 +399,11 @@ function openLoaded(
               done,
               interrupted ? Effect.fail(conn.closed ?? connectionClosed(conn, "closed")) : exit
             );
+            endOpen(conn, exit);
           })
         )
       ),
-      Effect.andThen(Deferred.await(done)),
-      Effect.ensuring(Effect.sync(() => releaseOpen(conn)))
+      Effect.andThen(Deferred.await(done))
     );
   });
 }
@@ -428,7 +445,7 @@ function newSession(
           .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
       }
       return sessionHandle(conn, live);
-    }).pipe(Effect.ensuring(Effect.sync(() => releaseOpen(conn))));
+    }).pipe(Effect.onExit((exit) => Effect.sync(() => endOpen(conn, exit))));
   });
 }
 

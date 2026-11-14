@@ -655,8 +655,44 @@ describe("starting and stopping the agent", () => {
       });
       yield* TestClock.adjust(1_000);
       expect(Exit.isFailure(yield* Fiber.join(opening))).toBe(true);
-      // Once the open has failed, turns start again.
-      expect(eventTexts(yield* Stream.runCollect(first.prompt([text("next")])))).toEqual(["turn 1: next"]);
+      // A timeout leaves the remote open unaccounted — pi-acp can still complete it and close the first session —
+      // so the connection itself ends instead of risking a stranded turn.
+      expect(yield* connection.ended).toMatchObject({ agent: "fake-agent", reason: "open-unsettled" });
+      expect(Exit.isFailure(yield* first.prompt([text("next")]).pipe(Stream.runCollect, Effect.exit))).toBe(true);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("releases the open claim when the agent supports no load", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({ profile: { sessions: "single" } });
+      const session = yield* connection.newSession();
+      const refused = yield* connection.loadSession({ sessionId: "fake-session-9" }).pipe(Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "LoadUnsupported", agent: "fake-agent" }
+      });
+      // The claim never leaked: turns still start.
+      expect(eventTexts(yield* Stream.runCollect(session.prompt([text("next")])))).toEqual(["turn 1: next"]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps the open claim while an interrupted load's request still runs", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_LOAD: "hang" },
+        requestTimeoutMs: 1_000
+      });
+      const session = yield* connection.newSession();
+      const loading = yield* connection.loadSession({ sessionId: "unknown-session" }).pipe(Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      yield* Fiber.interrupt(loading);
+      // The load request still runs in the connection's scope, so a turn refuses until the open settles.
+      const refused = yield* session.prompt([text("next")]).pipe(Stream.runCollect, Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent" }
+      });
+      yield* TestClock.adjust(1_000);
+      expect(yield* connection.ended).toMatchObject({ reason: "open-unsettled" });
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 });
