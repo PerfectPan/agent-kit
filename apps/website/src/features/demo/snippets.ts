@@ -80,7 +80,8 @@ const TURN_START: Record<string, string> = {
   pi: "before_agent_start",
   cursor: "beforeSubmitPrompt",
   zcode: "UserPromptSubmit",
-  qoder: "UserPromptSubmit"
+  qoder: "UserPromptSubmit",
+  dim: "UserPromptSubmit"
 };
 
 const PROVIDER_FIELD: Record<Exclude<TaskKey, "coordinate">, string> = {

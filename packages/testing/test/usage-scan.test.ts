@@ -136,7 +136,11 @@ describe("scanUsage", () => {
       return list(dir);
     };
     const failed = await scan(denied, { since, state: first.state });
-    expect(failed.failures).toEqual(["/u/me/.codex/sessions/2026 ReadFailed"]);
+    // The memory platform has no SQLite, so the DimCode decode reports its database as unavailable every scan.
+    expect(failed.failures).toEqual([
+      "/u/me/.codex/sessions/2026 ReadFailed",
+      "/u/me/.dimcode/v2/dimcode.sqlite SqliteUnavailable"
+    ]);
     expect(Object.keys(failed.state.sources)).toEqual(Object.keys(first.state.sources));
   });
 

@@ -7,6 +7,7 @@ import { geminiCliAcpProfile } from "@rivus/agent-kit-provider-gemini-cli/acp";
 import { dshAcpProfile } from "@rivus/agent-kit-provider-dsh/acp";
 import { piAcpProfile } from "@rivus/agent-kit-provider-pi/acp";
 import { qoderAcpProfile } from "@rivus/agent-kit-provider-qoder/acp";
+import { dimAcpProfile } from "@rivus/agent-kit-provider-dim/acp";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -18,7 +19,8 @@ export const builtinAcpProfiles: AcpProfiles = {
   grok: grokAcpProfile,
   opencode: opencodeAcpProfile,
   pi: piAcpProfile,
-  qoder: qoderAcpProfile
+  qoder: qoderAcpProfile,
+  dim: dimAcpProfile
 };
 
 export const acpTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"acp">> =>
