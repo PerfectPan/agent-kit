@@ -288,11 +288,12 @@ function forget(conn: ConnectionState, live: LiveSession): void {
  * loaded now. The load runs in the connection's Scope, so a caller that stops waiting does not fail the others.
  */
 /**
- * The active turn a `"single"`-session agent would strand, when a new or loaded session starts: its adapter closes
- * the connection's other sessions, and a turn still running there settles only on the agent's answer, which the
- * closed session never sends. The session being opened itself is exempt.
+ * Claims the connection for opening a session, in one synchronous step against a turn start (`beginTurn`): a
+ * `"single"`-session agent closes the connection's other sessions mid-open, and a turn still running there settles
+ * only on the agent's answer, which the closed session never sends — so refuse while one runs, and count the open,
+ * so a turn that would start while it runs can refuse. The session being opened itself is exempt.
  */
-function activeTurnOf(conn: ConnectionState, keep: string | undefined): TurnActive | undefined {
+function claimOpen(conn: ConnectionState, keep: string | undefined): TurnActive | undefined {
   if (conn.profile.sessions !== "single") {
     return undefined;
   }
@@ -301,7 +302,15 @@ function activeTurnOf(conn: ConnectionState, keep: string | undefined): TurnActi
       return { _tag: "TurnActive", agent: conn.agent, sessionId: live.sessionId };
     }
   }
+  conn.opens += 1;
   return undefined;
+}
+
+/** Ends an open that `claimOpen` counted, however the open ended. */
+function releaseOpen(conn: ConnectionState): void {
+  if (conn.profile.sessions === "single") {
+    conn.opens -= 1;
+  }
 }
 
 function openLoaded(
@@ -323,7 +332,7 @@ function openLoaded(
     if (conn.closed !== undefined) {
       return Effect.fail(conn.closed);
     }
-    const active = activeTurnOf(conn, sessionId);
+    const active = claimOpen(conn, sessionId);
     if (active !== undefined) {
       return Effect.fail(active);
     }
@@ -376,7 +385,8 @@ function openLoaded(
           })
         )
       ),
-      Effect.andThen(Deferred.await(done))
+      Effect.andThen(Deferred.await(done)),
+      Effect.ensuring(Effect.sync(() => releaseOpen(conn)))
     );
   });
 }
@@ -387,36 +397,38 @@ function newSession(
   options: NewSessionOptions
 ): Effect.Effect<AcpSessionHandle, NewSessionError> {
   return Effect.gen(function* () {
-    const active = activeTurnOf(conn, undefined);
+    const active = claimOpen(conn, undefined);
     if (active !== undefined) {
       return yield* Effect.fail(active);
     }
-    const { sessionKey } = options;
-    const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
-    const cwd = options.cwd ?? conn.cwd;
-    const sessionId = yield* request(
-      conn,
-      "session/new",
-      conn.wire.newSession({
+    return yield* Effect.gen(function* () {
+      const { sessionKey } = options;
+      const store = sessionKey === undefined ? undefined : yield* storeFor(conn, sessionKey);
+      const cwd = options.cwd ?? conn.cwd;
+      const sessionId = yield* request(
+        conn,
+        "session/new",
+        conn.wire.newSession({
+          cwd,
+          mcpServers: sessionMcpServers(options, defaults),
+          ...metaOf(conn.profile, options)
+        })
+      );
+      const live = yield* register(
+        conn,
+        "session/new",
+        sessionId,
         cwd,
-        mcpServers: sessionMcpServers(options, defaults),
-        ...metaOf(conn.profile, options)
-      })
-    );
-    const live = yield* register(
-      conn,
-      "session/new",
-      sessionId,
-      cwd,
-      sessionKey,
-      firstPromptBlocks(conn.profile, [], options)
-    );
-    if (store !== undefined && sessionKey !== undefined) {
-      yield* store
-        .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
-        .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
-    }
-    return sessionHandle(conn, live);
+        sessionKey,
+        firstPromptBlocks(conn.profile, [], options)
+      );
+      if (store !== undefined && sessionKey !== undefined) {
+        yield* store
+          .set(SessionBinding.restore({ sessionKey, agent: conn.agent, sessionId, cwd }).toSnapshot())
+          .pipe(Effect.tapError(() => Effect.sync(() => forget(conn, live))));
+      }
+      return sessionHandle(conn, live);
+    }).pipe(Effect.ensuring(Effect.sync(() => releaseOpen(conn))));
   });
 }
 
@@ -647,6 +659,7 @@ function open(
       sessions: new Map(),
       loading: new Map(),
       detachedPromptBlocks: new Map(),
+      opens: 0,
       features: handshake.features,
       authMethods: handshake.authMethods,
       onPermission: options.onPermission,

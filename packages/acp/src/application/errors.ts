@@ -80,14 +80,15 @@ export interface BindingNotFound {
 }
 
 /**
- * A `session/new` or `session/load` that an agent of one session per connection refuses: another session of the
- * connection still runs a turn, and the agent's adapter closes those sessions without settling them, so the turn
- * would never end. Cancel or close the running turn first.
+ * A `session/new`, `session/load` or turn that an agent of one session per connection refuses: another session of
+ * the connection still runs a turn, or a session open is in flight — the agent's adapter closes those sessions
+ * without settling them, so the turn would never end. Cancel or close the running turn, or retry after the open.
  */
 export interface TurnActive {
   readonly _tag: "TurnActive";
   readonly agent: CodingAgentId;
-  readonly sessionId: string;
+  /** The session that runs the turn, when the refusal is about it; absent when a session open is in flight. */
+  readonly sessionId?: string;
 }
 
 /**

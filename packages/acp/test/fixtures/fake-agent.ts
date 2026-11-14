@@ -101,7 +101,7 @@ const app = acp
     if (env.FAKE_ACP_AUTH === "required") {
       throw acp.RequestError.authRequired();
     }
-    if (env.FAKE_ACP_NEW === "hang") {
+    if (env.FAKE_ACP_NEW === "hang" || (env.FAKE_ACP_NEW === "hang-later" && counter > 0)) {
       await new Promise(() => undefined);
     }
     counter += 1;

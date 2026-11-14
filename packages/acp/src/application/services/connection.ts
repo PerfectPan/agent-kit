@@ -26,7 +26,14 @@ import type {
 import type { PromptBlock } from "../../domain/acp-session/value-objects/prompt-block.js";
 import type { SessionClosed } from "../../domain/acp-session/errors/session-closed.js";
 import type { TurnInProgress } from "../../domain/acp-session/errors/turn-in-progress.js";
-import type { AcpRequestFailed, AcpTimeout, AuthMethodInfo, AuthRequired, ConnectionClosed } from "../errors.js";
+import type {
+  AcpRequestFailed,
+  AcpTimeout,
+  AuthMethodInfo,
+  AuthRequired,
+  ConnectionClosed,
+  TurnActive
+} from "../errors.js";
 import type { SessionBindingStoreShape } from "../ports.js";
 import { type AcpWire, type AgentFeatures, isAuthRequired, type WireFailure } from "./wire.js";
 
@@ -34,6 +41,7 @@ import { type AcpWire, type AgentFeatures, isAuthRequired, type WireFailure } fr
 export type PromptError =
   | TurnInProgress
   | SessionClosed
+  | TurnActive
   | CancelUnsettled
   | ConnectionClosed
   | AuthRequired
@@ -113,6 +121,12 @@ export interface ConnectionState {
    * system prompt here, and the reload of that session sends it again.
    */
   readonly detachedPromptBlocks: Map<string, readonly PromptBlock[]>;
+  /**
+   * Session opens in flight, counted by `claimOpen` for a `"single"`-session profile only: a turn that starts while
+   * one runs is refused, because the agent's adapter closes the connection's other sessions mid-open and would
+   * strand that turn.
+   */
+  opens: number;
   /** The connection's own Scope, a child of the caller's: closing it ends the process. */
   readonly scope: Scope.Closeable;
   readonly ended: Deferred.Deferred<ConnectionClosed>;

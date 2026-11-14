@@ -637,6 +637,28 @@ describe("starting and stopping the agent", () => {
       expect(yield* Fiber.join(turn.fiber)).toEqual(Exit.void);
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
+
+  it.effect("refuses a turn that starts while a session opens on a single-session agent", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_NEW: "hang-later" },
+        requestTimeoutMs: 1_000
+      });
+      const first = yield* connection.newSession();
+      // The second open hangs until its timeout; pi-acp would close the first session's subprocess mid-open.
+      const opening = yield* connection.newSession().pipe(Effect.exit, Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      const refused = yield* first.prompt([text("hang")]).pipe(Stream.runCollect, Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent" }
+      });
+      yield* TestClock.adjust(1_000);
+      expect(Exit.isFailure(yield* Fiber.join(opening))).toBe(true);
+      // Once the open has failed, turns start again.
+      expect(eventTexts(yield* Stream.runCollect(first.prompt([text("next")])))).toEqual(["turn 1: next"]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
 });
 
 describe("probeAgent", () => {

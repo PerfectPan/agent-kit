@@ -19,6 +19,9 @@ describe("pi launch environment", () => {
     vi.stubEnv("AWS_SECRET_ACCESS_KEY", "aws-secret");
     vi.stubEnv("AWS_SESSION_TOKEN", "aws-session");
     vi.stubEnv("AWS_REGION", "us-east-1");
+    vi.stubEnv("AWS_DEFAULT_REGION", "us-west-2");
+    vi.stubEnv("AWS_ROLE_ARN", "arn:aws:iam::123456789012:role/pi");
+    vi.stubEnv("AWS_WEB_IDENTITY_TOKEN_FILE", "/token/file");
     const env = agentEnv(profile, process.env);
     for (const [name, value] of Object.entries({
       ZAI_API_KEY: "zai",
@@ -30,7 +33,10 @@ describe("pi launch environment", () => {
       AWS_ACCESS_KEY_ID: "aws-id",
       AWS_SECRET_ACCESS_KEY: "aws-secret",
       AWS_SESSION_TOKEN: "aws-session",
-      AWS_REGION: "us-east-1"
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-west-2",
+      AWS_ROLE_ARN: "arn:aws:iam::123456789012:role/pi",
+      AWS_WEB_IDENTITY_TOKEN_FILE: "/token/file"
     })) {
       expect(env[name]).toBe(value);
     }

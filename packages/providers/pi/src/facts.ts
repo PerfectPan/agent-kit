@@ -57,7 +57,8 @@ export const PI_ACP_ENV: readonly string[] = [
   "XIAOMI_TOKEN_PLAN_AMS_API_KEY",
   "XIAOMI_TOKEN_PLAN_SGP_API_KEY",
   "COPILOT_GITHUB_TOKEN",
-  // The AWS credential chain of the Bedrock provider, with the session token and region the SDK reads beside it.
+  // The AWS credential chain of the Bedrock provider: the SDK's credential sources, the region pi reads, and the
+  // web-identity role pair.
   "AWS_PROFILE",
   "AWS_REGION",
   "AWS_ACCESS_KEY_ID",
@@ -66,7 +67,9 @@ export const PI_ACP_ENV: readonly string[] = [
   "AWS_BEARER_TOKEN_BEDROCK",
   "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
   "AWS_CONTAINER_CREDENTIALS_FULL_URI",
-  "AWS_WEB_IDENTITY_TOKEN_FILE"
+  "AWS_WEB_IDENTITY_TOKEN_FILE",
+  "AWS_ROLE_ARN",
+  "AWS_DEFAULT_REGION"
 ];
 
 export const agentMarkers: readonly string[] = [PI_ID, HOME_DIR, HOME_ENV];
