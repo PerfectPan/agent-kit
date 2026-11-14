@@ -216,18 +216,26 @@ const EXPECTED_DIFFERENCES: readonly { agent: string; fact: Fact; source: string
   { agent: "pi", fact: "configPaths", source: DISCOVERY_EVIDENCE },
   { agent: "pi", fact: "warnings", source: PI_CONFIG },
   { agent: "gemini-cli", fact: "configPaths", source: DISCOVERY_EVIDENCE },
-  { agent: "gemini-cli", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE }
+  { agent: "gemini-cli", fact: "mcpConfigPaths", source: DISCOVERY_EVIDENCE },
+  // agent-finder's Qoder facts predate the CLI: the command, the user settings path, the display name and the
+  // account-only warning come from the installed 1.1.88 binary and the agent SDK.
+  { agent: "qoder", fact: "commands", source: "packages/providers/qoder/src/facts.ts" },
+  { agent: "qoder", fact: "configPaths", source: "packages/providers/qoder/src/facts.ts" },
+  { agent: "qoder", fact: "name", source: "packages/providers/qoder/src/facts.ts" },
+  { agent: "qoder", fact: "warnings", source: "packages/providers/qoder/src/facts.ts" }
 ];
 
 describe("parity with agent-finder", () => {
-  it("has agent-finder's 26 agents in its order, and the seven built-in agents in report order", () => {
+  it("has agent-finder's 26 agents in its order, and the eight built-in agents in report order", () => {
     const finderOrder = cases[0]?.report.agents.map((agent) => agent.id) ?? [];
     expect(Object.keys(finderRecipes)).toEqual(finderOrder);
     // detectAgents reports in table order, so the builtin table keeps finder's relative order, with Grok at the end.
+    // Qoder moves behind it: agent-finder tracks the IDE, the kit probes the CLI.
     const builtin: Readonly<Record<string, ProbeRecipe>> = builtinProbeRecipes;
     expect(Object.keys(builtinProbeRecipes)).toEqual([
-      ...finderOrder.filter((id) => builtin[id] !== undefined),
-      "grok"
+      ...finderOrder.filter((id) => builtin[id] !== undefined && id !== "qoder"),
+      "grok",
+      "qoder"
     ]);
     expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
       "doctor-config-only",

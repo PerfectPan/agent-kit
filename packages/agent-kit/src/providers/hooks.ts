@@ -5,6 +5,7 @@ import { opencodeHookDialect } from "@rivus/agent-kit-provider-opencode/hooks";
 import { geminiCliHookDialect } from "@rivus/agent-kit-provider-gemini-cli/hooks";
 import { cursorHookDialect } from "@rivus/agent-kit-provider-cursor/hooks";
 import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
+import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
 import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
@@ -18,6 +19,7 @@ export const builtinHookDialects: {
   readonly cursor: typeof cursorHookDialect;
   readonly pi: typeof piHookDialect;
   readonly zcode: typeof zcodeHookDialect;
+  readonly qoder: typeof qoderHookDialect;
 } = {
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
@@ -26,7 +28,8 @@ export const builtinHookDialects: {
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
   pi: piHookDialect,
-  zcode: zcodeHookDialect
+  zcode: zcodeHookDialect,
+  qoder: qoderHookDialect
 };
 
 // sniffSource returns the first dialect, in this order, whose payload marker a payload carries. ZCode's payloads also

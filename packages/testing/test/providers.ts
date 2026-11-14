@@ -37,6 +37,10 @@ import { piHookDialect } from "@rivus/agent-kit-provider-pi/hooks";
 import { piInstallAdapter } from "@rivus/agent-kit-provider-pi/install";
 import { piUsageDecoder } from "@rivus/agent-kit-provider-pi/usage";
 import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
+import { qoder } from "@rivus/agent-kit-provider-qoder/identity";
+import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
+import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
+import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -44,7 +48,8 @@ export const builtinCodingAgents = {
   "gemini-cli": geminiCli,
   grok: grok,
   opencode: opencode,
-  pi: pi
+  pi: pi,
+  qoder
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
@@ -53,7 +58,8 @@ export const builtinProbeRecipes = {
   cursor: cursorProbe,
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
-  grok: grokProbe
+  grok: grokProbe,
+  qoder: qoderProbe
 };
 // ZCode first, as in the shell: its payloads also carry Grok's payload marker.
 export const builtinHookDialects = {
@@ -64,7 +70,8 @@ export const builtinHookDialects = {
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
-  pi: piHookDialect
+  pi: piHookDialect,
+  qoder: qoderHookDialect
 };
 export const builtinInstallAdapters = {
   "claude-code": claudeCodeInstallAdapter,
@@ -73,7 +80,8 @@ export const builtinInstallAdapters = {
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,
   opencode: opencodeInstallAdapter,
-  pi: piInstallAdapter
+  pi: piInstallAdapter,
+  qoder: qoderInstallAdapter
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
