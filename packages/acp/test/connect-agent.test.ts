@@ -695,6 +695,20 @@ describe("starting and stopping the agent", () => {
       expect(yield* connection.ended).toMatchObject({ reason: "open-unsettled" });
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
+
+  it.effect("ends the connection when an interrupted session open leaves the remote unaccounted", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_NEW: "hang" },
+        requestTimeoutMs: 1_000
+      });
+      const opening = yield* connection.newSession().pipe(Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      yield* Fiber.interrupt(opening);
+      expect(yield* connection.ended).toMatchObject({ reason: "open-unsettled" });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
 });
 
 describe("probeAgent", () => {
