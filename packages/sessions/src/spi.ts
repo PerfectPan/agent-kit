@@ -1,6 +1,7 @@
 /** Interfaces and shared helpers for provider implementations. */
 export { discoverSessions } from "./application/services/discover-sessions.js";
-export { EDGE_BYTES, readEdges } from "./application/services/files/edges.js";
+export { EDGE_BYTES, edgeRecords, readEdges } from "./application/services/files/edges.js";
+export { sessionHead } from "./domain/session/factories/session-head.js";
 export { catchIoFailure, guardIo } from "./application/services/files/io-failure.js";
 export { type JsonlRecords, readJsonlRecords, readJsonlStream } from "./application/services/files/jsonl.js";
 export {
@@ -27,6 +28,10 @@ export {
 export {
   type SqliteMessageDecode,
   type SqliteMessageRow,
+  type SqliteAppendColumns,
+  type SqliteAppendDecode,
+  type SqliteAppendLogRequest,
+  type SqliteAppendRow,
   type SqliteMessagesRequest,
   type SqliteSettlement,
   type SqliteSettlementState,
@@ -34,6 +39,7 @@ export {
   SQLITE_LONGEST_MESSAGE_MS,
   SQLITE_RUNNING_IDS,
   createSqliteSettlement,
+  decodeSqliteAppendLog,
   decodeSqliteMessages,
   sqliteMessageSource,
   sqliteQueryFloor
@@ -117,13 +123,14 @@ export {
 } from "./domain/transcript/services/prompt-snapshot.js";
 export { OUTPUT_KINDS, placeRequest } from "./domain/transcript/services/request-placement.js";
 export { markOrphanToolResults } from "./domain/transcript/services/tool-result-pairing.js";
-export { MAIN_LANE_ID, isPrompt, requestUsage } from "./domain/transcript/services/turns.js";
+export { MAIN_LANE_ID, isPrompt, requestUsage, sessionPrompts } from "./domain/transcript/services/turns.js";
 export {
   addRequest,
   addTurnDuration,
   emptyPrompts,
   emptyTotals,
-  finishPass
+  finishPass,
+  foldTranscript
 } from "./domain/transcript/services/fold-transcript.js";
 export {
   type SkippedRecord,
