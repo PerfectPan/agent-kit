@@ -143,7 +143,12 @@ function inlinedDependencies(): string[] {
     if (!/\.(?:d\.ts|js)$/.test(file)) {
       continue;
     }
-    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
+    // Bundlers mark each inlined module with a comment naming its source: esbuild writes `//#region <source>`,
+    // rolldown writes `// <source>`. Both name the path relative to the package, so require that shape to keep
+    // ordinary comments out.
+    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(
+      /^\/\/(?:#region | )((?:\.\.?\/|node_modules\/).+)$/gm
+    )) {
       regions += 1;
       if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(source)) {
         problems.push(`dist/${file} inlines test source ${source}`);
