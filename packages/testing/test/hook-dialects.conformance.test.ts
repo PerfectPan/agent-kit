@@ -12,6 +12,7 @@ import { piSamples } from "../../providers/pi/test/fixtures/hooks.js";
 import { codexSamples } from "../../providers/codex/test/fixtures/hooks.js";
 import { zcodeSamples } from "../../providers/zcode/test/fixtures/hooks.js";
 import { qoderSamples } from "../../providers/qoder/test/fixtures/hooks.js";
+import { dimSamples } from "../../providers/dim/test/fixtures/hooks.js";
 import { cursorHostSamples } from "./fixtures/hooks/cursor-host.js";
 import { grokHostSamples } from "./fixtures/hooks/grok-host.js";
 import { zcodeHostSamples } from "./fixtures/hooks/zcode-host.js";
@@ -25,7 +26,8 @@ const samples: Record<keyof typeof testHooks, readonly HookDialectSample[]> = {
   opencode: opencodeSamples,
   pi: piSamples,
   zcode: zcodeSamples,
-  qoder: qoderSamples
+  qoder: qoderSamples,
+  dim: dimSamples
 };
 
 for (const [agent, dialect] of Object.entries(testHooks)) {

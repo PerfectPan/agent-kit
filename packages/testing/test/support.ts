@@ -27,7 +27,8 @@ const USAGE_FIXTURES = {
   "gemini-cli": { home: ".gemini/tmp", source: "../../providers/gemini-cli/test/fixtures/usage" },
   grok: { home: ".grok", source: "../../providers/grok/test/fixtures/usage" },
   opencode: { home: ".local/share/opencode", source: "../../providers/opencode/test/fixtures/usage" },
-  pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" }
+  pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" },
+  dim: { home: ".dimcode/v2", source: "../../providers/dim/test/fixtures/usage" }
 } as const;
 
 /** The usage fixtures at their paths in the agent homes under `home`, for `createMemoryPlatform({ files })`. */

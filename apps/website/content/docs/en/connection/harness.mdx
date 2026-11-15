@@ -52,6 +52,7 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Grok gets a file in `~/.grok/hooks`.
 - Cursor gets a local plugin.
 - Qoder CLI gets grouped entries of `~/.qoder/settings.json`.
+- DimCode gets grouped entries of `~/.dimcode/v2/hooks.json`, which the CLI reviews through `dim hooks`.
 - ZCode gets a kit-owned plugin under `~/.agents/agent-kit/zcode`, registered by absolute path in `~/.zcode/cli/config.json` `plugins.dirs`.
 - opencode and Pi get a bridge that forwards their events to the command.
 

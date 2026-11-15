@@ -75,6 +75,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     target: ".zcode/cli/db/db.sqlite"
   },
   {
+    agent: "dim",
+    fixture: "packages/providers/dim/test/fixtures/usage",
+    target: ".dimcode/v2"
+  },
+  {
     agent: "gemini-cli",
     fixture: "packages/providers/gemini-cli/test/fixtures/sessions/conformance/plain",
     target: ".gemini/tmp/smokeproject/chats"
@@ -306,7 +311,10 @@ const pricing = createPricing({
   "claude-test": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75, cacheWrite1h: 6 },
   "gpt-test": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
   "test-model": { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1 },
-  "gemini-test": { input: 2, output: 8, cacheRead: 0.2, cacheWrite: 2, cacheWrite1h: 4 }
+  "gemini-test": { input: 2, output: 8, cacheRead: 0.2, cacheWrite: 2, cacheWrite1h: 4 },
+  // The DimCode fixture's ledger names the models its runs used.
+  "glm-4.6": { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1 },
+  "deepseek-chat": { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1 }
 });
 for (const agent of seeded) {
   const heads: SessionHead[] = [];

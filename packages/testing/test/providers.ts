@@ -41,6 +41,12 @@ import { qoder } from "@rivus/agent-kit-provider-qoder/identity";
 import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
 import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
 import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
+import { dim } from "@rivus/agent-kit-provider-dim/identity";
+import { dimProbe } from "@rivus/agent-kit-provider-dim/discovery";
+import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
+import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
+import { dimUsageDecoder } from "@rivus/agent-kit-provider-dim/usage";
+import { dimSessionAdapter } from "@rivus/agent-kit-provider-dim/sessions";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -49,7 +55,8 @@ export const builtinCodingAgents = {
   grok: grok,
   opencode: opencode,
   pi: pi,
-  qoder
+  qoder,
+  dim
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
@@ -59,7 +66,8 @@ export const builtinProbeRecipes = {
   pi: piProbe,
   "gemini-cli": geminiCliProbe,
   grok: grokProbe,
-  qoder: qoderProbe
+  qoder: qoderProbe,
+  dim: dimProbe
 };
 // ZCode first, as in the shell: its payloads also carry Grok's payload marker.
 export const builtinHookDialects = {
@@ -71,7 +79,8 @@ export const builtinHookDialects = {
   grok: grokHookDialect,
   opencode: opencodeHookDialect,
   pi: piHookDialect,
-  qoder: qoderHookDialect
+  qoder: qoderHookDialect,
+  dim: dimHookDialect
 };
 export const builtinInstallAdapters = {
   "claude-code": claudeCodeInstallAdapter,
@@ -81,7 +90,8 @@ export const builtinInstallAdapters = {
   grok: grokInstallAdapter,
   opencode: opencodeInstallAdapter,
   pi: piInstallAdapter,
-  qoder: qoderInstallAdapter
+  qoder: qoderInstallAdapter,
+  dim: dimInstallAdapter
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
@@ -89,11 +99,13 @@ export const builtinUsageDecoders = {
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
-  pi: piUsageDecoder
+  pi: piUsageDecoder,
+  dim: dimUsageDecoder
 };
 
 export const builtinSessionAdapters = {
   "claude-code": claudeCodeSessionAdapter,
   codex: codexSessionAdapter,
-  grok: grokSessionAdapter
+  grok: grokSessionAdapter,
+  dim: dimSessionAdapter
 };

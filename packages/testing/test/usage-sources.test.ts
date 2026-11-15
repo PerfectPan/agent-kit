@@ -47,6 +47,7 @@ const ALL = [
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-00-00-cx-totals.jsonl",
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-10-00-cx-fork.jsonl",
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-20-00-cx-edge.jsonl",
+  "dim /u/me/.dimcode/v2/dimcode.sqlite",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/gm-1/sub-1.jsonl",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/session-2026-01-01T00-00-gm1.jsonl",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/session-legacy.json",
@@ -70,7 +71,8 @@ describe("listUsageSources", () => {
       [".gemini", "/alt/gemini-home/.gemini"],
       [".grok", "/alt/grok"],
       [".local/share/opencode", "/alt/data/opencode"],
-      [".pi/agent", "/alt/pi"]
+      [".pi/agent", "/alt/pi"],
+      [".dimcode", "/alt/dim"]
     );
     const { sources, failures } = await list(
       files,
@@ -81,7 +83,8 @@ describe("listUsageSources", () => {
         GEMINI_CLI_HOME: "/alt/gemini-home",
         GROK_HOME: "/alt/grok",
         XDG_DATA_HOME: "/alt/data",
-        PI_CODING_AGENT_DIR: "/alt/pi"
+        PI_CODING_AGENT_DIR: "/alt/pi",
+        DIMCODE_HOME: "/alt/dim"
       }
     );
     expect(failures).toEqual([]);
