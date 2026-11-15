@@ -113,11 +113,11 @@ function reachableDistFiles(entryFile: string): Set<string> {
 }
 
 /**
- * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a `//#region <source>`
- * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders. The
- * zero-dependency entries and the Node platform chunk bundle `zod/mini` instead of importing it. No other dist file
- * may inline a dependency, so the other built entries keep importing `zod/mini` and the optional `effect` peer stays
- * external.
+ * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a source comment
+ * (`//#region <source>` before rolldown, `// <source>` since), in code and declarations alike; internal packages are
+ * workspace links resolved to their own folders. The zero-dependency entries and the Node platform chunk bundle
+ * `zod/mini` instead of importing it. No other dist file may inline a dependency, so the other built entries keep
+ * importing `zod/mini` and the optional `effect` peer stays external.
  */
 function inlinedDependencies(): string[] {
   const problems: string[] = [];
