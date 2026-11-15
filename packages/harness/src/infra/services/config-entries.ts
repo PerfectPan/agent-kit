@@ -3,6 +3,7 @@ import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 import type { UnexpectedShape } from "../../application/ports.js";
 import {
   type ArtifactLocatorSnapshot,
+  elementMember,
   locatorPointer
 } from "../../domain/install-plan/value-objects/artifact-locator.js";
 import type { JsonValue } from "../../lib/json.js";
@@ -46,8 +47,19 @@ function at(data: Document | undefined, path: EntryPath): Document | undefined {
   return path.reduce<Document | undefined>((value, key) => child(value, key), data);
 }
 
-/** An element's identity: a string element is its own identity, an object one its `command`, else its `name`. */
-function identity(element: Document): string | undefined {
+/**
+ * An element's identity: a string element is its own identity, an object one its `command`, else its `name` — unless
+ * the locator names the object keys whose string values, joined with a unit separator, make up the identity, such as
+ * Kimi's `[[hooks]]` entries, which repeat one command across events.
+ */
+function identity(element: Document, memberKeys?: readonly string[]): string | undefined {
+  if (memberKeys !== undefined) {
+    if (!isDocumentRecord(element)) {
+      return undefined;
+    }
+    const values = memberKeys.map((key) => element[key]);
+    return values.every((value) => typeof value === "string") ? elementMember(values) : undefined;
+  }
   if (typeof element === "string") {
     return element;
   }
@@ -80,7 +92,7 @@ function find(
     return err({ _tag: "UnexpectedShape", detail: `${locator.pointer} is not a list` });
   }
   if (locator.memberIn !== "hook-group") {
-    const index = list.findIndex((element) => identity(element) === locator.member);
+    const index = list.findIndex((element) => identity(element, locator.memberKeys) === locator.member);
     return ok(index < 0 ? undefined : { path: [...base, index], value: list[index] });
   }
   for (const [group, entry] of list.entries()) {

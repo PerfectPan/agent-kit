@@ -62,9 +62,16 @@ export interface HookSource {
   readonly format: "json" | "toml";
   /**
    * `grouped`: `{ "hooks": { "<Event>": [{ "hooks": [{ "command" … }] }] } }`, as Claude Code writes them. `flat`:
-   * `{ "hooks": { "<event>": [{ "command" … }] } }`, as Cursor does.
+   * `{ "hooks": { "<event>": [{ "command" … }] } }`, as Cursor does. `event-list`: the array at `pointer` holds one
+   * element per hook, each carrying its event in an `event` field, as Kimi's `[[hooks]]` does. `event-map`: the
+   * object at `pointer` maps each event to its groups, without a wrapping key.
    */
-  readonly layout: "grouped" | "flat";
+  readonly layout: "grouped" | "flat" | "event-list" | "event-map";
+  /**
+   * Where the file holds the hooks, as a JSON pointer over the document. `grouped`, `flat` and `event-list` default
+   * to `/hooks`; `event-map` defaults to the whole document.
+   */
+  readonly pointer?: string;
 }
 
 /**

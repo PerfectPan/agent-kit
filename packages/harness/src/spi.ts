@@ -57,7 +57,12 @@ export {
   checkLedgerVersion
 } from "./domain/ledger/aggregates/ledger.js";
 export { type LedgerEntrySnapshot as LedgerEntry } from "./domain/ledger/entities/ledger-entry.js";
-export { locatorKey, isWithin, locatorsOverlap } from "./domain/install-plan/value-objects/artifact-locator.js";
+export {
+  elementMember,
+  locatorKey,
+  isWithin,
+  locatorsOverlap
+} from "./domain/install-plan/value-objects/artifact-locator.js";
 export {
   type PendingOperationSnapshot as PendingOperation,
   type StepOutcome

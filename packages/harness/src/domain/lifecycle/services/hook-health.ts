@@ -61,10 +61,12 @@ export function hookHealth(
   locator: ArtifactLocatorSnapshot,
   hook: { readonly timeout?: number },
   exists: (path: string) => boolean,
-  program?: string
+  program?: string,
+  /** The hook's own event, for sources whose pointer names a shared list rather than the event. */
+  namedEvent?: string
 ): readonly HookFinding[] {
   const findings: HookFinding[] = [];
-  const event = eventOf(locator);
+  const event = namedEvent ?? eventOf(locator);
   const known =
     dialect === undefined ||
     Object.hasOwn(dialect.events, event) ||
