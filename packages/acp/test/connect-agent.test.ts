@@ -17,6 +17,7 @@ import { connectAgent, optionOfKind, probeAgent, type PromptBlock, SessionBindin
 import {
   connectFake,
   eventTexts,
+  eventually,
   fakeProfile,
   removeWorkDirs,
   TestLive,
@@ -590,6 +591,122 @@ describe("starting and stopping the agent", () => {
       expect(Exit.isFailure(exit) && Exit.findErrorOption(exit)).toMatchObject({
         value: { _tag: "AcpTimeout", method: "session/new", timeoutMs: 1_000 }
       });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  const startTurn = (parts: Stream.Stream<TranscriptStreamPart, unknown>) =>
+    Effect.gen(function* () {
+      const collected: TranscriptStreamPart[] = [];
+      const fiber = yield* Stream.runForEach(
+        Stream.tap(parts, (part) => Effect.sync(() => collected.push(part))),
+        () => Effect.void
+      ).pipe(Effect.exit, Effect.forkChild);
+      return { parts: collected, fiber };
+    });
+
+  const said = (parts: readonly TranscriptStreamPart[], words: string) => () =>
+    parts.some((part) => part.type === "text-delta" && part.delta.includes(words));
+
+  it.effect("refuses a session of a single-session agent while a turn runs elsewhere", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({ profile: { sessions: "single" } });
+      const busy = yield* connection.newSession();
+      const turn = yield* startTurn(busy.prompt([text("hang")]));
+      yield* eventually(said(turn.parts, "working"));
+      const exit = yield* connection.newSession().pipe(Effect.exit);
+      expect(Exit.isFailure(exit) && Exit.findErrorOption(exit)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent", sessionId: busy.sessionId }
+      });
+      // Once the turn ends, a second session opens again.
+      yield* busy.cancel();
+      expect(yield* Fiber.join(turn.fiber)).toEqual(Exit.void);
+      const second = yield* connection.newSession();
+      expect(second.sessionId).not.toBe(busy.sessionId);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps allowing a second session while a turn runs when sessions are multi", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake();
+      const busy = yield* connection.newSession();
+      const turn = yield* startTurn(busy.prompt([text("hang")]));
+      yield* eventually(said(turn.parts, "working"));
+      const second = yield* connection.newSession();
+      expect(second.sessionId).not.toBe(busy.sessionId);
+      yield* busy.cancel();
+      expect(yield* Fiber.join(turn.fiber)).toEqual(Exit.void);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("refuses a turn that starts while a session opens on a single-session agent", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_NEW: "hang-later" },
+        requestTimeoutMs: 1_000
+      });
+      const first = yield* connection.newSession();
+      // The second open hangs until its timeout; pi-acp would close the first session's subprocess mid-open.
+      const opening = yield* connection.newSession().pipe(Effect.exit, Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      const refused = yield* first.prompt([text("hang")]).pipe(Stream.runCollect, Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent" }
+      });
+      yield* TestClock.adjust(1_000);
+      expect(Exit.isFailure(yield* Fiber.join(opening))).toBe(true);
+      // A timeout leaves the remote open unaccounted — pi-acp can still complete it and close the first session —
+      // so the connection itself ends instead of risking a stranded turn.
+      expect(yield* connection.ended).toMatchObject({ agent: "fake-agent", reason: "open-unsettled" });
+      expect(Exit.isFailure(yield* first.prompt([text("next")]).pipe(Stream.runCollect, Effect.exit))).toBe(true);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("releases the open claim when the agent supports no load", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({ profile: { sessions: "single" } });
+      const session = yield* connection.newSession();
+      const refused = yield* connection.loadSession({ sessionId: "fake-session-9" }).pipe(Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "LoadUnsupported", agent: "fake-agent" }
+      });
+      // The claim never leaked: turns still start.
+      expect(eventTexts(yield* Stream.runCollect(session.prompt([text("next")])))).toEqual(["turn 1: next"]);
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("keeps the open claim while an interrupted load's request still runs", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_LOAD: "hang" },
+        requestTimeoutMs: 1_000
+      });
+      const session = yield* connection.newSession();
+      const loading = yield* connection.loadSession({ sessionId: "unknown-session" }).pipe(Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      yield* Fiber.interrupt(loading);
+      // The load request still runs in the connection's scope, so a turn refuses until the open settles.
+      const refused = yield* session.prompt([text("next")]).pipe(Stream.runCollect, Effect.exit);
+      expect(Exit.isFailure(refused) && Exit.findErrorOption(refused)).toMatchObject({
+        value: { _tag: "TurnActive", agent: "fake-agent" }
+      });
+      yield* TestClock.adjust(1_000);
+      expect(yield* connection.ended).toMatchObject({ reason: "open-unsettled" });
+    }).pipe(Effect.scoped, Effect.provide(TestLive))
+  );
+
+  it.effect("ends the connection when an interrupted session open leaves the remote unaccounted", () =>
+    Effect.gen(function* () {
+      const connection = yield* connectFake({
+        profile: { sessions: "single" },
+        fake: { FAKE_ACP_NEW: "hang" },
+        requestTimeoutMs: 1_000
+      });
+      const opening = yield* connection.newSession().pipe(Effect.forkChild);
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      yield* Fiber.interrupt(opening);
+      expect(yield* connection.ended).toMatchObject({ reason: "open-unsettled" });
     }).pipe(Effect.scoped, Effect.provide(TestLive))
   );
 });

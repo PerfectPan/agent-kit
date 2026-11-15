@@ -9,8 +9,11 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
+import { type TurnActive } from "../errors.js";
 import { type AcpSessionSnapshot } from "../../domain/acp-session/value-objects/acp-session-snapshot.js";
 import { type CancelUnsettled } from "../../domain/acp-session/errors/cancel-unsettled.js";
+import { type IllegalTransition } from "../../domain/acp-session/errors/illegal-transition.js";
+import { type TurnInProgress } from "../../domain/acp-session/errors/turn-in-progress.js";
 import {
   type PermissionOutcome,
   type PermissionRequest
@@ -30,7 +33,6 @@ import {
   step,
   type Turn
 } from "./connection.js";
-import { fromResult } from "./from-result.js";
 
 /** A live session on a connection. Every operation is refused once the session is closed. */
 export interface AcpSessionHandle {
@@ -177,6 +179,37 @@ function cancelTurn(
   });
 }
 
+/**
+ * Registers a turn or refuses, in one synchronous step, atomically against an open's claim (`claimOpen`): on a
+ * `"single"`-session agent a turn that starts while a session opens would be stranded when the adapter closes the
+ * other sessions, so it refuses with `TurnActive`. An `IllegalTransition` refusal dies, like it did before the
+ * claim; the other refusals fail the turn's stream.
+ */
+function beginTurn(
+  conn: ConnectionState,
+  live: LiveSession,
+  sink: Queue.Queue<TranscriptStreamPart, PromptError | Cause.Done>
+):
+  | { readonly ok: true; readonly value: { readonly turn: Turn; readonly idle: Record<string, unknown>[] } }
+  | { readonly ok: false; readonly error: TurnActive | TurnInProgress | SessionClosed | IllegalTransition } {
+  if (conn.profile.sessions === "single" && conn.opens > 0) {
+    return { ok: false, error: { _tag: "TurnActive", agent: conn.agent } };
+  }
+  const started = step(live, live.session.startTurn());
+  if (!started.ok) {
+    return { ok: false, error: started.error };
+  }
+  const number = live.session.toSnapshot().turns;
+  const turn: Turn = {
+    sink,
+    translator: createAcpPartTranslator(`${number}.`, live.toolState),
+    ended: Deferred.makeUnsafe(),
+    cancelRequested: Deferred.makeUnsafe()
+  };
+  live.turn = turn;
+  return { ok: true, value: { turn, idle: live.idleUpdates.splice(0) } };
+}
+
 function prompt(
   conn: ConnectionState,
   live: LiveSession,
@@ -186,26 +219,22 @@ function prompt(
   // It cannot be interrupted between starting the turn and registering the finalizer that cancels it.
   return Stream.callback<TranscriptStreamPart, PromptError>((sink) =>
     Effect.gen(function* () {
-      yield* fromResult(step(live, live.session.startTurn())).pipe(
-        Effect.catchTag("IllegalTransition", (illegal) => Effect.die(illegal))
-      );
-      const number = live.session.toSnapshot().turns;
-      const turn: Turn = {
-        sink,
-        translator: createAcpPartTranslator(`${number}.`, live.toolState),
-        ended: Deferred.makeUnsafe(),
-        cancelRequested: Deferred.makeUnsafe()
-      };
-      live.turn = turn;
+      const started = yield* Effect.sync(() => beginTurn(conn, live, sink));
+      if (!started.ok) {
+        if (started.error._tag === "IllegalTransition") {
+          return yield* Effect.die(started.error);
+        }
+        return yield* Effect.fail(started.error);
+      }
+      const turn = started.value.turn;
       // The updates that landed while no turn ran open this one through its own translator, so a background call's
       // result reaches the session's parts and the turn's deltas stay self-contained.
-      const idle = live.idleUpdates.splice(0);
-      if (idle.length > 0) {
+      if (started.value.idle.length > 0) {
         emit(
           conn,
           live,
           turn,
-          idle.flatMap((update) => turn.translator.update(update))
+          started.value.idle.flatMap((update) => turn.translator.update(update))
         );
       }
       // Runs when the stream ends for any reason; only a turn that is still running needs the cancel.

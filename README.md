@@ -97,7 +97,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | gemini-cli  | yes      | yes       | yes   | yes     | yes | yes                                     | yes                         |
 | grok        | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
-| pi          | yes      | yes       | yes   | yes     | yes                                      | yes                                     | No supported ACP transport. |
+| pi          | yes      | yes       | yes   | yes     | yes                                      | yes                                     | yes                         |
 | zcode       | yes      | yes       | yes   | yes     | yes                                     | yes                                     | No supported ACP transport. |
 
 These are today's built-in providers. Any other Agent plugs in as a provider descriptor

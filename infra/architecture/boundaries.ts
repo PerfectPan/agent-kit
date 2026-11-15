@@ -177,9 +177,9 @@ export const boundaries: BoundaryRules = {
     [PI]: {
       siblingEntries: [],
       providerFacts: "packages/providers/pi/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },

@@ -72,7 +72,7 @@ const update = (client: acp.AgentContext, sessionId: string, value: Record<strin
   client.notify(acp.methods.client.session.update, { sessionId, update: value as acp.SessionUpdate });
 
 const capabilities: acp.AgentCapabilities = {
-  loadSession: env.FAKE_ACP_LOAD === "load",
+  loadSession: env.FAKE_ACP_LOAD === "load" || env.FAKE_ACP_LOAD === "hang",
   promptCapabilities: { image: true, embeddedContext: true },
   mcpCapabilities: { http: true, sse: false },
   sessionCapabilities: {
@@ -101,7 +101,7 @@ const app = acp
     if (env.FAKE_ACP_AUTH === "required") {
       throw acp.RequestError.authRequired();
     }
-    if (env.FAKE_ACP_NEW === "hang") {
+    if (env.FAKE_ACP_NEW === "hang" || (env.FAKE_ACP_NEW === "hang-later" && counter > 0)) {
       await new Promise(() => undefined);
     }
     counter += 1;
@@ -110,6 +110,9 @@ const app = acp
     return { sessionId };
   })
   .onRequest(acp.methods.agent.session.load, async ({ client, params }) => {
+    if (env.FAKE_ACP_LOAD === "hang") {
+      await new Promise(() => undefined);
+    }
     if (!known.has(params.sessionId)) {
       throw acp.RequestError.resourceNotFound(params.sessionId);
     }

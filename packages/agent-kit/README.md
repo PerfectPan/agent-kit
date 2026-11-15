@@ -60,7 +60,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
-| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
+| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
 
 ## Usage

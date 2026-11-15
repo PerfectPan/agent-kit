@@ -19,6 +19,13 @@ export interface AcpProfile {
    */
   readonly env: readonly string[];
   readonly systemPrompt: SystemPromptPlacement;
+  /**
+   * Whether the agent keeps every session of one connection running while a new one starts: `"multi"` (the default)
+   * keeps them, `"single"` marks agents whose adapter closes the others — for those, `newSession` and `loadSession`
+   * refuse with `TurnActive` while another session of the connection runs a turn, because the closed session could
+   * never settle it.
+   */
+  readonly sessions?: "multi" | "single";
   /** Facts about this agent that are not verified against its source or documentation. */
   readonly warnings: readonly string[];
 }
