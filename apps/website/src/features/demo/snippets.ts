@@ -79,7 +79,8 @@ const TURN_START: Record<string, string> = {
   opencode: "session.status",
   pi: "before_agent_start",
   cursor: "beforeSubmitPrompt",
-  zcode: "UserPromptSubmit"
+  zcode: "UserPromptSubmit",
+  qoder: "UserPromptSubmit"
 };
 
 const PROVIDER_FIELD: Record<Exclude<TaskKey, "coordinate">, string> = {

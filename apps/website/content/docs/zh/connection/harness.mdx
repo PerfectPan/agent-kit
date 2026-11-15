@@ -51,6 +51,7 @@ await Effect.runPromiseExit(program.pipe(Effect.provide(HarnessLive.pipe(Layer.p
 - Gemini CLI 写入一个扩展。
 - Grok 在 `~/.grok/hooks` 里写入一个文件。
 - Cursor 写入一个本地插件。
+- Qoder CLI 写入 `~/.qoder/settings.json` 的分组条目。
 - ZCode 在 `~/.agents/agent-kit/zcode` 下写入 kit 自己的插件，并将绝对路径登记到 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
 - opencode 和 Pi 写入一座桥，把它们的事件转发给命令。
 

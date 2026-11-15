@@ -74,6 +74,12 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     }
   },
   {
+    id: "qoder",
+    name: "Qoder CLI",
+    aliases: [],
+    home: { en: "QODER_CONFIG_DIR, ~/.qoder", zh: "QODER_CONFIG_DIR，~/.qoder" }
+  },
+  {
     id: "zcode",
     name: "ZCode",
     aliases: [],
