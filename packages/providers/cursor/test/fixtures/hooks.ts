@@ -19,7 +19,6 @@ const identity = {
   transcriptPath: common.transcript_path
 } as const;
 
-
 const shell = { command: "npm test", cwd: "/u/me/work/app", sandbox: false };
 const tool = { tool_name: "Shell", tool_input: { command: "npm test" }, tool_use_id: "tool-1" };
 
