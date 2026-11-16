@@ -1,4 +1,4 @@
-import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
+import { hookSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Cursor hook payloads (https://cursor.com/docs/hooks), one or more per event.
 
@@ -19,21 +19,14 @@ const identity = {
   transcriptPath: common.transcript_path
 } as const;
 
-function sample(
-  name: string,
-  event: string,
-  extra: Record<string, unknown>,
-  expected: Omit<HookDialectSample["expected"], "agent" | "nativeEvent">
-): HookDialectSample {
-  return {
-    name,
-    payload: { ...common, hook_event_name: event, ...extra },
-    expected: { ...identity, nativeEvent: event, ...expected }
-  };
-}
 
 const shell = { command: "npm test", cwd: "/u/me/work/app", sandbox: false };
 const tool = { tool_name: "Shell", tool_input: { command: "npm test" }, tool_use_id: "tool-1" };
+
+const sample = hookSampleFactory({
+  payload: common,
+  expected: identity
+});
 
 export const cursorSamples: readonly HookDialectSample[] = [
   sample(

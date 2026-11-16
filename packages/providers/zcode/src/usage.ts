@@ -20,6 +20,7 @@ import {
   type UsageRecord,
   type UsageSource,
   type UsageSourceFailure,
+  usageWindowKey,
   type UsageStream
 } from "@rivus/agent-kit-sessions/spi";
 import { ZCODE_ID as AGENT, ZCODE_WAL_SUFFIX } from "./facts.js";
@@ -120,11 +121,6 @@ export function zcodeMessageUsage(value: unknown, row: SqliteMessageRow): UsageR
   return record;
 }
 
-/** The key under which a scan counts a record once in its window: the session and the message id. */
-function zcodeUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
-}
-
 /** A message runs far shorter than this, so a row created this long before `since` holds no record to keep. */
 export const LONGEST_MESSAGE_MS: number = SQLITE_LONGEST_MESSAGE_MS;
 
@@ -185,7 +181,7 @@ function decodeDatabase(platform: UsagePlatform, path: string, options: DecodeUs
 export const zcodeUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: AGENT,
-  usageKey: zcodeUsageKey,
+  usageKey: usageWindowKey,
   async *sources(platform, home, options = {}) {
     const { since, signal } = options;
     signal?.throwIfAborted();

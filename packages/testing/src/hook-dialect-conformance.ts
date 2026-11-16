@@ -27,6 +27,52 @@ export interface HookDialectFixtures {
   readonly samples: readonly HookDialectSample[];
 }
 
+/**
+ * The scrubbed base fields and identity every sample of one agent shares. The base's `expected` carries the
+ * identity fields; per-event fields (the phase onward) come from each sample.
+ */
+export interface HookSampleBase {
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
+}
+
+/**
+ * The sample builder every agent's hook fixtures share: the agent's base payload and identity are
+ * captured once, and each sample names its event and the per-event fields.
+ */
+export function hookSampleFactory(base: {
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
+}): (
+  name: string,
+  event: string,
+  fields: Readonly<Record<string, unknown>>,
+  expected: Omit<HookDialectSample["expected"], "agent" | "nativeEvent">
+) => HookDialectSample {
+  return (name, event, fields, expected) =>
+    ({
+      name,
+      payload: { ...base.payload, hook_event_name: event, ...fields },
+      expected: { ...base.expected, nativeEvent: event, ...expected }
+    }) as HookDialectSample;
+}
+
+/**
+ * The sample builder for agents whose samples are named by their event: the
+ * name is the wire event, so each call is `(event, fields, expected)`.
+ */
+export function hookEventSampleFactory(base: {
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
+}): (
+  event: string,
+  fields?: Readonly<Record<string, unknown>>,
+  expected?: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>
+) => HookDialectSample {
+  const byName = hookSampleFactory(base);
+  return (event, fields = {}, expected = {}) => byName(event, event, fields, expected as never);
+}
+
 const PHASES = new Set(["start", "activity", "blocked", "finish", "unknown"]);
 const SCOPES = new Set(["session", "turn"]);
 const OUTCOMES = new Set(["completed", "failed", "cancelled"]);

@@ -1,6 +1,5 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
 
-import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
+import { hookEventSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Synthetic Qoder CLI hook payloads, per the agent SDK's protocol hook types: the Claude-Code-shaped snake_case base
 // fields, plus the per-event fields the SDK types name.
@@ -10,19 +9,13 @@ const cwd = "/u/me/work";
 const transcriptPath = `${cwd}/.qoder/t.jsonl`;
 const identity = { agent: "qoder", sessionId, cwd, transcriptPath } as const;
 
-function sample(
-  event: string,
-  fields: Record<string, unknown>,
-  expected: Omit<LifecycleEvent, "agent" | "nativeEvent">
-): HookDialectSample {
-  return {
-    name: event,
-    payload: { hook_event_name: event, session_id: sessionId, cwd, transcript_path: transcriptPath, ...fields },
-    expected: { ...identity, nativeEvent: event, ...expected }
-  };
-}
 
 const tool = { tool_name: "Bash", tool_use_id: "tc_3", tool_input: { command: "ls" } };
+
+const sample = hookEventSampleFactory({
+  payload: { hook_event_name: "", session_id: sessionId, cwd, transcript_path: transcriptPath },
+  expected: identity
+});
 
 export const qoderSamples: readonly HookDialectSample[] = [
   sample("SessionStart", { source: "startup" }, { phase: "start", scope: "session" }),

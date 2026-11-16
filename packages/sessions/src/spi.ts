@@ -164,4 +164,13 @@ export { decodeIsFinal } from "./domain/usage/services/quiet.js";
 export { shortHash } from "./lib/short-hash.js";
 export { type UsageCursor } from "./domain/usage/value-objects/usage-cursor.js";
 export { type ModelUsage, type UsageRecord } from "./domain/usage/value-objects/usage-record.js";
+import type { UsageRecord } from "./domain/usage/value-objects/usage-record.js";
+
+/**
+ * The key under which a usage scan counts a record once in its window: the
+ * session and the request id, when the record carries one.
+ */
+export function usageWindowKey(record: UsageRecord): string | undefined {
+  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
+}
 export { type Usage, compactUsage } from "./domain/usage/value-objects/usage.js";
