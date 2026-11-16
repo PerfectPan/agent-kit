@@ -16,7 +16,7 @@ import {
   type PromptBlock
 } from "../src/public.js";
 
-export const FAKE_AGENT: string = fileURLToPath(new URL("fixtures/fake-agent.ts", import.meta.url));
+const FAKE_AGENT: string = fileURLToPath(new URL("fixtures/fake-agent.ts", import.meta.url));
 
 /** The fake agent as a profile: Node runs the fixture, and the system prompt goes to `_meta.systemPrompt`. */
 export function fakeProfile(overrides: Partial<AcpProfile> = {}): AcpProfile {

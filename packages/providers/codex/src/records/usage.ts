@@ -65,10 +65,7 @@ const CodexUsagePayloadSchema = z.looseObject({
   thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
 });
 
-const _codexUsagePayloadKeys: true = true satisfies KeysExact<typeof CodexUsagePayloadSchema.shape, CodexUsagePayload>;
-
-/** Compiled: the decoder's payload schema names exactly the keys of its interface. */
-export type CodexUsageKeysExact = [typeof _codexUsagePayloadKeys];
+void (true satisfies KeysExact<typeof CodexUsagePayloadSchema.shape, CodexUsagePayload>);
 
 /**
  * One rollout record for the usage rule: the envelope every codex reader parses, and the payload fields above. One
@@ -108,7 +105,7 @@ const COUNT_KEYS = [
  * The Usage of the model call between two cumulative `total_token_usage` objects, for a `token_count` that has no
  * `last_token_usage`: each count's increase, never below 0. A count that `total` does not report stays absent.
  */
-export function codexUsageDelta(total: unknown, previous: unknown): Usage | undefined {
+function codexUsageDelta(total: unknown, previous: unknown): Usage | undefined {
   const current = codexTokenCounts(total);
   if (!current) {
     return undefined;
@@ -195,7 +192,7 @@ export function codexRecordUsage(
  * The price factor of a Codex service tier, as presence and ccusage bill it: priority processing (`priority`, which
  * the CLI's configuration also calls `fast`) costs twice the standard rate. Any other tier is standard.
  */
-export function codexPricingMultiplier(serviceTier: string | undefined): number | undefined {
+function codexPricingMultiplier(serviceTier: string | undefined): number | undefined {
   return serviceTier === "priority" || serviceTier === "fast" ? 2 : undefined;
 }
 

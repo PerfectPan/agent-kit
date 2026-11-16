@@ -12,13 +12,13 @@ export interface DshFrame {
   end: number;
 }
 
-export interface DshText {
+interface DshText {
   text: string;
   codec?: "zstd";
 }
 
 /** Why a compressed source cannot be read: the host has no decompressor, or the bytes do not decode. */
-export type DshUndecodable = "no-decompressor" | "decode-failed";
+type DshUndecodable = "no-decompressor" | "decode-failed";
 
 /** A whole-file read: the decoded text, or why a compressed file cannot be read. */
 export type DshTextRead = DshText | { readonly undecodable: DshUndecodable } | undefined;

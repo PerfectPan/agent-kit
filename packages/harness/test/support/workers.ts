@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const hook = fileURLToPath(new URL("resolve-ts.ts", import.meta.url));
 
 /** One JSON line a worker printed. */
-export interface WorkerLine {
+interface WorkerLine {
   readonly event: string;
   readonly at: number;
   readonly [field: string]: unknown;

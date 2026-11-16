@@ -30,7 +30,7 @@ import type {
   UsageStream
 } from "../spi.js";
 
-export type { UsageScanMark, UsageScanSource, UsageScanState };
+export type {  UsageScanSource, UsageScanState };
 
 interface ScanUsageCommon {
   readonly providers: UsageProviders;

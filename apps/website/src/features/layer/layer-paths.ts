@@ -59,7 +59,7 @@ function isLayerFn(name: string): name is LayerFn {
   return (CONNECTION_FNS as readonly string[]).includes(name) || (COORDINATION_FNS as readonly string[]).includes(name);
 }
 
-export function isCoordinationFn(name: LayerFn): boolean {
+function isCoordinationFn(name: LayerFn): boolean {
   return (COORDINATION_FNS as readonly string[]).includes(name);
 }
 

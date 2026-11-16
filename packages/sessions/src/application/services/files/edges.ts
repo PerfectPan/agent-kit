@@ -58,7 +58,7 @@ export async function readEdges(
  * Complete lines from both ends. The head keeps lines up to its last newline. When the ranges overlap, the tail
  * starts right after that newline, so no line is lost; otherwise the tail drops its first, partial line.
  */
-export function edgeLines(edges: FileEdges): string[] {
+function edgeLines(edges: FileEdges): string[] {
   if (edges.whole) {
     return textLines(edges.headBytes);
   }

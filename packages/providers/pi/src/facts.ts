@@ -1,22 +1,37 @@
 import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
+/** @public */
 export const PI_ID = "pi";
+/** @public */
 export const PI_DISPLAY_NAME = "Pi";
+/** @public */
 export const HOME_DIR = ".pi";
+/** @public */
 export const HOME_ENV = "PI_CODING_AGENT_DIR";
 // The override names the agent directory itself, rather than its parent.
+/** @public */
 export const PI_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [HOME_DIR, "agent"] };
+/** @public */
 export const PI_SESSIONS_DIR = "sessions";
+/** @public */
 export const PI_EXTENSIONS_DIR = "extensions";
+/** @public */
 export const PI_SETTINGS_FILE = "settings.json";
+/** @public */
 export const PI_EXTENSIONS_POINTER = "/extensions";
+/** @public */
 export const PI_EXTENSION_SUFFIX = ".ts";
+/** @public */
 export const PI_EXTENSION_SUFFIXES: readonly string[] = [".js", PI_EXTENSION_SUFFIX];
+/** @public */
 export const PI_SESSION_SUFFIX = ".jsonl";
+/** @public */
 export const PI_SESSION_SUFFIX_PATTERN: RegExp = /\.jsonl$/;
 
 // Pi ships no ACP server; the community adapter (npm `pi-acp`, svkozak/pi-acp) drives `pi --mode rpc`.
+/** @public */
 export const PI_ACP_COMMAND = "pi-acp";
+/** @public */
 export const PI_ACP_ENV: readonly string[] = [
   "PI_*",
   // Pi reads provider keys from the environment (or `~/.pi/agent/auth.json` and `models.json`); these globs cover
@@ -72,4 +87,5 @@ export const PI_ACP_ENV: readonly string[] = [
   "AWS_DEFAULT_REGION"
 ];
 
+/** @public */
 export const agentMarkers: readonly string[] = [PI_ID, HOME_DIR, HOME_ENV];

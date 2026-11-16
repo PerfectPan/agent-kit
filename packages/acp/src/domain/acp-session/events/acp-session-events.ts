@@ -1,21 +1,21 @@
-export interface SessionOpened {
+interface SessionOpened {
   readonly _tag: "SessionOpened";
   readonly sessionId: string;
 }
 
-export interface TurnStarted {
+interface TurnStarted {
   readonly _tag: "TurnStarted";
   readonly sessionId: string;
   readonly turn: number;
 }
 
-export interface CancelRequested {
+interface CancelRequested {
   readonly _tag: "CancelRequested";
   readonly sessionId: string;
   readonly turn: number;
 }
 
-export interface TurnFinished {
+interface TurnFinished {
   readonly _tag: "TurnFinished";
   readonly sessionId: string;
   readonly turn: number;

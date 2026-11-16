@@ -1,5 +1,5 @@
 /** Frontmatter descriptions render as plain text, so a code mark would show as a character. */
-export function plainDescription(description: string): string {
+function plainDescription(description: string): string {
   return description.replaceAll("`", "");
 }
 
@@ -27,7 +27,7 @@ export function rewriteApiLinks(markdown: string): string {
   });
 }
 
-export interface IndexEntry {
+interface IndexEntry {
   readonly specifier: string;
   readonly slug: string;
   readonly blurb: string;

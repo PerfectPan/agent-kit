@@ -226,6 +226,3 @@ export interface UsageDecoder {
    */
   usageKey(record: UsageRecord): string | undefined;
 }
-
-/** Usage decoders by agent id. */
-export type UsageDecoders = ServiceTable<UsageDecoder>;

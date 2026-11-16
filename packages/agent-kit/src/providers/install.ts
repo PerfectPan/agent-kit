@@ -12,7 +12,7 @@ import { zcodeInstallAdapter } from "@rivus/agent-kit-provider-zcode/install";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinInstallAdapters: {
+const builtinInstallAdapters: {
   readonly codex: typeof codexInstallAdapter;
   readonly "claude-code": typeof claudeCodeInstallAdapter;
   readonly grok: typeof grokInstallAdapter;

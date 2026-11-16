@@ -22,7 +22,7 @@ export function dshIsCompressed(path: string): boolean {
 }
 
 /** The generation the file name names: `session.vN.…` is N, the unsuffixed `session.jsonl` was v0. */
-export function dshVersionOf(path: string): number | undefined {
+function dshVersionOf(path: string): number | undefined {
   const match = /^session(?:\.v(\d+))?\.jsonl(?:\.zstd)?$/.exec(basenamePath(path));
   if (match === null) {
     return undefined;

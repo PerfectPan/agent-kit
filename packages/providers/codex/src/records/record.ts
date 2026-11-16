@@ -216,20 +216,11 @@ export type CodexPayloadValue = CodexPayload & Record<string, unknown>;
 type CodexTokenCountsValue = CodexTokenCounts & Record<string, unknown>;
 export type CodexHistoryItemValue = CodexHistoryItem & Record<string, unknown>;
 
-const _codexRecordKeys: true = true satisfies KeysExact<typeof CodexRecordSchema.shape, CodexRecord>;
-const _codexPayloadKeys: true = true satisfies KeysExact<typeof CodexPayloadSchema.shape, CodexPayload>;
-const _codexHistoryItemKeys: true = true satisfies KeysExact<typeof CodexHistoryItemSchema.shape, CodexHistoryItem>;
-const _codexTokenCountsKeys: true = true satisfies KeysExact<typeof CodexTokenCountsSchema.shape, CodexTokenCounts>;
-
-// Compiled: every schema names exactly the keys of its interface, in both directions. The checks stay exported so
-// they are never unused, and typeof a `true satisfies` check is just `true`, which drags no schema type into the
-// declaration file.
-export type CodexKeysExact = [
-  typeof _codexRecordKeys,
-  typeof _codexPayloadKeys,
-  typeof _codexHistoryItemKeys,
-  typeof _codexTokenCountsKeys
-];
+// Compile-time key checks: the schemas' keys must match the domain types exactly.
+void (true satisfies KeysExact<typeof CodexRecordSchema.shape, CodexRecord>);
+void (true satisfies KeysExact<typeof CodexPayloadSchema.shape, CodexPayload>);
+void (true satisfies KeysExact<typeof CodexHistoryItemSchema.shape, CodexHistoryItem>);
+void (true satisfies KeysExact<typeof CodexTokenCountsSchema.shape, CodexTokenCounts>);
 
 /** The rollout record `value`, or `undefined` when it is not a record. */
 export function codexRecord(value: unknown): CodexRecordValue | undefined {

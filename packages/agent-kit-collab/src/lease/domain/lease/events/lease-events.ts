@@ -1,4 +1,4 @@
-export interface LeaseAcquired {
+interface LeaseAcquired {
   readonly _tag: "LeaseAcquired";
   readonly key: string;
   readonly generation: number;
@@ -7,14 +7,14 @@ export interface LeaseAcquired {
   readonly previousHolderId: string | null;
 }
 
-export interface LeaseRenewed {
+interface LeaseRenewed {
   readonly _tag: "LeaseRenewed";
   readonly key: string;
   readonly generation: number;
   readonly revision: number;
 }
 
-export interface LeaseReleased {
+interface LeaseReleased {
   readonly _tag: "LeaseReleased";
   readonly key: string;
   readonly generation: number;

@@ -15,7 +15,7 @@ export const WORKER_TEST_TIMEOUT_MS = 30_000;
 const workerLine = z.looseObject({ event: z.string() });
 
 /** One JSON line a worker printed. */
-export type WorkerLine = Readonly<z.infer<typeof workerLine>>;
+type WorkerLine = Readonly<z.infer<typeof workerLine>>;
 
 export interface Worker {
   readonly pid: number;

@@ -9,6 +9,3 @@ import { DIM_DATABASE } from "./facts.js";
 export function dimDatabasePath(home: AgentHome): string {
   return joinPath(home.path, DIM_DATABASE);
 }
-
-/** The database below the home, as a probe path names it. */
-export const dimDatabaseBelowHome: string = DIM_DATABASE;

@@ -11,7 +11,7 @@ import { geminiCliSessionAdapter } from "@rivus/agent-kit-provider-gemini-cli/se
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinSessionAdapters: {
+const builtinSessionAdapters: {
   readonly codex: typeof codexSessionAdapter;
   readonly dsh: typeof dshSessionAdapter;
   readonly opencode: typeof opencodeSessionAdapter;

@@ -15,7 +15,7 @@ export const ENTRY_GUIDE_SLUG = {
   "/lanes": "coordination/lanes"
 } as const;
 
-export type GuideEntry = keyof typeof ENTRY_GUIDE_SLUG;
+type GuideEntry = keyof typeof ENTRY_GUIDE_SLUG;
 
 export function docsIndex(): "/docs" {
   return "/docs";

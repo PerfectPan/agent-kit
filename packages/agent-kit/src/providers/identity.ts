@@ -14,7 +14,7 @@ import { dim } from "@rivus/agent-kit-provider-dim/identity";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinCodingAgents: {
+const builtinCodingAgents: {
   readonly codex: typeof codex;
   readonly dsh: typeof dsh;
   readonly "claude-code": typeof claudeCode;

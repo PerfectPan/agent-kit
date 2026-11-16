@@ -132,7 +132,7 @@ export function grokUsageByModel(
  * defines the unit as 10^10 ticks per USD: `total_cost_usd_ticks` 126890500 is `total_cost_usd` 0.01268905. The count
  * arrives parsed, so the price is one division.
  */
-export function grokCostUsd(ticks: number | undefined): number | undefined {
+function grokCostUsd(ticks: number | undefined): number | undefined {
   return ticks === undefined ? undefined : ticks / 1e10;
 }
 
@@ -167,7 +167,7 @@ const GrokHookRun = z.looseObject({
  * The fields Grok adds to a recorded `session/update`, as this module's readers read them. `usage` stays on the
  * record, for `grokTurnUsage` to parse where a turn completes.
  */
-export interface GrokFieldsValue {
+interface GrokFieldsValue {
   _meta?: GrokMetaValue;
   formatVersion?: unknown;
   schema_version?: number;

@@ -56,7 +56,7 @@ const Current = z.object({ version: z.string() });
  * priority, ultrafast and decisions variants of a price, and the tiers of another cache lifetime (`_above_12hr_…`),
  * are not kept.
  */
-export interface SnapshotLongContext {
+interface SnapshotLongContext {
   /** The threshold, from the `<N>k` of the field names: 272000 for `_above_272k_tokens`. */
   above_tokens: number;
   input_cost_per_token?: number;

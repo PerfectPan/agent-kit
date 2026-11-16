@@ -1,6 +1,5 @@
 import {
   CODEX_ID,
-  CODEX_COMMAND,
   CODEX_HOME,
   CODEX_PLUGINS_DIR,
   CODEX_PLUGINS_POINTER,
@@ -100,8 +99,8 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
   if (marketplace !== undefined) {
     const dir = `${codexHome(context)}/${CODEX_PLUGINS_DIR}/${marketplace}`;
     return {
-      register: { command: CODEX_COMMAND, args: ["plugin", "marketplace", "add", dir] },
-      unregister: { command: CODEX_COMMAND, args: ["plugin", "marketplace", "remove", marketplace] },
+      register: { command: CODEX_ID, args: ["plugin", "marketplace", "add", dir] },
+      unregister: { command: CODEX_ID, args: ["plugin", "marketplace", "remove", marketplace] },
       recorded: { entries: [record(`/marketplaces/${marketplace}`)], copies: [] }
     };
   }
@@ -114,8 +113,8 @@ function cliRegistration(locator: ArtifactLocator, context: InstallContext): Cli
   const [plugin = "", market = ""] = id.slice(1);
   const cache = codexPluginCache(context, plugin, market);
   return {
-    register: { command: CODEX_COMMAND, args: ["plugin", "add", `${plugin}@${market}`] },
-    unregister: { command: CODEX_COMMAND, args: ["plugin", "remove", `${plugin}@${market}`] },
+    register: { command: CODEX_ID, args: ["plugin", "add", `${plugin}@${market}`] },
+    unregister: { command: CODEX_ID, args: ["plugin", "remove", `${plugin}@${market}`] },
     installedCopy: `${cache}/local/${CODEX_PLUGIN_HOOKS}`,
     recorded: { entries: [record(`${CODEX_PLUGINS_POINTER}/${plugin}@${market}`)], copies: [cache] }
   };
@@ -135,7 +134,7 @@ export const codexInstallAdapter: InstallAdapter = {
   agent: CODEX_ID,
   hookStrategies: ["native-plugin", "shared-config"],
   skillStrategies: ["scan-directory"],
-  requires: { "native-plugin": CODEX_COMMAND },
+  requires: { "native-plugin": CODEX_ID },
   roots: (context) => [codexHome(context), sharedAgentsDir(context)],
   hookFile: (strategy, bundle) =>
     strategy === "native-plugin"

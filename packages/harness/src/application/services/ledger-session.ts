@@ -91,7 +91,7 @@ export function saveLedger(
  * Resolves the operations an interrupted modification left pending from probes of their targets, never by
  * replaying them, and saves the result. Must run under the LedgerLock.
  */
-export function recoverPending(
+function recoverPending(
   scope: LedgerScope,
   loaded: LoadedLedger,
   registrations?: RegistrationLookup

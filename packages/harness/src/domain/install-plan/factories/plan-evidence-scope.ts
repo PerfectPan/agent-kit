@@ -65,7 +65,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
  * files the selected runners execute (see `foreignHookFiles`). A grouped file is one source under `/hooks`; a flat
  * file is one source per runner event, its pointer naming the JSON-escaped event.
  */
-export function legacyHookSources(
+function legacyHookSources(
   owner: OwnerSnapshot,
   agents: readonly CodingAgentId[],
   adapters: InstallAdapters,

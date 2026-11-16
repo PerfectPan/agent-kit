@@ -1,22 +1,37 @@
 import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
+/** @public */
 export const ZCODE_ID = "zcode";
+/** @public */
 export const ZCODE_DISPLAY_NAME = "ZCode";
+/** @public */
 export const HOME_DIR = ".zcode";
+/** @public */
 export const HOME_ENV = "ZCODE_STORAGE_DIR";
+/** @public */
 export const ZCODE_HOME: HomeRule = { envVar: HOME_ENV, defaultPath: [HOME_DIR] };
+/** @public */
 export const ZCODE_DB_DIR = "cli/db";
+/** @public */
 export const ZCODE_DATABASE = "db.sqlite";
+/** @public */
 export const ZCODE_WAL_SUFFIX = "-wal";
+/** @public */
 export const ZCODE_CONFIG_FILE = "cli/config.json";
+/** @public */
 export const ZCODE_KIT_PLUGINS = "agent-kit/zcode";
+/** @public */
 export const ZCODE_PLUGIN_MANIFEST = ".zcode-plugin/plugin.json";
+/** @public */
 export const ZCODE_PLUGIN_HOOKS = "hooks/hooks.json";
+/** @public */
 export const ZCODE_PLUGIN_DIRS_POINTER = "/plugins/dirs";
 // The login the CLI shares with the app sits under ZCODE_DATA_BASE_DIR (default the home directory), not under
 // ZCODE_STORAGE_DIR; the variable-named base is what a probe path cannot express.
+/** @public */
 export const ZCODE_CREDENTIAL_FILE = "~/.zcode/v2/credentials.json";
 /** Keys whose non-empty string value means a login is stored; checked by name only, never read out. */
+/** @public */
 export const ZCODE_CREDENTIAL_KEYS: readonly string[] = [
   "oauth:bigmodel:access_token",
   "oauth:zai:access_token",
@@ -24,8 +39,11 @@ export const ZCODE_CREDENTIAL_KEYS: readonly string[] = [
 ];
 
 /** The session id ZCode exports to every hook process, beside Claude Code's `CLAUDE_CODE_SESSION_ID`. */
+/** @public */
 export const ZCODE_SESSION_ENV = "ZCODE_SESSION_ID";
 /** A payload field only ZCode's hook input carries; see the hook dialect. */
+/** @public */
 export const ZCODE_HOST_FIELD = "traceId";
 
+/** @public */
 export const agentMarkers: readonly string[] = [ZCODE_ID, HOME_DIR, HOME_ENV];

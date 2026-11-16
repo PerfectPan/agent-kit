@@ -28,15 +28,6 @@ export interface HookDialectFixtures {
 }
 
 /**
- * The scrubbed base fields and identity every sample of one agent shares. The base's `expected` carries the
- * identity fields; per-event fields (the phase onward) come from each sample.
- */
-export interface HookSampleBase {
-  readonly payload: Readonly<Record<string, unknown>>;
-  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
-}
-
-/**
  * The sample builder every agent's hook fixtures share: the agent's base payload and identity are
  * captured once, and each sample names its event and the per-event fields.
  */

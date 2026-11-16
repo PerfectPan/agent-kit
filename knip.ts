@@ -19,11 +19,10 @@ function sourceEntries(
     .map(sourcePath => `${sourcePath}!`);
 }
 
-// The inline *.test.ts files are discovered by vitest. Unused exports/types are staged for a
-// dedicated cleanup pass; configuration and tag hints still fail the run.
+// The inline *.test.ts files are discovered by vitest. Configuration and tag hints fail the run.
 const config: KnipConfig = {
   ...knip,
-  exclude: ['exports', 'types', 'duplicates'],
+
   // eslint-plugin-boundaries and oxlint-plugin-eslint are declared in infra/architecture and load
   // through withBoundaryLint in every package's vite.config.ts; eslint-import-resolver-typescript
   // is referenced by name inside the boundaries resolver options; @effect/language-service is a

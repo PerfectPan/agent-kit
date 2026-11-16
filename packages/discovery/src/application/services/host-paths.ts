@@ -72,7 +72,7 @@ function recipeHomeRule(
 }
 
 /** Every path a recipe checks, including its credential files. */
-export function recipePaths(recipe: ProbeRecipe): ProbePath[] {
+function recipePaths(recipe: ProbeRecipe): ProbePath[] {
   return [
     ...recipe.appPaths,
     ...recipe.configPaths,

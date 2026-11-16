@@ -15,7 +15,7 @@ const OutputLimit = z.looseObject({ code: z.literal(OUTPUT_LIMIT_CODE) });
  * Windows runs `.cmd` and `.bat` files only through `cmd.exe`, and Node refuses to spawn them without a shell. npm
  * installs agents as such shims, so on Windows they are found but never run.
  */
-export function isShellShim(platform: Pick<DiscoveryPlatform, "os">, path: string): boolean {
+function isShellShim(platform: Pick<DiscoveryPlatform, "os">, path: string): boolean {
   return platform.os === "win32" && /\.(?:cmd|bat)$/i.test(path);
 }
 

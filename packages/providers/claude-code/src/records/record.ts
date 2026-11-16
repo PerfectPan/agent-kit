@@ -36,7 +36,7 @@ export interface ClaudeCodeContentBlockValue {
 }
 
 /** The `message` of a `user` or `assistant` record. */
-export interface ClaudeCodeMessageValue {
+interface ClaudeCodeMessageValue {
   id?: string;
   model?: string;
   stop_reason?: string;

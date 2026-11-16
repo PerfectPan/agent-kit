@@ -2,7 +2,7 @@
  * `idle`: nothing runs and nothing is owed. `queued`: woken while every slot was taken, waiting for one. `running`: one
  * activation runs.
  */
-export type LaneState = "idle" | "queued" | "running";
+type LaneState = "idle" | "queued" | "running";
 
 export interface LaneSnapshot {
   readonly key: string;

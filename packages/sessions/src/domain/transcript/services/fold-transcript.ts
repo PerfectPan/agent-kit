@@ -11,7 +11,7 @@ import { PayloadText } from "../../../lib/payload-text.js";
 const CONTEXT_SHAPE_POINTS = 120;
 
 /** The capabilities whose absence leaves a summary number out. The others are counted regardless. */
-export interface SummaryGates {
+interface SummaryGates {
   readonly requests: boolean;
   readonly usage: boolean;
   readonly durations: boolean;
@@ -55,7 +55,7 @@ export function addTurnDuration(totals: SummaryTotals, durationMs?: number): voi
 }
 
 /** Counts a request's own duration, the fallback `durationMs` uses when no turn names one. */
-export function addRequestDuration(totals: SummaryTotals, durationMs?: number): void {
+function addRequestDuration(totals: SummaryTotals, durationMs?: number): void {
   if (durationMs !== undefined && Number.isFinite(durationMs)) {
     totals.requestDurations.push(durationMs);
   }
@@ -73,7 +73,7 @@ function inputPointsOf(totals: SummaryTotals): number[] {
 }
 
 /** Input tokens of each request in order, downsampled to at most 120 points. */
-export function downsampleContextShape(values: readonly number[]): number[] {
+function downsampleContextShape(values: readonly number[]): number[] {
   if (values.length <= CONTEXT_SHAPE_POINTS) {
     return values.slice();
   }

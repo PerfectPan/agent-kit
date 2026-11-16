@@ -28,7 +28,7 @@ export function fixtureHash(text: string): ContentHash {
 }
 
 /** `fixtureHash` of the canonical form of an Artifact's content, as a real caller would hash it with SHA-256. */
-export function fixtureContentHash(locator: ArtifactLocator, content: ArtifactContent): ContentHash {
+function fixtureContentHash(locator: ArtifactLocator, content: ArtifactContent): ContentHash {
   return fixtureHash(canonicalContent(locator.kind, content));
 }
 
@@ -49,7 +49,7 @@ export interface LedgerFixture {
 
 const FIXTURE_OWNER = "fixture-owner";
 
-export function ledgerEntryFixture(fixture: LedgerEntryFixture): LedgerEntry {
+function ledgerEntryFixture(fixture: LedgerEntryFixture): LedgerEntry {
   const { content, ...entry } = fixture;
   const owners = entry.owners ?? [entry.activeOwner ?? FIXTURE_OWNER];
   return {

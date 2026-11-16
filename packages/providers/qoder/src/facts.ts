@@ -5,25 +5,42 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 // ships `qodercli hooks migrate` from Claude Code), per its agent SDK's protocol types
 // (npm `@qoder-ai/qoder-agent-sdk`, dist/types/{hooks,settings}.d.ts) and the binary strings.
 
+/** @public */
 export const QODER_ID = "qoder";
+/** @public */
 export const QODER_DISPLAY_NAME = "Qoder CLI";
 // The entry point the installer puts on PATH; the versioned binary lives under `~/.qoder/bin/qodercli/`.
+/** @public */
 export const QODER_COMMAND = "qodercli";
+/** @public */
 export const HOME_DIR = ".qoder";
 // QODER_CONFIG_DIR relocates the user-level config root (verified against the binary strings; `QODER_USER_CONFIG_DIR`
 // also appears there).
+/** @public */
 export const HOME_ENV = "QODER_CONFIG_DIR";
+/** @public */
 export const QODER_HOME: HomeRule = { envVar: HOME_ENV, defaultPath: [HOME_DIR] };
+/** @public */
 export const QODER_SETTINGS_FILE = "settings.json";
+/** @public */
 export const QODER_SETTINGS_PATH: string = `~/${HOME_DIR}/${QODER_SETTINGS_FILE}`;
+/** @public */
 export const QODER_HOOKS_POINTER = "/hooks";
+/** @public */
 export const QODER_HOOK_FORMAT = "json";
+/** @public */
 export const QODER_HOOK_LAYOUT = "grouped";
 // Project settings live in the workspace under `.qoder/`, beside `settings.local.json`.
+/** @public */
 export const QODER_PROJECT_SETTINGS_DIR = ".qoder";
+/** @public */
 export const QODER_OAUTH_FILE = "oauth_creds.json";
+/** @public */
 export const QODER_PAT_ENV = "QODER_PERSONAL_ACCESS_TOKEN";
+/** @public */
 export const QODER_ACP_ARGS: readonly string[] = ["--acp"];
+/** @public */
 export const QODER_ACP_ENV: readonly string[] = ["QODER_*", "DASHSCOPE_API_KEY"];
 
+/** @public */
 export const agentMarkers: readonly string[] = [QODER_ID, QODER_COMMAND, HOME_DIR, HOME_ENV];

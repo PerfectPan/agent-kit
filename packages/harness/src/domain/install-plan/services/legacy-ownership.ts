@@ -131,7 +131,7 @@ function bundleFiresEvent(
  * runner; the owner tracks it in its ledger; and the plan leaves it where it is (no step, or a removal other than a
  * delete). Replacing the file would silently drop that consumer's hook, so this is an unresolvable conflict.
  */
-export function retainsForeignHook(
+function retainsForeignHook(
   item: ForeignHookObservation,
   context: {
     readonly bundle: BundleSnapshot;
