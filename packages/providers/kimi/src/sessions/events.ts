@@ -321,4 +321,4 @@ export function createKimiTranslation(options: { readonly retain: boolean }):
   };
 }
 
-export { KIMI_CAPABILITIES,  };
+export { KIMI_CAPABILITIES };

@@ -1,7 +1,6 @@
 import { compactUsage, lenient, logTimestamp, type Usage } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
-
 /** The `version` of the session file this adapter reads. Pi migrates older files before it appends to them. */
 export const PI_SESSION_VERSION = 3;
 
@@ -40,7 +39,6 @@ export function piUsageOf(usage: PiUsageValue | undefined): Usage | undefined {
     ...(usage.totalTokens === undefined ? {} : { totalTokens: usage.totalTokens })
   });
 }
-
 
 const PiMessage = z.looseObject({
   role: z.string(),
@@ -145,7 +143,6 @@ export function piHeaderOf(value: unknown): PiHeaderValue | undefined {
 export function piEntryOf(value: unknown): PiEntryValue | undefined {
   return z.safeParse(PiEntry, value).data;
 }
-
 
 export type PiContentPart =
   | { kind: "text"; text: string }

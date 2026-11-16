@@ -111,7 +111,6 @@ export function kimiLoopEventOf(value: unknown): KimiLoopEventValue | undefined 
   return z.safeParse(KimiLoopEvent, value).data;
 }
 
-
 export interface KimiTurnEndedValue {
   durationMs?: number;
   reason?: string;

@@ -197,7 +197,6 @@ export function dshAssistantOf(value: unknown): DshAssistantValue | undefined {
   return z.safeParse(DshAssistant, value).data;
 }
 
-
 const DshRequestHeader = z.looseObject({
   header: lenient(
     z.looseObject({
