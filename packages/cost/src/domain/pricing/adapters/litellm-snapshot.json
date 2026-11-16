@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-12+db8ad3b13e7320bf835205cae58be5a58e0ff366+bcbf284275fd",
+  "version": "2026-11-15+21215cebac633da4b2d4d0d29ef5557a240bf141+8b2c8fa1dd30",
   "prices": {
     "MiniMax-M2": {
       "input_cost_per_token": 3e-7,
@@ -506,6 +506,11 @@
       "input_cost_per_token": 0.000002,
       "output_cost_per_token": 0.00001,
       "cache_read_input_token_cost": 1e-7
+    },
+    "gemini-4-hydrogen": {
+      "input_cost_per_token": 0.0000015,
+      "output_cost_per_token": 0.0000075,
+      "cache_read_input_token_cost": 7.5e-8
     },
     "gemini-exp-1114": {
       "input_cost_per_token": 0,
