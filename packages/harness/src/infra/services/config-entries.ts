@@ -26,7 +26,7 @@ export interface EntryEdit {
 type Container = { readonly [key: string]: Document } | readonly Document[];
 
 /** The keys of a JSON pointer such as `/hooks/Stop`, unescaped (`~1` is `/`, `~0` is `~`). */
-export function pointerKeys(pointer: string): readonly string[] {
+function pointerKeys(pointer: string): readonly string[] {
   return pointer
     .split("/")
     .slice(1)

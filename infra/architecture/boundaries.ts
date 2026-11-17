@@ -55,7 +55,7 @@ export interface PackageRule {
   readonly publicImports?: Readonly<Record<string, string>>;
 }
 
-export interface LayerRule {
+interface LayerRule {
   /** Layers of the same package this layer may import. */
   readonly layers: readonly Layer[];
   /**

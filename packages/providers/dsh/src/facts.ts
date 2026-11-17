@@ -2,6 +2,7 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const DSH_ID = "dsh";
 export const DSH_DISPLAY_NAME = "DeepSeek Harness";
+/** @public */
 export const HOME_ENV = "DSH_HOME";
 // The override names the harness home itself, not a parent directory.
 export const DSH_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [".dsh"] };
@@ -35,4 +36,5 @@ export const DSH_CREDENTIAL_FILE = ".credentials.yaml";
 /** The variable the stored credential is named after; the launch environment's value is a fallback to the file. */
 export const DSH_API_KEY_ENV = "DEEPSEEK_API_KEY";
 
+/** @public */
 export const agentMarkers: readonly string[] = [DSH_ID, ".dsh", HOME_ENV];

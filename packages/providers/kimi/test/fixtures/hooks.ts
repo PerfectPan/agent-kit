@@ -1,6 +1,4 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
-
-import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
+import { hookEventSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Synthetic Kimi Code hook payloads (customization/hooks.html), passed on stdin as JSON: the base fields every event
 // carries, plus the per-event ones the guide documents.
@@ -9,17 +7,10 @@ const sessionId = "session_abc123";
 const cwd = "/u/me/work";
 const identity = { agent: "kimi", sessionId, cwd } as const;
 
-function sample(
-  event: string,
-  fields: Record<string, unknown>,
-  expected: Omit<LifecycleEvent, "agent" | "nativeEvent">
-): HookDialectSample {
-  return {
-    name: event,
-    payload: { hook_event_name: event, session_id: sessionId, session_title: "Fix the login page", client_type: "kimi_code_cli", cwd, ...fields },
-    expected: { ...identity, nativeEvent: event, ...expected }
-  };
-}
+const sample = hookEventSampleFactory({
+  payload: { session_id: sessionId, session_title: "Fix the login page", client_type: "kimi_code_cli", cwd },
+  expected: identity
+});
 
 export const kimiSamples: readonly HookDialectSample[] = [
   sample("SessionStart", { source: "startup", model: "kimi-for-coding" }, { phase: "start", scope: "session" }),

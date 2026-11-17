@@ -1,6 +1,8 @@
 export {
   type HookDialectFixtures,
   hookDialectConformance,
+  hookEventSampleFactory,
+  hookSampleFactory,
   type HookDialectSample
 } from "./hook-dialect-conformance.js";
 export {

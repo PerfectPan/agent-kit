@@ -1,4 +1,11 @@
-import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
+import {
+  claudeShapedField,
+  claudeShapedHookOutput,
+  claudeShapedSessionId,
+  claudeShapedTurnId,
+  type HookDialect,
+  type HookOutput
+} from "@rivus/agent-kit-harness/spi";
 import { ZCODE_HOST_FIELD, ZCODE_ID, ZCODE_SESSION_ENV } from "./facts.js";
 
 // Read from ZCode 3.17.2's engine (Contents/Resources/glm/zcode.cjs); ZCode documents no hook reference. Command hooks
@@ -28,13 +35,7 @@ const FIELDS: readonly string[] = [
  * schema, or whose `hookSpecificOutput` names another event, fails the hook instead. Exit 2 blocks; any other exit
  * fails the hook, which a PreToolUse declaration's `onError: "deny"` turns into a denial. `{}` decides nothing.
  */
-const OUTPUT: HookOutput = {
-  emptyStdout: "proceed",
-  invalidStdout: "proceed",
-  exitCode2: "block",
-  otherExitCodes: "hook-failed",
-  passThrough: "{}"
-};
+const OUTPUT: HookOutput = { ...claudeShapedHookOutput };
 
 export const zcodeHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
@@ -50,12 +51,12 @@ export const zcodeHookDialect: HookDialect = {
   output: OUTPUT,
   // `transcript_path` is not mapped: it names a file ZCode writes for one run and deletes afterwards.
   fields: {
-    event: { paths: [["hook_event_name"]] },
-    sessionId: { paths: [["session_id"]], env: [ZCODE_SESSION_ENV] },
-    cwd: { paths: [["cwd"]] },
-    turnId: { paths: [["turnId"]] },
-    toolName: { paths: [["tool_name"]] },
-    toolCallId: { paths: [["tool_use_id"]] }
+    event: claudeShapedField("hook_event_name"),
+    sessionId: claudeShapedSessionId([ZCODE_SESSION_ENV]),
+    cwd: claudeShapedField("cwd"),
+    turnId: claudeShapedTurnId("turnId"),
+    toolName: claudeShapedField("tool_name"),
+    toolCallId: claudeShapedField("tool_use_id")
   },
   events: {
     // `source` is `startup` or `resume`.

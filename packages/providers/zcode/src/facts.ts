@@ -3,6 +3,7 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 export const ZCODE_ID = "zcode";
 export const ZCODE_DISPLAY_NAME = "ZCode";
 export const HOME_DIR = ".zcode";
+/** @public */
 export const HOME_ENV = "ZCODE_STORAGE_DIR";
 export const ZCODE_HOME: HomeRule = { envVar: HOME_ENV, defaultPath: [HOME_DIR] };
 export const ZCODE_DB_DIR = "cli/db";
@@ -28,4 +29,5 @@ export const ZCODE_SESSION_ENV = "ZCODE_SESSION_ID";
 /** A payload field only ZCode's hook input carries; see the hook dialect. */
 export const ZCODE_HOST_FIELD = "traceId";
 
+/** @public */
 export const agentMarkers: readonly string[] = [ZCODE_ID, HOME_DIR, HOME_ENV];

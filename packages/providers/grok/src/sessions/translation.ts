@@ -226,16 +226,16 @@ export function applyGrokSubagents(agents: Lane[], subagents: ReadonlyMap<string
  * One event a record emitted, with its event id: present with retain, where the parts are the emitted
  * `TranscriptEvent`s themselves, and absent in the bounded pass, which reads no ids.
  */
-export type GrokPart = TranscriptEventBody & { id?: string };
+type GrokPart = TranscriptEventBody & { id?: string };
 
 /** Why a record became no event, as the translation's skipped records report it. */
-export interface GrokSkip {
+interface GrokSkip {
   reason: string;
   record: SourcedRecord;
 }
 
 /** What one stepped record becomes. */
-export interface GrokStep {
+interface GrokStep {
   /** `false` when the record is of a format generation this adapter does not know. */
   ok: boolean;
   /** The events this record emitted, in order. */

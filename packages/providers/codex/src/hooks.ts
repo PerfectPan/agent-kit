@@ -1,5 +1,13 @@
 import { CODEX_ID } from "./facts.js";
-import { type HookDialect, type HookOutput } from "@rivus/agent-kit-harness/spi";
+import {
+  claudeShapedFields,
+  claudeShapedHookOutput,
+  claudeShapedSessionStartLifecycle,
+  claudeShapedSecondsTimeout,
+  claudeShapedTurnId,
+  type HookDialect,
+  type HookOutput
+} from "@rivus/agent-kit-harness/spi";
 
 // https://developers.openai.com/codex/hooks (redirects to https://learn.chatgpt.com/docs/hooks): events, input and
 // output fields, exit codes, trust. Plugin-bundled hooks: https://developers.openai.com/plugins/build/plugins.
@@ -15,11 +23,8 @@ const COMMON_FIELDS = ["continue", "stopReason", "systemMessage", "suppressOutpu
  * fields an event accepts, and what plain text does, differ per event.
  */
 const OUTPUT: HookOutput = {
-  emptyStdout: "proceed",
-  invalidStdout: "hook-failed",
-  exitCode2: "block",
-  otherExitCodes: "hook-failed",
-  passThrough: "{}"
+  ...claudeShapedHookOutput,
+  invalidStdout: "hook-failed"
 };
 
 /** Plain text on stdout becomes developer context here, so an observer prints nothing. */
@@ -30,31 +35,20 @@ export const codexHookDialect: HookDialect = {
   agent: CODEX_ID,
   delivery: "command",
   // Seconds, default 600, at least 1. SessionEnd and Interrupt default to 1 s and are clamped to 1–3 s.
-  timeout: { unit: "seconds", default: 600 },
+  timeout: claudeShapedSecondsTimeout,
   // Trust is recorded against a hash of the normalized hook definition (event, matcher, handler with its command
   // and timeout), so changing the command asks again; the script it points to is not hashed.
   trust: { review: "content-hash" },
   output: OUTPUT,
   fields: {
-    event: { paths: [["hook_event_name"]] },
     // Subagent hooks get the parent's session id. Codex sets no session variable for hooks.
-    sessionId: { paths: [["session_id"]] },
-    cwd: { paths: [["cwd"]] },
-    transcriptPath: { paths: [["transcript_path"]] },
+    ...claudeShapedFields,
     // On every turn-scoped event; a time-ordered UUIDv7 in the source, opaque per the docs.
-    turnId: { paths: [["turn_id"]] },
-    subagentId: { paths: [["agent_id"]] },
-    subagentType: { paths: [["agent_type"]] },
-    toolName: { paths: [["tool_name"]] },
-    toolCallId: { paths: [["tool_use_id"]] }
+    turnId: claudeShapedTurnId("turn_id")
   },
   events: {
     SessionStart: {
-      lifecycle: {
-        field: ["source"],
-        cases: { compact: { phase: "activity" } },
-        otherwise: { phase: "start", scope: "session" }
-      },
+      lifecycle: claudeShapedSessionStartLifecycle,
       output: { ...CONTEXT_OUTPUT, fields: [...COMMON_FIELDS, "hookSpecificOutput"] }
     },
     UserPromptSubmit: {

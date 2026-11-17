@@ -6,7 +6,7 @@ import type { Platform } from "@rivus/agent-kit-platform/public";
 const Missing = z.looseObject({ code: z.union([z.literal("ENOENT"), z.literal("ENOTDIR")]) });
 
 /** Whether `cause` says that nothing is at the path (or a parent is not a directory). */
-export function isMissing(cause: unknown): boolean {
+function isMissing(cause: unknown): boolean {
   return Missing.safeParse(cause).success;
 }
 

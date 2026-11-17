@@ -350,7 +350,7 @@ export interface PlanInput {
  * The content a step leaves at its target, or `undefined` when it leaves nothing or does not write there.
  * The executor resolves a restored pre-image from its blob reference.
  */
-export function contentAfter(
+function contentAfter(
   scope: LedgerScope,
   step: PlanStep,
   ledger: Ledger

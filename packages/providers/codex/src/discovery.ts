@@ -1,7 +1,6 @@
 import {
   CODEX_ID,
   CODEX_DISPLAY_NAME,
-  CODEX_COMMAND,
   CODEX_SESSIONS_DIR,
   CODEX_ARCHIVED_SESSIONS_DIR,
   CODEX_AUTH_FILE,
@@ -78,7 +77,7 @@ export const codexProbe: ProbeRecipe = {
   agent: CODEX_ID,
   displayName: CODEX_DISPLAY_NAME,
   kind: "cli",
-  commands: [CODEX_COMMAND],
+  commands: [CODEX_ID],
   appPaths: [],
   configPaths: [
     { agentHome: CODEX_ID, path: CODEX_SESSIONS_DIR },

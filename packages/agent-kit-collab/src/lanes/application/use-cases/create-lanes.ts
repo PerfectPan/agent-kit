@@ -35,7 +35,7 @@ export interface LanesConfig<E, R> {
 }
 
 /** Why the lanes interrupted an activation. */
-export type ActivationInterruptReason = "cancel" | "close" | "timeout";
+type ActivationInterruptReason = "cancel" | "close" | "timeout";
 
 /**
  * How an activation ended. An activation that succeeded or failed by itself is reported so even when a cancel, close
@@ -48,12 +48,12 @@ export type ActivationExit<E> =
   | { readonly _tag: "ActivationInterrupted"; readonly key: string; readonly reason: ActivationInterruptReason };
 
 /** `close` ran, or the Scope that created the lanes closed. */
-export interface LanesClosed {
+interface LanesClosed {
   readonly _tag: "LanesClosed";
   readonly key: string;
 }
 
-export interface LanesStatus {
+interface LanesStatus {
   readonly running: number;
   readonly queued: number;
   readonly closed: boolean;

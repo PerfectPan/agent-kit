@@ -1,17 +1,5 @@
-import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
-import {
-  compactUsage,
-  lenient,
-  logTimestamp,
-  type SourcePointer,
-  type SourcedRecord,
-  type UnknownFormatGeneration,
-  unknownFormatGeneration,
-  type Usage
-} from "@rivus/agent-kit-sessions/spi";
+import { compactUsage, lenient, logTimestamp, type Usage } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
-
-import { PI_ID } from "./facts.js";
 
 /** The `version` of the session file this adapter reads. Pi migrates older files before it appends to them. */
 export const PI_SESSION_VERSION = 3;
@@ -52,10 +40,6 @@ export function piUsageOf(usage: PiUsageValue | undefined): Usage | undefined {
   });
 }
 
-export function piUsage(value: unknown): Usage | undefined {
-  return piUsageOf(z.safeParse(PiUsage, value).data);
-}
-
 const PiMessage = z.looseObject({
   role: z.string(),
   content: lenient(z.union([z.string(), z.array(z.unknown())])),
@@ -74,7 +58,7 @@ const PiMessage = z.looseObject({
   excludeFromContext: lenient(z.boolean())
 });
 
-export interface PiMessageValue {
+interface PiMessageValue {
   role: string;
   content?: string | readonly unknown[];
   provider?: string;
@@ -158,25 +142,6 @@ export function piHeaderOf(value: unknown): PiHeaderValue | undefined {
 /** Any session entry. The header parses as an entry with `type: "session"` and no other fields. */
 export function piEntryOf(value: unknown): PiEntryValue | undefined {
   return z.safeParse(PiEntry, value).data;
-}
-
-/**
- * The generation check every read shares: the first record must be a version this adapter reads. `file` names the
- * session in the error when the file is empty.
- */
-export function piGenerationOf(
-  records: readonly SourcedRecord[],
-  file: SourcePointer
-): Result<PiHeaderValue, UnknownFormatGeneration> {
-  const first = records[0];
-  if (first === undefined) {
-    return err(unknownFormatGeneration(PI_ID, file));
-  }
-  const header = piHeaderOf(first.value);
-  if (header === undefined || header.version !== PI_SESSION_VERSION) {
-    return err(unknownFormatGeneration(PI_ID, first));
-  }
-  return ok(header);
 }
 
 export type PiContentPart =

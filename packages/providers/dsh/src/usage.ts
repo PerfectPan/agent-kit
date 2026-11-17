@@ -26,7 +26,8 @@ import {
   readBytes,
   sameFile,
   sourceOf,
-  unknownFormatGeneration
+  unknownFormatGeneration,
+  usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
 
 import { DSH_ID, DSH_SESSION_VERSION } from "./facts.js";
@@ -187,11 +188,6 @@ function createDshUsageLines(file: UsageFile, state: DshUsageState): UsageLineDe
 /** The shared line decoder over a file, with its state restored from a cursor. */
 function dshUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder {
   return createDshUsageLines(file, restoreDshState(saved));
-}
-
-/** The key under which a scan counts a record once in its window: the session and the event seq, unique in its session. */
-function dshUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
 }
 
 const layout: JsonlUsageLayout = {
@@ -367,7 +363,7 @@ function decodeDshZstd(platform: UsagePlatform, target: UsageTarget, options: De
 export const dshUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: DSH_ID,
-  usageKey: dshUsageKey,
+  usageKey: usageWindowKey,
   sources(platform, home, options = {}) {
     return fileSources(platform, DSH_ID, dshRoots(home), DSH_SESSION_FILES, {
       ...options,

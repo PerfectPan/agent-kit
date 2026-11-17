@@ -67,14 +67,14 @@ export interface AgentInfo {
   readonly title?: string;
 }
 
-export interface Handshake {
+interface Handshake {
   readonly protocolVersion: number;
   readonly features: AgentFeatures;
   readonly authMethods: readonly AuthMethodInfo[];
   readonly agentInfo?: AgentInfo;
 }
 
-export interface SessionParams {
+interface SessionParams {
   readonly cwd: string;
   readonly mcpServers: readonly McpServerConfig[];
   readonly meta?: Record<string, unknown>;

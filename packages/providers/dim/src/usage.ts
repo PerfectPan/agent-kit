@@ -12,7 +12,8 @@ import {
   type UsageRecord,
   type UsageSource,
   type UsageSourceFailure,
-  type UsageStream
+  type UsageStream,
+  usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
 import { DIM_DATABASE, DIM_HOME, DIM_ID, DIM_WAL_SUFFIX } from "./facts.js";
 import { dimDatabasePath } from "./layout.js";
@@ -68,11 +69,6 @@ export function dimLedgerRecord(value: unknown, row: SqliteAppendRow): UsageReco
   return record;
 }
 
-/** The key under which a scan counts a record once in its window: the session and the run id. */
-function dimUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
-}
-
 /** The `ReadFailed` a decode yields for an error the platform did not classify: the thrown value's message, kept for the report. */
 function readFailed(path: string, cause: unknown): ReadFailed {
   return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
@@ -112,7 +108,7 @@ export const dimUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: DIM_ID,
   home: DIM_HOME,
-  usageKey: dimUsageKey,
+  usageKey: usageWindowKey,
   async *sources(platform, home, options = {}) {
     const { since, signal } = options;
     signal?.throwIfAborted();

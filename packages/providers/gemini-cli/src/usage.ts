@@ -24,7 +24,8 @@ import {
   fileSources,
   type JsonlUsageLayout,
   sameFile,
-  usageStreamOf
+  usageStreamOf,
+  usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
 import {
   GEMINI_CLI_CHAT_FILES,
@@ -203,11 +204,6 @@ export function geminiCliLegacyUsage(value: unknown, file: UsageFile, source: So
   return out;
 }
 
-/** The key under which a scan counts a record once in its window: the session and the message id, which a migrated chat keeps. */
-function geminiCliUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
-}
-
 const layout: JsonlUsageLayout = {
   agent: AGENT,
   file: sameFile((path) => ({ sessionId: geminiCliSessionStem(path) })),
@@ -275,7 +271,7 @@ function decodeLegacyChat(platform: UsagePlatform, target: UsageTarget, options:
 export const geminiCliUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: AGENT,
-  usageKey: geminiCliUsageKey,
+  usageKey: usageWindowKey,
   sources(platform, home, options = {}) {
     return fileSources(platform, AGENT, geminiCliUsageRoots(home), GEMINI_CLI_CHAT_FILES, {
       ...options,

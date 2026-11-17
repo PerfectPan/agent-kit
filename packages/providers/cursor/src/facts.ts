@@ -17,8 +17,9 @@ export const CURSOR_LOCAL_PLUGINS = "plugins/local";
 export const CURSOR_PLUGIN_MANIFEST = ".cursor-plugin/plugin.json";
 export const CURSOR_PLUGIN_HOOKS = "hooks/hooks.json";
 export const CURSOR_HOOKS_FILE = "hooks.json";
-export const CURSOR_VERSION_FIELD = "cursor_version";
+/** @public */
 export const CURSOR_VERSION_ENV = "CURSOR_VERSION";
+export const CURSOR_VERSION_FIELD = "cursor_version";
 export const CURSOR_TRANSCRIPT_ENV = "CURSOR_TRANSCRIPT_PATH";
 export const CURSOR_FOREIGN_AGENT = "claude-code";
 export const CURSOR_FOREIGN_HOOK_FILES: readonly string[] = [
@@ -27,6 +28,7 @@ export const CURSOR_FOREIGN_HOOK_FILES: readonly string[] = [
   ".claude/settings.local.json"
 ];
 
+/** @public */
 export const agentMarkers: readonly string[] = [
   CURSOR_ID,
   CURSOR_AGENT_COMMAND,

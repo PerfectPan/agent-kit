@@ -2,8 +2,8 @@ import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
 import { joinPath } from "@rivus/agent-kit-sessions/spi";
 import { ZCODE_DATABASE, ZCODE_DB_DIR } from "./facts.js";
 
-export const zcodeDatabaseDirectory: string = ZCODE_DB_DIR;
-export const zcodeDatabaseFile: string = ZCODE_DATABASE;
+const zcodeDatabaseDirectory: string = ZCODE_DB_DIR;
+const zcodeDatabaseFile: string = ZCODE_DATABASE;
 
 /** The database below the home, as a probe path names it. */
 export const zcodeDatabaseBelowHome: string = `${zcodeDatabaseDirectory}/${zcodeDatabaseFile}`;

@@ -1,7 +1,7 @@
 import { definedFields } from "@rivus/agent-kit-catalog/public";
 
 /** The SQLite row an event's original is, when the session lives in a database. */
-export interface SqliteSourcePointer {
+interface SqliteSourcePointer {
   /** Table and column names; the reader validates both as SQL identifiers. */
   readonly table: string;
   readonly column: string;

@@ -161,6 +161,7 @@ export {
 export { type UsageFile, type UsageLineDecoder } from "./domain/usage/adapters/usage-lines.js";
 export { rememberKey } from "./lib/remember-key.js";
 export { decodeIsFinal } from "./domain/usage/services/quiet.js";
+export { usageWindowKey } from "./domain/usage/services/usage-window.js";
 export { shortHash } from "./lib/short-hash.js";
 export { type UsageCursor } from "./domain/usage/value-objects/usage-cursor.js";
 export { type ModelUsage, type UsageRecord } from "./domain/usage/value-objects/usage-record.js";

@@ -1,6 +1,4 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
-
-import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
+import { hookSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Gemini CLI hook payloads (docs/hooks/reference.md in google-gemini/gemini-cli), one per event.
 
@@ -17,21 +15,13 @@ const identity = {
   cwd: common.cwd
 } as const;
 
-function sample(
-  name: string,
-  event: string,
-  extra: Record<string, unknown>,
-  expected: Omit<LifecycleEvent, "agent" | "nativeEvent">
-): HookDialectSample {
-  return {
-    name,
-    payload: { ...common, hook_event_name: event, ...extra },
-    expected: { ...identity, nativeEvent: event, ...expected }
-  };
-}
-
 const shell = { tool_name: "run_shell_command", tool_input: { command: "npm test" } };
 const request = { llm_request: { model: "gemini-3-pro", messages: [] } };
+
+const sample = hookSampleFactory({
+  payload: common,
+  expected: identity
+});
 
 export const geminiCliSamples: readonly HookDialectSample[] = [
   sample("SessionStart", "SessionStart", { source: "startup" }, { phase: "start", scope: "session" }),

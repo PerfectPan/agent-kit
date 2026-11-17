@@ -34,8 +34,3 @@ export function geminiSessions(root: string): ConformanceSession[] {
     { path: at("conformance/unknown-type/chats/session-1.jsonl"), records: 2, capabilities: [] }
   ];
 }
-
-/** The fixtures directory this package's sessions tests read into a memory platform. */
-export function geminiFixtures(): string {
-  return fileURLToPath(new URL("fixtures/sessions", import.meta.url));
-}

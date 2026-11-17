@@ -2,7 +2,9 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const PI_ID = "pi";
 export const PI_DISPLAY_NAME = "Pi";
+/** @public */
 export const HOME_DIR = ".pi";
+/** @public */
 export const HOME_ENV = "PI_CODING_AGENT_DIR";
 // The override names the agent directory itself, rather than its parent.
 export const PI_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [HOME_DIR, "agent"] };
@@ -72,4 +74,5 @@ export const PI_ACP_ENV: readonly string[] = [
   "AWS_DEFAULT_REGION"
 ];
 
+/** @public */
 export const agentMarkers: readonly string[] = [PI_ID, HOME_DIR, HOME_ENV];

@@ -15,7 +15,8 @@ import {
   decodeJsonlUsage,
   fileSources,
   type JsonlUsageLayout,
-  sameFile
+  sameFile,
+  usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
 import { PI_ID as AGENT } from "./facts.js";
 import { PI_SESSION_FILES, piSessionStem, piUsageRoots } from "./layout.js";
@@ -165,11 +166,6 @@ export function piUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder
   };
 }
 
-/** The key under which a scan counts a record once in its window: the session and the entry id, unique in its session (a provider's response id need not be unique: a local model server numbers them). */
-function piUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
-}
-
 const layout: JsonlUsageLayout = {
   agent: AGENT,
   file: sameFile((path) => ({ sessionId: piSessionStem(path) })),
@@ -180,7 +176,7 @@ const layout: JsonlUsageLayout = {
 export const piUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: AGENT,
-  usageKey: piUsageKey,
+  usageKey: usageWindowKey,
   sources(platform, home, options = {}) {
     return fileSources(platform, AGENT, piUsageRoots(home), PI_SESSION_FILES, { ...options, identify: basenamePath });
   },

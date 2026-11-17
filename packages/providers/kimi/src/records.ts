@@ -2,13 +2,10 @@ import * as z from "zod/mini";
 import { compactUsage, lenient, type Usage } from "@rivus/agent-kit-sessions/spi";
 
 // The `wire.jsonl` event stream of a Kimi Code session, captured on 2.6.0 against a scripted model: a metadata
-// header names the protocol version, `turn.prompt`/`prompt.completed` frame turns, `context.append_message` records
-// the messages the model saw, `context.append_loop_event` the per-step model loop (content parts, tool calls and
-// results, step ends with usage), `usage.record` repeats the step's usage per turn, and `turn.ended` closes it.
-// The schemas stay module-private; the exported value types are declared by hand, like the other adapters', and the
-// `*Of` functions return them.
-
-export const KIMI_WIRE_PROTOCOL = "1.5";
+// header names the protocol version, `turn.prompt` frames turns, `context.append_message` records the messages
+// the model saw, `context.append_loop_event` the per-step model loop (content parts, tool calls and results,
+// step ends with usage), and `turn.ended` closes it. The schemas stay module-private; the value types are
+// declared by hand, like the other adapters', and the `*Of` functions return them.
 
 /** One part of a message's content: text is the only kind the verified protocol writes. */
 export interface KimiContentPartValue {
@@ -19,7 +16,7 @@ export interface KimiContentPartValue {
 
 const contentPart = z.looseObject({ type: z.string(), text: lenient(z.optional(z.string())) });
 
-export interface KimiOriginValue {
+interface KimiOriginValue {
   kind: string;
   variant?: string;
   [field: string]: unknown;
@@ -120,27 +117,6 @@ export function kimiLoopEventOf(value: unknown): KimiLoopEventValue | undefined 
   return z.safeParse(KimiLoopEvent, value).data;
 }
 
-export interface KimiUsageRecordValue {
-  model?: string;
-  usage?: KimiUsageValue;
-  usageScope?: string;
-  time?: number;
-  [field: string]: unknown;
-}
-
-const KimiUsageRecord = z.looseObject({
-  type: z.literal("usage.record"),
-  model: lenient(z.optional(z.string())),
-  usage: lenient(z.optional(KimiUsage)),
-  usageScope: lenient(z.optional(z.string())),
-  time: lenient(z.optional(z.number()))
-});
-
-/** A `usage.record` line; `undefined` for anything else. */
-export function kimiUsageRecordOf(value: unknown): KimiUsageRecordValue | undefined {
-  return z.safeParse(KimiUsageRecord, value).data;
-}
-
 export interface KimiTurnEndedValue {
   durationMs?: number;
   reason?: string;
@@ -175,7 +151,7 @@ export function kimiProfileBindOf(value: unknown): KimiProfileBindValue | undefi
   return z.safeParse(KimiProfileBind, value).data;
 }
 
-export interface KimiMessageValue {
+interface KimiMessageValue {
   role: string;
   content: KimiContentPartValue[];
   id?: string;

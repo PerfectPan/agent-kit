@@ -4,6 +4,7 @@ export const CLAUDE_CODE_ID = "claude-code";
 export const CLAUDE_CODE_DISPLAY_NAME = "Claude Code";
 export const CLAUDE_CODE_COMMAND = "claude";
 export const CLAUDE_CODE_HOME_DIR = ".claude";
+/** @public */
 export const HOME_ENV = "CLAUDE_CONFIG_DIR";
 // The override names the configuration directory itself.
 export const CLAUDE_CODE_HOME: HomeRule = {
@@ -41,4 +42,5 @@ export const CLAUDE_CODE_ACP_ENV: readonly string[] = [
   "GOOGLE_APPLICATION_CREDENTIALS"
 ];
 
+/** @public */
 export const agentMarkers: readonly string[] = [CLAUDE_CODE_ID, CLAUDE_CODE_COMMAND, CLAUDE_CODE_HOME_DIR, HOME_ENV];

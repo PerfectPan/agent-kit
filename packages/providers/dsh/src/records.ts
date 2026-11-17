@@ -73,7 +73,7 @@ const DshUsage = z.looseObject({
   reasoningTokens: lenient(z.number())
 });
 
-export interface DshUsageValue {
+interface DshUsageValue {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
@@ -174,10 +174,6 @@ export interface DshMessageValue {
   id?: string;
 }
 
-export function dshMessageOf(value: unknown): DshMessageValue | undefined {
-  return z.safeParse(DshMessage, value).data;
-}
-
 /** A `user/message` event's `data` is the message itself, not a wrapper. */
 export function dshUserMessageOf(value: unknown): DshMessageValue | undefined {
   return z.safeParse(DshMessage, value).data;
@@ -199,18 +195,6 @@ export interface DshAssistantValue {
 
 export function dshAssistantOf(value: unknown): DshAssistantValue | undefined {
   return z.safeParse(DshAssistant, value).data;
-}
-
-const DshToolCall = z.looseObject({ callId: z.string(), name: z.string(), arguments: z.string() });
-
-export interface DshToolCallValue {
-  callId: string;
-  name: string;
-  arguments: string;
-}
-
-export function dshToolCallOf(value: unknown): DshToolCallValue | undefined {
-  return z.safeParse(DshToolCall, value).data;
 }
 
 const DshRequestHeader = z.looseObject({

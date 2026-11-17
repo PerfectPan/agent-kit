@@ -6,9 +6,11 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 export const DIM_ID = "dim";
 export const DIM_DISPLAY_NAME = "DimCode";
 export const DIM_COMMAND = "dim";
+/** @public */
 export const HOME_DIR = ".dimcode";
-export const HOME_SUBDIR = "v2";
+const HOME_SUBDIR = "v2";
 // The override names a base directory under which DimCode appends `v2`, like GEMINI_CLI_HOME does for Gemini.
+/** @public */
 export const HOME_ENV = "DIMCODE_HOME";
 export const DIM_HOME: HomeRule = { envVar: HOME_ENV, envSubpath: [HOME_SUBDIR], defaultPath: [HOME_DIR, HOME_SUBDIR] };
 export const DIM_DATABASE = "dimcode.sqlite";
@@ -36,4 +38,5 @@ export const DIM_API_KEY_ENVS: readonly string[] = [
 export const DIM_ACP_ARGS: readonly string[] = ["acp"];
 export const DIM_ACP_ENV: readonly string[] = ["DIMCODE_*", ...DIM_API_KEY_ENVS];
 
+/** @public */
 export const agentMarkers: readonly string[] = [DIM_ID, DIM_COMMAND, HOME_DIR, HOME_ENV];

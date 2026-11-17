@@ -26,6 +26,7 @@ import {
   type UsageRecord,
   type UsageSource,
   type UsageSourceFailure,
+  usageWindowKey,
   type UsageStream
 } from "@rivus/agent-kit-sessions/spi";
 import {
@@ -120,11 +121,6 @@ export function opencodeMessageUsage(value: unknown, row: SqliteMessageRow): Usa
     record.costSource = "agent";
   }
   return record;
-}
-
-/** The key under which a scan counts a record once in its window: the session and the message id. */
-function opencodeUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
 }
 
 /** A message runs far shorter than this, so a row created this long before `since` holds no record to keep. */
@@ -271,7 +267,7 @@ function decodeLegacySession(platform: UsagePlatform, dir: string, options: Deco
 export const opencodeUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: AGENT,
-  usageKey: opencodeUsageKey,
+  usageKey: usageWindowKey,
   async *sources(platform, home, options = {}) {
     const { since, signal } = options;
     signal?.throwIfAborted();

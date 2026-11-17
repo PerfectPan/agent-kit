@@ -3,7 +3,7 @@ import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 import type { LedgerEntry } from "../../ledger/entities/ledger-entry.js";
 import type { PlanStepSnapshot } from "../value-objects/plan-step.js";
 
-export type RegistrationPurpose = "register" | "unregister";
+type RegistrationPurpose = "register" | "unregister";
 
 export interface RegistrationCommands {
   /** The agent whose command line acts: the step's first, falling back to the ledger entry's first. */

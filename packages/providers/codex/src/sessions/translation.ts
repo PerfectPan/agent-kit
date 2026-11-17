@@ -53,7 +53,7 @@ const lineKey = (record: SourcedRecord): string => `L${record.line}`;
  * `replacement_history` of a compacted record. `id` is the event id the translation gives it, `ts` the record's time
  * or, for a placed request, the output's, and `requestId` the window tag `placeRequest` writes.
  */
-export type CodexPart<K extends TranscriptEventKind = TranscriptEventKind> = TranscriptEventBody<K> & CodexPartFields;
+type CodexPart<K extends TranscriptEventKind = TranscriptEventKind> = TranscriptEventBody<K> & CodexPartFields;
 
 /** What a `CodexPart` carries beside its kind and payload. */
 interface CodexPartFields {
@@ -70,7 +70,7 @@ interface CodexPartFields {
 }
 
 /** Where a record sits in its replay, as the batch rule (`scanForkReplay`) and the streaming passes see it. */
-export interface CodexReplayView {
+interface CodexReplayView {
   /** Whether the record is a copy of the rollout's parent: `index < end` in the batch rule. */
   readonly replayed: boolean;
   /** Whether this record is the first one after the replay, which resets the request window. */
@@ -78,7 +78,7 @@ export interface CodexReplayView {
 }
 
 /** What one stepped record becomes, beside the parsed values the translation's own extraction reads. */
-export interface CodexStep {
+interface CodexStep {
   /** `false` when the record is of a format generation this adapter does not know. */
   ok: boolean;
   rec: CodexRecordValue | undefined;
@@ -91,7 +91,7 @@ export interface CodexStep {
 }
 
 /** Why a record became no event, as the translation's skipped records report it. */
-export interface CodexSkip {
+interface CodexSkip {
   reason: string;
   record: SourcedRecord;
 }

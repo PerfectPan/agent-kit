@@ -18,7 +18,7 @@ export interface Token {
   readonly swap?: boolean;
 }
 
-export interface DemoAgent {
+interface DemoAgent {
   readonly id: string;
   readonly mine: boolean;
   readonly enabled: boolean;
@@ -112,7 +112,7 @@ export function taskLabel(task: TaskKey): CopyKey {
   return taskSpec(task).label;
 }
 
-export function agentSupports(row: SupportRow, task: TaskKey): boolean {
+function agentSupports(row: SupportRow, task: TaskKey): boolean {
   const capability = taskSpec(task).capability;
   if (capability === null) {
     return true;
@@ -120,7 +120,7 @@ export function agentSupports(row: SupportRow, task: TaskKey): boolean {
   return row[capability];
 }
 
-export function isSelectable(agentId: string, task: TaskKey, rows: readonly SupportRow[]): boolean {
+function isSelectable(agentId: string, task: TaskKey, rows: readonly SupportRow[]): boolean {
   if (agentId === MY_AGENT) {
     return true;
   }

@@ -12,7 +12,7 @@ import { dimAcpProfile } from "@rivus/agent-kit-provider-dim/acp";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinAcpProfiles: AcpProfiles = {
+const builtinAcpProfiles: AcpProfiles = {
   "claude-code": claudeCodeAcpProfile,
   codex: codexAcpProfile,
   dsh: dshAcpProfile,

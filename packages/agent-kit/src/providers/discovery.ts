@@ -13,7 +13,7 @@ import { kimiProbe } from "@rivus/agent-kit-provider-kimi/discovery";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
-export const builtinProbeRecipes: {
+const builtinProbeRecipes: {
   readonly codex: typeof codexProbe;
   readonly "claude-code": typeof claudeCodeProbe;
   readonly grok: typeof grokProbe;

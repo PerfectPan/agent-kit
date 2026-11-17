@@ -8,7 +8,7 @@ import {
   GROK_ID,
   GROK_SESSION_ENV
 } from "./facts.js";
-import { type HookDialect, type HookOutput } from "@rivus/agent-kit-harness/spi";
+import { claudeShapedHookOutput, type HookDialect, type HookOutput } from "@rivus/agent-kit-harness/spi";
 
 // https://docs.x.ai/build/features/hooks and the fuller user guide in the source,
 // https://github.com/xai-org/grok-build/blob/2bdd1d6/crates/codegen/xai-grok-pager/docs/user-guide/10-hooks.md
@@ -16,13 +16,7 @@ import { type HookDialect, type HookOutput } from "@rivus/agent-kit-harness/spi"
 // src/discovery.rs (which files load).
 
 /** Observe-only events ignore stdout; failures, timeouts and malformed output fail open. */
-const OUTPUT: HookOutput = {
-  emptyStdout: "proceed",
-  invalidStdout: "proceed",
-  exitCode2: "block",
-  otherExitCodes: "hook-failed",
-  passThrough: "{}"
-};
+const OUTPUT: HookOutput = { ...claudeShapedHookOutput };
 
 const camel = (name: string) => name.charAt(0).toLowerCase() + name.slice(1);
 

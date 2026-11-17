@@ -1,6 +1,4 @@
-import type { LifecycleEvent } from "@rivus/agent-kit-harness/public/events";
-
-import type { HookDialectSample } from "@rivus/agent-kit-testing/public";
+import { hookEventSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Synthetic DimCode hook payloads, from the CLI's own parser (0.5.27): the documented base fields on stdin, plus the
 // session fields. The per-event tool fields are not documented and stay unmapped until a capture confirms them.
@@ -10,26 +8,17 @@ const cwd = "/u/me/work";
 const transcriptPath = `${cwd}/.dimcode/v2/tracelog/${sessionId}/run.jsonl`;
 const identity = { agent: "dim", sessionId, cwd, transcriptPath } as const;
 
-function sample(
-  event: string,
-  fields: Record<string, unknown>,
-  expected: Omit<LifecycleEvent, "agent" | "nativeEvent">
-): HookDialectSample {
-  return {
-    name: event,
-    payload: {
-      hook_event_name: event,
-      session_id: sessionId,
-      transcript_path: transcriptPath,
-      cwd,
-      model: "glm-4.6",
-      permission_mode: "default",
-      run_id: "run-1",
-      ...fields
-    },
-    expected: { ...identity, nativeEvent: event, ...expected }
-  };
-}
+const sample = hookEventSampleFactory({
+  payload: {
+    session_id: sessionId,
+    transcript_path: transcriptPath,
+    cwd,
+    model: "glm-4.6",
+    permission_mode: "default",
+    run_id: "run-1"
+  },
+  expected: identity
+});
 
 export const dimSamples: readonly HookDialectSample[] = [
   sample("SessionStart", { source: "startup" }, { phase: "start", scope: "session" }),

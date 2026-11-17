@@ -7,7 +7,6 @@ import {
   OUTPUT_KINDS,
   placeRequest,
   skipRecord,
-  sourceOf,
   type ParsedTranscript,
   type SourcedRecord,
   type TranscriptEvent,
@@ -322,4 +321,4 @@ export function createKimiTranslation(options: { readonly retain: boolean }):
   };
 }
 
-export { KIMI_CAPABILITIES, sourceOf };
+export { KIMI_CAPABILITIES };

@@ -1,5 +1,17 @@
 import { CLAUDE_CODE_ID, CLAUDE_CODE_SESSION_ENV } from "./facts.js";
-import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
+import {
+  claudeShapedFields,
+  claudeShapedGateFields,
+  claudeShapedHookOutput,
+  claudeShapedPermissionFields,
+  claudeShapedSecondsTimeout,
+  claudeShapedSessionId,
+  claudeShapedSessionStartLifecycle,
+  claudeShapedTurnId,
+  withPlainStdoutContext,
+  type HookDialect,
+  type HookOutput
+} from "@rivus/agent-kit-harness/spi";
 
 // https://code.claude.com/docs/en/hooks (events, input fields, exit codes, JSON output, timeouts) and
 // https://code.claude.com/docs/en/env-vars (CLAUDE_CODE_SESSION_ID). Hooks also live in a skills-dir plugin's
@@ -10,13 +22,7 @@ import type { HookDialect, HookOutput } from "@rivus/agent-kit-harness/spi";
  * and ends with `}`, otherwise plain text. Exit 2 blocks the events that can block. Any other code is a
  * non-blocking error. `{}` is valid output for every event, and for the agents that run these hooks too.
  */
-const OUTPUT: HookOutput = {
-  emptyStdout: "proceed",
-  invalidStdout: "proceed",
-  exitCode2: "block",
-  otherExitCodes: "hook-failed",
-  passThrough: "{}"
-};
+const OUTPUT: HookOutput = { ...claudeShapedHookOutput };
 
 export const claudeCodeHookDialect: HookDialect = {
   specificationVersion: "harness-v1",
@@ -24,51 +30,32 @@ export const claudeCodeHookDialect: HookDialect = {
   delivery: "command",
   // Seconds; 600 for command hooks, 30 on UserPromptSubmit. All SessionEnd hooks share 1.5 s, raised to the
   // highest timeout in the settings files, at most 60 s.
-  timeout: { unit: "seconds", default: 600 },
+  timeout: claudeShapedSecondsTimeout,
   // Interactive sessions hold back every settings hook until the folder's trust dialog is accepted; there is no
   // per-hook review.
   trust: { review: "workspace" },
   output: OUTPUT,
   fields: {
-    event: { paths: [["hook_event_name"]] },
-    sessionId: { paths: [["session_id"]], env: [CLAUDE_CODE_SESSION_ENV] },
-    cwd: { paths: [["cwd"]] },
-    transcriptPath: { paths: [["transcript_path"]] },
+    ...claudeShapedFields,
+    sessionId: claudeShapedSessionId([CLAUDE_CODE_SESSION_ENV]),
     // The user prompt being processed, absent until the first input; it is the turn.
-    turnId: { paths: [["prompt_id"]] },
-    // agent_type alone also appears on a main session started with --agent; agent_id only inside a subagent.
-    subagentId: { paths: [["agent_id"]] },
-    subagentType: { paths: [["agent_type"]] },
-    toolName: { paths: [["tool_name"]] },
-    toolCallId: { paths: [["tool_use_id"]] }
+    turnId: claudeShapedTurnId()
   },
   events: {
     SessionStart: {
       // `compact` fires after a compaction inside a running session.
-      lifecycle: {
-        field: ["source"],
-        cases: { compact: { phase: "activity" } },
-        otherwise: { phase: "start", scope: "session" }
-      },
+      lifecycle: claudeShapedSessionStartLifecycle,
       // Plain-text stdout becomes context for Claude here; `{}` is JSON and adds nothing.
-      output: { ...OUTPUT, plainStdout: "context" }
+      output: withPlainStdoutContext(OUTPUT)
     },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: { ...OUTPUT, plainStdout: "context" } },
+    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: withPlainStdoutContext(OUTPUT) },
     PreToolUse: {
       lifecycle: { phase: "activity" },
       gate: true,
       // Silence decides nothing ("staying silent doesn't approve it"); the permission flow continues.
       output: {
         ...OUTPUT,
-        fields: [
-          "continue",
-          "stopReason",
-          "suppressOutput",
-          "systemMessage",
-          "hookSpecificOutput",
-          "decision",
-          "reason"
-        ]
+        fields: claudeShapedGateFields
       }
     },
     PermissionRequest: {
@@ -78,7 +65,7 @@ export const claudeCodeHookDialect: HookDialect = {
       output: {
         ...OUTPUT,
         exitCode2: "proceed",
-        fields: ["continue", "stopReason", "systemMessage", "hookSpecificOutput"]
+        fields: claudeShapedPermissionFields
       }
     },
     PermissionDenied: { lifecycle: { phase: "activity" } },

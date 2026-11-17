@@ -31,7 +31,7 @@ export interface LeaseConfig {
   readonly retryMs?: number;
 }
 
-export interface AcquireOptions {
+interface AcquireOptions {
   /**
    * Keep trying every `retryMs` while the lease is held or the repository is busy (a guard that stays locked),
    * instead of failing with `LeaseHeld` or a `busy` `LeaseRepositoryFailure`. The wait ends when the lease is taken,

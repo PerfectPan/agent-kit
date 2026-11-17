@@ -11,13 +11,14 @@ import {
   grokUsageSessionId,
   grokUsageSourceId
 } from "./layout.js";
-import { grokUsageKey, grokUsageLines } from "./records.js";
+import { grokUsageLines } from "./records.js";
 import {
   readText,
   type UsageDecoder,
   decodeJsonlUsage,
   fileSources,
-  type JsonlUsageLayout
+  type JsonlUsageLayout,
+  usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
 
 const layout: JsonlUsageLayout = {
@@ -56,7 +57,7 @@ const layout: JsonlUsageLayout = {
 export const grokUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: GROK_ID,
-  usageKey: grokUsageKey,
+  usageKey: usageWindowKey,
   sources(platform, home, options = {}) {
     return fileSources(platform, GROK_ID, grokRoots(home), GROK_SESSION_FILES, {
       ...options,

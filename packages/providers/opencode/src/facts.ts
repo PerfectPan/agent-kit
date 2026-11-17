@@ -35,4 +35,5 @@ export const OPENCODE_ACP_ENV: readonly string[] = [
 /** The bridge remembers the session under a key absent from native payloads. */
 export const OPENCODE_CURRENT_SESSION_FIELD = "currentSessionId";
 
+/** @public */
 export const agentMarkers: readonly string[] = [OPENCODE_ID];

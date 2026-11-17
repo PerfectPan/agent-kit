@@ -2,8 +2,8 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const CODEX_ID = "codex";
 export const CODEX_DISPLAY_NAME = "Codex";
-export const CODEX_COMMAND: string = CODEX_ID;
 export const CODEX_HOME_DIR = ".codex";
+/** @public */
 export const HOME_ENV = "CODEX_HOME";
 // The override names the Codex home itself.
 export const CODEX_HOME: HomeRule = {
@@ -33,4 +33,5 @@ export const CODEX_SESSION_SUFFIX_PATTERN: RegExp = /\.jsonl$/;
 export const CODEX_ACP_COMMAND = "codex-acp";
 export const CODEX_ACP_ENV: readonly string[] = ["OPENAI_*", "CODEX_*", "AZURE_OPENAI_*"];
 
+/** @public */
 export const agentMarkers: readonly string[] = [CODEX_ID, CODEX_HOME_DIR, HOME_ENV];

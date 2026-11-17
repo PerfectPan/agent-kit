@@ -4,7 +4,7 @@ import type { SessionPlatform } from "@rivus/agent-kit-sessions/public";
 // A session whose turns are one 40 KB prompt, one request and one turn duration: memory-hungry for a reader that
 // materializes the transcript, while the summary pass's own state — the numbers per request — stays a few bytes a
 // turn. The big session is ~16 MB, the small one ~2 MB.
-export const TURN_TEXT_BYTES = 40 * 1024;
+const TURN_TEXT_BYTES = 40 * 1024;
 export const SMALL_TURNS = 48;
 export const LARGE_TURNS = 384;
 

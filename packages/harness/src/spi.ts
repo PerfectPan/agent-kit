@@ -47,6 +47,18 @@ export {
   aliasesOf,
   finishSelectorsOf
 } from "./domain/lifecycle/spi/hook-dialect.js";
+export {
+  claudeShapedField,
+  claudeShapedFields,
+  claudeShapedGateFields,
+  claudeShapedHookOutput,
+  claudeShapedPermissionFields,
+  claudeShapedSecondsTimeout,
+  claudeShapedSessionId,
+  claudeShapedSessionStartLifecycle,
+  claudeShapedTurnId,
+  withPlainStdoutContext
+} from "./domain/lifecycle/spi/claude-shaped.js";
 export { type LifecycleMapping } from "./domain/lifecycle/value-objects/lifecycle-event.js";
 
 export { canonicalContent, type ContentHash } from "./domain/ledger/value-objects/content-hash.js";
