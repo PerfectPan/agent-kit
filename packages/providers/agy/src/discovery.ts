@@ -29,7 +29,6 @@ export const agyProbe: ProbeRecipe = {
   auth: {
     env: [
       { name: "GEMINI_API_KEY", method: "api-key" },
-      { name: "GOOGLE_API_KEY", method: "api-key" },
       { name: "GOOGLE_APPLICATION_CREDENTIALS", method: "service-account" }
     ]
   },
