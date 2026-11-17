@@ -1,32 +1,24 @@
 import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
-/** @public */
 export const DSH_ID = "dsh";
-/** @public */
 export const DSH_DISPLAY_NAME = "DeepSeek Harness";
 /** @public */
 export const HOME_ENV = "DSH_HOME";
 // The override names the harness home itself, not a parent directory.
-/** @public */
 export const DSH_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [".dsh"] };
-/** @public */
 export const DSH_SESSIONS_DIR = "sessions";
 /** The session format generation this adapter reads. */
-/** @public */
 export const DSH_SESSION_VERSION = 4;
 
 /** The npm package `@deepseek-ai/dsh` installs this command. */
-/** @public */
 export const DSH_COMMAND = "dsh";
 /** The profile that serves ACP v1 over stdio. */
-/** @public */
 export const DSH_ACP_ARGS: readonly string[] = ["--profile", "acp"];
 /**
  * Known launch settings for the built-in ACP profile and DeepSeek API. Internal subprocess markers and the
  * speech worker's generated token are excluded. User-configured pi-ai `apiKeyEnv` names are not enumerable;
  * callers must explicitly forward a referenced key only when it is available solely in their own environment.
  */
-/** @public */
 export const DSH_ACP_ENV: readonly string[] = [
   HOME_ENV,
   "DSH_AGENTS_HOME",
@@ -40,10 +32,8 @@ export const DSH_ACP_ENV: readonly string[] = [
   "DEEPSEEK_*"
 ];
 /** Where `dsh` stores the API key a login saves, under `refs.DEEPSEEK_API_KEY`; YAML, so never parsed here. */
-/** @public */
 export const DSH_CREDENTIAL_FILE = ".credentials.yaml";
 /** The variable the stored credential is named after; the launch environment's value is a fallback to the file. */
-/** @public */
 export const DSH_API_KEY_ENV = "DEEPSEEK_API_KEY";
 
 /** @public */

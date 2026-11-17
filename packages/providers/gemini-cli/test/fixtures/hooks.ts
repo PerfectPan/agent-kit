@@ -1,4 +1,3 @@
-
 import { hookSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Gemini CLI hook payloads (docs/hooks/reference.md in google-gemini/gemini-cli), one per event.
@@ -15,7 +14,6 @@ const identity = {
   transcriptPath: common.transcript_path,
   cwd: common.cwd
 } as const;
-
 
 const shell = { tool_name: "run_shell_command", tool_input: { command: "npm test" } };
 const request = { llm_request: { model: "gemini-3-pro", messages: [] } };

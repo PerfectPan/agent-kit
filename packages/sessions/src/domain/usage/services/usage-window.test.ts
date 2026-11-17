@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { UsageRecord } from "../value-objects/usage-record.js";
-import { restoreUsageWindow } from "./usage-window.js";
+import { restoreUsageWindow, usageWindowKey } from "./usage-window.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -36,5 +36,13 @@ describe("usage window", () => {
     const after = restoreUsageWindow(saved, 6 * DAY_MS + 1);
     expect(after.count(record("codex", "old", 2 * DAY_MS), "old")).toBe(true);
     expect(after.count(record("codex", "new", 6 * DAY_MS + 1), "new")).toBe(false);
+  });
+
+  it("keys records by session and request id when present, else undefined", () => {
+    const withRequest = record("codex", "req-1", DAY_MS);
+    expect(usageWindowKey(withRequest)).toBe("s req-1");
+
+    const { requestId: _omitted, ...withoutRequest } = withRequest;
+    expect(usageWindowKey(withoutRequest)).toBeUndefined();
   });
 });

@@ -1,4 +1,3 @@
-
 import { hookSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Scrubbed Claude Code hook payloads (https://code.claude.com/docs/en/hooks), one or more per event.
@@ -17,7 +16,6 @@ const identity = {
   cwd: common.cwd,
   turnId: common.prompt_id
 } as const;
-
 
 const bash = { tool_name: "Bash", tool_input: { command: "npm test", description: "Run tests" } };
 const inSubagent = { agent_id: "a91c", agent_type: "Explore" };

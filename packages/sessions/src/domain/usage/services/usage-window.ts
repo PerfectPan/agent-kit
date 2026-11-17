@@ -71,3 +71,11 @@ export function restoreUsageWindow(
     }
   };
 }
+
+/**
+ * The key under which a usage scan counts a record once in its window: the
+ * session and the request id, when the record carries one.
+ */
+export function usageWindowKey(record: UsageRecord): string | undefined {
+  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
+}

@@ -1,4 +1,3 @@
-
 import { hookEventSampleFactory, type HookDialectSample } from "@rivus/agent-kit-testing/public";
 
 // Synthetic Qoder CLI hook payloads, per the agent SDK's protocol hook types: the Claude-Code-shaped snake_case base
@@ -9,11 +8,10 @@ const cwd = "/u/me/work";
 const transcriptPath = `${cwd}/.qoder/t.jsonl`;
 const identity = { agent: "qoder", sessionId, cwd, transcriptPath } as const;
 
-
 const tool = { tool_name: "Bash", tool_use_id: "tc_3", tool_input: { command: "ls" } };
 
 const sample = hookEventSampleFactory({
-  payload: { hook_event_name: "", session_id: sessionId, cwd, transcript_path: transcriptPath },
+  payload: { session_id: sessionId, cwd, transcript_path: transcriptPath },
   expected: identity
 });
 

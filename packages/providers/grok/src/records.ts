@@ -449,8 +449,3 @@ export function grokUsageLines(file: UsageFile, saved?: unknown): UsageLineDecod
     }
   };
 }
-
-/** The key under which a scan counts a record once in its window: the session and the turn's prompt id. */
-export function grokUsageKey(record: UsageRecord): string | undefined {
-  return record.requestId === undefined ? undefined : `${record.sessionId} ${record.requestId}`;
-}

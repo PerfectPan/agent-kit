@@ -1,4 +1,4 @@
-import type { FieldSource, HookOutput, LifecycleSwitch, PayloadFields } from "./hook-dialect.js";
+import type { FieldSource, HookOutput, HookTimeout, LifecycleSwitch, PayloadFields } from "./hook-dialect.js";
 
 /**
  * The hook shapes the agents that follow Claude Code's convention share, as
@@ -30,10 +30,10 @@ export const claudeShapedSessionId = (env: readonly string[]): FieldSource => ({
 });
 
 /** The turn id field when the payload names one (Claude Code's `prompt_id`, or the agent's own). */
-export const claudeShapedTurnId = (path = "prompt_id"): FieldSource => claudeShapedField(path);
+export const claudeShapedTurnId = (path: string = "prompt_id"): FieldSource => claudeShapedField(path);
 
 /** The payload fields every Claude-shaped stdin payload carries, keyed as the dialect spells them. */
-export const claudeShapedFields: PayloadFields & Record<string, FieldSource> = {
+export const claudeShapedFields: PayloadFields = {
   event: { paths: [["hook_event_name"]] },
   sessionId: { paths: [["session_id"]] },
   cwd: { paths: [["cwd"]] },
@@ -71,7 +71,7 @@ export const claudeShapedPermissionFields: readonly string[] = [
 ];
 
 /** Command-hook timeouts measured in seconds, as Claude Code's settings carry them. */
-export const claudeShapedSecondsTimeout: { unit: "seconds"; default: number } = {
+export const claudeShapedSecondsTimeout: HookTimeout = {
   unit: "seconds",
   default: 600
 };

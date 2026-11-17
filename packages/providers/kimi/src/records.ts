@@ -1,6 +1,12 @@
 import * as z from "zod/mini";
 import { compactUsage, lenient, type Usage } from "@rivus/agent-kit-sessions/spi";
 
+// The `wire.jsonl` event stream of a Kimi Code session, captured on 2.6.0 against a scripted model: a metadata
+// header names the protocol version, `turn.prompt` frames turns, `context.append_message` records the messages
+// the model saw, `context.append_loop_event` the per-step model loop (content parts, tool calls and results,
+// step ends with usage), and `turn.ended` closes it. The schemas stay module-private; the value types are
+// declared by hand, like the other adapters', and the `*Of` functions return them.
+
 /** One part of a message's content: text is the only kind the verified protocol writes. */
 export interface KimiContentPartValue {
   type: string;

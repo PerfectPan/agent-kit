@@ -27,25 +27,29 @@ export interface HookDialectFixtures {
   readonly samples: readonly HookDialectSample[];
 }
 
+type HookSampleIdentity = { readonly agent: CodingAgentId } & Partial<
+  Omit<LifecycleEvent, "agent" | "nativeEvent" | "phase">
+>;
+type HookSampleExpected = Omit<LifecycleEvent, "agent" | "nativeEvent">;
+
 /**
  * The sample builder every agent's hook fixtures share: the agent's base payload and identity are
  * captured once, and each sample names its event and the per-event fields.
  */
 export function hookSampleFactory(base: {
   readonly payload: Readonly<Record<string, unknown>>;
-  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
+  readonly expected: HookSampleIdentity;
 }): (
   name: string,
   event: string,
   fields: Readonly<Record<string, unknown>>,
-  expected: Omit<HookDialectSample["expected"], "agent" | "nativeEvent">
+  expected: HookSampleExpected
 ) => HookDialectSample {
-  return (name, event, fields, expected) =>
-    ({
-      name,
-      payload: { ...base.payload, hook_event_name: event, ...fields },
-      expected: { ...base.expected, nativeEvent: event, ...expected }
-    }) as HookDialectSample;
+  return (name, event, fields, expected) => ({
+    name,
+    payload: { ...base.payload, hook_event_name: event, ...fields },
+    expected: { ...base.expected, nativeEvent: event, ...expected }
+  });
 }
 
 /**
@@ -54,14 +58,10 @@ export function hookSampleFactory(base: {
  */
 export function hookEventSampleFactory(base: {
   readonly payload: Readonly<Record<string, unknown>>;
-  readonly expected: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>;
-}): (
-  event: string,
-  fields?: Readonly<Record<string, unknown>>,
-  expected?: Partial<Omit<HookDialectSample["expected"], "agent" | "nativeEvent">>
-) => HookDialectSample {
+  readonly expected: HookSampleIdentity;
+}): (event: string, fields: Readonly<Record<string, unknown>>, expected: HookSampleExpected) => HookDialectSample {
   const byName = hookSampleFactory(base);
-  return (event, fields = {}, expected = {}) => byName(event, event, fields, expected as never);
+  return (event, fields, expected) => byName(event, event, fields, expected);
 }
 
 const PHASES = new Set(["start", "activity", "blocked", "finish", "unknown"]);

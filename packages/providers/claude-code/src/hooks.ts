@@ -1,10 +1,14 @@
 import { CLAUDE_CODE_ID, CLAUDE_CODE_SESSION_ENV } from "./facts.js";
 import {
   claudeShapedFields,
+  claudeShapedGateFields,
   claudeShapedHookOutput,
+  claudeShapedPermissionFields,
   claudeShapedSecondsTimeout,
   claudeShapedSessionId,
+  claudeShapedSessionStartLifecycle,
   claudeShapedTurnId,
+  withPlainStdoutContext,
   type HookDialect,
   type HookOutput
 } from "@rivus/agent-kit-harness/spi";
@@ -40,30 +44,18 @@ export const claudeCodeHookDialect: HookDialect = {
   events: {
     SessionStart: {
       // `compact` fires after a compaction inside a running session.
-      lifecycle: {
-        field: ["source"],
-        cases: { compact: { phase: "activity" } },
-        otherwise: { phase: "start", scope: "session" }
-      },
+      lifecycle: claudeShapedSessionStartLifecycle,
       // Plain-text stdout becomes context for Claude here; `{}` is JSON and adds nothing.
-      output: { ...OUTPUT, plainStdout: "context" }
+      output: withPlainStdoutContext(OUTPUT)
     },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: { ...OUTPUT, plainStdout: "context" } },
+    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: withPlainStdoutContext(OUTPUT) },
     PreToolUse: {
       lifecycle: { phase: "activity" },
       gate: true,
       // Silence decides nothing ("staying silent doesn't approve it"); the permission flow continues.
       output: {
         ...OUTPUT,
-        fields: [
-          "continue",
-          "stopReason",
-          "suppressOutput",
-          "systemMessage",
-          "hookSpecificOutput",
-          "decision",
-          "reason"
-        ]
+        fields: claudeShapedGateFields
       }
     },
     PermissionRequest: {
@@ -73,7 +65,7 @@ export const claudeCodeHookDialect: HookDialect = {
       output: {
         ...OUTPUT,
         exitCode2: "proceed",
-        fields: ["continue", "stopReason", "systemMessage", "hookSpecificOutput"]
+        fields: claudeShapedPermissionFields
       }
     },
     PermissionDenied: { lifecycle: { phase: "activity" } },

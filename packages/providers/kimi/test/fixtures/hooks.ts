@@ -7,9 +7,8 @@ const sessionId = "session_abc123";
 const cwd = "/u/me/work";
 const identity = { agent: "kimi", sessionId, cwd } as const;
 
-
 const sample = hookEventSampleFactory({
-  payload: { hook_event_name: "", session_id: sessionId, session_title: "Fix the login page", client_type: "kimi_code_cli", cwd },
+  payload: { session_id: sessionId, session_title: "Fix the login page", client_type: "kimi_code_cli", cwd },
   expected: identity
 });
 

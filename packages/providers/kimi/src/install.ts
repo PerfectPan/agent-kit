@@ -6,6 +6,7 @@ import {
   KIMI_CONFIG_FILE,
   KIMI_CONFIG_PATH,
   KIMI_HOOK_FORMAT,
+  KIMI_HOOK_LAYOUT,
   KIMI_HOOK_MEMBER_KEYS,
   KIMI_HOOKS_POINTER,
   KIMI_HOME,
@@ -64,7 +65,7 @@ export const kimiInstallAdapter: InstallAdapter = {
     { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
   ],
   hookSources: (context) => [
-    { path: kimiConfigFile(context), format: KIMI_HOOK_FORMAT, layout: "event-list", pointer: KIMI_HOOKS_POINTER }
+    { path: kimiConfigFile(context), format: KIMI_HOOK_FORMAT, layout: KIMI_HOOK_LAYOUT, pointer: KIMI_HOOKS_POINTER }
   ],
   legacySources: (context) => [
     {
