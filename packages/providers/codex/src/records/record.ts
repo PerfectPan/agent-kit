@@ -4,16 +4,6 @@ import * as z from "zod/mini";
 // Codex writes one rollout record per line. Agent logs are read leniently: a field of an unexpected type counts as
 // absent (the sessions SPI's `lenient` helper), and only the record envelope decides whether the format generation is known.
 
-/**
- * A field named on one side of a schema/interface pair only — an interface typo, or a schema field the interface
- * misses — fails to compile with this: the schema's keys and the value type's keys must be the same.
- */
-export type KeysExact<Schema extends object, Value> =
-  | Exclude<keyof Schema, keyof Value>
-  | Exclude<keyof Value, keyof Schema> extends never
-  ? true
-  : never;
-
 /** A usage object as both `token_usage_record.usage` and `token_count.info` carry it. */
 interface CodexTokenCounts {
   input_tokens?: number;
@@ -31,7 +21,7 @@ const CodexTokenCountsSchema = z.looseObject({
   output_tokens: lenient(z.number()),
   reasoning_output_tokens: lenient(z.number()),
   total_tokens: lenient(z.number())
-});
+} satisfies Record<keyof CodexTokenCounts, z.ZodMiniType>);
 
 /** A history item of a `replacement_history`: the fields matching keeps, `content` kept raw for the text. */
 interface CodexHistoryItem {
@@ -48,7 +38,7 @@ const CodexHistoryItemSchema = z.looseObject({
   id: lenient(z.string()),
   call_id: lenient(z.string()),
   content: z.optional(z.unknown())
-});
+} satisfies Record<keyof CodexHistoryItem, z.ZodMiniType>);
 
 /**
  * The payload of a rollout record, whatever envelope carries it: the `session_meta` identity, the `turn_context`
@@ -148,19 +138,22 @@ const CodexPayloadSchema = z.looseObject({
     })
   ),
   replacement_history: lenient(z.array(lenient(CodexHistoryItemSchema)))
-});
+} satisfies Record<keyof CodexPayload, z.ZodMiniType>);
+
+interface CodexEnvelope {
+  type?: string;
+  record_type?: string;
+  id?: string;
+  timestamp?: number | string;
+  formatVersion?: unknown;
+}
 
 /**
  * One rollout record: the envelope `type`, the `record_type` bookkeeping marker, the header `id` of a pre-envelope
  * rollout, and the presence markers the generation check reads. `payload` stays raw because only the record knows
  * whether it is a bare item's record, whose fields sit on the record itself; readers parse it through `codexPayload`.
  */
-interface CodexRecord {
-  type?: string;
-  record_type?: string;
-  id?: string;
-  timestamp?: number | string;
-  formatVersion?: unknown;
+interface CodexRecord extends CodexEnvelope {
   payload?: unknown;
 }
 
@@ -189,9 +182,12 @@ export const CodexEnvelopeSchema: z.ZodMiniObject<
   id: lenient(z.string()),
   timestamp: logTimestamp,
   formatVersion: z.optional(z.unknown())
-});
+} satisfies Record<keyof CodexEnvelope, z.ZodMiniType>);
 
-const CodexRecordSchema = z.looseObject({ ...CodexEnvelopeSchema.shape, payload: z.optional(z.unknown()) });
+const CodexRecordSchema = z.looseObject({
+  ...CodexEnvelopeSchema.shape,
+  payload: z.optional(z.unknown())
+} satisfies Record<keyof CodexRecord, z.ZodMiniType>);
 
 /**
  * A record of a format generation this adapter reads: no `formatVersion`, and a non-empty `type`, a `record_type`
@@ -215,12 +211,6 @@ export type CodexRecordValue = CodexRecord & Record<string, unknown>;
 export type CodexPayloadValue = CodexPayload & Record<string, unknown>;
 type CodexTokenCountsValue = CodexTokenCounts & Record<string, unknown>;
 export type CodexHistoryItemValue = CodexHistoryItem & Record<string, unknown>;
-
-// Compile-time key checks: the schemas' keys must match the domain types exactly.
-void (true satisfies KeysExact<typeof CodexRecordSchema.shape, CodexRecord>);
-void (true satisfies KeysExact<typeof CodexPayloadSchema.shape, CodexPayload>);
-void (true satisfies KeysExact<typeof CodexHistoryItemSchema.shape, CodexHistoryItem>);
-void (true satisfies KeysExact<typeof CodexTokenCountsSchema.shape, CodexTokenCounts>);
 
 /** The rollout record `value`, or `undefined` when it is not a record. */
 export function codexRecord(value: unknown): CodexRecordValue | undefined {

@@ -14,7 +14,7 @@ import {
   type UsageFile,
   type UsageLineDecoder
 } from "@rivus/agent-kit-sessions/spi";
-import { CodexEnvelopeSchema, codexTokenCounts, type KeysExact, knownCodexRecord } from "./record.js";
+import { CodexEnvelopeSchema, codexTokenCounts, knownCodexRecord } from "./record.js";
 import { endForkReplay, FORK_REPLAY_START, type ForkReplayState, stepForkReplay } from "./fork-replay.js";
 import * as z from "zod/mini";
 
@@ -63,9 +63,7 @@ const CodexUsagePayloadSchema = z.looseObject({
     })
   ),
   thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
-});
-
-void (true satisfies KeysExact<typeof CodexUsagePayloadSchema.shape, CodexUsagePayload>);
+} satisfies Record<keyof CodexUsagePayload, z.ZodMiniType>);
 
 /**
  * One rollout record for the usage rule: the envelope every codex reader parses, and the payload fields above. One
