@@ -53,6 +53,8 @@ import { kimiHookDialect } from "@rivus/agent-kit-provider-kimi/hooks";
 import { kimiInstallAdapter } from "@rivus/agent-kit-provider-kimi/install";
 import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
 import { kimiSessionAdapter } from "@rivus/agent-kit-provider-kimi/sessions";
+import { agy } from "@rivus/agent-kit-provider-agy/identity";
+import { agyProbe } from "@rivus/agent-kit-provider-agy/discovery";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -63,7 +65,8 @@ export const builtinCodingAgents = {
   pi: pi,
   qoder,
   dim,
-  kimi
+  kimi,
+  agy
 };
 export const builtinProbeRecipes = {
   opencode: opencodeProbe,
@@ -75,7 +78,8 @@ export const builtinProbeRecipes = {
   grok: grokProbe,
   kimi: kimiProbe,
   qoder: qoderProbe,
-  dim: dimProbe
+  dim: dimProbe,
+  agy: agyProbe
 };
 // ZCode first, as in the shell: its payloads also carry Grok's payload marker.
 export const builtinHookDialects = {

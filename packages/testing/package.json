@@ -31,6 +31,7 @@
     "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-cost": "workspace:*",
     "@rivus/agent-kit-platform-node": "workspace:*",
+    "@rivus/agent-kit-provider-agy": "workspace:*",
     "@rivus/agent-kit-provider-claude-code": "workspace:*",
     "@rivus/agent-kit-provider-codex": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",

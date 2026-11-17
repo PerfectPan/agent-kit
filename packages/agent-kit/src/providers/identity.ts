@@ -10,6 +10,7 @@ import { pi } from "@rivus/agent-kit-provider-pi/identity";
 import { zcode } from "@rivus/agent-kit-provider-zcode/identity";
 import { qoder } from "@rivus/agent-kit-provider-qoder/identity";
 import { kimi } from "@rivus/agent-kit-provider-kimi/identity";
+import { agy } from "@rivus/agent-kit-provider-agy/identity";
 import { dim } from "@rivus/agent-kit-provider-dim/identity";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
@@ -27,6 +28,7 @@ const builtinCodingAgents: {
   readonly qoder: typeof qoder;
   readonly dim: typeof dim;
   readonly kimi: typeof kimi;
+  readonly agy: typeof agy;
 } = {
   "claude-code": claudeCode,
   codex: codex,
@@ -39,7 +41,8 @@ const builtinCodingAgents: {
   zcode: zcode,
   qoder,
   dim,
-  kimi
+  kimi,
+  agy
 };
 
 export const identityTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"identity">> => {

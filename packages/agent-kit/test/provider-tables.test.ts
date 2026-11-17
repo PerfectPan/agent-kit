@@ -37,6 +37,12 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
     sessions: "The session store is not captured yet.",
     usage: "The session store is not captured yet."
   },
+  agy: {
+    hooks: "The hooks.json schema is not documented.",
+    install: "No supported hook dialect to install.",
+    sessions: "Conversations are protobuf payloads without a published schema.",
+    usage: "Usage lives in the protobuf conversation payloads."
+  },
   zcode: { acp: "No supported ACP transport." }
 };
 
@@ -103,7 +109,7 @@ it("exports builtinProviders with the same ids and services as the individual ta
   }
 });
 
-it("keeps exactly the twelve built-in ids and accepts third-party ids in the public type", () => {
+it("keeps exactly the thirteen built-in ids and accepts third-party ids in the public type", () => {
   expectTypeOf<BuiltinCodingAgentId>().toEqualTypeOf<
     | "claude-code"
     | "codex"
@@ -117,6 +123,7 @@ it("keeps exactly the twelve built-in ids and accepts third-party ids in the pub
     | "pi"
     | "qoder"
     | "zcode"
+    | "agy"
   >();
   expectTypeOf<"third-party">().toExtend<CodingAgentId>();
   for (const id of ids) {
