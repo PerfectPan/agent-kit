@@ -253,6 +253,7 @@ const AcpResponseUsage = z.looseObject({
  * Usage of a `session/prompt` response (ACP marks it unstable). ACP's `totalTokens` sums every count, so its
  * `inputTokens` leaves out cache reads and writes and its `outputTokens` leaves out thought tokens; both are added
  * back for the kit's convention, where they are subsets.
+ * @internal
  */
 export function acpUsage(value: unknown): Usage | undefined {
   const raw = z.safeParse(AcpResponseUsage, value).data;

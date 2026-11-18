@@ -139,7 +139,7 @@ import what.
 
 ```bash
 pnpm install
-pnpm run check   # format, build, lint, knip, typecheck, test, package checks
+pnpm run check   # format, build, lint, knip, knip:production, typecheck, test, package checks
 pnpm run knip    # unused files, exports or dependencies fail CI
 ```
 

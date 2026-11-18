@@ -1,4 +1,6 @@
-/** Slug under `/docs` for each landing entry row. */
+/** Slug under `/docs` for each landing entry row.
+ * @internal
+ */
 export const ENTRY_GUIDE_SLUG = {
   "/discovery": "connection/discovery",
   "/sessions": "connection/sessions",

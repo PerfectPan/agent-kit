@@ -11,7 +11,7 @@ import { type LanesConfigInvalid } from "../../domain/lane/errors/lanes-config-i
 import { type LaneSnapshot } from "../../domain/lane/value-objects/lane-snapshot.js";
 import { fromResult } from "../services/from-result.js";
 
-export interface LanesConfig<E, R> {
+interface LanesConfig<E, R> {
   /** Activations that may run at once across all keys; a positive integer. */
   readonly maxConcurrent: number;
   /**

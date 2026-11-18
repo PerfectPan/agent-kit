@@ -74,8 +74,9 @@ Small typo corrections, narrow documentation fixes, and repository metadata upda
 # Local Git hooks:
 ./scripts/install-git-hooks.sh
 
-# Aggregate gate: format:check, build, lint, knip, typecheck, test, package checks.
-# pnpm run knip fails CI on unused files, exports or dependencies.
+# Aggregate gate: format:check, build, lint, knip, knip:production, typecheck, test, package checks.
+# pnpm run knip fails CI on unused files, exports or dependencies; pnpm run knip:production
+# follows only the production entries, so code that only tests reach fails there.
 pnpm run check
 
 # Pending change records (CI runs it before the aggregate gate; gh-repo-checks v1.4.0 or later):

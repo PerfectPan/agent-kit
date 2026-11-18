@@ -20,6 +20,15 @@ function sourceEntries(
 }
 
 // The inline *.test.ts files are discovered by vitest. Configuration and tag hints fail the run.
+//
+// Project patterns with a trailing `!` are the production scope for `knip --production`; the
+// unsuffixed test and script patterns below only widen the default-mode analysis. Workspaces
+// without a `src/` tree (automation scripts, the architecture manifest, the smoke tests, the
+// private TypeDoc runner and the testing package) are development-only and carry no suffixed
+// pattern, so they contribute nothing to the production analysis.
+const productionPackage = ['src/**/*.ts!', 'test/**/*.ts'];
+const developmentOnly = ['**/*.ts'];
+
 const config: KnipConfig = {
   ...knip,
 
@@ -35,20 +44,43 @@ const config: KnipConfig = {
   ],
   workspaces: {
     '.': {},
+    scripts: { project: developmentOnly },
+    'infra/**': { project: developmentOnly },
+    'tests/**': { project: developmentOnly },
+    'packages/testing': {
+      // The testing package is test infrastructure consumed as a devDependency. The boundary
+      // manifest pins its five workspace packages to `dependencies` (production-cycle
+      // enforcement), and every import lands in test code, so the `!`-suffixed ignore entries
+      // keep them out of the production analysis alone.
+      ignoreDependencies: [
+        '@rivus/agent-kit-catalog!',
+        '@rivus/agent-kit-discovery!',
+        '@rivus/agent-kit-harness!',
+        '@rivus/agent-kit-platform!',
+        '@rivus/agent-kit-sessions!'
+      ],
+      project: developmentOnly
+    },
+    'packages/**': { project: productionPackage },
     'packages/agent-kit': {
       // One source file per subpath export: ./cost/prices builds src/cost/prices.ts.
       entry: sourceEntries('packages/agent-kit', subpath => `src/${subpath}.ts`),
+      project: [...productionPackage, 'scripts/**/*.ts'],
       // The ACP SDK is internal to the /acp bundle and @decimalturn/toml-patch and shell-quote
       // ship inside dist (governed by check-dist.ts and .size-limit.ts); es-toolkit and
       // jsonc-parser resolve from this package's context when packing bundles the workspace
-      // harness sources. None of the five is imported from this package's own src.
+      // harness sources. None of the six is imported from this package's own src. zod ships the
+      // same way (vp pack inlines zod/mini into dist; check-dist.ts imports it at dev time), so
+      // the `!`-suffixed entry keeps it out of the production analysis only.
       ignoreDependencies: [
         '@agentclientprotocol/sdk',
         '@decimalturn/toml-patch',
         'es-toolkit',
         'jsonc-parser',
-        'shell-quote'
-      ]
+        'shell-quote',
+        'zod!'
+      ],
+      project: productionPackage
     },
     'packages/agent-kit-collab': {
       // One entry per subpath export: ./lease builds src/lease/public.ts; the lease and
@@ -56,22 +88,40 @@ const config: KnipConfig = {
       entry: [
         ...sourceEntries('packages/agent-kit-collab', subpath => `src/${subpath}/public.ts`),
         'test/workers/*.ts!'
-      ]
+      ],
+      project: [...productionPackage, 'scripts/**/*.ts']
     },
     'packages/harness': {
       // The legacy OpenCode plugin is loaded by path from the fixtures-driven tests.
-      entry: ['test/workers/*.ts!', 'test/fixtures/*.js!']
+      entry: ['test/workers/*.ts!', 'test/fixtures/*.js!'],
+      project: productionPackage
     },
     'apps/website': {
       // TanStack Start registers the file-based routes on its own; @rivus/agent-kit-collab is
       // resolved from this package by website-api's generate-api-reference.ts, never imported.
+      // The same holds for @rivus/agent-kit, and @tanstack/react-start only loads through the
+      // vite plugin and routeTree.gen.ts. Their `!`-suffixed ignore entries apply to the
+      // production analysis alone.
       entry: ['src/routes/**/*.{ts,tsx}!'],
-      ignoreDependencies: ['@rivus/agent-kit-collab']
+      ignoreDependencies: ['@rivus/agent-kit-collab', '@rivus/agent-kit!', '@tanstack/react-start!'],
+      // facts-plugin.ts is loaded by vite.config.ts, and the MDX docs import
+      // agent-support-table.tsx (which pulls in agent-identity.ts); Knip cannot follow either
+      // hop, so all three stay out of the production analysis.
+      project: [
+        'src/**/*.{ts,tsx,css}!',
+        'content/**/*.mdx!',
+        'scripts/**/*.mjs',
+        '!src/features/docs/agent-identity.ts!',
+        '!src/features/docs/agent-support-table.tsx!',
+        '!src/features/landing/facts-plugin.ts!'
+      ]
     },
     'apps/website-api': {
       // typedoc and typedoc-plugin-markdown are spawned through createRequire by
       // src/generate-api-reference.ts, which Knip cannot follow.
-      ignoreDependencies: ['typedoc', 'typedoc-plugin-markdown']
+      ignoreDependencies: ['typedoc', 'typedoc-plugin-markdown'],
+      // A private TypeDoc runner (see its package.json description): development-only.
+      project: developmentOnly
     }
   }
 };
