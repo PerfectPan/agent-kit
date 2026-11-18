@@ -65,7 +65,6 @@ const config: KnipConfig = {
     'packages/agent-kit': {
       // One source file per subpath export: ./cost/prices builds src/cost/prices.ts.
       entry: sourceEntries('packages/agent-kit', subpath => `src/${subpath}.ts`),
-      project: [...productionPackage, 'scripts/**/*.ts'],
       // The ACP SDK is internal to the /acp bundle and @decimalturn/toml-patch and shell-quote
       // ship inside dist (governed by check-dist.ts and .size-limit.ts); es-toolkit and
       // jsonc-parser resolve from this package's context when packing bundles the workspace
@@ -80,7 +79,7 @@ const config: KnipConfig = {
         'shell-quote',
         'zod!'
       ],
-      project: productionPackage
+      project: [...productionPackage, 'scripts/**/*.ts']
     },
     'packages/agent-kit-collab': {
       // One entry per subpath export: ./lease builds src/lease/public.ts; the lease and
