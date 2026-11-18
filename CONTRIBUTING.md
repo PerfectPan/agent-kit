@@ -61,7 +61,7 @@ runtime. A new published package needs a stable `version`, a `repository.url` po
 6. Implement the change, keeping responsibilities separated and using existing project patterns.
 7. Add or update tests for behavior changes.
 8. Update `README.md`, `docs/`, `AGENTS.md`, `CONTRIBUTING.md`, or the active Spec and Plan when user-facing behavior, architecture, development workflow, operations, or project policy changes.
-9. Run repository checks, title checks, and project-specific format, lint, test, build, and package checks.
+9. Run repository checks, title checks, and project-specific format, lint, Knip, test, build, and package checks.
 10. For a newly created GitHub repository, run `gh repo-checks protect --apply` with an admin-authorized account.
 11. Open a pull request or merge request with a conventional title, a summary of what changed and why, validation with skipped gates, and any risks.
 12. Keep the PR/MR description current after review feedback, rebases, validation reruns, or scope changes.
@@ -74,7 +74,8 @@ Small typo corrections, narrow documentation fixes, and repository metadata upda
 # Local Git hooks:
 ./scripts/install-git-hooks.sh
 
-# Aggregate gate: format:check, build, lint, typecheck, test, package checks:
+# Aggregate gate: format:check, build, lint, knip, typecheck, test, package checks.
+# pnpm run knip fails CI on unused files, exports or dependencies.
 pnpm run check
 
 # Pending change records (CI runs it before the aggregate gate; gh-repo-checks v1.4.0 or later):
