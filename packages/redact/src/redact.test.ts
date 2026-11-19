@@ -26,6 +26,25 @@ describe("redactText", () => {
     expect(text(String.raw`{"cwd":"\/u\/me\/x"}`)).toBe(String.raw`{"cwd":"~\/x"}`);
   });
 
+  it("hides a home that continues a longer path and keeps the separator before it", () => {
+    // `/private/tmp` is `/tmp` on macOS and the Data volume path is the home itself: both stay hidden.
+    expect(text("cd /private/tmp/x/a", "/tmp/x")).toBe("cd /private/~/a");
+    expect(text(`ls /System/Volumes/Data${home}/x`)).toBe("ls /System/Volumes/Data/~/x");
+    expect(text(String.raw`{"cwd":"\/private\/u\/me\/x"}`)).toBe(String.raw`{"cwd":"\/private\/~\/x"}`);
+    expect(text("/mnt/c/Profiles/me/x", String.raw`C:\Profiles\me`)).toBe("/mnt/~/x");
+    expect(text(`/𠀀${home}/x /Cafe\u0301${home}/x /opt/g++${home}/x`)).toBe("/𠀀/~/x /Cafe\u0301/~/x /opt/g++/~/x");
+  });
+
+  it("keeps a home after an escape, a colour sequence or a token without a separator as `~`", () => {
+    expect(text(String.raw`"line\n${home}/x"`)).toBe(String.raw`"line\n~/x"`);
+    expect(text(`%22${home}/x`)).toBe("%22~/x");
+    expect(text(`\x1b[38;2;255;255;255;48;2;10;10;10m${home}/x`)).toBe("\x1b[38;2;255;255;255;48;2;10;10;10m~/x");
+    expect(text(String.raw`\u001b[38;2;255;255;255;48;2;10;10;10m${home}/x`)).toBe(
+      String.raw`\u001b[38;2;255;255;255;48;2;10;10;10m~/x`
+    );
+    expect(text(`gcc -I${home}/include`)).toBe("gcc -I~/include");
+  });
+
   it("S60: replaces file URLs, including a percent-encoded home", () => {
     expect(text(`file://${home}/x`)).toBe("file://~/x");
     expect(text("file:///u/john%20doe/x", "/u/john doe")).toBe("file://~/x");
