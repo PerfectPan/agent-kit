@@ -138,6 +138,27 @@ function homePatterns(home: string): HomePatterns {
 }
 
 /**
+ * Tested at a match's offset: a separator and a path segment end there, so the home continues a longer path. An escape
+ * or colour sequence ending there is no segment (`\n/u/me`), nor is a token that no separator opens (`-I/u/me`, the
+ * diff header `a/u/me`).
+ */
+const CONTINUES_PATH = new RegExp(String.raw`(?<=[\\/][^\\/\s"'\x60(=:,;]+)(?<!${ESCAPE_END})`, "uy");
+/** The leading separator of a literal spelling, raw or JSON-escaped. */
+const LEADING_SEPARATOR = /^(?:\\[\\/]|[\\/])/;
+
+/**
+ * The replacement for one literal home spelling. The home is hidden wherever it appears, because a longer path can
+ * name the same directory (on macOS `/private/tmp` is `/tmp`, and a home under `/System/Volumes/Data` is the home). When it
+ * continues a longer path, the spelling keeps its own leading separator so the path still reads as one:
+ * `/private/tmp/x/a` with home `/tmp/x` reads `/private/~/a`.
+ */
+function hideLiteralHome(match: string, offset: number, whole: string): string {
+  CONTINUES_PATH.lastIndex = offset;
+  const separator = CONTINUES_PATH.test(whole) ? LEADING_SEPARATOR.exec(match)?.[0] : undefined;
+  return separator === undefined ? "~" : `${separator}~`;
+}
+
+/**
  * Replaces every spelling of `options.home` with `~` and every secret-shaped string with `[redacted]`. Matching
  * ignores case, so a mixed-case spelling on a case-insensitive file system is hidden too, at the cost of also hiding
  * a different directory that differs only in case.
@@ -145,10 +166,14 @@ function homePatterns(home: string): HomePatterns {
 export function redactText(text: string, options: RedactOptions): string {
   const patterns = homePatterns(options.home);
   let result = text;
-  for (const pattern of [patterns.encoded, patterns.literal, patterns.tilde]) {
-    if (pattern !== undefined) {
-      result = result.replace(pattern, "~");
-    }
+  if (patterns.encoded !== undefined) {
+    result = result.replace(patterns.encoded, "~");
+  }
+  if (patterns.literal !== undefined) {
+    result = result.replace(patterns.literal, hideLiteralHome);
+  }
+  if (patterns.tilde !== undefined) {
+    result = result.replace(patterns.tilde, "~");
   }
   return result.replace(SECRET, REDACTED);
 }
