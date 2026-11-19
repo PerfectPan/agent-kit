@@ -1,4 +1,5 @@
 import {
+  AGY_CLI_SETTINGS_FILE,
   AGY_COMMAND,
   AGY_DISPLAY_NAME,
   AGY_HISTORY_FILE,
@@ -21,6 +22,7 @@ export const agyProbe: ProbeRecipe = {
   commands: [AGY_COMMAND],
   appPaths: [],
   configPaths: [
+    { agentHome: AGY_ID, path: AGY_CLI_SETTINGS_FILE },
     { agentHome: AGY_ID, path: AGY_HISTORY_FILE },
     { agentHome: AGY_ID, path: AGY_ONBOARDING_STATE_FILE }
   ],

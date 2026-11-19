@@ -12,7 +12,6 @@ import type { HomeRule } from "@rivus/agent-kit-catalog/spi";
 
 export const AGY_ID = "agy";
 export const AGY_DISPLAY_NAME = "Antigravity CLI";
-/** @public */
 export const AGY_COMMAND = "agy";
 /** @public */
 export const AGY_APP_DATA_DIR = "antigravity-cli";
