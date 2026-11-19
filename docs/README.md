@@ -17,6 +17,7 @@ Do not create empty directories just to match this list. Add a section when the 
 ## Index
 
 - [`architecture/authoring.md`](architecture/authoring.md): provider packages, service routing, domain models, boundary rules and verification.
+- [`architecture/effect-bindings-exploration.md`](architecture/effect-bindings-exploration.md): the evaluated design space for optional Effect bindings over a plain async core.
 - [`development/release.md`](development/release.md): release runbook.
 - [`development/adoption.md`](development/adoption.md): public entries, application migration, verification and rollback.
 - [`../CONTEXT.md`](../CONTEXT.md): glossary of the domain terms, including same-name concepts with different meanings.
