@@ -13,7 +13,7 @@ import { holdProcessLock } from "../adapters/process-fence.js";
 
 type SqliteStatement = ReturnType<SqliteDatabase["prepare"]>;
 
-export interface SqliteLeaseRepositoryOptions {
+interface SqliteLeaseRepositoryOptions {
   /**
    * The database file, in an existing local directory. The per-key fence locks of `runFenced` live next to it as
    * `<path>.<key>.fence` (plus a `.holder` file each), so give the repository a directory of its own or a distinct

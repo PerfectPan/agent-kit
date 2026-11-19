@@ -27,7 +27,9 @@ export interface ToolPath {
   readonly collab: boolean;
 }
 
-/** Typical tool → function → provider path drawn on the layer diagram. */
+/** Typical tool → function → provider path drawn on the layer diagram.
+ * @internal
+ */
 export const TOOL_PATHS: readonly ToolPath[] = [
   { tool: "usage", fn: "scanUsage", providerId: "claude-code", collab: false },
   { tool: "status", fn: "detectAgents", providerId: "claude-code", collab: false },
@@ -38,6 +40,7 @@ export const TOOL_PATHS: readonly ToolPath[] = [
   { tool: "viewer", fn: "listSessions", providerId: "claude-code", collab: false }
 ];
 
+/** @internal */
 export const DEFAULT_LAYER_PATH: ToolPath = TOOL_PATHS[0]!;
 
 const CAPABILITY_BY_FN: Record<LayerFn, Capability | null> = {
@@ -63,6 +66,7 @@ function isCoordinationFn(name: LayerFn): boolean {
   return (COORDINATION_FNS as readonly string[]).includes(name);
 }
 
+/** @internal */
 export function pathForTool(tool: ToolId): ToolPath {
   const path = TOOL_PATHS.find((item) => item.tool === tool);
   if (path === undefined) {
@@ -71,6 +75,7 @@ export function pathForTool(tool: ToolId): ToolPath {
   return path;
 }
 
+/** @internal */
 export function pathForFn(name: LayerFn): ToolPath {
   const mapped = TOOL_PATHS.find((item) => item.fn === name);
   if (mapped !== undefined) {
@@ -85,6 +90,7 @@ export function pathForFn(name: LayerFn): ToolPath {
   };
 }
 
+/** @internal */
 export function pathForProvider(providerId: string, current: ToolPath): ToolPath {
   if (current.collab) {
     return { ...DEFAULT_LAYER_PATH, providerId, collab: false };
@@ -106,7 +112,9 @@ export function resolveLayerPath(focus: string | null): ToolPath {
   return pathForProvider(focus, DEFAULT_LAYER_PATH);
 }
 
-/** `null` means the function does not depend on an Agent: every provider stays lit. */
+/** `null` means the function does not depend on an Agent: every provider stays lit.
+ * @internal
+ */
 export function layerFnCapability(name: LayerFn): Capability | null {
   return CAPABILITY_BY_FN[name];
 }

@@ -11,8 +11,34 @@ import { hooksTable } from "../src/providers/hooks.js";
 import { identityTable } from "../src/providers/identity.js";
 import { installTable } from "../src/providers/install.js";
 import { sessionsTable } from "../src/providers/sessions.js";
-import { unsupported } from "../src/providers/unsupported.js";
 import { usageTable } from "../src/providers/usage.js";
+import type { Provider } from "../src/providers/types.js";
+
+/** Missing built-in capabilities; every other service has an implementation. */
+const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<keyof Provider, "id">, string>>>> = {
+  "claude-code": {},
+  codex: {},
+  dsh: {
+    hooks: "No supported hook dialect.",
+    install: "No supported installation adapter."
+  },
+  grok: {},
+  cursor: {
+    sessions: "Session storage has no supported reader.",
+    usage: "Usage storage has no supported decoder.",
+    acp: "No supported ACP transport."
+  },
+  "gemini-cli": {},
+  opencode: {},
+  pi: {},
+  dim: {},
+  kimi: {},
+  qoder: {
+    sessions: "The session store is not captured yet.",
+    usage: "The session store is not captured yet."
+  },
+  zcode: { acp: "No supported ACP transport." }
+};
 
 const tables = {
   identity: identityTable(),

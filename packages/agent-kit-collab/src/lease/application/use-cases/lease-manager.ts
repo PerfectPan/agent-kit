@@ -22,7 +22,7 @@ import { fromResult } from "../services/from-result.js";
 import { LeaseRepository, type LeaseRepositoryFailure, type LeaseRepositoryShape } from "../ports.js";
 import { repositoryFailure } from "../services/repository-failure.js";
 
-export interface LeaseConfig {
+interface LeaseConfig {
   /** How long a lease stays valid without a renewal, as each observer's monotonic clock measures it. */
   readonly ttlMs: number;
   /** How often the holder renews. Two heartbeats must fit in the TTL, so one late heartbeat does not lose it. */

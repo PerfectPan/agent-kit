@@ -15,7 +15,7 @@ import type { ProcessLockPlatform } from "../ports.js";
 import { SETTLE_MS, trySqliteLock, unlockSqlite } from "../services/sqlite-lock.js";
 import { takeTurn } from "../services/turns.js";
 
-export interface ProcessLockOptions {
+interface ProcessLockOptions {
   /**
    * Wait while another process holds the lock, or another acquisition in this one holds or is attempting it, instead
    * of returning `ProcessLockHeld` at once.

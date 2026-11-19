@@ -1,6 +1,7 @@
 import type { CopyKey } from "../landing/index.ts";
 import type { Capability, SupportRow } from "../landing/index.ts";
 
+/** @internal */
 export const MY_AGENT = "my-agent";
 
 export const TASK_ORDER = ["detect", "hooks", "sessions", "usage", "drive", "coordinate"] as const;
@@ -398,6 +399,7 @@ function detectOutput(agentId: string): Token[][] {
   ];
 }
 
+/** @internal */
 export function outputFields(task: TaskKey, agentId: string): readonly OutputField[] {
   switch (task) {
     case "detect":
@@ -505,6 +507,7 @@ function snippets(task: TaskKey, agentId: string): { code: Token[][]; output: To
 /** The most code lines any task shows; my-agent adds the provider line, so it is the longest variant. */
 export const MAX_CODE_LINES: number = Math.max(...TASK_ORDER.map((task) => snippets(task, MY_AGENT).code.length));
 
+/** @internal */
 export function plainText(lines: readonly (readonly Token[])[]): string {
   return lines.map((line) => line.map((token) => token.text).join("")).join("\n");
 }

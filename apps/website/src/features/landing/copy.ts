@@ -1,12 +1,15 @@
 import type { Lang } from "../../lib/language.ts";
 export type { Lang } from "../../lib/language.ts";
 
+/** @internal */
 export interface Localized {
   readonly en: string;
   readonly zh: string;
 }
 
-/** Every visible landing string. Wording matches the approved mockup. */
+/** Every visible landing string. Wording matches the approved mockup.
+ * @internal
+ */
 export const copy = {
   navDocs: { en: "Docs", zh: "文档" },
   navApi: { en: "API", zh: "API" },

@@ -13,6 +13,7 @@ function startsFrame(bytes: Uint8Array): boolean {
 }
 
 // These helpers stay outside public.ts; injection exercises older Node behavior on any test runtime.
+/** @internal */
 export function decompressFrames(bytes: Uint8Array, decodeOnce: (input: Uint8Array) => DecodedChunk): Uint8Array {
   const chunks: Uint8Array[] = [];
   let offset = 0;
@@ -33,6 +34,7 @@ export function decompressFrames(bytes: Uint8Array, decodeOnce: (input: Uint8Arr
   return Buffer.concat(chunks);
 }
 
+/** @internal */
 export function createNodeDecompress(
   module: Partial<Pick<typeof zlib, "zstdDecompressSync" | "constants">>
 ): Decompress | undefined {

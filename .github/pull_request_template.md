@@ -11,7 +11,8 @@
 <!-- Commands you ran and their results; logs or screenshots for behavior claims. Name skipped checks and why. -->
 
 - [ ] `pnpm run check` passes format, build, lint, Knip, typecheck, tests and package checks.
-      `pnpm run knip` fails CI on unused files, exports or dependencies.
+      `pnpm run knip` fails CI on unused files, exports or dependencies; `pnpm run knip:production`
+      follows only the production entries, so code that only tests reach fails there.
 - [ ] Repository checks: `gh repo-checks repository`
 - [ ] PR title and description: `gh repo-checks pr-title "<title>"`, `gh repo-checks pr-body <body-file>`
 - [ ] Changeset for published-package changes, when this PR should produce a release: `.changeset/<name>.md`

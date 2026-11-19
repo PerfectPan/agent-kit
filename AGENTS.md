@@ -27,7 +27,7 @@ pnpm install
 # After adding or changing a dependency, refresh the lockfile and commit it:
 pnpm install
 
-# Aggregate gate: format:check, build, lint, knip, typecheck, test, check:package:
+# Aggregate gate: format:check, build, lint, knip, knip:production, typecheck, test, check:package:
 pnpm run check
 
 # Pending change records (CI runs it before the aggregate gate; gh-repo-checks v1.4.0 or later):
@@ -35,6 +35,8 @@ gh repo-checks release-plan
 
 # Workspace-wide gate (unused files, exports or dependencies fail CI):
 pnpm run knip
+# The same analysis over the production entries only; code that only tests reach fails here:
+pnpm run knip:production
 
 # Individual gates (run in every workspace package that defines them, in dependency order):
 pnpm run format        # or format:check
