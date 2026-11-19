@@ -42,7 +42,8 @@ export default [
   // The hidden spellings' starts accept preceding escapes — JSON, URL encoding and ANSI SGR sequences — which adds
   // alternation branches to the built regexes, and the credential shapes (provider prefixes, JWTs, Slack webhooks,
   // labelled assignments, authorization values and URL passwords) add their patterns and the filters that keep code.
-  { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "2111 B" },
+  // The spellings as text, for a home that a cut left partial at the end, add their builders and the end check.
+  { name: "@rivus/agent-kit/redact", path: "dist/redact.js", import: "*", limit: "2700 B" },
   // Size-limit counts dependencies, and the log readers now import zod/mini, which the sessions and transcript
   // graphs did not pull in on main: most of their growth is zod/mini itself, the rest the reader schemas of
   // grok, claude-code and codex. /transcript/usage also carries a bundled copy, since the entry imports nothing

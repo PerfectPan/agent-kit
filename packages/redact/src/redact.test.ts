@@ -135,6 +135,54 @@ describe("redactText", () => {
     expect(text("cd u/me/x")).toBe("cd ~/x");
   });
 
+  it("hides a home spelling that a cut left partial at the end of the text", () => {
+    expect(text("look at /u/ali", "/u/alice")).toBe("look at ~");
+    expect(text("look at /u/a", "/u/alice")).toBe("look at ~");
+    expect(text("look at /u/alice", "/u/alice-smith")).toBe("look at ~");
+    expect(text("proj -u-john-", "/u/john.doe")).toBe("proj ~");
+    expect(text("x %2Fu%2FJohn%20", "/u/John Smith")).toBe("x ~");
+    expect(text("file:///u/John%20Sm", "/u/John Smith")).toBe("file://~");
+    expect(text(String.raw`{"cwd":"\/u\/ali`, "/u/alice")).toBe(String.raw`{"cwd":"~`);
+    expect(text(String.raw`line\nu/ali`, "/u/alice")).toBe(String.raw`line\n~`);
+    expect(text("ls ~al", "/u/alice")).toBe("ls ~");
+    expect(text("cd /U/ALI", "/u/alice")).toBe("cd ~");
+    expect(text("cd C:\\Users\\John", "C:\\Users\\John Smith")).toBe("cd ~");
+    expect(text("cd C:/Users/Jo", "C:\\Users\\John Smith")).toBe("cd ~");
+    expect(text("cd /c/Users/Jo", "C:\\Users\\John Smith")).toBe("cd ~");
+    expect(text("cd /ro", "/root")).toBe("cd ~");
+    // A partial that continues a longer path keeps the separator before it, as a whole spelling does.
+    expect(text("cd /private/u/al", "/u/alice")).toBe("cd /private/~");
+  });
+
+  it("folds case without changing lengths, so `İ` and final sigma still match", () => {
+    expect(text("cd C:\\Users\\İb", "C:\\Users\\İbrahim")).toBe("cd ~");
+    expect(text("cd C:\\Users\\ib", "C:\\Users\\İbrahim")).toBe("cd ~");
+    expect(text("İ C:\\Users\\Jo", "C:\\Users\\John Smith")).toBe("İ ~");
+    expect(text("cd /u/ΣΑΣ", "/u/ΣΑΣΑ")).toBe("cd ~");
+    // An astral user name: the last character is a surrogate pair.
+    expect(text("cd /u/𐐀", "/u/𐐀𐐁𐐂")).toBe("cd ~");
+    expect(text("cd C:\\Users\\𞤀𞤁", "C:\\Users\\𞤀𞤁𞤂")).toBe("cd ~");
+  });
+
+  it("starts a partial where its whole spelling may start", () => {
+    expect(text("x %-u-al", "/u/alice")).toBe("x %-u-al");
+    expect(text("xC:\\Users\\Jo", "C:\\Users\\John Smith")).toBe("x~");
+  });
+
+  it("keeps an end that holds no part of the user name, or that another word owns", () => {
+    expect(text("look at /u/", "/u/alice")).toBe("look at /u/");
+    expect(text("/u/ali and more", "/u/alice")).toBe("/u/ali and more");
+    expect(text("menu/ali", "/u/alice")).toBe("menu/ali");
+    expect(text("cd /r", "/root")).toBe("cd /r");
+    expect(text("ls ~a", "/u/alice")).toBe("ls ~a");
+    expect(text("ab", "/u/alice")).toBe("ab");
+    // A one-segment home's slug starts only at a segment start, as for the whole slug.
+    expect(text("npm --ro", "/root")).toBe("npm --ro");
+    expect(text("x.-ro", "/root")).toBe("x.-ro");
+    // A UNC home has no slash-less spelling, as for the whole home.
+    expect(text("x \\srv\\share\\al", "\\\\srv\\share\\alice")).toBe("x \\srv\\share\\al");
+  });
+
   it("hides no path for an empty home or a file system root", () => {
     for (const root of ["", "/", "C:\\", "C:/"]) {
       expect(text("/u/me/x C:/x", root)).toBe("/u/me/x C:/x");

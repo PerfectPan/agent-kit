@@ -179,6 +179,44 @@ interface HomePatterns {
   readonly literal: RegExp | undefined;
   /** `~<user>`, the shell's name for the same directory. */
   readonly tilde: RegExp | undefined;
+  /** Every spelling as text, to find one that a cut left partial at the end of a text. */
+  readonly cut: CutHome | undefined;
+}
+
+/** One spelling of the home, case-folded, and where its user name starts. */
+interface CutSpelling {
+  readonly spelling: string;
+  /** `spelling` up to the user name: the parent directory as this spelling writes it. */
+  readonly parent: string;
+  /** How many characters of the user name a partial must hold: one after a parent directory, two otherwise. */
+  readonly minUser: number;
+  /** Sticky test of where a partial may start, as for the whole spelling; none for a spelling that may start anywhere. */
+  readonly start: RegExp | undefined;
+}
+
+interface CutHome {
+  readonly spellings: readonly CutSpelling[];
+  /** The longest partial: one character short of the longest spelling. */
+  readonly maxPartial: number;
+  /** Every character a partial can end with; a text ending in another one holds no cut home. */
+  readonly lastChars: ReadonlySet<string>;
+}
+
+/**
+ * Case folding that keeps the length, so indexes into a folded text are indexes into the text: `İ`, which lower-cases
+ * to two characters, becomes `i`, and final sigma becomes `σ`. This equates a little more than the patterns' `iu`
+ * flags (`İ` with `i`), which can only hide more. If another character ever lower-cased to a different length, the
+ * fallback keeps that one as it is.
+ */
+function foldCase(value: string): string {
+  const dotless = value.replaceAll("\u0130", "i");
+  const folded = dotless.toLowerCase().replaceAll("ς", "σ");
+  if (folded.length === value.length) {
+    return folded;
+  }
+  return Array.from(dotless, (char) => (char.toLowerCase().length === char.length ? char.toLowerCase() : char))
+    .join("")
+    .replaceAll("ς", "σ");
 }
 
 let cached: HomePatterns | undefined;
@@ -221,12 +259,66 @@ function windowsSpellings(drive: string, rest: string, root: string): string[] {
   ]);
 }
 
+const dashed = (value: string) => value.replace(/[^A-Za-z0-9]/g, "-");
+
+/** A partial may start where its whole spelling may: after a non-name character or an escape, or at a segment start. */
+const CUT_WORD_START = new RegExp(String.raw`(?<=^|[^${NAME}]|${ESCAPE_END})`, "uy");
+/** As `escapedStart` in `buildPatterns`: a `%` before an encoded spelling or a slug continues its sequence. */
+const CUT_ENCODED_START = new RegExp(String.raw`(?<=^|[^${NAME}%]|${ESCAPE_END})`, "uy");
+const CUT_SEGMENT_START = new RegExp(SEGMENT_START, "uy");
+
+/**
+ * The spellings as text, from transforms that act on each character or segment, so a transform of the parent
+ * directory is a prefix of the transform of the home and marks where the user name starts. The list and the starts
+ * follow the patterns in `buildPatterns`.
+ */
+function cutHome(root: string, user: string, drive: string | undefined, multiSegment: boolean): CutHome {
+  const parent = root.slice(0, root.length - user.length);
+  const minUser = multiSegment ? 1 : 2;
+  const spell = (transform: (value: string) => string, start: RegExp | undefined): CutSpelling => {
+    const spelling = foldCase(transform(root));
+    return { spelling, parent: spelling.slice(0, transform(parent).length), minUser, start };
+  };
+  const forward = (value: string) => value.replaceAll("\\", "/");
+  const spellings =
+    drive === undefined
+      ? [
+          spell((value) => value, undefined),
+          spell((value) => value.replaceAll("/", "\\/"), undefined),
+          spell(encodeURI, undefined),
+          ...(/^\/[^/]+\/./.test(root) ? [spell((value) => value.slice(1), CUT_WORD_START)] : [])
+        ]
+      : [
+          spell((value) => value, undefined),
+          spell(forward, undefined),
+          spell((value) => forward(value).replaceAll("/", "\\"), undefined),
+          spell((value) => forward(value).replaceAll("/", "\\\\"), undefined),
+          spell((value) => encodeURI(forward(value)), undefined),
+          spell((value) => `/${drive}${forward(value).slice(2)}`, undefined)
+        ];
+  spellings.push(
+    spell(encodeURIComponent, CUT_ENCODED_START),
+    spell(dashed, multiSegment ? CUT_ENCODED_START : CUT_SEGMENT_START),
+    { spelling: foldCase(`~${user}`), parent: "~", minUser: 2, start: CUT_WORD_START }
+  );
+  const unique = spellings.filter(
+    (one, index) => spellings.findIndex((other) => other.spelling === one.spelling) === index
+  );
+  const lastChars = new Set<string>();
+  for (const { spelling, parent: before, minUser: least } of unique) {
+    for (let index = before.length + least - 1; index < spelling.length - 1; index++) {
+      lastChars.add(spelling.charAt(index));
+    }
+  }
+  return { spellings: unique, maxPartial: Math.max(...unique.map(({ spelling }) => spelling.length)) - 1, lastChars };
+}
+
 function buildPatterns(home: string): HomePatterns {
   const root = home.replace(/(?<=.)[\\/]+$/, "");
   const segments = root.split(/[\\/]+/);
   const user = segments.at(-1) ?? "";
   if (user === "" || /^[A-Za-z]:$/.test(user)) {
-    return { home, encoded: undefined, literal: undefined, tilde: undefined };
+    return { home, encoded: undefined, literal: undefined, tilde: undefined, cut: undefined };
   }
   const drive = /^([A-Za-z]):$/.exec(segments[0] ?? "")?.[1];
   const literal =
@@ -236,7 +328,7 @@ function buildPatterns(home: string): HomePatterns {
   // the spelling), or right after an escape, whose last character would otherwise count as one.
   const escapedStart = `(?:(?<![${NAME}%])|(?<=${ESCAPE_END}))`;
   const slugStart = pathSegments.length > 1 ? escapedStart : SEGMENT_START;
-  const dash = root.replace(/[^A-Za-z0-9]/g, "-");
+  const dash = dashed(root);
   return {
     home,
     encoded: new RegExp(
@@ -244,7 +336,8 @@ function buildPatterns(home: string): HomePatterns {
       "giu"
     ),
     literal: new RegExp(`(?:${literal.join("|")})${SEGMENT_END}`, "giu"),
-    tilde: new RegExp(`${tokenStart(NAME)}~${escapeRegExp(user)}${SEGMENT_END}`, "giu")
+    tilde: new RegExp(`${tokenStart(NAME)}~${escapeRegExp(user)}${SEGMENT_END}`, "giu"),
+    cut: cutHome(root, user, drive, pathSegments.length > 1)
   };
 }
 
@@ -277,6 +370,37 @@ function hideLiteralHome(match: string, offset: number, whole: string): string {
 }
 
 /**
+ * `text` with a home spelling that a cut left partial at its end replaced by `~`. Readers cut titles and prompts before
+ * any caller redacts them, and the patterns above match only whole spellings, so a cut inside `/u/alice` would leave
+ * `/u/ali`. Only the spellings know where the user name ends (`alice-smith`, `john.doe` in a slug, `John%20Smith`), so
+ * this checks each one: the end of the text that holds the parent directory and the start of the user name is hidden,
+ * keeping the separator before it when it continues a longer path, as a whole spelling does.
+ */
+function hideCutHome(text: string, cut: CutHome): string {
+  // Two code units, so an astral last character is folded whole before its low surrogate is looked up.
+  if (!cut.lastChars.has(foldCase(text.slice(-2)).slice(-1))) {
+    return text;
+  }
+  const from = Math.max(0, text.length - cut.maxPartial);
+  const tail = foldCase(text.slice(from));
+  for (const { spelling, parent, minUser, start } of cut.spellings) {
+    const lowest = Math.max(0, tail.length - spelling.length + 1);
+    const last = tail.length - parent.length - minUser;
+    let at = last < lowest ? -1 : tail.lastIndexOf(parent, last);
+    for (; at >= lowest; at = at === 0 ? -1 : tail.lastIndexOf(parent, at - 1)) {
+      const offset = from + at;
+      if (start !== undefined) {
+        start.lastIndex = offset;
+      }
+      if (spelling.startsWith(tail.slice(at)) && (start === undefined || start.test(text))) {
+        return `${text.slice(0, offset)}${hideLiteralHome(text.slice(offset), offset, text)}`;
+      }
+    }
+  }
+  return text;
+}
+
+/**
  * Replaces every spelling of `options.home` with `~` and every secret-shaped string with `[redacted]`. Matching
  * ignores case, so a mixed-case spelling on a case-insensitive file system is hidden too, at the cost of also hiding
  * a different directory that differs only in case.
@@ -292,6 +416,9 @@ export function redactText(text: string, options: RedactOptions): string {
   }
   if (patterns.tilde !== undefined) {
     result = result.replace(patterns.tilde, "~");
+  }
+  if (patterns.cut !== undefined) {
+    result = hideCutHome(result, patterns.cut);
   }
   return hideLabelledCredentials(result).replace(SECRET, REDACTED);
 }
