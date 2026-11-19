@@ -174,6 +174,146 @@ describe("redactText", () => {
   it("keeps words that only contain a prefix, and short values", () => {
     expect(text("task-abcdefgh1234 risk-assessment sk-short")).toBe("task-abcdefgh1234 risk-assessment sk-short");
   });
+
+  it.each([
+    ["sk_live_", 24],
+    ["rk_test_", 24],
+    ["glpat-", 20],
+    ["hf_", 34],
+    ["AIza", 35]
+  ])("replaces a secret with the provider prefix %s", (prefix, length) => {
+    expect(text(`key ${fake(prefix, length)} rest`)).toBe("key [redacted] rest");
+  });
+
+  it("keeps a provider prefix inside a word, inside a base64url blob, or before too few characters", () => {
+    const kept = `desk_live_${"a".repeat(20)} shelf_hf_short hf_short AIzaShort glpat-short`;
+    expect(text(kept)).toBe(kept);
+    const blob = `ZfFC_Rray64GnGeN_AIza${"Q".repeat(35)}-hf_${"q".repeat(34)}_glpat-${"z".repeat(20)}`;
+    expect(text(blob)).toBe(blob);
+  });
+
+  it("replaces a JWT, signed or not, and keeps text that only starts like one", () => {
+    const part = (body: string) => `eyJ${body}`;
+    const jwt = `${part("hbGciOiJIUzI1NiJ9")}.${part("zdWIiOiIxMjM0In0")}.${"Sig_-1".repeat(5)}`;
+    expect(text(`token ${jwt} end`)).toBe("token [redacted] end");
+    expect(text(`${part("hbGciOiJub25lIn0")}.${part("zdWIiOiIxIn0")}.`)).toBe("[redacted]");
+    expect(text("eyJhbGciOiJIUzI1NiJ9 alone")).toBe("eyJhbGciOiJIUzI1NiJ9 alone");
+  });
+
+  it("replaces a Slack webhook URL", () => {
+    const hook = ["https://hooks.slack.com/services", "T0000000", "B0000000", "X".repeat(24)].join("/");
+    expect(text(`post to ${hook} now`)).toBe("post to [redacted] now");
+    expect(text("see https://hooks.slack.com/services/ docs")).toBe("see https://hooks.slack.com/services/ docs");
+  });
+
+  it("replaces the value of a credential assignment and keeps its key", () => {
+    expect(text("PASSWORD=hunter2 next")).toBe("PASSWORD=[redacted] next");
+    expect(text("export DB_PASSWORD='s3cret value'")).toBe("export DB_PASSWORD='[redacted]'");
+    expect(text(`{"client_secret": "abcd1234EFGH", "x": 1}`)).toBe(`{"client_secret": "[redacted]", "x": 1}`);
+    expect(text(`{"password": "correcthorsebatterystaple"}`)).toBe(`{"password": "[redacted]"}`);
+    expect(text(String.raw`{\"api_key\":\"abc123def\"}`)).toBe(String.raw`{\"api_key\":\"[redacted]\"}`);
+    expect(text("X-Api-Key: 9f8e7d6c5b4a")).toBe("X-Api-Key: [redacted]");
+    expect(text("aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")).toBe(
+      "aws_secret_access_key = [redacted]"
+    );
+    expect(text(`"SecretAccessKey": "${"Ab1/".repeat(10)}"`)).toBe(`"SecretAccessKey": "[redacted]"`);
+    expect(text("GITHUB_TOKEN=abc123&page=2")).toBe("GITHUB_TOKEN=[redacted]&page=2");
+    expect(text(String.raw`line\npassword: p4ss`)).toBe(String.raw`line\npassword: [redacted]`);
+    expect(text("SECRET_KEY=django-insecure-abc123")).toBe("SECRET_KEY=[redacted]");
+    expect(text("MINIO_SECRET_KEY=minio123secret")).toBe("MINIO_SECRET_KEY=[redacted]");
+    expect(text(`password: str = "hunter2abc"`)).toBe(`password: str = "[redacted]"`);
+    expect(text(`const password: string = "hunter2abc";`)).toBe(`const password: string = "[redacted]";`);
+    expect(text("password: Xk9mPq2rT=abcdefgh")).toBe("password: [redacted]");
+    expect(text("<x>DB_PASSWORD=hunter2abc</x>")).toBe("<x>DB_PASSWORD=[redacted]</x>");
+    expect(text("SMTP_PASSWORD=mail.pass1x")).toBe("SMTP_PASSWORD=[redacted]");
+  });
+
+  it("hides a quoted value holding the other quote or an escape, without running past its JSON string", () => {
+    expect(text(String.raw`{"password":"p4ss\nword"}`)).toBe(String.raw`{"password":"[redacted]"}`);
+    expect(text(`"password": "pa'ss1234"`)).toBe(`"password": "[redacted]"`);
+    expect(text(String.raw`{"text":"password = \"abc123\" ok"}`)).toBe(
+      String.raw`{"text":"password = \"[redacted]\" ok"}`
+    );
+    expect(text(String.raw`{"text":"password = \"abc123"}`)).toBe(String.raw`{"text":"password = \"[redacted]"}`);
+  });
+
+  it("hides a quoted credential that a preview cut before its closing quote", () => {
+    expect(text(`{"password": "c0rrect horse`)).toBe(`{"password": "[redacted]`);
+    expect(text(`password = "abcd1234\nnext line`)).toBe(`password = "[redacted]\nnext line`);
+  });
+
+  it("keeps assignments that name a type, a flag, a placeholder or code, and usage counts", () => {
+    const kept = [
+      "password: string;",
+      "apiKey: string",
+      `"secret": false`,
+      "token = getToken()",
+      "api_key = process.env.API_KEY",
+      "password: z.string().min(8)",
+      'token: "${{ secrets.GITHUB_TOKEN }}"',
+      "PASSWORD=<your password>",
+      "secret=****",
+      `{"max_tokens": 4096, "input_tokens": 1200, "output_tokens": 35, "token_count": 12}`,
+      "the token is: abc123",
+      "token: 42",
+      "token = base64.b64encode(raw)",
+      "secret: corev1.Secret{}",
+      "token = gen2()",
+      // An unquoted value after a type annotation is a name in code, not a literal.
+      "password: str = hunter2abc",
+      "继续走 OIDC（`id-token: write`），见 v2 文档",
+      String.raw`{\"TRAE_TOKEN\":\"env:TRAE_TOKEN\"}`,
+      `{"input_cost_per_token": 0.000003, "output_cost_per_token": 1.5e-5}`,
+      "const token = process.env.TOKEN!",
+      "token = /API",
+      `{"password": "Password", "token": "Token", "secret": "Show the secret"}`
+    ];
+    for (const value of kept) {
+      expect(text(value)).toBe(value);
+    }
+  });
+
+  it("replaces the credential after an authorization scheme", () => {
+    expect(text("Authorization: Bearer abc.def.ghi")).toBe("Authorization: Bearer [redacted]");
+    expect(text(`-H "authorization: basic dXNlcjpwYXNz"`)).toBe(`-H "authorization: basic [redacted]"`);
+    expect(text(`{"Authorization":"Token abcdef12"}`)).toBe(`{"Authorization":"Token [redacted]"}`);
+    expect(text(`curl -H "Bearer ${"a1".repeat(10)}"`)).toBe(`curl -H "Bearer [redacted]"`);
+  });
+
+  it("replaces a header that follows an escaped line break, as in raw JSONL", () => {
+    expect(text(String.raw`GET / HTTP/1.1\r\nAuthorization: Basic dXNlcjpwYXNz\r\n`)).toBe(
+      String.raw`GET / HTTP/1.1\r\nAuthorization: Basic [redacted]\r\n`
+    );
+    expect(text(String.raw`x\nBearer ${"a1".repeat(10)}`)).toBe(String.raw`x\nBearer [redacted]`);
+    expect(text("xauthorization: Bearer abcdefgh12 notBearer abcdefghijklmnop1234")).toBe(
+      "xauthorization: Bearer abcdefgh12 notBearer abcdefghijklmnop1234"
+    );
+  });
+
+  it("keeps a scheme followed by prose or a variable", () => {
+    const kept = [
+      "Authorization: Bearer $TOKEN",
+      "Authorization: Bearer ${API_TOKEN}",
+      "the Bearer of bad news",
+      "Bearer authentication is configured",
+      "authorization: `Bearer ${token}`",
+      "Authorization: Bearer <token>",
+      "Authorization: Bearer …",
+      "Authorization: Token a)"
+    ];
+    for (const value of kept) {
+      expect(text(value)).toBe(value);
+    }
+  });
+
+  it("replaces the password of URL userinfo and keeps the user name and host", () => {
+    expect(text("postgres://admin:p4ssw0rd@db.local:5432/app")).toBe("postgres://admin:[redacted]@db.local:5432/app");
+    expect(text("mongodb+srv://u:pw@cluster0.example.net")).toBe("mongodb+srv://u:[redacted]@cluster0.example.net");
+    const kept = ["ssh://git@github.com/x.git", "http://localhost:3000/a@b", "postgres://u:${DB_PASS}@db"];
+    for (const value of kept) {
+      expect(text(value)).toBe(value);
+    }
+  });
 });
 
 describe("redact", () => {

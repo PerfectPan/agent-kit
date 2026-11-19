@@ -23,19 +23,137 @@ const ESCAPE_END = String.raw`\\[nrtbf]|\\u[0-9A-Fa-f]{4}|%[0-9A-Fa-f]{2}|\x1b\[
 const tokenStart = (word: string) => String.raw`(?<=^|[^${word}]|${ESCAPE_END})`;
 
 /**
- * API keys and tokens by their published prefixes (OpenAI and Anthropic `sk-`, AWS key ids, GitHub, Slack, npm) and
- * PEM private key blocks; a block whose END line is missing is hidden up to the end of its base64 text. A prefix
- * inside a longer word (`task-…`) is not a key.
+ * A prefix that starts a token: the literal comes first so the engine can skip ahead to it, and a look-behind then
+ * checks that the character before it is not in `word` (or is an escape).
+ */
+const prefixAtTokenStart = (word: string, prefix: string) =>
+  String.raw`${prefix}(?<=(?:^|[^${word}]|${ESCAPE_END})${prefix})`;
+
+/**
+ * API keys and tokens by their published prefixes (OpenAI and Anthropic `sk-`, AWS key ids, GitHub, Slack, npm,
+ * Stripe, GitLab, Hugging Face, Google), JWTs, Slack webhook URLs and PEM private key blocks; a block whose END line
+ * is missing is hidden up to the end of its base64 text. A prefix inside a longer word (`task-…`) is not a key; the
+ * newer prefixes also need a start that is not `_` or `-`, so a long base64url blob does not lose a slice from its middle.
  */
 const SECRET = new RegExp(
   [
-    String.raw`${tokenStart("A-Za-z0-9")}(?:sk-|AKIA|ASIA|gh[pousr]_|github_pat_|xox[abprs]-)[A-Za-z0-9_-]{8,}`,
-    String.raw`${tokenStart("A-Za-z0-9")}npm_[A-Za-z0-9]{36}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9", "(?:sk-|AKIA|ASIA|gh[pousr]_|github_pat_|xox[abprs]-)")}[A-Za-z0-9_-]{8,}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9", "npm_")}[A-Za-z0-9]{36}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9_-", "(?:sk|rk)_(?:live|test|prod)_")}[A-Za-z0-9]{10,}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9_-", "glpat-")}[A-Za-z0-9_-]{20,}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9_-", "hf_")}[A-Za-z0-9]{30,}`,
+    String.raw`${prefixAtTokenStart("A-Za-z0-9_-", "AIza")}[A-Za-z0-9_-]{35}`,
+    // Header and payload are base64url JSON objects, so both start with `eyJ` (`{"`); an unsigned token has no signature.
+    String.raw`${prefixAtTokenStart("A-Za-z0-9_-", "eyJ")}[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*`,
+    String.raw`https://hooks\.slack\.com/(?:services|workflows|triggers)/[A-Za-z0-9_/+-]{20,}`,
     String.raw`-----BEGIN [A-Z ]*PRIVATE KEY-----` +
       String.raw`(?:[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----|(?:[A-Za-z0-9+/=\r\n]|\\[nr])*)`
   ].join("|"),
   "g"
 );
+
+/**
+ * A value that names a type, a flag or a placeholder instead of holding a credential (`password: string`,
+ * `secret: false`, `token=${TOKEN}`, `"TOKEN": "env:TOKEN"`, `password=<your password>`, `****`), or a number
+ * (`cost_per_token: 1.5e-5`). Such a value is kept.
+ */
+const NOT_A_CREDENTIAL =
+  /^(?:true|false|null|none|undefined|string|number|boolean|str|int|bool|object|any|required|optional)$|^[$<{%*]|^env:|^[*x.]+$|^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i;
+
+/**
+ * Whether an assigned value holds a credential rather than code, a label or a count. A value with a digit does:
+ * `PASSWORD=hunter2`. Without one, an unquoted value is code (`token = getToken()`, `token: process.env.TOKEN!`), and a quoted one needs
+ * 20 or more characters without a space or a dot, so the labels of a dictionary (`"password": "Password"`) stay and
+ * `"correcthorsebatterystaple"` does not.
+ */
+function isCredential(value: string, quoted: boolean): boolean {
+  if (NOT_A_CREDENTIAL.test(value)) {
+    return false;
+  }
+  return /\d/.test(value) || (quoted && value.length >= 20 && !/[\s.]/.test(value));
+}
+
+/**
+ * `key: value` and `key=value` whose key ends in a credential name (`password`, `DB_PASSWORD`, `client_secret`,
+ * `GITHUB_TOKEN`, `X-Api-Key`, `SECRET_KEY`, `aws_secret_access_key`, `secretAccessKey`), raw, quoted or JSON-escaped,
+ * also with a type annotation between them before a quoted value (`password: str = "…"`). Only the value is replaced. The match starts at
+ * the credential name, which the separator after it makes the end of the key; what precedes it in the key does not
+ * matter. `max_tokens` and `input_tokens` end in `tokens`, not `token`, so usage counts stay.
+ *
+ * A quoted value may hold the other quote and escapes but never an unescaped `"`, so a JSON-escaped value inside a
+ * JSON string cannot run past that string. It also ends at a line end, an unescaped `"` or the end of the text, so a
+ * preview cut before its closing quote is still hidden. An unquoted value is taken whole, with the bracket that may
+ * follow it: one followed by `(`, `{` or `[` is a call or a literal (`gen2()`, `corev1.Secret{}`), not a credential.
+ * Deciding that in the callback keeps every match attempt linear.
+ */
+const CREDENTIAL_ASSIGNMENT = new RegExp(
+  String.raw`(pass(?:word|wd|phrase)|secret|token|(?:api|private|access|secret)[_-]?key)` +
+    String.raw`(\\?["']?\s*(?::\s*[A-Za-z_][\w.]*(?:<[^<>\r\n]*>)?\??\s*(?==\s*\\?["']))?[:=]\s*)` +
+    String.raw`(?:(\\?["'])((?:(?!\3)(?:[^"\\\r\n]|\\.)){4,})(\3|(?=[\r\n"])|$)` +
+    String.raw`|(?=([A-Za-z0-9!#$%*+./:=?@^_|~-]{4,}[({[]?))\6)`,
+  "gi"
+);
+
+/*
+ * The credentials below follow a label, with the label and the value as the two groups. Each pattern starts from a
+ * literal and checks what precedes it with a look-behind after that literal: a leading look-behind of variable length
+ * would rescan a long token at every offset. A label also starts right after an escape (`\r\nAuthorization:` in raw
+ * JSONL), where `\b` sees no word boundary.
+ */
+
+/**
+ * The credential after `Authorization: Bearer|Basic|Token`, raw, quoted or JSON-escaped: 8 or more token characters
+ * (RFC 6750 `b64token`), so a placeholder such as `<token>`, `${TOKEN}` or `…` stays.
+ */
+const AUTHORIZATION_HEADER = new RegExp(
+  String.raw`(${prefixAtTokenStart("A-Za-z0-9_", "authorization")}\\?["']?\s*[:=]\s*\\?["']?(?:bearer|basic|token)\s+)` +
+    String.raw`([A-Za-z0-9._~+/-]{8,}=*)`,
+  "gi"
+);
+
+/** A standalone `Bearer` value of 16 or more token characters that holds a digit, so "Bearer of bad news" stays. */
+const BEARER_VALUE = new RegExp(
+  String.raw`(${prefixAtTokenStart("A-Za-z0-9_", "bearer")}\s+)((?=[A-Za-z0-9._~+/-]*\d)[A-Za-z0-9._~+/-]{16,}=*)`,
+  "gi"
+);
+
+/**
+ * The password of URL userinfo (`postgres://user:secret@host`); the scheme and the user name stay. The scheme is
+ * checked by a short look-behind once `://` matched, and the caller skips text without `://`.
+ */
+const URL_PASSWORD = /(?<=\b[A-Za-z][A-Za-z0-9+.-]*)(:\/\/[^\s/:@"'<>]+:)([^\s/@"'<>]+)(?=@)/g;
+
+function hideAfterLabel(match: string, label: string, value: string): string {
+  return NOT_A_CREDENTIAL.test(value) ? match : `${label}${REDACTED}`;
+}
+
+function hideAssignment(
+  match: string,
+  name: string,
+  separator: string,
+  quote: string | undefined,
+  quoted: string | undefined,
+  closing: string | undefined,
+  bare: string | undefined
+): string {
+  if (quote !== undefined && quoted !== undefined) {
+    return isCredential(quoted, true) ? `${name}${separator}${quote}${REDACTED}${closing ?? ""}` : match;
+  }
+  if (bare === undefined || /[({[]$/.test(bare) || !isCredential(bare, false)) {
+    return match;
+  }
+  return `${name}${separator}${REDACTED}`;
+}
+
+/** Credentials that a label names: assignments, authorization headers and URL userinfo. */
+function hideLabelledCredentials(text: string): string {
+  const labelled = text
+    .replace(CREDENTIAL_ASSIGNMENT, hideAssignment)
+    .replace(AUTHORIZATION_HEADER, hideAfterLabel)
+    .replace(BEARER_VALUE, hideAfterLabel);
+  // Most text holds no URL; skipping that scan keeps long tool output fast.
+  return labelled.includes("://") ? labelled.replace(URL_PASSWORD, hideAfterLabel) : labelled;
+}
 
 /** Letters, digits and `_` continue a path segment; `u` makes non-ASCII letters count. */
 const NAME = String.raw`\p{L}\p{N}_`;
@@ -175,7 +293,7 @@ export function redactText(text: string, options: RedactOptions): string {
   if (patterns.tilde !== undefined) {
     result = result.replace(patterns.tilde, "~");
   }
-  return result.replace(SECRET, REDACTED);
+  return hideLabelledCredentials(result).replace(SECRET, REDACTED);
 }
 
 /** The copy of one value with every string it holds redacted, walking arrays and plain objects; other values pass as they are. */
