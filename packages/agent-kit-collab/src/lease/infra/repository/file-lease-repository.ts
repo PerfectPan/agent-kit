@@ -12,7 +12,7 @@ import { keyFileName } from "../models/key-file-name.js";
 import { decodeSnapshot } from "../models/lease-record-codec.js";
 import { holdProcessLock } from "../adapters/process-fence.js";
 
-export interface FileLeaseRepositoryOptions {
+interface FileLeaseRepositoryOptions {
   /** An existing local directory that holds one record file and its lock files per key. */
   readonly dir: string;
 }

@@ -83,35 +83,32 @@ const config: KnipConfig = {
     },
     'packages/agent-kit-collab': {
       // One entry per subpath export: ./lease builds src/lease/public.ts; the lease and
-      // process-lock workers are spawned by path from the tests.
+      // process-lock workers are spawned by path from the tests (default-mode only).
       entry: [
         ...sourceEntries('packages/agent-kit-collab', subpath => `src/${subpath}/public.ts`),
-        'test/workers/*.ts!'
+        'test/workers/*.ts'
       ],
       project: [...productionPackage, 'scripts/**/*.ts']
     },
     'packages/harness': {
-      // The legacy OpenCode plugin is loaded by path from the fixtures-driven tests.
-      entry: ['test/workers/*.ts!', 'test/fixtures/*.js!'],
+      // The ledger worker and legacy OpenCode plugin are loaded by path from the tests (default-mode only).
+      entry: ['test/workers/*.ts', 'test/fixtures/*.js'],
       project: productionPackage
     },
     'apps/website': {
-      // TanStack Start registers the file-based routes on its own; @rivus/agent-kit-collab is
+      // TanStack Start registers the file-based routes on its own; the MDX docs import
+      // agent-support-table.tsx directly, a hop Knip cannot follow. @rivus/agent-kit-collab is
       // resolved from this package by website-api's generate-api-reference.ts, never imported.
       // The same holds for @rivus/agent-kit, and @tanstack/react-start only loads through the
       // vite plugin and routeTree.gen.ts. Their `!`-suffixed ignore entries apply to the
       // production analysis alone.
-      entry: ['src/routes/**/*.{ts,tsx}!'],
+      entry: ['src/routes/**/*.{ts,tsx}!', 'src/features/docs/agent-support-table.tsx!'],
       ignoreDependencies: ['@rivus/agent-kit-collab', '@rivus/agent-kit!', '@tanstack/react-start!'],
-      // facts-plugin.ts is loaded by vite.config.ts, and the MDX docs import
-      // agent-support-table.tsx (which pulls in agent-identity.ts); Knip cannot follow either
-      // hop, so all three stay out of the production analysis.
+      // facts-plugin.ts is loaded by vite.config.ts, which stays out of the production analysis.
       project: [
         'src/**/*.{ts,tsx,css}!',
         'content/**/*.mdx!',
         'scripts/**/*.mjs',
-        '!src/features/docs/agent-identity.ts!',
-        '!src/features/docs/agent-support-table.tsx!',
         '!src/features/landing/facts-plugin.ts!'
       ]
     },

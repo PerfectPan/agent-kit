@@ -15,9 +15,7 @@ import { usageTable } from "../src/providers/usage.js";
 import type { Provider } from "../src/providers/types.js";
 
 /** Missing built-in capabilities; every other service has an implementation. */
-export const unsupported: Readonly<
-  Record<BuiltinCodingAgentId, Partial<Record<Exclude<keyof Provider, "id">, string>>>
-> = {
+const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<keyof Provider, "id">, string>>>> = {
   "claude-code": {},
   codex: {},
   dsh: {
