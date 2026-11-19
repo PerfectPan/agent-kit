@@ -29,7 +29,8 @@ const USAGE_FIXTURES = {
   opencode: { home: ".local/share/opencode", source: "../../providers/opencode/test/fixtures/usage" },
   pi: { home: ".pi/agent", source: "../../providers/pi/test/fixtures/usage" },
   dim: { home: ".dimcode/v2", source: "../../providers/dim/test/fixtures/usage" },
-  kimi: { home: ".kimi-code/sessions", source: "../../providers/kimi/test/fixtures/sessions" }
+  kimi: { home: ".kimi-code/sessions", source: "../../providers/kimi/test/fixtures/sessions" },
+  agy: { home: ".gemini/antigravity-cli", source: "../../providers/agy/test/fixtures/antigravity-cli" }
 } as const;
 
 /** The usage fixtures at their paths in the agent homes under `home`, for `createMemoryPlatform({ files })`. */

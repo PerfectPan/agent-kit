@@ -9,6 +9,7 @@ import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
 import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
 import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
 import { kimiHookDialect } from "@rivus/agent-kit-provider-kimi/hooks";
+import { agyHookDialect } from "@rivus/agent-kit-provider-agy/hooks";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -24,6 +25,7 @@ export const builtinHookDialects: {
   readonly kimi: typeof kimiHookDialect;
   readonly qoder: typeof qoderHookDialect;
   readonly dim: typeof dimHookDialect;
+  readonly agy: typeof agyHookDialect;
 } = {
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
@@ -35,13 +37,14 @@ export const builtinHookDialects: {
   zcode: zcodeHookDialect,
   kimi: kimiHookDialect,
   qoder: qoderHookDialect,
-  dim: dimHookDialect
+  dim: dimHookDialect,
+  agy: agyHookDialect
 };
 
-// sniffSource returns the first dialect, in this order, whose payload marker a payload carries. ZCode's payloads also
-// carry Grok's `hookEventName`, so ZCode comes first; Grok then precedes Cursor.
-const { zcode, grok, ...otherHooks } = builtinHookDialects;
-const builtins = { zcode, grok, ...otherHooks };
+// sniffSource returns the first dialect, in this order, whose payload marker a payload carries. ZCode and Antigravity
+// CLI payloads also carry Grok's `hookEventName`, so both precede Grok; Grok then precedes Cursor.
+const { zcode, agy, grok, ...otherHooks } = builtinHookDialects;
+const builtins = { zcode, agy, grok, ...otherHooks };
 
 export const hooksTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"hooks">> =>
   mergeService("hooks", builtins, providers);

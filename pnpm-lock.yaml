@@ -890,6 +890,15 @@ importers:
       '@rivus/agent-kit-discovery':
         specifier: workspace:*
         version: link:../../discovery
+      '@rivus/agent-kit-harness':
+        specifier: workspace:*
+        version: link:../../harness
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../../sessions
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
       '@perfectpan/lint-config':
         specifier: 'catalog:'

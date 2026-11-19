@@ -21,18 +21,14 @@ README 的支持表在单元格不是「是」时使用这些说法：
 - DeepSeek Harness 的 hook：没有受支持的 hook 方言。
 - DeepSeek Harness 的安装：没有受支持的安装适配器。
 - ZCode 的 ACP：没有受支持的 ACP 传输。
-- Antigravity CLI 的 hook：hooks.json 的格式没有文档。
-- Antigravity CLI 的安装：没有可安装的受支持 hook 方言。
-- Antigravity CLI 的会话：会话是无公开格式的 protobuf 载荷。
-- Antigravity CLI 的用量：用量在 protobuf 会话载荷里。
 
 ## 主目录与名称
 
-表里除 DeepSeek Harness 和 Antigravity CLI 外，每个 Agent 在 `/harness/events` 里都有 hook 方言。
+表里除 DeepSeek Harness 外，每个 Agent 在 `/harness/events` 里都有 hook 方言。
 
-`/transcript/usage` 读取表里除 Cursor、Qoder CLI 和 Antigravity CLI 以外每个 Agent 的用量；DimCode 需要 `platform.sqlite`。
+`/transcript/usage` 读取表里除 Cursor 和 Qoder CLI 以外每个 Agent 的用量；DimCode 需要 `platform.sqlite`。
 
-`/transcript/usage` 读取表里除 Cursor、Qoder CLI 和 Antigravity CLI 以外每个 Agent 的用量。
+`/transcript/usage` 读取表里除 Cursor 和 Qoder CLI 以外每个 Agent 的用量。
 
 `builtinProviders` 为表里的每个 Agent 提供 identity。除 Cursor 外，每个 Agent 还有主目录规则。Cursor 的主目录单元格是 `none`：`CURSOR_CONFIG_DIR`、`$XDG_CONFIG_HOME/cursor`、`~/.cursor`。发现说明 `CURSOR_CONFIG_DIR` 和 `XDG_CONFIG_HOME` 仍然不受支持。见 [Agent 检测](/docs/connection/discovery)。
 

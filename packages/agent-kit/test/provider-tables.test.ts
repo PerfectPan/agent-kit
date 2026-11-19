@@ -37,12 +37,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
     sessions: "The session store is not captured yet.",
     usage: "The session store is not captured yet."
   },
-  agy: {
-    hooks: "The hooks.json schema is not documented.",
-    install: "No supported hook dialect to install.",
-    sessions: "Conversations are protobuf payloads without a published schema.",
-    usage: "Usage lives in the protobuf conversation payloads."
-  },
+  agy: {},
   zcode: { acp: "No supported ACP transport." }
 };
 

@@ -35,8 +35,7 @@ export const agyProbe: ProbeRecipe = {
     ]
   },
   warnings: [
-    "the config root override ANTIGRAVITY_GEMINI_DIR is read from the binary strings; the CLI does not document it",
-    "the per-conversation SQLite stores and the hooks.json files are formats this provider does not read yet"
+    "the config root override ANTIGRAVITY_GEMINI_DIR is read from the binary strings; the CLI does not document it"
   ],
   home: AGY_HOME
 };

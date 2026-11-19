@@ -51,21 +51,21 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks                                    | install                               | sessions                                                        | usage                                              | acp                         |
-| ----------- | -------- | --------- | ---------------------------------------- | ------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------- | --------------------------- |
-| agy         | yes      | yes       | The hooks.json schema is not documented. | No supported hook dialect to install. | Conversations are protobuf payloads without a published schema. | Usage lives in the protobuf conversation payloads. | yes                         |
-| claude-code | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| codex       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| cursor      | yes      | yes       | yes                                      | yes                                   | Session storage has no supported reader.                        | Usage storage has no supported decoder.            | No supported ACP transport. |
-| dim         | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| dsh         | yes      | yes       | No supported hook dialect.               | No supported installation adapter.    | yes                                                             | yes                                                | yes                         |
-| gemini-cli  | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| grok        | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| kimi        | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| opencode    | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| pi          | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| qoder       | yes      | yes       | yes                                      | yes                                   | The session store is not captured yet.                          | The session store is not captured yet.             | yes                         |
-| zcode       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | No supported ACP transport. |
+| Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
+| ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| agy         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
+| dim         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes                         |
+| gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| kimi        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
+| qoder       | yes      | yes       | yes                        | yes                                | The session store is not captured yet.   | The session store is not captured yet.  | yes                         |
+| zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
 
 ## Usage
 
@@ -485,11 +485,10 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 | DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
 | ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
-Every agent in the table except DeepSeek Harness and Antigravity CLI has a hook dialect in `/harness/events`. `/acp`
+Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp`
 has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`),
 Gemini CLI, Grok, opencode and Antigravity CLI (`agy acp`); a profile's `warnings` name the facts not yet checked
-against the agent. `/transcript/usage` reads the usage of every agent in the table except Cursor, Qoder CLI and
-Antigravity CLI.
+against the agent. `/transcript/usage` reads the usage of every agent in the table except Cursor and Qoder CLI.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`

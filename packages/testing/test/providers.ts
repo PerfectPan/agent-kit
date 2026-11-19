@@ -55,6 +55,10 @@ import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
 import { kimiSessionAdapter } from "@rivus/agent-kit-provider-kimi/sessions";
 import { agy } from "@rivus/agent-kit-provider-agy/identity";
 import { agyProbe } from "@rivus/agent-kit-provider-agy/discovery";
+import { agyHookDialect } from "@rivus/agent-kit-provider-agy/hooks";
+import { agyInstallAdapter } from "@rivus/agent-kit-provider-agy/install";
+import { agySessionAdapter } from "@rivus/agent-kit-provider-agy/sessions";
+import { agyUsageDecoder } from "@rivus/agent-kit-provider-agy/usage";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
@@ -81,9 +85,10 @@ export const builtinProbeRecipes = {
   dim: dimProbe,
   agy: agyProbe
 };
-// ZCode first, as in the shell: its payloads also carry Grok's payload marker.
+// ZCode and Antigravity CLI first, as in the shell: both carry Grok's payload marker (`hookEventName`).
 export const builtinHookDialects = {
   zcode: zcodeHookDialect,
+  agy: agyHookDialect,
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
   cursor: cursorHookDialect,
@@ -105,7 +110,8 @@ export const builtinInstallAdapters = {
   pi: piInstallAdapter,
   qoder: qoderInstallAdapter,
   dim: dimInstallAdapter,
-  kimi: kimiInstallAdapter
+  kimi: kimiInstallAdapter,
+  agy: agyInstallAdapter
 };
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
@@ -115,7 +121,8 @@ export const builtinUsageDecoders = {
   opencode: opencodeUsageDecoder,
   pi: piUsageDecoder,
   dim: dimUsageDecoder,
-  kimi: kimiUsageDecoder
+  kimi: kimiUsageDecoder,
+  agy: agyUsageDecoder
 };
 
 export const builtinSessionAdapters = {
@@ -123,5 +130,6 @@ export const builtinSessionAdapters = {
   codex: codexSessionAdapter,
   grok: grokSessionAdapter,
   dim: dimSessionAdapter,
-  kimi: kimiSessionAdapter
+  kimi: kimiSessionAdapter,
+  agy: agySessionAdapter
 };

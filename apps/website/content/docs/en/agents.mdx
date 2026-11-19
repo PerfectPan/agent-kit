@@ -21,18 +21,14 @@ The README's support table uses these words where a cell is not "yes":
 - DeepSeek Harness hooks: no supported hook dialect.
 - DeepSeek Harness install: no supported installation adapter.
 - ZCode ACP: no supported ACP transport.
-- Antigravity CLI hooks: the hooks.json schema is not documented.
-- Antigravity CLI install: no supported hook dialect to install.
-- Antigravity CLI sessions: conversations are protobuf payloads without a published schema.
-- Antigravity CLI usage: usage lives in the protobuf conversation payloads.
 
 ## Homes and names
 
-Every Agent in the table except DeepSeek Harness and Antigravity CLI has a hook dialect in `/harness/events`.
+Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor, Qoder CLI and Antigravity CLI; DimCode needs `platform.sqlite`.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI; DimCode needs `platform.sqlite`.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor, Qoder CLI and Antigravity CLI.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 

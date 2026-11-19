@@ -226,11 +226,11 @@ export const boundaries: BoundaryRules = {
     [AGY]: {
       siblingEntries: [],
       providerFacts: "packages/providers/agy/src/facts.ts",
-      providerServices: ["identity", "discovery", "acp"],
+      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
       dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, ACP],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING],
-      external: []
+      external: ["zod/mini"]
     },
     [DSH]: {
       siblingEntries: [],

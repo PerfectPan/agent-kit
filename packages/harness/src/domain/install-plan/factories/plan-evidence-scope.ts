@@ -35,7 +35,7 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
   const { format, layout } = file.source;
   // The file the runner actually loads (`file.path`); the matched (or fallback) source only supplies its shape.
   const path = file.path;
-  const base = file.source.pointer ?? (layout === "event-map" ? "" : "/hooks");
+  const base = file.source.pointer ?? (layout === "event-map" || layout === "named-hooks" ? "" : "/hooks");
   if (layout === "grouped" || layout === "event-map") {
     return [
       {
@@ -47,9 +47,9 @@ function foreignSource(file: ForeignHookFile, runner: CodingAgentId): LegacyHook
       }
     ];
   }
-  if (layout === "event-list") {
-    // The elements carry their event in an `event` field, which the entries scan cannot address; the owner's markers
-    // judge its finds instead.
+  if (layout === "event-list" || layout === "named-hooks") {
+    // The elements carry their event in an `event` field (or under named hook keys), which the entries scan cannot
+    // address; the owner's markers judge its finds instead.
     return [];
   }
   return [...events].map((event) => ({
