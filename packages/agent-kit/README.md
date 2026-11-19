@@ -504,7 +504,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the nine agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each built-in agent above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each

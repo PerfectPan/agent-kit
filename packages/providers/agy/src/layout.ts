@@ -11,12 +11,12 @@ export function agyRoots(home: AgentHome): string[] {
 }
 
 export function agySessionIdFromPath(path: string): string {
-  const parts = path.split("/").filter((part) => part !== "");
+  const parts = path.split(/[/\\]/).filter((part) => part !== "");
   return parts.at(-4) ?? "unknown";
 }
 
 /** The walk for usage scans: matches only the compact `transcript.jsonl` so each conversation is counted once. */
 export const AGY_TRANSCRIPT_FILES = {
   match: (name: string): boolean => name === AGY_TRANSCRIPT_FILE,
-  maxDepth: 4
+  maxDepth: 3
 };

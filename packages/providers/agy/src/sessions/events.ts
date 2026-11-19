@@ -71,6 +71,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
 
       switch (step.type) {
         case "USER_INPUT": {
+          pendingCalls.length = 0;
           if (step.content !== undefined && step.content !== "") {
             emit({ kind: "user", payload: { text: step.content } });
           }
@@ -81,7 +82,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
           const stepKey = step.step_index ?? record.line;
           let requestId: string | undefined;
           if (usage !== undefined || step.model !== undefined) {
-            requestId = `${lineId(record, 0)}`;
+            requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
             emit(
               {
                 kind: "request",
@@ -118,7 +119,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
               kind: "tool_result",
               payload: definedFields({
                 callId,
-                output: step.content,
+                output: step.content ?? step.error,
                 ...(isError ? { isError: true } : {})
               })
             });
@@ -128,19 +129,24 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
           break;
         }
         case "CHECKPOINT": {
-          const usage = agyUsageOf(step);
-          if (usage !== undefined) {
-            emit({
-              kind: "request",
-              payload: definedFields({ granularity: "request" as const, model: step.model, usage })
-            });
-          }
+          pendingCalls.length = 0;
           const compaction = emit({
             kind: "compaction",
             payload: definedFields({ trigger: "auto" as const, summary: step.content })
           });
           if (compaction !== undefined) {
             shadowBefore(events, compaction);
+          }
+          const usage = agyUsageOf(step);
+          if (usage !== undefined || step.model !== undefined) {
+            const requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
+            emit(
+              {
+                kind: "request",
+                payload: definedFields({ granularity: "request" as const, model: step.model, usage })
+              },
+              requestId
+            );
           }
           break;
         }

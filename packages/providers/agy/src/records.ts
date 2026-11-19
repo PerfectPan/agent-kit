@@ -39,12 +39,27 @@ const AgyStep = z.looseObject({
   input_tokens: lenient(z.optional(z.number())),
   cache_read_tokens: lenient(z.optional(z.number())),
   output_tokens: lenient(z.optional(z.number())),
-  tool_calls: lenient(z.optional(z.array(AgyToolCall))),
+  tool_calls: lenient(z.optional(z.array(z.unknown()))),
   error: lenient(z.optional(z.string()))
 });
 
 export function agyStepOf(value: unknown): AgyStepRecord | undefined {
-  return z.safeParse(AgyStep, value).data;
+  const parsed = z.safeParse(AgyStep, value).data;
+  if (parsed === undefined) {
+    return undefined;
+  }
+  const { tool_calls: rawToolCalls, ...rest } = parsed;
+  if (rawToolCalls === undefined) {
+    return rest;
+  }
+  const toolCalls: AgyToolCallRecord[] = [];
+  for (const item of rawToolCalls) {
+    const call = z.safeParse(AgyToolCall, item).data;
+    if (call !== undefined) {
+      toolCalls.push(call);
+    }
+  }
+  return { ...rest, tool_calls: toolCalls };
 }
 
 export function agyRecordTime(step: AgyStepRecord): number | undefined {
@@ -54,18 +69,13 @@ export function agyRecordTime(step: AgyStepRecord): number | undefined {
 /**
  * Antigravity CLI records `input_tokens` excluding `cache_read_tokens` (observed on live transcripts where
  * `cache_read_tokens` exceeds `input_tokens`). The kit's `Usage` convention makes `inputTokens` total input tokens,
- * so `cache_read_tokens` is added into `inputTokens` here.
+ * so `cache_read_tokens` is added into `inputTokens` here while absent counts stay `undefined`.
  */
 export function agyUsageOf(step: AgyStepRecord): Usage | undefined {
-  if (step.input_tokens === undefined && step.cache_read_tokens === undefined && step.output_tokens === undefined) {
-    return undefined;
-  }
-  const cacheReadTokens = step.cache_read_tokens ?? 0;
-  const inputTokens = (step.input_tokens ?? 0) + cacheReadTokens;
-  const outputTokens = step.output_tokens ?? 0;
+  const hasInput = step.input_tokens !== undefined || step.cache_read_tokens !== undefined;
   return compactUsage({
-    inputTokens,
-    outputTokens,
-    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {})
+    ...(hasInput ? { inputTokens: (step.input_tokens ?? 0) + (step.cache_read_tokens ?? 0) } : {}),
+    ...(step.output_tokens !== undefined ? { outputTokens: step.output_tokens } : {}),
+    ...(step.cache_read_tokens !== undefined ? { cacheReadTokens: step.cache_read_tokens } : {})
   });
 }

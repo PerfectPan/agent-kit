@@ -13,7 +13,7 @@ import {
   type UsagePlatform,
   type UsageRecord
 } from "@rivus/agent-kit-sessions/spi";
-import { AGY_HOME, AGY_ID } from "./facts.js";
+import { AGY_HOME, AGY_ID, AGY_TRANSCRIPT_REL } from "./facts.js";
 import { agyRoots, agySessionIdFromPath, AGY_TRANSCRIPT_FILES } from "./layout.js";
 import { agyRecordTime, agyStepOf, agyUsageOf } from "./records.js";
 
@@ -62,7 +62,9 @@ const agyUsageLayout: JsonlUsageLayout = {
 };
 
 function agyUsageKey(record: UsageRecord): string {
-  return `${record.sessionId} ${record.requestId ?? record.source.line}`;
+  return record.requestId !== undefined
+    ? `${record.sessionId} step:${record.requestId}`
+    : `${record.sessionId} line:${record.source.line}`;
 }
 
 export const agyUsageDecoder: UsageDecoder = {
@@ -73,6 +75,7 @@ export const agyUsageDecoder: UsageDecoder = {
   sources(platform: UsagePlatform, home, options = {}) {
     return fileSources(platform, AGY_ID, agyRoots(home), AGY_TRANSCRIPT_FILES, {
       ...options,
+      keep: (path) => path.replaceAll("\\", "/").endsWith(`/${AGY_TRANSCRIPT_REL}`),
       identify: agySessionIdFromPath
     });
   },

@@ -58,11 +58,13 @@ export const agySessionAdapter: SessionAdapter = {
   roots: agyRoots,
   async *discover(platform, root, options = {}) {
     const { signal } = options;
+    signal?.throwIfAborted();
     if ((await platform.fs.stat(root, { followSymlinks: true })) === undefined) {
       yield { ref: { agent: AGY_ID, path: root }, error: { _tag: "RootMissing", path: root } as const };
       return;
     }
     const conversations = await platform.fs.list(root).catch(() => []);
+    signal?.throwIfAborted();
     for (const entry of conversations) {
       signal?.throwIfAborted();
       if (entry.kind !== "dir") {
@@ -85,9 +87,10 @@ export const agySessionAdapter: SessionAdapter = {
   },
   async detect(platform, ref) {
     const info = await platform.fs.stat(ref.path, { followSymlinks: true });
+    const normalized = ref.path.replaceAll("\\", "/");
     return (
       info?.kind === "file" &&
-      (ref.path.endsWith(`/${AGY_TRANSCRIPT_FULL_REL}`) || ref.path.endsWith(`/${AGY_TRANSCRIPT_REL}`))
+      (normalized.endsWith(`/${AGY_TRANSCRIPT_FULL_REL}`) || normalized.endsWith(`/${AGY_TRANSCRIPT_REL}`))
     );
   },
   load: loadAgy,
