@@ -96,6 +96,14 @@ Each build overwrites `dist/client`, so check one build before creating the next
 the Chrome executable in an environment where headless Chrome is permitted. The check keeps the
 Linux runner flags needed to start Chrome on Ubuntu.
 
+## Translations
+
+Every MDX page under `content/docs/en/` (except generated TypeDoc pages under `content/docs/en/api/`, which fall back
+to English by design) has a matching Chinese translation under `content/docs/zh/`. `pnpm run check:docs` (also run by
+`pnpm run check` in CI and by `.githooks/pre-commit`) verifies each pair with `@perfectpan/lint-config/doc-translations`:
+headings, tables, lists, links, and code block languages and bodies (including comments) must stay in step; code block
+`title="…"` captions and YAML frontmatter may be translated.
+
 ## Publishing and maintainer setup
 
 Set **Settings → Pages → Build and deployment → Source: GitHub Actions**. Production is published at
