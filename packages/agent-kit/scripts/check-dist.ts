@@ -147,7 +147,7 @@ function inlinedDependencies(): string[] {
     // rolldown writes `// <source>`. Both name the path relative to the package, so require that shape to keep
     // ordinary comments out.
     for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(
-      /^\/\/(?:#region | )((?:\.\.?\/|node_modules\/).+)$/gm
+      /^\/\/(?:#region | )((?:src\/|\.\.?\/|node_modules\/).+)$/gm
     )) {
       regions += 1;
       if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(source)) {
@@ -162,7 +162,7 @@ function inlinedDependencies(): string[] {
       problems.push(`dist/${file} inlines ${source}; dependencies and peers such as effect stay external`);
     }
   }
-  return regions > 0 ? problems : ["dist has no //#region comments, so inlined dependencies cannot be detected"];
+  return regions > 0 ? problems : ["dist has no source comments, so inlined dependencies cannot be detected"];
 }
 
 /** Specifiers of the `zod` package resolved while `load` runs. */

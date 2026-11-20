@@ -140,7 +140,7 @@ function inlinedModules(): string[] {
       problems.push(`dist/${file} inlines ${source}; agent-kit, effect and other dependencies stay external`);
     }
   }
-  return regions > 0 ? problems : ["dist has no //#region comments, so inlined modules cannot be detected"];
+  return regions > 0 ? problems : ["dist has no source comments, so inlined modules cannot be detected"];
 }
 
 /** Specifiers of the `zod` package resolved while `load` runs. */
