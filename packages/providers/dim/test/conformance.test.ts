@@ -100,9 +100,10 @@ const usageFixtures = {
   sources: [{ path: database, records: 2 }]
 };
 
+const sessionRoot = join(work, "dimcode", "v2");
 const sessionChecks = sessionAdapterConformance(dimSessionAdapter, {
   platform: { fs: node.fs, sqlite: node.sqlite },
-  root: database,
+  root: sessionRoot,
   sessions: [
     {
       path: database,
@@ -128,3 +129,72 @@ for (const [service, checks] of [
     }
   });
 }
+
+describe("dim session root and lastActiveAt", () => {
+  it("returns the home directory from roots() and takes the latest write across sessions, messages, and usage_ledger", async () => {
+    const home = homeFromRule("dim", dim.home, { home: work, env: { DIMCODE_HOME: join(work, "dimcode") } });
+    expect(dimSessionAdapter.roots(home)).toEqual([sessionRoot]);
+
+    const isolated = await mkdtemp(join(tmpdir(), "agent-kit-dim-last-active-"));
+    try {
+      const isolatedDbPath = join(isolated, "dimcode.sqlite");
+      const isolatedDb = node.sqlite!.open(isolatedDbPath);
+      isolatedDb.exec(
+        "CREATE TABLE sessions (sessionId text primary key, cwd text not null default '', title text, status text not null, " +
+          "createdAt text not null, updatedAt text not null)"
+      );
+      isolatedDb.exec(
+        "CREATE TABLE messages (messageId text primary key, sessionId text not null, role text not null, parts text not null, " +
+          "metadata text, orderKey text not null, createdAt text not null, updatedAt text not null)"
+      );
+      isolatedDb.exec(
+        "CREATE TABLE usage_ledger (ledgerId text primary key, sessionId text not null, runId text, " +
+          "providerId text not null, modelId text not null, usage text not null, cost real, createdAt text not null)"
+      );
+      isolatedDb
+        .prepare("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)")
+        .run("s-msg", "/w", "Msg newer", "active", "2026-11-13T00:00:00.000Z", "2026-11-13T00:01:00.000Z");
+      isolatedDb
+        .prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(
+          "m-new",
+          "s-msg",
+          "assistant",
+          '[{"type":"text","text":"hi"}]',
+          "{}",
+          "0001",
+          "2026-11-13T00:02:00.000Z",
+          "2026-11-13T00:03:00.000Z"
+        );
+      isolatedDb
+        .prepare("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)")
+        .run("s-ledger", "/w", "Ledger newer", "active", "2026-11-13T00:00:00.000Z", "2026-11-13T00:01:00.000Z");
+      isolatedDb
+        .prepare("INSERT INTO usage_ledger VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(
+          "l-new",
+          "s-ledger",
+          "run-1",
+          "deepseek",
+          "deepseek-chat",
+          JSON.stringify({ promptTokens: 5, completionTokens: 5, totalTokens: 10 }),
+          0.01,
+          "2026-11-13T00:05:00.000Z"
+        );
+      isolatedDb.close();
+
+      const heads = [];
+      for await (const item of dimSessionAdapter.discover({ fs: node.fs, sqlite: node.sqlite }, isolated)) {
+        if (!("error" in item)) {
+          heads.push(item);
+        }
+      }
+      expect(heads.find((h) => h.ref.sessionId === "s-msg")?.lastActiveAt).toBe(Date.parse("2026-11-13T00:03:00.000Z"));
+      expect(heads.find((h) => h.ref.sessionId === "s-ledger")?.lastActiveAt).toBe(
+        Date.parse("2026-11-13T00:05:00.000Z")
+      );
+    } finally {
+      await rm(isolated, { recursive: true, force: true });
+    }
+  });
+});
