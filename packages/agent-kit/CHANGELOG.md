@@ -1,5 +1,21 @@
 # Change Log - @rivus/agent-kit
 
+## 0.27.0
+
+### Minor Changes
+
+- [#309](https://github.com/PerfectPan/agent-kit/pull/309) [`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc) Thanks [@renovate](https://github.com/apps/renovate)! - Update the optional `effect` peer dependency from `4.1.1` to `4.1.4`. Hosts pinning `effect@4.1.1` will fail to install under npm until upgraded to `4.1.4`.
+
+### Patch Changes
+
+- [#332](https://github.com/PerfectPan/agent-kit/pull/332) [`c523e7e`](https://github.com/PerfectPan/agent-kit/commit/c523e7e8a9487517e50bc6e415ab343039e344cc) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Fix ZCode SQLite session reader on databases without a `time_deleted` column ([#331](https://github.com/PerfectPan/agent-kit/issues/331)) and return DimCode's session directory from `dimSessionAdapter.roots()` with `lastActiveAt` tracking the latest write across `sessions`, `messages`, and `usage_ledger` ([#330](https://github.com/PerfectPan/agent-kit/issues/330)).
+
+- [#310](https://github.com/PerfectPan/agent-kit/pull/310) [`ed83385`](https://github.com/PerfectPan/agent-kit/commit/ed833852ab28f27195a4150db6046a08af5ad8d4) Thanks [@renovate](https://github.com/apps/renovate)! - Updated dependency `es-toolkit` to `^1.53.2`.
+
+- [#334](https://github.com/PerfectPan/agent-kit/pull/334) [`ef462de`](https://github.com/PerfectPan/agent-kit/commit/ef462deff98c11803e088f3b77c587b7b0926e0b) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Reject with `signal.reason` when `summarize` on the shared SQLite session adapter (OpenCode, ZCode) is aborted ([#294](https://github.com/PerfectPan/agent-kit/issues/294)).
+
+- [#276](https://github.com/PerfectPan/agent-kit/pull/276) [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24) Thanks [@renovate](https://github.com/apps/renovate)! - Rebuild published bundles with `vite-plus` `1.5.0` (rolldown module comment format update).
+
 ## 0.26.0
 
 ### Minor Changes
