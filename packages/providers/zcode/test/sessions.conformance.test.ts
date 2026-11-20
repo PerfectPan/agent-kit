@@ -406,4 +406,47 @@ describe("zcode adapter", () => {
       await rm(legacyRoot, { recursive: true, force: true });
     }
   });
+
+  it("rejects with signal.reason when summarize is aborted before or during the pass", async () => {
+    const ref = { agent: "zcode", path: dbPath, sessionId: "ses_plain" };
+    const reason = new Error("stop-zcode");
+    const preAborted = new AbortController();
+    preAborted.abort(reason);
+    await expect(zcodeSessionAdapter.summarize!(platform, ref, { signal: preAborted.signal })).rejects.toBe(reason);
+
+    const midController = new AbortController();
+    const midReason = new Error("mid-zcode");
+    const base = platform.sqlite!;
+    let messageReads = 0;
+    const abortingPlatform: SessionPlatform = {
+      ...platform,
+      sqlite: {
+        open: (path, options) => {
+          const db = base.open(path, options);
+          const prepare = db.prepare.bind(db);
+          return {
+            exec: (sql) => db.exec(sql),
+            prepare: (sql) => {
+              const statement = prepare(sql);
+              return {
+                run: (...params: Parameters<typeof statement.run>) => statement.run(...params),
+                get: (...params: Parameters<typeof statement.get>) => {
+                  const row = statement.get(...params);
+                  if (/from\s+message(?:\s|$)/i.test(sql) && ++messageReads === 1) {
+                    midController.abort(midReason);
+                  }
+                  return row;
+                },
+                all: (...params: Parameters<typeof statement.all>) => statement.all(...params)
+              };
+            },
+            close: () => db.close()
+          };
+        }
+      }
+    };
+    await expect(zcodeSessionAdapter.summarize!(abortingPlatform, ref, { signal: midController.signal })).rejects.toBe(
+      midReason
+    );
+  });
 });
