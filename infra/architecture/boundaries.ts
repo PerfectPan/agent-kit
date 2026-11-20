@@ -172,9 +172,9 @@ export const boundaries: BoundaryRules = {
     [CURSOR]: {
       siblingEntries: [],
       providerFacts: "packages/providers/cursor/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install"],
+      providerServices: ["identity", "discovery", "hooks", "install", "acp"],
       dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, ACP],
       testsOnly: [TESTING],
       external: ["zod/mini"]
     },

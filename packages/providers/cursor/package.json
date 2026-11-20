@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-provider-cursor",
   "version": "0.0.0",
   "private": true,
-  "description": "Cursor identity, discovery, hooks and installation. Bundled into @rivus/agent-kit.",
+  "description": "Cursor identity, discovery, hooks, installation and ACP. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./identity": "./src/identity.ts",
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
-    "./install": "./src/install.ts"
+    "./install": "./src/install.ts",
+    "./acp": "./src/acp.ts"
   },
   "scripts": {
     "build": "",
@@ -21,6 +22,7 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
+    "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-harness": "workspace:*",
