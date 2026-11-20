@@ -32,10 +32,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
   pi: {},
   dim: {},
   kimi: {},
-  qoder: {
-    sessions: "The session store is not captured yet.",
-    usage: "The session store is not captured yet."
-  },
+  qoder: {},
   agy: {},
   zcode: {}
 };

@@ -24,9 +24,9 @@ The README's support table uses these words where a cell is not "yes":
 
 Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI; DimCode needs `platform.sqlite`.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor; DimCode needs `platform.sqlite`.
 
-`/transcript/usage` reads the usage of every Agent in the table except Cursor and Qoder CLI.
+`/transcript/usage` reads the usage of every Agent in the table except Cursor.
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 
