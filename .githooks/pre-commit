@@ -5,6 +5,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 git diff --cached --check
+node scripts/check-doc-translations.ts
 
 # CI runs the same check and is authoritative, so a checkout without the
 # extension warns instead of blocking the commit.
