@@ -27,6 +27,8 @@ export const CURSOR_FOREIGN_HOOK_FILES: readonly string[] = [
   ".claude/settings.json",
   ".claude/settings.local.json"
 ];
+export const CURSOR_ACP_ARGS: readonly string[] = ["acp"];
+export const CURSOR_ACP_ENV: readonly string[] = ["CURSOR_*"];
 
 /** @public */
 export const agentMarkers: readonly string[] = [

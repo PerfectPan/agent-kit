@@ -25,8 +25,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
   grok: {},
   cursor: {
     sessions: "Session storage has no supported reader.",
-    usage: "Usage storage has no supported decoder.",
-    acp: "No supported ACP transport."
+    usage: "Usage storage has no supported decoder."
   },
   "gemini-cli": {},
   opencode: {},

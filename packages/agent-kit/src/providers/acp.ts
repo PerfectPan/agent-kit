@@ -1,6 +1,7 @@
 import type { AcpProfiles } from "@rivus/agent-kit-acp/public";
 import { codexAcpProfile } from "@rivus/agent-kit-provider-codex/acp";
 import { claudeCodeAcpProfile } from "@rivus/agent-kit-provider-claude-code/acp";
+import { cursorAcpProfile } from "@rivus/agent-kit-provider-cursor/acp";
 import { grokAcpProfile } from "@rivus/agent-kit-provider-grok/acp";
 import { opencodeAcpProfile } from "@rivus/agent-kit-provider-opencode/acp";
 import { geminiCliAcpProfile } from "@rivus/agent-kit-provider-gemini-cli/acp";
@@ -17,6 +18,7 @@ import type { Provider } from "./types.js";
 const builtinAcpProfiles: AcpProfiles = {
   "claude-code": claudeCodeAcpProfile,
   codex: codexAcpProfile,
+  cursor: cursorAcpProfile,
   dsh: dshAcpProfile,
   "gemini-cli": geminiCliAcpProfile,
   grok: grokAcpProfile,
