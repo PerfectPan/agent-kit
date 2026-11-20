@@ -88,7 +88,8 @@ export interface SessionAdapter {
    * `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails the conformance
    * suite. The equality covers the summary's numbers and prompts, not the failure modes: the pass may read fewer
    * files than `load` (side files the summary's numbers never read) and in its own order, so an IO error on one of
-   * those can fail `load` while `summarize` succeeds, or the reverse.
+   * those can fail `load` while `summarize` succeeds, or the reverse. An abort rejects with `signal.reason`, as
+   * `load` does.
    */
   summarize?(
     platform: SessionPlatform,

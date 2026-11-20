@@ -513,8 +513,10 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
   async function withSession<T>(
     platform: SessionPlatform,
     ref: SessionRef,
+    signal: AbortSignal | undefined,
     read: (database: Database, queries: Queries, sessionId: string) => Result<T, SessionReadError>
   ): Promise<Result<T, SessionReadError>> {
+    signal?.throwIfAborted();
     if (ref.sessionId === undefined) {
       return err(readFailed(ref.path, `${layout.sessionNoun} needs its session id`));
     }
@@ -593,18 +595,18 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
       }
     },
     load: (platform, ref, options: LoadOptions = {}) =>
-      withSession(platform, ref, (database, queries, sessionId) => {
+      withSession(platform, ref, options.signal, (database, queries, sessionId) => {
         options.signal?.throwIfAborted();
         const rows = readRows(database, queries, ref.path, sessionId);
         return rows.ok ? ok(translate(layout, rows.value, ref.path)) : rows;
       }),
     summarize: (platform, ref, options = {}) =>
-      withSession(platform, ref, (database, queries, sessionId) => {
-        // An abort inside the pass surfaces as the pass's ReadFailed, like any other error it throws.
+      withSession(platform, ref, options.signal, (database, queries, sessionId) => {
         try {
           options.signal?.throwIfAborted();
           return summarize(layout, queries, database, ref.path, sessionId, options);
         } catch (error) {
+          options.signal?.throwIfAborted();
           return err(thrown(ref.path, error));
         }
       })
