@@ -1,5 +1,12 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [[`39bae7e`](https://github.com/PerfectPan/agent-kit/commit/39bae7e8c1b45634cbf9354f7f89f53e2ccaf51d), [`b2f4353`](https://github.com/PerfectPan/agent-kit/commit/b2f435316582da5b67b62906fa80021c238b45ea), [`ed20048`](https://github.com/PerfectPan/agent-kit/commit/ed20048c34e34390713126f9bbda7794be41d297), [`4d5e8ae`](https://github.com/PerfectPan/agent-kit/commit/4d5e8ae8bde897bb50a0c1e1337bac383e091cb7), [`f822432`](https://github.com/PerfectPan/agent-kit/commit/f8224320550941e654a0e7c1cf29feb4395cbb7d), [`0f7dbdf`](https://github.com/PerfectPan/agent-kit/commit/0f7dbdf6cb5a91069e81fe218063c388dc787830), [`067c86c`](https://github.com/PerfectPan/agent-kit/commit/067c86ca38b9ce45f192ea0c6697a0e4f6725b87), [`d231cce`](https://github.com/PerfectPan/agent-kit/commit/d231ccede9fe8caf5150c65207ea3b3b9b31e2f3), [`fae3561`](https://github.com/PerfectPan/agent-kit/commit/fae3561b116bfb6651e98de9894bbe602be389eb), [`3031a2d`](https://github.com/PerfectPan/agent-kit/commit/3031a2d797aef05b7238853e8c0837326684d8ac), [`104ac29`](https://github.com/PerfectPan/agent-kit/commit/104ac298a6c5da9b465901697ee65325b497e38d), [`478f338`](https://github.com/PerfectPan/agent-kit/commit/478f33800ea911d439edef3eb365115dd4439f9c), [`0f5c8dc`](https://github.com/PerfectPan/agent-kit/commit/0f5c8dc7957cddff86aa14c7e3de468a9a8b491e), [`d3f4aab`](https://github.com/PerfectPan/agent-kit/commit/d3f4aab1486d7057365e2ff933ab24b38ec900a3), [`e89d602`](https://github.com/PerfectPan/agent-kit/commit/e89d602127b249702f7566d63d2fe60ae5ec7b90)]:
+  - @rivus/agent-kit@0.26.0
+
 ## 0.25.0
 
 ### Patch Changes

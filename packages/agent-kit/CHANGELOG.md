@@ -1,5 +1,50 @@
 # Change Log - @rivus/agent-kit
 
+## 0.26.0
+
+### Minor Changes
+
+- [#314](https://github.com/PerfectPan/agent-kit/pull/314) [`39bae7e`](https://github.com/PerfectPan/agent-kit/commit/39bae7e8c1b45634cbf9354f7f89f53e2ccaf51d) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add Antigravity CLI (`agy`) as a built-in provider across all seven services: identity (`ANTIGRAVITY_GEMINI_DIR` / `~/.gemini`), discovery, lifecycle hooks (`hooks.json` camelCase protojson payloads), native-plugin and skills installation (`~/.gemini/config/plugins/<owner>/`, `~/.gemini/config/skills/<name>/`), JSONL transcript sessions (`antigravity-cli/brain/<id>/.system_generated/logs/transcript[_full].jsonl`), per-step token usage decoding, and the `agy acp` launch profile.
+
+- [#329](https://github.com/PerfectPan/agent-kit/pull/329) [`b2f4353`](https://github.com/PerfectPan/agent-kit/commit/b2f435316582da5b67b62906fa80021c238b45ea) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add Cursor CLI ACP profile (`cursor-agent acp`) in `@rivus/agent-kit/acp` and `@rivus/agent-kit/providers`.
+
+- [#302](https://github.com/PerfectPan/agent-kit/pull/302) [`ed20048`](https://github.com/PerfectPan/agent-kit/commit/ed20048c34e34390713126f9bbda7794be41d297) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add DimCode: identity, discovery, hooks in `hooks.json`, installation, an ACP launch profile for `dim acp`, and session plus token-usage reading from the v2 SQLite store (an insert-only usage ledger decoded through a shared append-log decoder).
+
+- [#304](https://github.com/PerfectPan/agent-kit/pull/304) [`4d5e8ae`](https://github.com/PerfectPan/agent-kit/commit/4d5e8ae8bde897bb50a0c1e1337bac383e091cb7) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add Kimi Code: identity, discovery, hooks as `[[hooks]]` entries of `config.toml`, installation, an ACP launch profile for `kimi acp`, and session plus token-usage reading from `wire.jsonl` stores.
+
+- [#300](https://github.com/PerfectPan/agent-kit/pull/300) [`0f7dbdf`](https://github.com/PerfectPan/agent-kit/commit/0f7dbdf6cb5a91069e81fe218063c388dc787830) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Launch Pi over ACP through the community pi-acp adapter: `connectAgent("pi")` and `probeAgent("pi")` drive `pi --mode rpc` with the system prompt opening the first prompt (the adapter reads no `_meta`).
+  
+  ACP profiles gain `sessions: "multi" | "single"` (default `"multi"`); pi's profile declares `"single"` because the adapter keeps one live session per connection, so `newSession` and `loadSession` refuse with `TurnActive` while another session of the connection runs a turn — its adapter would close that session without settling it. A turn start refuses with the same error while a session open is in flight, for the same reason. The open's claim holds until the remote operation is known to have stopped: an open that times out or is interrupted with no answer ends the connection (`ConnectionClosed` gains the `open-unsettled` reason) instead of risking a turn the adapter would strand. Pi's launch environment forwards every provider credential pi 0.87.1 reads from the environment, including the Bedrock AWS chain and `COPILOT_GITHUB_TOKEN`.
+
+- [#301](https://github.com/PerfectPan/agent-kit/pull/301) [`067c86c`](https://github.com/PerfectPan/agent-kit/commit/067c86ca38b9ce45f192ea0c6697a0e4f6725b87) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add Qoder CLI: identity, discovery (the qodercli binary and its settings), Claude-Code-shaped hooks in `~/.qoder/settings.json`, installation, and an ACP launch profile for `qodercli --acp`.
+
+- [#327](https://github.com/PerfectPan/agent-kit/pull/327) [`d231cce`](https://github.com/PerfectPan/agent-kit/commit/d231ccede9fe8caf5150c65207ea3b3b9b31e2f3) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add Qoder CLI (`qoder`) session reading (`~/.qoder/projects/<encoded-cwd>/<sessionId>.jsonl`) and token usage decoding (main sessions and `<sessionId>/subagents/agent-<agentId>.jsonl`).
+
+- [#328](https://github.com/PerfectPan/agent-kit/pull/328) [`e89d602`](https://github.com/PerfectPan/agent-kit/commit/e89d602127b249702f7566d63d2fe60ae5ec7b90) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add ZCode ACP profile via `zcode-acp-server` (`@rivus/agent-kit/acp`, `@rivus/agent-kit/providers`).
+
+### Patch Changes
+
+- [#320](https://github.com/PerfectPan/agent-kit/pull/320) [`f822432`](https://github.com/PerfectPan/agent-kit/commit/f8224320550941e654a0e7c1cf29feb4395cbb7d) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Mark test-only exports `@internal` for the Knip production analysis and scope the production run per workspace.
+
+- [#326](https://github.com/PerfectPan/agent-kit/pull/326) [`fae3561`](https://github.com/PerfectPan/agent-kit/commit/fae3561b116bfb6651e98de9894bbe602be389eb) Thanks [@PerfectPan](https://github.com/PerfectPan)! - `redactText` also hides a home directory that a cut left partial at the end of a text. Session titles and first prompts are cut to 80 and 500 characters before anything redacts them, so a cut inside `/u/alice` used to leave `/u/ali`. Every spelling is checked: native, JSON-escaped, URL-encoded, the project slug, `~user`, and the Windows and MSYS forms. This covers user names with `-`, `.` or spaces. An end that holds the parent directory and at least one character of the user name, or two for a one-segment home and `~user`, reads `~`.
+
+- [#324](https://github.com/PerfectPan/agent-kit/pull/324) [`3031a2d`](https://github.com/PerfectPan/agent-kit/commit/3031a2d797aef05b7238853e8c0837326684d8ac) Thanks [@PerfectPan](https://github.com/PerfectPan)! - `redactText` keeps the separator before a home directory that continues a longer path: `/private/tmp/x/a` with home `/tmp/x` now reads `/private/~/a` instead of `/private~/a`. The home stays hidden.
+
+- [#325](https://github.com/PerfectPan/agent-kit/pull/325) [`104ac29`](https://github.com/PerfectPan/agent-kit/commit/104ac298a6c5da9b465901697ee65325b497e38d) Thanks [@PerfectPan](https://github.com/PerfectPan)! - `redactText` hides more credentials:
+  
+  - Stripe (`sk_live_`, `rk_test_`), GitLab (`glpat-`), Hugging Face (`hf_`), and Google (`AIza`) keys, JWTs, and Slack webhook URLs.
+  - The value of credential assignments (`PASSWORD=`, `client_secret:`, `GITHUB_TOKEN=`, `SECRET_KEY=`, `X-Api-Key:`, `aws_secret_access_key =`, `password: str = "…"`), raw, quoted, or JSON-escaped.
+  - The value after `Authorization: Bearer|Basic|Token`, and a standalone `Bearer` value of 16 or more characters that holds a digit.
+  - The password of URL userinfo.
+  
+  After a credential name, types, flags, placeholders (`$…`, `<…>`, `env:…`), numbers, dictionary labels, values without a digit in code (`token = getToken()`), and calls or literals (`gen2()`, `corev1.Secret{}`) stay as they are.
+
+- [#298](https://github.com/PerfectPan/agent-kit/pull/298) [`478f338`](https://github.com/PerfectPan/agent-kit/commit/478f33800ea911d439edef3eb365115dd4439f9c) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Read event-list hook files (a root-level hooks array whose elements carry their event, such as Kimi's config.toml) with multi-key element identities, and teach doctor and the legacy scan both.
+
+- [#299](https://github.com/PerfectPan/agent-kit/pull/299) [`0f5c8dc`](https://github.com/PerfectPan/agent-kit/commit/0f5c8dc7957cddff86aa14c7e3de468a9a8b491e) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Decode append-only SQLite usage ledgers (a rowid cursor over inserts, one record per settled row) and export the transcript-fold helpers session adapters fold summaries with.
+
+- [#312](https://github.com/PerfectPan/agent-kit/pull/312) [`d3f4aab`](https://github.com/PerfectPan/agent-kit/commit/d3f4aab1486d7057365e2ff933ab24b38ec900a3) Thanks [@github-actions](https://github.com/apps/github-actions)! - Update the LiteLLM price snapshot of `/cost/prices` to `2026-11-15+21215cebac633da4b2d4d0d29ef5557a240bf141+8b2c8fa1dd30`.
+
 ## 0.25.0
 
 ### Minor Changes
