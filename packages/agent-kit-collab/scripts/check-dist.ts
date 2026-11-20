@@ -105,8 +105,9 @@ function reachableDistFiles(entryFile: string): Set<string> {
 }
 
 /**
- * The bundler opens every module it inlines with `//#region <source>`. Only this package's src/ may appear, plus
- * `zod/mini` in the files `/process-lock` loads: that entry bundles it, and `/lease` keeps importing it.
+ * The bundler opens every module it inlines with a `// <source>` comment (`//#region <source>` before rolldown).
+ * Only this package's src/ may appear, plus `zod/mini` in the files `/process-lock` loads: that entry bundles it,
+ * and `/lease` keeps importing it.
  */
 function inlinedModules(): string[] {
   const problems: string[] = [];
@@ -120,7 +121,12 @@ function inlinedModules(): string[] {
     if (!/\.(?:d\.ts|js)$/.test(file)) {
       continue;
     }
-    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
+    // The bundler opens every inlined module with a comment naming its source: esbuild wrote `//#region <source>`,
+    // rolldown writes `// <source>`. Both name the path relative to the package, so require that shape to keep
+    // ordinary comments out.
+    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(
+      /^\/\/(?:#region | )((?:src\/|\.\.?\/|node_modules\/).+)$/gm
+    )) {
       regions += 1;
       if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(source)) {
         problems.push(`dist/${file} inlines test source ${source}`);
@@ -134,7 +140,7 @@ function inlinedModules(): string[] {
       problems.push(`dist/${file} inlines ${source}; agent-kit, effect and other dependencies stay external`);
     }
   }
-  return regions > 0 ? problems : ["dist has no //#region comments, so inlined modules cannot be detected"];
+  return regions > 0 ? problems : ["dist has no source comments, so inlined modules cannot be detected"];
 }
 
 /** Specifiers of the `zod` package resolved while `load` runs. */

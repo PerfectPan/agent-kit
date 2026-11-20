@@ -190,7 +190,7 @@ describe("createExclusive", () => {
     const path = join(dir, "lock");
     const results = await Promise.all([nodeFs.createExclusive(path), nodeFs.createExclusive(path)]);
 
-    expect(results.toSorted()).toEqual([false, true]);
+    expect(results.toSorted((a, b) => Number(a) - Number(b))).toEqual([false, true]);
     expect(await nodeFs.createExclusive(path)).toBe(false);
     expect(await readFile(path, "utf8")).toBe("");
   });

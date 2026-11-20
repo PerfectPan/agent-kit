@@ -113,11 +113,11 @@ function reachableDistFiles(entryFile: string): Set<string> {
 }
 
 /**
- * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a `//#region <source>`
- * comment, in code and declarations alike; internal packages are workspace links resolved to their own folders. The
- * zero-dependency entries and the Node platform chunk bundle `zod/mini` instead of importing it. No other dist file
- * may inline a dependency, so the other built entries keep importing `zod/mini` and the optional `effect` peer stays
- * external.
+ * Bundled modules that come from `node_modules`. The bundler opens every module it inlines with a source comment
+ * (`//#region <source>` before rolldown, `// <source>` since), in code and declarations alike; internal packages are
+ * workspace links resolved to their own folders. The zero-dependency entries and the Node platform chunk bundle
+ * `zod/mini` instead of importing it. No other dist file may inline a dependency, so the other built entries keep
+ * importing `zod/mini` and the optional `effect` peer stays external.
  */
 function inlinedDependencies(): string[] {
   const problems: string[] = [];
@@ -143,7 +143,12 @@ function inlinedDependencies(): string[] {
     if (!/\.(?:d\.ts|js)$/.test(file)) {
       continue;
     }
-    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(/^\/\/#region (.+)$/gm)) {
+    // Bundlers mark each inlined module with a comment naming its source: esbuild writes `//#region <source>`,
+    // rolldown writes `// <source>`. Both name the path relative to the package, so require that shape to keep
+    // ordinary comments out.
+    for (const [, source = ""] of readFileSync(join(dist, file), "utf8").matchAll(
+      /^\/\/(?:#region | )((?:src\/|\.\.?\/|node_modules\/).+)$/gm
+    )) {
       regions += 1;
       if (/(?:^|\/)test(?:\/|$)|\.(?:test|spec)\./.test(source)) {
         problems.push(`dist/${file} inlines test source ${source}`);
@@ -157,7 +162,7 @@ function inlinedDependencies(): string[] {
       problems.push(`dist/${file} inlines ${source}; dependencies and peers such as effect stay external`);
     }
   }
-  return regions > 0 ? problems : ["dist has no //#region comments, so inlined dependencies cannot be detected"];
+  return regions > 0 ? problems : ["dist has no source comments, so inlined dependencies cannot be detected"];
 }
 
 /** Specifiers of the `zod` package resolved while `load` runs. */
