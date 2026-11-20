@@ -10,6 +10,7 @@ import { qoderAcpProfile } from "@rivus/agent-kit-provider-qoder/acp";
 import { kimiAcpProfile } from "@rivus/agent-kit-provider-kimi/acp";
 import { agyAcpProfile } from "@rivus/agent-kit-provider-agy/acp";
 import { dimAcpProfile } from "@rivus/agent-kit-provider-dim/acp";
+import { zcodeAcpProfile } from "@rivus/agent-kit-provider-zcode/acp";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -24,7 +25,8 @@ const builtinAcpProfiles: AcpProfiles = {
   qoder: qoderAcpProfile,
   dim: dimAcpProfile,
   kimi: kimiAcpProfile,
-  agy: agyAcpProfile
+  agy: agyAcpProfile,
+  zcode: zcodeAcpProfile
 };
 
 export const acpTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"acp">> =>

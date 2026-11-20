@@ -1322,6 +1322,9 @@ importers:
 
   packages/providers/zcode:
     dependencies:
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../../acp
       '@rivus/agent-kit-catalog':
         specifier: workspace:*
         version: link:../../catalog

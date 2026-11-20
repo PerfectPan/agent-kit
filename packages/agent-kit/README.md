@@ -65,7 +65,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | qoder       | yes      | yes       | yes                        | yes                                | The session store is not captured yet.   | The session store is not captured yet.  | yes                         |
-| zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 
 ## Usage
 

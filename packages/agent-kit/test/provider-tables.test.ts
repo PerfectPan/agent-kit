@@ -38,7 +38,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
     usage: "The session store is not captured yet."
   },
   agy: {},
-  zcode: { acp: "No supported ACP transport." }
+  zcode: {}
 };
 
 const tables = {
