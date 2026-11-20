@@ -324,7 +324,7 @@ try {
   const failures = interesting.filter(
     (entry) => entry.status >= 400 || entry.url.includes("/_serverFn") || !entry.url.startsWith(`${origin}${prefix}/`)
   );
-  const zhUrls = interesting.filter((entry) => new URL(entry.url).pathname.includes("/zh"));
+  const zhUrls = interesting.filter((entry) => /(?:^|\/)zh(?:\/|$)/.test(new URL(entry.url).pathname));
 
   console.log(`landing ${landing}`);
   console.log(`docs ${docs}`);

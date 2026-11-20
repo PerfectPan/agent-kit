@@ -20,10 +20,17 @@ export const allowed = (name: string, pkg: string, path: string, source: string)
   source,
   expected: []
 });
-export const rejects = (name: string, pkg: string, path: string, source: string, rule: string): Case => ({
+export const rejects = (
+  name: string,
+  pkg: string,
+  path: string,
+  source: string,
+  rule: string,
+  ...more: string[]
+): Case => ({
   name,
   pkg,
   path,
   source,
-  expected: [rule]
+  expected: [rule, ...more]
 });
