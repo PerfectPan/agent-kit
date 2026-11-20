@@ -64,7 +64,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | kimi        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
 | opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
 | pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| qoder       | yes      | yes       | yes                        | yes                                | The session store is not captured yet.   | The session store is not captured yet.  | yes |
+| qoder       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
 | zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
 
 ## Usage
@@ -489,7 +489,7 @@ Every agent in the table except DeepSeek Harness has a hook dialect in `/harness
 has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Cursor (`cursor-agent acp`),
 DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode and Antigravity CLI (`agy acp`); a profile's
 `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the
-table except Cursor and Qoder CLI.
+table except Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`

@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-provider-qoder",
   "version": "0.0.0",
   "private": true,
-  "description": "Qoder CLI identity, discovery, hooks, installation and ACP. Bundled into @rivus/agent-kit.",
+  "description": "Qoder CLI identity, discovery, hooks, installation, sessions, usage and ACP. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -11,6 +11,8 @@
     "./discovery": "./src/discovery.ts",
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",
+    "./sessions": "./src/sessions.ts",
+    "./usage": "./src/usage.ts",
     "./acp": "./src/acp.ts"
   },
   "scripts": {
@@ -25,7 +27,9 @@
     "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-discovery": "workspace:*",
-    "@rivus/agent-kit-harness": "workspace:*"
+    "@rivus/agent-kit-harness": "workspace:*",
+    "@rivus/agent-kit-sessions": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@perfectpan/lint-config": "catalog:",

@@ -100,7 +100,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | kimi        | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 | opencode    | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 | pi          | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
-| qoder       | yes      | yes       | yes                                      | yes                                   | The session store is not captured yet.                          | The session store is not captured yet.             | yes                         |
+| qoder       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 | zcode       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 
 ## Entries

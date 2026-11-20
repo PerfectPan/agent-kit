@@ -58,7 +58,8 @@ const ALL = [
   "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl",
   "opencode /u/me/.local/share/opencode/storage/message/ses_legacy",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-01T00-00-00-000Z_pi-1.jsonl",
-  "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-02T00-00-00-000Z_pi-fork.jsonl"
+  "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-02T00-00-00-000Z_pi-fork.jsonl",
+  "qoder /u/me/.qoder/projects/-u-me-work/s-1.jsonl"
 ];
 
 describe("listUsageSources", () => {
@@ -76,7 +77,8 @@ describe("listUsageSources", () => {
       [".local/share/opencode", "/alt/data/opencode"],
       [".pi/agent", "/alt/pi"],
       [".dimcode", "/alt/dim"],
-      [".kimi-code", "/alt/kimi"]
+      [".kimi-code", "/alt/kimi"],
+      [".qoder", "/alt/qoder"]
     );
     const { sources, failures } = await list(
       files,
@@ -90,7 +92,8 @@ describe("listUsageSources", () => {
         XDG_DATA_HOME: "/alt/data",
         PI_CODING_AGENT_DIR: "/alt/pi",
         DIMCODE_HOME: "/alt/dim",
-        KIMI_CODE_HOME: "/alt/kimi"
+        KIMI_CODE_HOME: "/alt/kimi",
+        QODER_CONFIG_DIR: "/alt/qoder"
       }
     );
     expect(failures).toEqual([]);

@@ -41,6 +41,8 @@ import { qoder } from "@rivus/agent-kit-provider-qoder/identity";
 import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
 import { qoderHookDialect } from "@rivus/agent-kit-provider-qoder/hooks";
 import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
+import { qoderSessionAdapter } from "@rivus/agent-kit-provider-qoder/sessions";
+import { qoderUsageDecoder } from "@rivus/agent-kit-provider-qoder/usage";
 import { dim } from "@rivus/agent-kit-provider-dim/identity";
 import { dimProbe } from "@rivus/agent-kit-provider-dim/discovery";
 import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
@@ -122,7 +124,8 @@ export const builtinUsageDecoders = {
   pi: piUsageDecoder,
   dim: dimUsageDecoder,
   kimi: kimiUsageDecoder,
-  agy: agyUsageDecoder
+  agy: agyUsageDecoder,
+  qoder: qoderUsageDecoder
 };
 
 export const builtinSessionAdapters = {
@@ -131,5 +134,6 @@ export const builtinSessionAdapters = {
   grok: grokSessionAdapter,
   dim: dimSessionAdapter,
   kimi: kimiSessionAdapter,
-  agy: agySessionAdapter
+  agy: agySessionAdapter,
+  qoder: qoderSessionAdapter
 };

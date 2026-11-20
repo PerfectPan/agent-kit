@@ -93,6 +93,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     agent: "agy",
     fixture: "packages/providers/agy/test/fixtures/antigravity-cli/brain/conv-1",
     target: ".gemini/antigravity-cli/brain/conv-1"
+  },
+  {
+    agent: "qoder",
+    fixture: "packages/providers/qoder/test/fixtures/projects/-u-me-work",
+    target: ".qoder/projects/-u-me-work"
   }
 ];
 

@@ -15,10 +15,13 @@ Facts about [Qoder CLI](https://qoder.com/cli) (Alibaba, installed by
   user `settings.json` under `hooks`, Claude Code's payload and decision shapes, plus Qoder's own observations
   (`InstructionsLoaded`, `WorktreeCreate/Remove`, `CwdChanged`, `FileChanged`).
 - Install writes hooks as grouped `settings.json` entries (`shared-config`) and skills into `~/.agents/skills`.
+- Sessions and usage (verified against `qodercli` 1.1.88): JSONL transcripts live under
+  `~/.qoder/projects/<encoded-cwd>/<sessionId>.jsonl`, with subagent transcripts under
+  `<sessionId>/subagents/agent-<agentId>.jsonl`, using Claude Code / Anthropic message and usage shapes
+  (`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`).
 - ACP: `qodercli --acp` (verified on 1.1.88) speaks ACP v1 with loadSession and the unstable session
   list/resume/close/delete/fork surface; the profile documents it with a first-block system prompt.
 
 ## Unverified
 
-- Session and usage decoding wait for real session captures; the services are not exported yet.
 - The exact exit-code table of command hooks is not published; the dialect follows Claude Code's.

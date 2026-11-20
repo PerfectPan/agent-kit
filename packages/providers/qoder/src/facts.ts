@@ -25,6 +25,9 @@ export const QODER_OAUTH_FILE = "oauth_creds.json";
 export const QODER_PAT_ENV = "QODER_PERSONAL_ACCESS_TOKEN";
 export const QODER_ACP_ARGS: readonly string[] = ["--acp"];
 export const QODER_ACP_ENV: readonly string[] = ["QODER_*", "DASHSCOPE_API_KEY"];
+export const QODER_PROJECTS_DIR = "projects";
+export const QODER_SUBAGENTS_DIR = "subagents";
+export const QODER_SESSION_SUFFIX = ".jsonl";
 
 /** @public */
 export const agentMarkers: readonly string[] = [QODER_ID, QODER_COMMAND, HOME_DIR, HOME_ENV];
