@@ -1,5 +1,17 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.27.0
+
+### Minor Changes
+
+- [#309](https://github.com/PerfectPan/agent-kit/pull/309) [`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc) Thanks [@renovate](https://github.com/apps/renovate)! - Update the optional `effect` peer dependency from `4.1.1` to `4.1.4`. Hosts pinning `effect@4.1.1` will fail to install under npm until upgraded to `4.1.4`.
+
+### Patch Changes
+
+- [#276](https://github.com/PerfectPan/agent-kit/pull/276) [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24) Thanks [@renovate](https://github.com/apps/renovate)! - Rebuild published bundles with `vite-plus` `1.5.0` (rolldown module comment format update).
+- Updated dependencies [[`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc), [`c523e7e`](https://github.com/PerfectPan/agent-kit/commit/c523e7e8a9487517e50bc6e415ab343039e344cc), [`ed83385`](https://github.com/PerfectPan/agent-kit/commit/ed833852ab28f27195a4150db6046a08af5ad8d4), [`ef462de`](https://github.com/PerfectPan/agent-kit/commit/ef462deff98c11803e088f3b77c587b7b0926e0b), [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24)]:
+  - @rivus/agent-kit@0.27.0
+
 ## 0.26.0
 
 ### Patch Changes
