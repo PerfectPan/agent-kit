@@ -1,6 +1,6 @@
 # ZCode provider
 
-Private implementation of ZCode identity, discovery, hooks, installation and usage, bundled into `@rivus/agent-kit`. Each service has its
+Private implementation of ZCode identity, discovery, hooks, installation, sessions, usage and ACP, bundled into `@rivus/agent-kit`. Each service has its
 own export; there is no aggregate entry.
 
 `facts.ts` owns agent facts and `layout.ts` shares the database path between discovery and usage. `usage.ts` reads the
@@ -42,5 +42,7 @@ it cannot express the nested `/hooks/events` source, inspect enablement, or vali
 default to loading other agents' hook locations, so this adapter has no `legacySources` and the dialect has no
 `runsHooksOf` relation.
 
-There is no ACP profile yet. Tests run the discovery, sessions and usage conformance suites with synthetic
-SQLite fixtures, provider rendering checks and harness installation round trips; the testing package runs hook samples.
+`acp.ts` defines the ACP profile using the community adapter `zcode-acp-server` (npm `zcode-acp-server`,
+`william0wang/zcode-acp`), which bridges ACP stdio to `zcode app-server --stdio`. Tests run the discovery, sessions and
+usage conformance suites with synthetic SQLite fixtures, provider rendering checks and harness installation round trips;
+the testing package runs hook samples.

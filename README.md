@@ -101,7 +101,7 @@ Hook events, harness installation, usage records, cost, Effect and ACP each have
 | opencode    | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 | pi          | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 | qoder       | yes      | yes       | yes                                      | yes                                   | The session store is not captured yet.                          | The session store is not captured yet.             | yes                         |
-| zcode       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | No supported ACP transport. |
+| zcode       | yes      | yes       | yes                                      | yes                                   | yes                                                             | yes                                                | yes                         |
 
 ## Entries
 

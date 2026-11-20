@@ -2,7 +2,7 @@
   "name": "@rivus/agent-kit-provider-zcode",
   "version": "0.0.0",
   "private": true,
-  "description": "ZCode identity, discovery, hooks, installation and usage. Bundled into @rivus/agent-kit.",
+  "description": "ZCode identity, discovery, hooks, installation, sessions, usage and ACP. Bundled into @rivus/agent-kit.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -12,7 +12,8 @@
     "./hooks": "./src/hooks.ts",
     "./install": "./src/install.ts",
     "./sessions": "./src/sessions.ts",
-    "./usage": "./src/usage.ts"
+    "./usage": "./src/usage.ts",
+    "./acp": "./src/acp.ts"
   },
   "scripts": {
     "build": "",
@@ -23,6 +24,7 @@
     "format:check": "vp fmt --check ."
   },
   "dependencies": {
+    "@rivus/agent-kit-acp": "workspace:*",
     "@rivus/agent-kit-catalog": "workspace:*",
     "@rivus/agent-kit-discovery": "workspace:*",
     "@rivus/agent-kit-harness": "workspace:*",

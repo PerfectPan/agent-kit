@@ -29,5 +29,10 @@ export const ZCODE_SESSION_ENV = "ZCODE_SESSION_ID";
 /** A payload field only ZCode's hook input carries; see the hook dialect. */
 export const ZCODE_HOST_FIELD = "traceId";
 
+// ZCode ships no ACP server of its own; the community adapter (npm `zcode-acp-server`, william0wang/zcode-acp)
+// bridges ACP stdio to `zcode app-server --stdio`.
+export const ZCODE_ACP_COMMAND = "zcode-acp-server";
+export const ZCODE_ACP_ENV: readonly string[] = ["ZCODE_*", "ZAI_*", "BIGMODEL_*", "ANTHROPIC_*"];
+
 /** @public */
 export const agentMarkers: readonly string[] = [ZCODE_ID, HOME_DIR, HOME_ENV];
