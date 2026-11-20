@@ -166,10 +166,17 @@ function openDatabase(platform: SessionPlatform, path: string): Result<Database,
   }
 }
 
+const TableInfoRow = z.looseObject({ name: z.string() });
+
+function hasColumn(database: Database, table: "session" | "message", column: string): boolean {
+  const rows = database.prepare(`PRAGMA table_info(${table})`).all();
+  return rows.some((row) => z.safeParse(TableInfoRow, row).data?.name === column);
+}
+
 /** The SQL a layout reads with: the live-session filter and the message order are the layout's only differences. */
-function queriesOf(layout: SqliteSessionLayout) {
-  const live = layout.softDeletes ? "time_deleted IS NULL" : undefined;
-  const order = layout.messageSequence ? "sequence, time_created, id" : "time_created, id";
+function queriesOf(softDeletes: boolean, messageSequence: boolean) {
+  const live = softDeletes ? "time_deleted IS NULL" : undefined;
+  const order = messageSequence ? "sequence, time_created, id" : "time_created, id";
   const byId = live === undefined ? "id = ?" : `id = ? AND ${live}`;
   const sessionColumns = "rowid, id, title, directory, time_created, time_updated, version";
   return {
@@ -182,6 +189,12 @@ function queriesOf(layout: SqliteSessionLayout) {
     parts: `SELECT rowid, id, message_id, time_created, data FROM part WHERE session_id = ? ORDER BY time_created, id`,
     partsOfMessage: `SELECT rowid, time_created, data FROM part WHERE session_id = ? AND message_id = ? ORDER BY time_created, id`
   };
+}
+
+function queriesForDatabase(layout: SqliteSessionLayout, database: Database): Queries {
+  const softDeletes = layout.softDeletes && hasColumn(database, "session", "time_deleted");
+  const messageSequence = layout.messageSequence && hasColumn(database, "message", "sequence");
+  return queriesOf(softDeletes, messageSequence);
 }
 
 type Queries = ReturnType<typeof queriesOf>;
@@ -493,7 +506,6 @@ function summarize(
  */
 export function createSqliteSessionAdapter(layout: SqliteSessionLayout): SessionAdapter {
   const { agent } = layout;
-  const queries = queriesOf(layout);
   const extension = layout.databaseFile.slice(layout.databaseFile.lastIndexOf("."));
   const failure = (path: string, error: ReadFailed): SessionListFailure => ({ ref: { agent, path }, error });
 
@@ -501,7 +513,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
   async function withSession<T>(
     platform: SessionPlatform,
     ref: SessionRef,
-    read: (database: Database, sessionId: string) => Result<T, SessionReadError>
+    read: (database: Database, queries: Queries, sessionId: string) => Result<T, SessionReadError>
   ): Promise<Result<T, SessionReadError>> {
     if (ref.sessionId === undefined) {
       return err(readFailed(ref.path, `${layout.sessionNoun} needs its session id`));
@@ -510,8 +522,15 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
     if (!database.ok) {
       return database;
     }
+    let queries: Queries;
     try {
-      return read(database.value, ref.sessionId);
+      queries = queriesForDatabase(layout, database.value);
+    } catch (error) {
+      database.value.close();
+      return err(thrown(ref.path, error));
+    }
+    try {
+      return read(database.value, queries, ref.sessionId);
     } finally {
       database.value.close();
     }
@@ -543,6 +562,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
         return;
       }
       try {
+        const queries = queriesForDatabase(layout, database.value);
         const rows = database.value.prepare(queries.sessions).all();
         options.onTotal?.(rows.length);
         for (const row of rows) {
@@ -564,19 +584,22 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
         return false;
       }
       try {
+        const queries = queriesForDatabase(layout, database.value);
         return database.value.prepare(queries.sessionPresent).get(ref.sessionId) !== undefined;
+      } catch {
+        return false;
       } finally {
         database.value.close();
       }
     },
     load: (platform, ref, options: LoadOptions = {}) =>
-      withSession(platform, ref, (database, sessionId) => {
+      withSession(platform, ref, (database, queries, sessionId) => {
         options.signal?.throwIfAborted();
         const rows = readRows(database, queries, ref.path, sessionId);
         return rows.ok ? ok(translate(layout, rows.value, ref.path)) : rows;
       }),
     summarize: (platform, ref, options = {}) =>
-      withSession(platform, ref, (database, sessionId) => {
+      withSession(platform, ref, (database, queries, sessionId) => {
         // An abort inside the pass surfaces as the pass's ReadFailed, like any other error it throws.
         try {
           options.signal?.throwIfAborted();

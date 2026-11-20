@@ -1,10 +1,12 @@
-import { DIM_DISPLAY_NAME, DIM_HOME, DIM_ID } from "./facts.js";
+import { DIM_DATABASE, DIM_DISPLAY_NAME, DIM_HOME, DIM_ID } from "./facts.js";
 import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 import {
   assignSeq,
   baseEvent,
   catchIoFailure,
   createTranscript,
+  joinPath,
+  lenient,
   markOrphanToolResults,
   SESSION_TITLE_MAX,
   type Capability,
@@ -28,8 +30,6 @@ import {
   type TranscriptSession
 } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
-import { lenient } from "@rivus/agent-kit-sessions/spi";
-import { dimDatabasePath } from "./layout.js";
 import { dimLedgerRowOf, dimLedgerUsage, type DimLedgerRowValue } from "./records.js";
 
 // The v2 SQLite database holds DimCode's sessions: the `sessions` table names each one (id, cwd, title, status,
@@ -48,6 +48,9 @@ export interface DimSessionRowValue {
   status?: string;
   createdAt?: string;
   updatedAt?: string;
+  latestMessageUpdatedAt?: string;
+  latestMessageCreatedAt?: string;
+  latestLedgerCreatedAt?: string;
   [field: string]: unknown;
 }
 
@@ -108,7 +111,10 @@ const DimSessionRow = z.looseObject({
   title: lenient(z.optional(z.string())),
   status: lenient(z.string()),
   createdAt: lenient(z.string()),
-  updatedAt: lenient(z.string())
+  updatedAt: lenient(z.string()),
+  latestMessageUpdatedAt: lenient(z.optional(z.string())),
+  latestMessageCreatedAt: lenient(z.optional(z.string())),
+  latestLedgerCreatedAt: lenient(z.optional(z.string()))
 });
 
 function sessionRowOf(value: unknown): DimSessionRowValue | undefined {
@@ -121,7 +127,14 @@ function sessionRowOf(value: unknown): DimSessionRowValue | undefined {
         ...(parsed.title !== undefined ? { title: parsed.title } : {}),
         status: parsed.status ?? "",
         createdAt: parsed.createdAt ?? "",
-        updatedAt: parsed.updatedAt ?? ""
+        updatedAt: parsed.updatedAt ?? "",
+        ...(parsed.latestMessageUpdatedAt !== undefined
+          ? { latestMessageUpdatedAt: parsed.latestMessageUpdatedAt }
+          : {}),
+        ...(parsed.latestMessageCreatedAt !== undefined
+          ? { latestMessageCreatedAt: parsed.latestMessageCreatedAt }
+          : {}),
+        ...(parsed.latestLedgerCreatedAt !== undefined ? { latestLedgerCreatedAt: parsed.latestLedgerCreatedAt } : {})
       };
 }
 
@@ -194,10 +207,15 @@ export function dimMessageOf(row: unknown, rowid: number): DimMessageValue | und
   };
 }
 
-/** The head a `sessions` row lists: title, working directory and start time. */
+/** The head a `sessions` row lists: title, working directory, start time and latest activity across its tables. */
 export function dimHeadOf(path: string, row: DimSessionRowValue, sizeBytes: number, mtimeMs: number): SessionHead {
   const startedAt = iso(row.createdAt);
-  const lastAt = iso(row.updatedAt);
+  const lastAt = Math.max(
+    iso(row.updatedAt),
+    iso(row.latestMessageUpdatedAt),
+    iso(row.latestMessageCreatedAt),
+    iso(row.latestLedgerCreatedAt)
+  );
   return definedFields({
     ref: { agent: DIM_ID, path, sessionId: row.sessionId },
     lastActiveAt: lastAt > 0 ? lastAt : mtimeMs,
@@ -316,23 +334,40 @@ export const dimSessionAdapter: SessionAdapter = {
   displayName: DIM_DISPLAY_NAME,
   capabilities: DIM_SESSION_CAPABILITIES,
   home: DIM_HOME,
-  roots: (home) => [dimDatabasePath(home)],
+  roots: (home) => [home.path],
   async *discover(platform, root, options = {}) {
     const { signal } = options;
-    const info = await platform.fs.stat(root, { followSymlinks: true });
+    const path = joinPath(root, DIM_DATABASE);
+    let info;
+    try {
+      info = await platform.fs.stat(path, { followSymlinks: true });
+    } catch (error) {
+      signal?.throwIfAborted();
+      yield {
+        ref: { agent: DIM_ID, path },
+        error: readFailed(path, error instanceof Error ? error.message : String(error), error)
+      };
+      return;
+    }
     if (info?.kind !== "file") {
       yield { ref: { agent: DIM_ID, path: root }, error: { _tag: "RootMissing", path: root } as const };
       return;
     }
-    const opened = openDatabase(platform, root);
+    const opened = openDatabase(platform, path);
     if (!opened.ok) {
-      yield { ref: { agent: DIM_ID, path: root }, error: opened.error };
+      yield { ref: { agent: DIM_ID, path }, error: opened.error };
       return;
     }
     const database = opened.value;
     try {
       const rows = database
-        .prepare("SELECT rowid, sessionId, cwd, title, status, createdAt, updatedAt FROM sessions ORDER BY updatedAt")
+        .prepare(
+          "SELECT s.rowid, s.sessionId, s.cwd, s.title, s.status, s.createdAt, s.updatedAt, " +
+            "(SELECT MAX(m.updatedAt) FROM messages m WHERE m.sessionId = s.sessionId) AS latestMessageUpdatedAt, " +
+            "(SELECT MAX(m.createdAt) FROM messages m WHERE m.sessionId = s.sessionId) AS latestMessageCreatedAt, " +
+            "(SELECT MAX(l.createdAt) FROM usage_ledger l WHERE l.sessionId = s.sessionId) AS latestLedgerCreatedAt " +
+            "FROM sessions s ORDER BY s.updatedAt"
+        )
         .all();
       for (const row of rows) {
         signal?.throwIfAborted();
@@ -340,12 +375,13 @@ export const dimSessionAdapter: SessionAdapter = {
         if (parsed === undefined) {
           continue;
         }
-        yield dimHeadOf(root, parsed, info.size, info.mtimeMs);
+        yield dimHeadOf(path, parsed, info.size, info.mtimeMs);
       }
     } catch (error) {
+      signal?.throwIfAborted();
       yield {
-        ref: { agent: DIM_ID, path: root },
-        error: readFailed(root, error instanceof Error ? error.message : String(error), error)
+        ref: { agent: DIM_ID, path },
+        error: readFailed(path, error instanceof Error ? error.message : String(error), error)
       };
     } finally {
       database.close();
@@ -353,7 +389,7 @@ export const dimSessionAdapter: SessionAdapter = {
   },
   async detect(platform, ref) {
     const info = await platform.fs.stat(ref.path, { followSymlinks: true });
-    return info?.kind === "file" && ref.path.endsWith("/dimcode.sqlite");
+    return info?.kind === "file" && ref.path.replaceAll("\\", "/").endsWith(`/${DIM_DATABASE}`);
   },
   async load(platform, ref, options: LoadOptions = {}): Promise<Result<Transcript, SessionReadError>> {
     type Loaded = { readonly transcript: Transcript } | { readonly error: SessionReadError };

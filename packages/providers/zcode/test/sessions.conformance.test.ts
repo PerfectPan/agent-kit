@@ -316,4 +316,94 @@ describe("zcode adapter", () => {
     }
     expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
   });
+
+  it("reads databases whose session table has no time_deleted column (e.g. ZCode 0.16.5)", async () => {
+    const legacyRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-legacy-"));
+    try {
+      mkdirSync(join(legacyRoot, "cli", "db"), { recursive: true });
+      const legacyDbPath = join(legacyRoot, "cli", "db", "db.sqlite");
+      const db = new DatabaseSync(legacyDbPath);
+      db.exec(`
+        create table session (
+          rowid integer primary key,
+          id text not null,
+          title text not null,
+          directory text not null,
+          time_created integer not null,
+          time_updated integer not null,
+          version text not null,
+          time_archived integer
+        );
+        create table message (
+          rowid integer primary key,
+          id text not null,
+          session_id text not null,
+          time_created integer not null,
+          data text not null
+        );
+        create table part (
+          rowid integer primary key,
+          id text not null,
+          message_id text not null,
+          session_id text not null,
+          time_created integer not null,
+          data text not null
+        );
+      `);
+      db.prepare(
+        "insert into session (id, title, directory, time_created, time_updated, version, time_archived) values (?, ?, ?, ?, ?, ?, ?)"
+      ).run("ses_legacy", "Legacy ZCode", "/u/me/work", 1000, 2000, "0.16.5", null);
+      db.prepare("insert into message (id, session_id, time_created, data) values (?, ?, ?, ?)").run(
+        "msg_u1",
+        "ses_legacy",
+        1000,
+        JSON.stringify({ role: "user", time: { created: 1000 } })
+      );
+      db.prepare("insert into part (id, message_id, session_id, time_created, data) values (?, ?, ?, ?, ?)").run(
+        "prt_u1",
+        "msg_u1",
+        "ses_legacy",
+        1000,
+        JSON.stringify({ type: "text", text: "hello legacy" })
+      );
+      db.prepare("insert into message (id, session_id, time_created, data) values (?, ?, ?, ?)").run(
+        "msg_a1",
+        "ses_legacy",
+        1500,
+        JSON.stringify({
+          role: "assistant",
+          tokens: { input: 10, output: 5, total: 15, cache: { read: 0, write: 0 } },
+          modelId: "glm-test",
+          finish: "stop",
+          time: { created: 1500 }
+        })
+      );
+      db.prepare("insert into part (id, message_id, session_id, time_created, data) values (?, ?, ?, ?, ?)").run(
+        "prt_a1",
+        "msg_a1",
+        "ses_legacy",
+        1600,
+        JSON.stringify({ type: "text", text: "hi legacy" })
+      );
+      db.close();
+
+      const items = [];
+      for await (const item of zcodeSessionAdapter.discover(platform, legacyRoot)) {
+        items.push(item);
+      }
+      expect(items).toHaveLength(1);
+      expect("error" in items[0]!).toBe(false);
+      const ref = { agent: "zcode" as const, path: legacyDbPath, sessionId: "ses_legacy" };
+      expect(await zcodeSessionAdapter.detect(platform, ref)).toBe(true);
+      const loaded = await zcodeSessionAdapter.load(platform, ref);
+      expect(loaded.ok).toBe(true);
+      const summary = await zcodeSessionAdapter.summarize!(platform, ref);
+      expect(summary.ok).toBe(true);
+      if (loaded.ok && summary.ok) {
+        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+      }
+    } finally {
+      await rm(legacyRoot, { recursive: true, force: true });
+    }
+  });
 });
