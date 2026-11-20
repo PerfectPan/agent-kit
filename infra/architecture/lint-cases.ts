@@ -786,11 +786,12 @@ export const cases: Case[] = [
     "external-dependency"
   ),
   rejects(
-    "agent marker: an import() template specifier is left to the dynamic-import rule",
+    "agent marker: an import() template specifier is left to the boundary and dynamic-import rules",
     "harness",
     fresh("src/application/x"),
     "export const loaded = await import(`pi`);",
-    "dynamic-import"
+    "dynamic-import",
+    "external-dependency"
   ),
   rejects(
     "agent marker: an import() type specifier is left to the boundary rules",
