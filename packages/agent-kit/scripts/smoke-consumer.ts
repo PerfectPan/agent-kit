@@ -88,6 +88,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     agent: "gemini-cli",
     fixture: "packages/providers/gemini-cli/test/fixtures/sessions/conformance/plain",
     target: ".gemini/tmp/smokeproject/chats"
+  },
+  {
+    agent: "agy",
+    fixture: "packages/providers/agy/test/fixtures/antigravity-cli/brain/conv-1",
+    target: ".gemini/antigravity-cli/brain/conv-1"
   }
 ];
 

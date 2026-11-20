@@ -367,4 +367,87 @@ describe("doctor", () => {
       ["lock", "the platform has no SQLite, and no other LedgerLock was provided"]
     ]);
   });
+
+  it.effect(
+    "reads named-hooks sources: skips disabled hooks, handles grouped/flat entries and detects duplicates",
+    () => {
+      const home = testHome();
+      const namedAdapter = {
+        specificationVersion: "harness-v1" as const,
+        agent: "named-agent",
+        hookStrategies: ["native-plugin" as const],
+        roots: (context: { readonly home: string }) => [`${context.home}/.named`],
+        hookFile: () => "~/.named/hooks.json",
+        renderHooks: () => [],
+        renderSkill: () => [],
+        hookSources: (context: { readonly home: string }) => [
+          { path: `${context.home}/.named/hooks.json`, format: "json" as const, layout: "named-hooks" as const },
+          {
+            path: `${context.home}/.named/plugins/*/hooks.json`,
+            format: "json" as const,
+            layout: "named-hooks" as const
+          }
+        ]
+      };
+      const namedDialect = {
+        specificationVersion: "harness-v1" as const,
+        agent: "named-agent",
+        delivery: "command" as const,
+        timeout: { unit: "seconds" as const, default: 30 },
+        output: {
+          emptyStdout: "proceed" as const,
+          invalidStdout: "proceed" as const,
+          exitCode2: "proceed" as const,
+          otherExitCodes: "proceed" as const,
+          passThrough: "{}"
+        },
+        fields: { event: { paths: [["hookEventName"]] } },
+        events: {
+          PreToolUse: { lifecycle: { phase: "activity" as const } },
+          SessionStart: { lifecycle: { phase: "start" as const, scope: "session" as const } }
+        }
+      };
+      home.write(
+        ".named/hooks.json",
+        `${JSON.stringify({
+          $schema: "https://example.invalid/hooks.schema.json",
+          "disabled-hook": {
+            enabled: false,
+            SessionStart: [{ type: "command", command: "demo-marker start" }]
+          },
+          "a/b~c": {
+            PreToolUse: [{ matcher: "*", hooks: [{ type: "command", command: "demo-marker pre" }] }],
+            SessionStart: [{ type: "command", command: "demo-marker start" }],
+            UnknownEvent: [{ type: "command", command: "demo-marker unknown" }]
+          }
+        })}\n`
+      );
+      home.write(
+        ".named/plugins/p1/hooks.json",
+        `${JSON.stringify({
+          p1: {
+            PreToolUse: [{ matcher: "run_command", hooks: [{ type: "command", command: "demo-marker pre" }] }]
+          }
+        })}\n`
+      );
+      return Effect.gen(function* () {
+        const checks = yield* doctor({
+          agents: ["named-agent"],
+          markers: ["demo-marker"],
+          providers: {
+            install: { "named-agent": namedAdapter },
+            hooks: { "named-agent": namedDialect }
+          }
+        });
+        const duplicates = checks.filter((check) => check.name === "duplicate-hook").map((check) => check.message);
+        expect(duplicates).toEqual(["named-agent runs this hook twice for PreToolUse"]);
+        const unknown = checks.filter((check) => check.name === "unknown-event");
+        expect(unknown).toHaveLength(1);
+        expect(unknown[0]?.locator).toMatchObject({
+          pointer: "/a~1b~0c/UnknownEvent",
+          memberIn: "element"
+        });
+      }).pipe(Effect.provide(home.layer()));
+    }
+  );
 });

@@ -101,6 +101,8 @@ const HookListElement = z.looseObject({
   command: z.string(),
   timeout: lenient(z.optional(z.number()), undefined)
 });
+const NamedHookGroup = z.looseObject({ hooks: z.array(z.unknown()) });
+const NamedHooks = z.record(z.string(), z.unknown());
 
 /** The paths a source names, with each `*` segment expanded to the entries of its directory. */
 function expand(pattern: string): Effect.Effect<readonly string[], never, PlatformService> {
@@ -136,8 +138,68 @@ function hooksInFile(
 ): Effect.Effect<readonly Omit<FoundHook, "own">[], never, ArtifactFiles> {
   return Effect.gen(function* () {
     const kind = source.format === "toml" ? "toml-entry" : "json-entry";
-    const pointer = source.pointer ?? (source.layout === "event-map" ? "" : "/hooks");
+    const pointer =
+      source.pointer ?? (source.layout === "event-map" || source.layout === "named-hooks" ? "" : "/hooks");
     const read = yield* Effect.orElseSucceed((yield* ArtifactFiles).read({ kind, path, pointer }), () => undefined);
+    if (source.layout === "named-hooks") {
+      const found: Omit<FoundHook, "own">[] = [];
+      const root = NamedHooks.safeParse(read?.content);
+      if (!root.success) {
+        return found;
+      }
+      for (const [hookName, spec] of Object.entries(root.data)) {
+        const record = NamedHooks.safeParse(spec);
+        if (!record.success || record.data["enabled"] === false) {
+          continue;
+        }
+        const escapedName = hookName.replaceAll("~", "~0").replaceAll("/", "~1");
+        for (const [event, entries] of Object.entries(record.data)) {
+          if (!Array.isArray(entries)) {
+            continue;
+          }
+          const escapedEvent = event.replaceAll("~", "~0").replaceAll("/", "~1");
+          for (const entry of entries) {
+            const group = NamedHookGroup.safeParse(entry);
+            if (group.success) {
+              for (const hook of group.data.hooks) {
+                const registration = HookRegistration.safeParse(hook);
+                if (registration.success) {
+                  found.push({
+                    event,
+                    command: registration.data.command,
+                    hook: { timeout: registration.data.timeout },
+                    locator: {
+                      kind,
+                      path,
+                      pointer: `${pointer}/${escapedName}/${escapedEvent}`,
+                      member: registration.data.command,
+                      memberIn: "hook-group"
+                    }
+                  });
+                }
+              }
+              continue;
+            }
+            const registration = HookRegistration.safeParse(entry);
+            if (registration.success) {
+              found.push({
+                event,
+                command: registration.data.command,
+                hook: { timeout: registration.data.timeout },
+                locator: {
+                  kind,
+                  path,
+                  pointer: `${pointer}/${escapedName}/${escapedEvent}`,
+                  member: registration.data.command,
+                  memberIn: "element"
+                }
+              });
+            }
+          }
+        }
+      }
+      return found;
+    }
     if (source.layout === "event-list") {
       const found: Omit<FoundHook, "own">[] = [];
       // Parse each element on its own, like the grouped and flat paths do: one invalid entry drops itself, not the

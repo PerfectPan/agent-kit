@@ -41,6 +41,7 @@ function moved(...moves: readonly (readonly [from: string, to: string])[]): Reco
 }
 
 const ALL = [
+  "agy /u/me/.gemini/antigravity-cli/brain/conv-1/.system_generated/logs/transcript.jsonl",
   "claude-code /u/me/.claude/projects/-u-me-work/s-usage.jsonl",
   "claude-code /u/me/.claude/projects/-u-me-work/s-usage/subagents/agent-helper.jsonl",
   "codex /u/me/.codex/archived_sessions/rollout-2025-12-31T00-00-00-cx-archived.jsonl",
@@ -84,6 +85,7 @@ describe("listUsageSources", () => {
         CLAUDE_CONFIG_DIR: "/alt/claude",
         CODEX_HOME: "/alt/codex",
         GEMINI_CLI_HOME: "/alt/gemini-home",
+        ANTIGRAVITY_GEMINI_DIR: "/alt/gemini-home/.gemini",
         GROK_HOME: "/alt/grok",
         XDG_DATA_HOME: "/alt/data",
         PI_CODING_AGENT_DIR: "/alt/pi",

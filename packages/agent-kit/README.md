@@ -53,6 +53,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 | Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp                         |
 | ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --------------------------- |
+| agy         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes                         |
 | cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | No supported ACP transport. |
@@ -473,6 +474,7 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 | Agent            | Id                              | Home: override, default                                           |
 | ---------------- | ------------------------------- | ----------------------------------------------------------------- |
+| Antigravity CLI  | `agy`                           | `ANTIGRAVITY_GEMINI_DIR`, `~/.gemini`                             |
 | Claude Code      | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
 | Codex            | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
 | Grok             | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
@@ -483,10 +485,10 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 | DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
 | ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
-Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp` has a launch
-profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`), Gemini CLI,
-Grok and opencode; a profile's `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads
-the usage of every agent in the table except Cursor.
+Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp`
+has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), DeepSeek Harness (`dsh --profile acp`),
+Gemini CLI, Grok, opencode and Antigravity CLI (`agy acp`); a profile's `warnings` name the facts not yet checked
+against the agent. `/transcript/usage` reads the usage of every agent in the table except Cursor and Qoder CLI.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
@@ -502,7 +504,7 @@ To read another agent, pass `providers: [{ id: "my-agent", sessions: adapter }]`
 An adapter's event builder that is generic over the kind takes its payload as `TranscriptEventPayloads[K]`
 (exported from `/transcript`) and returns a `TranscriptEventOf<K>`.
 
-`detectAgents(platform)` from `/discovery` reports, for each of the nine agents above, whether it is `runnable`,
+`detectAgents(platform)` from `/discovery` reports, for each built-in agent above, whether it is `runnable`,
 `found`, `missing` or `unknown`, with the evidence, the version its command printed and the login state. By default
 the login state comes only from credential files and environment variables, without running anything and without
 returning secret values; `authProbe: "commands"` also runs the agents' own status commands, whose side effects each

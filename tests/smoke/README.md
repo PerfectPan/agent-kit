@@ -11,7 +11,8 @@ AGENT_KIT_SMOKE_AGENTS=claude-code,codex,opencode,gemini-cli,grok,dsh pnpm run s
 ```
 
 `AGENT_KIT_SMOKE_AGENTS` names the agents to run, by `CodingAgentId`; the others are skipped. Each agent needs its ACP
-program on `PATH`: `claude-agent-acp`, `codex-acp`, `opencode`, `gemini`, `grok` and `dsh`. An agent gets only the variables
+program on `PATH`: `claude-agent-acp`, `codex-acp`, `opencode`, `gemini`, `grok`, `dsh` and `agy` (Kimi Code, Qoder CLI
+and DimCode launch their own `kimi`, `qodercli` and `dim` programs). An agent gets only the variables
 its `acp` profile lists in `builtinProviders`, taken from the shell's environment.
 
 For each agent, `acp.smoke.test.ts` probes it (a trial session reports `ready` or `needs-login`), sends one prompt

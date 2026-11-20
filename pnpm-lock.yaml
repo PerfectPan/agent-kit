@@ -567,6 +567,9 @@ importers:
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
+      '@rivus/agent-kit-provider-agy':
+        specifier: workspace:*
+        version: link:../providers/agy
       '@rivus/agent-kit-provider-claude-code':
         specifier: workspace:*
         version: link:../providers/claude-code
@@ -875,6 +878,43 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(@vitest/browser-preview@5.0.5)(@vitest/ui@5.0.5)(@voidzero-dev/vite-plus-core@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+
+  packages/providers/agy:
+    dependencies:
+      '@rivus/agent-kit-acp':
+        specifier: workspace:*
+        version: link:../../acp
+      '@rivus/agent-kit-catalog':
+        specifier: workspace:*
+        version: link:../../catalog
+      '@rivus/agent-kit-discovery':
+        specifier: workspace:*
+        version: link:../../discovery
+      '@rivus/agent-kit-harness':
+        specifier: workspace:*
+        version: link:../../harness
+      '@rivus/agent-kit-sessions':
+        specifier: workspace:*
+        version: link:../../sessions
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@perfectpan/lint-config':
+        specifier: 'catalog:'
+        version: https://codeload.github.com/PerfectPan/lint-config/tar.gz/b007df94b7436e9d2c2f6cd0a7059d036a141ce8(eslint-plugin-better-tailwindcss@4.10.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(tailwindcss@4.3.3)(typescript@7.0.2))(jscpd@5.4.2)(knip@6.45.1)(oxfmt@0.73.0(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)))(typescript@7.0.2)(vite-plus@1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1))
+      '@rivus/agent-kit-testing':
+        specifier: workspace:*
+        version: link:../../testing
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.3.0(@arethetypeswrong/core@0.18.5)(@types/node@24.19.2)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(typescript@7.0.2)(yaml@2.9.1)
 
   packages/providers/claude-code:
     dependencies:
@@ -1388,6 +1428,9 @@ importers:
       '@rivus/agent-kit-platform-node':
         specifier: workspace:*
         version: link:../platform-node
+      '@rivus/agent-kit-provider-agy':
+        specifier: workspace:*
+        version: link:../providers/agy
       '@rivus/agent-kit-provider-claude-code':
         specifier: workspace:*
         version: link:../providers/claude-code

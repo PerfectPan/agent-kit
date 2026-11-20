@@ -99,5 +99,14 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     name: "ZCode",
     aliases: [],
     home: { en: "ZCODE_STORAGE_DIR, ~/.zcode", zh: "ZCODE_STORAGE_DIR，~/.zcode" }
+  },
+  {
+    id: "agy",
+    name: "Antigravity CLI",
+    aliases: [],
+    home: {
+      en: "ANTIGRAVITY_GEMINI_DIR (names the Gemini dir), ~/.gemini",
+      zh: "ANTIGRAVITY_GEMINI_DIR（指向 .gemini 目录本身），~/.gemini"
+    }
   }
 ];

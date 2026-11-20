@@ -32,6 +32,6 @@ Every Agent in the table except DeepSeek Harness has a hook dialect in `/harness
 
 `builtinProviders` has an identity for each of them, and a home rule for each one except Cursor. Cursor's home cell is `none`: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor`. Discovery says `CURSOR_CONFIG_DIR` and `XDG_CONFIG_HOME` remain unsupported. See [Agent detection](/docs/connection/discovery).
 
-Codex's default home includes archived sessions. `GEMINI_CLI_HOME` replaces the user's home. `PI_CODING_AGENT_DIR` expands `~`. opencode's home in this table is the data home (`$XDG_DATA_HOME/opencode`, otherwise `~/.local/share/opencode`), not the plugin/config home.
+Codex's default home includes archived sessions. `GEMINI_CLI_HOME` replaces the user's home. `PI_CODING_AGENT_DIR` expands `~`. opencode's home in this table is the data home (`$XDG_DATA_HOME/opencode`, otherwise `~/.local/share/opencode`), not the plugin/config home. Antigravity CLI shares the Gemini directory: `ANTIGRAVITY_GEMINI_DIR` names the `.gemini` directory itself, and the CLI's own state sits in `~/.gemini/antigravity-cli`.
 
 To display an Agent name, find `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`. Adding a provider is [Providers](/docs/concepts/providers).

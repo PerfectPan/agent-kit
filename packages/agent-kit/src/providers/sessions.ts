@@ -8,6 +8,7 @@ import { kimiSessionAdapter } from "@rivus/agent-kit-provider-kimi/sessions";
 import { dimSessionAdapter } from "@rivus/agent-kit-provider-dim/sessions";
 import { piSessionAdapter } from "@rivus/agent-kit-provider-pi/sessions";
 import { geminiCliSessionAdapter } from "@rivus/agent-kit-provider-gemini-cli/sessions";
+import { agySessionAdapter } from "@rivus/agent-kit-provider-agy/sessions";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -22,6 +23,7 @@ const builtinSessionAdapters: {
   readonly zcode: typeof zcodeSessionAdapter;
   readonly dim: typeof dimSessionAdapter;
   readonly kimi: typeof kimiSessionAdapter;
+  readonly agy: typeof agySessionAdapter;
 } = {
   "claude-code": claudeCodeSessionAdapter,
   codex: codexSessionAdapter,
@@ -32,7 +34,8 @@ const builtinSessionAdapters: {
   "gemini-cli": geminiCliSessionAdapter,
   zcode: zcodeSessionAdapter,
   dim: dimSessionAdapter,
-  kimi: kimiSessionAdapter
+  kimi: kimiSessionAdapter,
+  agy: agySessionAdapter
 };
 
 export const sessionsTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"sessions">> =>

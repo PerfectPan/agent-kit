@@ -83,7 +83,8 @@ const TURN_START: Record<string, string> = {
   zcode: "UserPromptSubmit",
   kimi: "UserPromptSubmit",
   qoder: "UserPromptSubmit",
-  dim: "UserPromptSubmit"
+  dim: "UserPromptSubmit",
+  agy: "PreInvocation"
 };
 
 const PROVIDER_FIELD: Record<Exclude<TaskKey, "coordinate">, string> = {

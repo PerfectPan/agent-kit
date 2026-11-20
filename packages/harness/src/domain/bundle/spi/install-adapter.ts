@@ -64,12 +64,14 @@ export interface HookSource {
    * `grouped`: `{ "hooks": { "<Event>": [{ "hooks": [{ "command" … }] }] } }`, as Claude Code writes them. `flat`:
    * `{ "hooks": { "<event>": [{ "command" … }] } }`, as Cursor does. `event-list`: the array at `pointer` holds one
    * element per hook, each carrying its event in an `event` field, as Kimi's `[[hooks]]` does. `event-map`: the
-   * object at `pointer` maps each event to its groups, without a wrapping key.
+   * object at `pointer` maps each event to its groups, without a wrapping key. `named-hooks`: the object at `pointer`
+   * maps each named hook to an object of event arrays (grouped `{ matcher?, hooks: [...] }` or flat `[{ command }]`),
+   * with optional `enabled: false`, as Antigravity CLI's `hooks.json` does.
    */
-  readonly layout: "grouped" | "flat" | "event-list" | "event-map";
+  readonly layout: "grouped" | "flat" | "event-list" | "event-map" | "named-hooks";
   /**
    * Where the file holds the hooks, as a JSON pointer over the document. `grouped`, `flat` and `event-list` default
-   * to `/hooks`; `event-map` defaults to the whole document.
+   * to `/hooks`; `event-map` and `named-hooks` default to the whole document.
    */
   readonly pointer?: string;
 }

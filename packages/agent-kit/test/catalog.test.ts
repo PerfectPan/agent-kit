@@ -11,7 +11,20 @@ const builtinCodingAgents = Object.fromEntries(
 const home = "/u/me";
 
 /** Every built-in identity with a verified home, sorted. */
-const HOMED = ["claude-code", "codex", "dim", "dsh", "gemini-cli", "grok", "kimi", "opencode", "pi", "qoder", "zcode"];
+const HOMED = [
+  "agy",
+  "claude-code",
+  "codex",
+  "dim",
+  "dsh",
+  "gemini-cli",
+  "grok",
+  "kimi",
+  "opencode",
+  "pi",
+  "qoder",
+  "zcode"
+];
 
 describe("built-in home rules", () => {
   it.each([
@@ -25,7 +38,8 @@ describe("built-in home rules", () => {
     ["zcode", "/u/me/.zcode"],
     ["qoder", "/u/me/.qoder"],
     ["dim", "/u/me/.dimcode/v2"],
-    ["kimi", "/u/me/.kimi-code"]
+    ["kimi", "/u/me/.kimi-code"],
+    ["agy", "/u/me/.gemini"]
   ] as const)("defaults %s to %s", (id, path) => {
     expect(homeFromRule(id, builtinCodingAgents[id]!.home!, { env: {}, home })).toEqual({
       agent: id,
@@ -44,7 +58,8 @@ describe("built-in home rules", () => {
     ["zcode", "ZCODE_STORAGE_DIR", "/cfg/zcode", "/cfg/zcode"],
     ["qoder", "QODER_CONFIG_DIR", "/cfg/qoder", "/cfg/qoder"],
     ["dim", "DIMCODE_HOME", "/cfg/dim", "/cfg/dim/v2"],
-    ["kimi", "KIMI_CODE_HOME", "/cfg/kimi", "/cfg/kimi"]
+    ["kimi", "KIMI_CODE_HOME", "/cfg/kimi", "/cfg/kimi"],
+    ["agy", "ANTIGRAVITY_GEMINI_DIR", "/cfg/agy", "/cfg/agy"]
   ] as const)("lets %s's %s override the default", (id, variable, value, path) => {
     expect(homeFromRule(id, builtinCodingAgents[id]!.home!, { env: { [variable]: value }, home })).toEqual({
       agent: id,
@@ -106,7 +121,7 @@ describe("built-in home rules", () => {
   it("has a home rule exactly for the verified agents", () => {
     const withHome = Object.values(builtinCodingAgents).filter((agent) => agent.home !== undefined);
     expect(withHome.map((agent) => agent.id).toSorted()).toEqual(HOMED);
-    expect(Object.keys(builtinCodingAgents)).toHaveLength(12);
+    expect(Object.keys(builtinCodingAgents)).toHaveLength(13);
   });
 });
 
