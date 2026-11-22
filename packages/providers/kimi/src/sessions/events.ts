@@ -14,11 +14,13 @@ import {
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
 import { KIMI_ID } from "../facts.js";
-import { KIMI_CAPABILITIES } from "./capabilities.js";
 import {
   kimiAppendMessageOf,
+  kimiApplyCompactionOf,
+  kimiCompactionSummaryText,
   kimiLoopEventOf,
   kimiProfileBindOf,
+  kimiSubagentSpawnedOf,
   kimiTurnEndedOf,
   kimiTurnPromptOf,
   kimiContentText,
@@ -26,9 +28,12 @@ import {
 } from "../records.js";
 
 // The wire's record stream becomes the kit's flat event list: appended messages become user events (the agent's own
-// `<system-reminder>` injections carry `injected`), loop events become assistant text, tool calls and results, and a
-// finished step becomes the request of the model call that produced the step's output, with the usage the step
-// reports. Times ride the records' `time` field; `inheritTimes` fills the gaps.
+// `<system-reminder>` injections carry `injected`, a blocked hook's result becomes a hook event), loop events become
+// reasoning, assistant text, tool calls and results, and a finished step becomes the request of the model call that
+// produced the step's output, with the usage the step reports. `context.apply_compaction` marks the point where the
+// agent reset its context to the summary (older wire lines stay in the file but out of the model's context, so the
+// post-pass shadows the lane's earlier events), and `subagent.spawned` names the subagent whose own wire is the lane.
+// Times ride the records' `time` field; `inheritTimes` fills the gaps.
 
 export interface KimiStep {
   ok: boolean;
@@ -47,6 +52,8 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
   const events: TranscriptEvent[] = [];
   const skipped: ParsedTranscript["skipped"] = [];
   const turnPrompts = new Map<string, string>();
+  /** The subagent a `subagent.spawned` record names, pointing at the system event that records the spawn. */
+  const spawns = new Map<string, string>();
   let tools: unknown;
   let systemPrompt: string | undefined;
   let generation: SourcedRecord | undefined;
@@ -96,6 +103,17 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
           return { parts: [] };
         }
         const text = kimiContentText(message.content);
+        if (message.origin?.kind === "hook_result") {
+          // A hook's verdict rides an appended message; the kit models it as the hook event, not as model output.
+          return emitOne({
+            kind: "hook",
+            payload: definedFields({
+              type: "hook_result",
+              ...(message.origin.event !== undefined ? { event: message.origin.event } : {}),
+              ...(message.origin.blocked === true ? { blocked: true } : {})
+            })
+          });
+        }
         if (message.role === "user") {
           if (text === undefined && message.origin?.kind !== "injection") {
             return { parts: [] };
@@ -123,6 +141,13 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
         }
         switch (loop.type) {
           case "content.part": {
+            if (loop.part?.type === "think") {
+              const think = loop.part.think;
+              if (think === undefined || think === "") {
+                return { parts: [] };
+              }
+              return emitOne({ kind: "reasoning", payload: { text: think } });
+            }
             const text = loop.part?.type === "text" ? loop.part.text : undefined;
             if (text === undefined || text === "") {
               return { parts: [] };
@@ -199,6 +224,49 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
             return { parts: [] };
         }
       }
+      case "context.apply_compaction": {
+        const compaction = kimiApplyCompactionOf(value);
+        if (compaction === undefined) {
+          if (retain) {
+            skipRecord(skipped, record, "invalid-compaction");
+          }
+          return { parts: [] };
+        }
+        const summary = kimiCompactionSummaryText(compaction.summary, compaction.contextSummary);
+        return emitOne({
+          kind: "compaction",
+          payload: definedFields({
+            ...(compaction.tokensBefore !== undefined ? { preTokens: compaction.tokensBefore } : {}),
+            ...(compaction.tokensAfter !== undefined ? { postTokens: compaction.tokensAfter } : {}),
+            ...(summary !== undefined ? { summary } : {})
+          })
+        });
+      }
+      case "subagent.spawned": {
+        const spawned = kimiSubagentSpawnedOf(value);
+        if (spawned === undefined) {
+          if (retain) {
+            skipRecord(skipped, record, "invalid-spawned");
+          }
+          return { parts: [] };
+        }
+        const body: TranscriptEventBody = {
+          kind: "system",
+          payload: definedFields({
+            type: "subagent",
+            agentId: spawned.subagentId,
+            name: spawned.subagentName,
+            ...(spawned.description !== undefined ? { description: spawned.description } : {}),
+            ...(spawned.runInBackground === true ? { runInBackground: true } : {})
+          })
+        };
+        if (retain) {
+          const event = baseEvent(record, body.kind, body.payload, { ts });
+          spawns.set(spawned.subagentId, event.id);
+          events.push(event);
+        }
+        return { parts: [body] };
+      }
       case "turn.ended": {
         const ended = kimiTurnEndedOf(value);
         if (ended?.durationMs === undefined) {
@@ -240,8 +308,8 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
       }
       return { ok: true, parts: result.parts };
     },
+    spawns: retain ? spawns : new Map<string, string>(),
     finish(session: TranscriptSession, agents: ParsedTranscript["agents"]): ParsedTranscript {
-      void agents;
       finalizeTranscriptEvents(events);
       return {
         events,
@@ -251,7 +319,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
           ...(tools !== undefined ? { tools } : {}),
           ...(systemPrompt !== undefined ? { systemPrompt } : {})
         }),
-        agents: [{ id: KIMI_ID }]
+        agents: agents.length > 0 ? agents : [{ id: KIMI_ID }]
       };
     },
     generationError(): UnknownFormatGeneration | undefined {
@@ -260,21 +328,24 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
   };
 }
 
-export function createKimiTranslation(options: { readonly retain: true }): {
+interface KimiRetainedTranslation {
+  /** This lane's events; `finish` finalizes them in place. */
+  readonly events: TranscriptEvent[];
+  readonly skipped: ParsedTranscript["skipped"];
   step(record: SourcedRecord, ts: number): KimiStep;
   finish(session: TranscriptSession, agents: ParsedTranscript["agents"]): ParsedTranscript;
+  /** The subagent each `subagent.spawned` record names, pointing at its spawn event on this lane. */
+  readonly spawns: ReadonlyMap<string, string>;
   generationError(): UnknownFormatGeneration | undefined;
-};
+}
+
+export function createKimiTranslation(options: { readonly retain: true }): KimiRetainedTranslation;
 export function createKimiTranslation(options: { readonly retain: false }): {
   step(record: SourcedRecord): KimiStep;
 };
-export function createKimiTranslation(options: { readonly retain: boolean }):
-  | {
-      step(record: SourcedRecord, ts: number): KimiStep;
-      finish(session: TranscriptSession, agents: ParsedTranscript["agents"]): ParsedTranscript;
-      generationError(): UnknownFormatGeneration | undefined;
-    }
-  | { step(record: SourcedRecord): KimiStep } {
+export function createKimiTranslation(options: {
+  readonly retain: boolean;
+}): KimiRetainedTranslation | { step(record: SourcedRecord): KimiStep } {
   const inner = createKimiTranslationInner(options);
   if (options.retain) {
     return inner;
@@ -285,5 +356,3 @@ export function createKimiTranslation(options: { readonly retain: boolean }):
     }
   };
 }
-
-export { KIMI_CAPABILITIES };

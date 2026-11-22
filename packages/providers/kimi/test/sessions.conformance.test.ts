@@ -30,12 +30,27 @@ function describeConformance(name: string, setup: () => Promise<{ platform: Sess
         {
           path: `${root}/sessions/wd_demo_111111111111/session_demo-1/agents/main/wire.jsonl`,
           records: 21,
-          capabilities: ["requests", "usage", "durations", "systemPrompt", "toolSchemas"]
+          capabilities: ["requests", "usage", "durations", "reasoning", "systemPrompt", "toolSchemas"]
         },
         {
           path: `${root}/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl`,
           records: 19,
           capabilities: ["requests", "usage", "durations", "systemPrompt"]
+        },
+        {
+          path: `${root}/sessions/wd_demo_111111111111/session_demo-3/agents/main/wire.jsonl`,
+          records: 11,
+          capabilities: [
+            "requests",
+            "usage",
+            "durations",
+            "reasoning",
+            "compaction",
+            "compactionTokens",
+            "subagents",
+            "hooks",
+            "systemPrompt"
+          ]
         }
       ],
       oversized: {
@@ -91,6 +106,10 @@ const usageFixtures = {
     },
     {
       path: "/kimi/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl",
+      records: 1
+    },
+    {
+      path: "/kimi/sessions/wd_demo_111111111111/session_demo-3/agents/main/wire.jsonl",
       records: 1
     }
   ]
