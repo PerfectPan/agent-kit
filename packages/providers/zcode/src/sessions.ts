@@ -17,5 +17,6 @@ export const zcodeSessionAdapter: SessionAdapter = createSqliteSessionAdapter({
   sessionNoun: "a ZCode session",
   softDeletes: true,
   messageSequence: true,
+  isSubagent: ({ taskType }) => taskType !== "fork",
   message: zcodeMessageOf
 });

@@ -26,7 +26,7 @@ import {
   finishPass
 } from "../../../domain/transcript/services/fold-transcript.js";
 import { markOrphanToolResults } from "../../../domain/transcript/services/tool-result-pairing.js";
-import { capPromptText, MAIN_LANE_ID, requestUsage } from "../../../domain/transcript/services/turns.js";
+import { MAIN_LANE_ID, requestUsage } from "../../../domain/transcript/services/turns.js";
 import { type SkippedRecord, type SourcePointer } from "../../../domain/transcript/value-objects/source-pointer.js";
 import {
   type CompactionPayload,
@@ -65,6 +65,8 @@ export interface SqliteSessionLayout {
   readonly softDeletes: boolean;
   /** The `message` table orders a session's rows by its `sequence` column before their creation time. */
   readonly messageSequence: boolean;
+  /** Whether a linked session is a subagent; standalone branches must not contribute copied history to their parent. */
+  isSubagent?(session: { readonly taskType: string | undefined }): boolean;
   /** The agent's reading of a message row's JSON; `undefined` skips the row as an invalid message. */
   message(value: unknown): SqliteSessionMessage | undefined;
 }
@@ -97,6 +99,7 @@ const SessionRow = z.object({
   rowid: IntegerColumn,
   id: TextColumn,
   parent_id: TextColumn,
+  task_type: lenient(z.string()),
   title: TextColumn,
   directory: TextColumn,
   time_created: IntegerColumn,
@@ -120,7 +123,6 @@ type PartRow = z.infer<typeof PartRow>;
 const MessageKey = z.object({ rowid: IntegerColumn, id: TextColumn, time_created: IntegerColumn });
 
 const Span = z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) });
-const CompactionTrigger = z.enum(["auto", "manual"]);
 const TokenCount = z.number().check(z.nonnegative());
 
 /** A stored `part` row's JSON; every agent of this layout writes the same shape. */
@@ -130,13 +132,13 @@ const PartData = z.looseObject({
   tool: lenient(z.string()),
   callID: lenient(z.string()),
   auto: lenient(z.boolean()),
-  trigger: lenient(CompactionTrigger),
+  trigger: lenient(z.string()),
   operationId: lenient(z.string()),
   timelineStatus: lenient(z.string()),
   preCompactTokenCount: lenient(TokenCount),
   compactBoundary: lenient(
     z.object({
-      trigger: lenient(CompactionTrigger),
+      trigger: lenient(z.string()),
       preCompactTokenCount: lenient(TokenCount)
     })
   ),
@@ -177,18 +179,32 @@ interface Compaction {
   payload: CompactionPayload;
 }
 
+function compactionTrigger(part: z.infer<typeof PartData>): CompactionPayload["trigger"] {
+  const trigger = part.compactBoundary?.trigger || part.trigger;
+  if (trigger === "auto" || trigger === "reactive") {
+    return "auto";
+  }
+  if (trigger === "manual") {
+    return "manual";
+  }
+  if (trigger) {
+    return undefined;
+  }
+  return part.auto === undefined ? undefined : part.auto ? "auto" : "manual";
+}
+
 /** A user boundary is authoritative when the same operation also has an assistant timeline mirror. */
 function rememberCompaction(
   compactions: Map<string, Compaction>,
   part: z.infer<typeof PartData>,
   role: string,
   rowid: number
-): CompactionPayload {
+): CompactionPayload | undefined {
+  if (part.timelineStatus !== undefined && part.timelineStatus !== "completed") {
+    return undefined;
+  }
   const payload: CompactionPayload = definedFields({
-    trigger:
-      part.compactBoundary?.trigger ??
-      part.trigger ??
-      (part.auto === undefined ? undefined : part.auto ? "auto" : "manual"),
+    trigger: compactionTrigger(part),
     preTokens: part.compactBoundary?.preCompactTokenCount ?? part.preCompactTokenCount
   });
   const key = part.operationId ? `operation:${part.operationId}` : `row:${rowid}`;
@@ -268,22 +284,13 @@ function hasColumn(database: Database, table: "session" | "message", column: str
 }
 
 /** Queries adapted to the live-session, parent and message-order columns this database actually has. */
-function queriesOf(softDeletes: boolean, messageSequence: boolean, parentIds: boolean) {
+function queriesOf(softDeletes: boolean, messageSequence: boolean, parentIds: boolean, taskTypes: boolean) {
   const live = softDeletes ? "time_deleted IS NULL" : undefined;
   const order = messageSequence ? "sequence, time_created, id" : "time_created, id";
   const byId = live === undefined ? "id = ?" : `id = ? AND ${live}`;
-  const sessionColumns = `rowid, id, title, directory, time_created, time_updated, version${parentIds ? ", parent_id" : ""}`;
-  const discover = [];
-  if (live !== undefined) {
-    discover.push(live);
-  }
-  if (parentIds) {
-    discover.push(
-      `NOT (COALESCE(parent_id, '') <> '' AND EXISTS (SELECT 1 FROM session parent WHERE parent.id = session.parent_id${softDeletes ? " AND parent.time_deleted IS NULL" : ""}))`
-    );
-  }
+  const sessionColumns = `rowid, id, title, directory, time_created, time_updated, version${parentIds ? ", parent_id" : ""}${taskTypes ? ", task_type" : ""}`;
   return {
-    sessions: `SELECT ${sessionColumns} FROM session ${discover.length > 0 ? `WHERE ${discover.join(" AND ")} ` : ""}ORDER BY time_updated DESC`,
+    sessions: `SELECT ${sessionColumns} FROM session ${live === undefined ? "" : `WHERE ${live} `}ORDER BY time_updated DESC, id`,
     session: `SELECT ${sessionColumns} FROM session WHERE ${byId}`,
     children: parentIds
       ? `SELECT ${sessionColumns} FROM session WHERE parent_id = ?${live === undefined ? "" : ` AND ${live}`} ORDER BY time_created, id`
@@ -300,13 +307,55 @@ function queriesOf(softDeletes: boolean, messageSequence: boolean, parentIds: bo
 function queriesForDatabase(layout: SqliteSessionLayout, database: Database): Queries {
   const softDeletes = layout.softDeletes && hasColumn(database, "session", "time_deleted");
   const messageSequence = layout.messageSequence && hasColumn(database, "message", "sequence");
-  return queriesOf(softDeletes, messageSequence, hasColumn(database, "session", "parent_id"));
+  return queriesOf(
+    softDeletes,
+    messageSequence,
+    hasColumn(database, "session", "parent_id"),
+    hasColumn(database, "session", "task_type")
+  );
 }
 
 type Queries = ReturnType<typeof queriesOf>;
 
+function isSubagent(layout: SqliteSessionLayout, row: SessionRow): boolean {
+  return layout.isSubagent?.({ taskType: row.task_type }) ?? true;
+}
+
+/** Parent edges are classified before cycle detection, so a standalone fork breaks the chain too. */
+function discoverableSessions(layout: SqliteSessionLayout, rows: SessionRow[]): SessionRow[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const parents = new Map(
+    rows.map((row) => [
+      row.id,
+      row.parent_id && byId.has(row.parent_id) && isSubagent(layout, row) ? row.parent_id : undefined
+    ])
+  );
+  const roots = new Set(rows.filter((row) => parents.get(row.id) === undefined).map((row) => row.id));
+  const visited = new Set<string>();
+  for (const row of rows) {
+    const path: string[] = [];
+    const positions = new Map<string, number>();
+    let at: string | undefined = row.id;
+    while (at !== undefined && !visited.has(at) && !positions.has(at)) {
+      positions.set(at, path.length);
+      path.push(at);
+      at = parents.get(at);
+    }
+    const cycleStart = at === undefined ? undefined : positions.get(at);
+    if (cycleStart !== undefined) {
+      const cycle = path.slice(cycleStart);
+      roots.add(cycle.reduce((smallest, id) => (id < smallest ? id : smallest)));
+    }
+    for (const id of path) {
+      visited.add(id);
+    }
+  }
+  return rows.filter((row) => roots.has(row.id));
+}
+
 /** Iterative traversal also handles corrupt parent cycles without overflowing the call stack. */
 function sessionTree(
+  layout: SqliteSessionLayout,
   database: Database,
   queries: Queries,
   root: SessionRow,
@@ -322,13 +371,45 @@ function sessionTree(
     signal?.throwIfAborted();
     for (const row of children.all(sessions[index]!.id)) {
       const child = z.parse(SessionRow, row);
-      if (!visited.has(child.id)) {
+      if (!visited.has(child.id) && isSubagent(layout, child)) {
         visited.add(child.id);
         sessions.push(child);
       }
     }
   }
   return sessions;
+}
+
+function advanceTime(previous: number, time: number): number {
+  return Number.isFinite(time) ? Math.max(previous, time) : previous;
+}
+
+/** Compare monotonic lane clocks, retaining recorded times and every lane's original event order. Ties favor earlier lanes. */
+function mergeLanes<T extends { ts: number }>(lanes: readonly (readonly T[])[]): T[] {
+  const positions = lanes.map(() => 0);
+  const clocks = lanes.map(() => -Infinity);
+  const merged: T[] = [];
+  for (;;) {
+    let selected = -1;
+    let selectedTime = Infinity;
+    for (let lane = 0; lane < lanes.length; lane++) {
+      const head = lanes[lane]![positions[lane]!];
+      if (head === undefined) {
+        continue;
+      }
+      const time = advanceTime(clocks[lane]!, head.ts);
+      if (selected < 0 || time < selectedTime) {
+        selected = lane;
+        selectedTime = time;
+      }
+    }
+    if (selected < 0) {
+      return merged;
+    }
+    merged.push(lanes[selected]![positions[selected]!]!);
+    positions[selected]! += 1;
+    clocks[selected] = selectedTime;
+  }
 }
 
 function readRows(
@@ -440,14 +521,16 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
             baseEvent({ ...decoded.source, value: decoded.value }, "user", { text: decoded.part.text }, { ts: created })
           );
         } else if (decoded.part?.type === "compaction") {
-          events.push(
-            baseEvent(
-              { ...decoded.source, value: decoded.value },
-              "compaction",
-              rememberCompaction(compactions, decoded.part, message.role, partRow.rowid),
-              { ts: decoded.part.time?.start ?? partRow.time_created }
-            )
-          );
+          const payload = rememberCompaction(compactions, decoded.part, message.role, partRow.rowid);
+          if (payload === undefined) {
+            skip(decoded.source, `compaction:${decoded.part.timelineStatus}`);
+          } else {
+            events.push(
+              baseEvent({ ...decoded.source, value: decoded.value }, "compaction", payload, {
+                ts: decoded.part.time?.start ?? partRow.time_created
+              })
+            );
+          }
         } else {
           skip(decoded.source, `part:${decoded.part?.type ?? "unreadable"}`);
         }
@@ -507,14 +590,14 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
           )
         );
       } else if (part.type === "compaction") {
-        events.push(
-          baseEvent(
-            { ...partSource, value: partValue },
-            "compaction",
-            rememberCompaction(compactions, part, message.role, partRow.rowid),
-            { ts, requestId: requestKey }
-          )
-        );
+        const payload = rememberCompaction(compactions, part, message.role, partRow.rowid);
+        if (payload === undefined) {
+          skip(partSource, `compaction:${part.timelineStatus}`);
+        } else {
+          events.push(
+            baseEvent({ ...partSource, value: partValue }, "compaction", payload, { ts, requestId: requestKey })
+          );
+        }
       } else if (part.type === "tool") {
         const callId = part.callID ?? partRow.id;
         const state = part.state;
@@ -563,7 +646,6 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
     skip(event.source, "duplicate-compaction");
     return false;
   });
-  markOrphanToolResults(events);
   assignSeq(events);
   const session: TranscriptSession = definedFields({
     id: rows.session.id,
@@ -583,6 +665,16 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
   return createTranscript(layout.agent, capabilities, parsed);
 }
 
+interface SummaryRequest {
+  kind: "request";
+  priorTs: number;
+  ts: number;
+  usage: Usage | undefined;
+  durationMs: number | undefined;
+}
+
+type SummaryStep = SummaryRequest | { kind: "compaction"; priorTs: number; ts: number; rowid: number };
+
 /**
  * The summary of one session in a bounded pass: message rows stream one at a time — the message list carries only
  * ids, each message's `data` is fetched by rowid, and only that message's parts are loaded — so a large database
@@ -600,16 +692,19 @@ function summarize(
   if (root === undefined) {
     return err({ _tag: "SessionNotFound", path });
   }
-  const sessions = sessionTree(database, queries, z.parse(SessionRow, root), options.signal);
+  const sessions = sessionTree(layout, database, queries, z.parse(SessionRow, root), options.signal);
   const totals = emptyTotals();
   const prompts = emptyPrompts(options.prompts);
   const seen = new Set<Capability>();
-  const requests: { ts: number; usage: Usage | undefined; durationMs: number | undefined }[] = [];
-  const promptTexts: { ts: number; text: string }[] = [];
+  const lanes: SummaryRequest[][] = [];
   const messageData = database.prepare(queries.messageData);
   const partsOf = database.prepare(queries.partsOfMessage);
   for (const session of sessions) {
     const compactions = new Map<string, Compaction>();
+    // Keep only request facts and potential compaction boundaries. Other emitted events contribute a maximum
+    // timestamp between them; discarded mirrors must not advance the clock of the following request.
+    const steps: SummaryStep[] = [];
+    let priorTs = -Infinity;
     const messageKeys = database
       .prepare(queries.messageKeys)
       .all(session.id)
@@ -631,7 +726,8 @@ function summarize(
         if (durationMs !== undefined) {
           seen.add("durations");
         }
-        requests.push({ ts, usage: message.usage, durationMs });
+        steps.push({ kind: "request", priorTs, ts, usage: message.usage, durationMs });
+        priorTs = -Infinity;
       }
       for (const row of partsOf.all(session.id, key.id)) {
         const partJson = parseJson(z.parse(TextColumn, row.data));
@@ -639,29 +735,56 @@ function summarize(
         if (part === undefined) {
           continue;
         }
+        const partTs = part.time?.start ?? z.parse(IntegerColumn, row.time_created);
         if (part.type === "compaction") {
-          rememberCompaction(compactions, part, message.role, z.parse(IntegerColumn, row.rowid));
+          const rowid = z.parse(IntegerColumn, row.rowid);
+          if (rememberCompaction(compactions, part, message.role, rowid) !== undefined) {
+            steps.push({ kind: "compaction", priorTs, ts: partTs, rowid });
+            priorTs = -Infinity;
+          }
         } else if (message.role === "user") {
-          if (session.id === sessionId && part.type === "text" && part.text) {
-            totals.turns += 1;
-            const text = part.text.trim();
-            if (options.prompts !== undefined && text !== "") {
-              promptTexts.push({ ts, text: capPromptText(text, options.prompts.maxChars) });
+          if (part.type === "text" && part.text) {
+            priorTs = advanceTime(priorTs, ts);
+            if (session.id === sessionId) {
+              totals.turns += 1;
+              // Main-lane order is invariant under the merge, so these are already the earliest candidates.
+              if (prompts.list !== undefined && prompts.list.length < (options.prompts?.limit ?? 0)) {
+                prompts.add(part.text);
+              }
             }
           }
-        } else if (part.type === "reasoning") {
-          seen.add("reasoning");
+        } else if (part.type === "text" || part.type === "reasoning") {
+          priorTs = advanceTime(priorTs, partTs);
+          if (part.type === "reasoning") {
+            seen.add("reasoning");
+          }
         } else if (part.type === "tool") {
+          priorTs = advanceTime(priorTs, partTs);
           const state = part.state;
-          if (
-            (state?.status === "completed" || state?.status === "error") &&
-            (state.status === "error" || state.error !== undefined)
-          ) {
-            totals.failedTools += 1;
+          if (state?.status === "completed" || state?.status === "error") {
+            priorTs = advanceTime(priorTs, state.time?.end ?? partTs);
+            if (state.status === "error" || state.error !== undefined) {
+              totals.failedTools += 1;
+            }
           }
         }
       }
     }
+    const selectedCompactions = new Set(Array.from(compactions.values(), (compaction) => compaction.rowid));
+    const requests: SummaryRequest[] = [];
+    let clock = -Infinity;
+    for (const step of steps) {
+      clock = advanceTime(clock, step.priorTs);
+      if (step.kind === "compaction" && !selectedCompactions.has(step.rowid)) {
+        continue;
+      }
+      clock = advanceTime(clock, step.ts);
+      if (step.kind === "request") {
+        step.ts = clock;
+        requests.push(step);
+      }
+    }
+    lanes.push(requests);
     for (const compaction of compactions.values()) {
       totals.compactions += 1;
       seen.add("compaction");
@@ -672,18 +795,10 @@ function summarize(
   }
   if (sessions.length > 1) {
     seen.add("subagents");
-    requests.sort((a, b) => a.ts - b.ts);
-    promptTexts.sort((a, b) => a.ts - b.ts);
   }
-  for (const request of requests) {
+  for (const request of mergeLanes(lanes)) {
     addRequest(totals, requestUsage({ payload: definedFields({ usage: request.usage }) }));
     addRequestDuration(totals, request.durationMs);
-  }
-  for (const prompt of promptTexts) {
-    if (prompts.list === undefined || prompts.list.length >= (options.prompts?.limit ?? 0)) {
-      break;
-    }
-    prompts.list.push({ text: prompt.text });
   }
   const capabilities = CAPABILITIES.filter((capability) => seen.has(capability));
   return ok(finishPass(totals, capabilities, sessions.length - 1, prompts.list));
@@ -756,10 +871,16 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
       }
       try {
         const queries = queriesForDatabase(layout, database.value);
-        const rows = database.value.prepare(queries.sessions).all();
+        const rows = discoverableSessions(
+          layout,
+          database.value
+            .prepare(queries.sessions)
+            .all()
+            .map((row) => z.parse(SessionRow, row))
+        );
         options.onTotal?.(rows.length);
         for (const row of rows) {
-          yield headOf(agent, path, z.parse(SessionRow, row), info);
+          yield headOf(agent, path, row, info);
         }
       } catch (error) {
         options.signal?.throwIfAborted();
@@ -793,8 +914,9 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
           if (!rows.ok) {
             return rows;
           }
-          const sessions = sessionTree(database, queries, rows.value.session, options.signal);
+          const sessions = sessionTree(layout, database, queries, rows.value.session, options.signal);
           const transcript = translate(layout, rows.value, ref.path, 1);
+          const lanes = [transcript.events];
           // Line-based event ids and record accounting must stay unique across lanes sharing one database path.
           let nextLine = 2 + rows.value.messages.length + rows.value.parts.length;
           for (const child of sessions.slice(1)) {
@@ -814,16 +936,15 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
             );
             for (const event of childTranscript.events) {
               event.agentId = child.id;
-              transcript.events.push(event);
             }
+            lanes.push(childTranscript.events);
             for (const skipped of childTranscript.skipped) {
               transcript.skipped.push(skipped);
             }
           }
-          if (sessions.length > 1) {
-            transcript.events.sort((a, b) => a.ts - b.ts);
-            assignSeq(transcript.events);
-          }
+          transcript.events = mergeLanes(lanes);
+          markOrphanToolResults(transcript.events);
+          assignSeq(transcript.events);
           transcript.capabilities = capabilitiesOf(transcript.events, sessions.length - 1);
           return ok(transcript);
         } catch (error) {

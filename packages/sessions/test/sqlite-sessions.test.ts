@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   createSqliteSessionAdapter,
@@ -7,10 +7,12 @@ import {
 import { sqliteSessionMessageOf } from "../src/application/services/usage-decoders/sqlite.js";
 import { foldTranscript } from "../src/domain/transcript/services/fold-transcript.js";
 import { sessionPrompts } from "../src/domain/transcript/services/turns.js";
+import * as turns from "../src/domain/transcript/services/turns.js";
 import { sqliteFixture } from "./fixtures/sqlite.js";
 
 const fixtures: ReturnType<typeof sqliteFixture>[] = [];
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const fixture of fixtures.splice(0)) {
     fixture.close();
   }
@@ -205,9 +207,9 @@ describe("SQLite session capabilities", () => {
       { id: "empty", parentId: "main" },
       { id: "nested", parentId: "child" }
     ]);
-    expect(transcript.events.map((event) => event.ts)).toEqual(
-      transcript.events.map((event) => event.ts).sort((a, b) => a - b)
-    );
+    expect(
+      transcript.events.filter((event) => event.kind === "user" && event.agentId === undefined).map((event) => event.ts)
+    ).toEqual([30, 5, 5]);
     expect(transcript.events.map((event) => event.seq)).toEqual(transcript.events.map((_, index) => index));
     expect(new Set(transcript.events.map((event) => event.id)).size).toBe(transcript.events.length);
     expect(transcript.events.filter((event) => event.kind === "request").map((event) => event.agentId)).toEqual([
@@ -321,5 +323,208 @@ describe("SQLite session capabilities", () => {
     const transcript = await f.parity();
     expect(transcript.events).toHaveLength(131073);
     expect(foldTranscript(transcript)).toEqual({ turns: 0, requests: 1, durationMs: 1, subagents: 1, failedTools: 0 });
+  });
+
+  it.each(["started", "retrying", "failed", "interrupted", "skipped", "future-status"])(
+    "counts only a completed boundary beside a %s timeline attempt",
+    async (timelineStatus) => {
+      const f = setup();
+      f.session("root");
+      const message = f.message("root", { role: "assistant" });
+      const rowid = f.part("root", message, {
+        type: "compaction",
+        operationId: "op",
+        timelineStatus,
+        preCompactTokenCount: 100
+      });
+      let transcript = await f.parity();
+      expect(transcript.capabilities).toEqual(["requests"]);
+      expect(transcript.events.filter((event) => event.kind === "compaction")).toHaveLength(0);
+      expect(transcript.skipped).toContainEqual(
+        expect.objectContaining({
+          source: expect.objectContaining({ sqlite: { table: "part", column: "data", rowid } })
+        })
+      );
+      const boundary = f.message("root", { role: "user" });
+      f.part("root", boundary, {
+        type: "compaction",
+        operationId: "op",
+        compactBoundary: { preCompactTokenCount: 80 }
+      });
+      transcript = await f.parity();
+      expect(transcript.events.filter((event) => event.kind === "compaction").map((event) => event.payload)).toEqual([
+        { preTokens: 80 }
+      ]);
+      expect(foldTranscript(transcript).compactions).toBe(1);
+    }
+  );
+
+  it.each([
+    [{ trigger: "reactive", auto: false }, "auto"],
+    [{ compactBoundary: { trigger: "reactive" }, auto: false }, "auto"],
+    [{ trigger: "future", auto: false }, undefined],
+    [{ trigger: "future", auto: true }, undefined],
+    [{ compactBoundary: { trigger: "future" }, trigger: "auto", auto: false }, undefined],
+    [{ auto: false }, "manual"]
+  ])("honors explicit compaction triggers: %j", async (fields, trigger) => {
+    const f = setup();
+    f.session("root");
+    f.part("root", f.message("root", { role: "user" }), { type: "compaction", ...fields });
+    const transcript = await f.parity();
+    expect(transcript.events[0]?.payload.trigger).toBe(trigger);
+  });
+
+  it("keeps sequence order and tool pairing even with an empty child and backwards clocks", async () => {
+    const f = setup();
+    f.session("root");
+    const user = f.message("root", { role: "user", time: { created: 50 } }, 50, 0);
+    f.part("root", user, { type: "text", text: "first" }, 50);
+    const request = f.message(
+      "root",
+      { role: "assistant", time: { created: 20, completed: 25 }, tokens: { input: 1 } },
+      20,
+      1
+    );
+    f.part(
+      "root",
+      request,
+      { type: "tool", callID: "call", state: { status: "completed", output: "done", time: { end: 5 } } },
+      30
+    );
+    const before = await f.parity();
+    f.session("empty", "root");
+    const after = await f.parity();
+    expect(after.events).toEqual(before.events);
+    expect(after.events.map((event) => event.kind)).toEqual(["user", "request", "tool_call", "tool_result"]);
+    expect(after.events.map((event) => event.ts)).toEqual([50, 20, 30, 5]);
+    expect(after.events.at(-1)?.payload.orphan).toBeUndefined();
+  });
+
+  it.each(["text", "tool", "compaction"])("uses retained %s times when merging subsequent requests", async (kind) => {
+    const f = setup();
+    f.session("root");
+    f.session("child", "root");
+    const first = f.message("root", { role: "assistant", time: { created: 10, completed: 11 }, tokens: { input: 1 } });
+    const part =
+      kind === "text"
+        ? { type: "text", text: "later", time: { start: 90 } }
+        : kind === "tool"
+          ? { type: "tool", state: { status: "completed", time: { end: 90 } } }
+          : { type: "compaction", timelineStatus: "completed", operationId: "op" };
+    f.part("root", first, part, kind === "tool" ? 15 : 90);
+    f.message("root", { role: "assistant", time: { created: 20, completed: 22 }, tokens: { input: 2 } });
+    f.message("child", { role: "assistant", time: { created: 50, completed: 53 }, tokens: { input: 3 } });
+    f.message("child", { role: "assistant", time: { created: 95, completed: 99 }, tokens: { input: 4 } });
+    let transcript = await f.parity();
+    expect(foldTranscript(transcript).contextShape).toEqual([1, 3, 2, 4]);
+    if (kind === "compaction") {
+      f.part(
+        "root",
+        f.message("root", { role: "user" }),
+        { type: "compaction", operationId: "op", compactBoundary: {} },
+        100
+      );
+      transcript = await f.parity();
+      expect(foldTranscript(transcript).contextShape).toEqual([1, 2, 3, 4]);
+    }
+  });
+
+  it("breaks equal effective timestamps by lane order without changing recorded times", async () => {
+    const f = setup();
+    f.session("root");
+    f.session("child", "root");
+    for (const [session, ts, input] of [
+      ["root", 10, 1],
+      ["root", 5, 2],
+      ["child", 10, 3],
+      ["child", 1, 4]
+    ] as const) {
+      f.message(session, { role: "assistant", time: { created: ts }, tokens: { input } });
+    }
+    const transcript = await f.parity();
+    expect(foldTranscript(transcript).contextShape).toEqual([1, 2, 3, 4]);
+    expect(transcript.events.map((event) => event.ts)).toEqual([10, 5, 10, 1]);
+  });
+
+  it.each([false, true])(
+    "discovers one deterministic entry per rootless cycle (reverse insertion: %s)",
+    async (reverse) => {
+      const f = setup();
+      const rows = [
+        ["self", "self"],
+        ["b", "a"],
+        ["a", "b"],
+        ["0-tail", "b"],
+        ["root", null],
+        ["child", "root"]
+      ] as const;
+      for (const [id, parent] of reverse ? [...rows].reverse() : rows) {
+        f.session(id, parent);
+      }
+      let total = 0;
+      const ids = [];
+      for await (const item of f.adapter.discover(f.platform, f.root, {
+        onTotal: (count) => {
+          total = count;
+        }
+      })) {
+        expect("error" in item).toBe(false);
+        ids.push(item.ref.sessionId ?? "");
+        const loaded = await f.adapter.load(f.platform, item.ref);
+        expect(loaded.ok).toBe(true);
+      }
+      expect(ids.sort()).toEqual(["a", "root", "self"]);
+      expect(total).toBe(3);
+    }
+  );
+
+  it.each([0, 2])("copies only the first %i main-lane prompts, capped at collection", async (limit) => {
+    const f = setup();
+    f.session("root");
+    f.session("empty", "root");
+    for (let index = 0; index < 50; index++) {
+      const message = f.message("root", { role: "user", time: { created: 100 - index } });
+      f.part("root", message, { type: "text", text: ` ${index}: ${"x".repeat(1000)} ` });
+    }
+    const copy = vi.spyOn(turns, "capPromptText");
+    const prompts = { limit, maxChars: 4 };
+    const summary = await f.adapter.summarize!(f.platform, f.ref, { prompts });
+    expect(copy).toHaveBeenCalledTimes(limit);
+    expect(summary.ok && summary.value.prompts).toEqual(limit === 0 ? [] : [{ text: "0: x" }, { text: "1: x" }]);
+    copy.mockRestore();
+    await f.parity(prompts);
+  });
+
+  it("uses provider task classification for discovery and each standalone branch's own child tree", async () => {
+    const f = setup(false, { isSubagent: ({ taskType }) => taskType !== "branch" });
+    f.db.exec("ALTER TABLE session ADD COLUMN task_type TEXT");
+    f.session("root");
+    f.session("child", "root");
+    f.session("branch", "root");
+    f.session("branch-child", "branch");
+    f.db.prepare("UPDATE session SET task_type = ? WHERE id = ?").run("branch", "branch");
+    for (const [id, input] of [
+      ["root", 1],
+      ["child", 2],
+      ["branch", 100],
+      ["branch-child", 200]
+    ] as const) {
+      f.message(id, { role: "assistant", time: { created: 1, completed: 2 }, tokens: { input } });
+    }
+    const transcript = await f.parity();
+    expect(transcript.agents.map((lane) => lane.id)).toEqual(["main", "child"]);
+    expect(foldTranscript(transcript)).toMatchObject({ requests: 2, inputTokens: 3, durationMs: 2 });
+    const ids = [];
+    for await (const item of f.adapter.discover(f.platform, f.root)) {
+      ids.push(item.ref.sessionId ?? "");
+    }
+    expect(ids.sort()).toEqual(["branch", "root"]);
+    const ref = { ...f.ref, sessionId: "branch" };
+    const branch = await f.adapter.load(f.platform, ref);
+    expect(branch.ok).toBe(true);
+    if (branch.ok) {
+      expect(branch.value.agents.map((lane) => lane.id)).toEqual(["main", "branch-child"]);
+      expect(await f.adapter.summarize!(f.platform, ref)).toEqual({ ok: true, value: foldTranscript(branch.value) });
+    }
   });
 });

@@ -135,6 +135,16 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   message.run("msg_u3", "ses_deleted", 6000, JSON.stringify({ role: "user", time: { created: 6000 } }), 0);
   part.run("prt_t3", "msg_u3", "ses_deleted", 6000, JSON.stringify({ type: "text", text: "gone" }), 0);
   db.exec("ALTER TABLE session ADD COLUMN parent_id TEXT");
+  db.exec("ALTER TABLE session ADD COLUMN task_type TEXT");
+  db.prepare(
+    "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES ('ses_fork', 'ses_plain', 'fork', 'Manual fork', '', 4000, 4000, '')"
+  ).run();
+  db.exec(`
+    INSERT INTO message (id, session_id, time_created, data, sequence)
+      SELECT 'fork_' || id, 'ses_fork', time_created, data, sequence FROM message WHERE session_id = 'ses_plain';
+    INSERT INTO part (id, message_id, session_id, time_created, data, sequence)
+      SELECT 'fork_' || id, 'fork_' || message_id, 'ses_fork', time_created, data, sequence FROM part WHERE session_id = 'ses_plain';
+  `);
   db.prepare(
     "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, '', '', 10000, 10000, '')"
   ).run("ses_features", null);
@@ -187,6 +197,13 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   const sessions: ConformanceSession[] = [
     {
       path: dbPath,
+      sessionId: "ses_fork",
+      records: 9,
+      recordKeys: keysFor("ses_fork"),
+      capabilities: ["requests", "usage", "durations", "reasoning"]
+    },
+    {
+      path: dbPath,
       sessionId: "ses_features",
       records: 4,
       recordKeys: [1, 2, 3, 4].map((line) => `${dbPath}\0${line}`),
@@ -237,6 +254,33 @@ describe("zcode conformance (sqlite)", () => {
 
 describe("zcode adapter", () => {
   const platform = createNodePlatform({ home: tempRoot });
+
+  it("keeps a manual fork visible and excludes its copied requests from the parent", async () => {
+    const ids = [];
+    for await (const item of zcodeSessionAdapter.discover(platform, tempRoot)) {
+      ids.push(item.ref.sessionId);
+    }
+    expect(ids).toContain("ses_fork");
+    for (const sessionId of ["ses_plain", "ses_fork"]) {
+      const ref = { agent: "zcode", path: dbPath, sessionId };
+      const loaded = await zcodeSessionAdapter.load(platform, ref);
+      expect(loaded.ok).toBe(true);
+      if (!loaded.ok) {
+        return;
+      }
+      expect(loaded.value.agents).toEqual([{ id: "main" }]);
+      expect(foldTranscript(loaded.value)).toMatchObject({
+        requests: 1,
+        inputTokens: 10,
+        outputTokens: 5,
+        durationMs: 1000
+      });
+      expect(await zcodeSessionAdapter.summarize!(platform, ref)).toEqual({
+        ok: true,
+        value: foldTranscript(loaded.value)
+      });
+    }
+  });
 
   it.each([false, true])(
     "deduplicates real timeline/boundary shapes and merges live child lanes (boundary first: %s)",
