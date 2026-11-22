@@ -1,6 +1,6 @@
 import type { InstallAdapter, InstallContext } from "@rivus/agent-kit-harness/spi";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
-import { commandHook, sharedAgentsDir, sharedSkillsDir } from "@rivus/agent-kit-harness/spi";
+import { renderGroupedJsonHooks, renderSharedSkill, sharedAgentsDir } from "@rivus/agent-kit-harness/spi";
 import {
   QODER_HOME,
   QODER_HOOK_FORMAT,
@@ -35,26 +35,9 @@ export const qoderInstallAdapter: InstallAdapter = {
   skillStrategies: ["scan-directory"],
   roots: (context) => [qoderHome(context), sharedAgentsDir(context)],
   hookFile: () => QODER_SETTINGS_PATH,
-  renderHooks(strategy, registrations, _bundle, context) {
-    if (registrations.length === 0) {
-      return [];
-    }
-    return registrations.map((registration) => ({
-      locator: {
-        kind: "json-entry",
-        path: qoderSettingsFile(context),
-        pointer: `${QODER_HOOKS_POINTER}/${registration.event}`,
-        member: registration.command,
-        memberIn: "hook-group"
-      },
-      content: commandHook(registration),
-      strategy,
-      agents: registration.agents
-    }));
-  },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderHooks: (strategy, registrations, _bundle, context) =>
+    renderGroupedJsonHooks(strategy, registrations, qoderSettingsFile(context), QODER_HOOKS_POINTER),
+  renderSkill: renderSharedSkill,
   hookSources: (context) => [
     { path: qoderSettingsFile(context), format: QODER_HOOK_FORMAT, layout: QODER_HOOK_LAYOUT }
   ],

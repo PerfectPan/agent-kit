@@ -63,19 +63,28 @@ export class Lease {
     if (!token.ok) {
       return token;
     }
-    const { generation } = token.value;
+    return Lease.transitionAcquire(claim.key, claim, token.value, 1, null);
+  }
+
+  private static transitionAcquire(
+    key: string,
+    claim: LeaseClaim,
+    token: FencingToken,
+    revision: number,
+    previousHolderId: string | null
+  ): Result<LeaseTransition, never> {
     const state = new Lease(
       {
-        key: claim.key,
-        generation,
-        revision: 1,
+        key,
+        generation: token.generation,
+        revision,
         holder: claim.holder.toSnapshot(),
         holderId: claim.holderId,
         renewedAt: claim.now
       },
-      token.value
+      token
     );
-    return ok({ state, events: [acquired(state.snapshot, null)] });
+    return ok({ state, events: [acquired(state.snapshot, previousHolderId)] });
   }
 
   static restore(snapshot: LeaseSnapshot): Result<Lease, LeaseRecordInvalid> {
@@ -116,18 +125,7 @@ export class Lease {
     if (!token.ok) {
       return token;
     }
-    const state = new Lease(
-      {
-        key,
-        generation: token.value.generation,
-        revision: this.snapshot.revision + 1,
-        holder: claim.holder.toSnapshot(),
-        holderId: claim.holderId,
-        renewedAt: claim.now
-      },
-      token.value
-    );
-    return ok({ state, events: [acquired(state.snapshot, holderId)] });
+    return Lease.transitionAcquire(key, claim, token.value, this.snapshot.revision + 1, holderId);
   }
 
   /** A heartbeat: only the holding acquisition renews, and the generation stays. */

@@ -4,8 +4,9 @@ import type {
   SessionSummary,
   SessionSummaryWithPrompts
 } from "../../session/value-objects/session-summary.js";
-import { capPromptText, mainAgentId, promptStarts, requestUsage } from "./turns.js";
+import { capPromptText, isPrompt, mainAgentId, promptStarts, requestUsage } from "./turns.js";
 import type { Capability, Transcript } from "../value-objects/transcript.js";
+import type { TranscriptEvent, TranscriptEventBody } from "../value-objects/transcript-event.js";
 import { PayloadText } from "../../../lib/payload-text.js";
 
 const CONTEXT_SHAPE_POINTS = 120;
@@ -179,6 +180,72 @@ export function finishPass(
 ): SessionSummaryWithPrompts {
   const summary = summaryOf(finishTotals(totals, summaryGates(capabilities), subagents));
   return prompts === undefined ? summary : { ...summary, prompts };
+}
+
+/** Updates running summary totals, prompts, and (when provided) observed capabilities for a single translated event. */
+export function tallyTranscriptPart(
+  part: TranscriptEventBody,
+  totals: SummaryTotals,
+  prompts: PromptSink,
+  seen?: Set<Capability>
+): void {
+  if (part.kind === "request") {
+    addRequest(totals, requestUsage({ payload: part.payload }));
+    seen?.add("requests");
+    if (part.payload.usage !== undefined) {
+      seen?.add("usage");
+    }
+  } else if (part.kind === "compaction") {
+    totals.compactions += 1;
+    seen?.add("compaction");
+    if (part.payload.preTokens !== undefined || part.payload.postTokens !== undefined) {
+      seen?.add("compactionTokens");
+    }
+  } else if (part.kind === "reasoning") {
+    seen?.add("reasoning");
+  } else if (part.kind === "system") {
+    if (part.payload.type === "turn_duration") {
+      addTurnDuration(totals, part.payload.durationMs);
+    }
+    if (part.payload.text !== undefined) {
+      seen?.add("systemPrompt");
+    }
+    if (Array.isArray(part.payload.tools)) {
+      seen?.add("toolSchemas");
+    }
+  } else if (part.kind === "tool_result" && part.payload.isError === true) {
+    totals.failedTools += 1;
+  } else if (part.kind === "user" && isPrompt({ kind: part.kind, payload: part.payload })) {
+    totals.turns += 1;
+    prompts.add(part.payload.text ?? "");
+  }
+}
+
+/** Capabilities observed directly from a list of translated events. */
+export function detectEventCapabilities(events: readonly TranscriptEvent[]): Capability[] {
+  const out: Capability[] = [];
+  const has = (test: (event: TranscriptEvent) => boolean): boolean => events.some(test);
+  if (has((event) => event.kind === "request")) {
+    out.push("requests");
+  }
+  if (has((event) => event.kind === "request" && event.payload.usage !== undefined)) {
+    out.push("usage");
+  }
+  if (has((event) => event.kind === "reasoning")) {
+    out.push("reasoning");
+  }
+  if (has((event) => event.kind === "compaction")) {
+    out.push("compaction");
+  }
+  if (
+    has(
+      (event) =>
+        event.kind === "compaction" && (event.payload.preTokens !== undefined || event.payload.postTokens !== undefined)
+    )
+  ) {
+    out.push("compactionTokens");
+  }
+  return out;
 }
 
 /**

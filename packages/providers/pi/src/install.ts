@@ -5,8 +5,8 @@ import {
   type BundleRef,
   type FinishSelector,
   ownerSlug,
-  agentsOf,
-  sharedSkillsDir,
+  renderBridgeHook,
+  renderSharedSkill,
   sharedAgentsDir,
   finishSelectorsOf
 } from "@rivus/agent-kit-harness/spi";
@@ -109,27 +109,16 @@ export const piInstallAdapter: InstallAdapter = {
   roots: (context) => [piHome(context), sharedAgentsDir(context)],
   hookFile: (_strategy, bundle) =>
     `${piExtensionsDir({ home: "~", env: {} })}/${ownerSlug(bundle.owner)}${PI_EXTENSION_SUFFIX}`,
-  renderHooks: (strategy, registrations, bundle, context) => {
-    const [first] = registrations;
-    return first === undefined
-      ? []
-      : [
-          {
-            locator: { kind: "file", path: piExtensionFile(context, bundle) },
-            content: bridgeSource(
-              bundle.owner,
-              first.command,
-              [...new Set(registrations.map(({ event }) => event))].toSorted(),
-              finishSelectorsOf(piHookDialect.events)
-            ),
-            strategy,
-            agents: agentsOf(registrations)
-          }
-        ];
-  },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderHooks: (strategy, registrations, bundle, context) =>
+    renderBridgeHook(strategy, registrations, piExtensionFile(context, bundle), (command) =>
+      bridgeSource(
+        bundle.owner,
+        command,
+        [...new Set(registrations.map(({ event }) => event))].toSorted(),
+        finishSelectorsOf(piHookDialect.events)
+      )
+    ),
+  renderSkill: renderSharedSkill,
   legacySources: (context) => [
     { kind: "files", dir: piExtensionsDir(context), extensions: PI_EXTENSION_SUFFIXES },
     {

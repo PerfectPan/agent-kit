@@ -1,20 +1,10 @@
-import { readFileSync } from "node:fs";
-
 import { fmt, lint } from "@perfectpan/lint-config/vite-plus";
 import { defineConfig } from "vite-plus";
 
-import { withBoundaryLint } from "../../infra/architecture/lint.ts";
-
-const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
-  exports: Record<string, unknown>;
-};
+import { exportEntriesFromManifest, withBoundaryLint } from "../../infra/architecture/lint.ts";
 
 // One entry per subpath export: "./lease" builds src/lease/public.ts into dist/lease.js.
-const entry = Object.fromEntries(
-  Object.keys(manifest.exports)
-    .filter((subpath) => subpath !== "./package.json")
-    .map((subpath) => [subpath.slice(2), `./src/${subpath.slice(2)}/public.ts`])
-);
+const { entry } = exportEntriesFromManifest(import.meta.url, (subpath) => `./src/${subpath}/public.ts`);
 
 // `/lease` loads the same chunk as `/process-lock`. Bundling every zod import would pull `/lease`'s own schemas in
 // too. Matching the importer inlines zod/mini only for the process-lock sources, which is what that chunk contains;

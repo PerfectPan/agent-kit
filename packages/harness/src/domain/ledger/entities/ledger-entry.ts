@@ -8,6 +8,7 @@ import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
 import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
 import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
+import { initFrozenSnapshot } from "./freeze-snapshot.js";
 
 /**
  * The Ledger's record of one Artifact. A file shared with other tools is recorded per entry inside it; a whole file
@@ -78,14 +79,7 @@ export class LedgerEntry {
   readonly #snapshot: LedgerEntrySnapshot;
 
   private constructor(input: LedgerEntrySnapshot) {
-    const snapshot = structuredClone(input);
-    Object.freeze(snapshot.locator);
-    Object.freeze(snapshot.owners);
-    Object.freeze(snapshot.agents);
-    Object.freeze(snapshot.preImage);
-    this.#snapshot = Object.freeze(snapshot);
-    Object.assign(this, snapshot);
-    Object.freeze(this);
+    this.#snapshot = initFrozenSnapshot(this, input, ["locator", "owners", "agents", "preImage"]);
   }
 
   toSnapshot(): LedgerEntrySnapshot {

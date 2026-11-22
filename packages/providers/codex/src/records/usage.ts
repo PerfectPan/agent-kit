@@ -9,67 +9,15 @@ import {
   type Usage,
   type UsageRecord,
   lenient,
-  logTimestamp,
   rememberKey,
   type UsageFile,
   type UsageLineDecoder
 } from "@rivus/agent-kit-sessions/spi";
-import { CodexEnvelopeSchema, codexTokenCounts, knownCodexRecord } from "./record.js";
+import { type CodexUsagePayload, codexTokenCounts, knownCodexRecord, parseCodexUsageRecord } from "./record.js";
 import { endForkReplay, FORK_REPLAY_START, type ForkReplayState, stepForkReplay } from "./fork-replay.js";
 import * as z from "zod/mini";
 
 const AGENT = CODEX_ID;
-
-/** The payload fields the usage rule reads, of whatever envelope carries them. */
-interface CodexUsagePayload {
-  type?: string;
-  id?: string;
-  session_id?: string;
-  model?: string;
-  turn_id?: string;
-  response_id?: string;
-  forked_from_id?: string;
-  source?: { subagent?: { thread_spawn?: unknown } };
-  usage?: Record<string, unknown>;
-  /** A payload's own time, as a `session_meta` carries it for the fork replay rule. */
-  timestamp?: number | string;
-  info?: {
-    total_token_usage?: unknown;
-    last_token_usage?: unknown;
-  };
-  thread_settings?: { service_tier?: string };
-}
-
-/**
- * The payload fields the usage rule reads, with those the fork replay rule reads in the same pass. The decoder runs
- * over every record of every rollout, so it parses only these fields, not the whole payload. The totals stay the raw
- * values they were: the usage rule compares them by their JSON text.
- */
-const CodexUsagePayloadSchema = z.looseObject({
-  type: lenient(z.string()),
-  id: lenient(z.string()),
-  session_id: lenient(z.string()),
-  model: lenient(z.string()),
-  turn_id: lenient(z.string()),
-  response_id: lenient(z.string()),
-  forked_from_id: lenient(z.string()),
-  source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
-  usage: lenient(z.record(z.string(), z.unknown())),
-  timestamp: logTimestamp,
-  info: lenient(
-    z.looseObject({
-      total_token_usage: z.optional(z.unknown()),
-      last_token_usage: z.optional(z.unknown())
-    })
-  ),
-  thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
-} satisfies Record<keyof CodexUsagePayload, z.ZodMiniType>);
-
-/**
- * One rollout record for the usage rule: the envelope every codex reader parses, and the payload fields above. One
- * parse takes only these fields, not the whole payload.
- */
-const CodexUsageRecord = z.looseObject({ ...CodexEnvelopeSchema.shape, payload: lenient(CodexUsagePayloadSchema) });
 
 /**
  * The Usage of one model call from a Codex usage object: `token_usage_record.usage` or
@@ -335,7 +283,7 @@ export function codexUsageLines(file: UsageFile, saved?: unknown): UsageLineDeco
   };
   return {
     push(record) {
-      const rec = z.safeParse(CodexUsageRecord, record.value).data;
+      const rec = parseCodexUsageRecord(record.value);
       if (!knownCodexRecord(rec)) {
         return err(unknownFormatGeneration(AGENT, record));
       }

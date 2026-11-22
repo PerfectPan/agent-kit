@@ -61,10 +61,10 @@ const Missing = z.looseObject({ code: z.literal("ENOENT") });
 /** The text of a small file, `undefined` when it does not exist. */
 export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: string): Promise<string | undefined> {
   const decoder = new TextDecoder();
-  let text = "";
+  const parts: string[] = [];
   try {
     for await (const chunk of platform.fs.read(path)) {
-      text += decoder.decode(chunk, { stream: true });
+      parts.push(decoder.decode(chunk, { stream: true }));
     }
   } catch (error) {
     if (Missing.safeParse(error).success) {
@@ -72,7 +72,8 @@ export async function readText(platform: Pick<ProcessLockPlatform, "fs">, path: 
     }
     throw error;
   }
-  return text + decoder.decode();
+  parts.push(decoder.decode());
+  return parts.join("");
 }
 
 export async function readStamp(platform: ProcessLockPlatform, path: string): Promise<StampFile | undefined> {

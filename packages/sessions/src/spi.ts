@@ -2,8 +2,13 @@
 export { discoverSessions } from "./application/services/discover-sessions.js";
 export { EDGE_BYTES, edgeRecords, readEdges } from "./application/services/files/edges.js";
 export { sessionHead } from "./domain/session/factories/session-head.js";
-export { catchIoFailure, guardIo } from "./application/services/files/io-failure.js";
-export { type JsonlRecords, readJsonlRecords, readJsonlStream } from "./application/services/files/jsonl.js";
+export { catchIoFailure, catchSessionRead, guardIo } from "./application/services/files/io-failure.js";
+export {
+  type JsonlRecords,
+  readJsonlRecords,
+  readJsonlStream,
+  readSessionJsonl
+} from "./application/services/files/jsonl.js";
 export {
   type ReadProgress,
   readBytes,
@@ -11,23 +16,33 @@ export {
   readProgress,
   readText
 } from "./application/services/files/read-file.js";
+export { type RecordSummary, summarizeRecords } from "./application/services/summarize-records.js";
 export { type WalkSpec, walkFiles } from "./application/services/files/walk.js";
 export {
+  type SqliteDatabase,
   type SqliteSessionLayout,
   type SqliteSessionMessage,
-  createSqliteSessionAdapter
+  createSqliteSessionAdapter,
+  openDatabase,
+  readFailed,
+  sqliteSource,
+  thrown
 } from "./application/services/session-adapters/sqlite.js";
 export {
   type JsonlUsageLayout,
   decodeJsonlUsage,
   drain,
   fileSources,
+  guardedUsageStream,
   sameFile,
+  statUsageFile,
   usageStreamOf
 } from "./application/services/usage-decoders/files.js";
+export { parseSavedUsage } from "./application/services/usage-decoders/saved-usage.js";
 export {
   type SqliteMessageDecode,
   type SqliteMessageRow,
+  type SqliteMessageTokens,
   type SqliteAppendColumns,
   type SqliteAppendDecode,
   type SqliteAppendLogRequest,
@@ -38,11 +53,17 @@ export {
   type SqliteTableRow,
   SQLITE_LONGEST_MESSAGE_MS,
   SQLITE_RUNNING_IDS,
+  applyUsageRecordMeta,
   createSqliteSettlement,
   decodeSqliteAppendLog,
   decodeSqliteMessages,
+  sqliteStoredMessageUsage,
+  sqliteHomeSources,
   sqliteMessageSource,
-  sqliteQueryFloor
+  sqliteMessageTokensOf,
+  sqliteQueryFloor,
+  sqliteSessionMessageOf,
+  yieldUsageSources
 } from "./application/services/usage-decoders/sqlite.js";
 export {
   type DecodeUsageOptions,
@@ -127,11 +148,22 @@ export { MAIN_LANE_ID, isPrompt, requestUsage, sessionPrompts } from "./domain/t
 export {
   addRequest,
   addTurnDuration,
+  detectEventCapabilities,
   emptyPrompts,
   emptyTotals,
   finishPass,
-  foldTranscript
+  foldTranscript,
+  tallyTranscriptPart
 } from "./domain/transcript/services/fold-transcript.js";
+export {
+  type RecordTranslation,
+  type TranslationBuffer,
+  createTranslationBuffer,
+  finalizeTranscriptEvents,
+  joinedPartText,
+  nextFreeId,
+  pushRetainedEvent
+} from "./domain/transcript/services/translation-buffer.js";
 export {
   type SkippedRecord,
   type SourcePointer,

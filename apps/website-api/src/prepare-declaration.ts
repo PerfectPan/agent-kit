@@ -234,35 +234,52 @@ function containsUnion(
   return alias !== undefined && containsUnion(alias.type, aliases, seen);
 }
 
+function unwrapTypeAlias(
+  type: ts.TypeNode,
+  aliases: ReadonlyMap<string, ts.TypeAliasDeclaration>
+): { readonly type: ts.TypeNode; readonly resolvedName?: string } {
+  let current = type;
+  for (;;) {
+    if (ts.isParenthesizedTypeNode(current)) {
+      current = current.type;
+      continue;
+    }
+    const name = referencedName(current);
+    if (name !== undefined && !(ts.isTypeReferenceNode(current) && current.typeArguments !== undefined)) {
+      const alias = aliases.get(name);
+      if (alias) {
+        current = alias.type;
+        continue;
+      }
+      return { type: current, resolvedName: name };
+    }
+    return { type: current };
+  }
+}
+
 function renderPart(
   type: ts.TypeNode,
   interfaces: ReadonlyMap<string, ts.InterfaceDeclaration>,
   aliases: ReadonlyMap<string, ts.TypeAliasDeclaration>,
   file: ts.SourceFile
 ): string {
-  if (ts.isParenthesizedTypeNode(type)) {
-    return renderPart(type.type, interfaces, aliases, file);
-  }
-  const name = referencedName(type);
-  if (name !== undefined && !(ts.isTypeReferenceNode(type) && type.typeArguments !== undefined)) {
-    const alias = aliases.get(name);
-    if (alias) {
-      return renderPart(alias.type, interfaces, aliases, file);
-    }
+  const unwrapped = unwrapTypeAlias(type, aliases);
+  if (unwrapped.resolvedName !== undefined) {
     return propertiesLiteral(
-      propertiesOf(name, interfaces).filter((property) => propertyName(property) !== "providers"),
+      propertiesOf(unwrapped.resolvedName, interfaces).filter((property) => propertyName(property) !== "providers"),
       file
     );
   }
-  if (ts.isIntersectionTypeNode(type)) {
-    return type.types.map((part) => renderPart(part, interfaces, aliases, file)).join(" & ");
+  const node = unwrapped.type;
+  if (ts.isIntersectionTypeNode(node)) {
+    return node.types.map((part) => renderPart(part, interfaces, aliases, file)).join(" & ");
   }
-  if (ts.isUnionTypeNode(type)) {
-    return `(${type.types.map((part) => renderPart(part, interfaces, aliases, file)).join(" | ")})`;
+  if (ts.isUnionTypeNode(node)) {
+    return `(${node.types.map((part) => renderPart(part, interfaces, aliases, file)).join(" | ")})`;
   }
-  if (ts.isTypeLiteralNode(type)) {
+  if (ts.isTypeLiteralNode(node)) {
     return propertiesLiteral(
-      type.members.flatMap((member) => {
+      node.members.flatMap((member) => {
         if (!ts.isPropertySignature(member)) {
           throw new Error(`Options type has a member that is not a property: ${member.getText(file)}`);
         }
@@ -271,7 +288,7 @@ function renderPart(
       file
     );
   }
-  throw new Error(`Cannot render options type ${type.getText(file)}`);
+  throw new Error(`Cannot render options type ${node.getText(file)}`);
 }
 
 function expandType(
@@ -280,17 +297,11 @@ function expandType(
   aliases: ReadonlyMap<string, ts.TypeAliasDeclaration>,
   file: ts.SourceFile
 ): ts.PropertySignature[] {
-  if (ts.isParenthesizedTypeNode(type)) {
-    return expandType(type.type, interfaces, aliases, file);
+  const unwrapped = unwrapTypeAlias(type, aliases);
+  if (unwrapped.resolvedName !== undefined) {
+    return propertiesOf(unwrapped.resolvedName, interfaces);
   }
-  const name = referencedName(type);
-  if (name !== undefined && !(ts.isTypeReferenceNode(type) && type.typeArguments !== undefined)) {
-    const alias = aliases.get(name);
-    if (alias) {
-      return expandType(alias.type, interfaces, aliases, file);
-    }
-    return propertiesOf(name, interfaces);
-  }
+  type = unwrapped.type;
   if (ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName) && type.typeName.text === "Omit") {
     const target = type.typeArguments?.[0];
     const keys = type.typeArguments?.[1];

@@ -1,6 +1,6 @@
 import type { InstallAdapter, InstallContext, JsonValue } from "@rivus/agent-kit-harness/spi";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
-import { elementMember, sharedAgentsDir, sharedSkillsDir } from "@rivus/agent-kit-harness/spi";
+import { elementMember, renderSharedSkill, sharedAgentsDir } from "@rivus/agent-kit-harness/spi";
 import type { HookRegistration } from "@rivus/agent-kit-harness/spi";
 import {
   KIMI_CONFIG_FILE,
@@ -61,9 +61,7 @@ export const kimiInstallAdapter: InstallAdapter = {
       agents: registration.agents
     }));
   },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderSkill: renderSharedSkill,
   hookSources: (context) => [
     { path: kimiConfigFile(context), format: KIMI_HOOK_FORMAT, layout: KIMI_HOOK_LAYOUT, pointer: KIMI_HOOKS_POINTER }
   ],

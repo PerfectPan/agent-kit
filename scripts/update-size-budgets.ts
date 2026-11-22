@@ -1,21 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import process from "node:process";
-import { parseArgs } from "node:util";
 
 import { parseMeasurements, rewriteLimits, SIZE_LIMIT_PACKAGES } from "./lib/size-budgets.ts";
-import { findRepositoryRoot } from "./lib/workspace.ts";
+import { exitOnHelp, findRepositoryRoot } from "./lib/workspace.ts";
 
 const USAGE = `usage: pnpm size:update
 Builds the published packages, measures every size-limit entry and sets each budget in their .size-limit.ts to the
 measured size plus 2%, at least 256 B.`;
 
-const { values } = parseArgs({ options: { help: { type: "boolean", short: "h" } } });
-if (values.help === true) {
-  console.log(USAGE);
-  process.exit(0);
-}
+exitOnHelp(USAGE);
 
 const root = findRepositoryRoot();
 

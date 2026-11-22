@@ -17,6 +17,14 @@ export async function readTree(dir: string, prefix: string): Promise<Record<stri
   return files;
 }
 
+/** Builds a `readUsageHome` helper for a provider's `test/fixtures/usage` tree under `<home>/<subdir>`. */
+export function usageHomeReader(
+  baseUrl: string,
+  subdir: string
+): (home: string) => Promise<Record<string, Uint8Array>> {
+  return (home) => readTree(fileURLToPath(new URL("fixtures/usage", baseUrl)), `${home}/${subdir}`);
+}
+
 /**
  * Where each agent's directory under `fixtures/usage` sits in a home. The fixtures cannot keep the home layout: the
  * repository check rejects tracked paths with a `.codex` or `tmp` segment, and Codex and Gemini CLI homes have them.

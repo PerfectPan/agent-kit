@@ -1,10 +1,8 @@
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
-  assignSeq,
-  baseEvent,
-  inheritTimes,
+  finalizeTranscriptEvents,
   lineId,
-  markOrphanToolResults,
+  pushRetainedEvent,
   shadowBefore,
   skipRecord,
   type ParsedTranscript,
@@ -37,20 +35,8 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
     body: TranscriptEventBody,
     ts: number,
     requestId?: string
-  ): TranscriptEvent | undefined => {
-    if (!retain) {
-      return undefined;
-    }
-    const id = lineId(record, partIndex);
-    const event = baseEvent(
-      record,
-      body.kind,
-      body.payload,
-      requestId === undefined ? { id, ts } : { id, ts, requestId }
-    );
-    events.push(event);
-    return event;
-  };
+  ): TranscriptEvent | undefined =>
+    pushRetainedEvent(events, retain, record, partIndex, body, definedFields({ ts, requestId }));
 
   return {
     step(record: SourcedRecord): AgyStep {
@@ -69,6 +55,19 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
         return push(record, partIndex++, body, ts, requestId);
       };
 
+      const emitRequest = (): string | undefined => {
+        const usage = agyUsageOf(step);
+        if (usage === undefined && step.model === undefined) {
+          return undefined;
+        }
+        const requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
+        emit(
+          { kind: "request", payload: definedFields({ granularity: "request" as const, model: step.model, usage }) },
+          requestId
+        );
+        return requestId;
+      };
+
       switch (step.type) {
         case "USER_INPUT": {
           pendingCalls.length = 0;
@@ -78,23 +77,8 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
           break;
         }
         case "PLANNER_RESPONSE": {
-          const usage = agyUsageOf(step);
           const stepKey = step.step_index ?? record.line;
-          let requestId: string | undefined;
-          if (usage !== undefined || step.model !== undefined) {
-            requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
-            emit(
-              {
-                kind: "request",
-                payload: definedFields({
-                  granularity: "request" as const,
-                  model: step.model,
-                  usage
-                })
-              },
-              requestId
-            );
-          }
+          const requestId = emitRequest();
           if (step.thinking !== undefined && step.thinking !== "") {
             emit({ kind: "reasoning", payload: { text: step.thinking } }, requestId);
           }
@@ -137,17 +121,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
           if (compaction !== undefined) {
             shadowBefore(events, compaction);
           }
-          const usage = agyUsageOf(step);
-          if (usage !== undefined || step.model !== undefined) {
-            const requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
-            emit(
-              {
-                kind: "request",
-                payload: definedFields({ granularity: "request" as const, model: step.model, usage })
-              },
-              requestId
-            );
-          }
+          emitRequest();
           break;
         }
         case "SYSTEM_MESSAGE": {
@@ -173,12 +147,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
     },
 
     finish(session, agents): ParsedTranscript {
-      const times = inheritTimes(events.map((event) => (event.ts > 0 ? event.ts : undefined)));
-      for (const [index, event] of events.entries()) {
-        event.ts = times[index]!;
-      }
-      markOrphanToolResults(events);
-      assignSeq(events);
+      finalizeTranscriptEvents(events);
       return {
         session,
         agents,

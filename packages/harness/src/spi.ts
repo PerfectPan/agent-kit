@@ -4,6 +4,9 @@ export {
   commandHook,
   configHome,
   groupedHooksFile,
+  renderBridgeHook,
+  renderGroupedJsonHooks,
+  renderSharedSkill,
   sharedAgentsDir,
   sharedSkillsDir
 } from "./domain/bundle/services/install-files.js";
@@ -48,6 +51,7 @@ export {
   finishSelectorsOf
 } from "./domain/lifecycle/spi/hook-dialect.js";
 export {
+  claudeShapedCoreEvents,
   claudeShapedField,
   claudeShapedFields,
   claudeShapedGateFields,

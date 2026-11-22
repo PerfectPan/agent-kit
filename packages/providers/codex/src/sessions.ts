@@ -5,9 +5,7 @@ import { previewCodexRecords } from "./sessions/preview.js";
 import { CODEX_CAPABILITIES, codexCapabilities, translateCodexRecords } from "./sessions/events.js";
 import { summarizeCodexRecords } from "./sessions/summarize.js";
 import {
-  type SessionPromptsOptions,
   type SessionRef,
-  type SessionSummaryWithPrompts,
   createTranscript,
   mergeByTime,
   type TimedRecord,
@@ -15,10 +13,9 @@ import {
   timedRecord,
   discoverSessions,
   readEdges,
-  catchIoFailure,
-  readJsonlRecords,
+  catchSessionRead,
   readJsonlStream,
-  readProgress,
+  readSessionJsonl,
   type LoadOptions,
   type SessionAdapter,
   type SessionPlatform,
@@ -32,10 +29,7 @@ async function loadCodex(
   ref: SessionRef,
   options: LoadOptions = {}
 ): Promise<Result<Transcript, SessionReadError>> {
-  const progress = readProgress(options.onProgress);
-  const read = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readJsonlRecords(guarded, ref.path, { signal: options.signal, progress })
-  );
+  const read = await readSessionJsonl(platform, ref.path, options);
   if (!read.ok) {
     return read;
   }
@@ -66,27 +60,6 @@ function timedLines(
   })();
 }
 
-/**
- * The summary in one bounded pass over the records, with the result `foldTranscript(load(...))` gives. Unlike
- * `loadCodex` it holds no records: the fork replay's end is decided in a first streaming read, and the fold keeps
- * only the running numbers.
- */
-async function summarizeCodex(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  signal: AbortSignal | undefined,
-  prompts: SessionPromptsOptions | undefined
-): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
-  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
-    signal?.throwIfAborted();
-    return summarizeCodexRecords(() => timedLines(guarded, ref.path, signal), prompts === undefined ? {} : { prompts });
-  });
-  if (!read.ok) {
-    return read;
-  }
-  return read.value;
-}
-
 export const codexSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: AGENT,
@@ -108,7 +81,13 @@ export const codexSessionAdapter: SessionAdapter = {
     return looksLikeCodexSession(ref.path, (await readEdges(platform, ref.path))?.head);
   },
   load: loadCodex,
-  summarize: (platform, ref, options = {}) => summarizeCodex(platform, ref, options.signal, options.prompts)
+  summarize: (platform, ref, options = {}) =>
+    catchSessionRead(platform, ref.path, options.signal, (guarded) =>
+      summarizeCodexRecords(
+        () => timedLines(guarded, ref.path, options.signal),
+        options.prompts === undefined ? {} : { prompts: options.prompts }
+      )
+    )
 };
 
 export { CODEX_CAPABILITIES, translateCodexRecords, type CodexTranslateOptions } from "./sessions/events.js";

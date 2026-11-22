@@ -292,9 +292,6 @@ export function translateCodexRecords(
 
   shadowCompactions(events, emitted);
   linkSpawns(events, translation.agents, translation.agentByPath, emitted);
-  markOrphanToolResults(events);
-  assignSeq(events);
-  const skipped = translation.skipped.map(({ reason, record }) => ({ reason, source: sourceOf(record) }));
   const session: TranscriptSession = {
     id:
       sessionId ?? (options.path === undefined ? undefined : codexSessionStem(options.path) || "unknown") ?? "unknown",
@@ -304,9 +301,11 @@ export function translateCodexRecords(
     ...(endedAt === undefined ? {} : { endedAt }),
     ...(systemPrompt ? { systemPrompt } : {})
   };
+  markOrphanToolResults(events);
+  assignSeq(events);
   return ok({
     events,
-    skipped,
+    skipped: translation.skipped.map(({ reason, record }) => ({ reason, source: sourceOf(record) })),
     session,
     agents: [...translation.agents],
     ...(agentVersion ? { agentVersion } : {})

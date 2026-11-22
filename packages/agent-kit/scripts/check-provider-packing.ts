@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseSync } from "oxc-parser";
 
 import type { Provider } from "../src/providers.js";
+import { reachableDistFiles } from "./check-dist-lib.ts";
 
 type OrdinaryService = Exclude<keyof Provider, "id" | "usage">;
 const services = new Map<string, OrdinaryService>([
@@ -17,21 +18,20 @@ const services = new Map<string, OrdinaryService>([
   ["acpTable", "acp"]
 ]);
 
-const dist = fileURLToPath(new URL("../dist/", import.meta.url));
+const packageRoot = fileURLToPath(new URL("..", import.meta.url));
+const dist = resolve(packageRoot, "dist");
 const { builtinProviders } = (await import(pathToFileURL(resolve(dist, "providers.js")).href)) as {
   builtinProviders: readonly Provider[];
 };
-const seen = new Set<string>();
 const covered = new Set<OrdinaryService>();
-const queue = ["discovery", "harness", "sessions", "transcript", "acp", "testing"].map((entry) =>
-  resolve(dist, `${entry}.js`)
-);
-// Follow emitted imports rather than chunk filenames: a separate providers pack must fail reference equality.
-for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
-  if (seen.has(file)) {
-    continue;
+const reachable = new Set<string>();
+for (const entry of ["discovery", "harness", "sessions", "transcript", "acp", "testing"]) {
+  for (const rel of reachableDistFiles(packageRoot, resolve(dist, `${entry}.js`))) {
+    reachable.add(resolve(dist, rel));
   }
-  seen.add(file);
+}
+// Follow emitted imports rather than chunk filenames: a separate providers pack must fail reference equality.
+for (const file of reachable) {
   const parsed = parseSync(file, readFileSync(file, "utf8"));
   assert.deepEqual(parsed.errors, []);
   for (const node of parsed.program.body) {
@@ -39,7 +39,6 @@ for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
       continue;
     }
     const target = resolve(dirname(file), node.source.value);
-    queue.push(target);
     for (const specifier of node.specifiers) {
       const service = services.get(specifier.local.name);
       if (specifier.type !== "ImportSpecifier" || service === undefined) {

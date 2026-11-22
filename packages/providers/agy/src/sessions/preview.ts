@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import type { SessionPreview } from "@rivus/agent-kit-sessions/spi";
 import { agyRecordTime, agyStepOf } from "../records.js";
 
@@ -23,9 +24,5 @@ export function previewAgyRecords(records: readonly Record<string, unknown>[]): 
       firstPrompt = step.content.slice(0, 500);
     }
   }
-  return {
-    ...(firstPrompt !== undefined ? { firstPrompt } : {}),
-    ...(startedAt !== undefined ? { startedAt } : {}),
-    ...(lastAt !== undefined ? { lastAt } : {})
-  };
+  return definedFields({ firstPrompt, startedAt, lastAt });
 }

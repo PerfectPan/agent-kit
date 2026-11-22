@@ -1,4 +1,11 @@
-import type { FieldSource, HookOutput, HookTimeout, LifecycleSwitch, PayloadFields } from "./hook-dialect.js";
+import type {
+  FieldSource,
+  HookEventSpec,
+  HookOutput,
+  HookTimeout,
+  LifecycleSwitch,
+  PayloadFields
+} from "./hook-dialect.js";
 
 /**
  * The hook shapes the agents that follow Claude Code's convention share, as
@@ -75,3 +82,23 @@ export const claudeShapedSecondsTimeout: HookTimeout = {
   unit: "seconds",
   default: 600
 };
+
+/** The core tool-and-prompt lifecycle events shared by Claude Code and its direct followers (e.g. Qoder). */
+export function claudeShapedCoreEvents(output: HookOutput): Record<string, HookEventSpec> {
+  return {
+    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: withPlainStdoutContext(output) },
+    PreToolUse: {
+      lifecycle: { phase: "activity" },
+      gate: true,
+      output: { ...output, fields: claudeShapedGateFields }
+    },
+    PermissionRequest: {
+      lifecycle: { phase: "blocked", blocker: "permission" },
+      gate: true,
+      output: { ...output, exitCode2: "proceed", fields: claudeShapedPermissionFields }
+    },
+    PermissionDenied: { lifecycle: { phase: "activity" } },
+    PostToolUse: { lifecycle: { phase: "activity" } },
+    PostToolUseFailure: { lifecycle: { phase: "activity" } }
+  };
+}

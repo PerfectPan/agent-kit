@@ -1,9 +1,8 @@
 import { CLAUDE_CODE_ID, CLAUDE_CODE_SESSION_ENV } from "./facts.js";
 import {
+  claudeShapedCoreEvents,
   claudeShapedFields,
-  claudeShapedGateFields,
   claudeShapedHookOutput,
-  claudeShapedPermissionFields,
   claudeShapedSecondsTimeout,
   claudeShapedSessionId,
   claudeShapedSessionStartLifecycle,
@@ -48,29 +47,7 @@ export const claudeCodeHookDialect: HookDialect = {
       // Plain-text stdout becomes context for Claude here; `{}` is JSON and adds nothing.
       output: withPlainStdoutContext(OUTPUT)
     },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: withPlainStdoutContext(OUTPUT) },
-    PreToolUse: {
-      lifecycle: { phase: "activity" },
-      gate: true,
-      // Silence decides nothing ("staying silent doesn't approve it"); the permission flow continues.
-      output: {
-        ...OUTPUT,
-        fields: claudeShapedGateFields
-      }
-    },
-    PermissionRequest: {
-      lifecycle: { phase: "blocked", blocker: "permission" },
-      gate: true,
-      // Only `hookSpecificOutput.decision` denies; exit code 2 is ignored and the dialog shows as usual.
-      output: {
-        ...OUTPUT,
-        exitCode2: "proceed",
-        fields: claudeShapedPermissionFields
-      }
-    },
-    PermissionDenied: { lifecycle: { phase: "activity" } },
-    PostToolUse: { lifecycle: { phase: "activity" } },
-    PostToolUseFailure: { lifecycle: { phase: "activity" } },
+    ...claudeShapedCoreEvents(OUTPUT),
     PostToolBatch: { lifecycle: { phase: "activity" } },
     Notification: {
       // permission_prompt arrives about 6 s after the dialog; idle_prompt about 60 s after Claude finished, which

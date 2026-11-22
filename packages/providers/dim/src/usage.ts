@@ -1,17 +1,15 @@
-import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
 import * as z from "zod/mini";
 import {
+  applyUsageRecordMeta,
   decodeSqliteAppendLog,
   lenient,
-  sqliteMessageSource,
+  sqliteHomeSources,
+  yieldUsageSources,
   type DecodeUsageOptions,
-  type ReadFailed,
   type SqliteAppendRow,
   type UsageDecoder,
   type UsagePlatform,
   type UsageRecord,
-  type UsageSource,
-  type UsageSourceFailure,
   type UsageStream,
   usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
@@ -56,32 +54,11 @@ export function dimLedgerRecord(value: unknown, row: SqliteAppendRow): UsageReco
     usage,
     source: row.source
   };
-  if (meta?.modelId) {
-    record.model = meta.modelId;
-  }
-  if (meta?.providerId) {
-    record.provider = meta.providerId;
-  }
-  if (meta?.cost !== undefined) {
-    record.costUsd = meta.cost;
-    record.costSource = "agent";
-  }
-  return record;
-}
-
-/** The `ReadFailed` a decode yields for an error the platform did not classify: the thrown value's message, kept for the report. */
-function readFailed(path: string, cause: unknown): ReadFailed {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
-}
-
-/** The database's source; a missing database is no source, and a missing home is a `RootMissing` failure. */
-async function listSources(platform: UsagePlatform, home: AgentHome): Promise<(UsageSource | UsageSourceFailure)[]> {
-  const source = await sqliteMessageSource(platform, DIM_ID, dimDatabasePath(home), DIM_WAL_SUFFIX);
-  if (source !== undefined) {
-    return [source];
-  }
-  const present = (await platform.fs.stat(home.path, { followSymlinks: true })) !== undefined;
-  return present ? [] : [{ agent: DIM_ID, path: home.path, error: { _tag: "RootMissing", path: home.path } }];
+  return applyUsageRecordMeta(record, {
+    model: meta?.modelId,
+    provider: meta?.providerId,
+    cost: meta?.cost
+  });
 }
 
 /** The ledger rows of the database, in insert order, through the agent's row rules. */
@@ -109,21 +86,13 @@ export const dimUsageDecoder: UsageDecoder = {
   agent: DIM_ID,
   home: DIM_HOME,
   usageKey: usageWindowKey,
-  async *sources(platform, home, options = {}) {
-    const { since, signal } = options;
-    signal?.throwIfAborted();
-    let found: (UsageSource | UsageSourceFailure)[];
-    try {
-      found = await listSources(platform, home);
-    } catch (error) {
-      signal?.throwIfAborted();
-      found = [{ agent: DIM_ID, path: home.path, error: readFailed(home.path, error) }];
-    }
-    for (const item of found) {
-      if ("error" in item || since === undefined || item.mtimeMs >= since) {
-        yield item;
-      }
-    }
+  sources(platform, home, options = {}) {
+    return yieldUsageSources(
+      DIM_ID,
+      home.path,
+      () => sqliteHomeSources(platform, DIM_ID, home.path, dimDatabasePath(home), DIM_WAL_SUFFIX),
+      options
+    );
   },
   decode(platform, target, options = {}) {
     return decodeDatabase(platform, target.path, options);

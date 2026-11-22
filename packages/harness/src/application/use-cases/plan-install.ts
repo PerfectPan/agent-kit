@@ -151,8 +151,26 @@ export function planSetup(options: {
   });
 }
 
-export function adapterOf(setup: PlanSetup, agent: CodingAgentId): InstallAdapter {
+function adapterOf(setup: PlanSetup, agent: CodingAgentId): InstallAdapter {
   return requireService(agent, setup.adapters, "has no install adapter");
+}
+
+export function loadPlanSetup(
+  options: ScopeOptions & { readonly agents: readonly CodingAgentId[]; readonly providers: InstallProviders }
+): Effect.Effect<
+  { readonly setup: PlanSetup; readonly scope: LedgerScope; readonly loaded: LoadedLedger },
+  LedgerReadError,
+  PlatformService | LedgerRepository
+> {
+  return Effect.gen(function* () {
+    const setup = yield* planSetup(options);
+    for (const agent of options.agents) {
+      adapterOf(setup, agent);
+    }
+    const scope = yield* ledgerScope(options);
+    const loaded = yield* loadLedger(scope);
+    return { setup, scope, loaded };
+  });
 }
 
 /** Only the user scope has built-in adapters; a project scope needs adapters that know project paths. */
@@ -584,12 +602,8 @@ export function planInstall(
   return Effect.gen(function* () {
     requireUserScope(options);
     const checked = yield* fromResult(Bundle.restore(bundle));
-    const setup = yield* planSetup(options);
-    for (const agent of options.agents) {
-      adapterOf(setup, agent);
-    }
-    const scope = yield* ledgerScope(options);
-    let loaded = yield* loadLedger(scope);
+    const { setup, scope, loaded: initial } = yield* loadPlanSetup(options);
+    let loaded = initial;
     if (loaded.ledger.pending.length > 0) {
       const registrations = registrationLookup(setup.adapters, setup.context);
       const waitMs = options.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS;

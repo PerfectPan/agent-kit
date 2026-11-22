@@ -1,9 +1,8 @@
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/public";
 
 import type { InvalidLedger } from "../errors/invalid-ledger.js";
-import { ArtifactLocator } from "../../install-plan/value-objects/artifact-locator.js";
+import { ArtifactLocator, type ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 import type { OwnerSnapshot } from "../../bundle/value-objects/owner.js";
-import type { ArtifactLocatorSnapshot } from "../../install-plan/value-objects/artifact-locator.js";
 
 /**
  * An Artifact an owner let go of on removal because the user had changed it: it stays on disk as the user's. No later

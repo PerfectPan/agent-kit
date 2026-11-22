@@ -54,7 +54,6 @@
     "@size-limit/preset-small-lib": "catalog:",
     "@types/node": "catalog:",
     "effect": "catalog:",
-    "oxc-parser": "catalog:",
     "publint": "catalog:",
     "size-limit": "catalog:",
     "typescript": "catalog:",

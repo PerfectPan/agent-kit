@@ -7,6 +7,8 @@ import { rememberKey } from "../../../lib/remember-key.js";
 import { decodeIsFinal } from "../../../domain/usage/services/quiet.js";
 import { type ReadFailed } from "../../../domain/session/errors/session-read-error.js";
 import { type UsageRecord } from "../../../domain/usage/value-objects/usage-record.js";
+import { type Usage } from "../../../domain/usage/value-objects/usage.js";
+import { type SqliteSessionMessage } from "../session-adapters/sqlite.js";
 import { type SourcePointer } from "../../../domain/transcript/value-objects/source-pointer.js";
 import { guardIo } from "../files/io-failure.js";
 import { drain, usageStreamOf } from "./files.js";
@@ -16,6 +18,8 @@ import type {
   UsageDecodeFailure,
   UsagePlatform,
   UsageSource,
+  UsageSourceFailure,
+  UsageSourceOptions,
   UsageStream
 } from "../../spi.js";
 
@@ -267,6 +271,168 @@ export async function sqliteMessageSource(
   };
 }
 
+/** The database's source when present; otherwise `[]` if `homePath` exists, or a `RootMissing` failure. */
+export async function sqliteHomeSources(
+  platform: Pick<UsagePlatform, "fs">,
+  agent: CodingAgentId,
+  homePath: string,
+  dbPath: string,
+  walSuffix: string
+): Promise<(UsageSource | UsageSourceFailure)[]> {
+  const source = await sqliteMessageSource(platform, agent, dbPath, walSuffix);
+  if (source !== undefined) {
+    return [source];
+  }
+  const present = (await platform.fs.stat(homePath, { followSymlinks: true })) !== undefined;
+  return present ? [] : [{ agent, path: homePath, error: { _tag: "RootMissing", path: homePath } }];
+}
+
+/** The `ReadFailed` a decode yields for a SQLite error the platform did not classify: the thrown value's message, kept for the report. */
+function readFailed(path: string, cause: unknown): ReadFailed {
+  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
+}
+
+/** Lists usage sources, converting unclassified errors to `ReadFailed` and filtering non-failures by `options.since`. */
+export async function* yieldUsageSources(
+  agent: CodingAgentId,
+  homePath: string,
+  list: () => Promise<(UsageSource | UsageSourceFailure)[]>,
+  options: UsageSourceOptions = {}
+): AsyncGenerator<UsageSource | UsageSourceFailure, void, void> {
+  const { since, signal } = options;
+  signal?.throwIfAborted();
+  let found: (UsageSource | UsageSourceFailure)[];
+  try {
+    found = await list();
+  } catch (error) {
+    signal?.throwIfAborted();
+    found = [{ agent, path: homePath, error: readFailed(homePath, error) }];
+  }
+  for (const item of found) {
+    if ("error" in item || since === undefined || item.mtimeMs >= since) {
+      yield item;
+    }
+  }
+}
+
+/** Attaches optional model, provider, and agent-reported cost fields to a `UsageRecord`. */
+export function applyUsageRecordMeta(
+  record: UsageRecord,
+  meta: { readonly model?: string; readonly provider?: string; readonly cost?: number }
+): UsageRecord {
+  if (meta.model) {
+    record.model = meta.model;
+  }
+  if (meta.provider) {
+    record.provider = meta.provider;
+  }
+  if (meta.cost !== undefined) {
+    record.costUsd = meta.cost;
+    record.costSource = "agent";
+  }
+  return record;
+}
+
+const SqliteTokens = z.looseObject({
+  input: lenient(z.number()),
+  output: lenient(z.number()),
+  reasoning: lenient(z.number()),
+  total: lenient(z.number()),
+  cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
+});
+
+/** The `tokens` object the opencode-family stores (opencode, ZCode), as the schema reads it. */
+export interface SqliteMessageTokens {
+  input?: number;
+  output?: number;
+  reasoning?: number;
+  total?: number;
+  cache?: { read?: number; write?: number };
+}
+
+/** The parsed `tokens` of a stored message, or undefined when the field is absent or malformed. */
+export function sqliteMessageTokensOf(value: unknown): SqliteMessageTokens | undefined {
+  return z.safeParse(SqliteTokens, value).data;
+}
+
+const SqliteStoredMessage = z.looseObject({
+  id: lenient(z.string()),
+  role: lenient(z.string()),
+  sessionID: lenient(z.string()),
+  modelId: lenient(z.string()),
+  modelID: lenient(z.string()),
+  providerId: lenient(z.string()),
+  providerID: lenient(z.string()),
+  finish: lenient(z.string()),
+  cost: lenient(z.number()),
+  time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) })),
+  tokens: lenient(z.unknown())
+});
+
+/** A stored `message` row's JSON as the shared SQLite session reader reads it. */
+export function sqliteSessionMessageOf(
+  value: unknown,
+  usageOf: (tokens: SqliteMessageTokens | undefined) => Usage | undefined
+): SqliteSessionMessage | undefined {
+  const message = z.safeParse(SqliteStoredMessage, value).data;
+  if (message?.role === undefined) {
+    return undefined;
+  }
+  return {
+    role: message.role,
+    model: message.modelId ?? message.modelID,
+    finish: message.finish,
+    created: message.time?.created,
+    usage: usageOf(sqliteMessageTokensOf(message.tokens))
+  };
+}
+
+/**
+ * The usage of one stored message of the opencode family: `undefined` for a message that is not an assistant's or has
+ * no token counts, and `running` for an assistant message without a completion time while the store is not settled.
+ * A settled one counts at its creation time. `usageOf` turns the parsed `tokens` into the kit's counts; with
+ * `messageIds` the message's own `id` and `sessionID` win over the row's columns.
+ */
+export function sqliteStoredMessageUsage(
+  agent: CodingAgentId,
+  value: unknown,
+  row: SqliteMessageRow,
+  options: {
+    readonly usageOf: (tokens: SqliteMessageTokens | undefined) => Usage | undefined;
+    readonly messageIds: boolean;
+  }
+): UsageRecord | "running" | undefined {
+  const message = z.safeParse(SqliteStoredMessage, value).data;
+  if (message?.role !== "assistant") {
+    return undefined;
+  }
+  const timestamp =
+    message.time?.completed ?? (row.settledAt === undefined ? undefined : (message.time?.created ?? row.settledAt));
+  if (timestamp === undefined) {
+    return "running";
+  }
+  const usage = options.usageOf(sqliteMessageTokensOf(message.tokens));
+  if (!usage) {
+    return undefined;
+  }
+  const id = (options.messageIds ? message.id : undefined) ?? row.id;
+  const sessionId = (options.messageIds ? message.sessionID : undefined) ?? row.sessionId ?? "unknown";
+  const record: UsageRecord = {
+    agent,
+    sessionId,
+    granularity: "request",
+    ...(id ? { requestId: id } : {}),
+    timestamp,
+    usage,
+    source: row.source
+  };
+  return applyUsageRecordMeta(record, {
+    model: message.modelId ?? message.modelID,
+    provider: message.providerId ?? message.providerID,
+    cost: message.cost
+  });
+}
+
 /** What a decode of an agent's message database reads, besides the provider's own row decoding. */
 export interface SqliteMessagesRequest {
   readonly agent: CodingAgentId;
@@ -277,19 +443,23 @@ export interface SqliteMessagesRequest {
   readonly options: DecodeUsageOptions;
 }
 
-/** The `ReadFailed` a decode yields for a SQLite error the platform did not classify: the thrown value's message, kept for the report. */
-function readFailed(path: string, cause: unknown): ReadFailed {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
+interface SqliteStreamContext {
+  readonly source: UsageSource;
+  readonly queue: UsageRecord[];
+  readonly query: (sql: string, ...params: SqliteValue[]) => Record<string, SqliteValue>[];
+  readonly setSaveState: (save: () => unknown) => void;
 }
 
-/**
- * The finished assistant messages of an agent's `message` table, in the order they last changed, through the
- * settlement rules: this decoder only pages the queries and feeds their rows to `decode`. A running message is not
- * reported yet: it changes again when it finishes and is read then. A decode of a quiet database is final, so a
- * message that never finished counts at its creation time. The first read goes by row id, a single pass over the
- * table; a continuing one reads the rows changed after the newest change the previous decode saw.
- */
-export function decodeSqliteMessages(decode: SqliteMessageDecode, request: SqliteMessagesRequest): UsageStream {
+function runSqliteUsageStream(
+  request: {
+    readonly agent: CodingAgentId;
+    readonly platform: UsagePlatform;
+    readonly path: string;
+    readonly walSuffix: string;
+    readonly options: DecodeUsageOptions;
+  },
+  body: (ctx: SqliteStreamContext) => AsyncGenerator<UsageRecord | UsageDecodeFailure, void, void>
+): UsageStream {
   const { agent, platform, path, walSuffix, options } = request;
   const { from, signal } = options;
   const fail = (error: UsageDecodeError): UsageDecodeFailure => ({ agent, path, error });
@@ -317,26 +487,16 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
       yield fail({ _tag: "SessionNotFound", path });
       return;
     }
-    const changed = source.mtimeMs;
-    const final = decodeIsFinal(options, changed);
-    const settlement = createSqliteSettlement(
-      decode,
-      definedFields({
-        path,
-        state: from?.state,
-        final
-      })
-    );
     const queue: UsageRecord[] = [...(from?.queue ?? [])];
+    let saveState: () => unknown = () => from?.state;
     position.cursor = () =>
       definedFields({
         agent,
         offset: 0,
         line: 0,
-        state: settlement.save(),
+        state: saveState(),
         queue: queue.length > 0 ? [...queue] : undefined
       });
-    yield* drain(queue);
     const sqliteErrors = new WeakSet<object>();
     let db: SqliteDatabase | undefined;
     const query = (sql: string, ...params: SqliteValue[]): Record<string, SqliteValue>[] => {
@@ -351,6 +511,49 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
         throw error;
       }
     };
+    try {
+      yield* body({
+        source,
+        queue,
+        query,
+        setSaveState: (save) => {
+          saveState = save;
+        }
+      });
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (typeof error !== "object" || error === null || !sqliteErrors.has(error)) {
+        throw error;
+      }
+      yield fail(readFailed(path, error));
+    } finally {
+      db?.close();
+    }
+  }, from);
+}
+
+/**
+ * The finished assistant messages of an agent's `message` table, in the order they last changed, through the
+ * settlement rules: this decoder only pages the queries and feeds their rows to `decode`. A running message is not
+ * reported yet: it changes again when it finishes and is read then. A decode of a quiet database is final, so a
+ * message that never finished counts at its creation time. The first read goes by row id, a single pass over the
+ * table; a continuing one reads the rows changed after the newest change the previous decode saw.
+ */
+export function decodeSqliteMessages(decode: SqliteMessageDecode, request: SqliteMessagesRequest): UsageStream {
+  const { path, options } = request;
+  const { from, signal } = options;
+  return runSqliteUsageStream(request, async function* ({ source, queue, query, setSaveState }) {
+    const final = decodeIsFinal(options, source.mtimeMs);
+    const settlement = createSqliteSettlement(
+      decode,
+      definedFields({
+        path,
+        state: from?.state,
+        final
+      })
+    );
+    setSaveState(() => settlement.save());
+    yield* drain(queue);
     const earliest = sqliteQueryFloor(options.since);
     const toRows = (rows: Record<string, SqliteValue>[]): SqliteTableRow[] =>
       rows.map((row) => {
@@ -364,46 +567,35 @@ export function decodeSqliteMessages(decode: SqliteMessageDecode, request: Sqlit
           data: String(row.data)
         });
       });
-    try {
-      // The first read goes by row id, a single pass over the table; the following pages go by the newest change.
-      // The settled records go through `queue`, so the ones a loop left early keeps are saved with the cursor.
-      while (settlement.position().row !== undefined) {
-        signal?.throwIfAborted();
-        const at = settlement.position().row!;
-        const rows = query(SQLITE_MESSAGES_BY_ROW, at, earliest, SQLITE_PAGE_ROWS);
-        queue.push(...settlement.push(toRows(rows)));
-        yield* drain(queue);
-        if (rows.length < SQLITE_PAGE_ROWS) {
-          settlement.endByRow();
-        }
-      }
-      for (;;) {
-        signal?.throwIfAborted();
-        const at = settlement.position();
-        const rows = query(SQLITE_MESSAGE_PAGE, at.updated, at.updated, at.id, earliest, SQLITE_PAGE_ROWS);
-        queue.push(...settlement.push(toRows(rows)));
-        yield* drain(queue);
-        if (rows.length < SQLITE_PAGE_ROWS) {
-          break;
-        }
-      }
-      const running = settlement.runningIds();
-      if (final && running.length > 0) {
-        const rows = query(sqliteMessagesById(running.length), ...running);
-        queue.push(...settlement.end(toRows(rows)));
-        yield* drain(queue);
-      }
-    } catch (error) {
+    // The first read goes by row id, a single pass over the table; the following pages go by the newest change.
+    // The settled records go through `queue`, so the ones a loop left early keeps are saved with the cursor.
+    while (settlement.position().row !== undefined) {
       signal?.throwIfAborted();
-      // WeakSet bookkeeping only; the thrown value is not parsed or changed.
-      if (typeof error !== "object" || error === null || !sqliteErrors.has(error)) {
-        throw error;
+      const at = settlement.position().row!;
+      const rows = query(SQLITE_MESSAGES_BY_ROW, at, earliest, SQLITE_PAGE_ROWS);
+      queue.push(...settlement.push(toRows(rows)));
+      yield* drain(queue);
+      if (rows.length < SQLITE_PAGE_ROWS) {
+        settlement.endByRow();
       }
-      yield fail(readFailed(path, error));
-    } finally {
-      db?.close();
     }
-  }, from);
+    for (;;) {
+      signal?.throwIfAborted();
+      const at = settlement.position();
+      const rows = query(SQLITE_MESSAGE_PAGE, at.updated, at.updated, at.id, earliest, SQLITE_PAGE_ROWS);
+      queue.push(...settlement.push(toRows(rows)));
+      yield* drain(queue);
+      if (rows.length < SQLITE_PAGE_ROWS) {
+        break;
+      }
+    }
+    const running = settlement.runningIds();
+    if (final && running.length > 0) {
+      const rows = query(sqliteMessagesById(running.length), ...running);
+      queue.push(...settlement.end(toRows(rows)));
+      yield* drain(queue);
+    }
+  });
 }
 
 /** One row of an append-only usage log, as the ledger rules read it. */
@@ -492,105 +684,50 @@ function appendCreated(value: SqliteValue | undefined): number {
  * left early keeps are saved with the cursor.
  */
 export function decodeSqliteAppendLog(decode: SqliteAppendDecode, request: SqliteAppendLogRequest): UsageStream {
-  const { agent, platform, path, walSuffix, columns, options } = request;
+  const { path, columns, options } = request;
   const { from, since, signal } = options;
-  const fail = (error: UsageDecodeError): UsageDecodeFailure => ({ agent, path, error });
-  return usageStreamOf(async function* (position) {
-    const sqlite = platform.sqlite;
-    if (!sqlite) {
-      yield fail({ _tag: "SqliteUnavailable", path });
-      return;
-    }
-    const io = guardIo(platform);
-    let source: UsageSource | undefined;
-    try {
-      source = await sqliteMessageSource(io.platform, agent, path, walSuffix);
-    } catch (error) {
-      signal?.throwIfAborted();
-      const failure = io.failure(error, path);
-      if (!failure) {
-        throw error;
-      }
-      yield fail(failure);
-      return;
-    }
-    if (source === undefined) {
-      yield fail({ _tag: "SessionNotFound", path });
-      return;
-    }
+  return runSqliteUsageStream(request, async function* ({ queue, query, setSaveState }) {
     // The ledger cursor is the row id it last read; an absent or unparsable row rescans the table from the start.
     const saved = z.safeParse(SqliteSavedSettlement, from?.state).data;
     let lastRow = typeof saved?.row === "number" ? saved.row : undefined;
     let lastId = typeof saved?.row === "number" ? (saved.id ?? "") : "";
-    const queue: UsageRecord[] = [...(from?.queue ?? [])];
-    position.cursor = () =>
-      definedFields({
-        agent,
-        offset: 0,
-        line: 0,
-        state: definedFields({ updated: 0, id: lastId, row: lastRow }),
-        queue: queue.length > 0 ? [...queue] : undefined
-      });
+    setSaveState(() => definedFields({ updated: 0, id: lastId, row: lastRow }));
     yield* drain(queue);
-    const sqliteErrors = new WeakSet<object>();
-    let db: SqliteDatabase | undefined;
-    const query = (sql: string, ...params: SqliteValue[]): Record<string, SqliteValue>[] => {
-      try {
-        db ??= sqlite.open(path, { readonly: true });
-        return db.prepare(sql).all(...params);
-      } catch (error) {
-        // WeakSet bookkeeping only; the thrown value is not parsed or changed.
-        if (typeof error === "object" && error !== null) {
-          sqliteErrors.add(error);
-        }
-        throw error;
-      }
-    };
     const page = sqliteAppendPage(columns, SQLITE_PAGE_ROWS);
-    try {
-      for (;;) {
-        signal?.throwIfAborted();
-        const rows = query(page, lastRow ?? 0);
-        for (const raw of rows) {
-          const row: SqliteAppendRow = {
-            id: String(raw.id),
-            row: Number(raw.row),
-            sessionId: z.safeParse(appendRow, raw).data?.session_id,
-            created: appendCreated(raw.created),
-            data: String(raw.data),
-            raw,
-            source: { file: path, offset: 0, length: 0, line: Number(raw.row) }
-          };
-          lastRow = row.row;
-          lastId = row.id;
-          // A row of a table with no creation column must reach decode: its records carry their own timestamps.
-          if (since !== undefined && columns.created !== undefined && row.created > 0 && row.created < since) {
-            continue;
-          }
-          let value: unknown;
-          try {
-            value = JSON.parse(row.data) as unknown;
-          } catch {
-            continue;
-          }
-          const record = decode(value, row);
-          if (record) {
-            queue.push(record);
-          }
-        }
-        yield* drain(queue);
-        if (rows.length < SQLITE_PAGE_ROWS) {
-          break;
-        }
-      }
-    } catch (error) {
+    for (;;) {
       signal?.throwIfAborted();
-      if (typeof error !== "object" || error === null || !sqliteErrors.has(error)) {
-        throw error;
+      const rows = query(page, lastRow ?? 0);
+      for (const raw of rows) {
+        const row: SqliteAppendRow = {
+          id: String(raw.id),
+          row: Number(raw.row),
+          sessionId: z.safeParse(appendRow, raw).data?.session_id,
+          created: appendCreated(raw.created),
+          data: String(raw.data),
+          raw,
+          source: { file: path, offset: 0, length: 0, line: Number(raw.row) }
+        };
+        lastRow = row.row;
+        lastId = row.id;
+        // A row of a table with no creation column must reach decode: its records carry their own timestamps.
+        if (since !== undefined && columns.created !== undefined && row.created > 0 && row.created < since) {
+          continue;
+        }
+        let value: unknown;
+        try {
+          value = JSON.parse(row.data) as unknown;
+        } catch {
+          continue;
+        }
+        const record = decode(value, row);
+        if (record) {
+          queue.push(record);
+        }
       }
-      yield fail(readFailed(path, error));
-    } finally {
-      db?.close();
+      yield* drain(queue);
+      if (rows.length < SQLITE_PAGE_ROWS) {
+        break;
+      }
     }
-  }, from);
+  });
 }

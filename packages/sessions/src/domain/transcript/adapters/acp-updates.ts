@@ -361,6 +361,17 @@ export function createAcpPartTranslator(
     const { callId: toolCallId, name: toolName } = state;
     // mergeAcpToolUpdate keeps `title` different from `name`, and clears it when a later title equals the name.
     const title = state.title;
+    const pushInputAvailable = (): void => {
+      parts.push(
+        definedFields({
+          type: "tool-input-available",
+          toolCallId,
+          toolName,
+          input: state.args,
+          title
+        } satisfies TranscriptStreamPart)
+      );
+    };
     if (first) {
       mentioned.add(toolCallId);
       parts.push(
@@ -369,15 +380,7 @@ export function createAcpPartTranslator(
       // A title change is reported even without new input, so a live fold sees the latest display title (S89); a
       // `tool-input-available` without `title` is what tells the folder the earlier title is gone.
       if (supplied(update.rawInput) || state.title !== prevTitle) {
-        parts.push(
-          definedFields({
-            type: "tool-input-available",
-            toolCallId,
-            toolName,
-            input: state.args,
-            title
-          } satisfies TranscriptStreamPart)
-        );
+        pushInputAvailable();
       }
     } else if (!mentioned.has(toolCallId)) {
       // A turn's deltas are self-contained: a call an earlier turn introduced still opens with its start and its
@@ -387,25 +390,9 @@ export function createAcpPartTranslator(
       parts.push(
         definedFields({ type: "tool-input-start", toolCallId, toolName, title } satisfies TranscriptStreamPart)
       );
-      parts.push(
-        definedFields({
-          type: "tool-input-available",
-          toolCallId,
-          toolName,
-          input: state.args,
-          title
-        } satisfies TranscriptStreamPart)
-      );
+      pushInputAvailable();
     } else if (supplied(update.rawInput) || state.title !== prevTitle) {
-      parts.push(
-        definedFields({
-          type: "tool-input-available",
-          toolCallId,
-          toolName,
-          input: state.args,
-          title
-        } satisfies TranscriptStreamPart)
-      );
+      pushInputAvailable();
     }
     if (isAcpToolDone(state) && !ended.has(toolCallId)) {
       ended.add(toolCallId);

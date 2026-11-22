@@ -1,20 +1,10 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
+import { readTree } from "../../../testing/test/support.js";
 
 export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  const root = fileURLToPath(new URL("fixtures/usage", import.meta.url));
-  const files: Record<string, Uint8Array> = {};
-  for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
-    if (entry.isFile()) {
-      const path = join(entry.parentPath, entry.name);
-      files[`${home}/.gemini/tmp/${relative(root, path).split(sep).join("/")}`] = await readFile(path);
-    }
-  }
-  return files;
+  return readTree(fileURLToPath(new URL("fixtures/usage", import.meta.url)), `${home}/.gemini/tmp`);
 }
-
-import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
 
 /** The Gemini CLI fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function geminiSessions(root: string): ConformanceSession[] {

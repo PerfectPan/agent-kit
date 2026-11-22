@@ -5,12 +5,13 @@ import {
   type RequestPayload,
   type SourcedRecord,
   type TranscriptEvent,
-  type TranscriptSession,
-  assignSeq,
+  type TranscriptEventBody,
+  type RecordTranslation,
   baseEvent,
+  createTranslationBuffer,
+  detectEventCapabilities,
+  joinedPartText,
   lineId,
-  MAIN_LANE_ID,
-  markOrphanToolResults,
   shadowBefore,
   type UnknownFormatGeneration,
   unknownFormatGeneration
@@ -41,13 +42,6 @@ function imageMediaType(parts: readonly PiContentPart[]): string | undefined {
   return image?.kind === "image" ? image.mediaType : undefined;
 }
 
-function textOf(parts: readonly PiContentPart[]): string {
-  return parts
-    .filter((part): part is Extract<PiContentPart, { kind: "text" }> => part.kind === "text")
-    .map((part) => part.text)
-    .join("\n");
-}
-
 function requestOf(entry: PiEntryValue, model: string | undefined): RequestPayload {
   const message = entry.message;
   return {
@@ -70,29 +64,7 @@ export const PI_CAPABILITIES: readonly Capability[] = [
 
 /** What one translated session can show. A session with no usage lists no `usage`, and so on. */
 export function piCapabilities(transcript: Pick<ParsedTranscript, "events">): Capability[] {
-  const out: Capability[] = [];
-  const has = (test: (event: TranscriptEvent) => boolean): boolean => transcript.events.some(test);
-  if (has((event) => event.kind === "request")) {
-    out.push("requests");
-  }
-  if (has((event) => event.kind === "request" && event.payload.usage !== undefined)) {
-    out.push("usage");
-  }
-  if (has((event) => event.kind === "reasoning")) {
-    out.push("reasoning");
-  }
-  if (has((event) => event.kind === "compaction")) {
-    out.push("compaction");
-  }
-  if (
-    has(
-      (event) =>
-        event.kind === "compaction" && (event.payload.preTokens !== undefined || event.payload.postTokens !== undefined)
-    )
-  ) {
-    out.push("compactionTokens");
-  }
-  return out;
+  return detectEventCapabilities(transcript.events);
 }
 
 export interface PiTranslationOptions {
@@ -102,16 +74,7 @@ export interface PiTranslationOptions {
   readonly sessionId?: string;
 }
 
-export interface PiTranslation {
-  /** Every event, in file order; empty when `retain` is false. */
-  readonly events: TranscriptEvent[];
-  /** Records that produced no event, with the reason. */
-  readonly skipped: { reason: string; record: SourcedRecord }[];
-  /** Translates one record; `ts` is the inherited time the events take. */
-  step(record: SourcedRecord, ts: number): Result<readonly TranscriptEvent[], UnknownFormatGeneration>;
-  /** The finished transcript; call once after the last `step`. */
-  finish(): ParsedTranscript;
-}
+export type PiTranslation = RecordTranslation;
 
 /**
  * One Pi session file into transcript events. The file is a tree: `id`/`parentId` link entries, and the last entry is
@@ -120,36 +83,14 @@ export interface PiTranslation {
  * cuts the context at `firstKeptEntryId`: the events before that entry are shadowed by the compaction event.
  */
 export function createPiTranslation(options: PiTranslationOptions): PiTranslation {
-  const events: TranscriptEvent[] = [];
-  const skipped: { reason: string; record: SourcedRecord }[] = [];
+  const buffer = createTranslationBuffer(options.retain);
+  const { emit, skip } = buffer;
   const lineById = new Map<string, number>();
   const cuts: { event: TranscriptEvent; firstKeptLine: number | undefined }[] = [];
   let header: PiHeaderValue | undefined;
   let model: string | undefined;
   let title: string | undefined;
-  let startedAt: number | undefined;
-  let endedAt: number | undefined;
   let first = true;
-  let stepParts: TranscriptEvent[] | undefined;
-
-  function noteTime(ts: number): void {
-    startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
-    endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
-  }
-
-  function emit(event: TranscriptEvent): TranscriptEvent {
-    if (options.retain) {
-      events.push(event);
-    }
-    stepParts?.push(event);
-    return event;
-  }
-
-  function skip(record: SourcedRecord, reason: string): void {
-    if (options.retain) {
-      skipped.push({ reason, record });
-    }
-  }
 
   function emitUser(record: SourcedRecord, ts: number, payload: Record<string, unknown>): TranscriptEvent {
     return emit(baseEvent(record, "user", payload, { ts }));
@@ -163,7 +104,7 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
     }
     if (message.role === "user") {
       const parts = piContentParts(message.content);
-      const text = textOf(parts);
+      const text = joinedPartText(parts);
       emitUser(record, ts, {
         ...(text ? { text } : {}),
         ...(hasImage(parts) ? { image: true } : {}),
@@ -182,58 +123,42 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
       });
       emit(request);
       let partIndex = 1;
+      const emitPart = (body: TranscriptEventBody): void => {
+        emit(
+          baseEvent(record, body.kind, body.payload, { id: lineId(record, partIndex++), ts, requestId: requestKey })
+        );
+      };
       for (const part of parts) {
         if (part.kind === "text") {
-          emit(
-            baseEvent(
-              record,
-              "assistant",
-              { text: part.text },
-              { id: lineId(record, partIndex++), ts, requestId: requestKey }
-            )
-          );
+          emitPart({ kind: "assistant", payload: { text: part.text } });
         } else if (part.kind === "thinking") {
-          emit(
-            baseEvent(record, "reasoning", part.redacted ? { redacted: true } : { text: part.text }, {
-              id: lineId(record, partIndex++),
-              ts,
-              requestId: requestKey
-            })
-          );
+          emitPart({ kind: "reasoning", payload: part.redacted ? { redacted: true } : { text: part.text } });
         } else if (part.kind === "tool_call") {
-          emit(
-            baseEvent(
-              record,
-              "tool_call",
-              { callId: part.id, name: part.name, ...(part.args === undefined ? {} : { args: part.args }) },
-              { id: lineId(record, partIndex++), ts, requestId: requestKey }
-            )
-          );
+          emitPart({
+            kind: "tool_call",
+            payload: {
+              callId: part.id,
+              name: part.name,
+              ...(part.args === undefined ? {} : { args: part.args })
+            }
+          });
         } else if (part.kind === "image") {
-          emit(
-            baseEvent(
-              record,
-              "assistant",
-              { image: true, ...(part.mediaType === undefined ? {} : { mediaType: part.mediaType }) },
-              { id: lineId(record, partIndex++), ts, requestId: requestKey }
-            )
-          );
+          emitPart({
+            kind: "assistant",
+            payload: {
+              image: true,
+              ...(part.mediaType === undefined ? {} : { mediaType: part.mediaType })
+            }
+          });
         } else {
-          emit(
-            baseEvent(
-              record,
-              "unknown",
-              { type: part.type },
-              { id: lineId(record, partIndex++), ts, requestId: requestKey }
-            )
-          );
+          emitPart({ kind: "unknown", payload: { type: part.type } });
         }
       }
       return;
     }
     if (message.role === "toolResult") {
       const parts = piContentParts(message.content);
-      const text = textOf(parts);
+      const text = joinedPartText(parts);
       emit(
         baseEvent(
           record,
@@ -339,7 +264,7 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
         return ok([]);
       case "custom_message": {
         const content = piContentParts(entry.content);
-        const text = textOf(content);
+        const text = joinedPartText(content);
         emitUser(record, ts, {
           ...(text ? { text } : {}),
           ...(hasImage(content) ? { image: true } : {}),
@@ -362,8 +287,7 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
   }
 
   function step(record: SourcedRecord, ts: number): Result<readonly TranscriptEvent[], UnknownFormatGeneration> {
-    const parts: TranscriptEvent[] = [];
-    stepParts = parts;
+    const parts = buffer.beginStep();
     const headerValue = piHeaderOf(record.value);
     if (headerValue !== undefined) {
       if (headerValue.version !== PI_SESSION_VERSION) {
@@ -371,10 +295,8 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
       }
       if (header === undefined) {
         header = headerValue;
-        noteTime(ts);
-        skip(record, "session-header");
+        buffer.noteTime(ts);
         first = false;
-        return ok(parts);
       }
       skip(record, "session-header");
       return ok(parts);
@@ -386,7 +308,7 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
     if (entry === undefined) {
       return err(unknownFormatGeneration(PI_ID, record));
     }
-    noteTime(ts);
+    buffer.noteTime(ts);
     if (options.retain && entry.id !== undefined) {
       lineById.set(entry.id, record.line);
     }
@@ -398,31 +320,17 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
   }
 
   function finish(): ParsedTranscript {
-    if (options.retain) {
+    const session = buffer.session({ id: header?.id, fallbackId: options.sessionId, title, cwd: header?.cwd });
+    return buffer.finish(session, () => {
       for (const cut of cuts) {
         shadowBefore(
-          events,
+          buffer.events,
           cut.event,
           (event) => cut.firstKeptLine === undefined || event.source.line >= cut.firstKeptLine
         );
       }
-      markOrphanToolResults(events);
-      assignSeq(events);
-    }
-    const session: TranscriptSession = {
-      id: header?.id ?? options.sessionId ?? "unknown",
-      ...(title === undefined ? {} : { title }),
-      ...(header?.cwd === undefined ? {} : { cwd: header.cwd }),
-      ...(startedAt === undefined ? {} : { startedAt }),
-      ...(endedAt === undefined ? {} : { endedAt })
-    };
-    return {
-      events,
-      skipped: skipped.map(({ reason, record }) => ({ reason, source: record })),
-      session,
-      agents: [{ id: MAIN_LANE_ID }]
-    };
+    });
   }
 
-  return { events, skipped, step, finish };
+  return { events: buffer.events, skipped: buffer.skipped, step, finish };
 }

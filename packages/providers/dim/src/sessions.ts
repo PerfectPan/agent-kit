@@ -3,7 +3,12 @@ import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/sp
 import {
   assignSeq,
   baseEvent,
-  catchIoFailure,
+  catchSessionRead,
+  openDatabase,
+  sqliteSource,
+  type SessionPlatform,
+  type SqliteDatabase,
+  thrown,
   createTranscript,
   joinPath,
   lenient,
@@ -12,13 +17,10 @@ import {
   type Capability,
   type LoadOptions,
   type ParsedTranscript,
-  type ReadFailed,
   type SessionAdapter,
   type SessionHead,
-  type SessionPlatform,
   type SessionReadError,
   type SessionRef,
-  type SessionSummaryWithPrompts,
   type SkippedRecord,
   type SourcePointer,
   addRequest,
@@ -38,8 +40,6 @@ import { dimLedgerRowOf, dimLedgerUsage, type DimLedgerRowValue } from "./record
 // tool calls a run made are not persisted as message rows, so transcripts show the conversation text only.
 
 export const DIM_SESSION_CAPABILITIES: readonly Capability[] = ["requests", "usage"];
-
-type Database = ReturnType<NonNullable<SessionPlatform["sqlite"]>["open"]>;
 
 export interface DimSessionRowValue {
   sessionId: string;
@@ -79,10 +79,6 @@ function iso(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function readFailed(path: string, message: string, cause?: unknown): ReadFailed {
-  return { _tag: "ReadFailed", path, message, ...(cause === undefined ? {} : { cause }) };
-}
-
 function source(
   file: string,
   table: "messages" | "usage_ledger",
@@ -90,19 +86,30 @@ function source(
   rowid: number,
   line: number
 ): SourcePointer {
-  return { file, offset: 0, length: 0, line, sqlite: { table, column, rowid } };
+  return sqliteSource(file, table, column, rowid, line);
 }
 
-function openDatabase(platform: SessionPlatform, path: string): Result<Database, ReadFailed> {
-  const sqlite = platform.sqlite;
-  if (sqlite === undefined) {
-    return err(readFailed(path, "SQLite is not available on this platform"));
-  }
-  try {
-    return ok(sqlite.open(path, { readonly: true }));
-  } catch (error) {
-    return err(readFailed(path, error instanceof Error ? error.message : String(error), error));
-  }
+/** Opens the session database read-only and closes it after `read`, mapping I/O and missing-file errors. */
+function withDimDatabase<T>(
+  platform: SessionPlatform,
+  path: string,
+  signal: AbortSignal | undefined,
+  read: (database: SqliteDatabase) => Result<T, SessionReadError>
+): Promise<Result<T, SessionReadError>> {
+  return catchSessionRead(platform, path, signal, async (guarded) => {
+    const info = await guarded.fs.stat(path, { followSymlinks: true });
+    const opened =
+      info?.kind === "file" ? openDatabase(guarded, path) : err({ _tag: "SessionNotFound" as const, path });
+    if (!opened.ok) {
+      return opened;
+    }
+    const database = opened.value;
+    try {
+      return read(database);
+    } finally {
+      database.close();
+    }
+  });
 }
 
 const DimSessionRow = z.looseObject({
@@ -345,7 +352,7 @@ export const dimSessionAdapter: SessionAdapter = {
       signal?.throwIfAborted();
       yield {
         ref: { agent: DIM_ID, path },
-        error: readFailed(path, error instanceof Error ? error.message : String(error), error)
+        error: thrown(path, error)
       };
       return;
     }
@@ -381,7 +388,7 @@ export const dimSessionAdapter: SessionAdapter = {
       signal?.throwIfAborted();
       yield {
         ref: { agent: DIM_ID, path },
-        error: readFailed(path, error instanceof Error ? error.message : String(error), error)
+        error: thrown(path, error)
       };
     } finally {
       database.close();
@@ -391,145 +398,98 @@ export const dimSessionAdapter: SessionAdapter = {
     const info = await platform.fs.stat(ref.path, { followSymlinks: true });
     return info?.kind === "file" && ref.path.replaceAll("\\", "/").endsWith(`/${DIM_DATABASE}`);
   },
-  async load(platform, ref, options: LoadOptions = {}): Promise<Result<Transcript, SessionReadError>> {
-    type Loaded = { readonly transcript: Transcript } | { readonly error: SessionReadError };
-    const outcome = await catchIoFailure<Loaded>(
-      platform,
-      ref.path,
-      options.signal,
-      async (guarded): Promise<Loaded> => {
-        const info = await guarded.fs.stat(ref.path, { followSymlinks: true });
-        if (info?.kind !== "file") {
-          return { error: { _tag: "SessionNotFound", path: ref.path } as const };
-        }
-        const opened = openDatabase(guarded, ref.path);
-        if (!opened.ok) {
-          return { error: opened.error };
-        }
-        const database = opened.value;
-        try {
-          const sessionRow = database
-            .prepare(
-              "SELECT rowid, sessionId, cwd, title, status, createdAt, updatedAt FROM sessions WHERE sessionId = ?"
-            )
-            .get(ref.sessionId ?? "");
-          const parsedSession = sessionRow === undefined ? undefined : sessionRowOf(sessionRow);
-          if (parsedSession === undefined) {
-            return { error: { _tag: "SessionNotFound", path: ref.path } as const };
-          }
-          const messageRows = database
-            .prepare(
-              "SELECT rowid, messageId, role, parts, metadata, orderKey, createdAt, updatedAt FROM messages WHERE sessionId = ? ORDER BY orderKey"
-            )
-            .all(parsedSession.sessionId);
-          const messages: DimMessageValue[] = [];
-          for (const row of messageRows as Record<string, unknown>[]) {
-            const message = dimMessageOf(row, Number(row.rowid));
-            if (message !== undefined) {
-              messages.push(message);
-            }
-          }
-          const ledgerRows = database
-            .prepare(
-              "SELECT rowid, ledgerId, sessionId, runId, providerId, modelId, usage, cost, createdAt FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid"
-            )
-            .all(parsedSession.sessionId);
-          const ledger: (DimLedgerRowValue & { readonly rowid: number })[] = [];
-          for (const row of ledgerRows as Record<string, unknown>[]) {
-            const parsed = dimLedgerRowOf(row);
-            if (parsed !== undefined) {
-              ledger.push({ ...parsed, rowid: Number(row.rowid) });
-            }
-          }
-          const translated = translate(
-            { session: parsedSession, messages, ledger, messageCount: messages.length },
-            ref.path
-          );
-          options.signal?.throwIfAborted();
-          return { transcript: createTranscript(DIM_ID, DIM_SESSION_CAPABILITIES, translated) };
-        } finally {
-          database.close();
+  load(platform, ref, options: LoadOptions = {}): Promise<Result<Transcript, SessionReadError>> {
+    return withDimDatabase(platform, ref.path, options.signal, (database) => {
+      const sessionRow = database
+        .prepare("SELECT rowid, sessionId, cwd, title, status, createdAt, updatedAt FROM sessions WHERE sessionId = ?")
+        .get(ref.sessionId ?? "");
+      const parsedSession = sessionRow === undefined ? undefined : sessionRowOf(sessionRow);
+      if (parsedSession === undefined) {
+        return err({ _tag: "SessionNotFound", path: ref.path });
+      }
+      const messageRows = database
+        .prepare(
+          "SELECT rowid, messageId, role, parts, metadata, orderKey, createdAt, updatedAt FROM messages WHERE sessionId = ? ORDER BY orderKey"
+        )
+        .all(parsedSession.sessionId);
+      const messages: DimMessageValue[] = [];
+      for (const row of messageRows as Record<string, unknown>[]) {
+        const message = dimMessageOf(row, Number(row.rowid));
+        if (message !== undefined) {
+          messages.push(message);
         }
       }
-    );
-    if (!outcome.ok) {
-      return err(outcome.error);
-    }
-    return "error" in outcome.value ? err(outcome.value.error) : ok(outcome.value.transcript);
+      const ledgerRows = database
+        .prepare(
+          "SELECT rowid, ledgerId, sessionId, runId, providerId, modelId, usage, cost, createdAt FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid"
+        )
+        .all(parsedSession.sessionId);
+      const ledger: (DimLedgerRowValue & { readonly rowid: number })[] = [];
+      for (const row of ledgerRows as Record<string, unknown>[]) {
+        const parsed = dimLedgerRowOf(row);
+        if (parsed !== undefined) {
+          ledger.push({ ...parsed, rowid: Number(row.rowid) });
+        }
+      }
+      const translated = translate(
+        { session: parsedSession, messages, ledger, messageCount: messages.length },
+        ref.path
+      );
+      options.signal?.throwIfAborted();
+      return ok(createTranscript(DIM_ID, DIM_SESSION_CAPABILITIES, translated));
+    });
   },
   summarize: (platform, ref, options = {}) =>
-    catchIoFailure(platform, ref.path, options.signal, async (guarded): Promise<SummaryOutcome> => {
-      const info = await guarded.fs.stat(ref.path, { followSymlinks: true });
-      if (info?.kind !== "file") {
-        return { error: { _tag: "SessionNotFound", path: ref.path } as const };
+    withDimDatabase(platform, ref.path, options.signal, (database) => {
+      const sessionRow = database.prepare("SELECT rowid FROM sessions WHERE sessionId = ?").get(ref.sessionId ?? "");
+      if (sessionRow === undefined) {
+        return err({ _tag: "SessionNotFound", path: ref.path });
       }
-      const opened = openDatabase(guarded, ref.path);
-      if (!opened.ok) {
-        return { error: opened.error };
+      // A paged pass over the two tables, keeping only the running numbers: the state grows with the session's
+      // requests, never with its bytes. The totals match the fold of the loaded transcript — the requests come
+      // from the same ledger rows in the same order.
+      const totals = emptyTotals();
+      const prompts = emptyPrompts(options.prompts);
+      const PAGE = 500;
+      for (let offset = 0; ; offset += PAGE) {
+        options.signal?.throwIfAborted();
+        const rows = database
+          .prepare("SELECT messageId, role, parts FROM messages WHERE sessionId = ? ORDER BY orderKey LIMIT ? OFFSET ?")
+          .all(parsedSessionId(ref), PAGE, offset);
+        for (const row of rows as Record<string, unknown>[]) {
+          const message = dimMessageOf(row, 0);
+          if (message === undefined || message.role !== "user") {
+            continue;
+          }
+          const texts = message.parts
+            .filter((part) => part.type === "text" && part.text !== undefined)
+            .map((part) => part.text)
+            .join("\n\n");
+          if (texts === "") {
+            continue;
+          }
+          totals.turns += 1;
+          prompts.add(texts);
+        }
+        if (rows.length < PAGE) {
+          break;
+        }
       }
-      const database = opened.value;
-      try {
-        const sessionRow = database.prepare("SELECT rowid FROM sessions WHERE sessionId = ?").get(ref.sessionId ?? "");
-        if (sessionRow === undefined) {
-          return { error: { _tag: "SessionNotFound", path: ref.path } as const };
-        }
-        // A paged pass over the two tables, keeping only the running numbers: the state grows with the session's
-        // requests, never with its bytes. The totals match the fold of the loaded transcript — the requests come
-        // from the same ledger rows in the same order.
-        const totals = emptyTotals();
-        const prompts = emptyPrompts(options.prompts);
-        const PAGE = 500;
-        for (let offset = 0; ; offset += PAGE) {
-          options.signal?.throwIfAborted();
-          const rows = database
-            .prepare(
-              "SELECT messageId, role, parts FROM messages WHERE sessionId = ? ORDER BY orderKey LIMIT ? OFFSET ?"
-            )
-            .all(parsedSessionId(ref), PAGE, offset);
-          for (const row of rows as Record<string, unknown>[]) {
-            const message = dimMessageOf(row, 0);
-            if (message === undefined || message.role !== "user") {
-              continue;
-            }
-            const texts = message.parts
-              .filter((part) => part.type === "text" && part.text !== undefined)
-              .map((part) => part.text)
-              .join("\n\n");
-            if (texts === "") {
-              continue;
-            }
-            totals.turns += 1;
-            prompts.add(texts);
-          }
-          if (rows.length < PAGE) {
-            break;
-          }
-        }
-        for (let offset = 0; ; offset += PAGE) {
-          options.signal?.throwIfAborted();
-          const rows = database
-            .prepare("SELECT usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?")
-            .all(parsedSessionId(ref), PAGE, offset);
-          for (const row of rows as Record<string, unknown>[]) {
-            const usage = dimLedgerUsage(typeof row.usage === "string" ? row.usage : undefined);
-            if (usage !== undefined) {
-              addRequest(totals, usage);
-            }
-          }
-          if (rows.length < PAGE) {
-            break;
+      for (let offset = 0; ; offset += PAGE) {
+        options.signal?.throwIfAborted();
+        const rows = database
+          .prepare("SELECT usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?")
+          .all(parsedSessionId(ref), PAGE, offset);
+        for (const row of rows as Record<string, unknown>[]) {
+          const usage = dimLedgerUsage(typeof row.usage === "string" ? row.usage : undefined);
+          if (usage !== undefined) {
+            addRequest(totals, usage);
           }
         }
-        return { summary: finishPass(totals, DIM_SESSION_CAPABILITIES, 0, prompts.list) };
-      } finally {
-        database.close();
+        if (rows.length < PAGE) {
+          break;
+        }
       }
-    }).then((outcome) => {
-      if (!outcome.ok) {
-        return err(outcome.error as SessionReadError);
-      }
-      return "error" in outcome.value ? err(outcome.value.error) : ok(outcome.value.summary);
+      return ok(finishPass(totals, DIM_SESSION_CAPABILITIES, 0, prompts.list));
     })
 };
-
-type SummaryOutcome = { readonly summary: SessionSummaryWithPrompts } | { readonly error: SessionReadError };

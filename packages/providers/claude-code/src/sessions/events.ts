@@ -9,6 +9,7 @@ import {
   lineId,
   MAIN_LANE_ID,
   markOrphanToolResults,
+  nextFreeId,
   type ParsedTranscript,
   promptSnapshot,
   shadowBefore,
@@ -259,14 +260,7 @@ export function translateClaudeCodeRecords(
   const usedIds = new Set<string>();
   /** The ids request events hold, so a record uuid one holds moves to the record's line id. */
   const requestIds = new Set<string>();
-  /** The first id of `base`'s shape no event holds: `base` itself, then `base:1`, `base:2`, … */
-  const nextFree = (base: string): string => {
-    let candidate = base;
-    for (let serial = 1; usedIds.has(candidate); serial += 1) {
-      candidate = `${base}:${serial}`;
-    }
-    return candidate;
-  };
+  const nextFree = (base: string): string => nextFreeId(usedIds, base);
   const parentOf = new Map<string, string | undefined>();
   /** Each event's parsed record, so the later passes never parse a record again. */
   const parsed = new Map<TranscriptEvent, ClaudeCodeRecordValue>();

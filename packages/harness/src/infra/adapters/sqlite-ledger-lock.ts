@@ -47,10 +47,9 @@ function isSqliteBusy(error: unknown): boolean {
 function trySqliteLock(sqlite: PlatformSqlite, path: string, busyTimeoutMs: number): SqliteDatabase | undefined {
   const db = sqlite.open(path);
   try {
-    db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
-    db.exec("PRAGMA journal_mode = MEMORY");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
+    db.exec(
+      `PRAGMA busy_timeout = ${busyTimeoutMs}; PRAGMA journal_mode = MEMORY; PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE`
+    );
     return db;
   } catch (error) {
     db.close();

@@ -5,10 +5,10 @@ import {
   type InstallAdapter,
   ownerSlug,
   agentsOf,
-  commandHook,
   groupedHooksFile,
   jsonText,
-  sharedSkillsDir,
+  renderGroupedJsonHooks,
+  renderSharedSkill,
   sharedAgentsDir
 } from "@rivus/agent-kit-harness/spi";
 import {
@@ -71,22 +71,9 @@ export const geminiCliInstallAdapter: InstallAdapter = {
         }
       ];
     }
-    return registrations.map((registration) => ({
-      locator: {
-        kind: "json-entry",
-        path: geminiSettingsFile(context),
-        pointer: `${GEMINI_CLI_HOOKS_POINTER}/${registration.event}`,
-        member: registration.command,
-        memberIn: "hook-group"
-      },
-      content: commandHook(registration),
-      strategy,
-      agents: registration.agents
-    }));
+    return renderGroupedJsonHooks(strategy, registrations, geminiSettingsFile(context), GEMINI_CLI_HOOKS_POINTER);
   },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderSkill: renderSharedSkill,
   hookSources: (context) => [
     { path: geminiSettingsFile(context), format: "json", layout: "grouped" },
     {

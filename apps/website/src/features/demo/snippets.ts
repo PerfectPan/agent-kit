@@ -208,30 +208,21 @@ function hooksOutput(agentId: string): Token[][] {
   ];
 }
 
+function forAwaitCall(fnName: string, agentId: string, tail: string, mine: boolean): Token[] {
+  const base: Token[] = [
+    k("for await"),
+    p(" ("),
+    k("const"),
+    p(" item "),
+    k("of"),
+    p(` ${fnName}(platform, { agents: [`),
+    quoted(agentId)
+  ];
+  return mine ? [...base, p(`]${tail}, `), w("providers: [myAgent]"), p(" }))")] : [...base, p(`]${tail} }))`)];
+}
+
 function usageCode(agentId: string, mine: boolean): Token[][] {
-  const call = mine
-    ? [
-        k("for await"),
-        p(" ("),
-        k("const"),
-        p(" item "),
-        k("of"),
-        p(" scanUsage(platform, { agents: ["),
-        quoted(agentId),
-        p("], since: lastWeek, "),
-        w("providers: [myAgent]"),
-        p(" }))")
-      ]
-    : [
-        k("for await"),
-        p(" ("),
-        k("const"),
-        p(" item "),
-        k("of"),
-        p(" scanUsage(platform, { agents: ["),
-        quoted(agentId),
-        p("], since: lastWeek }))")
-      ];
+  const call = forAwaitCall("scanUsage", agentId, ", since: lastWeek", mine);
   const lines: Token[][] = [
     importLine("scanUsage, isUsageRecord", "@rivus/agent-kit/transcript/usage"),
     [],
@@ -258,29 +249,7 @@ function usageOutput(agentId: string): Token[][] {
 }
 
 function sessionsCode(agentId: string, mine: boolean): Token[][] {
-  const call = mine
-    ? [
-        k("for await"),
-        p(" ("),
-        k("const"),
-        p(" item "),
-        k("of"),
-        p(" listSessions(platform, { agents: ["),
-        quoted(agentId),
-        p("], "),
-        w("providers: [myAgent]"),
-        p(" }))")
-      ]
-    : [
-        k("for await"),
-        p(" ("),
-        k("const"),
-        p(" item "),
-        k("of"),
-        p(" listSessions(platform, { agents: ["),
-        quoted(agentId),
-        p("] }))")
-      ];
+  const call = forAwaitCall("listSessions", agentId, "", mine);
   const lines: Token[][] = [
     importLine("listSessions, isSessionHead", "@rivus/agent-kit/sessions"),
     [],

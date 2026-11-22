@@ -1,6 +1,9 @@
+import type { Result } from "@rivus/agent-kit-catalog/public";
+import type { ReadFailed, SessionNotFound } from "../../../domain/session/errors/session-read-error.js";
 import type { SkippedRecord, SourcedRecord } from "../../../domain/transcript/value-objects/source-pointer.js";
-import { type ReadOptions, readLines } from "./read-file.js";
-import type { SessionPlatform } from "../../spi.js";
+import { catchIoFailure } from "./io-failure.js";
+import { type ReadOptions, readLines, readProgress } from "./read-file.js";
+import type { LoadOptions, SessionPlatform } from "../../spi.js";
 
 export interface JsonlRecords {
   records: SourcedRecord[];
@@ -44,4 +47,15 @@ export async function readJsonlRecords(
     records.push(record);
   }
   return { records, skipped };
+}
+
+/** Reads a JSONL session file with progress reporting and IO failure translation. */
+export function readSessionJsonl(
+  platform: SessionPlatform,
+  path: string,
+  options: LoadOptions = {}
+): Promise<Result<JsonlRecords, SessionNotFound | ReadFailed>> {
+  return catchIoFailure(platform, path, options.signal, (guarded) =>
+    readJsonlRecords(guarded, path, { signal: options.signal, progress: readProgress(options.onProgress) })
+  );
 }

@@ -24,23 +24,16 @@ const COUNTS = Object.keys({
 } satisfies Record<keyof Usage, true>) as (keyof Usage)[];
 
 /**
- * sessions' `addUsage`, which cost cannot call because it takes only types from sessions: a count absent from both
- * sides stays absent, one absent from one side counts as 0 there.
+ * Accumulates `usage` into `into.usage` count by count (absent on both sides stays absent; absent on one counts as 0)
+ * and adds `costUsd` when defined. `cost` takes only types from `sessions`, so it cannot call `sessions`' `addUsage`.
  */
-function addUsage(left: Usage, right: Usage): Usage {
-  const sum: Usage = {};
+function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
   for (const key of COUNTS) {
-    const a = left[key];
-    const b = right[key];
-    if (a !== undefined || b !== undefined) {
-      sum[key] = (a ?? 0) + (b ?? 0);
+    const value = usage[key];
+    if (value !== undefined) {
+      into.usage[key] = (into.usage[key] ?? 0) + value;
     }
   }
-  return sum;
-}
-
-function add(into: Tally, usage: Usage, costUsd: number | undefined): void {
-  into.usage = addUsage(into.usage, usage);
   if (costUsd !== undefined) {
     into.costUsd = (into.costUsd ?? 0) + costUsd;
   }

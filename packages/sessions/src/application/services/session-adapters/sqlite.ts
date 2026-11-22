@@ -134,14 +134,23 @@ interface SessionRows {
   parts: PartRow[];
 }
 
-type Database = ReturnType<NonNullable<SessionPlatform["sqlite"]>["open"]>;
+/** An open SQLite database of the platform. */
+export type SqliteDatabase = ReturnType<NonNullable<SessionPlatform["sqlite"]>["open"]>;
+type Database = SqliteDatabase;
 
-function readFailed(path: string, message: string, cause?: unknown): ReadFailed {
+/** A `ReadFailed` with the message and, when given, the cause. */
+export function readFailed(path: string, message: string, cause?: unknown): ReadFailed {
   return definedFields({ _tag: "ReadFailed" as const, path, message, cause });
 }
 
-function thrown(path: string, error: unknown): ReadFailed {
+/** A `ReadFailed` from a thrown value. */
+export function thrown(path: string, error: unknown): ReadFailed {
   return readFailed(path, error instanceof Error ? error.message : String(error), error);
+}
+
+/** A `SourcePointer` for one SQLite row and column. */
+export function sqliteSource(file: string, table: string, column: string, rowid: number, line: number): SourcePointer {
+  return { file, offset: 0, length: 0, line, sqlite: { table, column, rowid } };
 }
 
 function source(
@@ -151,10 +160,11 @@ function source(
   rowid: number,
   line: number
 ): SourcePointer {
-  return { file, offset: 0, length: 0, line, sqlite: { table, column, rowid } };
+  return sqliteSource(file, table, column, rowid, line);
 }
 
-function openDatabase(platform: SessionPlatform, path: string): Result<Database, ReadFailed> {
+/** Opens the database read-only, or a `ReadFailed` when the platform has no SQLite or the open throws. */
+export function openDatabase(platform: SessionPlatform, path: string): Result<SqliteDatabase, ReadFailed> {
   const sqlite = platform.sqlite;
   if (sqlite === undefined) {
     return err(readFailed(path, "SQLite is not available on this platform"));
@@ -266,6 +276,18 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
   skipped.push({ reason: "session-header", source: source(dbPath, "session", "title", rows.session.rowid, 1) });
   let line = 2;
 
+  function decodePart(
+    partRow: PartRow
+  ): { source: SourcePointer; value: unknown; part: z.infer<typeof PartData> | undefined } | undefined {
+    const partSource = source(dbPath, "part", "data", partRow.rowid, line++);
+    const partJson = parseJson(partRow.data);
+    if (!partJson.ok) {
+      skip(partSource, "invalid-json");
+      return undefined;
+    }
+    return { source: partSource, value: partJson.value, part: partOf(partJson.value) };
+  }
+
   for (const messageRow of rows.messages) {
     const messageSource = source(dbPath, "message", "data", messageRow.rowid, line++);
     const parts = partsByMessage.get(messageRow.id) ?? [];
@@ -286,19 +308,16 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
     if (message.role === "user") {
       skip(messageSource, "user-message-envelope");
       for (const partRow of parts) {
-        const partSource = source(dbPath, "part", "data", partRow.rowid, line++);
-        const partJson = parseJson(partRow.data);
-        if (!partJson.ok) {
-          skip(partSource, "invalid-json");
+        const decoded = decodePart(partRow);
+        if (decoded === undefined) {
           continue;
         }
-        const part = partOf(partJson.value);
-        if (part?.type === "text" && part.text) {
+        if (decoded.part?.type === "text" && decoded.part.text) {
           events.push(
-            baseEvent({ ...partSource, value: partJson.value }, "user", { text: part.text }, { ts: created })
+            baseEvent({ ...decoded.source, value: decoded.value }, "user", { text: decoded.part.text }, { ts: created })
           );
         } else {
-          skip(partSource, `part:${part?.type ?? "unreadable"}`);
+          skip(decoded.source, `part:${decoded.part?.type ?? "unreadable"}`);
         }
       }
       continue;
@@ -326,14 +345,11 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
     );
 
     for (const partRow of parts) {
-      const partSource = source(dbPath, "part", "data", partRow.rowid, line++);
-      const partJson = parseJson(partRow.data);
-      if (!partJson.ok) {
-        skip(partSource, "invalid-json");
+      const decoded = decodePart(partRow);
+      if (decoded === undefined) {
         continue;
       }
-      const partValue = partJson.value;
-      const part = partOf(partValue);
+      const { source: partSource, value: partValue, part } = decoded;
       if (part === undefined) {
         skip(partSource, "invalid-part");
         continue;

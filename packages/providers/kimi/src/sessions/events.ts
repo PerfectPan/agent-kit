@@ -1,9 +1,7 @@
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
-  assignSeq,
   baseEvent,
-  inheritTimes,
-  markOrphanToolResults,
+  finalizeTranscriptEvents,
   OUTPUT_KINDS,
   placeRequest,
   skipRecord,
@@ -62,6 +60,12 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
       return { parts: [] };
     }
     const type = (value as Record<string, unknown>)["type"] as string;
+    const emitOne = (body: TranscriptEventBody): { readonly parts: TranscriptEventBody[] } => {
+      if (retain) {
+        events.push(baseEvent(record, body.kind, body.payload, { ts }));
+      }
+      return { parts: [body] };
+    };
     switch (type) {
       case "metadata": {
         const version = (value as Record<string, unknown>)["protocol_version"];
@@ -96,24 +100,16 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
           if (text === undefined && message.origin?.kind !== "injection") {
             return { parts: [] };
           }
-          const body: TranscriptEventBody = {
+          return emitOne({
             kind: "user",
             payload: {
               ...(text !== undefined ? { text } : {}),
               ...(message.origin?.kind === "injection" ? { injected: true } : {})
             }
-          };
-          if (retain) {
-            events.push(baseEvent(record, body.kind, body.payload, { ts }));
-          }
-          return { parts: [body] };
+          });
         }
         if (message.role === "assistant" && text !== undefined) {
-          const body: TranscriptEventBody = { kind: "assistant", payload: { text } };
-          if (retain) {
-            events.push(baseEvent(record, body.kind, body.payload, { ts }));
-          }
-          return { parts: [body] };
+          return emitOne({ kind: "assistant", payload: { text } });
         }
         return { parts: [] };
       }
@@ -131,37 +127,25 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
             if (text === undefined || text === "") {
               return { parts: [] };
             }
-            const body: TranscriptEventBody = { kind: "assistant", payload: { text } };
-            if (retain) {
-              events.push(baseEvent(record, body.kind, body.payload, { ts }));
-            }
-            return { parts: [body] };
+            return emitOne({ kind: "assistant", payload: { text } });
           }
           case "tool.call": {
             if (loop.toolCallId === undefined || loop.name === undefined) {
               return { parts: [] };
             }
-            const body: TranscriptEventBody = {
+            return emitOne({
               kind: "tool_call",
               payload: { callId: loop.toolCallId, name: loop.name, args: loop.args }
-            };
-            if (retain) {
-              events.push(baseEvent(record, body.kind, body.payload, { ts }));
-            }
-            return { parts: [body] };
+            });
           }
           case "tool.result": {
             if (loop.toolCallId === undefined) {
               return { parts: [] };
             }
-            const body: TranscriptEventBody = {
+            return emitOne({
               kind: "tool_result",
               payload: { callId: loop.toolCallId, output: loop.result?.output, isError: loop.result?.isError === true }
-            };
-            if (retain) {
-              events.push(baseEvent(record, body.kind, body.payload, { ts }));
-            }
-            return { parts: [body] };
+            });
           }
           case "step.end": {
             const usage = kimiUsageOf(loop.usage ?? {});
@@ -220,14 +204,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
         if (ended?.durationMs === undefined) {
           return { parts: [] };
         }
-        const body: TranscriptEventBody = {
-          kind: "system",
-          payload: { type: "turn_duration", durationMs: ended.durationMs }
-        };
-        if (retain) {
-          events.push(baseEvent(record, body.kind, body.payload, { ts }));
-        }
-        return { parts: [body] };
+        return emitOne({ kind: "system", payload: { type: "turn_duration", durationMs: ended.durationMs } });
       }
       case "llm.tools_snapshot": {
         const snapshot = value as Record<string, unknown>;
@@ -242,14 +219,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
           return { parts: [] };
         }
         systemPrompt = profile.systemPrompt;
-        const body: TranscriptEventBody = {
-          kind: "system",
-          payload: { type: "prompt_snapshot", systemPrompt: profile.systemPrompt }
-        };
-        if (retain) {
-          events.push(baseEvent(record, body.kind, body.payload, { ts }));
-        }
-        return { parts: [body] };
+        return emitOne({ kind: "system", payload: { type: "prompt_snapshot", systemPrompt: profile.systemPrompt } });
       }
       default:
         return { parts: [] };
@@ -272,12 +242,7 @@ function createKimiTranslationInner({ retain }: { readonly retain: boolean }) {
     },
     finish(session: TranscriptSession, agents: ParsedTranscript["agents"]): ParsedTranscript {
       void agents;
-      const times = inheritTimes(events.map((event) => (event.ts > 0 ? event.ts : undefined)));
-      for (const [index, event] of events.entries()) {
-        event.ts = times[index]!;
-      }
-      markOrphanToolResults(events);
-      assignSeq(events);
+      finalizeTranscriptEvents(events);
       return {
         events,
         skipped,

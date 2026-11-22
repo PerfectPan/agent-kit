@@ -19,6 +19,7 @@ import { CLAUDE_CODE_CAPABILITIES, claudeCodeCapabilities, translateClaudeCodeRe
 import { summarizeClaudeCodeRecords } from "./sessions/summarize.js";
 import type { SessionPromptsOptions, SessionRef, SessionSummaryWithPrompts } from "@rivus/agent-kit-sessions/spi";
 import {
+  catchSessionRead,
   createTranscript,
   mergeByTime,
   mergeByTimeStream,
@@ -102,11 +103,13 @@ async function loadClaudeCode(
   ref: SessionRef,
   options: LoadOptions = {}
 ): Promise<Result<Transcript, SessionReadError>> {
-  const progress = readProgress(options.onProgress);
-  const files = await catchIoFailure(platform, ref.path, options.signal, async (guarded) => ({
-    main: await readJsonlRecords(guarded, ref.path, { signal: options.signal, progress }),
-    nested: await readSubagents(guarded, ref.path, options.signal, progress)
-  }));
+  const files = await catchIoFailure(platform, ref.path, options.signal, async (guarded) => {
+    const progress = readProgress(options.onProgress);
+    return {
+      main: await readJsonlRecords(guarded, ref.path, { signal: options.signal, progress }),
+      nested: await readSubagents(guarded, ref.path, options.signal, progress)
+    };
+  });
   if (!files.ok) {
     return files;
   }
@@ -202,14 +205,13 @@ async function* laneRecords(
  * `loadClaudeCode` it holds no records: the files stream through `mergeByTimeStream`, and the pass keeps only the
  * running numbers.
  */
-async function summarizeClaudeCode(
+function summarizeClaudeCode(
   platform: SessionPlatform,
   ref: SessionRef,
   signal: AbortSignal | undefined,
   prompts: SessionPromptsOptions | undefined
 ): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
-  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
-    signal?.throwIfAborted();
+  return catchSessionRead(platform, ref.path, signal, async (guarded) => {
     const lanes = new Map<string, FileLane>();
     const files = await subagentTranscriptFiles(guarded, ref.path, signal);
     const groups = [ref.path, ...files].map((file) =>
@@ -222,10 +224,6 @@ async function summarizeClaudeCode(
     signal?.throwIfAborted();
     return summarized;
   });
-  if (!read.ok) {
-    return read;
-  }
-  return read.value;
 }
 
 export const claudeCodeSessionAdapter: SessionAdapter = {

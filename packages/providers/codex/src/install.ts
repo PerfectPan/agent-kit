@@ -30,8 +30,8 @@ import {
   commandHook,
   groupedHooksFile,
   jsonText,
-  sharedAgentsDir,
-  sharedSkillsDir
+  renderSharedSkill,
+  sharedAgentsDir
 } from "@rivus/agent-kit-harness/spi";
 
 // https://developers.openai.com/codex/hooks (hooks in `config.toml` as `[[hooks.<Event>]]` groups with
@@ -200,9 +200,7 @@ export const codexInstallAdapter: InstallAdapter = {
       agents: registration.agents
     }));
   },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderSkill: renderSharedSkill,
   hookSources: (context) => [
     { path: codexHooksFile(context), format: CODEX_HOOK_FORMAT, layout: CODEX_HOOK_LAYOUT },
     { path: codexConfigFile(context), format: CODEX_CONFIG_FORMAT, layout: CODEX_HOOK_LAYOUT },
