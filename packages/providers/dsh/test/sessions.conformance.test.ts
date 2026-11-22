@@ -161,6 +161,83 @@ describe("dsh request timing", () => {
   });
 });
 
+describe("dsh subagent lanes", () => {
+  it("attaches spawn and fork children as lanes, strips inherited fork turns, and marks missing children unavailable", async () => {
+    const platform = createMemoryPlatform({ files: await readTree(fixtures, "/dsh") });
+    const ref = { agent: "dsh" as const, path: "/dsh/conformance/parent/session.v4.jsonl" };
+    const loaded = await adapter.load(platform, ref);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    const transcript = loaded.value;
+    expect(transcript.capabilities).toContain("subagents");
+    expect(transcript.agents).toEqual([
+      { id: "main" },
+      { id: "spawn-child", parentId: "main", title: "Spawn worker" },
+      { id: "fork-child", parentId: "main", title: "Fork worker" },
+      { id: "missing-child", parentId: "main", title: "Missing worker", unavailable: true }
+    ]);
+
+    const spawnRequests = transcript.events.filter(
+      (event) => event.kind === "request" && event.agentId === "spawn-child"
+    );
+    expect(spawnRequests).toHaveLength(1);
+    expect(spawnRequests[0]?.kind === "request" ? spawnRequests[0].payload.responseId : undefined).toBe("m-spawn");
+
+    const forkEvents = transcript.events.filter((event) => event.agentId === "fork-child");
+    const forkRequests = forkEvents.filter((event) => event.kind === "request");
+    expect(forkRequests).toHaveLength(1);
+    expect(forkRequests[0]?.kind === "request" ? forkRequests[0].payload.responseId : undefined).toBe("m-fork");
+    // Inherited parent prompt must not repeat in the fork child's lane.
+    expect(forkEvents.some((event) => event.kind === "user" && event.payload.text === "delegate work")).toBe(false);
+    expect(forkEvents.some((event) => event.kind === "user" && event.payload.text === "continue from fork")).toBe(true);
+
+    const summary = await adapter.summarize?.(platform, ref);
+    expect(summary?.ok).toBe(true);
+    if (summary?.ok) {
+      expect(summary.value.subagents).toBe(3);
+      expect(summary.value.requests).toBe(4);
+      expect(summary.value.turns).toBe(1);
+    }
+  });
+
+  it("resolves a child session stored under a sibling project directory and hides child sessions from discover", async () => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const parentPath = "/dsh/sessions/--u-me-a--/p1/session.v4.jsonl";
+    const childPath = "/dsh/sessions/--u-me-b--/c1/session.v4.jsonl";
+    const parentLog = [
+      '{"type":"session","version":4,"id":"p1","createdAt":1000,"cwd":"/u/me/a"}',
+      '{"type":"user/message","seq":1,"time":1001,"data":{"role":"user","content":[{"type":"text","text":"go"}],"source":{"kind":"user"}}}',
+      '{"type":"subagent/catalog","seq":2,"time":1002,"data":{"version":0,"childId":"c1","childCreatedAt":1002,"mode":"continuable","label":"Other cwd"}}'
+    ].join("\n");
+    const childLog = [
+      '{"type":"session","version":4,"id":"c1","createdAt":1002,"cwd":"/u/me/b","parentSession":"p1","isSeeded":false}',
+      '{"type":"assistant/message","seq":1,"time":1003,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":2,"outputTokens":1,"totalTokens":3}}}'
+    ].join("\n");
+    const platform = createMemoryPlatform({
+      files: {
+        [parentPath]: encode(parentLog),
+        [childPath]: encode(childLog)
+      }
+    });
+
+    const discovered = [];
+    for await (const item of adapter.discover(platform, "/dsh/sessions")) {
+      discovered.push(item.ref.path);
+    }
+    expect(discovered).toEqual([parentPath]);
+
+    const loaded = await adapter.load(platform, { agent: "dsh", path: parentPath });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.agents).toEqual([{ id: "main" }, { id: "c1", parentId: "main", title: "Other cwd" }]);
+    expect(loaded.value.events.some((event) => event.kind === "request" && event.agentId === "c1")).toBe(true);
+  });
+});
+
 describe("dsh discovery keeps one generation per session", () => {
   const v3 = '{"type":"session","version":3,"id":"old","createdAt":1,"cwd":"/u/me/work"}\n';
   const v4 = '{"type":"session","version":4,"id":"new","createdAt":2,"cwd":"/u/me/work"}\n';

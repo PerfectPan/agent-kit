@@ -1,0 +1,9 @@
+{"type":"session","version":4,"id":"dsh-parent","createdAt":1767225600000,"cwd":"/u/me/work"}
+{"type":"user/message","seq":1,"time":1767225601000,"data":{"role":"user","content":[{"type":"text","text":"delegate work"}],"source":{"kind":"user"},"id":"u-parent"}}
+{"type":"assistant/message","seq":2,"time":1767225602000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"spawning helpers"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m-parent"},"usage":{"inputTokens":10,"outputTokens":4,"totalTokens":14}}}
+{"type":"subagent/catalog","seq":3,"time":1767225603000,"data":{"version":0,"childId":"spawn-child","childCreatedAt":1767225603000,"mode":"continuable","label":"Spawn worker"}}
+{"type":"subagent/catalog","seq":4,"time":1767225605000,"data":{"version":0,"childId":"fork-child","childCreatedAt":1767225605000,"mode":"continuable","label":"Fork worker"}}
+{"type":"subagent/catalog","seq":5,"time":1767225606000,"data":{"version":0,"childId":"missing-child","childCreatedAt":1767225606000,"mode":"continuable","label":"Missing worker"}}
+{"type":"subagent/catalog","seq":6,"time":1767225606500,"data":{"version":0,"childId":"ext-child","childCreatedAt":1767225606500,"mode":"external","label":"External worker"}}
+{"type":"assistant/message","seq":7,"time":1767225609000,"data":{"turn":1,"step":2,"message":{"role":"assistant","content":[{"type":"text","text":"all done"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m-parent-2"},"usage":{"inputTokens":8,"outputTokens":3,"totalTokens":11}}}
+{"type":"session/title","seq":8,"time":1767225609500,"data":{"title":"Parent with subagents"}}

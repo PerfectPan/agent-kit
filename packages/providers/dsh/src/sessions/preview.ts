@@ -4,9 +4,13 @@ import { dshContentParts, dshEventOf, dshHeaderOf, dshTitleOf, dshUserMessageOf 
 
 const FIRST_PROMPT_MAX = 500;
 
+export interface DshPreview extends SessionPreview {
+  parentSession?: string;
+}
+
 /** The listing preview of a decoded log prefix: header identity, title, first human prompt and time bounds. */
-export function previewDshText(text: string): SessionPreview {
-  const preview: SessionPreview = {};
+export function previewDshText(text: string): DshPreview {
+  const preview: DshPreview = {};
   for (const line of text.split("\n")) {
     if (line.trim().length === 0) {
       continue;
@@ -27,6 +31,9 @@ export function previewDshText(text: string): SessionPreview {
       }
       if (header.createdAt !== undefined) {
         preview.startedAt = header.createdAt;
+      }
+      if (header.parentSession) {
+        preview.parentSession = header.parentSession;
       }
     }
     const event = dshEventOf(value);

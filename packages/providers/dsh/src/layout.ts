@@ -1,5 +1,11 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
-import { basenamePath, dirnamePath, joinPath, type WalkSpec } from "@rivus/agent-kit-sessions/spi";
+import {
+  basenamePath,
+  dirnamePath,
+  joinPath,
+  type SessionPlatform,
+  type WalkSpec
+} from "@rivus/agent-kit-sessions/spi";
 
 import { DSH_SESSIONS_DIR } from "./facts.js";
 
@@ -55,4 +61,85 @@ export function latestGenerationKeeper(): (path: string, all: ReadonlySet<string
 /** The session id a file's records name when the header names none: the `<id>` directory the file lives in. */
 export function dshSessionIdOf(path: string): string {
   return basenamePath(dirnamePath(path));
+}
+
+function isSafeChildId(childId: string): boolean {
+  return childId.length > 0 && childId !== "." && childId !== ".." && !childId.includes("/") && !childId.includes("\\");
+}
+
+/** The highest-generation session log inside `<dir>`, preferring compressed when both formats exist at one version. */
+async function latestLogInDir(
+  platform: SessionPlatform,
+  dir: string,
+  signal: AbortSignal | undefined
+): Promise<string | undefined> {
+  signal?.throwIfAborted();
+  if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
+    return undefined;
+  }
+  let entries;
+  try {
+    entries = await platform.fs.list(dir);
+  } catch {
+    return undefined;
+  }
+  const candidates: string[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "file" && DSH_SESSION_FILES.match(entry.name)) {
+      candidates.push(joinPath(dir, entry.name));
+    }
+  }
+  if (candidates.length === 0) {
+    return undefined;
+  }
+  const keep = latestGenerationKeeper();
+  const all = new Set(candidates);
+  const newest = candidates.filter((candidate) => keep(candidate, all));
+  return newest.find((candidate) => dshIsCompressed(candidate)) ?? newest[0];
+}
+
+/**
+ * Resolves a local child session id to its session log under the same `DSH_HOME/sessions/` tree: checks the parent's
+ * own project directory first, then falls back to sibling project directories when the child's cwd differs.
+ */
+export async function resolveDshChildPath(
+  platform: SessionPlatform,
+  parentPath: string,
+  childId: string,
+  signal?: AbortSignal
+): Promise<string | undefined> {
+  if (!isSafeChildId(childId)) {
+    return undefined;
+  }
+  const parentSessionDir = dirnamePath(parentPath);
+  const projectDir = dirnamePath(parentSessionDir);
+  const sameProject = await latestLogInDir(platform, joinPath(projectDir, childId), signal);
+  if (sameProject !== undefined) {
+    return sameProject;
+  }
+  const sessionsRoot = dirnamePath(projectDir);
+  if (sessionsRoot === projectDir) {
+    return undefined;
+  }
+  if ((await platform.fs.stat(sessionsRoot, { followSymlinks: true }))?.kind !== "dir") {
+    return undefined;
+  }
+  let projects;
+  try {
+    projects = await platform.fs.list(sessionsRoot);
+  } catch {
+    return undefined;
+  }
+  const parentProjectName = basenamePath(projectDir);
+  for (const entry of projects) {
+    signal?.throwIfAborted();
+    if (entry.kind !== "dir" || entry.name === parentProjectName) {
+      continue;
+    }
+    const found = await latestLogInDir(platform, joinPath(joinPath(sessionsRoot, entry.name), childId), signal);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
 }

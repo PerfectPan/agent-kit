@@ -1,6 +1,9 @@
 import { type Result, err, ok } from "@rivus/agent-kit-catalog/spi";
 import {
+  type Capability,
+  type Lane,
   type LoadOptions,
+  MAIN_LANE_ID,
   type ReadFailed,
   type SessionAdapter,
   type SessionHead,
@@ -10,21 +13,35 @@ import {
   type SessionReadError,
   type SessionRef,
   type SessionSummaryWithPrompts,
+  type SourcedRecord,
   type Transcript,
+  type TranscriptEvent,
+  type UnknownFormatGeneration,
   catchIoFailure,
   createTranscript,
   EDGE_BYTES,
+  emptyPrompts,
+  emptyTotals,
+  finalizeTranscriptEvents,
+  finishPass,
   readBytes,
   SESSION_TITLE_MAX,
-  summarizeRecords,
+  tallyTranscriptPart,
   walkFiles,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
 
 import { DSH_DISPLAY_NAME, DSH_ID } from "./facts.js";
-import { DSH_SESSION_FILES, dshIsCompressed, dshRoots, latestGenerationKeeper } from "./layout.js";
-import { dshEventOf, dshHeaderOf, isDshSessionHeader } from "./records.js";
-import { DSH_CAPABILITIES, createDshTranslation, dshCapabilities } from "./sessions/events.js";
+import {
+  DSH_SESSION_FILES,
+  dshIsCompressed,
+  dshRoots,
+  dshSessionIdOf,
+  latestGenerationKeeper,
+  resolveDshChildPath
+} from "./layout.js";
+import { type DshSubagentCatalogValue, dshEventOf, dshHeaderOf, isDshSessionHeader } from "./records.js";
+import { DSH_CAPABILITIES, type DshTranslation, createDshTranslation, dshCapabilities } from "./sessions/events.js";
 import { previewDshText } from "./sessions/preview.js";
 import { splitDshRecords } from "./sessions/read.js";
 import { readDshHead, readDshText } from "./records/zstd.js";
@@ -129,6 +146,10 @@ async function* discoverDsh(
       // A compressed head that holds no complete frame, or whose decoded prefix exceeds the preview budget, has
       // nothing to preview: the head keeps the file's mtime as its last activity, like a compressed tail does.
       const preview = previewDshText("text" in head ? head.text : "");
+      // Local subagent sessions are attached as lanes on their parent transcript, so hide them from the top-level list.
+      if (preview.parentSession !== undefined) {
+        continue;
+      }
       // A plain log's tail holds its last activity; the head alone would report only the start. A compressed tail is
       // not a frame boundary, so a compressed log keeps the file's mtime as its last activity.
       if (!dshIsCompressed(path) && stat.size > EDGE_BYTES) {
@@ -182,6 +203,64 @@ async function readDshRecords(
   return ok(splitDshRecords(decoded.value.text, ref.path, decoded.value.codec));
 }
 
+function runDshRecords(
+  records: readonly SourcedRecord[],
+  translation: DshTranslation,
+  onParts?: (parts: readonly TranscriptEvent[]) => void
+): Result<void, UnknownFormatGeneration> {
+  let last: number | undefined;
+  for (const record of records) {
+    const event = dshEventOf(record.value);
+    const ts = event?.time ?? last ?? 1;
+    last = ts;
+    const step = translation.step(record, ts);
+    if (!step.ok) {
+      return step;
+    }
+    if (onParts !== undefined) {
+      onParts(step.value);
+    }
+  }
+  return ok(undefined);
+}
+
+/** Stable k-way merge by timestamp that preserves every source file's internal event order. */
+function mergeLaneEvents(groups: readonly (readonly TranscriptEvent[])[]): TranscriptEvent[] {
+  const cursors = groups.map(() => 0);
+  const out: TranscriptEvent[] = [];
+  for (;;) {
+    let bestGroup = -1;
+    let bestTs = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < groups.length; i += 1) {
+      const group = groups[i]!;
+      const cursor = cursors[i]!;
+      if (cursor >= group.length) {
+        continue;
+      }
+      const ts = group[cursor]!.ts;
+      if (ts < bestTs) {
+        bestTs = ts;
+        bestGroup = i;
+      }
+    }
+    if (bestGroup === -1) {
+      break;
+    }
+    out.push(groups[bestGroup]![cursors[bestGroup]!]!);
+    cursors[bestGroup]! += 1;
+  }
+  return out;
+}
+
+function unavailableLane(entry: DshSubagentCatalogValue, parentId: string): Lane {
+  return {
+    id: entry.childId,
+    parentId,
+    ...(entry.label === undefined ? {} : { title: entry.label }),
+    unavailable: true
+  };
+}
+
 async function loadDsh(
   platform: SessionPlatform,
   ref: SessionRef,
@@ -199,18 +278,80 @@ async function loadDsh(
     retain: true,
     ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
   });
-  let last: number | undefined;
-  for (const record of records) {
-    const event = dshEventOf(record.value);
-    const ts = event?.time ?? last ?? 1;
-    last = ts;
-    const step = translation.step(record, ts);
-    if (!step.ok) {
-      return step;
-    }
+  const ran = runDshRecords(records, translation);
+  if (!ran.ok) {
+    return ran;
   }
   const parsed = translation.finish();
   parsed.skipped.push(...skipped);
+
+  const visited = new Set<string>([parsed.session.id, dshSessionIdOf(ref.path)]);
+  const eventGroups: (readonly TranscriptEvent[])[] = [parsed.events];
+
+  async function attachChildren(
+    parentPath: string,
+    parentLaneId: string,
+    entries: readonly DshSubagentCatalogValue[]
+  ): Promise<void> {
+    for (const entry of entries) {
+      options.signal?.throwIfAborted();
+      if (entry.mode === "external" || visited.has(entry.childId)) {
+        continue;
+      }
+      visited.add(entry.childId);
+      const childPath = await resolveDshChildPath(platform, parentPath, entry.childId, options.signal);
+      if (childPath === undefined) {
+        parsed.agents.push(unavailableLane(entry, parentLaneId));
+        continue;
+      }
+      const childSplit = await readDshRecords(
+        platform,
+        { agent: DSH_ID, path: childPath, sessionId: entry.childId },
+        options.signal
+      );
+      if (!childSplit.ok || childSplit.value.records.length === 0) {
+        parsed.agents.push(unavailableLane(entry, parentLaneId));
+        continue;
+      }
+      const childTranslation = createDshTranslation({
+        retain: true,
+        sessionId: entry.childId,
+        agentId: entry.childId,
+        stripInheritedSeed: true
+      });
+      const childRan = runDshRecords(childSplit.value.records, childTranslation);
+      if (!childRan.ok) {
+        parsed.agents.push(unavailableLane(entry, parentLaneId));
+        continue;
+      }
+      const childParsed = childTranslation.finish();
+      const childSystemPrompt = childTranslation.systemPrompt();
+      parsed.agents.push({
+        id: entry.childId,
+        parentId: parentLaneId,
+        ...(entry.label === undefined ? {} : { title: entry.label }),
+        ...(childSystemPrompt === undefined ? {} : { systemPrompt: childSystemPrompt })
+      });
+      eventGroups.push(childParsed.events);
+      parsed.skipped.push(...childParsed.skipped, ...childSplit.value.skipped);
+      await attachChildren(childPath, entry.childId, childTranslation.subagents());
+    }
+  }
+
+  await attachChildren(ref.path, MAIN_LANE_ID, translation.subagents());
+
+  if (eventGroups.length > 1) {
+    const merged = mergeLaneEvents(eventGroups);
+    finalizeTranscriptEvents(merged);
+    parsed.events.length = 0;
+    parsed.events.push(...merged);
+    const lastEvent = merged.at(-1);
+    if (lastEvent !== undefined) {
+      parsed.session.endedAt =
+        parsed.session.endedAt === undefined ? lastEvent.ts : Math.max(parsed.session.endedAt, lastEvent.ts);
+    }
+  }
+
   return ok(createTranscript(DSH_ID, dshCapabilities(parsed), parsed));
 }
 
@@ -224,19 +365,93 @@ async function summarizeDsh(
   if (!split.ok) {
     return split;
   }
+  const { records } = split.value;
+  if (records.length === 0) {
+    return err(unknownFormatGeneration(DSH_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
+  }
+  const totals = emptyTotals();
+  const prompts = emptyPrompts(promptsOptions);
+  const noPrompts = emptyPrompts();
+  const seen = new Set<Capability>();
+
   const translation = createDshTranslation({
     retain: false,
     ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
   });
-  return summarizeRecords(split.value.records, {
-    agent: DSH_ID,
-    file: ref.path,
-    step: translation.step,
-    timeOf: (record) => dshEventOf(record.value)?.time,
-    isHeader: (record) => dshHeaderOf(record.value) !== undefined,
-    capabilities: DSH_CAPABILITIES,
-    prompts: promptsOptions
+  let mainSessionId = ref.sessionId;
+  const mainParts: TranscriptEvent[] = [];
+  const ran = runDshRecords(records, translation, (parts) => {
+    mainParts.push(...parts);
   });
+  if (!ran.ok) {
+    return ran;
+  }
+  const firstHeader = records[0] === undefined ? undefined : dshHeaderOf(records[0].value);
+  if (firstHeader?.id !== undefined) {
+    mainSessionId = firstHeader.id;
+  }
+
+  const visited = new Set<string>([dshSessionIdOf(ref.path)]);
+  if (mainSessionId !== undefined) {
+    visited.add(mainSessionId);
+  }
+  const laneGroups: (readonly TranscriptEvent[])[] = [mainParts];
+  let subagentCount = 0;
+
+  async function summarizeChildren(parentPath: string, entries: readonly DshSubagentCatalogValue[]): Promise<void> {
+    for (const entry of entries) {
+      signal?.throwIfAborted();
+      if (entry.mode === "external" || visited.has(entry.childId)) {
+        continue;
+      }
+      visited.add(entry.childId);
+      subagentCount += 1;
+      seen.add("subagents");
+      const childPath = await resolveDshChildPath(platform, parentPath, entry.childId, signal);
+      if (childPath === undefined) {
+        continue;
+      }
+      const childSplit = await readDshRecords(
+        platform,
+        { agent: DSH_ID, path: childPath, sessionId: entry.childId },
+        signal
+      );
+      if (!childSplit.ok || childSplit.value.records.length === 0) {
+        continue;
+      }
+      const childTranslation = createDshTranslation({
+        retain: false,
+        sessionId: entry.childId,
+        agentId: entry.childId,
+        stripInheritedSeed: true
+      });
+      const childParts: TranscriptEvent[] = [];
+      const childRan = runDshRecords(childSplit.value.records, childTranslation, (parts) => {
+        childParts.push(...parts);
+      });
+      if (!childRan.ok) {
+        continue;
+      }
+      laneGroups.push(childParts);
+      await summarizeChildren(childPath, childTranslation.subagents());
+    }
+  }
+
+  await summarizeChildren(ref.path, translation.subagents());
+
+  const ordered = laneGroups.length > 1 ? mergeLaneEvents(laneGroups) : mainParts;
+  for (const part of ordered) {
+    if (part.agentId !== undefined && part.agentId !== MAIN_LANE_ID) {
+      if (part.kind === "user") {
+        continue;
+      }
+      tallyTranscriptPart(part, totals, noPrompts, seen);
+    } else {
+      tallyTranscriptPart(part, totals, prompts, seen);
+    }
+  }
+
+  return ok(finishPass(totals, [...seen], subagentCount, prompts.list));
 }
 
 async function detectDsh(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {

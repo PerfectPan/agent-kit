@@ -38,6 +38,8 @@ export interface Lane {
   title?: string;
   /** This lane's own system prompt, when the agent records one per lane. */
   systemPrompt?: string;
+  /** True when the session records this subagent, but its own log is missing or could not be read. */
+  unavailable?: boolean;
 }
 
 export interface TranscriptSession {

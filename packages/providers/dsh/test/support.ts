@@ -15,6 +15,11 @@ export function dshSessions(root: string): ConformanceSession[] {
       capabilities: ["requests", "usage", "durations", "reasoning"]
     },
     {
+      path: at("parent/session.v4.jsonl"),
+      records: 9,
+      capabilities: ["requests", "usage", "subagents"]
+    },
+    {
       path: at("compaction/session.v4.jsonl"),
       records: 10,
       capabilities: ["requests", "usage", "compaction", "compactionTokens", "systemPrompt"]

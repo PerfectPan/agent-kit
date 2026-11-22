@@ -307,3 +307,22 @@ const DshTitle = z.looseObject({ title: lenient(z.string()) });
 export function dshTitleOf(value: unknown): string | undefined {
   return z.safeParse(DshTitle, value).data?.title;
 }
+
+const DshSubagentCatalog = z.looseObject({
+  childId: z.string(),
+  childCreatedAt: lenient(z.number()),
+  mode: lenient(z.string()),
+  label: lenient(z.string())
+});
+
+export interface DshSubagentCatalogValue {
+  childId: string;
+  childCreatedAt?: number;
+  mode?: string;
+  label?: string;
+}
+
+export function dshSubagentCatalogOf(value: unknown): DshSubagentCatalogValue | undefined {
+  const parsed = z.safeParse(DshSubagentCatalog, value).data;
+  return parsed !== undefined && parsed.childId.length > 0 ? parsed : undefined;
+}
