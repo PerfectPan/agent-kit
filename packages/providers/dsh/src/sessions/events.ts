@@ -28,6 +28,8 @@ import {
   dshEndSeedOf,
   dshEventOf,
   dshHeaderOf,
+  dshHookInvokedOf,
+  dshHookResultOf,
   dshMessageDataOf,
   dshRequestHeaderOf,
   dshStepBoundaryOf,
@@ -47,6 +49,7 @@ export const DSH_CAPABILITIES: readonly Capability[] = [
   "compaction",
   "compactionTokens",
   "subagents",
+  "hooks",
   "systemPrompt",
   "toolSchemas"
 ];
@@ -59,6 +62,9 @@ export function dshCapabilities(parsed: ParsedTranscript): Capability[] {
   }
   if (parsed.agents.some((lane) => lane.parentId !== undefined)) {
     out.push("subagents");
+  }
+  if (parsed.events.some((event) => event.kind === "hook")) {
+    out.push("hooks");
   }
   if (parsed.session.systemPrompt !== undefined || parsed.agents.some((lane) => Boolean(lane.systemPrompt))) {
     out.push("systemPrompt");
@@ -504,6 +510,44 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
           }
         }
         buffer.skip(record, event.type);
+        break;
+      }
+      case "hook/invoked": {
+        const invoked = dshHookInvokedOf(event.data);
+        buffer.emit(
+          baseEvent(
+            record,
+            "hook",
+            {
+              type: "hook/invoked",
+              ...(invoked?.point === undefined ? {} : { event: invoked.point }),
+              ...(invoked?.handlerId === undefined ? {} : { name: invoked.handlerId }),
+              ...(invoked?.dialect === undefined ? {} : { dialect: invoked.dialect }),
+              ...(invoked?.matcher === undefined ? {} : { matcher: invoked.matcher })
+            },
+            eventFields(record, ts)
+          )
+        );
+        break;
+      }
+      case "hook/result": {
+        const result = dshHookResultOf(event.data);
+        buffer.emit(
+          baseEvent(
+            record,
+            "hook",
+            {
+              type: "hook/result",
+              ...(result?.point === undefined ? {} : { event: result.point }),
+              ...(result?.handlerId === undefined ? {} : { name: result.handlerId }),
+              ...(result?.exitCode === undefined ? {} : { exitCode: result.exitCode }),
+              ...(result?.decision === undefined ? {} : { decision: result.decision }),
+              ...(result?.stderrSummary === undefined ? {} : { stderrSummary: result.stderrSummary }),
+              ...(result?.durationMs === undefined ? {} : { durationMs: result.durationMs })
+            },
+            eventFields(record, ts)
+          )
+        );
         break;
       }
       case "session/title": {

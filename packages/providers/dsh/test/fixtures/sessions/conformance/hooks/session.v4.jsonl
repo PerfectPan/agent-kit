@@ -1,0 +1,5 @@
+{"type":"session","version":4,"id":"dsh-hooks","createdAt":1767225600000,"cwd":"/u/me/work"}
+{"type":"user/message","seq":1,"time":1767225601000,"data":{"role":"user","content":[{"type":"text","text":"run checks"}],"source":{"kind":"user"},"id":"u1"}}
+{"type":"hook/invoked","seq":2,"time":1767225601100,"data":{"turn":1,"point":"PreToolUse","dialect":"claude-code","handlerId":"h-1","matcher":"Bash"}}
+{"type":"hook/result","seq":3,"time":1767225601150,"data":{"turn":1,"point":"PreToolUse","handlerId":"h-1","decision":"deny","exitCode":2,"stderrSummary":"blocked by policy","durationMs":50}}
+{"type":"assistant/message","seq":4,"time":1767225602000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"blocked"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m1"},"usage":{"inputTokens":5,"outputTokens":2,"totalTokens":7}}}

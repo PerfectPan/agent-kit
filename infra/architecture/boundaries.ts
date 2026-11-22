@@ -170,8 +170,8 @@ export const boundaries: BoundaryRules = {
     [KIMI]: providerRule("kimi"),
     [AGY]: providerRule("agy"),
     [DSH]: providerRule("dsh", {
-      providerServices: ["identity", "discovery", "sessions", "usage", "acp"],
-      spiImports: [CATALOG, DISCOVERY, SESSIONS, ACP],
+      providerServices: ["identity", "discovery", "install", "sessions", "usage", "acp"],
+      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
       testsOnly: [TESTING, PLATFORM_NODE]
     }),
     [PLATFORM]: { siblingEntries: ["public", "effect"], dependsOn: [], external: [] },
