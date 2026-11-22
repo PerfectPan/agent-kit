@@ -13,6 +13,14 @@ Sessions expose request durations from valid `time.created`/`time.completed` pai
 User `compaction` parts record automatic or manual triggers from `auto`; token counts are exposed only when the
 stored part provides them. Transcripts declare only capabilities actually observed in their records.
 
+OpenCode persists no system prompt, tool schemas or hook runs, so `systemPrompt`, `toolSchemas` and `hooks` stay out
+of every transcript. Stored message rows carry only `user` and `assistant` roles, and the persisted part types
+(upstream `packages/schema/src/session-message.ts`) have a `system` part that is a model-facing update text frozen at
+emit time, not the conversation's opening prompt; instruction files live beside the sessions, not inside them. A tool
+part stores its call's `input` and `output`, never the tool's schema. Hook runs are configuration-driven lifecycle
+events that upstream fires while a session runs; neither the persisted schema nor the local databases record them —
+their event table stays empty.
+
 When `session.parent_id` is present, live descendants become nested lanes with the session title as the lane's
 `title`. Discovery hides a child only when its parent exists; orphaned sessions remain discoverable. A rootless
 parent cycle remains discoverable through its lexicographically smallest member, and traversal visits each session

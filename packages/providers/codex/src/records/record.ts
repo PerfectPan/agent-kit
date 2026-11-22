@@ -98,6 +98,10 @@ interface CodexPayload extends CodexUsagePayload {
   };
   base_instructions?: { text?: string };
   replacement_history?: (CodexHistoryItemValue | undefined)[];
+  /** A `compacted` record's snapshot of the latest reachable token usage; its `usage` holds the counts. */
+  latest_token_usage_record?: { usage?: Record<string, unknown> };
+  /** The run summary of a `hook_started`/`hook_completed` event. */
+  run?: { event_name?: string };
 }
 
 const CODEX_USAGE_PAYLOAD_FIELDS = {
@@ -153,7 +157,9 @@ const CodexPayloadSchema = z.looseObject({
     })
   ),
   base_instructions: lenient(z.looseObject({ text: lenient(z.string()) })),
-  replacement_history: lenient(z.array(lenient(CodexHistoryItemSchema)))
+  replacement_history: lenient(z.array(lenient(CodexHistoryItemSchema))),
+  latest_token_usage_record: lenient(z.looseObject({ usage: lenient(z.record(z.string(), z.unknown())) })),
+  run: lenient(z.looseObject({ event_name: lenient(z.string()) }))
 } satisfies Record<keyof CodexPayload, z.ZodMiniType>);
 
 interface CodexEnvelope {

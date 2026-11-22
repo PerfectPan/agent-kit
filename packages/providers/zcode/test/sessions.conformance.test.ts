@@ -50,6 +50,14 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
       data text not null,
       sequence integer
     );
+    create table session_entry (
+      rowid integer primary key,
+      id text not null,
+      session_id text not null,
+      type text not null,
+      time_created integer not null,
+      data text not null
+    );
   `);
   const session = db.prepare(
     "insert into session (id, title, directory, time_created, time_updated, version, time_deleted) values (?, ?, ?, ?, ?, ?, ?)"
@@ -60,6 +68,14 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   const part = db.prepare(
     "insert into part (id, message_id, session_id, time_created, data, sequence) values (?, ?, ?, ?, ?, ?)"
   );
+  const entry = db.prepare(
+    "insert into session_entry (id, session_id, type, time_created, data) values (?, ?, ?, ?, ?)"
+  );
+  const promptSnapshotData = (system: unknown): string =>
+    JSON.stringify({
+      model: { providerId: "test", modelId: "test-model" },
+      ...(system === undefined ? {} : { system })
+    });
 
   session.run("ses_plain", "Plain session", "/u/me/work", 1000, 3000, "3.17.2", null);
   message.run("msg_u1", "ses_plain", 1000, JSON.stringify({ role: "user", time: { created: 1000 } }), 0);
@@ -165,12 +181,50 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
     10000,
     JSON.stringify({ type: "compaction", auto: true, preCompactTokenCount: 100 })
   );
+  // A child lane's own prompt snapshot becomes that lane's `systemPrompt`.
+  entry.run(
+    "ent_child",
+    "ses_child",
+    "runtime/prompt_snapshot",
+    10500,
+    promptSnapshotData([{ role: "system", content: "Child prompt" }])
+  );
+
+  // The latest readable snapshot is the session's; an entry without system text and an unreadable one are skipped.
+  session.run("ses_snapshot", "Prompt snapshots", "/u/me/work", 11000, 16000, "3.17.2", null);
+  entry.run(
+    "ent_a",
+    "ses_snapshot",
+    "runtime/prompt_snapshot",
+    11000,
+    promptSnapshotData([{ role: "system", content: "First prompt" }])
+  );
+  entry.run(
+    "ent_b",
+    "ses_snapshot",
+    "runtime/prompt_snapshot",
+    12000,
+    promptSnapshotData([{ role: "system", content: "Second prompt" }])
+  );
+  entry.run("ent_c", "ses_snapshot", "runtime/prompt_snapshot", 13000, promptSnapshotData([]));
+  entry.run("ent_d", "ses_snapshot", "runtime/prompt_snapshot", 14000, "{broken");
+  message.run("msg_snap", "ses_snapshot", 15000, JSON.stringify({ role: "user", time: { created: 15000 } }), 0);
+  part.run("prt_snap", "msg_snap", "ses_snapshot", 15000, JSON.stringify({ type: "text", text: "hello" }), 0);
   db.close();
 
   const rows = new DatabaseSync(dbPath, { readOnly: true });
   const keysFor = (sessionId: string): string[] => {
     const out: string[] = [`${dbPath}\0${1}`];
     let line = 2;
+    // Prompt snapshot entries are walked first, in their `time_created, id` order.
+    const entries = rows
+      .prepare(
+        "select id from session_entry where session_id = ? and type = 'runtime/prompt_snapshot' order by time_created, id"
+      )
+      .all(sessionId);
+    for (const _snapshot of entries) {
+      out.push(`${dbPath}\0${line++}`);
+    }
     const messages = rows
       .prepare("select id from message where session_id = ? order by sequence, time_created, id")
       .all(sessionId);
@@ -205,9 +259,9 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
     {
       path: dbPath,
       sessionId: "ses_features",
-      records: 4,
-      recordKeys: [1, 2, 3, 4].map((line) => `${dbPath}\0${line}`),
-      capabilities: ["compaction", "compactionTokens", "subagents"],
+      records: 5,
+      recordKeys: [1, 2, 3, 4, 5].map((line) => `${dbPath}\0${line}`),
+      capabilities: ["compaction", "compactionTokens", "subagents", "systemPrompt"],
       compactionShadowing: false
     },
     {
@@ -230,6 +284,13 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
       records: 4,
       recordKeys: keysFor("ses_order"),
       capabilities: ["requests"]
+    },
+    {
+      path: dbPath,
+      sessionId: "ses_snapshot",
+      records: 7,
+      recordKeys: keysFor("ses_snapshot"),
+      capabilities: ["systemPrompt"]
     }
   ];
   rows.close();
@@ -357,6 +418,16 @@ describe("zcode adapter", () => {
           1
         );
       }
+      db.prepare("INSERT INTO session_entry (id, session_id, type, time_created, data) VALUES (?, ?, ?, ?, ?)").run(
+        "tree-snap",
+        "ses_plain",
+        "runtime/prompt_snapshot",
+        500,
+        JSON.stringify({
+          model: { providerId: "test", modelId: "test-model" },
+          system: [{ role: "system", content: "Tree prompt" }]
+        })
+      );
       db.close();
       const ref = { agent: "zcode", path: treePath, sessionId: "ses_plain" };
       const loaded = await zcodeSessionAdapter.load(platform, ref);
@@ -447,6 +518,44 @@ describe("zcode adapter", () => {
       "text" in event.payload && typeof event.payload.text === "string" ? [event.payload.text] : []
     );
     expect(texts).toStrictEqual(["first", "second"]);
+  });
+
+  it("keeps the latest readable prompt snapshot as the session's system prompt", async () => {
+    const ref = { agent: "zcode", path: dbPath, sessionId: "ses_snapshot" };
+    const result = await zcodeSessionAdapter.load(platform, ref);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const transcript = result.value;
+    expect(transcript.session.systemPrompt).toBe("Second prompt");
+    const snapshots = transcript.events.filter(
+      (event) => event.kind === "system" && event.payload.type === "prompt_snapshot"
+    );
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots.map((event) => event.payload.systemPrompt)).toEqual(["First prompt", "Second prompt"]);
+    const reasons = transcript.skipped.map((skip) => skip.reason);
+    expect(reasons).toContain("empty-prompt-snapshot");
+    expect(reasons).toContain("invalid-entry");
+    expect(transcript.capabilities).toContain("systemPrompt");
+    const summary = await zcodeSessionAdapter.summarize!(platform, ref);
+    expect(summary.ok).toBe(true);
+    if (summary.ok) {
+      expect(summary.value).toStrictEqual(foldTranscript(transcript));
+    }
+  });
+
+  it("attaches a child snapshot as the lane's system prompt", async () => {
+    const result = await zcodeSessionAdapter.load(platform, {
+      agent: "zcode",
+      path: dbPath,
+      sessionId: "ses_features"
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.agents[1]).toMatchObject({ id: "ses_child", systemPrompt: "Child prompt" });
   });
 
   it("treats a soft-deleted session as gone", async () => {

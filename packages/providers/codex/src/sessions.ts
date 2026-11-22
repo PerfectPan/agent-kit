@@ -44,7 +44,7 @@ async function loadCodex(
   const parsed = translated.value;
   parsed.skipped.push(...skipped);
   options.signal?.throwIfAborted();
-  return ok(createTranscript(AGENT, codexCapabilities(parsed.session), parsed));
+  return ok(createTranscript(AGENT, codexCapabilities(parsed.session, parsed.events), parsed));
 }
 
 /** The rollout's records in file order with their own times, one at a time; a read stops when the loop leaves. */

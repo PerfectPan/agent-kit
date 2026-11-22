@@ -6,10 +6,13 @@ import {
   baseEvent,
   type Capability,
   type Lane,
+  latestSnapshot,
   MAIN_LANE_ID,
   markOrphanToolResults,
   type ParsedTranscript,
+  promptSnapshot,
   shadowBefore,
+  snapshotHasTools,
   sourceOf,
   type StampedRecord,
   type TranscriptEvent,
@@ -39,14 +42,39 @@ const BASE_CAPABILITIES: readonly Capability[] = [
 
 /**
  * Everything a Codex transcript can list. `systemPrompt` is `session_meta.base_instructions.text`, which older
- * rollouts leave out, so a transcript lists it only when its file records it. Tool schemas are not recorded
- * (`dynamic_tools` lists only the dynamic ones).
+ * rollouts leave out. Tool schemas are the `additional_tools` items Codex records when it adds tools to the thread;
+ * hooks are the `hook_started`/`hook_completed` events of configured hooks; `compactionTokens` is the input-token
+ * count a `compacted` record snapshots. A transcript lists each only when its file records it.
  */
-export const CODEX_CAPABILITIES: readonly Capability[] = [...BASE_CAPABILITIES, "systemPrompt"];
+export const CODEX_CAPABILITIES: readonly Capability[] = [
+  ...BASE_CAPABILITIES,
+  "compactionTokens",
+  "hooks",
+  "systemPrompt",
+  "toolSchemas"
+];
 
 /** The capabilities one translated transcript shows. */
-export function codexCapabilities(session: TranscriptSession): Capability[] {
-  return session.systemPrompt ? [...BASE_CAPABILITIES, "systemPrompt"] : [...BASE_CAPABILITIES];
+export function codexCapabilities(session: TranscriptSession, events: readonly TranscriptEvent[]): Capability[] {
+  const seen = new Set<Capability>(BASE_CAPABILITIES);
+  if (session.systemPrompt) {
+    seen.add("systemPrompt");
+  }
+  if (session.tools !== undefined || latestSnapshot(events, snapshotHasTools) !== undefined) {
+    seen.add("toolSchemas");
+  }
+  if (events.some((event) => event.kind === "hook")) {
+    seen.add("hooks");
+  }
+  if (
+    events.some(
+      (event) =>
+        event.kind === "compaction" && (event.payload.preTokens !== undefined || event.payload.postTokens !== undefined)
+    )
+  ) {
+    seen.add("compactionTokens");
+  }
+  return [...seen];
 }
 
 /** What the translator keeps per event about the item that produced it, for the passes after the loop. */
@@ -292,6 +320,15 @@ export function translateCodexRecords(
 
   shadowCompactions(events, emitted);
   linkSpawns(events, translation.agents, translation.agentByPath, emitted);
+  // The main lane's latest snapshot carries the session's tool schemas, the way a later snapshot replaces an
+  // earlier one; a snapshot that records no `tools` clears them.
+  let tools: unknown[] | undefined;
+  for (const event of events) {
+    const snapshot = promptSnapshot(event);
+    if (event.agentId === undefined && snapshot !== undefined) {
+      tools = snapshot.tools;
+    }
+  }
   const session: TranscriptSession = {
     id:
       sessionId ?? (options.path === undefined ? undefined : codexSessionStem(options.path) || "unknown") ?? "unknown",
@@ -299,7 +336,8 @@ export function translateCodexRecords(
     ...(cwd ? { cwd } : {}),
     ...(startedAt === undefined ? {} : { startedAt }),
     ...(endedAt === undefined ? {} : { endedAt }),
-    ...(systemPrompt ? { systemPrompt } : {})
+    ...(systemPrompt ? { systemPrompt } : {}),
+    ...(tools !== undefined ? { tools } : {})
   };
   markOrphanToolResults(events);
   assignSeq(events);
