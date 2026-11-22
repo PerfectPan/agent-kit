@@ -147,6 +147,7 @@ export { markOrphanToolResults } from "./domain/transcript/services/tool-result-
 export { MAIN_LANE_ID, isPrompt, requestUsage, sessionPrompts } from "./domain/transcript/services/turns.js";
 export {
   addRequest,
+  addRequestDuration,
   addTurnDuration,
   detectEventCapabilities,
   emptyPrompts,

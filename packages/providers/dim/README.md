@@ -17,6 +17,8 @@ bundled into `@rivus/agent-kit`.
   code 2 blocks. Hooks must be trusted through `dim hooks` (content review), which the dialect records as
   `content-hash`.
 - Install writes hooks as grouped `hooks.json` entries (`shared-config`) and skills into `<home>/skills`.
+- Sessions read `sessions`, `messages` (text and assistant `reasoning` parts), `usage_ledger`, and `usage_run_stats`
+  (`durationMs` deduplicated per `runId`), declaring `requests`, `usage`, `durations`, and `reasoning` capabilities.
 - Usage decodes the insert-only `usage_ledger` (one row per settled event: run, provider, model, usage JSON, cost,
   createdAt) through the sessions SPI's append-log SQLite decoder, keyed by session and run id.
 - ACP: `dim acp` (verified on 0.5.27) serves ACP v1 with the session surface, reverse fs/terminal/elicitation, and
