@@ -1,0 +1,4 @@
+{"type": "metadata", "protocol_version": "1.5", "created_at": 1794535300026, "min_protocol_version": "1.5"}
+{"type": "context.append_message", "agentId": "sub_1", "message": {"role": "user", "content": [{"type": "text", "text": "List src"}], "origin": {"kind": "user"}}, "time": 1794535300026}
+{"type": "context.append_loop_event", "agentId": "sub_1", "event": {"type": "content.part", "uuid": "sub_s1", "turnId": "0", "step": 1, "part": {"type": "text", "text": "Found 3 files."}}, "time": 1794535300028}
+{"type": "context.append_loop_event", "agentId": "sub_1", "event": {"type": "step.end", "uuid": "sub_s1", "turnId": "0", "step": 1, "finishReason": "end_turn", "usage": {"inputOther": 40, "output": 10, "inputCacheRead": 0, "inputCacheCreation": 0}, "messageId": "sub_m1"}, "time": 1794535300029}

@@ -1,0 +1,11 @@
+{"type": "metadata", "protocol_version": "1.5", "created_at": 1794535300000, "min_protocol_version": "1.5"}
+{"type": "profile.bind", "agentId": "main", "systemPrompt": "You are Kimi Code CLI.", "time": 1794535300001}
+{"type": "turn.prompt", "agentId": "main", "input": [{"type": "text", "text": "Inspect and compact"}], "origin": {"kind": "user"}, "promptId": "p1", "turnId": 0, "time": 1794535300010}
+{"type": "context.append_message", "agentId": "main", "message": {"role": "user", "content": [{"type": "text", "text": "Inspect and compact"}], "origin": {"kind": "user"}}, "time": 1794535300011}
+{"type": "context.append_message", "agentId": "main", "message": {"role": "user", "content": [{"type": "text", "text": "hook passed"}], "origin": {"kind": "hook_result", "event": "PreToolUse", "blocked": false}}, "time": 1794535300012}
+{"type": "context.append_loop_event", "agentId": "main", "event": {"type": "content.part", "uuid": "s1", "turnId": "0", "step": 1, "part": {"type": "think", "think": "Delegating to subagent."}}, "time": 1794535300020}
+{"type": "subagent.spawned", "agentId": "main", "subagentId": "sub_1", "subagentName": "explore", "parentToolCallId": "call_1", "description": "Explore files", "time": 1794535300025}
+{"type": "context.append_loop_event", "agentId": "main", "event": {"type": "content.part", "uuid": "s1", "turnId": "0", "step": 1, "part": {"type": "text", "text": "Done."}}, "time": 1794535300030}
+{"type": "context.append_loop_event", "agentId": "main", "event": {"type": "step.end", "uuid": "s1", "turnId": "0", "step": 1, "finishReason": "end_turn", "usage": {"inputOther": 100, "output": 20, "inputCacheRead": 0, "inputCacheCreation": 0}, "messageId": "m1"}, "time": 1794535300040}
+{"type": "context.apply_compaction", "agentId": "main", "tokensBefore": 12000, "tokensAfter": 1500, "summary": "Summarized earlier context.", "time": 1794535300050}
+{"type": "turn.ended", "agentId": "main", "turnId": 0, "reason": "completed", "durationMs": 45, "time": 1794535300055}

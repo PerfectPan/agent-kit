@@ -7,22 +7,34 @@ import { compactUsage, lenient, type Usage } from "@rivus/agent-kit-sessions/spi
 // step ends with usage), and `turn.ended` closes it. The schemas stay module-private; the value types are
 // declared by hand, like the other adapters', and the `*Of` functions return them.
 
-/** One part of a message's content: text is the only kind the verified protocol writes. */
+/** One part of a message's content: `text` parts carry `text`, `think` parts the model's reasoning in `think`. */
 export interface KimiContentPartValue {
   type: string;
   text?: string;
+  think?: string;
   [field: string]: unknown;
 }
 
-const contentPart = z.looseObject({ type: z.string(), text: lenient(z.optional(z.string())) });
+const contentPart = z.looseObject({
+  type: z.string(),
+  text: lenient(z.optional(z.string())),
+  think: lenient(z.optional(z.string()))
+});
 
 interface KimiOriginValue {
   kind: string;
   variant?: string;
+  event?: string;
+  blocked?: boolean;
   [field: string]: unknown;
 }
 
-const messageOrigin = z.looseObject({ kind: z.string(), variant: lenient(z.optional(z.string())) });
+const messageOrigin = z.looseObject({
+  kind: z.string(),
+  variant: lenient(z.optional(z.string())),
+  event: lenient(z.optional(z.string())),
+  blocked: lenient(z.optional(z.boolean()))
+});
 
 const KimiHeader = z.object({ type: z.literal("metadata"), protocol_version: z.string() });
 
@@ -181,6 +193,38 @@ export function kimiAppendMessageOf(value: unknown): KimiAppendMessageValue | un
   return z.safeParse(KimiAppendMessage, value).data;
 }
 
+/** A compaction's `summary`: plain text, or the summary message itself whose text parts carry it. */
+type KimiCompactionSummaryValue = string | { role: string; content: KimiContentPartValue[] } | undefined;
+
+export interface KimiApplyCompactionValue {
+  agentId?: string;
+  tokensBefore?: number;
+  tokensAfter?: number;
+  summary?: KimiCompactionSummaryValue;
+  contextSummary?: string;
+  wireLines?: { start: number; end: number };
+  [field: string]: unknown;
+}
+
+const compactionSummary = lenient(
+  z.optional(z.union([z.string(), z.looseObject({ role: z.string(), content: z.array(contentPart) })]))
+);
+
+const KimiApplyCompaction = z.looseObject({
+  type: z.literal("context.apply_compaction"),
+  agentId: lenient(z.optional(z.string())),
+  tokensBefore: lenient(z.optional(z.number().check(z.nonnegative()))),
+  tokensAfter: lenient(z.optional(z.number().check(z.nonnegative()))),
+  summary: compactionSummary,
+  contextSummary: lenient(z.optional(z.string())),
+  wireLines: lenient(z.optional(z.looseObject({ start: z.number(), end: z.number() })))
+});
+
+/** A `context.apply_compaction` record; `undefined` for anything else. */
+export function kimiApplyCompactionOf(value: unknown): KimiApplyCompactionValue | undefined {
+  return z.safeParse(KimiApplyCompaction, value).data;
+}
+
 /** The message content's text parts, joined; an empty array reads as no text. */
 export function kimiContentText(content: readonly KimiContentPartValue[]): string | undefined {
   const text = content
@@ -188,6 +232,46 @@ export function kimiContentText(content: readonly KimiContentPartValue[]): strin
     .map((part) => part.text)
     .join("");
   return text === "" ? undefined : text;
+}
+
+/** The compaction's summary text: the string variants directly, the message variant as its text parts. */
+export function kimiCompactionSummaryText(
+  summary: KimiCompactionSummaryValue,
+  contextSummary: string | undefined
+): string | undefined {
+  if (typeof summary === "string") {
+    return summary === "" ? undefined : summary;
+  }
+  if (typeof summary === "object") {
+    const text = kimiContentText(summary.content);
+    if (text !== undefined) {
+      return text;
+    }
+  }
+  return contextSummary !== undefined && contextSummary !== "" ? contextSummary : undefined;
+}
+
+export interface KimiSubagentSpawnedValue {
+  subagentId: string;
+  subagentName: string;
+  parentToolCallId: string;
+  runInBackground?: boolean;
+  description?: string;
+  [field: string]: unknown;
+}
+
+const KimiSubagentSpawned = z.looseObject({
+  type: z.literal("subagent.spawned"),
+  subagentId: z.string(),
+  subagentName: z.string(),
+  parentToolCallId: z.string(),
+  runInBackground: lenient(z.optional(z.boolean())),
+  description: lenient(z.optional(z.string()))
+});
+
+/** A `subagent.spawned` record; `undefined` for anything else. */
+export function kimiSubagentSpawnedOf(value: unknown): KimiSubagentSpawnedValue | undefined {
+  return z.safeParse(KimiSubagentSpawned, value).data;
 }
 
 /** The kit's usage convention: `inputTokens` includes cache reads and writes; `undefined` without both counts. */
