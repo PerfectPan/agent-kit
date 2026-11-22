@@ -70,9 +70,14 @@ catalogs:
   typescript6:
     typescript: 6.0.3
 
-# Redirect whatever declares a `vite` range to the vite-plus core alias.
+# Redirect whatever declares a `vite` range to the vite-plus core alias, and patch vulnerable minimatch dev ranges.
 overrides:
   vite@*: 'catalog:'
+  minimatch@>=7.0.0 <11.0.1: '>=11.0.1'
+
+# typedoc@0.28.20 calls Minimatch.matchOne(), removed in minimatch 11; remove once TypeDoc supports minimatch 11.
+patchedDependencies:
+  typedoc@0.28.20: patches/typedoc@0.28.20.patch
 
 peerDependencyRules:
   allowAny:
