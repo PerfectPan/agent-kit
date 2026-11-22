@@ -1,0 +1,6 @@
+{"type":"session","version":4,"id":"fork-child","createdAt":1767225605000,"cwd":"/u/me/work","parentSession":"dsh-parent","origin":"subagent","isSeeded":true,"delegationDepth":1}
+{"type":"user/message","seq":1,"time":1767225601000,"data":{"role":"user","content":[{"type":"text","text":"delegate work"}],"source":{"kind":"user"},"id":"u-parent"}}
+{"type":"assistant/message","seq":2,"time":1767225602000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"spawning helpers"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m-parent"},"usage":{"inputTokens":10,"outputTokens":4,"totalTokens":14}}}
+{"type":"session/end-seed","seq":3,"time":1767225605000,"data":{"inherited":true}}
+{"type":"user/message","seq":4,"time":1767225605100,"data":{"role":"user","content":[{"type":"text","text":"continue from fork"}],"source":{"kind":"user"},"id":"u-fork"}}
+{"type":"assistant/message","seq":5,"time":1767225607000,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"fork done"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m-fork"},"usage":{"inputTokens":6,"outputTokens":3,"totalTokens":9}}}

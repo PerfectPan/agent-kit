@@ -1,0 +1,4 @@
+{"type":"session","version":4,"id":"spawn-child","createdAt":1767225603000,"cwd":"/u/me/work","parentSession":"dsh-parent","origin":"subagent","isSeeded":false,"delegationDepth":1}
+{"type":"subagent/descriptor","seq":0,"time":1767225603010,"data":{"mode":"continuable"}}
+{"type":"user/message","seq":1,"time":1767225603100,"data":{"role":"user","content":[{"type":"text","text":"run spawn task"}],"source":{"kind":"user"},"id":"u-spawn"}}
+{"type":"assistant/message","seq":2,"time":1767225604000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"spawn done"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m-spawn"},"usage":{"inputTokens":5,"outputTokens":2,"totalTokens":7}}}

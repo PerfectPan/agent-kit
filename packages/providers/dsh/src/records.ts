@@ -27,6 +27,7 @@ const DshHeader = z.looseObject({
   createdAt: lenient(z.number()),
   cwd: lenient(z.string()),
   parentSession: lenient(z.string()),
+  origin: lenient(z.string()),
   delegationDepth: lenient(z.number()),
   agentPreset: lenient(z.string()),
   isSeeded: lenient(z.boolean())
@@ -39,6 +40,7 @@ export interface DshHeaderValue {
   createdAt?: number;
   cwd?: string;
   parentSession?: string;
+  origin?: string;
   delegationDepth?: number;
   agentPreset?: string;
   isSeeded?: boolean;
@@ -306,4 +308,33 @@ const DshTitle = z.looseObject({ title: lenient(z.string()) });
 
 export function dshTitleOf(value: unknown): string | undefined {
   return z.safeParse(DshTitle, value).data?.title;
+}
+
+const DshSubagentCatalog = z.looseObject({
+  childId: z.string(),
+  childCreatedAt: lenient(z.number()),
+  mode: lenient(z.string()),
+  label: lenient(z.string())
+});
+
+export interface DshSubagentCatalogValue {
+  childId: string;
+  childCreatedAt?: number;
+  mode?: string;
+  label?: string;
+}
+
+export function dshSubagentCatalogOf(value: unknown): DshSubagentCatalogValue | undefined {
+  const parsed = z.safeParse(DshSubagentCatalog, value).data;
+  return parsed !== undefined && parsed.childId.length > 0 ? parsed : undefined;
+}
+
+const DshEndSeed = z.looseObject({ inherited: lenient(z.boolean()) });
+
+export interface DshEndSeedValue {
+  inherited?: boolean;
+}
+
+export function dshEndSeedOf(value: unknown): DshEndSeedValue | undefined {
+  return z.safeParse(DshEndSeed, value).data;
 }
