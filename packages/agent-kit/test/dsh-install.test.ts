@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -131,4 +131,33 @@ describe("DeepSeek Harness skill installation lifecycle", () => {
       );
     }
   });
+
+  it.skipIf(process.platform === "win32")(
+    "preserves literal backslashes in existing POSIX DSH_AGENTS_HOME directories",
+    async () => {
+      const root = createTempDir("dsh-backslash-");
+      const home = join(root, "home");
+      const agentsDir = join(root, "agents\\archive");
+      mkdirSync(agentsDir, { recursive: true });
+      const layer = makeLayer(home, root, { DSH_AGENTS_HOME: agentsDir });
+
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const plan = yield* planInstall(skillBundle, { agents: ["dsh"] });
+          expect(plan.status).toBe("ready");
+          yield* applyInstall(plan);
+
+          const skillFile = join(agentsDir, "skills", "demo-skill", "SKILL.md");
+          expect(existsSync(skillFile)).toBe(true);
+          expect(existsSync(join(root, "agents", "archive", "skills", "demo-skill", "SKILL.md"))).toBe(false);
+
+          const verified = yield* verify("demo-app");
+          expect(verified.artifacts.map((a) => a.status)).toEqual(["in-sync"]);
+
+          yield* uninstall("demo-app");
+          expect(existsSync(skillFile)).toBe(false);
+        }).pipe(Effect.provide(layer))
+      );
+    }
+  );
 });

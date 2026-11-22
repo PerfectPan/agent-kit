@@ -3,15 +3,18 @@ import * as Effect from "effect/Effect";
 
 import type { ArtifactIoFailure } from "../ports.js";
 
-const separator = (path: string): number => Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+const separator = (path: string, isWin: boolean): number =>
+  isWin ? Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) : path.lastIndexOf("/");
 
-const isAbsolute = (path: string): boolean => path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+const isAbsolute = (path: string, isWin: boolean): boolean =>
+  path.startsWith("/") || (isWin && /^[A-Za-z]:[\\/]/.test(path));
 
-function normalizeAbsolute(path: string): string {
-  const drive = /^[A-Za-z]:/.exec(path)?.[0] ?? "";
+function normalizeAbsolute(path: string, isWin: boolean): string {
+  const drive = isWin ? (/^[A-Za-z]:/.exec(path)?.[0] ?? "") : "";
   const root = drive ? `${drive}/` : "/";
+  const split = isWin ? /[\\/]+/ : /\/+/;
   const stack: string[] = [];
-  for (const part of path.slice(drive.length).split(/[\\/]+/)) {
+  for (const part of path.slice(drive.length).split(split)) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -35,7 +38,9 @@ export function resolveIo(path: string, cause: unknown): ArtifactIoFailure {
  */
 export function resolvePath(path: string, follow = false): Effect.Effect<string, ArtifactIoFailure, PlatformService> {
   return Effect.gen(function* () {
-    const { fs } = yield* PlatformService;
+    const { fs, os } = yield* PlatformService;
+    const isWin = os === "win32";
+    const trailingSep = isWin ? /[\\/]$/ : /\/$/;
     const resolve = async (target: string, followLast: boolean): Promise<string> => {
       if (followLast) {
         const real = await fs.realpath(target);
@@ -43,26 +48,26 @@ export function resolvePath(path: string, follow = false): Effect.Effect<string,
           return real;
         }
       }
-      const cut = separator(target);
+      const cut = separator(target, isWin);
       if (cut <= 0) {
         return target;
       }
       const parent = await resolve(target.slice(0, cut), true);
-      return `${parent.replace(/[\\/]$/, "")}/${target.slice(cut + 1)}`;
+      return `${parent.replace(trailingSep, "")}/${target.slice(cut + 1)}`;
     };
     const start = async (): Promise<string> => {
       let target = path;
-      if (!isAbsolute(target)) {
+      if (!isAbsolute(target, isWin)) {
         const cwd = await fs.realpath(".");
         if (cwd !== undefined) {
-          target = normalizeAbsolute(`${cwd}/${target}`);
+          target = normalizeAbsolute(`${cwd}/${target}`, isWin);
         }
       }
       const resolved = await resolve(target, follow);
-      if (!isAbsolute(resolved)) {
+      if (!isAbsolute(resolved, isWin)) {
         return resolved;
       }
-      const normalized = normalizeAbsolute(resolved);
+      const normalized = normalizeAbsolute(resolved, isWin);
       if (normalized !== resolved) {
         return resolve(normalized, follow);
       }

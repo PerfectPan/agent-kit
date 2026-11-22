@@ -13,6 +13,7 @@ describe("resolvePath", () => {
       ["/u/me", "/u/me"]
     ]);
     const platform = {
+      os: "darwin",
       fs: {
         realpath: async (path: string) => known.get(path)
       }
@@ -27,6 +28,7 @@ describe("resolvePath", () => {
     expect(await run("/u/me/not-created/./agents/skills/demo-skill")).toBe(
       "/u/me/not-created/agents/skills/demo-skill"
     );
+    expect(await run("/u/me/agents\\archive/skills/demo-skill")).toBe("/u/me/agents\\archive/skills/demo-skill");
     expect(await run("/u/me/agents /skills/demo-skill")).toBe("/u/me/agents /skills/demo-skill");
   });
 });
