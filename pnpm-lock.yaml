@@ -308,6 +308,9 @@ overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.5.0
   minimatch@>=7.0.0 <11.0.1: '>=11.0.1'
 
+patchedDependencies:
+  typedoc@0.28.20: af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396
+
 importers:
 
   .:
@@ -426,10 +429,10 @@ importers:
     dependencies:
       typedoc:
         specifier: 'catalog:'
-        version: 0.28.20(typescript@6.0.3)
+        version: 0.28.20(patch_hash=af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396)(typescript@6.0.3)
       typedoc-plugin-markdown:
         specifier: 'catalog:'
-        version: 4.14.1(typedoc@0.28.20(typescript@6.0.3))
+        version: 4.14.1(typedoc@0.28.20(patch_hash=af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396)(typescript@6.0.3))
       typescript:
         specifier: catalog:typescript6
         version: 6.0.3
@@ -10551,11 +10554,11 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
-  typedoc-plugin-markdown@4.14.1(typedoc@0.28.20(typescript@6.0.3)):
+  typedoc-plugin-markdown@4.14.1(typedoc@0.28.20(patch_hash=af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396)(typescript@6.0.3)):
     dependencies:
-      typedoc: 0.28.20(typescript@6.0.3)
+      typedoc: 0.28.20(patch_hash=af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396)(typescript@6.0.3)
 
-  typedoc@0.28.20(typescript@6.0.3):
+  typedoc@0.28.20(patch_hash=af1f8891c46809ec9aa4e245904becd24fbde43276bd75368a77a11db20a6396)(typescript@6.0.3):
     dependencies:
       '@gerrit0/mini-shiki': 3.23.0
       lunr: 2.3.9
