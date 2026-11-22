@@ -203,7 +203,7 @@ export function dshStepBoundaryOf(value: unknown): DshStepBoundaryValue | undefi
 }
 
 const DshStreamChunk = z.looseObject({ time: z.number() });
-const DshStreamBatched = z.looseObject({ time0: z.number(), dt: lenient(z.array(z.number())) });
+const DshStreamBatched = z.looseObject({ time0: z.number(), dt: z.array(z.number()) });
 
 export interface DshStreamTimeRange {
   first: number;
@@ -212,8 +212,8 @@ export interface DshStreamTimeRange {
 
 /**
  * The first and last recorded timestamps across an `assistant/message.stream` array. Chunk records carry an epoch
- * millisecond `time`; batched chunk records carry `time0` plus per-chunk `dt[]` deltas. Records without valid finite
- * timestamps are ignored; returns `undefined` when no timed record is present.
+ * millisecond `time`; batched chunk records carry `time0` plus a `dt[]` array of signed finite deltas. Records with
+ * missing or malformed timestamps/deltas are skipped; returns `undefined` when no valid timed record is present.
  */
 export function dshStreamTimeRange(stream: readonly unknown[] | undefined): DshStreamTimeRange | undefined {
   if (stream === undefined || stream.length === 0) {
@@ -234,22 +234,24 @@ export function dshStreamTimeRange(stream: readonly unknown[] | undefined): DshS
     if (batched !== undefined && Number.isFinite(batched.time0)) {
       let delta = 0;
       let valid = true;
-      if (batched.dt !== undefined) {
-        for (const d of batched.dt) {
-          if (!Number.isFinite(d) || d < 0) {
-            valid = false;
-            break;
-          }
-          delta += d;
+      for (const d of batched.dt) {
+        if (!Number.isFinite(d)) {
+          valid = false;
+          break;
         }
+        delta += d;
       }
       if (!valid) {
+        continue;
+      }
+      const end = batched.time0 + delta;
+      if (!Number.isFinite(end)) {
         continue;
       }
       if (first === undefined) {
         first = batched.time0;
       }
-      last = batched.time0 + delta;
+      last = end;
     }
   }
   if (first === undefined || last === undefined) {

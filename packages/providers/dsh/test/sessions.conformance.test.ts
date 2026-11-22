@@ -135,6 +135,30 @@ describe("dsh request timing", () => {
     const request = loaded.value.events.find((event) => event.kind === "request");
     expect(request?.kind === "request" ? request.payload.durationMs : "missing").toBeUndefined();
   });
+
+  it("handles signed negative dt deltas and skips batched records with missing or malformed dt", async () => {
+    const log = [
+      '{"type":"session","version":4,"id":"dsh-dt","createdAt":1767225600000,"cwd":"/u/me/work"}',
+      '{"type":"step/start","seq":1,"time":900,"data":{"turn":1,"step":1}}',
+      '{"type":"assistant/message","seq":2,"time":1100,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"abc"}],"source":{"kind":"model","model":"m"}},"stream":[{"type":"text-chunks","time0":1000,"index":0,"dt":[-100,200],"texts":["a","b","c"]}]}}',
+      '{"type":"step/start","seq":3,"time":2000,"data":{"turn":2,"step":1}}',
+      '{"type":"assistant/message","seq":4,"time":2200,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"x"}],"source":{"kind":"model","model":"m"}},"stream":[{"type":"text-chunks","time0":2100,"index":0,"dt":[],"texts":["x"]}]}}',
+      '{"type":"step/start","seq":5,"time":3000,"data":{"turn":3,"step":1}}',
+      '{"type":"assistant/message","seq":6,"time":3200,"data":{"turn":3,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"bad"}],"source":{"kind":"model","model":"m"}},"stream":[{"type":"text-chunks","time0":3100,"index":0,"dt":["bad"],"texts":["a","b"]}]}}',
+      '{"type":"step/start","seq":7,"time":4000,"data":{"turn":4,"step":1}}',
+      '{"type":"assistant/message","seq":8,"time":4200,"data":{"turn":4,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"missing"}],"source":{"kind":"model","model":"m"}},"stream":[{"type":"text-chunks","time0":4100,"index":0,"texts":["a"]}]}}'
+    ].join("\n");
+    const path = "/dsh/dt-edge/session.v4.jsonl";
+    const platform = createMemoryPlatform({ files: { [path]: new TextEncoder().encode(log) } });
+    const loaded = await adapter.load(platform, { agent: "dsh", path });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.capabilities).toContain("durations");
+    const requests = loaded.value.events.filter((event) => event.kind === "request");
+    expect(requests.map((event) => event.payload.durationMs)).toEqual([200, 100, undefined, undefined]);
+  });
 });
 
 describe("dsh discovery keeps one generation per session", () => {
