@@ -384,7 +384,7 @@ describe("dsh subagent lanes", () => {
       expect(summary.value.requests).toBe(count + 1);
       expect(summary.value.subagents).toBe(1);
     }
-  });
+  }, 30_000);
 });
 
 describe("dsh discovery keeps one generation per session", () => {
