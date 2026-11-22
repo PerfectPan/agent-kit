@@ -37,8 +37,10 @@ export interface ConformanceSession {
    * present, the record accounting checks these keys instead of reading the files.
    */
   readonly recordKeys?: readonly string[];
-  /** Capabilities this session demonstrates. `compaction` also requires at least one shadowed event. */
+  /** Capabilities this session demonstrates. */
   readonly capabilities: readonly Capability[];
+  /** False when compaction boundaries do not identify replaced events; otherwise compaction fixtures must show shadowing. */
+  readonly compactionShadowing?: boolean;
 }
 
 export interface SessionAdapterFixtures {
@@ -363,7 +365,7 @@ export function sessionAdapterConformance(
       name: "points shadowedBy at a later compaction on the same lane",
       run: async () => {
         await eachTranscript((transcript, session) => {
-          if (session.capabilities.includes("compaction")) {
+          if (session.capabilities.includes("compaction") && session.compactionShadowing !== false) {
             check(
               transcript.events.some((event) => event.shadowedBy !== undefined),
               `${session.path} demonstrates compaction, but no event is shadowed`

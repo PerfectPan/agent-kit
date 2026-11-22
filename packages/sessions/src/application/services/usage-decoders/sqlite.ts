@@ -383,6 +383,7 @@ export function sqliteSessionMessageOf(
     model: message.modelId ?? message.modelID,
     finish: message.finish,
     created: message.time?.created,
+    completed: message.time?.completed,
     usage: usageOf(sqliteMessageTokensOf(message.tokens))
   };
 }

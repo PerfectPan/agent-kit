@@ -46,6 +46,7 @@ export function opencodeMessageOf(value: unknown): SqliteSessionMessage | undefi
     model: message.modelID,
     finish: message.finish,
     created: message.time?.created,
+    completed: message.time?.completed,
     usage: opencodeUsageOf(sqliteMessageTokensOf(message.tokens))
   };
 }

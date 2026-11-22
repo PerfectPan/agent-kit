@@ -9,6 +9,28 @@ writes it, so discovery probes the application path and the `zcode` command name
 with cache and output with reasoning, the convention the kit's `Usage` uses, so the decoder passes them through.
 The beta build's `~/.zcode-beta` is not followed.
 
+Sessions expose request durations from valid `time.created`/`time.completed` pairs, including zero durations.
+Compaction parts expose known automatic/manual triggers and finite non-negative pre-compaction token counts.
+ZCode can store both an assistant timeline part and a user boundary for one `operationId`: the shared reader emits
+one event, preferring the boundary's `compactBoundary` metadata, and accounts for the mirror as a skipped record.
+Parts without an operation ID remain separate compactions. Timeline attempts with a status other than `completed`
+are skipped, including started, retrying, failed, interrupted and skipped attempts; a matching completed boundary
+still counts once. The `reactive` overflow-recovery trigger means automatic compaction. An unknown explicit trigger
+stays unknown; `auto` is only a fallback when no nonempty explicit trigger exists. Capabilities reflect retained events.
+
+Live descendants linked by `session.parent_id` become nested lanes, with their title in `Lane.title`. A row with
+`task_type = 'fork'` is a standalone session: it stays discoverable, and its copied history does not contribute to
+its parent's transcript or summary. Its own subagents remain attached to the fork. Soft-deleted children are
+excluded. Discovery hides subagents only when their parent exists and is live, preserving orphans when a parent is
+missing or deleted. Each rootless parent cycle keeps its lexicographically smallest member discoverable. Traversal
+visits each session once; schemas without task-type, parent, deletion or sequence columns remain readable.
+
+Merging compares the heads of lanes using running maximum timestamps, with ties decided by lane order. Every lane
+retains its sequence order and recorded event timestamps, including a tool result recorded earlier than its call.
+Summaries use the same ordering for requests and include all lanes' tokens, durations, compactions and failed tools.
+Turns and prompt previews come only from the main lane. Messages are fetched individually; only the first requested
+number of nonempty prompt previews are copied, with each capped at collection.
+
 `hooks.ts` reads ZCode's command hooks. ZCode documents none, so the dialect follows its engine
 (`Contents/Resources/glm/zcode.cjs`, 3.17.2). Declarations come from `hooks.events` in the user config
 `~/.zcode/cli/config.json`, which run in every project without review; from the workspace's `zcode.json` and

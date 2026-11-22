@@ -53,6 +53,27 @@ async function failure(adapter: SessionAdapter, name: string): Promise<string> {
 }
 
 describe("sessionAdapterConformance", () => {
+  it("allows boundaries without replacement metadata but still validates any shadow links they emit", async () => {
+    const boundaryFixtures = {
+      ...fixtures,
+      sessions: fixtures.sessions.map((session) => ({ ...session, compactionShadowing: false }))
+    };
+    const runShadowing = (adapter: SessionAdapter) =>
+      sessionAdapterConformance(adapter, boundaryFixtures)
+        .find((check) => check.name === "points shadowedBy at a later compaction on the same lane")!
+        .run();
+    await expect(
+      runShadowing(withLoad((transcript) => transcript.events.forEach((event) => delete event.shadowedBy)))
+    ).resolves.toBeUndefined();
+    await expect(
+      runShadowing(
+        withLoad((transcript) => {
+          transcript.events[0]!.shadowedBy = "missing";
+        })
+      )
+    ).rejects.toThrow("is not a compaction");
+  });
+
   it("rejects a discover that reads whole files", async () => {
     const greedy: SessionAdapter = {
       ...claude,

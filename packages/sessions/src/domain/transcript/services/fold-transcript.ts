@@ -56,7 +56,7 @@ export function addTurnDuration(totals: SummaryTotals, durationMs?: number): voi
 }
 
 /** Counts a request's own duration, the fallback `durationMs` uses when no turn names one. */
-function addRequestDuration(totals: SummaryTotals, durationMs?: number): void {
+export function addRequestDuration(totals: SummaryTotals, durationMs?: number): void {
   if (durationMs !== undefined && Number.isFinite(durationMs)) {
     totals.requestDurations.push(durationMs);
   }

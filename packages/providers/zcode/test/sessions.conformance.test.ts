@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
-import { foldTranscript, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
+import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { zcodeSessionAdapter } from "../src/sessions.js";
 
@@ -134,6 +134,37 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   session.run("ses_deleted", "Deleted session", "/u/me/work", 6000, 7000, "3.17.2", 7000);
   message.run("msg_u3", "ses_deleted", 6000, JSON.stringify({ role: "user", time: { created: 6000 } }), 0);
   part.run("prt_t3", "msg_u3", "ses_deleted", 6000, JSON.stringify({ type: "text", text: "gone" }), 0);
+  db.exec("ALTER TABLE session ADD COLUMN parent_id TEXT");
+  db.exec("ALTER TABLE session ADD COLUMN task_type TEXT");
+  db.prepare(
+    "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES ('ses_fork', 'ses_plain', 'fork', 'Manual fork', '', 4000, 4000, '')"
+  ).run();
+  db.exec(`
+    INSERT INTO message (id, session_id, time_created, data, sequence)
+      SELECT 'fork_' || id, 'ses_fork', time_created, data, sequence FROM message WHERE session_id = 'ses_plain';
+    INSERT INTO part (id, message_id, session_id, time_created, data, sequence)
+      SELECT 'fork_' || id, 'fork_' || message_id, 'ses_fork', time_created, data, sequence FROM part WHERE session_id = 'ses_plain';
+  `);
+  db.prepare(
+    "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, '', '', 10000, 10000, '')"
+  ).run("ses_features", null);
+  db.prepare(
+    "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, '', '', 10000, 10000, '')"
+  ).run("ses_child", "ses_features");
+  db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)").run(
+    "msg_features",
+    "ses_features",
+    10000,
+    JSON.stringify({ role: "user" })
+  );
+  // The shared SQLite capability set also accepts explicit boundary token metadata.
+  db.prepare("INSERT INTO part (id, message_id, session_id, time_created, data) VALUES (?, ?, ?, ?, ?)").run(
+    "part_features",
+    "msg_features",
+    "ses_features",
+    10000,
+    JSON.stringify({ type: "compaction", auto: true, preCompactTokenCount: 100 })
+  );
   db.close();
 
   const rows = new DatabaseSync(dbPath, { readOnly: true });
@@ -166,17 +197,32 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   const sessions: ConformanceSession[] = [
     {
       path: dbPath,
+      sessionId: "ses_fork",
+      records: 9,
+      recordKeys: keysFor("ses_fork"),
+      capabilities: ["requests", "usage", "durations", "reasoning"]
+    },
+    {
+      path: dbPath,
+      sessionId: "ses_features",
+      records: 4,
+      recordKeys: [1, 2, 3, 4].map((line) => `${dbPath}\0${line}`),
+      capabilities: ["compaction", "compactionTokens", "subagents"],
+      compactionShadowing: false
+    },
+    {
+      path: dbPath,
       sessionId: "ses_plain",
       records: 9,
       recordKeys: keysFor("ses_plain"),
-      capabilities: ["requests", "usage", "reasoning"]
+      capabilities: ["requests", "usage", "durations", "reasoning"]
     },
     {
       path: dbPath,
       sessionId: "ses_unknown",
       records: 5,
       recordKeys: keysFor("ses_unknown"),
-      capabilities: ["requests", "usage"]
+      capabilities: ["requests", "usage", "durations"]
     },
     {
       path: dbPath,
@@ -208,6 +254,149 @@ describe("zcode conformance (sqlite)", () => {
 
 describe("zcode adapter", () => {
   const platform = createNodePlatform({ home: tempRoot });
+
+  it("keeps a manual fork visible and excludes its copied requests from the parent", async () => {
+    const ids = [];
+    for await (const item of zcodeSessionAdapter.discover(platform, tempRoot)) {
+      ids.push(item.ref.sessionId);
+    }
+    expect(ids).toContain("ses_fork");
+    for (const sessionId of ["ses_plain", "ses_fork"]) {
+      const ref = { agent: "zcode", path: dbPath, sessionId };
+      const loaded = await zcodeSessionAdapter.load(platform, ref);
+      expect(loaded.ok).toBe(true);
+      if (!loaded.ok) {
+        return;
+      }
+      expect(loaded.value.agents).toEqual([{ id: "main" }]);
+      expect(foldTranscript(loaded.value)).toMatchObject({
+        requests: 1,
+        inputTokens: 10,
+        outputTokens: 5,
+        durationMs: 1000
+      });
+      expect(await zcodeSessionAdapter.summarize!(platform, ref)).toEqual({
+        ok: true,
+        value: foldTranscript(loaded.value)
+      });
+    }
+  });
+
+  it.each([false, true])(
+    "deduplicates real timeline/boundary shapes and merges live child lanes (boundary first: %s)",
+    async (boundaryFirst) => {
+      const treePath = join(tempRoot, `tree-${boundaryFirst}.sqlite`);
+      await copyFile(dbPath, treePath);
+      const db = new DatabaseSync(treePath);
+      const session = db.prepare(
+        "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version, time_deleted) VALUES (?, ?, ?, '', 1, 6000, '', ?)"
+      );
+      session.run("child", "ses_plain", "Investigate", null);
+      session.run("nested", "child", "Verify", null);
+      session.run("deleted-child", "ses_plain", "Deleted", 5000);
+      const message = db.prepare(
+        "INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)"
+      );
+      const part = db.prepare(
+        "INSERT INTO part (id, message_id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?, 0)"
+      );
+      message.run(
+        "compact-assistant",
+        "ses_plain",
+        3500,
+        JSON.stringify({ role: "assistant", time: { created: 3500, completed: 3700 } }),
+        boundaryFirst ? 3 : 2
+      );
+      message.run(
+        "compact-user",
+        "ses_plain",
+        3800,
+        JSON.stringify({ role: "user", time: { created: 3800 } }),
+        boundaryFirst ? 2 : 3
+      );
+      part.run(
+        "timeline",
+        "compact-assistant",
+        "ses_plain",
+        3500,
+        JSON.stringify({
+          type: "compaction",
+          operationId: "compact-1",
+          auto: true,
+          timelineStatus: "completed",
+          preCompactTokenCount: 12000
+        })
+      );
+      part.run(
+        "boundary",
+        "compact-user",
+        "ses_plain",
+        3800,
+        JSON.stringify({
+          type: "compaction",
+          operationId: "compact-1",
+          compactBoundary: { trigger: "auto", preCompactTokenCount: 12000 }
+        })
+      );
+      for (const [id, at] of [
+        ["child", 1500],
+        ["nested", 2500],
+        ["deleted-child", 100]
+      ] as const) {
+        message.run(`${id}-user`, id, at, JSON.stringify({ role: "user", time: { created: at } }), 0);
+        part.run(`${id}-text`, `${id}-user`, id, at, JSON.stringify({ type: "text", text: "child prompt" }));
+        message.run(
+          `${id}-request`,
+          id,
+          at,
+          JSON.stringify({
+            role: "assistant",
+            time: { created: at, completed: at + 100 },
+            tokens: { input: 8, output: 3, reasoning: 1, cache: { read: 3, write: 4 } }
+          }),
+          1
+        );
+      }
+      db.close();
+      const ref = { agent: "zcode", path: treePath, sessionId: "ses_plain" };
+      const loaded = await zcodeSessionAdapter.load(platform, ref);
+      expect(loaded.ok).toBe(true);
+      if (!loaded.ok) {
+        return;
+      }
+      const transcript = loaded.value;
+      expect(transcript.agents).toEqual([
+        { id: "main" },
+        { id: "child", parentId: "main", title: "Investigate" },
+        { id: "nested", parentId: "child", title: "Verify" }
+      ]);
+      const compactions = transcript.events.filter((event) => event.kind === "compaction");
+      expect(compactions).toHaveLength(1);
+      expect(compactions[0]).toMatchObject({
+        ts: 3800,
+        payload: { trigger: "auto", preTokens: 12000 },
+        original: { compactBoundary: { preCompactTokenCount: 12000 } }
+      });
+      expect(transcript.skipped.filter((skip) => skip.reason === "duplicate-compaction")).toHaveLength(1);
+      expect(transcript.capabilities).toEqual(zcodeSessionAdapter.capabilities);
+      const prompts = { limit: 10, maxChars: 100 };
+      expect(await zcodeSessionAdapter.summarize!(platform, ref, { prompts })).toEqual({
+        ok: true,
+        value: { ...foldTranscript(transcript), prompts: sessionPrompts(transcript, prompts) }
+      });
+      expect(foldTranscript(transcript)).toEqual({
+        turns: 1,
+        requests: 4,
+        inputTokens: 26,
+        outputTokens: 11,
+        durationMs: 1400,
+        compactions: 1,
+        subagents: 2,
+        failedTools: 0,
+        contextShape: [8, 10, 8]
+      });
+    }
+  );
 
   it("keeps the version, prefers the AI SDK spellings, and pairs a tool call with its result", async () => {
     const result = await zcodeSessionAdapter.load(platform, {
@@ -448,5 +637,120 @@ describe("zcode adapter", () => {
     await expect(zcodeSessionAdapter.summarize!(abortingPlatform, ref, { signal: midController.signal })).rejects.toBe(
       midReason
     );
+  });
+
+  it("strips inherited forkOrigin messages from selection_side_chat child lanes while keeping new requests", async () => {
+    const sideRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-side-chat-"));
+    try {
+      const sideDbPath = join(sideRoot, "cli", "db", "db.sqlite");
+      mkdirSync(join(sideRoot, "cli", "db"), { recursive: true });
+      const db = new DatabaseSync(sideDbPath);
+      db.exec(`
+        CREATE TABLE session (
+          id TEXT PRIMARY KEY,
+          parent_id TEXT,
+          task_type TEXT,
+          title TEXT NOT NULL,
+          directory TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          time_updated INTEGER NOT NULL,
+          version TEXT NOT NULL,
+          time_deleted INTEGER
+        );
+        CREATE TABLE message (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          data TEXT NOT NULL,
+          sequence INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE part (
+          id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          data TEXT NOT NULL,
+          sequence INTEGER NOT NULL DEFAULT 0
+        );
+      `);
+      db.prepare(
+        "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES (?, ?, ?, ?, '', ?, ?, '')"
+      ).run("ses_root", null, "interactive", "Root", 1000, 3000);
+      db.prepare(
+        "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES (?, ?, ?, ?, '', ?, ?, '')"
+      ).run("ses_side", "ses_root", "selection_side_chat", "Side chat", 2000, 3000);
+      // Parent request: 40 input tokens, 500ms duration.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_root_u",
+        "ses_root",
+        1000,
+        JSON.stringify({ role: "user", time: { created: 1000 } }),
+        1
+      );
+      db.prepare(
+        "INSERT INTO part (id, message_id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("p_root_u", "m_root_u", "ses_root", 1000, JSON.stringify({ type: "text", text: "root prompt" }), 1);
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_root_a",
+        "ses_root",
+        1100,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          time: { created: 1100, completed: 1600 },
+          tokens: { input: 40, output: 10 }
+        }),
+        2
+      );
+      // Inherited copies in side chat carrying metadata.forkOrigin: must be skipped when attached to parent.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_side_copy_a",
+        "ses_side",
+        2000,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          transcriptVisibility: "hidden",
+          metadata: { forkOrigin: { sessionId: "ses_root", messageId: "m_root_a" } },
+          time: { created: 1100, completed: 1600 },
+          tokens: { input: 40, output: 10 }
+        }),
+        1
+      );
+      db.prepare(
+        "INSERT INTO part (id, message_id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("p_side_copy_a", "m_side_copy_a", "ses_side", 2000, JSON.stringify({ type: "text", text: "copied" }), 1);
+      // Genuine new request in side chat: 5 input tokens, 200ms duration.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_side_new_a",
+        "ses_side",
+        2500,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          time: { created: 2500, completed: 2700 },
+          tokens: { input: 5, output: 3 }
+        }),
+        2
+      );
+      db.close();
+
+      const sidePlatform = createNodePlatform({ home: sideRoot });
+      const ref = { agent: "zcode" as const, path: sideDbPath, sessionId: "ses_root" };
+      const loaded = await zcodeSessionAdapter.load(sidePlatform, ref);
+      const summary = await zcodeSessionAdapter.summarize!(sidePlatform, ref);
+      expect(loaded.ok).toBe(true);
+      expect(summary.ok).toBe(true);
+      if (loaded.ok && summary.ok) {
+        expect(loaded.value.events.filter((e) => e.kind === "request")).toHaveLength(2);
+        expect(summary.value.requests).toBe(2);
+        expect(summary.value.inputTokens).toBe(45);
+        expect(summary.value.durationMs).toBe(700);
+        expect(summary.value.subagents).toBe(1);
+        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+      }
+    } finally {
+      await rm(sideRoot, { recursive: true, force: true });
+    }
   });
 });
