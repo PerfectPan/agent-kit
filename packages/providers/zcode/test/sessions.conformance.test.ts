@@ -638,4 +638,119 @@ describe("zcode adapter", () => {
       midReason
     );
   });
+
+  it("strips inherited forkOrigin messages from selection_side_chat child lanes while keeping new requests", async () => {
+    const sideRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-side-chat-"));
+    try {
+      const sideDbPath = join(sideRoot, "cli", "db", "db.sqlite");
+      mkdirSync(join(sideRoot, "cli", "db"), { recursive: true });
+      const db = new DatabaseSync(sideDbPath);
+      db.exec(`
+        CREATE TABLE session (
+          id TEXT PRIMARY KEY,
+          parent_id TEXT,
+          task_type TEXT,
+          title TEXT NOT NULL,
+          directory TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          time_updated INTEGER NOT NULL,
+          version TEXT NOT NULL,
+          time_deleted INTEGER
+        );
+        CREATE TABLE message (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          data TEXT NOT NULL,
+          sequence INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE part (
+          id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          data TEXT NOT NULL,
+          sequence INTEGER NOT NULL DEFAULT 0
+        );
+      `);
+      db.prepare(
+        "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES (?, ?, ?, ?, '', ?, ?, '')"
+      ).run("ses_root", null, "interactive", "Root", 1000, 3000);
+      db.prepare(
+        "INSERT INTO session (id, parent_id, task_type, title, directory, time_created, time_updated, version) VALUES (?, ?, ?, ?, '', ?, ?, '')"
+      ).run("ses_side", "ses_root", "selection_side_chat", "Side chat", 2000, 3000);
+      // Parent request: 40 input tokens, 500ms duration.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_root_u",
+        "ses_root",
+        1000,
+        JSON.stringify({ role: "user", time: { created: 1000 } }),
+        1
+      );
+      db.prepare(
+        "INSERT INTO part (id, message_id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("p_root_u", "m_root_u", "ses_root", 1000, JSON.stringify({ type: "text", text: "root prompt" }), 1);
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_root_a",
+        "ses_root",
+        1100,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          time: { created: 1100, completed: 1600 },
+          tokens: { input: 40, output: 10 }
+        }),
+        2
+      );
+      // Inherited copies in side chat carrying metadata.forkOrigin: must be skipped when attached to parent.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_side_copy_a",
+        "ses_side",
+        2000,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          transcriptVisibility: "hidden",
+          metadata: { forkOrigin: { sessionId: "ses_root", messageId: "m_root_a" } },
+          time: { created: 1100, completed: 1600 },
+          tokens: { input: 40, output: 10 }
+        }),
+        1
+      );
+      db.prepare(
+        "INSERT INTO part (id, message_id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("p_side_copy_a", "m_side_copy_a", "ses_side", 2000, JSON.stringify({ type: "text", text: "copied" }), 1);
+      // Genuine new request in side chat: 5 input tokens, 200ms duration.
+      db.prepare("INSERT INTO message (id, session_id, time_created, data, sequence) VALUES (?, ?, ?, ?, ?)").run(
+        "m_side_new_a",
+        "ses_side",
+        2500,
+        JSON.stringify({
+          role: "assistant",
+          modelId: "m1",
+          time: { created: 2500, completed: 2700 },
+          tokens: { input: 5, output: 3 }
+        }),
+        2
+      );
+      db.close();
+
+      const sidePlatform = createNodePlatform({ home: sideRoot });
+      const ref = { agent: "zcode" as const, path: sideDbPath, sessionId: "ses_root" };
+      const loaded = await zcodeSessionAdapter.load(sidePlatform, ref);
+      const summary = await zcodeSessionAdapter.summarize!(sidePlatform, ref);
+      expect(loaded.ok).toBe(true);
+      expect(summary.ok).toBe(true);
+      if (loaded.ok && summary.ok) {
+        expect(loaded.value.events.filter((e) => e.kind === "request")).toHaveLength(2);
+        expect(summary.value.requests).toBe(2);
+        expect(summary.value.inputTokens).toBe(45);
+        expect(summary.value.durationMs).toBe(700);
+        expect(summary.value.subagents).toBe(1);
+        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+      }
+    } finally {
+      await rm(sideRoot, { recursive: true, force: true });
+    }
+  });
 });

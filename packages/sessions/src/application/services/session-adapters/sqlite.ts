@@ -52,6 +52,8 @@ export interface SqliteSessionMessage {
   readonly created: number | undefined;
   readonly completed?: number | undefined;
   readonly usage: Usage | undefined;
+  /** True when this message was copied from a parent session (e.g. fork/side-chat/workflow seed) and must be skipped when attached as a child lane. */
+  readonly inherited?: boolean | undefined;
 }
 
 /** What differs between the agents that keep sessions in the `session`/`message`/`part` table layout. */
@@ -459,7 +461,13 @@ function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
   }
 }
 
-function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: string, firstLine: number): Transcript {
+function translate(
+  layout: SqliteSessionLayout,
+  rows: SessionRows,
+  dbPath: string,
+  firstLine: number,
+  skipInherited = false
+): Transcript {
   let events: TranscriptEvent[] = [];
   const skipped: SkippedRecord[] = [];
   const compactions = new Map<string, Compaction>();
@@ -505,6 +513,13 @@ function translate(layout: SqliteSessionLayout, rows: SessionRows, dbPath: strin
     const message = layout.message(messageValue);
     if (message === undefined) {
       skip(messageSource, "invalid-message");
+      continue;
+    }
+    if (skipInherited && message.inherited) {
+      skip(messageSource, "inherited-message");
+      for (const partRow of parts) {
+        skip(source(dbPath, "part", "data", partRow.rowid, line++), "inherited-message-part");
+      }
       continue;
     }
     const created = message.created ?? messageRow.time_created;
@@ -713,7 +728,11 @@ function summarize(
       options.signal?.throwIfAborted();
       const json = parseJson(z.parse(TextColumn, messageData.get(key.rowid)?.data));
       const message = json.ok ? layout.message(json.value) : undefined;
-      if (message === undefined || (message.role !== "user" && message.role !== "assistant")) {
+      if (
+        message === undefined ||
+        (session.id !== sessionId && message.inherited) ||
+        (message.role !== "user" && message.role !== "assistant")
+      ) {
         continue;
       }
       const ts = message.created ?? key.time_created;
@@ -925,7 +944,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
             if (!childRows.ok) {
               return childRows;
             }
-            const childTranscript = translate(layout, childRows.value, ref.path, nextLine);
+            const childTranscript = translate(layout, childRows.value, ref.path, nextLine, true);
             nextLine += 1 + childRows.value.messages.length + childRows.value.parts.length;
             transcript.agents.push(
               definedFields({

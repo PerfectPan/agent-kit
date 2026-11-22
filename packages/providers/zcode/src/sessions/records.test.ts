@@ -24,3 +24,14 @@ it.each([undefined, "200", null, NaN, Infinity, -Infinity])("ignores malformed c
     completed: undefined
   });
 });
+
+it("marks messages carrying metadata.forkOrigin as inherited", () => {
+  expect(
+    zcodeMessageOf({
+      role: "assistant",
+      time: { created: 100, completed: 200 },
+      metadata: { forkOrigin: { sessionId: "ses_parent", messageId: "msg_1" } }
+    })?.inherited
+  ).toBe(true);
+  expect(zcodeMessageOf({ role: "assistant", time: { created: 100, completed: 200 } })?.inherited).toBeUndefined();
+});
