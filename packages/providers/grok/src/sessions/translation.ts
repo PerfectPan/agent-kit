@@ -19,7 +19,8 @@ import {
   isAcpToolDone,
   isAcpToolError,
   mergeAcpToolStatus,
-  mergeAcpToolUpdate
+  mergeAcpToolUpdate,
+  nextFreeId
 } from "@rivus/agent-kit-sessions/spi";
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import { isInjectedChunk } from "./chunks.js";
@@ -356,13 +357,7 @@ export function createGrokTranslation(options: GrokTranslationOptions): GrokTran
    * The first id of `base`'s shape no event holds: `base` itself, then `base:1`, `base:2`, …. The pattern
    * guarantees nothing by itself, so the check at emission is what keeps ids apart.
    */
-  const nextFree = (base: string): string => {
-    let candidate = base;
-    for (let serial = 1; usedIds.has(candidate); serial += 1) {
-      candidate = `${base}:${serial}`;
-    }
-    return candidate;
-  };
+  const nextFree = (base: string): string => nextFreeId(usedIds, base);
 
   return {
     events: retain ? events : [],

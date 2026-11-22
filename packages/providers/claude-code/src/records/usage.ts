@@ -9,7 +9,7 @@ import {
   parseClaudeCodeMessageUsage,
   parseClaudeCodeUsageRecord
 } from "./record.js";
-import { lenient } from "@rivus/agent-kit-sessions/spi";
+import { lenient, parseSavedUsage } from "@rivus/agent-kit-sessions/spi";
 import { compactUsage, shortHash, type Usage, type UsageRecord } from "@rivus/agent-kit-sessions/spi";
 import { rememberKey, type UsageFile, type UsageLineDecoder } from "@rivus/agent-kit-sessions/spi";
 
@@ -106,24 +106,13 @@ interface ClaudeCodeUsageState {
   lanes: Record<string, LaneState>;
 }
 
-/** The counts of a saved request, as `Usage` reports them. */
-const SavedUsage = z.looseObject({
-  inputTokens: lenient(z.number()),
-  outputTokens: lenient(z.number()),
-  totalTokens: lenient(z.number()),
-  cacheReadTokens: lenient(z.number()),
-  cacheWriteTokens: lenient(z.number()),
-  cacheWrite1hTokens: lenient(z.number()),
-  reasoningTokens: lenient(z.number())
-});
-
 /** A request that may still get records. A saved entry without its key, counts or place in the file is not one. */
 const SavedOpenRequest = z.looseObject({
   key: z.string(),
   byMessage: lenient(z.literal(true)),
   responseId: lenient(z.string()),
   model: lenient(z.string()),
-  usage: SavedUsage,
+  usage: z.unknown(),
   timestamp: z.number(),
   sessionId: lenient(z.string()),
   offset: z.number(),
@@ -194,8 +183,9 @@ function restore(saved: unknown): ClaudeCodeUsageState {
     }
     const open: OpenRequest[] = [];
     for (const request of lane.open ?? []) {
-      if (request) {
-        open.push(request);
+      const usage = request ? parseSavedUsage(request.usage) : undefined;
+      if (request && usage) {
+        open.push({ ...request, usage });
       }
     }
     lanes[id] = { open, reported: (lane.reported ?? []).filter((key) => key !== undefined) };

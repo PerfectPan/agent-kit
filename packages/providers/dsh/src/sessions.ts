@@ -1,6 +1,5 @@
 import { type Result, err, ok } from "@rivus/agent-kit-catalog/spi";
 import {
-  type Capability,
   type LoadOptions,
   type ReadFailed,
   type SessionAdapter,
@@ -13,16 +12,11 @@ import {
   type SessionSummaryWithPrompts,
   type Transcript,
   catchIoFailure,
-  addRequest,
   createTranscript,
-  emptyPrompts,
-  emptyTotals,
-  finishPass,
   EDGE_BYTES,
-  isPrompt,
   readBytes,
-  requestUsage,
   SESSION_TITLE_MAX,
+  summarizeRecords,
   walkFiles,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
@@ -168,13 +162,13 @@ async function* discoverDsh(
   }
 }
 
-async function loadDsh(
+async function readDshRecords(
   platform: SessionPlatform,
   ref: SessionRef,
-  options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
-  const decoded = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readDshText(guarded, ref.path, { signal: options.signal })
+  signal: AbortSignal | undefined
+): Promise<Result<ReturnType<typeof splitDshRecords>, SessionReadError>> {
+  const decoded = await catchIoFailure(platform, ref.path, signal, (guarded) =>
+    readDshText(guarded, ref.path, { signal })
   );
   if (!decoded.ok) {
     return decoded;
@@ -185,7 +179,19 @@ async function loadDsh(
   if ("undecodable" in decoded.value) {
     return err(undecodable(ref.path, decoded.value.undecodable));
   }
-  const { records, skipped } = splitDshRecords(decoded.value.text, ref.path, decoded.value.codec);
+  return ok(splitDshRecords(decoded.value.text, ref.path, decoded.value.codec));
+}
+
+async function loadDsh(
+  platform: SessionPlatform,
+  ref: SessionRef,
+  options: LoadOptions = {}
+): Promise<Result<Transcript, SessionReadError>> {
+  const split = await readDshRecords(platform, ref, options.signal);
+  if (!split.ok) {
+    return split;
+  }
+  const { records, skipped } = split.value;
   if (records.length === 0) {
     return err(unknownFormatGeneration(DSH_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
   }
@@ -214,74 +220,23 @@ async function summarizeDsh(
   signal: AbortSignal | undefined,
   promptsOptions: SessionPromptsOptions | undefined
 ): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
-  const decoded = await catchIoFailure(platform, ref.path, signal, (guarded) =>
-    readDshText(guarded, ref.path, { signal })
-  );
-  if (!decoded.ok) {
-    return decoded;
+  const split = await readDshRecords(platform, ref, signal);
+  if (!split.ok) {
+    return split;
   }
-  if (decoded.value === undefined) {
-    return err(readFailed(ref.path, "the session file could not be decoded"));
-  }
-  if ("undecodable" in decoded.value) {
-    return err(undecodable(ref.path, decoded.value.undecodable));
-  }
-  const { records } = splitDshRecords(decoded.value.text, ref.path, decoded.value.codec);
   const translation = createDshTranslation({
     retain: false,
     ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
   });
-  const totals = emptyTotals();
-  const prompts = emptyPrompts(promptsOptions);
-  const seen = new Set<Capability>();
-  let last: number | undefined;
-  let sawHeader = false;
-  for (const record of records) {
-    const event = dshEventOf(record.value);
-    if (dshHeaderOf(record.value) !== undefined) {
-      sawHeader = true;
-    }
-    const ts = event?.time ?? last ?? 1;
-    last = ts;
-    const step = translation.step(record, ts);
-    if (!step.ok) {
-      return err(step.error);
-    }
-    for (const part of step.value) {
-      if (part.kind === "request") {
-        addRequest(totals, requestUsage(part));
-        seen.add("requests");
-        if (part.payload.usage !== undefined) {
-          seen.add("usage");
-        }
-      } else if (part.kind === "compaction") {
-        totals.compactions += 1;
-        seen.add("compaction");
-        if (part.payload.preTokens !== undefined || part.payload.postTokens !== undefined) {
-          seen.add("compactionTokens");
-        }
-      } else if (part.kind === "reasoning") {
-        seen.add("reasoning");
-      } else if (part.kind === "system") {
-        if (part.payload.text !== undefined) {
-          seen.add("systemPrompt");
-        }
-        if (Array.isArray(part.payload.tools)) {
-          seen.add("toolSchemas");
-        }
-      } else if (part.kind === "tool_result" && part.payload.isError === true) {
-        totals.failedTools += 1;
-      } else if (part.kind === "user" && isPrompt(part)) {
-        totals.turns += 1;
-        prompts.add(part.payload.text ?? "");
-      }
-    }
-  }
-  if (!sawHeader) {
-    return err(unknownFormatGeneration(DSH_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
-  }
-  const capabilities = DSH_CAPABILITIES.filter((capability) => seen.has(capability));
-  return ok(finishPass(totals, capabilities, 0, prompts.list));
+  return summarizeRecords(split.value.records, {
+    agent: DSH_ID,
+    file: ref.path,
+    step: translation.step,
+    timeOf: (record) => dshEventOf(record.value)?.time,
+    isHeader: (record) => dshHeaderOf(record.value) !== undefined,
+    capabilities: DSH_CAPABILITIES,
+    prompts: promptsOptions
+  });
 }
 
 async function detectDsh(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {

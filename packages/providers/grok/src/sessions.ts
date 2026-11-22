@@ -29,9 +29,7 @@ import { summarizeGrokRecords } from "./sessions/summarize.js";
 import {
   joinPath,
   type SessionHead,
-  type SessionPromptsOptions,
   type SessionRef,
-  type SessionSummaryWithPrompts,
   createTranscript,
   type SkippedRecord,
   type Transcript,
@@ -39,6 +37,7 @@ import {
   discoverSessions,
   EDGE_BYTES,
   catchIoFailure,
+  catchSessionRead,
   type JsonlRecords,
   readJsonlRecords,
   readJsonlStream,
@@ -305,34 +304,6 @@ async function grokGenerationError(
  * `updates.jsonl` streams straight into the pass — one file in file order needs no time merge,
  * and the pass reads no record times, so nothing buffers a session whose records name none.
  */
-async function summarizeGrok(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  signal: AbortSignal | undefined,
-  prompts: SessionPromptsOptions | undefined
-): Promise<Result<SessionSummaryWithPrompts, SessionReadError>> {
-  const read = await catchIoFailure(platform, ref.path, signal, async (guarded) => {
-    signal?.throwIfAborted();
-    const dir = grokSessionDir(ref.path);
-    const generation = await grokGenerationError(guarded, dir, signal);
-    if (generation) {
-      return err(generation);
-    }
-    const subagents = await readSubagentMetas(guarded, dir, { signal, progress: readProgress(undefined) }, []);
-    const calls = await readGrokCalls(guarded, dir, { signal });
-    const summarized = await summarizeGrokRecords(
-      readJsonlStream(guarded, grokUpdatesPath(ref.path), { signal }),
-      definedFields({ subagents, prompts, calls })
-    );
-    signal?.throwIfAborted();
-    return summarized;
-  });
-  if (!read.ok) {
-    return read;
-  }
-  return read.value;
-}
-
 export const grokSessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
   agent: GROK_ID,
@@ -349,7 +320,27 @@ export const grokSessionAdapter: SessionAdapter = {
   },
   detect: detectGrok,
   load: loadGrok,
-  summarize: (platform, ref, options = {}) => summarizeGrok(platform, ref, options.signal, options.prompts)
+  summarize: (platform, ref, options = {}) =>
+    catchSessionRead(platform, ref.path, options.signal, async (guarded) => {
+      const dir = grokSessionDir(ref.path);
+      const generation = await grokGenerationError(guarded, dir, options.signal);
+      if (generation) {
+        return err(generation);
+      }
+      const subagents = await readSubagentMetas(
+        guarded,
+        dir,
+        { signal: options.signal, progress: readProgress(undefined) },
+        []
+      );
+      const calls = await readGrokCalls(guarded, dir, { signal: options.signal });
+      const summarized = await summarizeGrokRecords(
+        readJsonlStream(guarded, grokUpdatesPath(ref.path), { signal: options.signal }),
+        definedFields({ subagents, prompts: options.prompts, calls })
+      );
+      options.signal?.throwIfAborted();
+      return summarized;
+    })
 };
 
 interface GrokSessionFiles {

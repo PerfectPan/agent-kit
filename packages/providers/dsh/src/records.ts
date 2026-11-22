@@ -1,4 +1,4 @@
-import { compactUsage, lenient, type Usage } from "@rivus/agent-kit-sessions/spi";
+import { compactUsage, lenient, parseSavedUsage, type Usage } from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
 /** One JSONL row of a session log: an event type, its sequence and time, and its data. */
@@ -64,24 +64,6 @@ export function isDshSessionHeader(value: unknown): boolean {
   return z.safeParse(DshSessionHeaderShape, value).data !== undefined;
 }
 
-const DshUsage = z.looseObject({
-  inputTokens: lenient(z.number()),
-  outputTokens: lenient(z.number()),
-  totalTokens: lenient(z.number()),
-  cacheReadTokens: lenient(z.number()),
-  cacheWriteTokens: lenient(z.number()),
-  reasoningTokens: lenient(z.number())
-});
-
-interface DshUsageValue {
-  inputTokens?: number;
-  outputTokens?: number;
-  totalTokens?: number;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  reasoningTokens?: number;
-}
-
 /**
  * The `usage` of a model call, in agent-kit's `Usage` convention. DeepSeek Harness counts `inputTokens` without the
  * cache: its DeepSeek adapter stores the wire `input_tokens` as is and derives `totalTokens` as input + output +
@@ -89,7 +71,7 @@ interface DshUsageValue {
  * reads and writes, so they are added back; `totalTokens` keeps the logged value.
  */
 export function dshUsageOf(value: unknown): Usage | undefined {
-  const parsed = z.safeParse(DshUsage, value).data;
+  const parsed = parseSavedUsage(value);
   if (!parsed) {
     return undefined;
   }
@@ -186,11 +168,11 @@ export function dshMessageDataOf(value: unknown): DshMessageValue | undefined {
   return z.safeParse(DshMessageEnvelope, value).data?.message;
 }
 
-const DshAssistant = z.looseObject({ message: lenient(DshMessage), usage: lenient(DshUsage) });
+const DshAssistant = z.looseObject({ message: lenient(DshMessage), usage: lenient(z.unknown()) });
 
 export interface DshAssistantValue {
   message?: DshMessageValue;
-  usage?: DshUsageValue;
+  usage?: unknown;
 }
 
 export function dshAssistantOf(value: unknown): DshAssistantValue | undefined {
@@ -223,7 +205,7 @@ const DshCompaction = z.looseObject({
   // call's provider, model and usage land on the `compaction/summary` event itself.
   provider: lenient(z.string()),
   model: lenient(z.string()),
-  usage: lenient(DshUsage)
+  usage: lenient(z.unknown())
 });
 
 export interface DshCompactionValue {
@@ -232,7 +214,7 @@ export interface DshCompactionValue {
   summary?: readonly unknown[];
   provider?: string;
   model?: string;
-  usage?: DshUsageValue;
+  usage?: unknown;
 }
 
 export function dshCompactionOf(value: unknown): DshCompactionValue | undefined {

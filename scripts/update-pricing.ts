@@ -1,10 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
-import { parseArgs } from "node:util";
 
 import { nextSnapshot, selectPrices, snapshotVersion, versionOf } from "./lib/litellm-snapshot.ts";
-import { findRepositoryRoot } from "./lib/workspace.ts";
+import { exitOnHelp, findRepositoryRoot } from "./lib/workspace.ts";
 
 const USAGE = `usage: node scripts/update-pricing.ts
 Regenerates the LiteLLM price snapshot of /cost/prices from the latest commit of LiteLLM's price list and leaves the
@@ -14,11 +13,7 @@ const LITELLM = "BerriAI/litellm";
 const FILE = "model_prices_and_context_window.json";
 const SNAPSHOT = "packages/cost/src/domain/pricing/adapters/litellm-snapshot.json";
 
-const { values } = parseArgs({ options: { help: { type: "boolean", short: "h" } } });
-if (values.help === true) {
-  console.log(USAGE);
-  process.exit(0);
-}
+exitOnHelp(USAGE);
 
 async function getJson(url: string, headers: Record<string, string> = {}): Promise<unknown> {
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(60_000) });

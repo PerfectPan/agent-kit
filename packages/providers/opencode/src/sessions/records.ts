@@ -1,16 +1,15 @@
-import { type SqliteSessionMessage, type Usage, compactUsage, lenient } from "@rivus/agent-kit-sessions/spi";
+import {
+  type SqliteMessageTokens,
+  type SqliteSessionMessage,
+  sqliteMessageTokensOf,
+  type Usage,
+  compactUsage,
+  lenient
+} from "@rivus/agent-kit-sessions/spi";
 import * as z from "zod/mini";
 
-const Tokens = z.looseObject({
-  input: lenient(z.number()),
-  output: lenient(z.number()),
-  reasoning: lenient(z.number()),
-  total: lenient(z.number()),
-  cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
-});
-
 /** OpenCode counts the cache beside `input`; the kit counts cache reads and writes inside `inputTokens`. */
-function opencodeUsageOf(tokens: z.infer<typeof Tokens> | undefined): Usage | undefined {
+function opencodeUsageOf(tokens: SqliteMessageTokens | undefined): Usage | undefined {
   if (!tokens) {
     return undefined;
   }
@@ -29,7 +28,7 @@ function opencodeUsageOf(tokens: z.infer<typeof Tokens> | undefined): Usage | un
 
 const MessageData = z.looseObject({
   role: z.string(),
-  tokens: lenient(Tokens),
+  tokens: lenient(z.unknown()),
   modelID: lenient(z.string()),
   providerID: lenient(z.string()),
   finish: lenient(z.string()),
@@ -47,6 +46,6 @@ export function opencodeMessageOf(value: unknown): SqliteSessionMessage | undefi
     model: message.modelID,
     finish: message.finish,
     created: message.time?.created,
-    usage: opencodeUsageOf(message.tokens)
+    usage: opencodeUsageOf(sqliteMessageTokensOf(message.tokens))
   };
 }

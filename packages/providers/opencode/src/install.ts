@@ -4,8 +4,8 @@ import {
   type BundleRef,
   type InstallContext,
   ownerSlug,
-  agentsOf,
-  sharedSkillsDir,
+  renderBridgeHook,
+  renderSharedSkill,
   sharedAgentsDir,
   configHome,
   aliasesOf,
@@ -182,27 +182,16 @@ export const opencodeInstallAdapter: InstallAdapter = {
   roots: (context) => [opencodeConfigDir(context), sharedAgentsDir(context)],
   hookFile: (_strategy, bundle) =>
     `${opencodePluginsDir({ home: "~", env: {} })}/${ownerSlug(bundle.owner)}${OPENCODE_PLUGIN_SUFFIX}`,
-  renderHooks: (strategy, registrations, bundle, context) => {
-    const [first] = registrations;
-    return first === undefined
-      ? []
-      : [
-          {
-            locator: { kind: "file", path: opencodePluginFile(context, bundle) },
-            content: bridgeSource(
-              bundle.owner,
-              first.command,
-              bridgedEvents(opencodeHookDialect, registrations),
-              finishSelectorsOf(opencodeHookDialect.events)
-            ),
-            strategy,
-            agents: agentsOf(registrations)
-          }
-        ];
-  },
-  renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
-  ],
+  renderHooks: (strategy, registrations, bundle, context) =>
+    renderBridgeHook(strategy, registrations, opencodePluginFile(context, bundle), (command) =>
+      bridgeSource(
+        bundle.owner,
+        command,
+        bridgedEvents(opencodeHookDialect, registrations),
+        finishSelectorsOf(opencodeHookDialect.events)
+      )
+    ),
+  renderSkill: renderSharedSkill,
   legacySources: (context) => [
     { kind: "files", dir: opencodePluginsDir(context), extensions: OPENCODE_PLUGIN_SUFFIXES },
     {

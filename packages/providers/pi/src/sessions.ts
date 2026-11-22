@@ -1,19 +1,14 @@
-import { type Result, err, ok } from "@rivus/agent-kit-catalog/spi";
+import { err, ok } from "@rivus/agent-kit-catalog/spi";
 import {
-  type LoadOptions,
   type SessionAdapter,
   type SessionPromptsOptions,
-  type SessionReadError,
   type SessionRef,
   type SessionPlatform,
-  type Transcript,
-  catchIoFailure,
   createTranscript,
   discoverSessions,
   inheritTimes,
   readEdges,
-  readJsonlRecords,
-  readProgress,
+  readSessionJsonl,
   recordTime,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
@@ -25,38 +20,6 @@ import { PI_SESSION_FILES, piRoots } from "./layout.js";
 import { PI_CAPABILITIES, createPiTranslation, piCapabilities } from "./sessions/events.js";
 import { previewPiRecords } from "./sessions/preview.js";
 import { summarizePi } from "./sessions/summarize.js";
-
-async function loadPi(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
-  const progress = readProgress(options.onProgress);
-  const read = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readJsonlRecords(guarded, ref.path, { signal: options.signal, progress })
-  );
-  if (!read.ok) {
-    return read;
-  }
-  const { records, skipped } = read.value;
-  if (records.length === 0) {
-    return err(unknownFormatGeneration(PI_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
-  }
-  const translation = createPiTranslation({
-    retain: true,
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
-  });
-  const times = inheritTimes(records.map(recordTime));
-  for (let index = 0; index < records.length; index++) {
-    const step = translation.step(records[index]!, times[index]!);
-    if (!step.ok) {
-      return step;
-    }
-  }
-  const parsed = translation.finish();
-  parsed.skipped.push(...skipped);
-  return ok(createTranscript(PI_ID, piCapabilities(parsed), parsed));
-}
 
 /** A Pi file starts with its `session` header. Reading only the head keeps detection cheap. */
 async function detectPi(platform: SessionPlatform, ref: SessionRef): Promise<boolean> {
@@ -108,7 +71,31 @@ export const piSessionAdapter: SessionAdapter = {
     });
   },
   detect: detectPi,
-  load: loadPi,
+  async load(platform, ref, options = {}) {
+    const read = await readSessionJsonl(platform, ref.path, options);
+    if (!read.ok) {
+      return read;
+    }
+    const { records, skipped } = read.value;
+    if (records.length === 0) {
+      return err(unknownFormatGeneration(PI_ID, { file: ref.path, offset: 0, length: 0, line: 1 }));
+    }
+    const times = inheritTimes(records.map(recordTime));
+    const translation = createPiTranslation({
+      retain: true,
+      ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
+    });
+    for (const [index, record] of records.entries()) {
+      const step = translation.step(record, times[index]!);
+      if (!step.ok) {
+        return step;
+      }
+    }
+    const parsed = translation.finish();
+    parsed.skipped.push(...skipped);
+    options.signal?.throwIfAborted();
+    return ok(createTranscript(PI_ID, piCapabilities(parsed), parsed));
+  },
   summarize: (platform, ref, options = {}) =>
     summarizePi(platform, ref, options.signal, options.prompts as SessionPromptsOptions | undefined)
 };

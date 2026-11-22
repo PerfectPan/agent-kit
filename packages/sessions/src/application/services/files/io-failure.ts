@@ -124,3 +124,17 @@ export async function catchIoFailure<T>(
     return err(failure);
   }
 }
+
+/** Runs `read` under `catchIoFailure` after checking `signal`, flattening its `Result` into one `SessionReadError`. */
+export async function catchSessionRead<T, E>(
+  platform: SessionPlatform,
+  path: string,
+  signal: AbortSignal | undefined,
+  read: (platform: SessionPlatform) => Promise<Result<T, E>>
+): Promise<Result<T, E | SessionNotFound | ReadFailed>> {
+  const outcome = await catchIoFailure(platform, path, signal, (guarded) => {
+    signal?.throwIfAborted();
+    return read(guarded);
+  });
+  return outcome.ok ? outcome.value : outcome;
+}

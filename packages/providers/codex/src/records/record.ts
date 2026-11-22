@@ -45,23 +45,42 @@ const CodexHistoryItemSchema = z.looseObject({
  * model, the `event_msg` markers, the usage objects, and the fields of a response item or of a bare item of an older
  * rollout. Fields a reader does not name stay in the payload; the parsed value carries them beside these fields.
  */
-interface CodexPayload {
+/** The payload fields the usage rule reads, of whatever envelope carries them. */
+export interface CodexUsagePayload {
   type?: string;
-  role?: string;
   id?: string;
+  session_id?: string;
+  model?: string;
+  turn_id?: string;
+  response_id?: string;
+  forked_from_id?: string;
+  source?: { subagent?: { thread_spawn?: unknown } };
+  usage?: Record<string, unknown>;
+  /** A payload's own time, as a `session_meta` or a pre-envelope item carries it. */
+  timestamp?: number | string;
+  info?: {
+    total_token_usage?: unknown;
+    last_token_usage?: unknown;
+  };
+  thread_settings?: { service_tier?: string };
+}
+
+/** One rollout record for the usage rule, with the envelope and the usage payload fields. */
+export interface CodexUsageRecordValue extends CodexEnvelope {
+  payload?: CodexUsagePayload;
+  [key: string]: unknown;
+}
+
+interface CodexPayload extends CodexUsagePayload {
+  role?: string;
   call_id?: string;
   name?: string;
   status?: string;
   author?: string;
   recipient?: string;
-  session_id?: string;
   cwd?: string;
   cli_version?: string;
-  model?: string;
-  turn_id?: string;
-  response_id?: string;
   reason?: string;
-  forked_from_id?: string;
   duration_ms?: number;
   content?: unknown;
   summary?: unknown;
@@ -78,35 +97,44 @@ interface CodexPayload {
     kind?: string;
   };
   base_instructions?: { text?: string };
-  thread_settings?: { service_tier?: string };
-  source?: { subagent?: { thread_spawn?: unknown } };
-  usage?: Record<string, unknown>;
-  /** A payload's own time, as a `session_meta` or a pre-envelope item carries it. */
-  timestamp?: number | string;
-  info?: {
-    total_token_usage?: unknown;
-    last_token_usage?: unknown;
-  };
   replacement_history?: (CodexHistoryItemValue | undefined)[];
 }
 
-const CodexPayloadSchema = z.looseObject({
+const CODEX_USAGE_PAYLOAD_FIELDS = {
   type: lenient(z.string()),
-  role: lenient(z.string()),
   id: lenient(z.string()),
+  session_id: lenient(z.string()),
+  model: lenient(z.string()),
+  turn_id: lenient(z.string()),
+  response_id: lenient(z.string()),
+  forked_from_id: lenient(z.string()),
+  source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
+  usage: lenient(z.record(z.string(), z.unknown())),
+  timestamp: logTimestamp,
+  // The totals stay the raw values they were: the usage rule compares them by their JSON text, so a parsed copy
+  // would normalize `null`, a mistyped total, or a `__proto__` key into something else.
+  info: lenient(
+    z.looseObject({
+      total_token_usage: z.optional(z.unknown()),
+      last_token_usage: z.optional(z.unknown())
+    })
+  ),
+  thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) }))
+} satisfies Record<keyof CodexUsagePayload, z.ZodMiniType>;
+
+const CodexUsagePayloadSchema = z.looseObject(CODEX_USAGE_PAYLOAD_FIELDS);
+
+const CodexPayloadSchema = z.looseObject({
+  ...CODEX_USAGE_PAYLOAD_FIELDS,
+  role: lenient(z.string()),
   call_id: lenient(z.string()),
   name: lenient(z.string()),
   status: lenient(z.string()),
   author: lenient(z.string()),
   recipient: lenient(z.string()),
-  session_id: lenient(z.string()),
   cwd: lenient(z.string()),
   cli_version: lenient(z.string()),
-  model: lenient(z.string()),
-  turn_id: lenient(z.string()),
-  response_id: lenient(z.string()),
   reason: lenient(z.string()),
-  forked_from_id: lenient(z.string()),
   duration_ms: lenient(z.number()),
   content: z.optional(z.unknown()),
   summary: z.optional(z.unknown()),
@@ -125,18 +153,6 @@ const CodexPayloadSchema = z.looseObject({
     })
   ),
   base_instructions: lenient(z.looseObject({ text: lenient(z.string()) })),
-  thread_settings: lenient(z.looseObject({ service_tier: lenient(z.string()) })),
-  source: lenient(z.looseObject({ subagent: lenient(z.looseObject({ thread_spawn: z.optional(z.unknown()) })) })),
-  usage: lenient(z.record(z.string(), z.unknown())),
-  timestamp: logTimestamp,
-  // The totals stay the raw values they were: the usage rule compares them by their JSON text, so a parsed copy
-  // would normalize `null`, a mistyped total, or a `__proto__` key into something else.
-  info: lenient(
-    z.looseObject({
-      total_token_usage: z.optional(z.unknown()),
-      last_token_usage: z.optional(z.unknown())
-    })
-  ),
   replacement_history: lenient(z.array(lenient(CodexHistoryItemSchema)))
 } satisfies Record<keyof CodexPayload, z.ZodMiniType>);
 
@@ -167,22 +183,23 @@ const NonEmptyString = z.string().check(z.minLength(1));
  * `timestamp` of another type still names a header. Readers that parse their own payload spread `.shape` and add a
  * `payload` field of theirs.
  */
-export const CodexEnvelopeSchema: z.ZodMiniObject<
-  {
-    type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
-    record_type: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
-    id: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniString>>;
-    timestamp: z.ZodMiniCatch<z.ZodMiniOptional<z.ZodMiniUnion<[z.ZodMiniString, z.ZodMiniNumber]>>>;
-    formatVersion: z.ZodMiniOptional<z.ZodMiniUnknown>;
-  },
-  z.core.$loose
-> = z.looseObject({
+const CodexEnvelopeSchema = z.looseObject({
   type: lenient(NonEmptyString),
   record_type: lenient(NonEmptyString),
   id: lenient(z.string()),
   timestamp: logTimestamp,
   formatVersion: z.optional(z.unknown())
 } satisfies Record<keyof CodexEnvelope, z.ZodMiniType>);
+
+const CodexUsageRecordSchema = z.looseObject({
+  ...CodexEnvelopeSchema.shape,
+  payload: lenient(CodexUsagePayloadSchema)
+});
+
+/** Parses one rollout record for the usage rule, reading only the envelope and usage payload fields. */
+export function parseCodexUsageRecord(value: unknown): CodexUsageRecordValue | undefined {
+  return z.safeParse(CodexUsageRecordSchema, value).data;
+}
 
 const CodexRecordSchema = z.looseObject({
   ...CodexEnvelopeSchema.shape,

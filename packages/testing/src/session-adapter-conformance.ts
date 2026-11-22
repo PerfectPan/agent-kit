@@ -197,6 +197,15 @@ export function sessionAdapterConformance(
     return { found, reads };
   };
 
+  const summarizeOne = async (session: ConformanceSession, prompts?: SessionPromptsOptions): Promise<unknown> =>
+    value(
+      await summarizeSession(platform, refOf(session), {
+        providers: { sessions: { [adapter.agent]: adapter }, identity: {} },
+        ...(prompts === undefined ? {} : { prompts })
+      }),
+      `summarize ${session.path}`
+    );
+
   return [
     {
       name: "discovers every fixture session within 128 KB per file",
@@ -468,12 +477,7 @@ export function sessionAdapterConformance(
       name: "summarizes like foldTranscript(load())",
       run: async () => {
         await eachTranscript(async (transcript, session) => {
-          const summary = value(
-            await summarizeSession(platform, refOf(session), {
-              providers: { sessions: { [adapter.agent]: adapter }, identity: {} }
-            }),
-            `summarize ${session.path}`
-          );
+          const summary = await summarizeOne(session);
           check(
             isEqual(summary, foldTranscript(transcript)),
             `${session.path}: summary differs from the folded transcript`
@@ -487,30 +491,17 @@ export function sessionAdapterConformance(
         const generous: SessionPromptsOptions = { limit: Number.MAX_SAFE_INTEGER, maxChars: Number.MAX_SAFE_INTEGER };
         const capped: SessionPromptsOptions = { limit: 1, maxChars: 8 };
         await eachTranscript(async (transcript, session) => {
-          const summarize = async (prompts: SessionPromptsOptions): Promise<unknown> =>
-            value(
-              await summarizeSession(platform, refOf(session), {
-                providers: { sessions: { [adapter.agent]: adapter }, identity: {} },
-                prompts
-              }),
-              `summarize ${session.path}`
-            );
           for (const prompts of [generous, capped]) {
             check(
-              isEqual(await summarize(prompts), {
+              isEqual(await summarizeOne(session, prompts), {
                 ...foldTranscript(transcript),
                 prompts: sessionPrompts(transcript, prompts)
               }),
               `${session.path}: prompts under ${JSON.stringify(prompts)} differ from the kit's prompt rule`
             );
           }
-          const plain = value(
-            await summarizeSession(platform, refOf(session), {
-              providers: { sessions: { [adapter.agent]: adapter }, identity: {} }
-            }),
-            `summarize ${session.path}`
-          );
-          check(!("prompts" in plain), `${session.path}: prompts are present without the option`);
+          const plain = await summarizeOne(session);
+          check(!("prompts" in (plain as object)), `${session.path}: prompts are present without the option`);
         });
       }
     }

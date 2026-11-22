@@ -1,4 +1,4 @@
-import { SESSION_TITLE_MAX, type SessionPreview } from "@rivus/agent-kit-sessions/spi";
+import { SESSION_TITLE_MAX, type SessionPreview, joinedPartText } from "@rivus/agent-kit-sessions/spi";
 
 import { dshContentParts, dshEventOf, dshHeaderOf, dshTitleOf, dshUserMessageOf } from "../records.js";
 
@@ -46,11 +46,7 @@ export function previewDshText(text: string): SessionPreview {
     if (preview.firstPrompt === undefined && event.type === "user/message") {
       const message = dshUserMessageOf(event.data);
       if (message?.source?.kind === "user") {
-        const text = dshContentParts(message.content)
-          .filter((part) => part.kind === "text")
-          .map((part) => part.text)
-          .join("\n")
-          .trim();
+        const text = joinedPartText(dshContentParts(message.content)).trim();
         if (text) {
           preview.firstPrompt = text.slice(0, FIRST_PROMPT_MAX);
         }

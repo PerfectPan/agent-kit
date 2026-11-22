@@ -1,6 +1,5 @@
-import { fileURLToPath } from "node:url";
 import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
-import { readTree } from "../../../testing/test/support.js";
+import { usageHomeReader } from "../../../testing/test/support.js";
 
 /** The Claude Code fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function claudeCodeSessions(root: string): ConformanceSession[] {
@@ -69,6 +68,7 @@ export function claudeCodeSessions(root: string): ConformanceSession[] {
   ];
 }
 
-export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  return readTree(fileURLToPath(new URL("fixtures/usage", import.meta.url)), `${home}/.claude`);
-}
+export const readUsageHome: (home: string) => Promise<Record<string, Uint8Array>> = usageHomeReader(
+  import.meta.url,
+  ".claude"
+);

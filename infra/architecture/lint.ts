@@ -18,18 +18,20 @@
  * files) are checked by `manifest.test.ts`. `run-lint-cases.ts` lints the cases of `lint-cases.ts`, violating and
  * allowed ones for every rule.
  */
-import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { fmt as sharedFmt, lint as sharedLint } from "@perfectpan/lint-config/vite-plus";
 import type { DependenciesPolicy, ElementDescriptor } from "eslint-plugin-boundaries";
 import { escapeRegExp } from "es-toolkit";
+import { defineConfig, type UserConfig } from "vite-plus";
 import type { OxlintConfig, OxlintOverride } from "vite-plus/lint";
 
 import { boundaries, type Layer, type PackageRule } from "./boundaries.ts";
 import { extractAgentMarkers } from "./agent-markers.ts";
+import { pnpmListJson } from "./workspace.ts";
 
 const ROOT = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
 const MANIFEST = "infra/architecture/boundaries.ts";
@@ -97,12 +99,7 @@ interface Policy {
  * paths, so `root` must be a real path too.
  */
 export function workspaceProjects(root: string): Project[] {
-  const listed = execFileSync("pnpm", ["ls", "-r", "--depth", "-1", "--json"], {
-    cwd: root,
-    encoding: "utf8",
-    maxBuffer: 16 * 1024 * 1024
-  });
-  return (JSON.parse(listed) as { name: string; path: string }[])
+  return (JSON.parse(pnpmListJson(root)) as { name: string; path: string }[])
     .map(({ name, path }) => ({ name, folder: relative(root, path).split("\\").join("/") }))
     .filter(({ folder }) => folder !== "");
 }
@@ -638,5 +635,48 @@ export function withBoundaryLint(lint: OxlintConfig, configUrl: string): OxlintC
     jsPlugins: [...(lint.jsPlugins ?? []), ...boundary.jsPlugins],
     settings: { ...lint.settings, ...boundary.settings },
     overrides: [...(lint.overrides ?? []), ...boundary.overrides]
+  };
+}
+
+/** Shared `vite.config.ts` factory for workspace packages under `packages/`. */
+export function packageViteConfig(
+  configUrl: string,
+  options: {
+    readonly ignoreFixtures?: boolean;
+    readonly effectTestBlocks?: readonly string[];
+  } = {}
+): UserConfig {
+  const lintConfig: OxlintConfig =
+    options.effectTestBlocks === undefined
+      ? sharedLint
+      : {
+          ...sharedLint,
+          rules: {
+            ...sharedLint.rules,
+            "vitest/no-standalone-expect": ["error", { additionalTestBlockFunctions: [...options.effectTestBlocks] }]
+          }
+        };
+  return defineConfig({
+    fmt: options.ignoreFixtures ? { ...sharedFmt, ignorePatterns: ["test/fixtures/**"] } : sharedFmt,
+    lint: withBoundaryLint(lintConfig, configUrl)
+  });
+}
+
+/** Reads `package.json` `exports` beside `configUrl` into a pack entry map, skipping `./package.json`. */
+export function exportEntriesFromManifest(
+  configUrl: string,
+  toSource: (subpath: string) => string
+): { readonly version: string; readonly entry: Record<string, string> } {
+  const manifest = JSON.parse(readFileSync(new URL("package.json", configUrl), "utf8")) as {
+    version: string;
+    exports: Record<string, unknown>;
+  };
+  return {
+    version: manifest.version,
+    entry: Object.fromEntries(
+      Object.keys(manifest.exports)
+        .filter((subpath) => subpath !== "./package.json")
+        .map((subpath) => [subpath.slice(2), toSource(subpath.slice(2))])
+    )
   };
 }

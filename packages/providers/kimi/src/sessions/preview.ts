@@ -1,3 +1,4 @@
+import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import type { SessionPreview } from "@rivus/agent-kit-sessions/spi";
 import { kimiHeaderOf, kimiTurnPromptOf, kimiContentText } from "../records.js";
 
@@ -32,9 +33,5 @@ export function previewKimiRecords(records: readonly Record<string, unknown>[], 
       }
     }
   }
-  return {
-    ...(firstPrompt !== undefined ? { firstPrompt } : {}),
-    ...(startedAt !== undefined ? { startedAt } : {}),
-    ...(lastAt !== undefined ? { lastAt } : {})
-  };
+  return definedFields({ firstPrompt, startedAt, lastAt });
 }

@@ -1,6 +1,5 @@
-import { fileURLToPath } from "node:url";
 import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
-import { readTree } from "../../../testing/test/support.js";
+import { usageHomeReader } from "../../../testing/test/support.js";
 /** The Codex fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function codexSessions(root: string): ConformanceSession[] {
   const at = (name: string) => `${root}/rollout-${name}.jsonl`;
@@ -26,6 +25,7 @@ export function codexSessions(root: string): ConformanceSession[] {
   ];
 }
 
-export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  return readTree(fileURLToPath(new URL("fixtures/usage", import.meta.url)), `${home}/.codex`);
-}
+export const readUsageHome: (home: string) => Promise<Record<string, Uint8Array>> = usageHomeReader(
+  import.meta.url,
+  ".codex"
+);

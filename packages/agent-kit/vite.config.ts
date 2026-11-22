@@ -1,22 +1,12 @@
-import { readFileSync } from "node:fs";
-
 import { fmt, lint } from "@perfectpan/lint-config/vite-plus";
 import { defineConfig } from "vite-plus";
 import type { PackUserConfig } from "vite-plus/pack";
 
-import { withBoundaryLint } from "../../infra/architecture/lint.ts";
-
-const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
-  version: string;
-  exports: Record<string, unknown>;
-};
+import { exportEntriesFromManifest, withBoundaryLint } from "../../infra/architecture/lint.ts";
 
 // One entry per subpath export: "./transcript/usage" builds src/transcript/usage.ts into dist/transcript/usage.js.
-const entry = Object.fromEntries(
-  Object.keys(manifest.exports)
-    .filter((subpath) => subpath !== "./package.json")
-    .map((subpath) => [subpath.slice(2), `./src/${subpath.slice(2)}.ts`])
-);
+const { version, entry } = exportEntriesFromManifest(import.meta.url, (subpath) => `./src/${subpath}.ts`);
+const manifest = { version };
 
 // The zero-dependency entries load on their own where a host cannot install dependencies, so their built code and
 // declarations import nothing. The packer bundles zod/mini into those that parse with it, and check-dist fails if one

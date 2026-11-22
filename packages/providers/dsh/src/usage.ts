@@ -21,11 +21,12 @@ import {
   decodeJsonlUsage,
   drain,
   fileSources,
-  guardIo,
+  guardedUsageStream,
   lenient,
   readBytes,
   sameFile,
   sourceOf,
+  statUsageFile,
   unknownFormatGeneration,
   usageWindowKey
 } from "@rivus/agent-kit-sessions/spi";
@@ -209,7 +210,6 @@ const encoder = new TextEncoder();
  */
 function decodeDshZstd(platform: UsagePlatform, target: UsageTarget, options: DecodeUsageOptions = {}): UsageStream {
   const { from, signal } = options;
-  let cursor = (): UsageCursor | undefined => from;
   const failure = (error: UsageDecodeError): UsageDecodeFailure => ({ agent: DSH_ID, path: target.path, error });
   const changed = (at: UsageCursor): UsageDecodeFailure => ({
     agent: DSH_ID,
@@ -217,142 +217,124 @@ function decodeDshZstd(platform: UsagePlatform, target: UsageTarget, options: De
     error: { _tag: "SourceChanged", source: { file: target.path, offset: at.offset, length: 0, line: at.line } }
   });
 
-  async function* run(): AsyncGenerator<UsageRecord | UsageDecodeFailure, void, undefined> {
-    const io = guardIo(platform);
-    try {
-      signal?.throwIfAborted();
-      const { path } = target;
-      const info = await io.platform.fs.stat(path, { followSymlinks: true });
-      if (info?.kind !== "file") {
-        yield failure({ _tag: "SessionNotFound", path });
+  return guardedUsageStream(platform, DSH_ID, target.path, options, async function* (io, position) {
+    const { path } = target;
+    let offset = from?.offset ?? 0;
+    let line = from?.line ?? 0;
+    const state = restoreDshState(from?.state);
+    const info = await statUsageFile(io.platform, path);
+    if (!info) {
+      yield failure({ _tag: "SessionNotFound", path });
+      return;
+    }
+    let decodedAt = state.decodedBytes;
+    const queue: UsageRecord[] = [...(from?.queue ?? [])];
+    const decoder = createDshUsageLines({ path, sessionId: dshSessionIdOf(path), mtimeMs: info.mtimeMs }, state);
+    const final = decodeIsFinal(options, info.mtimeMs);
+    position.cursor = () => ({
+      agent: DSH_ID,
+      offset,
+      line,
+      state: decoder.save(),
+      ...(queue.length > 0 ? { queue: [...queue] } : {})
+    });
+    if (from !== undefined && from.offset > info.size) {
+      position.cursor = () => undefined;
+      yield changed(from);
+      return;
+    }
+    yield* drain(queue);
+    if (offset === info.size) {
+      queue.push(...decoder.end(final));
+      yield* drain(queue);
+      return;
+    }
+    const bytes = await readBytes(io.platform, path, { start: offset, end: info.size }, signal ? { signal } : {});
+    if (bytes.length === 0) {
+      // The file shrank back to the cursor since the stat; there is nothing new to decode.
+      queue.push(...decoder.end(final));
+      yield* drain(queue);
+      return;
+    }
+    if (!startsDshFrame(bytes)) {
+      if (isDshFramePrefix(bytes)) {
+        // A new frame is being written, with only its magic's first bytes on disk; the cursor stays before it.
+        queue.push(...decoder.end(final));
+        yield* drain(queue);
         return;
       }
-      let offset = from?.offset ?? 0;
-      let line = from?.line ?? 0;
-      const state = restoreDshState(from?.state);
-      let decodedAt = state.decodedBytes;
-      const queue: UsageRecord[] = [...(from?.queue ?? [])];
-      const decoder = createDshUsageLines({ path, sessionId: dshSessionIdOf(path), mtimeMs: info.mtimeMs }, state);
-      const final = decodeIsFinal(options, info.mtimeMs);
-      cursor = () => ({
-        agent: DSH_ID,
-        offset,
-        line,
-        state: decoder.save(),
-        ...(queue.length > 0 ? { queue: [...queue] } : {})
-      });
-      if (from !== undefined && from.offset > info.size) {
-        cursor = () => undefined;
+      if (from !== undefined) {
+        // The cursor is not at a frame start: the file was rewritten.
+        position.cursor = () => undefined;
         yield changed(from);
         return;
       }
+      yield failure(readFailed(path, "the session file could not be decoded"));
+      return;
+    }
+    const frames = scanDshFrames(bytes);
+    if (frames === undefined || frames.length === 0) {
+      // A torn first frame is still being written; the cursor stays before it.
+      queue.push(...decoder.end(final));
       yield* drain(queue);
-      if (offset === info.size) {
-        queue.push(...decoder.end(final));
-        yield* drain(queue);
-        return;
-      }
-      const bytes = await readBytes(io.platform, path, { start: offset, end: info.size }, signal ? { signal } : {});
-      if (bytes.length === 0) {
-        // The file shrank back to the cursor since the stat; there is nothing new to decode.
-        queue.push(...decoder.end(final));
-        yield* drain(queue);
-        return;
-      }
-      if (!startsDshFrame(bytes)) {
-        if (isDshFramePrefix(bytes)) {
-          // A new frame is being written, with only its magic's first bytes on disk; the cursor stays before it.
-          queue.push(...decoder.end(final));
-          yield* drain(queue);
-          return;
-        }
-        if (from !== undefined) {
-          // The cursor is not at a frame start: the file was rewritten.
-          cursor = () => undefined;
-          yield changed(from);
-          return;
-        }
+      return;
+    }
+    const startOffset = offset;
+    // One frame is one durable batch of whole lines. Each frame's text ends with the newline that terminates its
+    // last line, so the trailing empty fragment of its split is not a line; the remaining pieces are exactly the
+    // joined text's lines, with `splitDshRecords`' numbering (every piece counts, empty ones too) and its byte
+    // accounting (offset + length + 1 per line). A frame's records are decoded whole before the cursor moves
+    // past it, and its drained-then-yielded records sit in the queue meanwhile, so a decode that stops mid-frame
+    // resumes with the rest of the queue and never replays a record.
+    for (let at = 0; at < frames.length; at++) {
+      const text = decodeDshFrame(io.platform, bytes, frames[at]!);
+      if (text === undefined) {
         yield failure(readFailed(path, "the session file could not be decoded"));
         return;
       }
-      const frames = scanDshFrames(bytes);
-      if (frames === undefined || frames.length === 0) {
-        // A torn first frame is still being written; the cursor stays before it.
-        queue.push(...decoder.end(final));
-        yield* drain(queue);
-        return;
-      }
-      const startOffset = offset;
-      // One frame is one durable batch of whole lines. Each frame's text ends with the newline that terminates its
-      // last line, so the trailing empty fragment of its split is not a line; the remaining pieces are exactly the
-      // joined text's lines, with `splitDshRecords`' numbering (every piece counts, empty ones too) and its byte
-      // accounting (offset + length + 1 per line). A frame's records are decoded whole before the cursor moves
-      // past it, and its drained-then-yielded records sit in the queue meanwhile, so a decode that stops mid-frame
-      // resumes with the rest of the queue and never replays a record.
-      for (let at = 0; at < frames.length; at++) {
-        const text = decodeDshFrame(io.platform, bytes, frames[at]!);
-        if (text === undefined) {
-          yield failure(readFailed(path, "the session file could not be decoded"));
-          return;
-        }
-        const elements = text.split("\n");
-        const pieces = text.endsWith("\n") ? elements.slice(0, -1) : elements;
-        for (const piece of pieces) {
-          const length = encoder.encode(piece).byteLength;
-          line += 1;
-          if (piece.trim().length > 0) {
-            let value: unknown;
-            try {
-              value = JSON.parse(piece) as unknown;
-            } catch {
-              value = undefined;
-            }
-            if (value !== undefined) {
-              const pushed = decoder.push({
-                value,
-                file: path,
-                offset: decodedAt,
-                length,
-                line,
-                codec: "zstd"
-              });
-              if (!pushed.ok) {
-                // The frame cannot be decoded further. Drop the cursor before draining the records its earlier
-                // lines produced: a consumer that stops mid-drain must see no cursor, because one pointing past
-                // some of the frame's lines would replay them with wrong numbers on every resume. The next decode
-                // reads the file from its start.
-                cursor = () => undefined;
-                yield* drain(queue);
-                yield failure(pushed.error);
-                return;
-              }
-              queue.push(...pushed.value);
-            }
+      const elements = text.split("\n");
+      const pieces = text.endsWith("\n") ? elements.slice(0, -1) : elements;
+      for (const piece of pieces) {
+        const length = encoder.encode(piece).byteLength;
+        line += 1;
+        if (piece.trim().length > 0) {
+          let value: unknown;
+          try {
+            value = JSON.parse(piece) as unknown;
+          } catch {
+            value = undefined;
           }
-          decodedAt += length + 1;
+          if (value !== undefined) {
+            const pushed = decoder.push({
+              value,
+              file: path,
+              offset: decodedAt,
+              length,
+              line,
+              codec: "zstd"
+            });
+            if (!pushed.ok) {
+              // The frame cannot be decoded further. Drop the cursor before draining the records its earlier
+              // lines produced: a consumer that stops mid-drain must see no cursor, because one pointing past
+              // some of the frame's lines would replay them with wrong numbers on every resume. The next decode
+              // reads the file from its start.
+              position.cursor = () => undefined;
+              yield* drain(queue);
+              yield failure(pushed.error);
+              return;
+            }
+            queue.push(...pushed.value);
+          }
         }
-        offset = startOffset + frames[at]!.end;
-        state.decodedBytes = decodedAt;
-        yield* drain(queue);
+        decodedAt += length + 1;
       }
-      queue.push(...decoder.end(final));
+      offset = startOffset + frames[at]!.end;
+      state.decodedBytes = decodedAt;
       yield* drain(queue);
-    } catch (error) {
-      signal?.throwIfAborted();
-      const ioFailure = io.failure(error, target.path);
-      if (!ioFailure) {
-        throw error;
-      }
-      yield failure(ioFailure);
     }
-  }
-
-  return {
-    get cursor() {
-      return cursor();
-    },
-    [Symbol.asyncIterator]: () => run()
-  };
+    queue.push(...decoder.end(final));
+    yield* drain(queue);
+  });
 }
 
 /**

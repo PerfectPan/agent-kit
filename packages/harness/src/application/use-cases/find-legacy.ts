@@ -18,11 +18,11 @@ import { type ObservedArtifact } from "../../domain/install-plan/spi/observed-ar
 import { planEvidenceScope } from "../../domain/install-plan/factories/plan-evidence-scope.js";
 import { type LegacyObservation, scanLegacy } from "../services/legacy-scan.js";
 import { fromResult } from "../services/from-result.js";
-import { type LedgerReadError, loadLedger } from "../services/ledger-session.js";
-import { ledgerScope, type ScopeOptions } from "../services/ledger-scope.js";
+import { type LedgerReadError } from "../services/ledger-session.js";
+import { type ScopeOptions } from "../services/ledger-scope.js";
 import { observe, registrationLookup } from "../services/observe.js";
 import { ArtifactFiles, type ArtifactFailure, LedgerRepository } from "../ports.js";
-import { adapterOf, planSetup, requireUserScope } from "./plan-install.js";
+import { loadPlanSetup, requireUserScope } from "./plan-install.js";
 
 export interface FindLegacyOptions extends ScopeOptions {
   /** The agents to scan: their own legacy sources, and the other agents' hook files they execute. */
@@ -96,12 +96,10 @@ export function findLegacy(
     requireUserScope(options);
     // The owner and the markers are checked the way uninstall's are, through the same shared rule.
     yield* fromResult(checkOwnerMarkers(owner, options.legacyMarkers));
-    const setup = yield* planSetup(options);
-    for (const agent of options.agents) {
-      adapterOf(setup, agent);
-    }
-    const scope = yield* ledgerScope(options);
-    const { ledger } = yield* loadLedger(scope);
+    const {
+      setup,
+      loaded: { ledger }
+    } = yield* loadPlanSetup(options);
     const evidence = planEvidenceScope(
       definedFields({
         owner,

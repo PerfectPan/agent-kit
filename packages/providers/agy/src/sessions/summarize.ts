@@ -1,11 +1,9 @@
 import { ok, type Result } from "@rivus/agent-kit-catalog/spi";
 import {
-  addRequest,
   emptyPrompts,
   emptyTotals,
   finishPass,
-  isPrompt,
-  requestUsage,
+  tallyTranscriptPart,
   type SessionPromptsOptions,
   type SessionSummaryWithPrompts,
   type SourcedRecord,
@@ -23,18 +21,8 @@ export async function summarizeAgyRecords(
   const prompts = emptyPrompts(promptsOptions);
 
   for await (const record of records) {
-    const step = translation.step(record);
-    for (const part of step.parts) {
-      if (part.kind === "request") {
-        addRequest(totals, requestUsage({ payload: part.payload }));
-      } else if (part.kind === "tool_result" && part.payload.isError === true) {
-        totals.failedTools += 1;
-      } else if (part.kind === "compaction") {
-        totals.compactions += 1;
-      } else if (part.kind === "user" && isPrompt({ kind: part.kind, payload: part.payload })) {
-        totals.turns += 1;
-        prompts.add(part.payload.text);
-      }
+    for (const part of translation.step(record).parts) {
+      tallyTranscriptPart(part, totals, prompts);
     }
   }
 

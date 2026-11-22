@@ -140,6 +140,60 @@ export async function* fileSources(
   }
 }
 
+/** A usage stream over records that one read produces whole, such as a JSON file or a database page. */
+export function usageStreamOf(
+  run: (position: { cursor: () => UsageCursor | undefined }) => AsyncGenerator<UsageRecord | UsageDecodeFailure>,
+  from: UsageCursor | undefined
+): UsageStream {
+  const position = { cursor: (): UsageCursor | undefined => from };
+  return {
+    get cursor() {
+      return position.cursor();
+    },
+    [Symbol.asyncIterator]: () => run(position)
+  };
+}
+
+/** Stats a usage file following symlinks, returning its info only when it is a regular file. */
+export async function statUsageFile(
+  platform: Pick<UsagePlatform, "fs">,
+  path: string
+): Promise<{ readonly size: number; readonly mtimeMs: number } | undefined> {
+  const info = await platform.fs.stat(path, { followSymlinks: true });
+  return info?.kind === "file" ? info : undefined;
+}
+
+/**
+ * A usage stream whose body reads through the guarded platform: an I/O failure the body throws becomes a failure the
+ * stream yields, and the body sets `position.cursor` as it learns where to resume.
+ */
+export function guardedUsageStream(
+  platform: UsagePlatform,
+  agent: CodingAgentId,
+  path: string,
+  options: DecodeUsageOptions,
+  body: (
+    io: ReturnType<typeof guardIo>,
+    position: { cursor: () => UsageCursor | undefined }
+  ) => AsyncGenerator<UsageRecord | UsageDecodeFailure, void, undefined>
+): UsageStream {
+  const { from, signal } = options;
+  return usageStreamOf(async function* (position) {
+    const io = guardIo(platform);
+    try {
+      signal?.throwIfAborted();
+      yield* body(io, position);
+    } catch (error) {
+      signal?.throwIfAborted();
+      const ioFailure = io.failure(error, path);
+      if (!ioFailure) {
+        throw error;
+      }
+      yield { agent, path, error: ioFailure };
+    }
+  }, from);
+}
+
 /**
  * Decodes one JSONL file line by line with the agent's decoder, keeping only the decoder's state and the records it
  * completed but the loop has not taken yet. A line that is not JSON is skipped. A last line without a newline that is
@@ -154,109 +208,75 @@ export function decodeJsonlUsage(
 ): UsageStream {
   const { agent } = layout;
   const { from, signal } = options;
-  let cursor = (): UsageCursor | undefined => from;
   const failure = (error: UsageDecodeError): UsageDecodeFailure => ({ agent, path: target.path, error });
-
-  async function* run(): AsyncGenerator<UsageRecord | UsageDecodeFailure, void, undefined> {
-    const io = guardIo(platform);
-    try {
-      signal?.throwIfAborted();
-      const located = await layout.file(io.platform, target, signal);
-      if (!located.ok) {
-        yield failure(located.error);
-        return;
-      }
-      const { path } = located.value;
-      const info = await io.platform.fs.stat(path, { followSymlinks: true });
-      if (info?.kind !== "file") {
-        yield failure({ _tag: "SessionNotFound", path });
-        return;
-      }
-      let offset = from?.offset ?? 0;
-      let line = from?.line ?? 0;
-      if (from && !(await continuesAt(io.platform, path, info.size, offset, signal))) {
-        cursor = () => undefined;
-        yield failure(sourceChanged(path, from));
-        return;
-      }
-      const final = decodeIsFinal(options, info.mtimeMs);
-      const decoder = layout.decoder({ ...located.value, mtimeMs: info.mtimeMs }, from?.state);
-      const queue: UsageRecord[] = [...(from?.queue ?? [])];
-      cursor = () =>
-        definedFields({
-          agent,
-          offset,
-          line,
-          state: decoder.save(),
-          queue: queue.length > 0 ? [...queue] : undefined
-        });
-      yield* drain(queue);
-      const lines = readLines(io.platform, path, definedFields({ signal }), { offset, line: line + 1 }, info.size);
-      for await (const text of lines) {
-        const end = text.offset + text.byteLength + text.terminator.length;
-        let value: unknown;
-        try {
-          value = text.text.trim() ? (JSON.parse(text.text) as unknown) : undefined;
-        } catch {
-          // A last line without a newline that is not JSON is still being written, even when the file is final for
-          // now: the cursor stays before it, so the next decode reads it whole.
-          if (!text.terminator) {
-            break;
-          }
-        }
-        if (value === undefined) {
-          if (text.terminator) {
-            offset = end;
-            line = text.lineNumber;
-          }
-          continue;
-        }
-        const pushed = decoder.push({
-          value,
-          file: path,
-          offset: text.offset,
-          length: text.byteLength,
-          line: text.lineNumber
-        });
-        if (!pushed.ok) {
-          yield failure(pushed.error);
-          return;
-        }
-        offset = end;
-        line = text.lineNumber;
-        queue.push(...pushed.value);
-        yield* drain(queue);
-      }
-      queue.push(...decoder.end(final));
-      yield* drain(queue);
-    } catch (error) {
-      signal?.throwIfAborted();
-      const ioFailure = io.failure(error, target.path);
-      if (!ioFailure) {
-        throw error;
-      }
-      yield failure(ioFailure);
+  return guardedUsageStream(platform, agent, target.path, options, async function* (io, position) {
+    const located = await layout.file(io.platform, target, signal);
+    if (!located.ok) {
+      yield failure(located.error);
+      return;
     }
-  }
-
-  return {
-    get cursor() {
-      return cursor();
-    },
-    [Symbol.asyncIterator]: () => run()
-  };
-}
-
-/** A usage stream over records that one read produces whole, such as a JSON file or a database page. */
-export function usageStreamOf(
-  run: (position: { cursor: () => UsageCursor | undefined }) => AsyncGenerator<UsageRecord | UsageDecodeFailure>,
-  from: UsageCursor | undefined
-): UsageStream {
-  const position = { cursor: (): UsageCursor | undefined => from };
-  return {
-    get cursor() {
-      return position.cursor();
-    },
-    [Symbol.asyncIterator]: () => run(position)
-  };
+    const { path } = located.value;
+    const info = await statUsageFile(io.platform, path);
+    if (!info) {
+      yield failure({ _tag: "SessionNotFound", path });
+      return;
+    }
+    let offset = from?.offset ?? 0;
+    let line = from?.line ?? 0;
+    if (from && !(await continuesAt(io.platform, path, info.size, offset, signal))) {
+      position.cursor = () => undefined;
+      yield failure(sourceChanged(path, from));
+      return;
+    }
+    const final = decodeIsFinal(options, info.mtimeMs);
+    const decoder = layout.decoder({ ...located.value, mtimeMs: info.mtimeMs }, from?.state);
+    const queue: UsageRecord[] = [...(from?.queue ?? [])];
+    position.cursor = () =>
+      definedFields({
+        agent,
+        offset,
+        line,
+        state: decoder.save(),
+        queue: queue.length > 0 ? [...queue] : undefined
+      });
+    yield* drain(queue);
+    const lines = readLines(io.platform, path, definedFields({ signal }), { offset, line: line + 1 }, info.size);
+    for await (const text of lines) {
+      const end = text.offset + text.byteLength + text.terminator.length;
+      let value: unknown;
+      try {
+        value = text.text.trim() ? (JSON.parse(text.text) as unknown) : undefined;
+      } catch {
+        // A last line without a newline that is not JSON is still being written, even when the file is final for
+        // now: the cursor stays before it, so the next decode reads it whole.
+        if (!text.terminator) {
+          break;
+        }
+      }
+      if (value === undefined) {
+        if (text.terminator) {
+          offset = end;
+          line = text.lineNumber;
+        }
+        continue;
+      }
+      const pushed = decoder.push({
+        value,
+        file: path,
+        offset: text.offset,
+        length: text.byteLength,
+        line: text.lineNumber
+      });
+      if (!pushed.ok) {
+        yield failure(pushed.error);
+        return;
+      }
+      offset = end;
+      line = text.lineNumber;
+      queue.push(...pushed.value);
+      yield* drain(queue);
+    }
+    queue.push(...decoder.end(final));
+    yield* drain(queue);
+  });
 }

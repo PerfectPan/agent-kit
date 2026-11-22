@@ -14,7 +14,7 @@ import {
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import type { BundleRef, InstallContext } from "@rivus/agent-kit-harness/spi";
 import { type InstallAdapter, ownerSlug } from "@rivus/agent-kit-harness/spi";
-import { agentsOf, commandHook, groupedHooksFile, jsonText } from "@rivus/agent-kit-harness/spi";
+import { agentsOf, groupedHooksFile, jsonText, renderGroupedJsonHooks } from "@rivus/agent-kit-harness/spi";
 
 // https://code.claude.com/docs/en/plugins (skills-dir plugins load in every session as `<name>@skills-dir`, enabled
 // by default, hooks in `hooks/hooks.json` wrapped in `"hooks"`), https://code.claude.com/docs/en/settings and
@@ -54,36 +54,26 @@ export const claudeCodeInstallAdapter: InstallAdapter = {
     strategy === "native-plugin"
       ? `~/${CLAUDE_CODE_HOME_DIR}/${CLAUDE_CODE_SKILLS_DIR}/${ownerSlug(bundle.owner)}/${CLAUDE_CODE_PLUGIN_HOOKS}`
       : CLAUDE_CODE_SETTINGS_PATH,
-  renderHooks(strategy, registrations, bundle, context) {
+  renderHooks: (strategy, registrations, bundle, context) => {
     if (registrations.length === 0) {
       return [];
     }
-    if (strategy === "native-plugin") {
-      const name = ownerSlug(bundle.owner);
-      return [
-        {
-          locator: { kind: "dir", path: claudePluginDir(context, bundle) },
-          content: {
-            [CLAUDE_CODE_PLUGIN_MANIFEST]: jsonText({ name, description: `Hooks installed by ${bundle.owner}` }),
-            [CLAUDE_CODE_PLUGIN_HOOKS]: jsonText(groupedHooksFile(registrations))
-          },
-          strategy,
-          agents: agentsOf(registrations)
-        }
-      ];
-    }
-    return registrations.map((registration) => ({
-      locator: {
-        kind: "json-entry",
-        path: claudeSettingsFile(context),
-        pointer: `${CLAUDE_CODE_HOOKS_POINTER}/${registration.event}`,
-        member: registration.command,
-        memberIn: "hook-group"
-      },
-      content: commandHook(registration),
-      strategy,
-      agents: registration.agents
-    }));
+    return strategy === "native-plugin"
+      ? [
+          {
+            locator: { kind: "dir", path: claudePluginDir(context, bundle) },
+            content: {
+              [CLAUDE_CODE_PLUGIN_MANIFEST]: jsonText({
+                name: ownerSlug(bundle.owner),
+                description: `Hooks installed by ${bundle.owner}`
+              }),
+              [CLAUDE_CODE_PLUGIN_HOOKS]: jsonText(groupedHooksFile(registrations))
+            },
+            strategy,
+            agents: agentsOf(registrations)
+          }
+        ]
+      : renderGroupedJsonHooks(strategy, registrations, claudeSettingsFile(context), CLAUDE_CODE_HOOKS_POINTER);
   },
   renderSkill: (strategy, skill, context) => [
     { locator: { kind: "dir", path: `${claudeSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }

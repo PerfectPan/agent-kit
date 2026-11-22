@@ -1,8 +1,7 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
+import { readTree } from "../../../testing/test/support.js";
 
 /** The Pi fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function piSessions(root: string): ConformanceSession[] {
@@ -23,13 +22,5 @@ export function piSessions(root: string): ConformanceSession[] {
 }
 
 export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  const root = fileURLToPath(new URL("fixtures/usage", import.meta.url));
-  const files: Record<string, Uint8Array> = {};
-  for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
-    if (entry.isFile()) {
-      const path = join(entry.parentPath, entry.name);
-      files[`${home}/.pi/agent/${relative(root, path).split(sep).join("/")}`] = await readFile(path);
-    }
-  }
-  return files;
+  return readTree(fileURLToPath(new URL("fixtures/usage", import.meta.url)), `${home}/.pi/agent`);
 }

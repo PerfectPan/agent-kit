@@ -670,9 +670,6 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.1.4
-      oxc-parser:
-        specifier: 'catalog:'
-        version: 0.157.0
       publint:
         specifier: 'catalog:'
         version: 0.3.25

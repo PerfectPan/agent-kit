@@ -1,4 +1,4 @@
-import { SESSION_TITLE_MAX, type SessionPreview, timeOfValue } from "@rivus/agent-kit-sessions/spi";
+import { SESSION_TITLE_MAX, type SessionPreview, joinedPartText, timeOfValue } from "@rivus/agent-kit-sessions/spi";
 
 import { piContentParts, piEntryOf, piHeaderOf } from "../records.js";
 
@@ -31,11 +31,7 @@ export function previewPiRecords(records: readonly Record<string, unknown>[]): S
       preview.lastAt = preview.lastAt === undefined ? ts : Math.max(preview.lastAt, ts);
     }
     if (preview.firstPrompt === undefined && entry?.type === "message" && entry.message?.role === "user") {
-      const text = piContentParts(entry.message.content)
-        .filter((part) => part.kind === "text")
-        .map((part) => part.text)
-        .join("\n")
-        .trim();
+      const text = joinedPartText(piContentParts(entry.message.content)).trim();
       if (text) {
         preview.firstPrompt = text.slice(0, FIRST_PROMPT_MAX);
       }

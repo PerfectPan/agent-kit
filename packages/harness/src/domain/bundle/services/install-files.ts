@@ -1,7 +1,9 @@
 import type { CodingAgentId } from "@rivus/agent-kit-catalog/public";
 
 import type { HookRegistration } from "./hook-registrations.js";
-import type { InstallContext } from "../spi/install-adapter.js";
+import type { InstallContext, RenderedArtifact } from "../spi/install-adapter.js";
+import type { Strategy } from "../spi/strategy.js";
+import type { SkillSpec } from "../value-objects/artifact-spec.js";
 import type { PlacedRegistration } from "./hook-placement.js";
 import type { JsonValue } from "../../../lib/json.js";
 
@@ -43,4 +45,49 @@ export function configHome(context: InstallContext): string {
 /** Every agent that relies on one of the registrations, for an Artifact that holds them all. */
 export function agentsOf(registrations: readonly PlacedRegistration[]): readonly CodingAgentId[] {
   return [...new Set(registrations.flatMap((registration) => registration.agents))].toSorted();
+}
+
+/** Renders command hooks as grouped JSON entries under `<pointer>/<event>` in `path`. */
+export function renderGroupedJsonHooks(
+  strategy: Strategy,
+  registrations: readonly PlacedRegistration[],
+  path: string,
+  pointer: string
+): readonly RenderedArtifact[] {
+  return registrations.map((registration) => ({
+    locator: {
+      kind: "json-entry",
+      path,
+      pointer: `${pointer}/${registration.event}`,
+      member: registration.command,
+      memberIn: "hook-group"
+    },
+    content: commandHook(registration),
+    strategy,
+    agents: registration.agents
+  }));
+}
+
+/** Renders a skill directory into the shared `~/.agents/skills/<name>` location. */
+export function renderSharedSkill(
+  strategy: Strategy,
+  skill: SkillSpec,
+  context: InstallContext
+): readonly RenderedArtifact[] {
+  return [
+    { locator: { kind: "dir", path: `${sharedSkillsDir(context)}/${skill.name}` }, content: skill.files, strategy }
+  ];
+}
+
+/** Renders a single bridge plugin/extension file when at least one hook registration is present. */
+export function renderBridgeHook(
+  strategy: Strategy,
+  registrations: readonly PlacedRegistration[],
+  path: string,
+  content: (command: string) => string
+): readonly RenderedArtifact[] {
+  const [first] = registrations;
+  return first === undefined
+    ? []
+    : [{ locator: { kind: "file", path }, content: content(first.command), strategy, agents: agentsOf(registrations) }];
 }

@@ -1,13 +1,10 @@
 import { KIMI_ID } from "../facts.js";
 import { err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
 import {
-  addRequest,
-  addTurnDuration,
   emptyPrompts,
   emptyTotals,
   finishPass,
-  isPrompt,
-  requestUsage,
+  tallyTranscriptPart,
   type SessionPromptsOptions,
   type SessionSummaryWithPrompts,
   type SourcedRecord,
@@ -27,9 +24,9 @@ export async function summarizeKimiRecords(
   records: AsyncIterable<SourcedRecord>,
   promptsOptions?: SessionPromptsOptions
 ): Promise<Result<SessionSummaryWithPrompts, UnknownFormatGeneration>> {
-  const translation = createKimiTranslation({ retain: false });
   const totals = emptyTotals();
   const prompts = emptyPrompts(promptsOptions);
+  const translation = createKimiTranslation({ retain: false });
 
   for await (const record of records) {
     const step = translation.step(record);
@@ -37,16 +34,7 @@ export async function summarizeKimiRecords(
       return err(unknownFormatGeneration(KIMI_ID, record));
     }
     for (const part of step.parts) {
-      if (part.kind === "request") {
-        addRequest(totals, requestUsage({ payload: part.payload }));
-      } else if (part.kind === "tool_result" && part.payload.isError === true) {
-        totals.failedTools += 1;
-      } else if (part.kind === "system" && part.payload.type === "turn_duration") {
-        addTurnDuration(totals, part.payload.durationMs);
-      } else if (part.kind === "user" && isPrompt({ kind: part.kind, payload: part.payload })) {
-        totals.turns += 1;
-        prompts.add(part.payload.text);
-      }
+      tallyTranscriptPart(part, totals, prompts);
     }
   }
 

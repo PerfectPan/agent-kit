@@ -9,6 +9,7 @@ import {
   type ParsedTranscript,
   MAIN_LANE_ID,
   markOrphanToolResults,
+  nextFreeId,
   shadowBefore,
   recordTime,
   type SkippedRecord,
@@ -162,13 +163,7 @@ export function translateGeminiCliRecords(
   let endedAt: number | undefined;
 
   /** The first id of `base`'s shape no event holds: `base` itself, then `base:1`, `base:2`, …. */
-  const nextFree = (base: string): string => {
-    let candidate = base;
-    for (let serial = 1; usedIds.has(candidate); serial += 1) {
-      candidate = `${base}:${serial}`;
-    }
-    return candidate;
-  };
+  const nextFree = (base: string): string => nextFreeId(usedIds, base);
 
   for (let index = 0; index < records.length; index++) {
     const record = records[index]!;

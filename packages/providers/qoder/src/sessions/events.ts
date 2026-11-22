@@ -1,10 +1,8 @@
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
-  assignSeq,
-  baseEvent,
-  inheritTimes,
+  finalizeTranscriptEvents,
   lineId,
-  markOrphanToolResults,
+  pushRetainedEvent,
   shadowBefore,
   skipRecord,
   type ParsedTranscript,
@@ -64,20 +62,8 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
     body: TranscriptEventBody,
     ts: number,
     extra: { readonly requestId?: string; readonly agentId?: string }
-  ): TranscriptEvent | undefined => {
-    if (!retain) {
-      return undefined;
-    }
-    const id = lineId(record, partIndex);
-    const event = baseEvent(
-      record,
-      body.kind,
-      body.payload,
-      definedFields({ id, ts, requestId: extra.requestId, agentId: extra.agentId })
-    );
-    events.push(event);
-    return event;
-  };
+  ): TranscriptEvent | undefined =>
+    pushRetainedEvent(events, retain, record, partIndex, body, definedFields({ ts, ...extra }));
 
   return {
     step(record: SourcedRecord, laneAgentId?: string): QoderStep {
@@ -112,28 +98,24 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
       switch (parsed.type) {
         case "user": {
           const content = parsed.message?.content;
-          if (typeof content === "string") {
-            if (content !== "") {
+          const emitUserText = (text: string): void => {
+            if (text !== "") {
               emit({
                 kind: "user",
                 payload: definedFields({
-                  text: content,
+                  text,
                   ...(parsed.isMeta ? { meta: true } : {}),
                   ...(parsed.isCompactSummary ? { compactSummary: true } : {})
                 })
               });
             }
+          };
+          if (typeof content === "string") {
+            emitUserText(content);
           } else if (Array.isArray(content)) {
             for (const block of content) {
-              if (block.type === "text" && block.text !== "") {
-                emit({
-                  kind: "user",
-                  payload: definedFields({
-                    text: block.text,
-                    ...(parsed.isMeta ? { meta: true } : {}),
-                    ...(parsed.isCompactSummary ? { compactSummary: true } : {})
-                  })
-                });
+              if (block.type === "text") {
+                emitUserText(block.text);
               } else if (block.type === "tool_result") {
                 emit({
                   kind: "tool_result",
@@ -255,12 +237,7 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
     },
 
     finish(session): ParsedTranscript {
-      const times = inheritTimes(events.map((event) => (event.ts > 0 ? event.ts : undefined)));
-      for (const [index, event] of events.entries()) {
-        event.ts = times[index]!;
-      }
-      markOrphanToolResults(events);
-      assignSeq(events);
+      finalizeTranscriptEvents(events);
       const agents: ParsedTranscript["agents"] = [
         { id: QODER_ID },
         ...[...subagents].map((id) => ({ id, parentId: QODER_ID }))

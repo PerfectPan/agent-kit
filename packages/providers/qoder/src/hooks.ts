@@ -1,9 +1,8 @@
 import { QODER_ID } from "./facts.js";
 import {
+  claudeShapedCoreEvents,
   claudeShapedFields,
-  claudeShapedGateFields,
   claudeShapedHookOutput,
-  claudeShapedPermissionFields,
   claudeShapedSecondsTimeout,
   claudeShapedSessionStartLifecycle,
   withPlainStdoutContext,
@@ -37,20 +36,7 @@ export const qoderHookDialect: HookDialect = {
       output: OUTPUT_WITH_CONTEXT
     },
     SessionEnd: { lifecycle: { phase: "finish", scope: "session" } },
-    UserPromptSubmit: { lifecycle: { phase: "start", scope: "turn" }, output: OUTPUT_WITH_CONTEXT },
-    PreToolUse: {
-      lifecycle: { phase: "activity" },
-      gate: true,
-      output: { ...OUTPUT, fields: claudeShapedGateFields }
-    },
-    PermissionRequest: {
-      lifecycle: { phase: "blocked", blocker: "permission" },
-      gate: true,
-      output: { ...OUTPUT, exitCode2: "proceed", fields: claudeShapedPermissionFields }
-    },
-    PermissionDenied: { lifecycle: { phase: "activity" } },
-    PostToolUse: { lifecycle: { phase: "activity" } },
-    PostToolUseFailure: { lifecycle: { phase: "activity" } },
+    ...claudeShapedCoreEvents(OUTPUT),
     SubagentStart: { lifecycle: { phase: "start" }, subagent: true },
     SubagentStop: { lifecycle: { phase: "finish" }, subagent: true },
     Stop: { lifecycle: { phase: "finish", scope: "turn", outcome: "completed" } },

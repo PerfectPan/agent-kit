@@ -203,20 +203,24 @@ export function hasUnknownClaudeCodeGeneration(record: Record<string, unknown>):
 const knownGenerationRecord = <S extends Record<string, z.core.$ZodType>>(fields: S) =>
   z.looseObject({ type: z.string(), version: knownVersion, ...fields }).check(z.refine(withoutFormatVersion));
 
-const ClaudeCodeRecord = knownGenerationRecord({
-  uuid: lenient(z.string()),
-  parentUuid: lenient(z.string()),
+const SHARED_RECORD_FIELDS = {
   sessionId: lenient(z.string()),
   cwd: lenient(z.string()),
-  agentId: lenient(z.string()),
-  requestId: lenient(z.string()),
+  customTitle: lenient(z.string()),
+  aiTitle: lenient(z.string()),
   timestamp: logTimestamp,
   isSidechain: lenient(z.literal(true)),
   isMeta: lenient(z.literal(true)),
   isCompactSummary: lenient(z.literal(true)),
-  origin: lenient(z.looseObject({ kind: lenient(z.string()) })),
-  customTitle: lenient(z.string()),
-  aiTitle: lenient(z.string()),
+  origin: lenient(z.looseObject({ kind: lenient(z.string()) }))
+};
+
+const ClaudeCodeRecord = knownGenerationRecord({
+  ...SHARED_RECORD_FIELDS,
+  uuid: lenient(z.string()),
+  parentUuid: lenient(z.string()),
+  agentId: lenient(z.string()),
+  requestId: lenient(z.string()),
   summary: lenient(z.string()),
   title: lenient(z.string()),
   subtype: lenient(z.string()),
@@ -296,16 +300,8 @@ export function parseClaudeCodeMessageUsage(value: unknown): ClaudeCodeMessageUs
  * its session, time and title.
  */
 const ClaudeCodePreviewRecord = z.looseObject({
+  ...SHARED_RECORD_FIELDS,
   type: lenient(z.string()),
-  sessionId: lenient(z.string()),
-  cwd: lenient(z.string()),
-  customTitle: lenient(z.string()),
-  aiTitle: lenient(z.string()),
-  timestamp: logTimestamp,
-  isSidechain: lenient(z.literal(true)),
-  isMeta: lenient(z.literal(true)),
-  isCompactSummary: lenient(z.literal(true)),
-  origin: lenient(z.looseObject({ kind: lenient(z.string()) })),
   message: lenient(
     z.looseObject({ content: lenient(z.union([z.string(), z.array(lenient(z.looseObject(textBlock)))])) })
   )

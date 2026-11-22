@@ -9,7 +9,10 @@ const PiUsage = z.looseObject({
   output: lenient(z.number()),
   cacheRead: lenient(z.number()),
   cacheWrite: lenient(z.number()),
-  totalTokens: lenient(z.number())
+  totalTokens: lenient(z.number()),
+  cacheWrite1h: lenient(z.number()),
+  reasoning: lenient(z.number()),
+  cost: lenient(z.looseObject({ total: lenient(z.number()) }))
 });
 
 export interface PiUsageValue {
@@ -18,6 +21,14 @@ export interface PiUsageValue {
   cacheRead?: number;
   cacheWrite?: number;
   totalTokens?: number;
+  cacheWrite1h?: number;
+  reasoning?: number;
+  cost?: { total?: number };
+}
+
+/** Parses a Pi message `usage` object leniently. */
+export function piRawUsageOf(value: unknown): PiUsageValue | undefined {
+  return z.safeParse(PiUsage, value).data;
 }
 
 /**

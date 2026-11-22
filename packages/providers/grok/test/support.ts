@@ -1,6 +1,5 @@
 import type { ConformanceSession } from "@rivus/agent-kit-testing/public";
-import { fileURLToPath } from "node:url";
-import { readTree } from "../../../testing/test/support.js";
+import { usageHomeReader } from "../../../testing/test/support.js";
 
 /** The Grok fixture sessions under `root` (the fixtures' `conformance` directory) and what each shows. */
 export function grokSessions(root: string): ConformanceSession[] {
@@ -36,6 +35,7 @@ export function grokSessions(root: string): ConformanceSession[] {
   ];
 }
 
-export async function readUsageHome(home: string): Promise<Record<string, Uint8Array>> {
-  return readTree(fileURLToPath(new URL("fixtures/usage", import.meta.url)), `${home}/.grok`);
-}
+export const readUsageHome: (home: string) => Promise<Record<string, Uint8Array>> = usageHomeReader(
+  import.meta.url,
+  ".grok"
+);

@@ -9,6 +9,7 @@ import type { PlanAction, Removal } from "../../install-plan/value-objects/plan-
 import type { PreconditionSnapshot } from "../../install-plan/value-objects/precondition.js";
 import { type ContentHash, isContentHash } from "../value-objects/content-hash.js";
 import { type PreImage, isPreImage } from "../value-objects/pre-image.js";
+import { initFrozenSnapshot } from "./freeze-snapshot.js";
 
 /**
  * One plan step recorded in the Ledger before any target is touched, with everything needed to finish its record
@@ -93,14 +94,7 @@ export class PendingOperation {
   readonly #snapshot: PendingOperationSnapshot;
 
   private constructor(input: PendingOperationSnapshot) {
-    const snapshot = structuredClone(input);
-    Object.freeze(snapshot.locator);
-    Object.freeze(snapshot.agents);
-    Object.freeze(snapshot.precondition);
-    Object.freeze(snapshot.preImage);
-    this.#snapshot = Object.freeze(snapshot);
-    Object.assign(this, snapshot);
-    Object.freeze(this);
+    this.#snapshot = initFrozenSnapshot(this, input, ["locator", "agents", "precondition", "preImage"]);
   }
 
   toSnapshot(): PendingOperationSnapshot {

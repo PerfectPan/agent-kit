@@ -20,24 +20,7 @@ import {
 } from "@rivus/agent-kit-sessions/spi";
 import { PI_ID as AGENT } from "./facts.js";
 import { PI_SESSION_FILES, piSessionStem, piUsageRoots } from "./layout.js";
-
-/**
- * The `usage` of an assistant message: Pi's counts, plus the `cost` Pi logged for it. Pi's `Usage` type counts `input`
- * without the cache (`totalTokens` is input + output + cacheRead + cacheWrite), so the cache is added back; `reasoning`
- * and `cacheWrite1h` are subsets of `output` and `cacheWrite`, present when the provider reports them.
- */
-const PiMessageUsage = z.looseObject({
-  input: lenient(z.number()),
-  output: lenient(z.number()),
-  cacheRead: lenient(z.number()),
-  cacheWrite: lenient(z.number()),
-  totalTokens: lenient(z.number()),
-  cacheWrite1h: lenient(z.number()),
-  reasoning: lenient(z.number()),
-  cost: lenient(z.looseObject({ total: lenient(z.number()) }))
-});
-
-type PiMessageUsageValue = z.output<typeof PiMessageUsage>;
+import { piRawUsageOf, type PiUsageValue } from "./records.js";
 
 /** A session file record: a `session` header, or an entry whose message carries the counts. */
 const PiRecord = z.looseObject({
@@ -52,13 +35,13 @@ const PiRecord = z.looseObject({
       provider: lenient(z.string()),
       responseId: lenient(z.string()),
       timestamp: logTimestamp,
-      usage: lenient(PiMessageUsage)
+      usage: lenient(z.unknown())
     })
   )
 });
 
 /** The Usage of an assistant message's parsed `usage`, with the cache added back into the input. */
-function piUsage(usage: PiMessageUsageValue | undefined): Usage | undefined {
+function piUsage(usage: PiUsageValue | undefined): Usage | undefined {
   const input = usage?.input;
   const cacheRead = usage?.cacheRead;
   const cacheWrite = usage?.cacheWrite;
@@ -124,7 +107,8 @@ export function piUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder
       if (rec.type !== "message" || message?.role !== "assistant") {
         return ok([]);
       }
-      const usage = piUsage(message.usage);
+      const rawUsage = piRawUsageOf(message.usage);
+      const usage = piUsage(rawUsage);
       if (!usage || (state.forkTime !== undefined && ts < state.forkTime)) {
         return ok([]);
       }
@@ -138,7 +122,7 @@ export function piUsageLines(file: UsageFile, saved?: unknown): UsageLineDecoder
       };
       const { responseId, model, provider } = message;
       const entryId = rec.id;
-      const cost = message.usage?.cost?.total;
+      const cost = rawUsage?.cost?.total;
       if (entryId) {
         out.requestId = entryId;
       }

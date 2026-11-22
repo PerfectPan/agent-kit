@@ -1,19 +1,14 @@
-import { definedFields, err, ok, type Result } from "@rivus/agent-kit-catalog/spi";
+import { definedFields, err, ok } from "@rivus/agent-kit-catalog/spi";
 import {
   catchIoFailure,
   createTranscript,
   edgeRecords,
   readEdges,
-  readJsonlRecords,
   readJsonlStream,
-  readProgress,
+  readSessionJsonl,
   sessionHead,
-  type LoadOptions,
   type SessionAdapter,
-  type SessionPlatform,
-  type SessionReadError,
-  type SessionRef,
-  type Transcript
+  type SessionReadError
 } from "@rivus/agent-kit-sessions/spi";
 import { AGY_DISPLAY_NAME, AGY_HOME, AGY_ID, AGY_TRANSCRIPT_FULL_REL, AGY_TRANSCRIPT_REL } from "./facts.js";
 import { agyRoots, agySessionIdFromPath } from "./layout.js";
@@ -25,29 +20,6 @@ import { summarizeAgyRecords } from "./sessions/summarize.js";
 // `<home>/antigravity-cli/brain/<conversation-id>/.system_generated/logs/`: `transcript_full.jsonl` keeps complete
 // content and `transcript.jsonl` truncates long fields. Discovery prefers `transcript_full.jsonl` when present and
 // falls back to `transcript.jsonl` so each conversation yields one session.
-
-async function loadAgy(
-  platform: SessionPlatform,
-  ref: SessionRef,
-  options: LoadOptions = {}
-): Promise<Result<Transcript, SessionReadError>> {
-  const file = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readJsonlRecords(guarded, ref.path, { signal: options.signal, progress: readProgress(options.onProgress) })
-  );
-  if (!file.ok) {
-    return file;
-  }
-  const translation = createAgyTranslation({ retain: true });
-  for (const record of file.value.records) {
-    translation.step(record);
-  }
-  const parsed = translation.finish(definedFields({ id: ref.sessionId ?? agySessionIdFromPath(ref.path) }), [
-    { id: AGY_ID }
-  ]);
-  parsed.skipped = [...file.value.skipped, ...parsed.skipped];
-  options.signal?.throwIfAborted();
-  return ok(createTranscript(AGY_ID, AGY_CAPABILITIES, parsed));
-}
 
 export const agySessionAdapter: SessionAdapter = {
   specificationVersion: "sessions-v1",
@@ -93,7 +65,22 @@ export const agySessionAdapter: SessionAdapter = {
       (normalized.endsWith(`/${AGY_TRANSCRIPT_FULL_REL}`) || normalized.endsWith(`/${AGY_TRANSCRIPT_REL}`))
     );
   },
-  load: loadAgy,
+  async load(platform, ref, options = {}) {
+    const file = await readSessionJsonl(platform, ref.path, options);
+    if (!file.ok) {
+      return file;
+    }
+    const translation = createAgyTranslation({ retain: true });
+    for (const record of file.value.records) {
+      translation.step(record);
+    }
+    const parsed = translation.finish(definedFields({ id: ref.sessionId ?? agySessionIdFromPath(ref.path) }), [
+      { id: AGY_ID }
+    ]);
+    parsed.skipped = [...file.value.skipped, ...parsed.skipped];
+    options.signal?.throwIfAborted();
+    return ok(createTranscript(AGY_ID, AGY_CAPABILITIES, parsed));
+  },
   summarize: (platform, ref, options = {}) =>
     catchIoFailure(platform, ref.path, options.signal, (guarded) =>
       summarizeAgyRecords(

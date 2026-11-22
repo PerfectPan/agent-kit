@@ -91,14 +91,27 @@ async function resolveTarget(
  * `CapabilityUnsupported` (the named agent has no adapter), `NoAdapterAccepted` (detection found none),
  * `UnknownFormatGeneration` and `ReadFailed`. An abort rejects with `signal.reason`; only defects throw.
  */
+async function resolveTargetOrAbort(
+  platform: SessionPlatform,
+  target: SessionTarget,
+  options: Omit<LoadTranscriptOptions, "onProgress">
+): Promise<
+  Result<Awaited<ReturnType<typeof resolveTarget>> extends Result<infer T, unknown> ? T : never, LoadTranscriptError>
+> {
+  const resolved = await resolveTarget(platform, target, options);
+  if (!resolved.ok) {
+    options.signal?.throwIfAborted();
+  }
+  return resolved;
+}
+
 export async function loadTranscript(
   platform: SessionPlatform,
   target: SessionTarget,
   options: LoadTranscriptOptions
 ): Promise<Result<Transcript, LoadTranscriptError>> {
-  const resolved = await resolveTarget(platform, target, options);
+  const resolved = await resolveTargetOrAbort(platform, target, options);
   if (!resolved.ok) {
-    options.signal?.throwIfAborted();
     return resolved;
   }
   const { adapter, ref } = resolved.value;
@@ -145,9 +158,8 @@ export async function summarizeSession(
   options: Omit<LoadTranscriptOptions, "onProgress"> & { readonly prompts?: SessionPromptsOptions }
 ): Promise<Result<SessionSummaryWithPrompts, LoadTranscriptError>> {
   const prompts = promptsOption(options);
-  const resolved = await resolveTarget(platform, target, options);
+  const resolved = await resolveTargetOrAbort(platform, target, options);
   if (!resolved.ok) {
-    options.signal?.throwIfAborted();
     return resolved;
   }
   const { adapter, ref } = resolved.value;

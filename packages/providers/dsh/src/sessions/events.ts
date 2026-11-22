@@ -6,12 +6,13 @@ import {
   type RequestPayload,
   type SourcedRecord,
   type TranscriptEvent,
-  type TranscriptSession,
-  assignSeq,
+  type TranscriptEventBody,
+  type RecordTranslation,
   baseEvent,
+  createTranslationBuffer,
+  detectEventCapabilities,
+  joinedPartText,
   lineId,
-  MAIN_LANE_ID,
-  markOrphanToolResults,
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
@@ -44,28 +45,7 @@ export const DSH_CAPABILITIES: readonly Capability[] = [
 
 /** What one translated session can show, from the events and session fields it produced. */
 export function dshCapabilities(parsed: ParsedTranscript): Capability[] {
-  const out: Capability[] = [];
-  const has = (test: (event: TranscriptEvent) => boolean): boolean => parsed.events.some(test);
-  if (has((event) => event.kind === "request")) {
-    out.push("requests");
-  }
-  if (has((event) => event.kind === "request" && event.payload.usage !== undefined)) {
-    out.push("usage");
-  }
-  if (has((event) => event.kind === "reasoning")) {
-    out.push("reasoning");
-  }
-  if (has((event) => event.kind === "compaction")) {
-    out.push("compaction");
-  }
-  if (
-    has(
-      (event) =>
-        event.kind === "compaction" && (event.payload.preTokens !== undefined || event.payload.postTokens !== undefined)
-    )
-  ) {
-    out.push("compactionTokens");
-  }
+  const out = detectEventCapabilities(parsed.events);
   if (parsed.session.systemPrompt !== undefined) {
     out.push("systemPrompt");
   }
@@ -106,19 +86,7 @@ export interface DshTranslationOptions {
   readonly sessionId?: string;
 }
 
-export interface DshTranslation {
-  readonly events: TranscriptEvent[];
-  readonly skipped: { reason: string; record: SourcedRecord }[];
-  step(record: SourcedRecord, ts: number): Result<readonly TranscriptEvent[], UnknownFormatGeneration>;
-  finish(): ParsedTranscript;
-}
-
-function textOf(parts: readonly { kind: string; text?: string }[]): string {
-  return parts
-    .filter((part): part is { kind: "text"; text: string } => part.kind === "text" && part.text !== undefined)
-    .map((part) => part.text)
-    .join("\n");
-}
+export type DshTranslation = RecordTranslation;
 
 function hasImage(parts: readonly { kind: string }[]): boolean {
   return parts.some((part) => part.kind === "image");
@@ -127,7 +95,7 @@ function hasImage(parts: readonly { kind: string }[]): boolean {
 /** A user message's payload: human prompts stay prompts, injected context and compaction checkpoints are flagged. */
 function userPayload(message: DshMessageValue): MessagePayload {
   const parts = dshContentParts(message.content);
-  const text = textOf(parts);
+  const text = joinedPartText(parts);
   const source = message.source?.kind;
   return {
     ...(text ? { text } : {}),
@@ -139,37 +107,14 @@ function userPayload(message: DshMessageValue): MessagePayload {
 
 /** One harness session log into transcript events. */
 export function createDshTranslation(options: DshTranslationOptions): DshTranslation {
-  const events: TranscriptEvent[] = [];
-  const skipped: { reason: string; record: SourcedRecord }[] = [];
+  const buffer = createTranslationBuffer(options.retain);
   const seqLines = new Map<number, number>();
   let header: ReturnType<typeof dshHeaderOf>;
   let title: string | undefined;
   let systemPrompt: string | undefined;
   let tools: readonly unknown[] | undefined;
   let model: string | undefined;
-  let startedAt: number | undefined;
-  let endedAt: number | undefined;
   let first = true;
-  let stepParts: TranscriptEvent[] | undefined;
-
-  function noteTime(ts: number): void {
-    startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
-    endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
-  }
-
-  function emit(event: TranscriptEvent): TranscriptEvent {
-    if (options.retain) {
-      events.push(event);
-    }
-    stepParts?.push(event);
-    return event;
-  }
-
-  function skip(record: SourcedRecord, reason: string): void {
-    if (options.retain) {
-      skipped.push({ reason, record });
-    }
-  }
 
   function shadow(seqs: readonly number[] | undefined, compaction: TranscriptEvent): void {
     if (!options.retain || seqs === undefined) {
@@ -182,7 +127,7 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         lines.add(line);
       }
     }
-    for (const event of events) {
+    for (const event of buffer.events) {
       if (
         event !== compaction &&
         event.kind !== "compaction" &&
@@ -208,52 +153,46 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
       ...(message?.id === undefined ? {} : { responseId: message.id }),
       ...(usage === undefined ? {} : { usage })
     };
-    emit(baseEvent(record, "request", request, { id: requestId, ts, requestId: requestKey }));
-    const parts = dshContentParts(message?.content);
+    buffer.emit(baseEvent(record, "request", request, { id: requestId, ts, requestId: requestKey }));
     let index = 1;
-    for (const part of parts) {
+    const emitPart = (body: TranscriptEventBody): void => {
+      buffer.emit(
+        baseEvent(record, body.kind, body.payload, { id: lineId(record, index++), ts, requestId: requestKey })
+      );
+    };
+    for (const part of dshContentParts(message?.content)) {
       if (part.kind === "text") {
-        emit(
-          baseEvent(
-            record,
-            "assistant",
-            { text: part.text },
-            { id: lineId(record, index++), ts, requestId: requestKey }
-          )
-        );
+        emitPart({ kind: "assistant", payload: { text: part.text } });
       } else if (part.kind === "reasoning") {
-        emit(
-          baseEvent(
-            record,
-            "reasoning",
-            { text: part.text },
-            { id: lineId(record, index++), ts, requestId: requestKey }
-          )
-        );
+        emitPart({ kind: "reasoning", payload: { text: part.text } });
       } else if (part.kind === "tool_call") {
-        emit(
-          baseEvent(
-            record,
-            "tool_call",
-            { callId: part.id, name: part.name, args: part.args },
-            { id: lineId(record, index++), ts, requestId: requestKey }
-          )
-        );
+        emitPart({ kind: "tool_call", payload: { callId: part.id, name: part.name, args: part.args } });
       } else if (part.kind === "image") {
-        emit(
-          baseEvent(record, "assistant", { image: true }, { id: lineId(record, index++), ts, requestId: requestKey })
-        );
+        emitPart({ kind: "assistant", payload: { image: true } });
       } else {
-        emit(
-          baseEvent(record, "unknown", { type: part.type }, { id: lineId(record, index++), ts, requestId: requestKey })
-        );
+        emitPart({ kind: "unknown", payload: { type: part.type } });
       }
     }
   }
 
+  function emitCompaction(record: SourcedRecord, ts: number, data: unknown): ReturnType<typeof dshCompactionOf> {
+    const compaction = dshCompactionOf(data);
+    const eventValue = baseEvent(
+      record,
+      "compaction",
+      {
+        ...(compaction?.shadowedTokenCount === undefined ? {} : { preTokens: compaction.shadowedTokenCount }),
+        ...(compaction?.summary === undefined ? {} : { summary: compaction.summary })
+      },
+      { ts }
+    );
+    buffer.emit(eventValue);
+    shadow(compaction?.shadowedSeqs, eventValue);
+    return compaction;
+  }
+
   function step(record: SourcedRecord, ts: number): Result<readonly TranscriptEvent[], UnknownFormatGeneration> {
-    const parts: TranscriptEvent[] = [];
-    stepParts = parts;
+    const parts = buffer.beginStep();
     const event = dshEventOf(record.value);
     if (event === undefined) {
       return err(unknownFormatGeneration(DSH_ID, record));
@@ -265,12 +204,10 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
       }
       if (header === undefined) {
         header = headerValue;
-        noteTime(headerValue.createdAt ?? ts);
-        skip(record, "session-header");
+        buffer.noteTime(headerValue.createdAt ?? ts);
         first = false;
-        return ok(parts);
       }
-      skip(record, "session-header");
+      buffer.skip(record, "session-header");
       return ok(parts);
     }
     if (first) {
@@ -279,15 +216,15 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
     if (event.seq !== undefined) {
       seqLines.set(event.seq, record.line);
     }
-    noteTime(event.time ?? ts);
+    buffer.noteTime(event.time ?? ts);
     switch (event.type) {
       case "user/message": {
         const message = dshUserMessageOf(event.data);
         if (message === undefined) {
-          skip(record, "user-message-without-body");
+          buffer.skip(record, "user-message-without-body");
           break;
         }
-        emit(baseEvent(record, "user", userPayload(message), { ts }));
+        buffer.emit(baseEvent(record, "user", userPayload(message), { ts }));
         break;
       }
       case "assistant/message":
@@ -296,11 +233,11 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
       case "tool/result": {
         const message = dshMessageDataOf(event.data);
         if (message === undefined) {
-          skip(record, "tool-result-without-body");
+          buffer.skip(record, "tool-result-without-body");
           break;
         }
-        const content = textOf(dshContentParts(message.content));
-        emit(
+        const content = joinedPartText(dshContentParts(message.content));
+        buffer.emit(
           baseEvent(
             record,
             "tool_result",
@@ -316,17 +253,19 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
       }
       case "system/message": {
         const message = dshMessageDataOf(event.data);
-        const text = message === undefined ? "" : textOf(dshContentParts(message.content));
+        const text = message === undefined ? "" : joinedPartText(dshContentParts(message.content));
         if (text) {
           systemPrompt = text;
         }
-        emit(baseEvent(record, "system", { type: "system", ...(text ? { text } : {}) }, { ts }));
+        buffer.emit(baseEvent(record, "system", { type: "system", ...(text ? { text } : {}) }, { ts }));
         break;
       }
       case "developer/message": {
         const message = dshMessageDataOf(event.data);
-        const text = message === undefined ? "" : textOf(dshContentParts(message.content));
-        emit(baseEvent(record, "system", { type: "developer", ...(text ? { text } : {}), injected: true }, { ts }));
+        const text = message === undefined ? "" : joinedPartText(dshContentParts(message.content));
+        buffer.emit(
+          baseEvent(record, "system", { type: "developer", ...(text ? { text } : {}), injected: true }, { ts })
+        );
         break;
       }
       case "request/header": {
@@ -335,7 +274,7 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         if (parsed?.tools !== undefined) {
           tools = parsed.tools;
         }
-        emit(
+        buffer.emit(
           baseEvent(
             record,
             "system",
@@ -351,33 +290,11 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         break;
       }
       case "compaction/prune": {
-        const compaction = dshCompactionOf(event.data);
-        const eventValue = baseEvent(
-          record,
-          "compaction",
-          {
-            ...(compaction?.shadowedTokenCount === undefined ? {} : { preTokens: compaction.shadowedTokenCount }),
-            ...(compaction?.summary === undefined ? {} : { summary: compaction.summary })
-          },
-          { ts }
-        );
-        emit(eventValue);
-        shadow(compaction?.shadowedSeqs, eventValue);
+        emitCompaction(record, ts, event.data);
         break;
       }
       case "compaction/summary": {
-        const compaction = dshCompactionOf(event.data);
-        const eventValue = baseEvent(
-          record,
-          "compaction",
-          {
-            ...(compaction?.shadowedTokenCount === undefined ? {} : { preTokens: compaction.shadowedTokenCount }),
-            ...(compaction?.summary === undefined ? {} : { summary: compaction.summary })
-          },
-          { ts }
-        );
-        emit(eventValue);
-        shadow(compaction?.shadowedSeqs, eventValue);
+        const compaction = emitCompaction(record, ts, event.data);
         // The summarization call never goes through the agent loop, so its usage rides on the event itself; count it
         // as its own request, as the usage decoder does, so the summary's totals and the usage totals agree. A prune
         // records no model call and never carries usage, so it produces no request.
@@ -389,50 +306,42 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
             ...(compaction?.model === undefined ? {} : { model: compaction.model }),
             usage
           };
-          emit(baseEvent(record, "request", request, { id, ts, requestId: `request:${id}` }));
+          buffer.emit(baseEvent(record, "request", request, { id, ts, requestId: `request:${id}` }));
         }
         break;
       }
       case "session/title": {
         title = dshTitleOf(event.data);
-        skip(record, "session-title");
+        buffer.skip(record, "session-title");
         break;
       }
       default:
         if (BOOKKEEPING.has(event.type)) {
-          skip(record, event.type);
+          buffer.skip(record, event.type);
         } else {
           // A type outside the bookkeeping set is content the harness recorded that this reader does not
           // understand: like pi, codex and claude-code, it becomes an `unknown` event instead of vanishing, so a
           // future harness event type stays visible in transcripts.
-          emit(baseEvent(record, "unknown", { type: event.type }, { ts }));
+          buffer.emit(baseEvent(record, "unknown", { type: event.type }, { ts }));
         }
         break;
     }
     return ok(parts);
   }
 
-  function finish(): ParsedTranscript {
-    if (options.retain) {
-      markOrphanToolResults(events);
-      assignSeq(events);
-    }
-    const session: TranscriptSession = {
-      id: header?.id ?? options.sessionId ?? "unknown",
-      ...(title === undefined ? {} : { title }),
-      ...(header?.cwd === undefined ? {} : { cwd: header.cwd }),
-      ...(startedAt === undefined ? {} : { startedAt }),
-      ...(endedAt === undefined ? {} : { endedAt }),
-      ...(systemPrompt === undefined ? {} : { systemPrompt }),
-      ...(tools === undefined ? {} : { tools })
-    };
-    return {
-      events,
-      skipped: skipped.map(({ reason, record }) => ({ reason, source: record })),
-      session,
-      agents: [{ id: MAIN_LANE_ID }]
-    };
-  }
-
-  return { events, skipped, step, finish };
+  return {
+    events: buffer.events,
+    skipped: buffer.skipped,
+    step,
+    finish: () =>
+      buffer.finish(
+        buffer.session(
+          { id: header?.id, fallbackId: options.sessionId, title, cwd: header?.cwd },
+          {
+            ...(systemPrompt === undefined ? {} : { systemPrompt }),
+            ...(tools === undefined ? {} : { tools })
+          }
+        )
+      )
+  };
 }

@@ -158,29 +158,8 @@ function hooksInFile(
             continue;
           }
           const escapedEvent = event.replaceAll("~", "~0").replaceAll("/", "~1");
-          for (const entry of entries) {
-            const group = NamedHookGroup.safeParse(entry);
-            if (group.success) {
-              for (const hook of group.data.hooks) {
-                const registration = HookRegistration.safeParse(hook);
-                if (registration.success) {
-                  found.push({
-                    event,
-                    command: registration.data.command,
-                    hook: { timeout: registration.data.timeout },
-                    locator: {
-                      kind,
-                      path,
-                      pointer: `${pointer}/${escapedName}/${escapedEvent}`,
-                      member: registration.data.command,
-                      memberIn: "hook-group"
-                    }
-                  });
-                }
-              }
-              continue;
-            }
-            const registration = HookRegistration.safeParse(entry);
+          const recordRegistration = (raw: unknown, memberIn: "hook-group" | "element"): void => {
+            const registration = HookRegistration.safeParse(raw);
             if (registration.success) {
               found.push({
                 event,
@@ -191,10 +170,20 @@ function hooksInFile(
                   path,
                   pointer: `${pointer}/${escapedName}/${escapedEvent}`,
                   member: registration.data.command,
-                  memberIn: "element"
+                  memberIn
                 }
               });
             }
+          };
+          for (const entry of entries) {
+            const group = NamedHookGroup.safeParse(entry);
+            if (group.success) {
+              for (const hook of group.data.hooks) {
+                recordRegistration(hook, "hook-group");
+              }
+              continue;
+            }
+            recordRegistration(entry, "element");
           }
         }
       }

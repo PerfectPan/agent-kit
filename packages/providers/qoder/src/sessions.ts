@@ -3,10 +3,9 @@ import {
   catchIoFailure,
   createTranscript,
   discoverSessions,
-  readJsonlRecords,
   readJsonlStream,
   readLines,
-  readProgress,
+  readSessionJsonl,
   type LoadOptions,
   type SessionAdapter,
   type SessionPlatform,
@@ -34,9 +33,7 @@ async function loadQoder(
   ref: SessionRef,
   options: LoadOptions = {}
 ): Promise<Result<Transcript, SessionReadError>> {
-  const file = await catchIoFailure(platform, ref.path, options.signal, (guarded) =>
-    readJsonlRecords(guarded, ref.path, { signal: options.signal, progress: readProgress(options.onProgress) })
-  );
+  const file = await readSessionJsonl(platform, ref.path, options);
   if (!file.ok) {
     return file;
   }

@@ -1,6 +1,6 @@
 import type { InstallAdapter, InstallContext } from "@rivus/agent-kit-harness/spi";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
-import { commandHook, sharedAgentsDir } from "@rivus/agent-kit-harness/spi";
+import { renderGroupedJsonHooks, sharedAgentsDir } from "@rivus/agent-kit-harness/spi";
 import {
   DIM_HOME,
   DIM_HOOK_FORMAT,
@@ -35,23 +35,8 @@ export const dimInstallAdapter: InstallAdapter = {
   skillStrategies: ["scan-directory"],
   roots: (context) => [dimHome(context), sharedAgentsDir(context)],
   hookFile: () => `~/.dimcode/v2/${DIM_HOOKS_FILE}`,
-  renderHooks(strategy, registrations, _bundle, context) {
-    if (registrations.length === 0) {
-      return [];
-    }
-    return registrations.map((registration) => ({
-      locator: {
-        kind: "json-entry",
-        path: dimHooksFile(context),
-        pointer: `${DIM_HOOKS_POINTER}/${registration.event}`,
-        member: registration.command,
-        memberIn: "hook-group"
-      },
-      content: commandHook(registration),
-      strategy,
-      agents: registration.agents
-    }));
-  },
+  renderHooks: (strategy, registrations, _bundle, context) =>
+    renderGroupedJsonHooks(strategy, registrations, dimHooksFile(context), DIM_HOOKS_POINTER),
   renderSkill: (strategy, skill, context) => [
     {
       locator: { kind: "dir", path: `${dimHome(context)}/${DIM_SKILLS_DIR}/${skill.name}` },

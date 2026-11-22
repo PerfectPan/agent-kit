@@ -12,7 +12,7 @@ import {
   type UsageRecord,
   lenient,
   logTimestamp,
-  type AcpUpdateField,
+  acpRecordedUpdate,
   type AcpUpdateValue,
   type UsageFile,
   type UsageLineDecoder
@@ -191,24 +191,14 @@ interface GrokFieldsValue {
 export interface GrokUpdateValue extends AcpUpdateValue, GrokFieldsValue {}
 
 /**
- * The body of one recorded update, parsed in one pass: the shared `session/update` fields, kept in sync with
- * `AcpUpdate` in the sessions SPI (the ACP parity test reads the same fields through both readers),
- * then the fields Grok adds. The assertion below holds this schema to exactly the fields `GrokUpdateValue` names —
- * `AcpUpdateField` plus `GrokFieldsValue` — in both directions, so the parsed value cannot carry an undeclared
- * field and the value cannot declare one the schema drops. The schemas stay module-private: an exported
- * declaration typed by zod drags zod's declarations into the dts of the entries that bundle this module, and those
- * must import nothing.
+ * The Grok-specific fields of one recorded update; the shared ACP fields are parsed by `acpRecordedUpdate` in the
+ * sessions SPI and merged before these fields override them (`z.object` keeps `GrokUpdateFields` from clobbering
+ * parsed ACP fields). The assertion below holds this schema to exactly the fields `GrokFieldsValue` names in both
+ * directions, so the parsed value cannot carry an undeclared field and the value cannot declare one the schema drops.
+ * The schemas stay module-private: an exported declaration typed by zod drags zod's declarations into the dts of the
+ * entries that bundle this module, and those must import nothing.
  */
-const GrokUpdateFields = z.looseObject({
-  sessionUpdate: lenient(z.string()),
-  content: lenient(z.unknown()),
-  messageId: lenient(z.string()),
-  toolCallId: lenient(z.string()),
-  title: lenient(z.string()),
-  toolName: lenient(z.string()),
-  rawInput: lenient(z.unknown()),
-  rawOutput: lenient(z.unknown()),
-  status: lenient(z.string()),
+const GrokUpdateFields = z.object({
   _meta: lenient(GrokMeta),
   formatVersion: z.optional(z.unknown()),
   schema_version: lenient(z.number()),
@@ -228,12 +218,12 @@ const GrokUpdateFields = z.looseObject({
   phase: lenient(z.string())
 });
 
-// The schema's parsed fields and the fields `GrokUpdateValue` declares must be the same set, in both directions: a
+// The schema's parsed fields and the fields `GrokFieldsValue` declares must be the same set, in both directions: a
 // field the schema parses without a declaration, and a declaration the schema no longer parses, both fail this
 // assertion and stop the build. The value is read below so the check counts as used.
 type _Shape = keyof typeof GrokUpdateFields.shape;
 
-type _Declared = AcpUpdateField | keyof GrokFieldsValue;
+type _Declared = keyof GrokFieldsValue;
 
 const _schemaFieldsDeclared: [_Shape] extends [_Declared] ? ([_Declared] extends [_Shape] ? true : never) : never =
   true;
@@ -267,8 +257,12 @@ function knownGeneration(
  */
 export function knownGrokUpdate(value: unknown): GrokUpdateValue | undefined {
   const record = z.safeParse(GrokRecordedUpdate, value).data;
-  const update: GrokUpdateValue | undefined = record?.params?.update ?? record?.update;
-  return update !== undefined && knownGeneration(update, record) ? update : undefined;
+  const extra = record?.params?.update ?? record?.update;
+  if (extra === undefined || !knownGeneration(extra, record)) {
+    return undefined;
+  }
+  const acp = acpRecordedUpdate(value).update;
+  return acp === undefined ? extra : { ...acp, ...extra };
 }
 
 /** The update fields the turn follower reads; both the translation's and the usage path's schemas parse them. */

@@ -1,6 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { join, relative } from "node:path";
+import process from "node:process";
+import { parseArgs } from "node:util";
+
+import { pnpmListJson } from "../../infra/architecture/workspace.ts";
+
+export function exitOnHelp(usage: string): void {
+  const { values } = parseArgs({ options: { help: { type: "boolean", short: "h" } } });
+  if (values.help === true) {
+    console.log(usage);
+    process.exit(0);
+  }
+}
 
 export interface PackageManifest {
   name?: string;
@@ -35,12 +47,7 @@ export function parseWorkspaceDirectories(root: string, json: string): string[] 
 
 /** Lists the workspace members through pnpm and reads their manifests. */
 export function readWorkspacePackages(root: string): WorkspacePackage[] {
-  const listed = execFileSync("pnpm", ["ls", "-r", "--depth", "-1", "--json"], {
-    cwd: root,
-    encoding: "utf8",
-    maxBuffer: 16 * 1024 * 1024
-  });
-  return parseWorkspaceDirectories(root, listed).map((dir) => ({
+  return parseWorkspaceDirectories(root, pnpmListJson(root)).map((dir) => ({
     dir,
     manifest: JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8")) as PackageManifest
   }));

@@ -122,125 +122,58 @@ const DSH = "@rivus/agent-kit-provider-dsh";
 const ZCODE = "@rivus/agent-kit-provider-zcode";
 const TESTING = "@rivus/agent-kit-testing";
 
+const ALL_PROVIDER_SERVICES: readonly string[] = [
+  "identity",
+  "discovery",
+  "hooks",
+  "install",
+  "sessions",
+  "usage",
+  "acp"
+];
+const ALL_PROVIDER_SPI: readonly string[] = [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP];
+
+function providerRule(
+  folder: string,
+  overrides: {
+    readonly providerServices?: readonly string[];
+    readonly spiImports?: readonly string[];
+    readonly testsOnly?: readonly string[];
+  } = {}
+): PackageRule {
+  return {
+    siblingEntries: [],
+    providerFacts: `packages/providers/${folder}/src/facts.ts`,
+    providerServices: overrides.providerServices ?? ALL_PROVIDER_SERVICES,
+    dependsOn: [],
+    spiImports: overrides.spiImports ?? ALL_PROVIDER_SPI,
+    testsOnly: overrides.testsOnly ?? [TESTING],
+    external: ["zod/mini"]
+  };
+}
+
 export const boundaries: BoundaryRules = {
   packages: {
-    [CODEX]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/codex/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [CLAUDE_CODE]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/claude-code/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [GROK]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/grok/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM],
-      external: ["zod/mini"]
-    },
-    [OPENCODE]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/opencode/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM_NODE],
-      external: ["zod/mini"]
-    },
-    [GEMINI_CLI]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/gemini-cli/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [CURSOR]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/cursor/src/facts.ts",
+    [CODEX]: providerRule("codex"),
+    [CLAUDE_CODE]: providerRule("claude-code"),
+    [GROK]: providerRule("grok", { testsOnly: [TESTING, PLATFORM] }),
+    [OPENCODE]: providerRule("opencode", { testsOnly: [TESTING, PLATFORM_NODE] }),
+    [GEMINI_CLI]: providerRule("gemini-cli"),
+    [CURSOR]: providerRule("cursor", {
       providerServices: ["identity", "discovery", "hooks", "install", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [PI]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/pi/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [ZCODE]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/zcode/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM_NODE],
-      external: ["zod/mini"]
-    },
-    [QODER]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/qoder/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [DIM]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/dim/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM_NODE],
-      external: ["zod/mini"]
-    },
-    [KIMI]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/kimi/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [AGY]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/agy/src/facts.ts",
-      providerServices: ["identity", "discovery", "hooks", "install", "sessions", "usage", "acp"],
-      dependsOn: [],
-      spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
-      testsOnly: [TESTING],
-      external: ["zod/mini"]
-    },
-    [DSH]: {
-      siblingEntries: [],
-      providerFacts: "packages/providers/dsh/src/facts.ts",
+      spiImports: [CATALOG, DISCOVERY, HARNESS, ACP]
+    }),
+    [PI]: providerRule("pi"),
+    [ZCODE]: providerRule("zcode", { testsOnly: [TESTING, PLATFORM_NODE] }),
+    [QODER]: providerRule("qoder"),
+    [DIM]: providerRule("dim", { testsOnly: [TESTING, PLATFORM_NODE] }),
+    [KIMI]: providerRule("kimi"),
+    [AGY]: providerRule("agy"),
+    [DSH]: providerRule("dsh", {
       providerServices: ["identity", "discovery", "sessions", "usage", "acp"],
-      dependsOn: [],
       spiImports: [CATALOG, DISCOVERY, SESSIONS, ACP],
-      testsOnly: [TESTING, PLATFORM_NODE],
-      external: ["zod/mini"]
-    },
+      testsOnly: [TESTING, PLATFORM_NODE]
+    }),
     [PLATFORM]: { siblingEntries: ["public", "effect"], dependsOn: [], external: [] },
     [PLATFORM_NODE]: { siblingEntries: ["public"], dependsOn: [PLATFORM], external: ["zod/mini"], nodeBuiltins: true },
     [CATALOG]: { siblingEntries: ["public"], dependsOn: [], external: [], spi: true },

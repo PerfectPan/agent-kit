@@ -13,11 +13,13 @@ import {
   usageStreamOf,
   basenamePath,
   readText,
+  sqliteStoredMessageUsage,
   sqliteMessageSource,
   sqliteQueryFloor,
+  yieldUsageSources,
   type DecodeUsageOptions,
-  type ReadFailed,
   type SqliteMessageRow,
+  type SqliteMessageTokens,
   type SqliteSettlement,
   type SqliteTableRow,
   type Usage,
@@ -37,22 +39,8 @@ import {
 } from "./facts.js";
 import { opencodeDatabasePath, opencodeLegacyMessageRoot } from "./layout.js";
 
-/**
- * The `tokens` of a stored message. opencode counts `input` without the cache and `output` without reasoning (its
- * `total` is the sum of all five counts), so both are added back.
- */
-const OpencodeTokens = z.looseObject({
-  input: lenient(z.number()),
-  output: lenient(z.number()),
-  reasoning: lenient(z.number()),
-  total: lenient(z.number()),
-  cache: lenient(z.looseObject({ read: lenient(z.number()), write: lenient(z.number()) }))
-});
-
-type OpencodeTokensValue = z.output<typeof OpencodeTokens>;
-
-/** The Usage of a stored message's parsed `tokens`, with the cache and reasoning added back. */
-function opencodeUsage(tokens: OpencodeTokensValue | undefined): Usage | undefined {
+/** opencode counts `input` without the cache and `output` without reasoning, so both are added back. */
+function opencodeUsage(tokens: SqliteMessageTokens | undefined): Usage | undefined {
   const input = tokens?.input;
   const output = tokens?.output;
   const reasoning = tokens?.reasoning;
@@ -68,59 +56,9 @@ function opencodeUsage(tokens: OpencodeTokensValue | undefined): Usage | undefin
   });
 }
 
-/** A stored message and the fields its usage rules read. */
-const OpencodeMessage = z.looseObject({
-  id: lenient(z.string()),
-  role: lenient(z.string()),
-  sessionID: lenient(z.string()),
-  modelID: lenient(z.string()),
-  providerID: lenient(z.string()),
-  cost: lenient(z.number()),
-  time: lenient(z.looseObject({ created: lenient(z.number()), completed: lenient(z.number()) })),
-  tokens: lenient(OpencodeTokens)
-});
-
-/**
- * The usage of one stored message: `undefined` for a message that is not an assistant's or has no token counts, and
- * `running` for an assistant message that has not finished (opencode sets `time.completed` when it ends, also on an
- * error or an abort), whose counts may still grow. opencode logs the message's cost, which is kept as the agent's.
- */
+/** The usage of one stored message; opencode logs the message's cost, which is kept as the agent's. */
 export function opencodeMessageUsage(value: unknown, row: SqliteMessageRow): UsageRecord | "running" | undefined {
-  const message = z.safeParse(OpencodeMessage, value).data;
-  if (message?.role !== "assistant") {
-    return undefined;
-  }
-  const timestamp =
-    message.time?.completed ?? (row.settledAt === undefined ? undefined : (message.time?.created ?? row.settledAt));
-  if (timestamp === undefined) {
-    return "running";
-  }
-  const usage = opencodeUsage(message.tokens);
-  if (!usage) {
-    return undefined;
-  }
-  const id = message.id ?? row.id;
-  const record: UsageRecord = {
-    agent: AGENT,
-    sessionId: message.sessionID ?? row.sessionId ?? "unknown",
-    granularity: "request",
-    ...(id ? { requestId: id } : {}),
-    timestamp,
-    usage,
-    source: row.source
-  };
-  const { modelID: model, providerID: provider, cost } = message;
-  if (model) {
-    record.model = model;
-  }
-  if (provider) {
-    record.provider = provider;
-  }
-  if (cost !== undefined) {
-    record.costUsd = cost;
-    record.costSource = "agent";
-  }
-  return record;
+  return sqliteStoredMessageUsage(AGENT, value, row, { usageOf: opencodeUsage, messageIds: true });
 }
 
 /** A message runs far shorter than this, so a row created this long before `since` holds no record to keep. */
@@ -149,11 +87,6 @@ export function createOpencodeSettlement(
 
 /** The cursor state of a legacy session directory: the last file name read. */
 const legacyCursorState = z.looseObject({ after: lenient(z.string()) });
-
-/** The `ReadFailed` a decode yields for an error the platform did not classify: the thrown value's message, kept for the report. */
-function readFailed(path: string, cause: unknown): ReadFailed {
-  return { _tag: "ReadFailed", path, message: cause instanceof Error ? cause.message : String(cause), cause };
-}
 
 /** The database's source when it exists; otherwise each session directory of the older JSON layout, and a missing home is a `RootMissing` failure. */
 async function listSources(
@@ -268,21 +201,8 @@ export const opencodeUsageDecoder: UsageDecoder = {
   specificationVersion: "usage-v1",
   agent: AGENT,
   usageKey: usageWindowKey,
-  async *sources(platform, home, options = {}) {
-    const { since, signal } = options;
-    signal?.throwIfAborted();
-    let found: (UsageSource | UsageSourceFailure)[];
-    try {
-      found = await listSources(platform, home, signal);
-    } catch (error) {
-      signal?.throwIfAborted();
-      found = [{ agent: AGENT, path: home.path, error: readFailed(home.path, error) }];
-    }
-    for (const item of found) {
-      if ("error" in item || since === undefined || item.mtimeMs >= since) {
-        yield item;
-      }
-    }
+  sources(platform, home, options = {}) {
+    return yieldUsageSources(AGENT, home.path, () => listSources(platform, home, options.signal), options);
   },
   decode(platform, target, options = {}) {
     return target.path.endsWith(OPENCODE_DATABASE_SUFFIX)

@@ -105,67 +105,58 @@ export function aggregateRepositoryConformance<Id, S extends { readonly revision
     )
   });
 
-  cases.push({
-    name: "the first save writes over no revision and reads back",
-    run: Effect.suspend(() =>
-      asCase(
-        Effect.flatMap(
-          open([
-            (session) =>
-              Effect.gen(function* () {
-                yield* session.repository.save(id, sample(1), undefined);
-                return yield* session.repository.load(id);
-              })
-          ]),
-          ([stored]) =>
-            isEqual(stored, sample(1))
-              ? Effect.void
-              : Effect.fail(new Error(`load returned ${describeSnapshot(stored)}, not the saved sample`))
-        )
-      )
-    )
-  });
+  const addSingleSessionCase = <A>(
+    name: string,
+    program: (session: Parameters<Parameters<typeof open>[0][0]>[0]) => Effect.Effect<A, unknown>,
+    verify: (result: A) => Effect.Effect<void, Error>
+  ): void => {
+    cases.push({
+      name,
+      run: Effect.suspend(() => asCase(Effect.flatMap(open([program]), ([result]) => verify(result as A))))
+    });
+  };
 
-  cases.push({
-    name: "a save over a stale revision fails with RevisionConflict and changes nothing",
-    run: Effect.suspend(() =>
-      asCase(
-        Effect.flatMap(
-          open([
-            (session) =>
-              Effect.gen(function* () {
-                yield* session.repository.save(id, sample(1), undefined);
-                yield* session.repository.save(id, sample(2), 1);
-                // The stale save: the revision it was shown stopped being the stored one two writes ago, so a
-                // repository that compares too loosely (or not at all) writes over a record it never saw.
-                const stale = yield* errorOf(session.repository.save(id, sample(3), 1));
-                if (!isConflict(stale)) {
-                  return yield* Effect.fail(
-                    new Error("a save over the stale revision 1 did not fail with RevisionConflict")
-                  );
-                }
-                // A revision that was never stored, and `undefined` while a record is stored, are refusals too.
-                const newer = yield* errorOf(session.repository.save(id, sample(4), 9));
-                if (!isConflict(newer)) {
-                  return yield* Effect.fail(new Error("a save over revision 9 did not fail with RevisionConflict"));
-                }
-                const missing = yield* errorOf(session.repository.save(id, sample(4), undefined));
-                if (!isConflict(missing)) {
-                  return yield* Effect.fail(
-                    new Error("a save that requires no record did not fail with RevisionConflict")
-                  );
-                }
-                return yield* session.repository.load(id);
-              })
-          ]),
-          ([stored]) =>
-            isEqual(stored, sample(2))
-              ? Effect.void
-              : Effect.fail(new Error(`the stored snapshot changed to ${describeSnapshot(stored)}`))
-        )
-      )
-    )
-  });
+  addSingleSessionCase(
+    "the first save writes over no revision and reads back",
+    (session) =>
+      Effect.gen(function* () {
+        yield* session.repository.save(id, sample(1), undefined);
+        return yield* session.repository.load(id);
+      }),
+    (stored) =>
+      isEqual(stored, sample(1))
+        ? Effect.void
+        : Effect.fail(new Error(`load returned ${describeSnapshot(stored)}, not the saved sample`))
+  );
+
+  addSingleSessionCase(
+    "a save over a stale revision fails with RevisionConflict and changes nothing",
+    (session) =>
+      Effect.gen(function* () {
+        yield* session.repository.save(id, sample(1), undefined);
+        yield* session.repository.save(id, sample(2), 1);
+        // The stale save: the revision it was shown stopped being the stored one two writes ago, so a
+        // repository that compares too loosely (or not at all) writes over a record it never saw.
+        const stale = yield* errorOf(session.repository.save(id, sample(3), 1));
+        if (!isConflict(stale)) {
+          return yield* Effect.fail(new Error("a save over the stale revision 1 did not fail with RevisionConflict"));
+        }
+        // A revision that was never stored, and `undefined` while a record is stored, are refusals too.
+        const newer = yield* errorOf(session.repository.save(id, sample(4), 9));
+        if (!isConflict(newer)) {
+          return yield* Effect.fail(new Error("a save over revision 9 did not fail with RevisionConflict"));
+        }
+        const missing = yield* errorOf(session.repository.save(id, sample(4), undefined));
+        if (!isConflict(missing)) {
+          return yield* Effect.fail(new Error("a save that requires no record did not fail with RevisionConflict"));
+        }
+        return yield* session.repository.load(id);
+      }),
+    (stored) =>
+      isEqual(stored, sample(2))
+        ? Effect.void
+        : Effect.fail(new Error(`the stored snapshot changed to ${describeSnapshot(stored)}`))
+  );
 
   cases.push({
     name: "revisions strictly increase while each save writes over the revision it read",
