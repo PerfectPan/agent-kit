@@ -387,6 +387,40 @@ describe("dsh subagent lanes", () => {
   }, 30_000);
 });
 
+describe("dsh hook events", () => {
+  it("maps hook/invoked and hook/result records into hook events and declares the hooks capability", async () => {
+    const platform = createMemoryPlatform({ files: await readTree(fixtures, "/dsh") });
+    const loaded = await adapter.load(platform, {
+      agent: "dsh",
+      path: "/dsh/conformance/hooks/session.v4.jsonl"
+    });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.capabilities).toContain("hooks");
+    const hooks = loaded.value.events.filter((event) => event.kind === "hook");
+    expect(hooks.map((event) => event.payload)).toEqual([
+      {
+        type: "hook/invoked",
+        event: "PreToolUse",
+        name: "h-1",
+        dialect: "claude-code",
+        matcher: "Bash"
+      },
+      {
+        type: "hook/result",
+        event: "PreToolUse",
+        name: "h-1",
+        exitCode: 2,
+        decision: "deny",
+        stderrSummary: "blocked by policy",
+        durationMs: 50
+      }
+    ]);
+  });
+});
+
 describe("dsh discovery keeps one generation per session", () => {
   const v3 = '{"type":"session","version":3,"id":"old","createdAt":1,"cwd":"/u/me/work"}\n';
   const v4 = '{"type":"session","version":4,"id":"new","createdAt":2,"cwd":"/u/me/work"}\n';

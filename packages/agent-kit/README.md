@@ -51,21 +51,21 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 
 ## Built-in support
 
-| Agent       | identity | discovery | hooks                      | install                            | sessions                                 | usage                                   | acp |
-| ----------- | -------- | --------- | -------------------------- | ---------------------------------- | ---------------------------------------- | --------------------------------------- | --- |
-| agy         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| claude-code | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| codex       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| cursor      | yes      | yes       | yes                        | yes                                | Session storage has no supported reader. | Usage storage has no supported decoder. | yes |
-| dim         | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| dsh         | yes      | yes       | No supported hook dialect. | No supported installation adapter. | yes                                      | yes                                     | yes |
-| gemini-cli  | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| grok        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| kimi        | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| opencode    | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| pi          | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| qoder       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
-| zcode       | yes      | yes       | yes                        | yes                                | yes                                      | yes                                     | yes |
+| Agent       | identity | discovery | hooks                      | install | sessions                                 | usage                                   | acp |
+| ----------- | -------- | --------- | -------------------------- | ------- | ---------------------------------------- | --------------------------------------- | --- |
+| agy         | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| claude-code | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| codex       | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| cursor      | yes      | yes       | yes                        | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | yes |
+| dim         | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| dsh         | yes      | yes       | No supported hook dialect. | yes     | yes                                      | yes                                     | yes |
+| gemini-cli  | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| grok        | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| kimi        | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| opencode    | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| pi          | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| qoder       | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| zcode       | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
 
 ## Usage
 

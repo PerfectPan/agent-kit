@@ -10,6 +10,7 @@ import { qoderInstallAdapter } from "@rivus/agent-kit-provider-qoder/install";
 import { dimInstallAdapter } from "@rivus/agent-kit-provider-dim/install";
 import { zcodeInstallAdapter } from "@rivus/agent-kit-provider-zcode/install";
 import { agyInstallAdapter } from "@rivus/agent-kit-provider-agy/install";
+import { dshInstallAdapter } from "@rivus/agent-kit-provider-dsh/install";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -26,6 +27,7 @@ const builtinInstallAdapters: {
   readonly qoder: typeof qoderInstallAdapter;
   readonly dim: typeof dimInstallAdapter;
   readonly agy: typeof agyInstallAdapter;
+  readonly dsh: typeof dshInstallAdapter;
 } = {
   "claude-code": claudeCodeInstallAdapter,
   codex: codexInstallAdapter,
@@ -38,7 +40,8 @@ const builtinInstallAdapters: {
   kimi: kimiInstallAdapter,
   qoder: qoderInstallAdapter,
   dim: dimInstallAdapter,
-  agy: agyInstallAdapter
+  agy: agyInstallAdapter,
+  dsh: dshInstallAdapter
 };
 
 export const installTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"install">> =>

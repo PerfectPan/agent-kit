@@ -20,6 +20,11 @@ export function dshSessions(root: string): ConformanceSession[] {
       capabilities: ["requests", "usage", "subagents"]
     },
     {
+      path: at("hooks/session.v4.jsonl"),
+      records: 5,
+      capabilities: ["requests", "usage", "hooks"]
+    },
+    {
       path: at("compaction/session.v4.jsonl"),
       records: 10,
       capabilities: ["requests", "usage", "compaction", "compactionTokens", "systemPrompt"]

@@ -1076,6 +1076,9 @@ importers:
       '@rivus/agent-kit-discovery':
         specifier: workspace:*
         version: link:../../discovery
+      '@rivus/agent-kit-harness':
+        specifier: workspace:*
+        version: link:../../harness
       '@rivus/agent-kit-sessions':
         specifier: workspace:*
         version: link:../../sessions

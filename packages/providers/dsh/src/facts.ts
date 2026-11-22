@@ -6,6 +6,8 @@ export const DSH_DISPLAY_NAME = "DeepSeek Harness";
 export const HOME_ENV = "DSH_HOME";
 // The override names the harness home itself, not a parent directory.
 export const DSH_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [".dsh"] };
+/** Environment variable that overrides the shared `~/.agents` root `dsh` scans for user skills. */
+export const AGENTS_HOME_ENV = "DSH_AGENTS_HOME";
 export const DSH_SESSIONS_DIR = "sessions";
 /** The session format generation this adapter reads. */
 export const DSH_SESSION_VERSION = 4;
@@ -21,7 +23,7 @@ export const DSH_ACP_ARGS: readonly string[] = ["--profile", "acp"];
  */
 export const DSH_ACP_ENV: readonly string[] = [
   HOME_ENV,
-  "DSH_AGENTS_HOME",
+  AGENTS_HOME_ENV,
   "DSH_BUNDLED_SKILL_DIR",
   "DSH_PERMISSION_MODE",
   "DSH_TELEMETRY_DISABLED",

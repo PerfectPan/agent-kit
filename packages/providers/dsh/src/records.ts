@@ -338,3 +338,47 @@ export interface DshEndSeedValue {
 export function dshEndSeedOf(value: unknown): DshEndSeedValue | undefined {
   return z.safeParse(DshEndSeed, value).data;
 }
+
+const DshHookInvoked = z.looseObject({
+  point: lenient(z.string()),
+  dialect: lenient(z.string()),
+  handlerId: lenient(z.string()),
+  matcher: lenient(z.string()),
+  turn: lenient(z.number())
+});
+
+export interface DshHookInvokedValue {
+  point?: string;
+  dialect?: string;
+  handlerId?: string;
+  matcher?: string;
+  turn?: number;
+}
+
+export function dshHookInvokedOf(value: unknown): DshHookInvokedValue | undefined {
+  return z.safeParse(DshHookInvoked, value).data;
+}
+
+const DshHookResult = z.looseObject({
+  point: lenient(z.string()),
+  handlerId: lenient(z.string()),
+  decision: lenient(z.string()),
+  exitCode: lenient(z.number()),
+  stderrSummary: lenient(z.string()),
+  durationMs: lenient(z.number()),
+  turn: lenient(z.number())
+});
+
+export interface DshHookResultValue {
+  point?: string;
+  handlerId?: string;
+  decision?: string;
+  exitCode?: number;
+  stderrSummary?: string;
+  durationMs?: number;
+  turn?: number;
+}
+
+export function dshHookResultOf(value: unknown): DshHookResultValue | undefined {
+  return z.safeParse(DshHookResult, value).data;
+}

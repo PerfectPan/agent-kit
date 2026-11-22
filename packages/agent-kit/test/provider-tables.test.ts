@@ -19,8 +19,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
   "claude-code": {},
   codex: {},
   dsh: {
-    hooks: "No supported hook dialect.",
-    install: "No supported installation adapter."
+    hooks: "No supported hook dialect."
   },
   grok: {},
   cursor: {
