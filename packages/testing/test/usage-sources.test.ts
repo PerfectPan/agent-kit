@@ -56,6 +56,7 @@ const ALL = [
   "grok /u/me/.grok/sessions/%2Fu%2Fme%2Fwork/gk-usage/updates.jsonl",
   "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-1/agents/main/wire.jsonl",
   "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-2/agents/main/wire.jsonl",
+  "kimi /u/me/.kimi-code/sessions/wd_demo_111111111111/session_demo-3/agents/main/wire.jsonl",
   "opencode /u/me/.local/share/opencode/storage/message/ses_legacy",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-01T00-00-00-000Z_pi-1.jsonl",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-02T00-00-00-000Z_pi-fork.jsonl",
