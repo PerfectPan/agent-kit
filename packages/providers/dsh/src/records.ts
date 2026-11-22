@@ -168,15 +168,96 @@ export function dshMessageDataOf(value: unknown): DshMessageValue | undefined {
   return z.safeParse(DshMessageEnvelope, value).data?.message;
 }
 
-const DshAssistant = z.looseObject({ message: lenient(DshMessage), usage: lenient(z.unknown()) });
+const DshAssistant = z.looseObject({
+  turn: lenient(z.number()),
+  step: lenient(z.number()),
+  message: lenient(DshMessage),
+  usage: lenient(z.unknown()),
+  stream: lenient(z.array(z.unknown()))
+});
 
 export interface DshAssistantValue {
+  turn?: number;
+  step?: number;
   message?: DshMessageValue;
   usage?: unknown;
+  stream?: readonly unknown[];
 }
 
 export function dshAssistantOf(value: unknown): DshAssistantValue | undefined {
   return z.safeParse(DshAssistant, value).data;
+}
+
+const DshStepBoundary = z.looseObject({
+  turn: lenient(z.number()),
+  step: lenient(z.number())
+});
+
+export interface DshStepBoundaryValue {
+  turn?: number;
+  step?: number;
+}
+
+export function dshStepBoundaryOf(value: unknown): DshStepBoundaryValue | undefined {
+  return z.safeParse(DshStepBoundary, value).data;
+}
+
+const DshStreamChunk = z.looseObject({ time: z.number() });
+const DshStreamBatched = z.looseObject({ time0: z.number(), dt: z.array(z.number()) });
+
+export interface DshStreamTimeRange {
+  first: number;
+  last: number;
+}
+
+/**
+ * The first and last recorded timestamps across an `assistant/message.stream` array. Chunk records carry an epoch
+ * millisecond `time`; batched chunk records carry `time0` plus a `dt[]` array of signed finite deltas. Records with
+ * missing or malformed timestamps/deltas are skipped; returns `undefined` when no valid timed record is present.
+ */
+export function dshStreamTimeRange(stream: readonly unknown[] | undefined): DshStreamTimeRange | undefined {
+  if (stream === undefined || stream.length === 0) {
+    return undefined;
+  }
+  let first: number | undefined;
+  let last: number | undefined;
+  for (const item of stream) {
+    const chunk = z.safeParse(DshStreamChunk, item).data;
+    if (chunk !== undefined && Number.isFinite(chunk.time)) {
+      if (first === undefined) {
+        first = chunk.time;
+      }
+      last = chunk.time;
+      continue;
+    }
+    const batched = z.safeParse(DshStreamBatched, item).data;
+    if (batched !== undefined && Number.isFinite(batched.time0)) {
+      let delta = 0;
+      let valid = true;
+      for (const d of batched.dt) {
+        if (!Number.isFinite(d)) {
+          valid = false;
+          break;
+        }
+        delta += d;
+      }
+      if (!valid) {
+        continue;
+      }
+      const end = batched.time0 + delta;
+      if (!Number.isFinite(end)) {
+        continue;
+      }
+      if (first === undefined) {
+        first = batched.time0;
+      }
+      last = end;
+    }
+  }
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+  return { first, last };
 }
 
 const DshRequestHeader = z.looseObject({

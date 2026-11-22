@@ -1,0 +1,10 @@
+{"type":"session","version":4,"id":"dsh-timed","createdAt":1767225600000,"cwd":"/u/me/work"}
+{"type":"step/start","seq":1,"time":1767225601000,"data":{"turn":1,"step":1}}
+{"type":"user/message","seq":2,"time":1767225601010,"data":{"role":"user","content":[{"type":"text","text":"hello"}],"source":{"kind":"user"},"id":"u1"}}
+{"type":"assistant/message","seq":3,"time":1767225602450,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"reasoning","text":"think more"},{"type":"text","text":"hi there"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m1"},"usage":{"inputTokens":10,"outputTokens":5,"totalTokens":15},"stream":[{"type":"chunk","time":1767225601400,"chunk":{"type":"block-start","index":0,"blockType":"reasoning"}},{"type":"reasoning-chunks","time0":1767225601400,"index":0,"dt":[100,50],"texts":["think"," ","more"]},{"type":"text-chunks","time0":1767225601600,"index":1,"dt":[200,150],"texts":["hi"," ","there"]},{"type":"chunk","time":1767225602450,"chunk":{"type":"finish"}}]}}
+{"type":"step/end","seq":4,"time":1767225602460,"data":{"turn":1,"step":1}}
+{"type":"user/message","seq":5,"time":1767225603000,"data":{"role":"user","content":[{"type":"text","text":"second"}],"source":{"kind":"user"},"id":"u2"}}
+{"type":"assistant/message","seq":6,"time":1767225604000,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"abc"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m2"},"usage":{"inputTokens":4,"outputTokens":2,"totalTokens":6},"stream":[{"type":"text-chunks","time0":1767225603200,"index":0,"dt":[100,250],"texts":["a","b","c"]}]}}
+{"type":"step/start","seq":7,"time":1767225605000,"data":{"turn":3,"step":1}}
+{"type":"assistant/message","seq":8,"time":1767225606000,"data":{"turn":3,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"untimed"}],"source":{"kind":"model","provider":"test","model":"test-model"},"id":"m3"},"usage":{"inputTokens":2,"outputTokens":1,"totalTokens":3}}}
+{"type":"step/end","seq":9,"time":1767225606010,"data":{"turn":3,"step":1}}
