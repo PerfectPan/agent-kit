@@ -26,12 +26,10 @@ import {
   finishPass
 } from "../../../domain/transcript/services/fold-transcript.js";
 import { markOrphanToolResults } from "../../../domain/transcript/services/tool-result-pairing.js";
+import { promptSnapshot, snapshotHasSystemPrompt } from "../../../domain/transcript/services/prompt-snapshot.js";
 import { MAIN_LANE_ID, requestUsage } from "../../../domain/transcript/services/turns.js";
 import { type SkippedRecord, type SourcePointer } from "../../../domain/transcript/value-objects/source-pointer.js";
-import {
-  type CompactionPayload,
-  type TranscriptEvent
-} from "../../../domain/transcript/value-objects/transcript-event.js";
+import { type TranscriptEvent } from "../../../domain/transcript/value-objects/transcript-event.js";
 import {
   type Capability,
   type Transcript,
@@ -39,6 +37,8 @@ import {
 } from "../../../domain/transcript/value-objects/transcript.js";
 import { type Usage } from "../../../domain/usage/value-objects/usage.js";
 import type { LoadOptions, SessionAdapter, SessionPlatform, SessionReadError } from "../../spi.js";
+import { advanceTime, mergeLanes } from "./lane-merge.js";
+import { type Compaction, partOf, rememberCompaction, type SqliteSessionPart } from "./sqlite-parts.js";
 
 /**
  * A stored `message` row's JSON as the shared reader uses it. Each agent parses its own message JSON into this,
@@ -56,6 +56,20 @@ export interface SqliteSessionMessage {
   readonly inherited?: boolean | undefined;
 }
 
+/**
+ * The agent's entry rows (`session_entry` in ZCode) that snapshot the conversation's opening prompt. The adapter
+ * reads only the rows of `entryType`, so the other entry types stay unread records; each read row becomes a
+ * `prompt_snapshot` event or a skipped record.
+ */
+interface SqliteSessionPromptSnapshots {
+  /** The table the entries live in, such as `session_entry`. */
+  readonly table: string;
+  /** The entry `type` the snapshots are stored under, such as `runtime/prompt_snapshot`. */
+  readonly entryType: string;
+  /** The agent's reading of an entry's JSON; `undefined` skips the row as an invalid entry. */
+  parse(value: unknown): { systemPrompt?: string } | undefined;
+}
+
 /** What differs between the agents that keep sessions in the `session`/`message`/`part` table layout. */
 export interface SqliteSessionLayout {
   readonly agent: CodingAgentId;
@@ -71,6 +85,8 @@ export interface SqliteSessionLayout {
   isSubagent?(session: { readonly taskType: string | undefined }): boolean;
   /** The agent's reading of a message row's JSON; `undefined` skips the row as an invalid message. */
   message(value: unknown): SqliteSessionMessage | undefined;
+  /** The entry rows that snapshot the conversation's opening prompt, when the agent records them. */
+  readonly promptSnapshots?: SqliteSessionPromptSnapshots;
 }
 
 /** Everything a session of this layout can show; each transcript lists the subset its rows show. */
@@ -83,6 +99,11 @@ const CAPABILITIES: readonly Capability[] = [
   "compactionTokens",
   "subagents"
 ];
+
+/** `systemPrompt` joins the list only when the layout reads prompt snapshot entries. */
+function adapterCapabilities(layout: SqliteSessionLayout): readonly Capability[] {
+  return layout.promptSnapshots === undefined ? CAPABILITIES : [...CAPABILITIES, "systemPrompt"];
+}
 
 /** SQLite hands back `null | number | bigint | string | Uint8Array`; a column of another type reads as 0 or "". */
 const IntegerColumn = z.catch(
@@ -122,43 +143,10 @@ const PartRow = z.object({
 });
 type PartRow = z.infer<typeof PartRow>;
 
+const EntryRow = z.object({ rowid: IntegerColumn, id: TextColumn, time_created: IntegerColumn, data: TextColumn });
+type EntryRow = z.infer<typeof EntryRow>;
+
 const MessageKey = z.object({ rowid: IntegerColumn, id: TextColumn, time_created: IntegerColumn });
-
-const Span = z.looseObject({ start: lenient(z.number()), end: lenient(z.number()) });
-const TokenCount = z.number().check(z.nonnegative());
-
-/** A stored `part` row's JSON; every agent of this layout writes the same shape. */
-const PartData = z.looseObject({
-  type: z.string(),
-  text: lenient(z.string()),
-  tool: lenient(z.string()),
-  callID: lenient(z.string()),
-  auto: lenient(z.boolean()),
-  trigger: lenient(z.string()),
-  operationId: lenient(z.string()),
-  timelineStatus: lenient(z.string()),
-  preCompactTokenCount: lenient(TokenCount),
-  compactBoundary: lenient(
-    z.object({
-      trigger: lenient(z.string()),
-      preCompactTokenCount: lenient(TokenCount)
-    })
-  ),
-  state: lenient(
-    z.looseObject({
-      status: lenient(z.string()),
-      input: lenient(z.unknown()),
-      output: lenient(z.unknown()),
-      error: lenient(z.unknown()),
-      time: lenient(Span)
-    })
-  ),
-  time: lenient(Span)
-});
-
-function partOf(value: unknown): z.infer<typeof PartData> | undefined {
-  return z.safeParse(PartData, value).data;
-}
 
 function requestDuration(message: SqliteSessionMessage): number | undefined {
   const { created, completed } = message;
@@ -175,51 +163,11 @@ function requestDuration(message: SqliteSessionMessage): number | undefined {
   return Number.isFinite(duration) ? duration : undefined;
 }
 
-interface Compaction {
-  rowid: number;
-  priority: number;
-  payload: CompactionPayload;
-}
-
-function compactionTrigger(part: z.infer<typeof PartData>): CompactionPayload["trigger"] {
-  const trigger = part.compactBoundary?.trigger || part.trigger;
-  if (trigger === "auto" || trigger === "reactive") {
-    return "auto";
-  }
-  if (trigger === "manual") {
-    return "manual";
-  }
-  if (trigger) {
-    return undefined;
-  }
-  return part.auto === undefined ? undefined : part.auto ? "auto" : "manual";
-}
-
-/** A user boundary is authoritative when the same operation also has an assistant timeline mirror. */
-function rememberCompaction(
-  compactions: Map<string, Compaction>,
-  part: z.infer<typeof PartData>,
-  role: string,
-  rowid: number
-): CompactionPayload | undefined {
-  if (part.timelineStatus !== undefined && part.timelineStatus !== "completed") {
-    return undefined;
-  }
-  const payload: CompactionPayload = definedFields({
-    trigger: compactionTrigger(part),
-    preTokens: part.compactBoundary?.preCompactTokenCount ?? part.preCompactTokenCount
-  });
-  const key = part.operationId ? `operation:${part.operationId}` : `row:${rowid}`;
-  const priority =
-    part.compactBoundary !== undefined ? 3 : role === "user" ? 2 : part.timelineStatus === undefined ? 1 : 0;
-  const previous = compactions.get(key);
-  if (previous === undefined || priority > previous.priority) {
-    compactions.set(key, { rowid, priority, payload });
-  }
-  return payload;
-}
-
-function capabilitiesOf(events: readonly TranscriptEvent[], subagents: number): Capability[] {
+function capabilitiesOf(
+  events: readonly TranscriptEvent[],
+  subagents: number,
+  capabilities: readonly Capability[]
+): Capability[] {
   const seen = new Set(detectEventCapabilities(events));
   if (events.some((event) => event.kind === "request" && event.payload.durationMs !== undefined)) {
     seen.add("durations");
@@ -227,13 +175,17 @@ function capabilitiesOf(events: readonly TranscriptEvent[], subagents: number): 
   if (subagents > 0) {
     seen.add("subagents");
   }
-  return CAPABILITIES.filter((capability) => seen.has(capability));
+  if (events.some((event) => snapshotHasSystemPrompt(promptSnapshot(event)))) {
+    seen.add("systemPrompt");
+  }
+  return capabilities.filter((capability) => seen.has(capability));
 }
 
 interface SessionRows {
   session: SessionRow;
   messages: MessageRow[];
   parts: PartRow[];
+  entries: EntryRow[];
 }
 
 /** An open SQLite database of the platform. */
@@ -285,8 +237,24 @@ function hasColumn(database: Database, table: "session" | "message", column: str
   return rows.some((row) => z.safeParse(TableInfoRow, row).data?.name === column);
 }
 
+function hasTable(database: Database, table: string | undefined): boolean {
+  if (table === undefined) {
+    return false;
+  }
+  return (
+    database.prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?").get(table) !==
+    undefined
+  );
+}
+
 /** Queries adapted to the live-session, parent and message-order columns this database actually has. */
-function queriesOf(softDeletes: boolean, messageSequence: boolean, parentIds: boolean, taskTypes: boolean) {
+function queriesOf(
+  softDeletes: boolean,
+  messageSequence: boolean,
+  parentIds: boolean,
+  taskTypes: boolean,
+  entryTable: string | undefined
+) {
   const live = softDeletes ? "time_deleted IS NULL" : undefined;
   const order = messageSequence ? "sequence, time_created, id" : "time_created, id";
   const byId = live === undefined ? "id = ?" : `id = ? AND ${live}`;
@@ -302,18 +270,24 @@ function queriesOf(softDeletes: boolean, messageSequence: boolean, parentIds: bo
     messageKeys: `SELECT rowid, id, time_created FROM message WHERE session_id = ? ORDER BY ${order}`,
     messageData: `SELECT data FROM message WHERE rowid = ?`,
     parts: `SELECT rowid, id, message_id, time_created, data FROM part WHERE session_id = ? ORDER BY time_created, id`,
-    partsOfMessage: `SELECT rowid, time_created, data FROM part WHERE session_id = ? AND message_id = ? ORDER BY time_created, id`
+    partsOfMessage: `SELECT rowid, time_created, data FROM part WHERE session_id = ? AND message_id = ? ORDER BY time_created, id`,
+    entries:
+      entryTable === undefined
+        ? undefined
+        : `SELECT rowid, id, time_created, data FROM ${entryTable} WHERE session_id = ? AND type = ? ORDER BY time_created, id`
   };
 }
 
 function queriesForDatabase(layout: SqliteSessionLayout, database: Database): Queries {
   const softDeletes = layout.softDeletes && hasColumn(database, "session", "time_deleted");
   const messageSequence = layout.messageSequence && hasColumn(database, "message", "sequence");
+  const entryTable = hasTable(database, layout.promptSnapshots?.table) ? layout.promptSnapshots?.table : undefined;
   return queriesOf(
     softDeletes,
     messageSequence,
     hasColumn(database, "session", "parent_id"),
-    hasColumn(database, "session", "task_type")
+    hasColumn(database, "session", "task_type"),
+    entryTable
   );
 }
 
@@ -382,39 +356,8 @@ function sessionTree(
   return sessions;
 }
 
-function advanceTime(previous: number, time: number): number {
-  return Number.isFinite(time) ? Math.max(previous, time) : previous;
-}
-
-/** Compare monotonic lane clocks, retaining recorded times and every lane's original event order. Ties favor earlier lanes. */
-function mergeLanes<T extends { ts: number }>(lanes: readonly (readonly T[])[]): T[] {
-  const positions = lanes.map(() => 0);
-  const clocks = lanes.map(() => -Infinity);
-  const merged: T[] = [];
-  for (;;) {
-    let selected = -1;
-    let selectedTime = Infinity;
-    for (let lane = 0; lane < lanes.length; lane++) {
-      const head = lanes[lane]![positions[lane]!];
-      if (head === undefined) {
-        continue;
-      }
-      const time = advanceTime(clocks[lane]!, head.ts);
-      if (selected < 0 || time < selectedTime) {
-        selected = lane;
-        selectedTime = time;
-      }
-    }
-    if (selected < 0) {
-      return merged;
-    }
-    merged.push(lanes[selected]![positions[selected]!]!);
-    positions[selected]! += 1;
-    clocks[selected] = selectedTime;
-  }
-}
-
 function readRows(
+  layout: SqliteSessionLayout,
   database: Database,
   queries: Queries,
   path: string,
@@ -427,10 +370,19 @@ function readRows(
     }
     const messages = database.prepare(queries.messages).all(sessionId);
     const parts = database.prepare(queries.parts).all(sessionId);
+    const promptSnapshots = layout.promptSnapshots;
+    const entries =
+      queries.entries === undefined || promptSnapshots === undefined
+        ? []
+        : database
+            .prepare(queries.entries)
+            .all(sessionId, promptSnapshots.entryType)
+            .map((row) => z.parse(EntryRow, row));
     return ok({
       session: z.parse(SessionRow, session),
       messages: messages.map((row) => z.parse(MessageRow, row)),
-      parts: parts.map((row) => z.parse(PartRow, row))
+      parts: parts.map((row) => z.parse(PartRow, row)),
+      entries
     });
   } catch (error) {
     return err(thrown(path, error));
@@ -488,9 +440,46 @@ function translate(
   skipped.push({ reason: "session-header", source: source(dbPath, "session", "title", rows.session.rowid, firstLine) });
   let line = firstLine + 1;
 
+  // Prompt snapshot entries precede the message walk: a snapshot records the conversation's opening prompt, and
+  // ZCode writes the entry when the session opens. The last readable entry's prompt is the session's, the way a
+  // later snapshot replaces an earlier one.
+  let systemPrompt: string | undefined;
+  for (const entryRow of rows.entries) {
+    const entrySource = sqliteSource(
+      dbPath,
+      layout.promptSnapshots?.table ?? "session_entry",
+      "data",
+      entryRow.rowid,
+      line++
+    );
+    const entryJson = parseJson(entryRow.data);
+    if (!entryJson.ok) {
+      skip(entrySource, "invalid-entry");
+      continue;
+    }
+    const snapshot = layout.promptSnapshots?.parse(entryJson.value);
+    if (snapshot === undefined) {
+      skip(entrySource, "invalid-entry");
+      continue;
+    }
+    if (snapshot.systemPrompt === undefined) {
+      skip(entrySource, "empty-prompt-snapshot");
+      continue;
+    }
+    systemPrompt = snapshot.systemPrompt;
+    events.push(
+      baseEvent(
+        { ...entrySource, value: entryJson.value },
+        "system",
+        { type: "prompt_snapshot", systemPrompt: snapshot.systemPrompt },
+        { id: entryRow.id, ts: entryRow.time_created }
+      )
+    );
+  }
+
   function decodePart(
     partRow: PartRow
-  ): { source: SourcePointer; value: unknown; part: z.infer<typeof PartData> | undefined } | undefined {
+  ): { source: SourcePointer; value: unknown; part: SqliteSessionPart | undefined } | undefined {
     const partSource = source(dbPath, "part", "data", partRow.rowid, line++);
     const partJson = parseJson(partRow.data);
     if (!partJson.ok) {
@@ -667,9 +656,10 @@ function translate(
     title: rows.session.title === "" ? undefined : rows.session.title,
     cwd: rows.session.directory === "" ? undefined : rows.session.directory,
     startedAt: rows.session.time_created === 0 ? undefined : rows.session.time_created,
-    endedAt: rows.session.time_updated === 0 ? undefined : rows.session.time_updated
+    endedAt: rows.session.time_updated === 0 ? undefined : rows.session.time_updated,
+    ...(systemPrompt === undefined ? {} : { systemPrompt })
   });
-  const capabilities = capabilitiesOf(events, 0);
+  const capabilities = capabilitiesOf(events, 0, adapterCapabilities(layout));
   const parsed: ParsedTranscript = definedFields({
     events,
     skipped,
@@ -716,10 +706,22 @@ function summarize(
   const partsOf = database.prepare(queries.partsOfMessage);
   for (const session of sessions) {
     const compactions = new Map<string, Compaction>();
-    // Keep only request facts and potential compaction boundaries. Other emitted events contribute a maximum
-    // timestamp between them; discarded mirrors must not advance the clock of the following request.
+    // Keep only request facts and potential compaction boundaries. Other emitted events (including prompt snapshots
+    // emitted before the session's messages) contribute a maximum timestamp between them; discarded mirrors must not
+    // advance the clock of the following request.
     const steps: SummaryStep[] = [];
     let priorTs = -Infinity;
+    const promptSnapshots = layout.promptSnapshots;
+    if (queries.entries !== undefined && promptSnapshots !== undefined) {
+      for (const row of database.prepare(queries.entries).all(session.id, promptSnapshots.entryType)) {
+        const json = parseJson(z.parse(TextColumn, row.data));
+        const snapshot = json.ok ? layout.promptSnapshots?.parse(json.value) : undefined;
+        if (snapshot?.systemPrompt !== undefined) {
+          seen.add("systemPrompt");
+          priorTs = advanceTime(priorTs, z.parse(IntegerColumn, row.time_created));
+        }
+      }
+    }
     const messageKeys = database
       .prepare(queries.messageKeys)
       .all(session.id)
@@ -819,7 +821,7 @@ function summarize(
     addRequest(totals, requestUsage({ payload: definedFields({ usage: request.usage }) }));
     addRequestDuration(totals, request.durationMs);
   }
-  const capabilities = CAPABILITIES.filter((capability) => seen.has(capability));
+  const capabilities = adapterCapabilities(layout).filter((capability) => seen.has(capability));
   return ok(finishPass(totals, capabilities, sessions.length - 1, prompts.list));
 }
 
@@ -867,7 +869,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
     specificationVersion: "sessions-v1",
     agent,
     displayName: agent,
-    capabilities: CAPABILITIES,
+    capabilities: adapterCapabilities(layout),
     roots: (home) => [home.path],
     async *discover(platform, root, options = {}) {
       const path = joinPath(root, layout.databaseFile);
@@ -929,7 +931,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
       withSession(platform, ref, options.signal, (database, queries, sessionId) => {
         try {
           options.signal?.throwIfAborted();
-          const rows = readRows(database, queries, ref.path, sessionId);
+          const rows = readRows(layout, database, queries, ref.path, sessionId);
           if (!rows.ok) {
             return rows;
           }
@@ -937,20 +939,24 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
           const transcript = translate(layout, rows.value, ref.path, 1);
           const lanes = [transcript.events];
           // Line-based event ids and record accounting must stay unique across lanes sharing one database path.
-          let nextLine = 2 + rows.value.messages.length + rows.value.parts.length;
+          let nextLine = 2 + rows.value.entries.length + rows.value.messages.length + rows.value.parts.length;
           for (const child of sessions.slice(1)) {
             options.signal?.throwIfAborted();
-            const childRows = readRows(database, queries, ref.path, child.id);
+            const childRows = readRows(layout, database, queries, ref.path, child.id);
             if (!childRows.ok) {
               return childRows;
             }
             const childTranscript = translate(layout, childRows.value, ref.path, nextLine, true);
-            nextLine += 1 + childRows.value.messages.length + childRows.value.parts.length;
+            nextLine +=
+              1 + childRows.value.entries.length + childRows.value.messages.length + childRows.value.parts.length;
             transcript.agents.push(
               definedFields({
                 id: child.id,
                 parentId: child.parent_id === sessionId ? MAIN_LANE_ID : child.parent_id,
-                title: child.title || undefined
+                title: child.title || undefined,
+                ...(childTranscript.session.systemPrompt === undefined
+                  ? {}
+                  : { systemPrompt: childTranscript.session.systemPrompt })
               })
             );
             for (const event of childTranscript.events) {
@@ -964,7 +970,7 @@ export function createSqliteSessionAdapter(layout: SqliteSessionLayout): Session
           transcript.events = mergeLanes(lanes);
           markOrphanToolResults(transcript.events);
           assignSeq(transcript.events);
-          transcript.capabilities = capabilitiesOf(transcript.events, sessions.length - 1);
+          transcript.capabilities = capabilitiesOf(transcript.events, sessions.length - 1, adapterCapabilities(layout));
           return ok(transcript);
         } catch (error) {
           options.signal?.throwIfAborted();

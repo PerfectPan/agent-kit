@@ -17,6 +17,20 @@ export function codexSessions(root: string): ConformanceSession[] {
     { path: at("token-delta"), records: 6, capabilities: ["requests", "usage"] },
     { path: at("request-id-collision"), records: 6, capabilities: ["requests", "usage"] },
     { path: at("corners"), records: 8, capabilities: ["requests", "usage", "durations", "subagents"] },
+    {
+      path: at("features"),
+      records: 14,
+      capabilities: [
+        "requests",
+        "usage",
+        "durations",
+        "compaction",
+        "compactionTokens",
+        "hooks",
+        "systemPrompt",
+        "toolSchemas"
+      ]
+    },
     { path: at("timeless"), records: 5, capabilities: ["requests", "usage", "durations"] },
     { path: at("timeless-prefix"), records: 8, capabilities: ["requests", "usage", "durations"] },
     { path: at("fork-timeless-turn"), records: 6, capabilities: ["requests", "usage", "durations"] },

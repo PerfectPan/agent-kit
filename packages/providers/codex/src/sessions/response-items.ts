@@ -195,6 +195,14 @@ export function emitResponseItem<E>(type: string, item: CodexPayloadValue, emit:
         ...(item.output === undefined ? {} : { output: item.output })
       });
     }
+    case "additional_tools": {
+      // Codex records the tools it added to the thread (namespaces, functions, custom tools) as a developer item;
+      // the schemas stay verbatim. A `tools` field of another shape is a snapshot that records none.
+      const tools = item.tools;
+      return emitted(
+        emit({ kind: "system", payload: { type: "prompt_snapshot", ...(Array.isArray(tools) ? { tools } : {}) } })
+      );
+    }
     default:
       return emitted(emit({ kind: "unknown", payload: { type } }));
   }

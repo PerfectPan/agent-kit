@@ -10,6 +10,7 @@ import {
 } from "@rivus/agent-kit-sessions/spi";
 import {
   codexPayload,
+  codexTokenCounts,
   type CodexHistoryItemValue,
   type CodexPayloadValue,
   type CodexRecordValue,
@@ -295,7 +296,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
         (bare && envelope === "compaction") ||
         (envelope === "response_item" && payload.type === "compaction")
       ) {
-        const part = emit({ kind: "compaction", payload: {} });
+        // A `compacted` record snapshots the latest reachable token usage; its `input_tokens` are the context the
+        // compaction replaced. No record names the context after it, so `postTokens` stays out.
+        const preTokens = codexTokenCounts(payload.latest_token_usage_record?.usage)?.input_tokens;
+        const part = emit({ kind: "compaction", payload: preTokens === undefined ? {} : { preTokens } });
         // A bare record carries no payload, and the history of one is nobody's.
         if (!bare) {
           part.history = payload.replacement_history;
@@ -356,6 +360,12 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
             },
             lineKey(record)
           );
+          return { ok: true, rec, payload, envelope, parts: recordParts };
+        }
+        if (inner === "hook_started" || inner === "hook_completed") {
+          // The run summary's `event_name` is the hook event, such as `pre_tool_use`; the run's own id stays out.
+          const eventName = payload.run?.event_name;
+          emit({ kind: "hook", payload: { type: inner, ...(eventName ? { event: eventName } : {}) } }, lineKey(record));
           return { ok: true, rec, payload, envelope, parts: recordParts };
         }
         const marker = EVENT_MARKERS.get(inner);

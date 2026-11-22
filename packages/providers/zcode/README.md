@@ -18,6 +18,13 @@ are skipped, including started, retrying, failed, interrupted and skipped attemp
 still counts once. The `reactive` overflow-recovery trigger means automatic compaction. An unknown explicit trigger
 stays unknown; `auto` is only a fallback when no nonempty explicit trigger exists. Capabilities reflect retained events.
 
+The `session_entry` rows of type `runtime/prompt_snapshot` carry the system prompt a conversation opened with: their
+`system` blocks join into the session's `systemPrompt`, and a child session's own snapshot becomes its lane's
+`systemPrompt`. The reader queries only that entry type, so the other runtime entries (workspace checkpoints, model
+selections and the rest) stay unread. An entry whose JSON is unreadable or records no system text is a skipped
+record, and the latest readable entry wins. ZCode records no tool schemas — a stored message's `tools` is a boolean
+map — and no hook runs, so `toolSchemas` and `hooks` stay out of every transcript.
+
 Live descendants linked by `session.parent_id` become nested lanes, with their title in `Lane.title`. A row with
 `task_type = 'fork'` is a standalone session: it stays discoverable, and its copied history does not contribute to
 its parent's transcript or summary. Its own subagents remain attached to the fork. Soft-deleted children are

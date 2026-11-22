@@ -154,6 +154,37 @@ describe("codex translation", () => {
     expect(bare.capabilities).not.toContain("systemPrompt");
   });
 
+  it("reads an additional_tools item as the session's tool schemas, hook events and the compaction's token snapshot", async () => {
+    const transcript = await load("features");
+    expect(transcript.session.systemPrompt).toBe("Be precise.");
+    // The `additional_tools` item's schemas stay verbatim and become the session's current tools.
+    const snapshots = transcript.events.filter(
+      (event) => event.kind === "system" && event.payload.type === "prompt_snapshot"
+    );
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]!.payload.tools).toEqual([expect.objectContaining({ type: "namespace", name: "functions" })]);
+    expect(transcript.session.tools).toEqual(snapshots[0]!.payload.tools);
+    expect(transcript.events.filter((event) => event.kind === "hook").map((event) => event.payload)).toEqual([
+      { type: "hook_started", event: "pre_tool_use" },
+      { type: "hook_completed", event: "pre_tool_use" }
+    ]);
+    // The compaction's `latest_token_usage_record.usage.input_tokens` is the context it replaced.
+    const compaction = transcript.events.find((event) => event.kind === "compaction");
+    expect(compaction?.payload.preTokens).toBe(4500);
+    expect(transcript.capabilities).toEqual([
+      "requests",
+      "usage",
+      "durations",
+      "reasoning",
+      "compaction",
+      "subagents",
+      "systemPrompt",
+      "toolSchemas",
+      "hooks",
+      "compactionTokens"
+    ]);
+  });
+
   it("uses token_count before the first token_usage_record, preferring last_token_usage over the totals' increase", async () => {
     const transcript = await load("token-count");
     // The first count's totals include 100 earlier input tokens: last_token_usage (4) wins over their increase (104).
