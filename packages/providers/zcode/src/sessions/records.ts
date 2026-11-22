@@ -2,7 +2,7 @@ import { type SqliteSessionMessage, sqliteSessionMessageOf } from "@rivus/agent-
 
 import { zcodeUsage } from "../usage.js";
 
-/** A stored message's JSON as the shared SQLite session reader reads it; ZCode's tokens already count the kit's way. */
+/** Stored message times include completion; ZCode's tokens already count the kit's way. */
 export function zcodeMessageOf(value: unknown): SqliteSessionMessage | undefined {
   return sqliteSessionMessageOf(value, zcodeUsage);
 }

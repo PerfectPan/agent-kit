@@ -9,6 +9,19 @@ writes it, so discovery probes the application path and the `zcode` command name
 with cache and output with reasoning, the convention the kit's `Usage` uses, so the decoder passes them through.
 The beta build's `~/.zcode-beta` is not followed.
 
+Sessions expose request durations from valid `time.created`/`time.completed` pairs, including zero durations.
+Compaction parts expose known automatic/manual triggers and finite non-negative pre-compaction token counts.
+ZCode can store both an assistant timeline part and a user boundary for one `operationId`: the shared reader emits
+one event, preferring the boundary's `compactBoundary` metadata, and accounts for the mirror as a skipped record.
+Parts without an operation ID remain separate compactions. Capabilities reflect the retained events.
+
+Live descendants linked by `session.parent_id` become nested lanes, with their title in `Lane.title`. Soft-deleted
+children are excluded. Discovery hides children only when their parent exists and is live, preserving orphans when
+a parent is missing or deleted. Cycles terminate, and schemas without parent, deletion or sequence columns remain
+readable. Transcripts with descendants merge events chronologically; standalone sessions retain their sequence
+order. Summaries include all lanes' requests, tokens, durations, compactions and failed tools, but turns and prompt
+previews come only from the main lane. Messages are fetched individually during summary reads.
+
 `hooks.ts` reads ZCode's command hooks. ZCode documents none, so the dialect follows its engine
 (`Contents/Resources/glm/zcode.cjs`, 3.17.2). Declarations come from `hooks.events` in the user config
 `~/.zcode/cli/config.json`, which run in every project without review; from the workspace's `zcode.json` and

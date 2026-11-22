@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
-import { foldTranscript, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
+import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { opencodeSessionAdapter } from "../src/sessions.js";
 
@@ -101,6 +101,27 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
     })
   );
   part.run("prt_z1", "msg_a2", "ses_unknown", 5100, JSON.stringify({ type: "mystery" }));
+  db.exec("ALTER TABLE session ADD COLUMN parent_id TEXT");
+  db.prepare(
+    "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, '', '', 10000, 10000, '')"
+  ).run("ses_features", null);
+  db.prepare(
+    "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, '', '', 10000, 10000, '')"
+  ).run("ses_child", "ses_features");
+  db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)").run(
+    "msg_features",
+    "ses_features",
+    10000,
+    JSON.stringify({ role: "user" })
+  );
+  // The shared SQLite capability set also accepts explicit boundary token metadata.
+  db.prepare("INSERT INTO part (id, message_id, session_id, time_created, data) VALUES (?, ?, ?, ?, ?)").run(
+    "part_features",
+    "msg_features",
+    "ses_features",
+    10000,
+    JSON.stringify({ type: "compaction", auto: true, preCompactTokenCount: 100 })
+  );
   db.close();
 
   const rows = new DatabaseSync(dbPath, { readOnly: true });
@@ -133,17 +154,25 @@ function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: num
   const sessions: ConformanceSession[] = [
     {
       path: dbPath,
+      sessionId: "ses_features",
+      records: 4,
+      recordKeys: [1, 2, 3, 4].map((line) => `${dbPath}\0${line}`),
+      capabilities: ["compaction", "compactionTokens", "subagents"],
+      compactionShadowing: false
+    },
+    {
+      path: dbPath,
       sessionId: "ses_plain",
       records: 8,
       recordKeys: keysFor("ses_plain"),
-      capabilities: ["requests", "usage", "reasoning"]
+      capabilities: ["requests", "usage", "durations", "reasoning"]
     },
     {
       path: dbPath,
       sessionId: "ses_unknown",
       records: 5,
       recordKeys: keysFor("ses_unknown"),
-      capabilities: ["requests", "usage"]
+      capabilities: ["requests", "usage", "durations"]
     }
   ];
   rows.close();
@@ -168,6 +197,73 @@ describe("opencode conformance (sqlite)", () => {
 
 describe("opencode adapter", () => {
   const platform = createNodePlatform({ home: tempRoot });
+
+  it("reads automatic/manual compactions and nested sessions using upstream parent_id and completion times", async () => {
+    const treePath = join(tempRoot, "tree.db");
+    await copyFile(dbPath, treePath);
+    const db = new DatabaseSync(treePath);
+    const session = db.prepare(
+      "INSERT INTO session (id, parent_id, title, directory, time_created, time_updated, version) VALUES (?, ?, ?, '', 1, 6000, '')"
+    );
+    session.run("child", "ses_plain", "Investigate");
+    session.run("nested", "child", "Verify");
+    session.run("orphan", "missing", "Orphan");
+    const message = db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)");
+    const part = db.prepare("INSERT INTO part (id, message_id, session_id, time_created, data) VALUES (?, ?, ?, ?, ?)");
+    part.run("compact-auto", "msg_u1", "ses_plain", 1000, JSON.stringify({ type: "compaction", auto: true }));
+    part.run("compact-manual", "msg_u1", "ses_plain", 1100, JSON.stringify({ type: "compaction", auto: false }));
+    for (const [id, at] of [
+      ["child", 1500],
+      ["nested", 2500]
+    ] as const) {
+      message.run(`${id}-user`, id, at, JSON.stringify({ role: "user", time: { created: at } }));
+      part.run(`${id}-text`, `${id}-user`, id, at, JSON.stringify({ type: "text", text: "child prompt" }));
+      message.run(
+        `${id}-request`,
+        id,
+        at,
+        JSON.stringify({
+          role: "assistant",
+          time: { created: at, completed: at + 100 },
+          tokens: { input: 1, output: 2, reasoning: 1, cache: { read: 3, write: 4 } }
+        })
+      );
+    }
+    db.close();
+    const ref = { agent: "opencode", path: treePath, sessionId: "ses_plain" };
+    const loaded = await opencodeSessionAdapter.load(platform, ref);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    const transcript = loaded.value;
+    expect(transcript.agents).toEqual([
+      { id: "main" },
+      { id: "child", parentId: "main", title: "Investigate" },
+      { id: "nested", parentId: "child", title: "Verify" }
+    ]);
+    expect(transcript.events.filter((event) => event.kind === "compaction").map((event) => event.payload)).toEqual([
+      { trigger: "auto" },
+      { trigger: "manual" }
+    ]);
+    expect(transcript.capabilities).toEqual(["requests", "usage", "durations", "reasoning", "compaction", "subagents"]);
+    const prompts = { limit: 10, maxChars: 100 };
+    expect(await opencodeSessionAdapter.summarize!(platform, ref, { prompts })).toEqual({
+      ok: true,
+      value: { ...foldTranscript(transcript), prompts: sessionPrompts(transcript, prompts) }
+    });
+    expect(foldTranscript(transcript)).toEqual({
+      turns: 1,
+      requests: 3,
+      inputTokens: 26,
+      outputTokens: 13,
+      durationMs: 1200,
+      compactions: 2,
+      subagents: 2,
+      failedTools: 0,
+      contextShape: [8, 10, 8]
+    });
+  });
 
   it("keeps the version and pairs a tool call with its result", async () => {
     const result = await opencodeSessionAdapter.load(platform, {
