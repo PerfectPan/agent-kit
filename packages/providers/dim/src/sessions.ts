@@ -24,6 +24,7 @@ import {
   type SkippedRecord,
   type SourcePointer,
   addRequest,
+  addRequestDuration,
   emptyPrompts,
   emptyTotals,
   finishPass,
@@ -39,7 +40,81 @@ import { dimLedgerRowOf, dimLedgerUsage, type DimLedgerRowValue } from "./record
 // for the order, and a `metadata` JSON whose `runId` groups a message under one model run. Captured on 0.5.27; the
 // tool calls a run made are not persisted as message rows, so transcripts show the conversation text only.
 
-export const DIM_SESSION_CAPABILITIES: readonly Capability[] = ["requests", "usage"];
+export const DIM_SESSION_CAPABILITIES: readonly Capability[] = ["requests", "usage", "durations", "reasoning"];
+
+const TablePresentRow = z.looseObject({ name: z.string() });
+const RunStatsRow = z.looseObject({
+  runId: z.string(),
+  durationMs: lenient(z.number())
+});
+
+function hasRunStatsTable(database: SqliteDatabase): boolean {
+  const row = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'usage_run_stats'")
+    .get();
+  if (z.safeParse(TablePresentRow, row).data?.name !== "usage_run_stats") {
+    return false;
+  }
+  const cols = new Set(
+    database
+      .prepare("PRAGMA table_info(usage_run_stats)")
+      .all()
+      .map((entry) => z.safeParse(TablePresentRow, entry).data?.name)
+  );
+  return cols.has("runId") && cols.has("sessionId") && cols.has("durationMs");
+}
+
+function readRunDurations(database: SqliteDatabase, sessionId: string): Map<string, number> {
+  const durations = new Map<string, number>();
+  if (!hasRunStatsTable(database)) {
+    return durations;
+  }
+  const rows = database.prepare("SELECT runId, durationMs FROM usage_run_stats WHERE sessionId = ?").all(sessionId);
+  for (const row of rows) {
+    const parsed = z.safeParse(RunStatsRow, row).data;
+    if (
+      parsed !== undefined &&
+      parsed.durationMs !== undefined &&
+      Number.isFinite(parsed.durationMs) &&
+      parsed.durationMs >= 0
+    ) {
+      durations.set(parsed.runId, parsed.durationMs);
+    }
+  }
+  return durations;
+}
+
+function takeRunDuration(
+  runId: string | undefined,
+  runDurations: ReadonlyMap<string, number>,
+  consumedRuns: Set<string>
+): number | undefined {
+  if (runId === undefined || consumedRuns.has(runId)) {
+    return undefined;
+  }
+  const durationMs = runDurations.get(runId);
+  if (durationMs !== undefined) {
+    consumedRuns.add(runId);
+  }
+  return durationMs;
+}
+
+function dimCapabilities(events: readonly TranscriptEvent[]): Capability[] {
+  const capabilities: Capability[] = [];
+  if (events.some((event) => event.kind === "request")) {
+    capabilities.push("requests");
+  }
+  if (events.some((event) => event.kind === "request" && event.payload.usage !== undefined)) {
+    capabilities.push("usage");
+  }
+  if (events.some((event) => event.kind === "request" && event.payload.durationMs !== undefined)) {
+    capabilities.push("durations");
+  }
+  if (events.some((event) => event.kind === "reasoning")) {
+    capabilities.push("reasoning");
+  }
+  return capabilities;
+}
 
 export interface DimSessionRowValue {
   sessionId: string;
@@ -238,6 +313,7 @@ function translate(
     session: DimSessionRowValue;
     messages: DimMessageValue[];
     ledger: (DimLedgerRowValue & { readonly rowid: number })[];
+    runDurations: ReadonlyMap<string, number>;
     messageCount: number;
   },
   dbPath: string
@@ -286,13 +362,24 @@ function translate(
         } else {
           skipped.push({ reason: `message-role:${message.role}`, source: partSource });
         }
+      } else if (part.type === "reasoning" && part.text !== undefined && message.role === "assistant") {
+        events.push(
+          baseEvent(
+            { ...partSource, value: message.rawParts },
+            "reasoning",
+            { text: part.text, ...(message.runId !== undefined ? { runId: message.runId } : {}) },
+            definedFields({ ts, id: `${message.rowid}:${index}` })
+          )
+        );
       } else {
         skipped.push({ reason: `part:${part.type}`, source: partSource });
       }
     }
   }
   // The store records each run's usage in the append-only ledger; the transcript shows one request per row, so the
-  // transcript and the usage decoder agree on the same totals.
+  // transcript and the usage decoder agree on the same totals. Run durations live once per run in `usage_run_stats`,
+  // so attach each run's duration to its first settled ledger row to avoid double-counting.
+  const consumedRuns = new Set<string>();
   for (const row of rows.ledger) {
     const usage = dimLedgerUsage(row.usage);
     let ledgerJson: unknown;
@@ -304,6 +391,7 @@ function translate(
     if (usage === undefined) {
       continue;
     }
+    const durationMs = takeRunDuration(row.runId, rows.runDurations, consumedRuns);
     // One request per settled usage event: the ledger row is its identity (a run can settle more than one), and
     // the run stays in the payload as the response id.
     events.push(
@@ -320,6 +408,7 @@ function translate(
           ...(row.modelId !== undefined ? { model: row.modelId } : {}),
           ...(row.providerId !== undefined ? { provider: row.providerId } : {}),
           usage,
+          ...(durationMs !== undefined ? { durationMs } : {}),
           ...(row.cost !== undefined && row.cost !== null ? { costUsd: row.cost } : {})
         },
         { ts: iso(row.createdAt) }
@@ -431,34 +520,48 @@ export const dimSessionAdapter: SessionAdapter = {
           ledger.push({ ...parsed, rowid: Number(row.rowid) });
         }
       }
+      const runDurations = readRunDurations(database, parsedSession.sessionId);
       const translated = translate(
-        { session: parsedSession, messages, ledger, messageCount: messages.length },
+        { session: parsedSession, messages, ledger, runDurations, messageCount: messages.length },
         ref.path
       );
       options.signal?.throwIfAborted();
-      return ok(createTranscript(DIM_ID, DIM_SESSION_CAPABILITIES, translated));
+      return ok(createTranscript(DIM_ID, dimCapabilities(translated.events), translated));
     });
   },
   summarize: (platform, ref, options = {}) =>
     withDimDatabase(platform, ref.path, options.signal, (database) => {
-      const sessionRow = database.prepare("SELECT rowid FROM sessions WHERE sessionId = ?").get(ref.sessionId ?? "");
+      const sessionId = parsedSessionId(ref);
+      const sessionRow = database.prepare("SELECT rowid FROM sessions WHERE sessionId = ?").get(sessionId);
       if (sessionRow === undefined) {
         return err({ _tag: "SessionNotFound", path: ref.path });
       }
-      // A paged pass over the two tables, keeping only the running numbers: the state grows with the session's
+      // A paged pass over the tables, keeping only the running numbers: the state grows with the session's
       // requests, never with its bytes. The totals match the fold of the loaded transcript — the requests come
       // from the same ledger rows in the same order.
       const totals = emptyTotals();
       const prompts = emptyPrompts(options.prompts);
+      const seen = new Set<Capability>();
+      const runDurations = readRunDurations(database, sessionId);
+      const consumedRuns = new Set<string>();
       const PAGE = 500;
       for (let offset = 0; ; offset += PAGE) {
         options.signal?.throwIfAborted();
         const rows = database
           .prepare("SELECT messageId, role, parts FROM messages WHERE sessionId = ? ORDER BY orderKey LIMIT ? OFFSET ?")
-          .all(parsedSessionId(ref), PAGE, offset);
+          .all(sessionId, PAGE, offset);
         for (const row of rows as Record<string, unknown>[]) {
           const message = dimMessageOf(row, 0);
-          if (message === undefined || message.role !== "user") {
+          if (message === undefined) {
+            continue;
+          }
+          if (message.role === "assistant") {
+            if (message.parts.some((part) => part.type === "reasoning" && part.text !== undefined)) {
+              seen.add("reasoning");
+            }
+            continue;
+          }
+          if (message.role !== "user") {
             continue;
           }
           const texts = message.parts
@@ -478,18 +581,29 @@ export const dimSessionAdapter: SessionAdapter = {
       for (let offset = 0; ; offset += PAGE) {
         options.signal?.throwIfAborted();
         const rows = database
-          .prepare("SELECT usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?")
-          .all(parsedSessionId(ref), PAGE, offset);
+          .prepare(
+            "SELECT runId, usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?"
+          )
+          .all(sessionId, PAGE, offset);
         for (const row of rows as Record<string, unknown>[]) {
           const usage = dimLedgerUsage(typeof row.usage === "string" ? row.usage : undefined);
           if (usage !== undefined) {
+            seen.add("requests");
+            seen.add("usage");
             addRequest(totals, usage);
+            const runId = typeof row.runId === "string" ? row.runId : undefined;
+            const durationMs = takeRunDuration(runId, runDurations, consumedRuns);
+            if (durationMs !== undefined) {
+              seen.add("durations");
+              addRequestDuration(totals, durationMs);
+            }
           }
         }
         if (rows.length < PAGE) {
           break;
         }
       }
-      return ok(finishPass(totals, DIM_SESSION_CAPABILITIES, 0, prompts.list));
+      const capabilities = DIM_SESSION_CAPABILITIES.filter((capability) => seen.has(capability));
+      return ok(finishPass(totals, capabilities, 0, prompts.list));
     })
 };

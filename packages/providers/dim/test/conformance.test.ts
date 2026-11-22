@@ -10,6 +10,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
+import { foldTranscript } from "@rivus/agent-kit-sessions/public";
 import { dim } from "../src/identity.js";
 import { dimProbe } from "../src/discovery.js";
 import { dimHookDialect } from "../src/hooks.js";
@@ -38,6 +39,10 @@ db.exec(
   "CREATE TABLE usage_ledger (ledgerId text primary key, sessionId text not null, runId text, " +
     "providerId text not null, modelId text not null, usage text not null, cost real, createdAt text not null)"
 );
+db.exec(
+  "CREATE TABLE usage_run_stats (runId text primary key, sessionId text not null, providerId text not null, " +
+    "modelId text not null, status text not null, startedAt text, endedAt text not null, durationMs integer)"
+);
 db.prepare("INSERT INTO sessions VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, 1)").run(
   "s1",
   "/u/me/work",
@@ -64,11 +69,36 @@ db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)").r
   "m2",
   "s1",
   "assistant",
-  '[{"type":"text","text":"PONG","startTime":"2026-11-13T00:00:00.900Z","endTime":"2026-11-13T00:00:00.901Z"}]',
+  JSON.stringify([
+    { type: "reasoning", text: "Check prompt", startTime: "2026-11-13T00:00:00.800Z" },
+    { type: "text", text: "PONG", startTime: "2026-11-13T00:00:00.900Z", endTime: "2026-11-13T00:00:00.901Z" }
+  ]),
   '{"runId":"run-1"}',
   "01a1d0991a96-0001",
   "2026-11-13T00:00:00.901Z",
   "2026-11-13T00:00:00.901Z"
+);
+
+const insertRunStat = db.prepare("INSERT INTO usage_run_stats VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+insertRunStat.run(
+  "run-1",
+  "s1",
+  "zhipuai",
+  "glm-4.6",
+  "completed",
+  "2026-11-13T00:00:00.000Z",
+  "2026-11-13T00:00:00.901Z",
+  901
+);
+insertRunStat.run(
+  "run-2",
+  "s1",
+  "deepseek",
+  "deepseek-chat",
+  "completed",
+  "2026-11-13T00:00:59.000Z",
+  "2026-11-13T00:01:00.000Z",
+  1000
 );
 
 const insert = db.prepare("INSERT INTO usage_ledger VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -110,7 +140,7 @@ const sessionChecks = sessionAdapterConformance(dimSessionAdapter, {
       sessionId: "s1",
       records: 2,
       recordKeys: [`${database}\0${1}`, `${database}\0${2}`],
-      capabilities: ["requests", "usage"]
+      capabilities: ["requests", "usage", "durations", "reasoning"]
     }
   ]
 });
@@ -193,6 +223,94 @@ describe("dim session root and lastActiveAt", () => {
       expect(heads.find((h) => h.ref.sessionId === "s-ledger")?.lastActiveAt).toBe(
         Date.parse("2026-11-13T00:05:00.000Z")
       );
+    } finally {
+      await rm(isolated, { recursive: true, force: true });
+    }
+  });
+
+  it("deduplicates usage_run_stats durationMs per runId, ignores negative values, and tolerates missing usage_run_stats", async () => {
+    const isolated = await mkdtemp(join(tmpdir(), "agent-kit-dim-durations-"));
+    try {
+      const dbPath = join(isolated, "dimcode.sqlite");
+      const isolatedDb = node.sqlite!.open(dbPath);
+      isolatedDb.exec(
+        "CREATE TABLE sessions (sessionId text primary key, cwd text not null default '', title text, status text not null, " +
+          "createdAt text not null, updatedAt text not null)"
+      );
+      isolatedDb.exec(
+        "CREATE TABLE messages (messageId text primary key, sessionId text not null, role text not null, parts text not null, " +
+          "metadata text, orderKey text not null, createdAt text not null, updatedAt text not null)"
+      );
+      isolatedDb.exec(
+        "CREATE TABLE usage_ledger (ledgerId text primary key, sessionId text not null, runId text, " +
+          "providerId text not null, modelId text not null, usage text not null, cost real, createdAt text not null)"
+      );
+      isolatedDb.exec(
+        "CREATE TABLE usage_run_stats (runId text primary key, sessionId text not null, durationMs integer)"
+      );
+      isolatedDb
+        .prepare("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)")
+        .run("s-dup", "/w", "Dup runs", "active", "2026-11-13T00:00:00.000Z", "2026-11-13T00:01:00.000Z");
+      isolatedDb.prepare("INSERT INTO usage_run_stats VALUES (?, ?, ?)").run("run-dup", "s-dup", 500);
+      isolatedDb.prepare("INSERT INTO usage_run_stats VALUES (?, ?, ?)").run("run-neg", "s-dup", -10);
+      const ins = isolatedDb.prepare("INSERT INTO usage_ledger VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+      ins.run(
+        "l1",
+        "s-dup",
+        "run-dup",
+        "p",
+        "m",
+        JSON.stringify({ promptTokens: 5, completionTokens: 2 }),
+        0,
+        "2026-11-13T00:00:01.000Z"
+      );
+      ins.run(
+        "l2",
+        "s-dup",
+        "run-dup",
+        "p",
+        "m",
+        JSON.stringify({ promptTokens: 3, completionTokens: 1 }),
+        0,
+        "2026-11-13T00:00:02.000Z"
+      );
+      ins.run(
+        "l3",
+        "s-dup",
+        "run-neg",
+        "p",
+        "m",
+        JSON.stringify({ promptTokens: 4, completionTokens: 1 }),
+        0,
+        "2026-11-13T00:00:03.000Z"
+      );
+      isolatedDb.close();
+
+      const p = { fs: node.fs, sqlite: node.sqlite };
+      const ref = { agent: "dim" as const, path: dbPath, sessionId: "s-dup" };
+      const loaded = await dimSessionAdapter.load(p, ref);
+      const summary = await dimSessionAdapter.summarize!(p, ref);
+      expect(loaded.ok).toBe(true);
+      expect(summary.ok).toBe(true);
+      if (loaded.ok && summary.ok) {
+        expect(loaded.value.capabilities).toEqual(["requests", "usage", "durations"]);
+        expect(summary.value.durationMs).toBe(500);
+        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+      }
+
+      // Drop usage_run_stats to verify older schemas keep working without durations.
+      const legacyDb = node.sqlite!.open(dbPath);
+      legacyDb.exec("DROP TABLE usage_run_stats");
+      legacyDb.close();
+      const legacyLoaded = await dimSessionAdapter.load(p, ref);
+      const legacySummary = await dimSessionAdapter.summarize!(p, ref);
+      expect(legacyLoaded.ok).toBe(true);
+      expect(legacySummary.ok).toBe(true);
+      if (legacyLoaded.ok && legacySummary.ok) {
+        expect(legacyLoaded.value.capabilities).toEqual(["requests", "usage"]);
+        expect(legacySummary.value.durationMs).toBeUndefined();
+        expect(legacySummary.value).toStrictEqual(foldTranscript(legacyLoaded.value));
+      }
     } finally {
       await rm(isolated, { recursive: true, force: true });
     }
