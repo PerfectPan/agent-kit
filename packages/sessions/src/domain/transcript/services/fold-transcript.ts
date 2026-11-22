@@ -191,9 +191,13 @@ export function tallyTranscriptPart(
 ): void {
   if (part.kind === "request") {
     addRequest(totals, requestUsage({ payload: part.payload }));
+    addRequestDuration(totals, part.payload.durationMs);
     seen?.add("requests");
     if (part.payload.usage !== undefined) {
       seen?.add("usage");
+    }
+    if (part.payload.durationMs !== undefined && Number.isFinite(part.payload.durationMs)) {
+      seen?.add("durations");
     }
   } else if (part.kind === "compaction") {
     totals.compactions += 1;
@@ -206,6 +210,9 @@ export function tallyTranscriptPart(
   } else if (part.kind === "system") {
     if (part.payload.type === "turn_duration") {
       addTurnDuration(totals, part.payload.durationMs);
+      if (part.payload.durationMs !== undefined && Number.isFinite(part.payload.durationMs)) {
+        seen?.add("durations");
+      }
     }
     if (part.payload.text !== undefined) {
       seen?.add("systemPrompt");

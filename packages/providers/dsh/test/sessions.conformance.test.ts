@@ -86,6 +86,57 @@ describe("dsh unknown event types", () => {
   });
 });
 
+describe("dsh request timing", () => {
+  it("computes durationMs from step/start or first stream record to last stream record, and omits it without timed records", async () => {
+    const platform = createMemoryPlatform({ files: await readTree(fixtures, "/dsh") });
+    const timedRef = { agent: "dsh" as const, path: "/dsh/conformance/timed/session.v4.jsonl" };
+    const loaded = await adapter.load(platform, timedRef);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.capabilities).toContain("durations");
+    const requests = loaded.value.events.filter((event) => event.kind === "request");
+    expect(requests.map((event) => event.payload.durationMs)).toEqual([1450, 350, undefined]);
+
+    const summary = await adapter.summarize?.(platform, timedRef);
+    expect(summary?.ok).toBe(true);
+    if (summary?.ok) {
+      expect(summary.value.durationMs).toBe(1800);
+    }
+
+    const plainRef = { agent: "dsh" as const, path: "/dsh/conformance/plain/session.v4.jsonl" };
+    const plain = await adapter.load(platform, plainRef);
+    expect(plain.ok).toBe(true);
+    if (!plain.ok) {
+      return;
+    }
+    expect(plain.value.capabilities).not.toContain("durations");
+    expect(plain.value.events.filter((event) => event.kind === "request").map((e) => e.payload.durationMs)).toEqual([
+      undefined,
+      undefined
+    ]);
+  });
+
+  it("leaves durationMs absent when stream ends before step/start", async () => {
+    const log = [
+      '{"type":"session","version":4,"id":"dsh-skew","createdAt":1767225600000,"cwd":"/u/me/work"}',
+      '{"type":"step/start","seq":1,"time":1767225605000,"data":{"turn":1,"step":1}}',
+      '{"type":"assistant/message","seq":2,"time":1767225604000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"skew"}],"source":{"kind":"model","model":"m"}},"stream":[{"type":"chunk","time":1767225604000,"chunk":{"type":"finish"}}]}}'
+    ].join("\n");
+    const path = "/dsh/skew/session.v4.jsonl";
+    const platform = createMemoryPlatform({ files: { [path]: new TextEncoder().encode(log) } });
+    const loaded = await adapter.load(platform, { agent: "dsh", path });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.capabilities).not.toContain("durations");
+    const request = loaded.value.events.find((event) => event.kind === "request");
+    expect(request?.kind === "request" ? request.payload.durationMs : "missing").toBeUndefined();
+  });
+});
+
 describe("dsh discovery keeps one generation per session", () => {
   const v3 = '{"type":"session","version":3,"id":"old","createdAt":1,"cwd":"/u/me/work"}\n';
   const v4 = '{"type":"session","version":4,"id":"new","createdAt":2,"cwd":"/u/me/work"}\n';

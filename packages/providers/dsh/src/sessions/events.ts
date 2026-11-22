@@ -27,6 +27,8 @@ import {
   dshHeaderOf,
   dshMessageDataOf,
   dshRequestHeaderOf,
+  dshStepBoundaryOf,
+  dshStreamTimeRange,
   dshTitleOf,
   dshUsageOf,
   dshUserMessageOf
@@ -36,6 +38,7 @@ import {
 export const DSH_CAPABILITIES: readonly Capability[] = [
   "requests",
   "usage",
+  "durations",
   "reasoning",
   "compaction",
   "compactionTokens",
@@ -46,6 +49,9 @@ export const DSH_CAPABILITIES: readonly Capability[] = [
 /** What one translated session can show, from the events and session fields it produced. */
 export function dshCapabilities(parsed: ParsedTranscript): Capability[] {
   const out = detectEventCapabilities(parsed.events);
+  if (parsed.events.some((event) => event.kind === "request" && event.payload.durationMs !== undefined)) {
+    out.push("durations");
+  }
   if (parsed.session.systemPrompt !== undefined) {
     out.push("systemPrompt");
   }
@@ -59,8 +65,6 @@ export function dshCapabilities(parsed: ParsedTranscript): Capability[] {
 const BOOKKEEPING = new Set([
   "turn/start",
   "turn/end",
-  "step/start",
-  "step/end",
   "request/context",
   "tool/call",
   "session/end-seed",
@@ -105,10 +109,19 @@ function userPayload(message: DshMessageValue): MessagePayload {
   };
 }
 
+function stepKey(turn: number | undefined, step: number | undefined): string | undefined {
+  if (turn === undefined || step === undefined || !Number.isFinite(turn) || !Number.isFinite(step)) {
+    return undefined;
+  }
+  return `${turn}:${step}`;
+}
+
 /** One harness session log into transcript events. */
 export function createDshTranslation(options: DshTranslationOptions): DshTranslation {
   const buffer = createTranslationBuffer(options.retain);
   const seqLines = new Map<number, number>();
+  const stepStarts = new Map<string, number>();
+  let unkeyedStepStart: number | undefined;
   let header: ReturnType<typeof dshHeaderOf>;
   let title: string | undefined;
   let systemPrompt: string | undefined;
@@ -143,6 +156,24 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
     const assistant = dshAssistantOf(data);
     const message = assistant?.message;
     const usage = dshUsageOf(assistant?.usage);
+    const key = stepKey(assistant?.turn, assistant?.step);
+    let stepStart: number | undefined;
+    if (key !== undefined) {
+      stepStart = stepStarts.get(key);
+      stepStarts.delete(key);
+    } else {
+      stepStart = unkeyedStepStart;
+      unkeyedStepStart = undefined;
+    }
+    const streamRange = dshStreamTimeRange(assistant?.stream);
+    let durationMs: number | undefined;
+    if (streamRange !== undefined) {
+      const start = stepStart ?? streamRange.first;
+      const end = streamRange.last;
+      if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+        durationMs = end - start;
+      }
+    }
     const requestId = lineId(record, 0);
     const requestKey = `request:${requestId}`;
     const request: RequestPayload = {
@@ -151,7 +182,8 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         ? {}
         : { model: message?.source?.model ?? model }),
       ...(message?.id === undefined ? {} : { responseId: message.id }),
-      ...(usage === undefined ? {} : { usage })
+      ...(usage === undefined ? {} : { usage }),
+      ...(durationMs === undefined ? {} : { durationMs })
     };
     buffer.emit(baseEvent(record, "request", request, { id: requestId, ts, requestId: requestKey }));
     let index = 1;
@@ -308,6 +340,30 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
           };
           buffer.emit(baseEvent(record, "request", request, { id, ts, requestId: `request:${id}` }));
         }
+        break;
+      }
+      case "step/start": {
+        if (event.time !== undefined && Number.isFinite(event.time)) {
+          const boundary = dshStepBoundaryOf(event.data);
+          const key = stepKey(boundary?.turn, boundary?.step);
+          if (key !== undefined) {
+            stepStarts.set(key, event.time);
+          } else {
+            unkeyedStepStart = event.time;
+          }
+        }
+        buffer.skip(record, event.type);
+        break;
+      }
+      case "step/end": {
+        const boundary = dshStepBoundaryOf(event.data);
+        const key = stepKey(boundary?.turn, boundary?.step);
+        if (key !== undefined) {
+          stepStarts.delete(key);
+        } else {
+          unkeyedStepStart = undefined;
+        }
+        buffer.skip(record, event.type);
         break;
       }
       case "session/title": {
