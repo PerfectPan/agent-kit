@@ -23,6 +23,10 @@ describe("resolvePath", () => {
     expect(await run("new-relative-agents", true)).toBe("/work/repo/new-relative-agents");
     expect(await run("new-relative-agents/skills/demo-skill")).toBe("/work/repo/new-relative-agents/skills/demo-skill");
     expect(await run("./sub/../new-relative-agents", true)).toBe("/work/repo/new-relative-agents");
+    expect(await run("/u/me/not-created/../agents/skills/demo-skill")).toBe("/u/me/agents/skills/demo-skill");
+    expect(await run("/u/me/not-created/./agents/skills/demo-skill")).toBe(
+      "/u/me/not-created/agents/skills/demo-skill"
+    );
     expect(await run("/u/me/agents /skills/demo-skill")).toBe("/u/me/agents /skills/demo-skill");
   });
 });

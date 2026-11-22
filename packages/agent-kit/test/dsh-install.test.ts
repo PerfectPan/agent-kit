@@ -103,4 +103,32 @@ describe("DeepSeek Harness skill installation lifecycle", () => {
       }).pipe(Effect.provide(layer))
     );
   });
+
+  it("normalizes . and .. segments through non-existent directories in absolute DSH_AGENTS_HOME", async () => {
+    const root = createTempDir("dsh-norm-");
+    const home = join(root, "home");
+
+    for (const [override, expectedRoot] of [
+      [`${root}/not-created/../agents`, join(root, "agents")],
+      [`${root}/not-created/./agents`, join(root, "not-created", "agents")]
+    ] as const) {
+      const layer = makeLayer(home, root, { DSH_AGENTS_HOME: override });
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const plan = yield* planInstall(skillBundle, { agents: ["dsh"] });
+          expect(plan.status).toBe("ready");
+          yield* applyInstall(plan);
+
+          const skillFile = join(expectedRoot, "skills", "demo-skill", "SKILL.md");
+          expect(existsSync(skillFile)).toBe(true);
+
+          const verified = yield* verify("demo-app");
+          expect(verified.artifacts.map((a) => a.status)).toEqual(["in-sync"]);
+
+          yield* uninstall("demo-app");
+          expect(existsSync(skillFile)).toBe(false);
+        }).pipe(Effect.provide(layer))
+      );
+    }
+  });
 });

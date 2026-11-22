@@ -7,11 +7,11 @@ const separator = (path: string): number => Math.max(path.lastIndexOf("/"), path
 
 const isAbsolute = (path: string): boolean => path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
 
-function normalizeRelative(cwd: string, relative: string): string {
-  const drive = /^[A-Za-z]:/.exec(cwd)?.[0] ?? "";
+function normalizeAbsolute(path: string): string {
+  const drive = /^[A-Za-z]:/.exec(path)?.[0] ?? "";
   const root = drive ? `${drive}/` : "/";
   const stack: string[] = [];
-  for (const part of `${cwd.slice(drive.length)}/${relative}`.split(/[\\/]+/)) {
+  for (const part of path.slice(drive.length).split(/[\\/]+/)) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -55,10 +55,18 @@ export function resolvePath(path: string, follow = false): Effect.Effect<string,
       if (!isAbsolute(target)) {
         const cwd = await fs.realpath(".");
         if (cwd !== undefined) {
-          target = normalizeRelative(cwd, target);
+          target = normalizeAbsolute(`${cwd}/${target}`);
         }
       }
-      return resolve(target, follow);
+      const resolved = await resolve(target, follow);
+      if (!isAbsolute(resolved)) {
+        return resolved;
+      }
+      const normalized = normalizeAbsolute(resolved);
+      if (normalized !== resolved) {
+        return resolve(normalized, follow);
+      }
+      return normalized;
     };
     return yield* Effect.tryPromise({ try: start, catch: (cause) => resolveIo(path, cause) });
   });
