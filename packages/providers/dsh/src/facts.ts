@@ -7,8 +7,7 @@ export const HOME_ENV = "DSH_HOME";
 // The override names the harness home itself, not a parent directory.
 export const DSH_HOME: HomeRule = { envVar: HOME_ENV, expandsTilde: true, defaultPath: [".dsh"] };
 /** Environment variable that overrides the shared `~/.agents` root `dsh` scans for user skills. */
-const AGENTS_HOME_ENV = "DSH_AGENTS_HOME";
-export const DSH_AGENTS_HOME: HomeRule = { envVar: AGENTS_HOME_ENV, expandsTilde: true, defaultPath: [".agents"] };
+export const AGENTS_HOME_ENV = "DSH_AGENTS_HOME";
 export const DSH_SESSIONS_DIR = "sessions";
 /** The session format generation this adapter reads. */
 export const DSH_SESSION_VERSION = 4;

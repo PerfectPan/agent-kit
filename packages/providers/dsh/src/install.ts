@@ -1,11 +1,33 @@
-import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { type InstallAdapter, type InstallContext } from "@rivus/agent-kit-harness/spi";
 
-import { DSH_AGENTS_HOME, DSH_ID } from "./facts.js";
+import { AGENTS_HOME_ENV, DSH_ID } from "./facts.js";
 
-/** DeepSeek Harness's shared agent root: `DSH_AGENTS_HOME`, or `~/.agents`. */
+function trimTrailingSeparators(path: string): string {
+  const trimmed = path.replace(/[/\\]+$/, "");
+  return trimmed === "" || /^[A-Za-z]:$/.test(trimmed) ? path.slice(0, trimmed.length + 1) : trimmed;
+}
+
+function joinRoot(root: string, suffix: string): string {
+  return /[/\\]$/.test(root) ? `${root}${suffix}` : `${root}/${suffix}`;
+}
+
+/**
+ * DeepSeek Harness's shared agent root: `DSH_AGENTS_HOME`, or `~/.agents`. Matches upstream `resolveAgentsHome`:
+ * whitespace-only values fall back to `~/.agents`, non-empty values keep their exact characters (including any
+ * surrounding spaces), and `~` / `~/` / `~\` expand against `context.home`.
+ */
 function dshAgentsRoot(context: InstallContext): string {
-  return homeFromRule(DSH_ID, DSH_AGENTS_HOME, context).path;
+  const raw = context.env[AGENTS_HOME_ENV];
+  if (raw === undefined || raw.trim().length === 0) {
+    return joinRoot(trimTrailingSeparators(context.home), ".agents");
+  }
+  const expanded =
+    raw === "~"
+      ? context.home
+      : raw.startsWith("~/") || raw.startsWith("~\\")
+        ? joinRoot(trimTrailingSeparators(context.home), raw.slice(2))
+        : raw;
+  return trimTrailingSeparators(expanded);
 }
 
 /**
@@ -23,7 +45,11 @@ export const dshInstallAdapter: InstallAdapter = {
   hookFile: () => "",
   renderHooks: () => [],
   renderSkill: (strategy, skill, context) => [
-    { locator: { kind: "dir", path: `${dshAgentsRoot(context)}/skills/${skill.name}` }, content: skill.files, strategy }
+    {
+      locator: { kind: "dir", path: joinRoot(dshAgentsRoot(context), `skills/${skill.name}`) },
+      content: skill.files,
+      strategy
+    }
   ],
   hookSources: () => []
 };

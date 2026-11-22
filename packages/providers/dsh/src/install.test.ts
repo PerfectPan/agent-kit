@@ -33,14 +33,14 @@ describe("DeepSeek Harness install rendering", () => {
     ]);
   });
 
-  it("honors DSH_AGENTS_HOME with trimming, tilde expansion, and blank fallback", () => {
+  it("honors DSH_AGENTS_HOME without trimming non-empty paths, with tilde expansion and blank fallback", () => {
     const skill = {
       type: "skill" as const,
       name: "demo-skill",
       files: { "SKILL.md": "---\nname: demo-skill\n---\nBody\n" }
     };
 
-    const custom = { home: "/u/me", env: { DSH_AGENTS_HOME: " /srv/dsh-agents/ " } };
+    const custom = { home: "/u/me", env: { DSH_AGENTS_HOME: "/srv/dsh-agents/" } };
     expect(adapter.roots(custom)).toEqual(["/srv/dsh-agents"]);
     expect(adapter.renderSkill("scan-directory", skill, custom)).toEqual([
       {
@@ -49,6 +49,20 @@ describe("DeepSeek Harness install rendering", () => {
         strategy: "scan-directory"
       }
     ]);
+
+    const trailingSpace = { home: "/u/me", env: { DSH_AGENTS_HOME: "/srv/dsh-agents " } };
+    expect(adapter.roots(trailingSpace)).toEqual(["/srv/dsh-agents "]);
+    expect(adapter.renderSkill("scan-directory", skill, trailingSpace)[0]?.locator).toEqual({
+      kind: "dir",
+      path: "/srv/dsh-agents /skills/demo-skill"
+    });
+
+    const relative = { home: "/u/me", env: { DSH_AGENTS_HOME: "new-relative-agents" } };
+    expect(adapter.roots(relative)).toEqual(["new-relative-agents"]);
+    expect(adapter.renderSkill("scan-directory", skill, relative)[0]?.locator).toEqual({
+      kind: "dir",
+      path: "new-relative-agents/skills/demo-skill"
+    });
 
     const tilde = { home: "/u/me", env: { DSH_AGENTS_HOME: "~/custom-agents/" } };
     expect(adapter.roots(tilde)).toEqual(["/u/me/custom-agents"]);

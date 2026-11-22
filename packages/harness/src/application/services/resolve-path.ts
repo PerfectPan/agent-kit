@@ -5,6 +5,25 @@ import type { ArtifactIoFailure } from "../ports.js";
 
 const separator = (path: string): number => Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 
+const isAbsolute = (path: string): boolean => path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+
+function normalizeRelative(cwd: string, relative: string): string {
+  const drive = /^[A-Za-z]:/.exec(cwd)?.[0] ?? "";
+  const root = drive ? `${drive}/` : "/";
+  const stack: string[] = [];
+  for (const part of `${cwd.slice(drive.length)}/${relative}`.split(/[\\/]+/)) {
+    if (part === "" || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      stack.pop();
+    } else {
+      stack.push(part);
+    }
+  }
+  return stack.length === 0 ? root : `${root}${stack.join("/")}`;
+}
+
 export function resolveIo(path: string, cause: unknown): ArtifactIoFailure {
   return { _tag: "ArtifactIoFailure", path, operation: "read", message: `cannot resolve ${path}`, cause };
 }
@@ -31,6 +50,16 @@ export function resolvePath(path: string, follow = false): Effect.Effect<string,
       const parent = await resolve(target.slice(0, cut), true);
       return `${parent.replace(/[\\/]$/, "")}/${target.slice(cut + 1)}`;
     };
-    return yield* Effect.tryPromise({ try: () => resolve(path, follow), catch: (cause) => resolveIo(path, cause) });
+    const start = async (): Promise<string> => {
+      let target = path;
+      if (!isAbsolute(target)) {
+        const cwd = await fs.realpath(".");
+        if (cwd !== undefined) {
+          target = normalizeRelative(cwd, target);
+        }
+      }
+      return resolve(target, follow);
+    };
+    return yield* Effect.tryPromise({ try: start, catch: (cause) => resolveIo(path, cause) });
   });
 }
