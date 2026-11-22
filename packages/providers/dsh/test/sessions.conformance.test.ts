@@ -202,23 +202,33 @@ describe("dsh subagent lanes", () => {
     }
   });
 
-  it("resolves a child session stored under a sibling project directory and hides child sessions from discover", async () => {
+  it("resolves a child session stored under a sibling project directory and hides only origin=subagent from discover", async () => {
     const encode = (text: string) => new TextEncoder().encode(text);
     const parentPath = "/dsh/sessions/--u-me-a--/p1/session.v4.jsonl";
     const childPath = "/dsh/sessions/--u-me-b--/c1/session.v4.jsonl";
+    const manualForkPath = "/dsh/sessions/--u-me-a--/f1/session.v4.jsonl";
     const parentLog = [
       '{"type":"session","version":4,"id":"p1","createdAt":1000,"cwd":"/u/me/a"}',
       '{"type":"user/message","seq":1,"time":1001,"data":{"role":"user","content":[{"type":"text","text":"go"}],"source":{"kind":"user"}}}',
       '{"type":"subagent/catalog","seq":2,"time":1002,"data":{"version":0,"childId":"c1","childCreatedAt":1002,"mode":"continuable","label":"Other cwd"}}'
     ].join("\n");
     const childLog = [
-      '{"type":"session","version":4,"id":"c1","createdAt":1002,"cwd":"/u/me/b","parentSession":"p1","isSeeded":false}',
+      '{"type":"session","version":4,"id":"c1","createdAt":1002,"cwd":"/u/me/b","parentSession":"p1","origin":"subagent","isSeeded":false}',
       '{"type":"assistant/message","seq":1,"time":1003,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":2,"outputTokens":1,"totalTokens":3}}}'
+    ].join("\n");
+    // A standalone manual fork carries parentSession without origin: "subagent" and must stay visible in discover.
+    const manualForkLog = [
+      '{"type":"session","version":4,"id":"f1","createdAt":1005,"cwd":"/u/me/a","parentSession":"p1","isSeeded":true}',
+      '{"type":"user/message","seq":1,"time":1001,"data":{"role":"user","content":[{"type":"text","text":"go"}],"source":{"kind":"user"}}}',
+      '{"type":"subagent/catalog","seq":2,"time":1002,"data":{"version":0,"childId":"c1","childCreatedAt":1002,"mode":"continuable","label":"Inherited child"}}',
+      '{"type":"session/end-seed","seq":3,"time":1005,"data":{"inherited":true}}',
+      '{"type":"user/message","seq":4,"time":1006,"data":{"role":"user","content":[{"type":"text","text":"fork own"}],"source":{"kind":"user"}}}'
     ].join("\n");
     const platform = createMemoryPlatform({
       files: {
         [parentPath]: encode(parentLog),
-        [childPath]: encode(childLog)
+        [childPath]: encode(childLog),
+        [manualForkPath]: encode(manualForkLog)
       }
     });
 
@@ -226,7 +236,7 @@ describe("dsh subagent lanes", () => {
     for await (const item of adapter.discover(platform, "/dsh/sessions")) {
       discovered.push(item.ref.path);
     }
-    expect(discovered).toEqual([parentPath]);
+    expect(discovered.sort()).toEqual([manualForkPath, parentPath]);
 
     const loaded = await adapter.load(platform, { agent: "dsh", path: parentPath });
     expect(loaded.ok).toBe(true);
@@ -235,6 +245,145 @@ describe("dsh subagent lanes", () => {
     }
     expect(loaded.value.agents).toEqual([{ id: "main" }, { id: "c1", parentId: "main", title: "Other cwd" }]);
     expect(loaded.value.events.some((event) => event.kind === "request" && event.agentId === "c1")).toBe(true);
+
+    // The standalone root fork retains its inherited history for display, but must NOT attach inherited catalog entries.
+    const forkLoaded = await adapter.load(platform, { agent: "dsh", path: manualForkPath });
+    expect(forkLoaded.ok).toBe(true);
+    if (!forkLoaded.ok) {
+      return;
+    }
+    expect(forkLoaded.value.agents).toEqual([{ id: "main" }]);
+    expect(forkLoaded.value.capabilities).not.toContain("subagents");
+    expect(forkLoaded.value.events.some((event) => event.kind === "user" && event.payload.text === "go")).toBe(true);
+    expect(forkLoaded.value.events.some((event) => event.kind === "user" && event.payload.text === "fork own")).toBe(
+      true
+    );
+  });
+
+  it("strips inherited fork events even at the same millisecond as createdAt and ignores non-inherited resume markers", async () => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const parentPath = "/dsh/same-ms/--u-me--/p1/session.v4.jsonl";
+    const childPath = "/dsh/same-ms/--u-me--/c-fork/session.v4.jsonl";
+    const parentLog = [
+      '{"type":"session","version":4,"id":"p1","createdAt":5000,"cwd":"/u/me"}',
+      '{"type":"user/message","seq":1,"time":5000,"data":{"role":"user","content":[{"type":"text","text":"same-ms parent"}],"source":{"kind":"user"}}}',
+      '{"type":"assistant/message","seq":2,"time":5000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"parent reply"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":4,"outputTokens":2,"totalTokens":6}}}',
+      '{"type":"subagent/catalog","seq":3,"time":5000,"data":{"version":0,"childId":"c-fork","childCreatedAt":5000,"mode":"continuable","label":"Same-ms fork"}}'
+    ].join("\n");
+    const childLog = [
+      '{"type":"session","version":4,"id":"c-fork","createdAt":5000,"cwd":"/u/me","parentSession":"p1","origin":"subagent","isSeeded":true}',
+      '{"type":"session/end-seed","seq":0,"time":4900,"data":{"inherited":true}}',
+      '{"type":"user/message","seq":1,"time":5000,"data":{"role":"user","content":[{"type":"text","text":"same-ms parent"}],"source":{"kind":"user"}}}',
+      '{"type":"assistant/message","seq":2,"time":5000,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"parent reply"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":4,"outputTokens":2,"totalTokens":6}}}',
+      '{"type":"session/end-seed","seq":3,"time":5000,"data":{"inherited":true}}',
+      '{"type":"assistant/message","seq":4,"time":5000,"data":{"turn":2,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"child own reply"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":3,"outputTokens":1,"totalTokens":4}}}',
+      '{"type":"session/end-seed","seq":5,"time":5100,"data":{}}',
+      '{"type":"assistant/message","seq":6,"time":5200,"data":{"turn":3,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"after resume"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":2,"outputTokens":1,"totalTokens":3}}}'
+    ].join("\n");
+    const platform = createMemoryPlatform({
+      files: { [parentPath]: encode(parentLog), [childPath]: encode(childLog) }
+    });
+    const loaded = await adapter.load(platform, { agent: "dsh", path: parentPath });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    const childEvents = loaded.value.events.filter((event) => event.agentId === "c-fork");
+    expect(childEvents.filter((event) => event.kind === "request")).toHaveLength(2);
+    expect(childEvents.some((event) => event.kind === "user" && event.payload.text === "same-ms parent")).toBe(false);
+    expect(childEvents.some((event) => event.kind === "assistant" && event.payload.text === "after resume")).toBe(true);
+
+    const summary = await adapter.summarize?.(platform, { agent: "dsh", path: parentPath });
+    expect(summary?.ok).toBe(true);
+    if (summary?.ok) {
+      expect(summary.value.requests).toBe(3);
+    }
+  });
+
+  it("turns child directory stat failures into unavailable lanes without failing the parent and propagates abort", async () => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const parentPath = "/dsh/err/--u-me--/p1/session.v4.jsonl";
+    const okChildPath = "/dsh/err/--u-me--/ok-child/session.v4.jsonl";
+    const parentLog = [
+      '{"type":"session","version":4,"id":"p1","createdAt":1000,"cwd":"/u/me"}',
+      '{"type":"subagent/catalog","seq":1,"time":1001,"data":{"version":0,"childId":"denied-child","mode":"continuable","label":"Denied"}}',
+      '{"type":"subagent/catalog","seq":2,"time":1002,"data":{"version":0,"childId":"ok-child","mode":"continuable","label":"Allowed"}}'
+    ].join("\n");
+    const okChildLog = [
+      '{"type":"session","version":4,"id":"ok-child","createdAt":1002,"cwd":"/u/me","parentSession":"p1","origin":"subagent","isSeeded":false}',
+      '{"type":"assistant/message","seq":1,"time":1003,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"ok"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}'
+    ].join("\n");
+    const base = createMemoryPlatform({
+      files: { [parentPath]: encode(parentLog), [okChildPath]: encode(okChildLog) }
+    });
+    const platform: SessionPlatform = {
+      fs: {
+        ...base.fs,
+        stat: async (path, options) => {
+          if (path.includes("denied-child")) {
+            throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+          }
+          return base.fs.stat(path, options);
+        }
+      }
+    };
+    const loaded = await adapter.load(platform, { agent: "dsh", path: parentPath });
+    expect(loaded.ok).toBe(true);
+    if (loaded.ok) {
+      expect(loaded.value.agents).toEqual([
+        { id: "main" },
+        { id: "denied-child", parentId: "main", title: "Denied", unavailable: true },
+        { id: "ok-child", parentId: "main", title: "Allowed" }
+      ]);
+    }
+    const summary = await adapter.summarize?.(platform, { agent: "dsh", path: parentPath });
+    expect(summary?.ok).toBe(true);
+    if (summary?.ok) {
+      expect(summary.value.subagents).toBe(2);
+      expect(summary.value.requests).toBe(1);
+    }
+
+    const controller = new AbortController();
+    controller.abort(new Error("stop-now"));
+    await expect(
+      adapter.load(platform, { agent: "dsh", path: parentPath }, { signal: controller.signal })
+    ).rejects.toThrow("stop-now");
+  });
+
+  it("merges large sessions with children without hitting argument count limits", async () => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const parentPath = "/dsh/large/--u-me--/p-big/session.v4.jsonl";
+    const childPath = "/dsh/large/--u-me--/c-small/session.v4.jsonl";
+    const lines = [
+      '{"type":"session","version":4,"id":"p-big","createdAt":1000,"cwd":"/u/me"}',
+      '{"type":"subagent/catalog","seq":1,"time":1001,"data":{"version":0,"childId":"c-small","mode":"continuable","label":"Helper"}}'
+    ];
+    const count = 40_000;
+    for (let i = 0; i < count; i += 1) {
+      lines.push(
+        `{"type":"assistant/message","seq":${i + 2},"time":${2000 + i},"data":{"turn":1,"step":${i + 1},"message":{"role":"assistant","content":[{"type":"text","text":"x"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}`
+      );
+    }
+    const childLog = [
+      '{"type":"session","version":4,"id":"c-small","createdAt":1001,"cwd":"/u/me","parentSession":"p-big","origin":"subagent","isSeeded":false}',
+      '{"type":"assistant/message","seq":1,"time":1500,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"text","text":"y"}],"source":{"kind":"model","model":"m"}},"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}}'
+    ].join("\n");
+    const platform = createMemoryPlatform({
+      files: { [parentPath]: encode(lines.join("\n")), [childPath]: encode(childLog) }
+    });
+    // 40,000 assistant/message records produce 80,000 events (request + assistant each) plus 2 child events = 80,002.
+    const loaded = await adapter.load(platform, { agent: "dsh", path: parentPath });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.events).toHaveLength(count * 2 + 2);
+    const summary = await adapter.summarize?.(platform, { agent: "dsh", path: parentPath });
+    expect(summary?.ok).toBe(true);
+    if (summary?.ok) {
+      expect(summary.value.requests).toBe(count + 1);
+      expect(summary.value.subagents).toBe(1);
+    }
   });
 });
 

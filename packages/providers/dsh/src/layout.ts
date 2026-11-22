@@ -74,13 +74,14 @@ async function latestLogInDir(
   signal: AbortSignal | undefined
 ): Promise<string | undefined> {
   signal?.throwIfAborted();
-  if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
-    return undefined;
-  }
   let entries;
   try {
+    if ((await platform.fs.stat(dir, { followSymlinks: true }))?.kind !== "dir") {
+      return undefined;
+    }
     entries = await platform.fs.list(dir);
   } catch {
+    signal?.throwIfAborted();
     return undefined;
   }
   const candidates: string[] = [];
@@ -121,13 +122,14 @@ export async function resolveDshChildPath(
   if (sessionsRoot === projectDir) {
     return undefined;
   }
-  if ((await platform.fs.stat(sessionsRoot, { followSymlinks: true }))?.kind !== "dir") {
-    return undefined;
-  }
   let projects;
   try {
+    if ((await platform.fs.stat(sessionsRoot, { followSymlinks: true }))?.kind !== "dir") {
+      return undefined;
+    }
     projects = await platform.fs.list(sessionsRoot);
   } catch {
+    signal?.throwIfAborted();
     return undefined;
   }
   const parentProjectName = basenamePath(projectDir);

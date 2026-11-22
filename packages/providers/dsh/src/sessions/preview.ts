@@ -5,7 +5,7 @@ import { dshContentParts, dshEventOf, dshHeaderOf, dshTitleOf, dshUserMessageOf 
 const FIRST_PROMPT_MAX = 500;
 
 export interface DshPreview extends SessionPreview {
-  parentSession?: string;
+  origin?: string;
 }
 
 /** The listing preview of a decoded log prefix: header identity, title, first human prompt and time bounds. */
@@ -32,8 +32,8 @@ export function previewDshText(text: string): DshPreview {
       if (header.createdAt !== undefined) {
         preview.startedAt = header.createdAt;
       }
-      if (header.parentSession) {
-        preview.parentSession = header.parentSession;
+      if (header.origin) {
+        preview.origin = header.origin;
       }
     }
     const event = dshEventOf(value);

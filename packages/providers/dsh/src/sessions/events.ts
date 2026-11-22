@@ -25,6 +25,7 @@ import {
   dshAssistantOf,
   dshCompactionOf,
   dshContentParts,
+  dshEndSeedOf,
   dshEventOf,
   dshHeaderOf,
   dshMessageDataOf,
@@ -97,8 +98,63 @@ export interface DshTranslationOptions {
   readonly sessionId?: string;
   /** Lane id for emitted events; defaults to `MAIN_LANE_ID`. */
   readonly agentId?: string;
-  /** When true, skip a seeded session's inherited prefix (`ts < header.createdAt`, or up to `session/end-seed`). */
+  /** Inclusive record index marking the end of a seeded session's inherited prefix (`-1` when none). */
+  readonly inheritedSeedEndIndex?: number;
+  /** When true, skip events within `1..inheritedSeedEndIndex` instead of retaining them. */
   readonly stripInheritedSeed?: boolean;
+}
+
+/**
+ * The inclusive record index ending a seeded session's inherited prefix, or `-1` when the session is not seeded or has
+ * no inherited prefix. Prefers the last `session/end-seed` carrying `{ inherited: true }` (which covers nested fork
+ * ancestors while ignoring non-inherited resume markers and same-millisecond timestamps), then falls back to an
+ * unmarked `session/end-seed` at or before `header.createdAt`, and finally to a leading `time < createdAt` prefix.
+ */
+export function dshInheritedSeedEndIndex(records: readonly SourcedRecord[]): number {
+  const firstRecord = records[0];
+  if (firstRecord === undefined) {
+    return -1;
+  }
+  const header = dshHeaderOf(firstRecord.value);
+  if (header?.isSeeded !== true) {
+    return -1;
+  }
+  const createdAt = header.createdAt;
+  let lastInheritedEndSeed = -1;
+  let lastLegacyEndSeed = -1;
+  for (let i = 1; i < records.length; i += 1) {
+    const event = dshEventOf(records[i]?.value);
+    if (event?.type !== "session/end-seed") {
+      continue;
+    }
+    const endSeed = dshEndSeedOf(event.data);
+    if (endSeed?.inherited === true) {
+      lastInheritedEndSeed = i;
+    } else if (
+      endSeed?.inherited !== false &&
+      (createdAt === undefined || event.time === undefined || event.time <= createdAt)
+    ) {
+      lastLegacyEndSeed = i;
+    }
+  }
+  if (lastInheritedEndSeed !== -1) {
+    return lastInheritedEndSeed;
+  }
+  if (lastLegacyEndSeed !== -1) {
+    return lastLegacyEndSeed;
+  }
+  if (createdAt === undefined) {
+    return -1;
+  }
+  let end = -1;
+  for (let i = 1; i < records.length; i += 1) {
+    const event = dshEventOf(records[i]?.value);
+    if (event?.time === undefined || event.time >= createdAt) {
+      break;
+    }
+    end = i;
+  }
+  return end;
 }
 
 export interface DshTranslation extends RecordTranslation {
@@ -134,6 +190,7 @@ function stepKey(turn: number | undefined, step: number | undefined): string | u
 export function createDshTranslation(options: DshTranslationOptions): DshTranslation {
   const agentId = options.agentId ?? MAIN_LANE_ID;
   const isChildLane = agentId !== MAIN_LANE_ID;
+  const seedEndIndex = options.inheritedSeedEndIndex ?? -1;
   const buffer = createTranslationBuffer(options.retain);
   const seqLines = new Map<number, number>();
   const stepStarts = new Map<string, number>();
@@ -144,7 +201,7 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
   let systemPrompt: string | undefined;
   let tools: readonly unknown[] | undefined;
   let model: string | undefined;
-  let inheriting = false;
+  let recordIndex = 0;
   let first = true;
 
   function eventId(record: SourcedRecord, part = 0): string {
@@ -259,6 +316,8 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
   }
 
   function step(record: SourcedRecord, ts: number): Result<readonly TranscriptEvent[], UnknownFormatGeneration> {
+    const currentIndex = recordIndex;
+    recordIndex += 1;
     const parts = buffer.beginStep();
     const event = dshEventOf(record.value);
     if (event === undefined) {
@@ -271,7 +330,6 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
       }
       if (header === undefined) {
         header = headerValue;
-        inheriting = options.stripInheritedSeed === true && headerValue.isSeeded === true;
         buffer.noteTime(headerValue.createdAt ?? ts);
         first = false;
       }
@@ -281,27 +339,16 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
     if (first) {
       return err(unknownFormatGeneration(DSH_ID, record));
     }
-    if (inheriting) {
+    const inInheritedSeed = seedEndIndex >= 1 && currentIndex >= 1 && currentIndex <= seedEndIndex;
+    if (options.stripInheritedSeed === true && inInheritedSeed) {
       if (event.type === "request/header") {
         const parsed = dshRequestHeaderOf(event.data);
         if (parsed?.config?.model !== undefined) {
           model = parsed.config.model;
         }
       }
-      const createdAt = header?.createdAt;
-      if (createdAt !== undefined) {
-        if (ts < createdAt) {
-          buffer.skip(record, "inherited-seed");
-          return ok(parts);
-        }
-        inheriting = false;
-      } else {
-        buffer.skip(record, "inherited-seed");
-        if (event.type === "session/end-seed") {
-          inheriting = false;
-        }
-        return ok(parts);
-      }
+      buffer.skip(record, "inherited-seed");
+      return ok(parts);
     }
     if (event.seq !== undefined) {
       seqLines.set(event.seq, record.line);
@@ -432,23 +479,29 @@ export function createDshTranslation(options: DshTranslationOptions): DshTransla
         break;
       }
       case "subagent/catalog": {
-        const entry = dshSubagentCatalogOf(event.data);
-        if (entry !== undefined) {
-          const prev = catalog.get(entry.childId);
-          catalog.set(entry.childId, {
-            childId: entry.childId,
-            ...(entry.childCreatedAt !== undefined
-              ? { childCreatedAt: entry.childCreatedAt }
-              : prev?.childCreatedAt !== undefined
-                ? { childCreatedAt: prev.childCreatedAt }
-                : {}),
-            ...(entry.mode !== undefined ? { mode: entry.mode } : prev?.mode !== undefined ? { mode: prev.mode } : {}),
-            ...(entry.label !== undefined
-              ? { label: entry.label }
-              : prev?.label !== undefined
-                ? { label: prev.label }
-                : {})
-          });
+        if (!inInheritedSeed) {
+          const entry = dshSubagentCatalogOf(event.data);
+          if (entry !== undefined) {
+            const prev = catalog.get(entry.childId);
+            catalog.set(entry.childId, {
+              childId: entry.childId,
+              ...(entry.childCreatedAt !== undefined
+                ? { childCreatedAt: entry.childCreatedAt }
+                : prev?.childCreatedAt !== undefined
+                  ? { childCreatedAt: prev.childCreatedAt }
+                  : {}),
+              ...(entry.mode !== undefined
+                ? { mode: entry.mode }
+                : prev?.mode !== undefined
+                  ? { mode: prev.mode }
+                  : {}),
+              ...(entry.label !== undefined
+                ? { label: entry.label }
+                : prev?.label !== undefined
+                  ? { label: prev.label }
+                  : {})
+            });
+          }
         }
         buffer.skip(record, event.type);
         break;

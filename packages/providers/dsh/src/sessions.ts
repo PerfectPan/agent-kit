@@ -41,7 +41,13 @@ import {
   resolveDshChildPath
 } from "./layout.js";
 import { type DshSubagentCatalogValue, dshEventOf, dshHeaderOf, isDshSessionHeader } from "./records.js";
-import { DSH_CAPABILITIES, type DshTranslation, createDshTranslation, dshCapabilities } from "./sessions/events.js";
+import {
+  DSH_CAPABILITIES,
+  type DshTranslation,
+  createDshTranslation,
+  dshCapabilities,
+  dshInheritedSeedEndIndex
+} from "./sessions/events.js";
 import { previewDshText } from "./sessions/preview.js";
 import { splitDshRecords } from "./sessions/read.js";
 import { readDshHead, readDshText } from "./records/zstd.js";
@@ -146,8 +152,9 @@ async function* discoverDsh(
       // A compressed head that holds no complete frame, or whose decoded prefix exceeds the preview budget, has
       // nothing to preview: the head keeps the file's mtime as its last activity, like a compressed tail does.
       const preview = previewDshText("text" in head ? head.text : "");
-      // Local subagent sessions are attached as lanes on their parent transcript, so hide them from the top-level list.
-      if (preview.parentSession !== undefined) {
+      // Local subagent sessions are attached as lanes on their parent transcript, so hide them from the top-level list
+      // while keeping standalone manual forks (which carry `parentSession` without `origin: "subagent"`) visible.
+      if (preview.origin === "subagent") {
         continue;
       }
       // A plain log's tail holds its last activity; the head alone would report only the start. A compressed tail is
@@ -252,6 +259,12 @@ function mergeLaneEvents(groups: readonly (readonly TranscriptEvent[])[]): Trans
   return out;
 }
 
+function appendAll<T>(target: T[], items: readonly T[]): void {
+  for (const item of items) {
+    target.push(item);
+  }
+}
+
 function unavailableLane(entry: DshSubagentCatalogValue, parentId: string): Lane {
   return {
     id: entry.childId,
@@ -276,14 +289,15 @@ async function loadDsh(
   }
   const translation = createDshTranslation({
     retain: true,
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
+    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+    inheritedSeedEndIndex: dshInheritedSeedEndIndex(records)
   });
   const ran = runDshRecords(records, translation);
   if (!ran.ok) {
     return ran;
   }
   const parsed = translation.finish();
-  parsed.skipped.push(...skipped);
+  appendAll(parsed.skipped, skipped);
 
   const visited = new Set<string>([parsed.session.id, dshSessionIdOf(ref.path)]);
   const eventGroups: (readonly TranscriptEvent[])[] = [parsed.events];
@@ -317,6 +331,7 @@ async function loadDsh(
         retain: true,
         sessionId: entry.childId,
         agentId: entry.childId,
+        inheritedSeedEndIndex: dshInheritedSeedEndIndex(childSplit.value.records),
         stripInheritedSeed: true
       });
       const childRan = runDshRecords(childSplit.value.records, childTranslation);
@@ -333,7 +348,8 @@ async function loadDsh(
         ...(childSystemPrompt === undefined ? {} : { systemPrompt: childSystemPrompt })
       });
       eventGroups.push(childParsed.events);
-      parsed.skipped.push(...childParsed.skipped, ...childSplit.value.skipped);
+      appendAll(parsed.skipped, childParsed.skipped);
+      appendAll(parsed.skipped, childSplit.value.skipped);
       await attachChildren(childPath, entry.childId, childTranslation.subagents());
     }
   }
@@ -343,8 +359,7 @@ async function loadDsh(
   if (eventGroups.length > 1) {
     const merged = mergeLaneEvents(eventGroups);
     finalizeTranscriptEvents(merged);
-    parsed.events.length = 0;
-    parsed.events.push(...merged);
+    parsed.events = merged;
     const lastEvent = merged.at(-1);
     if (lastEvent !== undefined) {
       parsed.session.endedAt =
@@ -376,12 +391,13 @@ async function summarizeDsh(
 
   const translation = createDshTranslation({
     retain: false,
-    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId })
+    ...(ref.sessionId === undefined ? {} : { sessionId: ref.sessionId }),
+    inheritedSeedEndIndex: dshInheritedSeedEndIndex(records)
   });
   let mainSessionId = ref.sessionId;
   const mainParts: TranscriptEvent[] = [];
   const ran = runDshRecords(records, translation, (parts) => {
-    mainParts.push(...parts);
+    appendAll(mainParts, parts);
   });
   if (!ran.ok) {
     return ran;
@@ -423,11 +439,12 @@ async function summarizeDsh(
         retain: false,
         sessionId: entry.childId,
         agentId: entry.childId,
+        inheritedSeedEndIndex: dshInheritedSeedEndIndex(childSplit.value.records),
         stripInheritedSeed: true
       });
       const childParts: TranscriptEvent[] = [];
       const childRan = runDshRecords(childSplit.value.records, childTranslation, (parts) => {
-        childParts.push(...parts);
+        appendAll(childParts, parts);
       });
       if (!childRan.ok) {
         continue;
