@@ -17,28 +17,36 @@ import { agy } from "../src/identity.js";
 import { agyInstallAdapter } from "../src/install.js";
 import { agySessionAdapter } from "../src/sessions.js";
 import { agyUsageDecoder } from "../src/usage.js";
+import { nestedConversations } from "./fixtures/subagents.js";
 
 const fixtures = fileURLToPath(new URL("fixtures", import.meta.url));
 const oversizedLine =
   '{"step_index":0,"source":"SYSTEM","type":"SYSTEM_MESSAGE","status":"DONE","created_at":"2026-11-18T10:00:00Z","content":"ok"}';
+const LOGS = ".system_generated/logs";
+
+/** The oversized session under `root`: the root `discover` lists, its file and the directory holding it. */
+function oversizedAt(root: string): { root: string; file: string; dir: string } {
+  const dir = `${root}/oversized/antigravity-cli/brain/conv-x/${LOGS}`;
+  return { root: `${root}/oversized/antigravity-cli/brain`, file: `${dir}/transcript_full.jsonl`, dir };
+}
 
 function describeConformance(name: string, setup: () => Promise<{ platform: SessionPlatform; root: string }>): void {
   describe(`agy conformance (${name})`, async () => {
     const { platform, root } = await setup();
+    const brain = `${root}/antigravity-cli/brain`;
     const checks = sessionAdapterConformance(agySessionAdapter, {
       platform,
-      root: `${root}/antigravity-cli/brain`,
+      root: brain,
       sessions: [
         {
-          path: `${root}/antigravity-cli/brain/conv-1/.system_generated/logs/transcript_full.jsonl`,
-          records: 6,
-          capabilities: ["requests", "usage", "reasoning", "compaction"]
+          // The conversation and the subagent it spawned: `sub-1` is a lane of `conv-1`, not a session of its own.
+          path: `${brain}/conv-1/${LOGS}/transcript_full.jsonl`,
+          files: [`${brain}/conv-1/${LOGS}/transcript_full.jsonl`, `${brain}/sub-1/${LOGS}/transcript_full.jsonl`],
+          records: 14,
+          capabilities: ["requests", "usage", "reasoning", "compaction", "subagents"]
         }
       ],
-      oversized: {
-        root: `${root}/oversized/antigravity-cli/brain`,
-        file: `${root}/oversized/antigravity-cli/brain/conv-x/.system_generated/logs/transcript_full.jsonl`
-      }
+      oversized: oversizedAt(root)
     });
     for (const { name: check, run } of checks) {
       it(`${check}`, async () => {
@@ -52,8 +60,7 @@ describeConformance("memory platform", async () => ({
   platform: createMemoryPlatform({
     files: {
       ...(await readTree(fixtures, "/agy")),
-      "/agy/oversized/antigravity-cli/brain/conv-x/.system_generated/logs/transcript_full.jsonl":
-        oversizedSession(oversizedLine)
+      [oversizedAt("/agy").file]: oversizedSession(oversizedLine)
     },
     chunkSize: 1000
   }),
@@ -65,12 +72,43 @@ afterAll(() => rm(tempRoot, { recursive: true, force: true }));
 
 describeConformance("temp directory", async () => {
   await cp(fixtures, tempRoot, { recursive: true });
-  await mkdir(join(tempRoot, "oversized/antigravity-cli/brain/conv-x/.system_generated/logs"), { recursive: true });
-  await writeFile(
-    join(tempRoot, "oversized/antigravity-cli/brain/conv-x/.system_generated/logs/transcript_full.jsonl"),
-    oversizedSession(oversizedLine)
-  );
+  const oversized = oversizedAt(tempRoot);
+  await mkdir(oversized.dir, { recursive: true });
+  await writeFile(oversized.file, oversizedSession(oversizedLine));
   return { platform: { fs: nodeReadFs() }, root: tempRoot };
+});
+
+// A root that spawns a nested subagent, a subagent without a transcript and the root itself again: the nested one
+// is a lane of its own parent under the lanes order both passes share, the missing one is an unavailable lane, and
+// the loop adds no lane.
+describe("agy conformance (nested, missing and looping subagents)", async () => {
+  const root = "/agy-nested";
+  const brain = `${root}/antigravity-cli/brain`;
+  const checks = sessionAdapterConformance(agySessionAdapter, {
+    platform: createMemoryPlatform({
+      files: { ...nestedConversations(brain), [oversizedAt(root).file]: oversizedSession(oversizedLine) },
+      chunkSize: 1000
+    }),
+    root: brain,
+    sessions: [
+      {
+        path: `${brain}/conv-root/${LOGS}/transcript.jsonl`,
+        files: [
+          `${brain}/conv-root/${LOGS}/transcript.jsonl`,
+          `${brain}/sub-a/${LOGS}/transcript_full.jsonl`,
+          `${brain}/sub-b/${LOGS}/transcript.jsonl`
+        ],
+        records: 13,
+        capabilities: ["requests", "usage", "reasoning", "compaction", "subagents"]
+      }
+    ],
+    oversized: oversizedAt(root)
+  });
+  for (const { name: check, run } of checks) {
+    it(`${check}`, async () => {
+      await expect(run()).resolves.toBeUndefined();
+    });
+  }
 });
 
 const usagePlatform = createMemoryPlatform({
@@ -80,10 +118,15 @@ const usagePlatform = createMemoryPlatform({
 const usageFixtures = {
   platform: usagePlatform,
   home: homeFromRule("agy", agy.home, { home: "/agy", env: { ANTIGRAVITY_GEMINI_DIR: "/agy" } }),
+  // A subagent conversation's requests are billed like any other's, so its compact transcript is a usage source too.
   sources: [
     {
       path: "/agy/antigravity-cli/brain/conv-1/.system_generated/logs/transcript.jsonl",
-      records: 3
+      records: 4
+    },
+    {
+      path: "/agy/antigravity-cli/brain/sub-1/.system_generated/logs/transcript.jsonl",
+      records: 2
     }
   ]
 };

@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 import { compactUsage, lenient, timeOfValue, type Usage } from "@rivus/agent-kit-sessions/spi";
 
-interface AgyToolCallRecord {
+export interface AgyToolCallRecord {
   readonly name: string;
   readonly args?: unknown;
 }
@@ -64,6 +64,75 @@ export function agyStepOf(value: unknown): AgyStepRecord | undefined {
 
 export function agyRecordTime(step: AgyStepRecord): number | undefined {
   return step.created_at === undefined ? undefined : timeOfValue(step.created_at);
+}
+
+// A conversation id names a directory under `brain/`, so it is one path segment and never a dot or a separator.
+const AgyConversationId = z.string().check(z.regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/));
+
+const AgySubagentSpawned = z.looseObject({ conversationId: AgyConversationId });
+
+const AgySubagentCall = z.looseObject({ Role: lenient(z.optional(z.string())) });
+
+const SUBAGENT_CREATED = "Created the following subagent:";
+
+/** The index of the `}` closing the `{` at `start`, past the strings and nested objects between them. */
+function closingBrace(text: string, start: number): number {
+  let depth = 0;
+  let quoted = false;
+  for (let at = start; at < text.length; at += 1) {
+    const char = text.at(at);
+    if (quoted) {
+      if (char === "\\") {
+        at += 1;
+      } else if (char === '"') {
+        quoted = false;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}" && (depth -= 1) === 0) {
+      return at;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The conversation an `invoke_subagent` tool result created. The result text names it as a JSON object after
+ * `Created the following subagent:`, in free-form text before and after, so the object is cut out by its braces and
+ * parsed; `undefined` when the text is not that shape or names no conversation id.
+ */
+export function agySubagentSpawnedOf(content: string): string | undefined {
+  const marker = content.indexOf(SUBAGENT_CREATED);
+  const start = marker < 0 ? -1 : content.indexOf("{", marker + SUBAGENT_CREATED.length);
+  const end = start < 0 ? -1 : closingBrace(content, start);
+  if (end < 0) {
+    return undefined;
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(content.slice(start, end + 1));
+  } catch {
+    return undefined;
+  }
+  return z.safeParse(AgySubagentSpawned, value).data?.conversationId;
+}
+
+/** The `Role` of an `invoke_subagent` call's arguments: the label the parent gave the subagent. */
+export function agySubagentRoleOf(args: unknown): string | undefined {
+  return z.safeParse(AgySubagentCall, args).data?.Role;
+}
+
+const RELAYED_MESSAGE_SENDER = /\[Message\] timestamp=\S+ sender=(\S+)/;
+
+/**
+ * The conversation whose message a `SYSTEM_MESSAGE` relays. Antigravity CLI delivers the messages conversations
+ * send each other as a system message wrapping `[Message] timestamp=<time> sender=<conversation-id> priority=…
+ * content=…`; a subagent conversation's first record is the message that spawned it.
+ */
+export function agyRelayedMessageSender(content: string): string | undefined {
+  return RELAYED_MESSAGE_SENDER.exec(content)?.[1];
 }
 
 /**
