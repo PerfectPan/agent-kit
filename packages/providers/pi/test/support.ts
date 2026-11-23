@@ -17,6 +17,11 @@ export function piSessions(root: string): ConformanceSession[] {
       records: 8,
       capabilities: ["requests", "usage", "compaction", "compactionTokens"]
     },
+    {
+      path: at("prompt/session.jsonl"),
+      records: 9,
+      capabilities: ["requests", "usage", "compaction", "compactionTokens", "systemPrompt", "toolSchemas"]
+    },
     { path: at("unknown-type/session.jsonl"), records: 3, capabilities: [] }
   ];
 }

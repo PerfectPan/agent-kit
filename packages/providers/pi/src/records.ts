@@ -51,6 +51,15 @@ export function piUsageOf(usage: PiUsageValue | undefined): Usage | undefined {
   });
 }
 
+/** A tool definition a system message adds, as Pi persists it (`toToolDeclaration`): name, description and the JSON schema. */
+const PiTool = z.looseObject({
+  name: z.string(),
+  description: lenient(z.string()),
+  parameters: lenient(z.unknown())
+});
+
+const PiToolReference = z.looseObject({ name: z.string() });
+
 const PiMessage = z.looseObject({
   role: z.string(),
   content: lenient(z.union([z.string(), z.array(z.unknown())])),
@@ -66,10 +75,26 @@ const PiMessage = z.looseObject({
   output: lenient(z.string()),
   exitCode: lenient(z.number()),
   cancelled: lenient(z.boolean()),
-  excludeFromContext: lenient(z.boolean())
+  excludeFromContext: lenient(z.boolean()),
+  // System messages only: the leading one declares the prompt sections and the tools; later ones patch them.
+  sections: lenient(z.record(z.string(), z.nullable(z.string()))),
+  toolsAdded: lenient(z.array(PiTool)),
+  toolsRemoved: lenient(z.array(PiToolReference))
 });
 
-interface PiMessageValue {
+/** A tool definition a system message's `toolsAdded` carries. */
+export interface PiToolValue {
+  name: string;
+  description?: string;
+  parameters?: unknown;
+}
+
+/** A `toolsRemoved` entry: the tool goes by name. */
+interface PiToolReferenceValue {
+  name: string;
+}
+
+export interface PiMessageValue {
   role: string;
   content?: string | readonly unknown[];
   provider?: string;
@@ -87,6 +112,10 @@ interface PiMessageValue {
   exitCode?: number;
   cancelled?: boolean;
   excludeFromContext?: boolean;
+  /** Named prompt sections; `null` removes a section, a string replaces it by name. */
+  sections?: Record<string, string | null>;
+  toolsAdded?: PiToolValue[];
+  toolsRemoved?: PiToolReferenceValue[];
 }
 
 const PiEntry = z.looseObject({
@@ -105,7 +134,9 @@ const PiEntry = z.looseObject({
   fromId: lenient(z.string()),
   customType: lenient(z.string()),
   content: lenient(z.union([z.string(), z.array(z.unknown())])),
-  display: lenient(z.boolean())
+  display: lenient(z.boolean()),
+  // Compaction entries only: the complete prompt and tool state at the boundary.
+  systemMessage: lenient(PiMessage)
 });
 
 export interface PiEntryValue {
@@ -125,6 +156,8 @@ export interface PiEntryValue {
   customType?: string;
   content?: string | readonly unknown[];
   display?: boolean;
+  /** A compaction entry's checkpoint: the replayed system message (`content`, `sections`, `toolsAdded`) at that point. */
+  systemMessage?: PiMessageValue;
 }
 
 const PiHeader = z.looseObject({

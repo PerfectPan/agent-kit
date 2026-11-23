@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { type SessionPlatform } from "@rivus/agent-kit-sessions/public";
-import { foldTranscript, sessionPrompts, sessionRequestUsage } from "@rivus/agent-kit-sessions/spi";
+import { foldTranscript, sessionPrompts, sessionRequestUsage, type Transcript } from "@rivus/agent-kit-sessions/spi";
 import {
   createMemoryPlatform,
   oversizedSession,
@@ -34,7 +34,12 @@ function describeConformance(name: string, setup: () => Promise<{ platform: Sess
         {
           path: `${root}/projects/-u-me-work/s-1.jsonl`,
           records: 6,
-          capabilities: ["requests", "usage", "reasoning", "compaction", "subagents"]
+          capabilities: ["requests", "usage", "reasoning", "compaction", "compactionTokens", "subagents"]
+        },
+        {
+          path: `${root}/projects/-u-me-work/s-hooks.jsonl`,
+          records: 9,
+          capabilities: ["requests", "usage", "hooks"]
         }
       ],
       oversized: {
@@ -82,6 +87,10 @@ const usageFixtures = {
     {
       path: "/qoder/projects/-u-me-work/s-1.jsonl",
       records: 2
+    },
+    {
+      path: "/qoder/projects/-u-me-work/s-hooks.jsonl",
+      records: 2
     }
   ]
 };
@@ -91,6 +100,159 @@ describe("qoder usage conformance", () => {
       await expect(run()).resolves.toBeUndefined();
     });
   }
+});
+
+describe("qoder hook attachments and compaction metadata", () => {
+  /** The lines whose events a compaction shadowed, in file order. */
+  const shadowedLines = (transcript: Transcript): number[] => [
+    ...new Set(transcript.events.filter((event) => event.shadowedBy !== undefined).map((event) => event.source.line))
+  ];
+  /** One JSONL record of an in-memory session. */
+  const record = (
+    sessionId: string,
+    type: string,
+    uuid: string,
+    parentUuid: string | null,
+    extra: Record<string, unknown>
+  ): string => JSON.stringify({ type, uuid, parentUuid, sessionId, timestamp: "2026-11-18T12:00:00.000Z", ...extra });
+  const load = async (lines: readonly string[], sessionId: string): Promise<Transcript | undefined> => {
+    const path = `/qoder/projects/-u-me-work/${sessionId}.jsonl`;
+    const result = await qoderSessionAdapter.load(createMemoryPlatform({ files: { [path]: lines.join("\n") } }), {
+      agent: "qoder",
+      path
+    });
+    expect(result.ok).toBe(true);
+    return result.ok ? result.value : undefined;
+  };
+
+  it("turns hook_* attachments into hook events and skips the other attachments", async () => {
+    const result = await qoderSessionAdapter.load(usagePlatform, {
+      agent: "qoder",
+      path: "/qoder/projects/-u-me-work/s-hooks.jsonl"
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    // An empty hook name (SessionStart) is left out, and `hook_output` names its event `hookEventName`.
+    const hooks = result.value.events.filter((event) => event.kind === "hook");
+    expect(hooks.map((event) => [event.source.line, event.payload])).toEqual([
+      [1, { type: "hook_success", event: "SessionStart" }],
+      [3, { type: "hook_output", event: "UserPromptSubmit" }],
+      [
+        6,
+        {
+          type: "hook_non_blocking_error",
+          name: "PostToolUse:lint",
+          event: "PostToolUse",
+          exitCode: 127,
+          durationMs: 12
+        }
+      ],
+      [7, { type: "hook_system_message", name: "PostToolUse:notify", event: "PostToolUse" }]
+    ]);
+    // The output a hook gave the model stays on the event's original record.
+    expect(hooks[1]?.original).toMatchObject({ attachment: { output: "Run pnpm build before replying." } });
+    expect(result.value.skipped.map((skip) => [skip.reason, skip.source.line])).toEqual([
+      ["attachment:queued_command", 9]
+    ]);
+  });
+
+  it("carries a compaction's recorded trigger and token counts, and shadows the context it replaced", async () => {
+    const result = await qoderSessionAdapter.load(usagePlatform, {
+      agent: "qoder",
+      path: "/qoder/projects/-u-me-work/s-1.jsonl"
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const compaction = result.value.events.find((event) => event.kind === "compaction");
+    expect(compaction?.payload).toEqual({ trigger: "auto", preTokens: 152000, postTokens: 31000 });
+    // The boundary kept no messages: everything before it is replaced, the later sidechain prompt is not.
+    expect(shadowedLines(result.value)).toEqual([1, 2, 3, 4]);
+    expect(
+      result.value.events
+        .filter((event) => event.shadowedBy !== undefined)
+        .every((event) => event.shadowedBy === compaction?.id)
+    ).toBe(true);
+    expect(result.value.events.filter((event) => event.source.line === 6).map((event) => event.shadowedBy)).toEqual([
+      undefined
+    ]);
+  });
+
+  it("keeps a compaction's preserved segment in the context and shadows what surrounds it", async () => {
+    const transcript = await load(
+      [
+        record("s-preserved", "user", "p1", null, { message: { role: "user", content: "first" } }),
+        record("s-preserved", "assistant", "p2", "p1", {
+          requestId: "req_p1",
+          message: { id: "m1", model: "claude-test", content: "first answer" }
+        }),
+        record("s-preserved", "user", "p3", "p2", { message: { role: "user", content: "second" } }),
+        record("s-preserved", "assistant", "p4", "p3", {
+          requestId: "req_p2",
+          message: { id: "m2", model: "claude-test", content: "second answer" }
+        }),
+        record("s-preserved", "system", "c1", "p4", {
+          subtype: "compact_boundary",
+          content: "Conversation compacted",
+          compactMetadata: {
+            trigger: "auto",
+            preTokens: 90000,
+            postTokens: 12000,
+            preservedSegment: { headUuid: "p3", anchorUuid: "p4", tailUuid: "p4", messageUuids: ["p3", "p4"] }
+          }
+        }),
+        record("s-preserved", "user", "p5", "p4", { message: { role: "user", content: "third" } })
+      ],
+      "s-preserved"
+    );
+    const compaction = transcript?.events.find((event) => event.kind === "compaction");
+    expect(compaction?.payload).toEqual({ trigger: "auto", preTokens: 90000, postTokens: 12000 });
+    // Only the first turn is replaced; the kept segment and the prompt after the boundary stay in the context.
+    expect(transcript && shadowedLines(transcript)).toEqual([1, 2]);
+    expect(
+      transcript?.events
+        .filter((event) => [3, 4, 6].includes(event.source.line))
+        .every((event) => event.shadowedBy === undefined)
+    ).toBe(true);
+  });
+
+  it("leaves out a trigger outside the kit's two and maps the remaining hook outcomes", async () => {
+    const transcript = await load(
+      [
+        record("s-edge", "attachment", "e1", null, {
+          attachment: {
+            type: "hook_blocking_error",
+            hookName: "PreToolUse:guard",
+            toolUseID: "toolu_e1",
+            hookEvent: "PreToolUse",
+            blockingError: { blockingError: "Denied by policy", command: "echo deny" }
+          }
+        }),
+        record("s-edge", "attachment", "e2", "e1", {
+          attachment: {
+            type: "hook_permission_decision",
+            decision: "deny",
+            toolUseID: "toolu_e1",
+            hookEvent: "PermissionRequest"
+          }
+        }),
+        record("s-edge", "system", "e3", "e2", {
+          subtype: "compact_boundary",
+          content: "Conversation compacted",
+          compactMetadata: { trigger: "reactive", preTokens: 130000 }
+        })
+      ],
+      "s-edge"
+    );
+    expect(transcript?.events.map((event) => [event.kind, event.payload])).toEqual([
+      ["hook", { type: "hook_blocking_error", name: "PreToolUse:guard", event: "PreToolUse" }],
+      ["hook", { type: "hook_permission_decision", event: "PermissionRequest" }],
+      ["compaction", { preTokens: 130000 }]
+    ]);
+  });
 });
 
 describe("qoder layout and usage edge cases", () => {
