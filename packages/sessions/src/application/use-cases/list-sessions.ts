@@ -4,6 +4,7 @@ import type { Platform } from "@rivus/agent-kit-platform/public";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/value-objects/session-head.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
+import { sessionPath } from "../services/files/session-path.js";
 import type { SessionAdapter, SessionPlatform } from "../spi.js";
 import type { SessionProviders } from "../providers.js";
 
@@ -19,7 +20,8 @@ export interface ListSessionsOptions {
 /**
  * The home whose `roots` an adapter lists: the adapter's own home rule, else the catalog's rule for a built-in agent.
  * Throws `capability-unsupported` when there is neither. For a caller that walks an adapter's roots itself, for
- * example to report progress per root, instead of through `listSessions`.
+ * example to report progress per root, instead of through `listSessions`. The home keeps the spelling the context
+ * gives it, as it must for a usage service, whose ids depend on it.
  */
 export function sessionAdapterHome(
   adapter: Pick<SessionAdapter, "agent" | "home">,
@@ -32,7 +34,9 @@ export function sessionAdapterHome(
 /**
  * Lists the sessions of each agent from its homes' roots, one head per session file, reading at most 64 KB from
  * each end of a file. A missing root or an unreadable file is a failure item and listing goes on. Throws
- * `capability-unsupported` when a requested agent has no adapter; leaving the loop stops the reads.
+ * `capability-unsupported` when a requested agent has no adapter; leaving the loop stops the reads. On a platform
+ * whose `os` is `win32`, each home's `\` separators become `/` (`sessionPath`) before its roots are listed, so the
+ * listed refs use `/` throughout, as the refs `loadTranscript` reads.
  */
 export async function* listSessions(
   platform: SessionPlatform & Pick<Platform, "env" | "home">,
@@ -51,7 +55,8 @@ export async function* listSessions(
     options.onTotal?.(total);
   };
   for (const adapter of adapters) {
-    for (const root of adapter.roots(sessionAdapterHome(adapter, platform, options.providers.identity))) {
+    const home = sessionAdapterHome(adapter, platform, options.providers.identity);
+    for (const root of adapter.roots({ ...home, path: sessionPath(home.path, platform.os) })) {
       options.signal?.throwIfAborted();
       yield* adapter.discover(platform, root, definedFields({ signal: options.signal, onTotal }));
     }

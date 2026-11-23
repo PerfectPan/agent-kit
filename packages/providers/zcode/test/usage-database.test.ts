@@ -2,7 +2,8 @@ import { usageDecoderConformance } from "@rivus/agent-kit-testing/public";
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 import {
   decodeUsage,
   type DecodeUsageOptions,
@@ -30,7 +31,7 @@ interface MessageRow {
 }
 
 const rows = JSON.parse(await readFile(new URL("fixtures/messages.json", import.meta.url), "utf8")) as MessageRow[];
-const work = await mkdtemp(join(tmpdir(), "agent-kit-zcode-"));
+const work = await mkdtemp(posix.join(tmpdir(), "agent-kit-zcode-"));
 afterAll(() => rm(work, { recursive: true, force: true }));
 const node = createNodePlatform({ home: work, env: {} });
 const sqlite = node.sqlite!;
@@ -38,9 +39,9 @@ let databases = 0;
 
 /** A database as ZCode creates it, under a storage dir of its own, holding `seed`. */
 async function database(seed: readonly MessageRow[] = rows): Promise<{ storage: string; path: string }> {
-  const storage = join(work, `storage-${databases++}`);
-  await mkdir(join(storage, "cli", "db"), { recursive: true });
-  const path = join(storage, "cli", "db", "db.sqlite");
+  const storage = posix.join(work, `storage-${databases++}`);
+  await mkdir(posix.join(storage, "cli", "db"), { recursive: true });
+  const path = posix.join(storage, "cli", "db", "db.sqlite");
   const db = sqlite.open(path);
   // The real table's `session_id` references `session(id)` on delete cascade; the fixture schema leaves the FK out,
   // which nothing the decoder reads depends on, so no `session` rows are needed.

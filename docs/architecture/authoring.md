@@ -181,6 +181,10 @@ dependencies or expand catalog beyond its shared identity model.
 Sessions' path helpers deliberately preserve spelling. Homes, session refs and POSIX filenames may contain
 backslashes, repeated separators or dot segments, and usage ids depend on those exact strings. `pathe` normalizes
 these inputs, so it cannot replace these helpers for their accepted input domain. Providers access these helpers through the sessions SPI.
+On Windows, where `\` is a separator, the session use cases turn it into `/` once at their entry (`sessionPath`): a
+`SessionTarget` path in `loadTranscript` and `summarizeSession`, and each home `listSessions` lists roots under.
+`sessionAdapterHome` also resolves usage homes, so it and the usage use cases keep the spelling, and usage ids with
+it.
 `deepFreeze` freezes its argument; value factories copy retained data first, while `Ledger.restore` freezes the supplied snapshot in place.
 
 ## Aggregate Or Value Object

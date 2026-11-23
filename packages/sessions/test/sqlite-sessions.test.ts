@@ -54,6 +54,9 @@ function setup(legacy = false, options: Partial<SqliteSessionLayout> = {}) {
   return { ...fixture, adapter, ref, parity };
 }
 
+/** These cases write and read thousands of rows; a Windows runner's SQLite takes longer than the default 5 seconds. */
+const SLOW_RUNNER_MS = 30_000;
+
 describe("SQLite session capabilities", () => {
   it.each([
     [{ created: 10, completed: 25 }, 15],
@@ -310,20 +313,30 @@ describe("SQLite session capabilities", () => {
     }
   });
 
-  it("merges a child transcript larger than JavaScript's argument limit", async () => {
-    const f = setup();
-    f.session("root");
-    f.session("child", "root");
-    const message = f.message("child", { role: "assistant", time: { created: 1, completed: 2 } });
-    f.db
-      .prepare(`WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n + 1 FROM numbers WHERE n < 131072)
+  it(
+    "merges a child transcript larger than JavaScript's argument limit",
+    async () => {
+      const f = setup();
+      f.session("root");
+      f.session("child", "root");
+      const message = f.message("child", { role: "assistant", time: { created: 1, completed: 2 } });
+      f.db
+        .prepare(`WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n + 1 FROM numbers WHERE n < 131072)
       INSERT INTO part (id, session_id, message_id, time_created, data)
       SELECT 'large-' || n, 'child', ?, n, '{"type":"text","text":"chunk"}' FROM numbers`)
-      .run(message);
-    const transcript = await f.parity();
-    expect(transcript.events).toHaveLength(131073);
-    expect(foldTranscript(transcript)).toEqual({ turns: 0, requests: 1, durationMs: 1, subagents: 1, failedTools: 0 });
-  });
+        .run(message);
+      const transcript = await f.parity();
+      expect(transcript.events).toHaveLength(131073);
+      expect(foldTranscript(transcript)).toEqual({
+        turns: 0,
+        requests: 1,
+        durationMs: 1,
+        subagents: 1,
+        failedTools: 0
+      });
+    },
+    SLOW_RUNNER_MS
+  );
 
   it.each(["started", "retrying", "failed", "interrupted", "skipped", "future-status"])(
     "counts only a completed boundary beside a %s timeline attempt",
@@ -478,22 +491,26 @@ describe("SQLite session capabilities", () => {
     }
   );
 
-  it.each([0, 2])("copies only the first %i main-lane prompts, capped at collection", async (limit) => {
-    const f = setup();
-    f.session("root");
-    f.session("empty", "root");
-    for (let index = 0; index < 50; index++) {
-      const message = f.message("root", { role: "user", time: { created: 100 - index } });
-      f.part("root", message, { type: "text", text: ` ${index}: ${"x".repeat(1000)} ` });
-    }
-    const copy = vi.spyOn(turns, "capPromptText");
-    const prompts = { limit, maxChars: 4 };
-    const summary = await f.adapter.summarize!(f.platform, f.ref, { prompts });
-    expect(copy).toHaveBeenCalledTimes(limit);
-    expect(summary.ok && summary.value.prompts).toEqual(limit === 0 ? [] : [{ text: "0: x" }, { text: "1: x" }]);
-    copy.mockRestore();
-    await f.parity(prompts);
-  });
+  it.each([0, 2])(
+    "copies only the first %i main-lane prompts, capped at collection",
+    async (limit) => {
+      const f = setup();
+      f.session("root");
+      f.session("empty", "root");
+      for (let index = 0; index < 50; index++) {
+        const message = f.message("root", { role: "user", time: { created: 100 - index } });
+        f.part("root", message, { type: "text", text: ` ${index}: ${"x".repeat(1000)} ` });
+      }
+      const copy = vi.spyOn(turns, "capPromptText");
+      const prompts = { limit, maxChars: 4 };
+      const summary = await f.adapter.summarize!(f.platform, f.ref, { prompts });
+      expect(copy).toHaveBeenCalledTimes(limit);
+      expect(summary.ok && summary.value.prompts).toEqual(limit === 0 ? [] : [{ text: "0: x" }, { text: "1: x" }]);
+      copy.mockRestore();
+      await f.parity(prompts);
+    },
+    SLOW_RUNNER_MS
+  );
 
   it("uses provider task classification for discovery and each standalone branch's own child tree", async () => {
     const f = setup(false, { isSubagent: ({ taskType }) => taskType !== "branch" });

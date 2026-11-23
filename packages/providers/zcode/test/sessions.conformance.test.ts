@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { afterAll, describe, expect, it } from "vite-plus/test";
@@ -11,14 +12,14 @@ import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/age
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { zcodeSessionAdapter } from "../src/sessions.js";
 
-const tempRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-"));
+const tempRoot = await mkdtemp(posix.join(tmpdir(), "agent-kit-zcode-"));
 afterAll(() => rm(tempRoot, { recursive: true, force: true }));
 
 // The real layout: the database lives at `<home>/cli/db/db.sqlite`.
-const dbPath = join(tempRoot, "cli", "db", "db.sqlite");
+const dbPath = posix.join(tempRoot, "cli", "db", "db.sqlite");
 
 function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: number } {
-  mkdirSync(join(tempRoot, "cli", "db"), { recursive: true });
+  mkdirSync(posix.join(tempRoot, "cli", "db"), { recursive: true });
   const db = new DatabaseSync(dbPath);
   // The columns the adapter selects, with the real schema's shape: soft deletion through `time_deleted` and the
   // app's per-session `sequence` order.
@@ -346,7 +347,7 @@ describe("zcode adapter", () => {
   it.each([false, true])(
     "deduplicates real timeline/boundary shapes and merges live child lanes (boundary first: %s)",
     async (boundaryFirst) => {
-      const treePath = join(tempRoot, `tree-${boundaryFirst}.sqlite`);
+      const treePath = posix.join(tempRoot, `tree-${boundaryFirst}.sqlite`);
       await copyFile(dbPath, treePath);
       const db = new DatabaseSync(treePath);
       const session = db.prepare(
@@ -616,10 +617,10 @@ describe("zcode adapter", () => {
   });
 
   it("reads databases whose session table has no time_deleted column (e.g. ZCode 0.16.5)", async () => {
-    const legacyRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-legacy-"));
+    const legacyRoot = await mkdtemp(posix.join(tmpdir(), "agent-kit-zcode-legacy-"));
     try {
-      mkdirSync(join(legacyRoot, "cli", "db"), { recursive: true });
-      const legacyDbPath = join(legacyRoot, "cli", "db", "db.sqlite");
+      mkdirSync(posix.join(legacyRoot, "cli", "db"), { recursive: true });
+      const legacyDbPath = posix.join(legacyRoot, "cli", "db", "db.sqlite");
       const db = new DatabaseSync(legacyDbPath);
       db.exec(`
         create table session (
@@ -749,10 +750,10 @@ describe("zcode adapter", () => {
   });
 
   it("strips inherited forkOrigin messages from selection_side_chat child lanes while keeping new requests", async () => {
-    const sideRoot = await mkdtemp(join(tmpdir(), "agent-kit-zcode-side-chat-"));
+    const sideRoot = await mkdtemp(posix.join(tmpdir(), "agent-kit-zcode-side-chat-"));
     try {
-      const sideDbPath = join(sideRoot, "cli", "db", "db.sqlite");
-      mkdirSync(join(sideRoot, "cli", "db"), { recursive: true });
+      const sideDbPath = posix.join(sideRoot, "cli", "db", "db.sqlite");
+      mkdirSync(posix.join(sideRoot, "cli", "db"), { recursive: true });
       const db = new DatabaseSync(sideDbPath);
       db.exec(`
         CREATE TABLE session (

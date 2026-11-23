@@ -38,6 +38,8 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 
 `loadTranscript` reads every file of one session and returns its ordered `events`, its subagent lanes (`agents`) and the records it skipped. It returns the complete session. There is no live file-following API, and a compaction marks the events it replaced with `shadowedBy` only after the whole session is read.
 
+On Windows (a platform whose `os` is `win32`), the session refs `listSessions` lists use `/`, and a target path typed with `\` reads as the same session. The home `sessionAdapterHome` returns and the paths of usage records keep the spelling they always had.
+
 ## Summaries and prompts
 
 `summarizeSession` reads the Agent's bounded summarize pass where it has one and folds the loaded transcript otherwise, with the same numbers either way. The pass's memory grows with the session's requests, lanes and tool calls, not with the file's bytes.

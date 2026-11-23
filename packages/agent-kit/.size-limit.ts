@@ -14,7 +14,7 @@ const nodeOnly = {
 // `pnpm size:update` sets every limit to the measured size plus headroom (scripts/lib/size-budgets.ts); do not edit them
 // by hand.
 export default [
-  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "68713 B" },
+  { name: "@rivus/agent-kit/providers", path: "dist/providers.js", import: "*", limit: "69583 B" },
   // About 33 kB of it is the ACP SDK, a dependency the measurement includes. The entry and the SDK both parse with
   // zod, which the measurement counts as well, so zod's own growth lands here.
   { name: "@rivus/agent-kit/acp", path: "dist/acp.js", import: "*", limit: "46354 B" },
@@ -51,9 +51,9 @@ export default [
   // The claude-code summarize pass, the streaming time merge and the prompts rule grow /sessions and /transcript,
   // and the prompts conformance check grows /testing; the Codex and Grok passes and their shared record dispatches
   // grow all three.
-  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "47864 B" },
-  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "25164 B", ...nodeOnly },
+  { name: "@rivus/agent-kit/sessions", path: "dist/sessions.js", import: "*", limit: "48823 B" },
+  { name: "@rivus/agent-kit/testing", path: "dist/testing.js", import: "*", limit: "25233 B", ...nodeOnly },
   { name: "@rivus/agent-kit/testing/effect", path: "dist/testing/effect.js", import: "*", limit: "2479 B" },
-  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "47652 B" },
-  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "25208 B" }
+  { name: "@rivus/agent-kit/transcript", path: "dist/transcript.js", import: "*", limit: "48588 B" },
+  { name: "@rivus/agent-kit/transcript/usage", path: "dist/transcript/usage.js", import: "*", limit: "25363 B" }
 ] satisfies SizeLimitConfig;

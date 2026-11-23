@@ -6,7 +6,7 @@ import type {
   HomeRule,
   Result
 } from "@rivus/agent-kit-catalog/public";
-import type { Decompress, PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform/public";
+import type { Decompress, OperatingSystem, PlatformFs, PlatformSqlite } from "@rivus/agent-kit-platform/public";
 import type { ReadFailed, SessionNotFound } from "../domain/session/errors/session-read-error.js";
 import type {
   SessionHead,
@@ -34,6 +34,8 @@ export interface SessionPlatform {
   readonly sqlite?: PlatformSqlite;
   /** Present when the host can decode a compressed session file. */
   readonly decompress?: Decompress;
+  /** The host's operating system. On `win32`, a session target's `\` separators read as `/` (`sessionPath`). */
+  readonly os?: OperatingSystem;
 }
 
 export interface DiscoverOptions {

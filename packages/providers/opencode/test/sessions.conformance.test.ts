@@ -1,6 +1,7 @@
 import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { afterAll, describe, expect, it } from "vite-plus/test";
@@ -10,10 +11,10 @@ import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/age
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { opencodeSessionAdapter } from "../src/sessions.js";
 
-const tempRoot = await mkdtemp(join(tmpdir(), "agent-kit-opencode-"));
+const tempRoot = await mkdtemp(posix.join(tmpdir(), "agent-kit-opencode-"));
 afterAll(() => rm(tempRoot, { recursive: true, force: true }));
 
-const dbPath = join(tempRoot, "opencode.db");
+const dbPath = posix.join(tempRoot, "opencode.db");
 
 function createDatabase(): { sessions: ConformanceSession[]; ghostPartRowid: number } {
   const db = new DatabaseSync(dbPath);
@@ -199,7 +200,7 @@ describe("opencode adapter", () => {
   const platform = createNodePlatform({ home: tempRoot });
 
   it("reads automatic/manual compactions and nested sessions using upstream parent_id and completion times", async () => {
-    const treePath = join(tempRoot, "tree.db");
+    const treePath = posix.join(tempRoot, "tree.db");
     await copyFile(dbPath, treePath);
     const db = new DatabaseSync(treePath);
     const session = db.prepare(

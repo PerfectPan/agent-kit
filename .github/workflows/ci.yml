@@ -35,3 +35,27 @@ jobs:
         with:
           check: release-plan
       - run: pnpm run check
+
+  # Session reading on Windows, where `\` is a path separator: the sessions context, every provider, the conformance
+  # suites and the shell's path and detection cases. The aggregate gate stays on Linux; the other packages' Windows
+  # failures (process locks, hook installation, the architecture tooling) are tracked on their own.
+  # --no-bail and --no-sort report every package, including the dependents of one that failed.
+  windows:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@v3
+        with:
+          runtime: node
+          require-lockfile: true
+          cache: true
+      # The shell's tests import its built entries, as in the aggregate gate, which builds before it tests.
+      - run: pnpm --filter @rivus/agent-kit... run build
+      - run: >-
+          pnpm -r --no-bail --no-sort
+          --filter @rivus/agent-kit-sessions --filter @rivus/agent-kit-catalog --filter @rivus/agent-kit-testing
+          --filter './packages/providers/*' test
+      - run: pnpm --filter @rivus/agent-kit exec vp test run test/windows-paths.test.ts test/session-detection.test.ts
