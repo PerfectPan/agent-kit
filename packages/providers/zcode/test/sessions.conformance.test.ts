@@ -8,7 +8,12 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
-import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
+import {
+  foldTranscript,
+  sessionPrompts,
+  sessionRequestUsage,
+  type SessionPlatform
+} from "@rivus/agent-kit-sessions/public";
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { zcodeSessionAdapter } from "../src/sessions.js";
 
@@ -339,7 +344,7 @@ describe("zcode adapter", () => {
       });
       expect(await zcodeSessionAdapter.summarize!(platform, ref)).toEqual({
         ok: true,
-        value: foldTranscript(loaded.value)
+        value: { ...foldTranscript(loaded.value), requestUsage: sessionRequestUsage(loaded.value) }
       });
     }
   });
@@ -454,7 +459,11 @@ describe("zcode adapter", () => {
       const prompts = { limit: 10, maxChars: 100 };
       expect(await zcodeSessionAdapter.summarize!(platform, ref, { prompts })).toEqual({
         ok: true,
-        value: { ...foldTranscript(transcript), prompts: sessionPrompts(transcript, prompts) }
+        value: {
+          ...foldTranscript(transcript),
+          requestUsage: sessionRequestUsage(transcript),
+          prompts: sessionPrompts(transcript, prompts)
+        }
       });
       expect(foldTranscript(transcript)).toEqual({
         turns: 1,
@@ -542,7 +551,10 @@ describe("zcode adapter", () => {
     const summary = await zcodeSessionAdapter.summarize!(platform, ref);
     expect(summary.ok).toBe(true);
     if (summary.ok) {
-      expect(summary.value).toStrictEqual(foldTranscript(transcript));
+      expect(summary.value).toStrictEqual({
+        ...foldTranscript(transcript),
+        requestUsage: sessionRequestUsage(transcript)
+      });
     }
   });
 
@@ -613,7 +625,10 @@ describe("zcode adapter", () => {
     if (!summary.ok) {
       return;
     }
-    expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+    expect(summary.value).toStrictEqual({
+      ...foldTranscript(loaded.value),
+      requestUsage: sessionRequestUsage(loaded.value)
+    });
   });
 
   it("reads databases whose session table has no time_deleted column (e.g. ZCode 0.16.5)", async () => {
@@ -699,7 +714,10 @@ describe("zcode adapter", () => {
       const summary = await zcodeSessionAdapter.summarize!(platform, ref);
       expect(summary.ok).toBe(true);
       if (loaded.ok && summary.ok) {
-        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+        expect(summary.value).toStrictEqual({
+          ...foldTranscript(loaded.value),
+          requestUsage: sessionRequestUsage(loaded.value)
+        });
       }
     } finally {
       await rm(legacyRoot, { recursive: true, force: true });
@@ -857,7 +875,10 @@ describe("zcode adapter", () => {
         expect(summary.value.inputTokens).toBe(45);
         expect(summary.value.durationMs).toBe(700);
         expect(summary.value.subagents).toBe(1);
-        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+        expect(summary.value).toStrictEqual({
+          ...foldTranscript(loaded.value),
+          requestUsage: sessionRequestUsage(loaded.value)
+        });
       }
     } finally {
       await rm(sideRoot, { recursive: true, force: true });

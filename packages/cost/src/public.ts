@@ -7,7 +7,11 @@ export {
 } from "./domain/pricing/value-objects/calendar-window.js";
 export { type Cost } from "./domain/pricing/value-objects/cost.js";
 export { costOf, priceRecord } from "./domain/pricing/services/price-usage.js";
-export { type PricedPart, type PricedRecord } from "./domain/pricing/value-objects/priced-record.js";
+export {
+  type PriceableRecord,
+  type PricedPart,
+  type PricedRecord
+} from "./domain/pricing/value-objects/priced-record.js";
 export {
   createPricing,
   type PriceOverrides,

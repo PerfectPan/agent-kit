@@ -95,6 +95,7 @@ export { type SessionPreview } from "./domain/session/value-objects/session-prev
 export { type SessionRef } from "./domain/session/value-objects/session-ref.js";
 export {
   type SessionPromptsOptions,
+  type SessionRequestUsage,
   type SessionSummaryWithPrompts
 } from "./domain/session/value-objects/session-summary.js";
 export {
@@ -144,7 +145,13 @@ export {
 } from "./domain/transcript/services/prompt-snapshot.js";
 export { OUTPUT_KINDS, placeRequest } from "./domain/transcript/services/request-placement.js";
 export { markOrphanToolResults } from "./domain/transcript/services/tool-result-pairing.js";
-export { MAIN_LANE_ID, isPrompt, requestUsage, sessionPrompts } from "./domain/transcript/services/turns.js";
+export {
+  MAIN_LANE_ID,
+  isPrompt,
+  requestUsage,
+  sessionPrompts,
+  sessionRequestUsage
+} from "./domain/transcript/services/turns.js";
 export {
   addRequest,
   addRequestDuration,

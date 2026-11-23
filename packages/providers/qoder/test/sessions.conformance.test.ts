@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { type SessionPlatform } from "@rivus/agent-kit-sessions/public";
-import { foldTranscript, sessionPrompts } from "@rivus/agent-kit-sessions/spi";
+import { foldTranscript, sessionPrompts, sessionRequestUsage } from "@rivus/agent-kit-sessions/spi";
 import {
   createMemoryPlatform,
   oversizedSession,
@@ -217,7 +217,7 @@ describe("qoder layout and usage edge cases", () => {
     // summarize matches foldTranscript + sessionPrompts on multi-block prompt and sidechain lane.
     const folded = foldTranscript(loaded.value);
     const { prompts: summaryPrompts, ...summaryRest } = summarized.value;
-    expect(summaryRest).toEqual(folded);
+    expect(summaryRest).toEqual({ ...folded, requestUsage: sessionRequestUsage(loaded.value) });
     expect(summaryPrompts).toEqual(sessionPrompts(loaded.value, { limit: 10, maxChars: 200 }));
     expect(summaryPrompts).toEqual([{ text: "First\n\nSecond" }]);
 

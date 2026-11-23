@@ -674,6 +674,7 @@ interface SummaryRequest {
   kind: "request";
   priorTs: number;
   ts: number;
+  model: string | undefined;
   usage: Usage | undefined;
   durationMs: number | undefined;
 }
@@ -747,7 +748,7 @@ function summarize(
         if (durationMs !== undefined) {
           seen.add("durations");
         }
-        steps.push({ kind: "request", priorTs, ts, usage: message.usage, durationMs });
+        steps.push({ kind: "request", priorTs, ts, model: message.model, usage: message.usage, durationMs });
         priorTs = -Infinity;
       }
       for (const row of partsOf.all(session.id, key.id)) {
@@ -818,7 +819,13 @@ function summarize(
     seen.add("subagents");
   }
   for (const request of mergeLanes(lanes)) {
-    addRequest(totals, requestUsage({ payload: definedFields({ usage: request.usage }) }));
+    // The billed fields of the request event the load gives the message.
+    addRequest(
+      totals,
+      requestUsage({
+        payload: definedFields({ granularity: "request" as const, model: request.model, usage: request.usage })
+      })
+    );
     addRequestDuration(totals, request.durationMs);
   }
   const capabilities = adapterCapabilities(layout).filter((capability) => seen.has(capability));

@@ -1,8 +1,8 @@
 import { definedFields } from "@rivus/agent-kit-catalog/public";
-import type { CostSource, ModelUsage, Usage, UsageRecord } from "@rivus/agent-kit-sessions/public";
+import type { CostSource, ModelUsage, Usage } from "@rivus/agent-kit-sessions/public";
 
 import type { Cost } from "../value-objects/cost.js";
-import type { PricedRecord } from "../value-objects/priced-record.js";
+import type { PriceableRecord, PricedRecord } from "../value-objects/priced-record.js";
 import type { Price } from "../value-objects/price.js";
 import type { Pricing } from "../value-objects/pricing-table.js";
 
@@ -93,7 +93,7 @@ function costOfPart(
  * so it bills at the base rates and never at an average — the same limit ccusage's aggregation states for its
  * summed totals. An aggregate counts as one request only when its own, or a part's, `modelCalls` is 1.
  */
-export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord {
+export function priceRecord(record: PriceableRecord, pricing: Pricing): PricedRecord {
   const split = Object.entries(record.usageByModel ?? {});
   const whole =
     split.length === 0 ||
@@ -123,7 +123,7 @@ export function priceRecord(record: UsageRecord, pricing: Pricing): PricedRecord
  * The cost of the whole record: the sum of its parts' costs from `priceRecord`, from a price table when any part's
  * is. It has no cost, `undefined` and never 0, when one of its parts has none.
  */
-export function costOf(record: UsageRecord, pricing: Pricing): Cost | undefined {
+export function costOf(record: PriceableRecord, pricing: Pricing): Cost | undefined {
   let costUsd = 0;
   let costSource: CostSource = "agent";
   for (const { cost } of priceRecord(record, pricing).parts) {

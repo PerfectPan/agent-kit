@@ -1,3 +1,5 @@
+import type { RequestPayload } from "../../transcript/value-objects/transcript-event.js";
+
 /**
  * Numbers about one Session. A number whose capability the transcript does not list is absent; `failedTools` and
  * `turns` are always counted.
@@ -34,5 +36,21 @@ export interface SessionPromptsOptions {
   readonly maxChars: number;
 }
 
-/** A SessionSummary that also carries the user prompts a caller asked for with the `prompts` option. */
-export type SessionSummaryWithPrompts = SessionSummary & { prompts?: SessionPrompt[] };
+/**
+ * What a price table bills for one request: the fields of its `RequestPayload` that `priceRecord` reads, with the
+ * payload's meanings. A field the request does not record is absent.
+ */
+export type SessionRequestUsage = Pick<
+  RequestPayload,
+  "model" | "usage" | "granularity" | "modelCalls" | "usageByModel" | "pricingMultiplier"
+>;
+
+/**
+ * A SessionSummary that also carries what a caller asked for: the user prompts with the `prompts` option, and with
+ * `requestUsage` each request's billed fields in transcript order, so a host prices the session request by request,
+ * as it prices the loaded transcript.
+ */
+export type SessionSummaryWithPrompts = SessionSummary & {
+  prompts?: SessionPrompt[];
+  requestUsage?: SessionRequestUsage[];
+};

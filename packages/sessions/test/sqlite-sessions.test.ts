@@ -6,7 +6,7 @@ import {
 } from "../src/application/services/session-adapters/sqlite.js";
 import { sqliteSessionMessageOf } from "../src/application/services/usage-decoders/sqlite.js";
 import { foldTranscript } from "../src/domain/transcript/services/fold-transcript.js";
-import { sessionPrompts } from "../src/domain/transcript/services/turns.js";
+import { sessionPrompts, sessionRequestUsage } from "../src/domain/transcript/services/turns.js";
 import * as turns from "../src/domain/transcript/services/turns.js";
 import { sqliteFixture } from "./fixtures/sqlite.js";
 
@@ -42,11 +42,12 @@ function setup(legacy = false, options: Partial<SqliteSessionLayout> = {}) {
     }
     fixture.controls.materializedMessages = false;
     const summary = await adapter.summarize!(fixture.platform, ref);
-    expect(summary).toStrictEqual({ ok: true, value: foldTranscript(loaded.value) });
+    const folded = { ...foldTranscript(loaded.value), requestUsage: sessionRequestUsage(loaded.value) };
+    expect(summary).toStrictEqual({ ok: true, value: folded });
     const preview = await adapter.summarize!(fixture.platform, ref, { prompts });
     expect(preview).toStrictEqual({
       ok: true,
-      value: { ...foldTranscript(loaded.value), prompts: sessionPrompts(loaded.value, prompts) }
+      value: { ...folded, prompts: sessionPrompts(loaded.value, prompts) }
     });
     expect(fixture.controls.materializedMessages).toBe(false);
     return loaded.value;
@@ -541,7 +542,10 @@ describe("SQLite session capabilities", () => {
     expect(branch.ok).toBe(true);
     if (branch.ok) {
       expect(branch.value.agents.map((lane) => lane.id)).toEqual(["main", "branch-child"]);
-      expect(await f.adapter.summarize!(f.platform, ref)).toEqual({ ok: true, value: foldTranscript(branch.value) });
+      expect(await f.adapter.summarize!(f.platform, ref)).toEqual({
+        ok: true,
+        value: { ...foldTranscript(branch.value), requestUsage: sessionRequestUsage(branch.value) }
+      });
     }
   });
 });

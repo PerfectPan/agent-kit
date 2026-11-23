@@ -17,7 +17,7 @@ import {
   codexRecord,
   knownCodexRecord
 } from "../records/record.js";
-import { codexRecordUsage, type CodexUsageTracker } from "../records/usage.js";
+import { codexPricingMultiplier, codexRecordUsage, type CodexUsageTracker } from "../records/usage.js";
 import { emitResponseItem } from "./response-items.js";
 
 /** Item types that older rollouts write bare, without the `response_item` envelope. */
@@ -130,6 +130,8 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
   const agentByPath = new Map<string, string>();
   const tracker: CodexUsageTracker = { usageRecords: false };
   let model: string | undefined;
+  /** The service tier the latest `thread_settings_applied` set, which prices the requests after it. */
+  let serviceTier: string | undefined;
   let segment = 0;
   let turnStart = 0;
   let eventCount = 0;
@@ -230,11 +232,13 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
 
       const request = (usage: Usage | undefined, responseId?: string, finishReason?: string): void => {
         const key = responseId ?? lineKey(record);
+        const pricingMultiplier = codexPricingMultiplier(serviceTier);
         const body = {
           ...(model ? { model } : {}),
           ...(responseId ? { responseId } : {}),
           ...(usage ? { usage } : {}),
-          ...(finishReason ? { finishReason } : {})
+          ...(finishReason ? { finishReason } : {}),
+          ...(pricingMultiplier === undefined ? {} : { pricingMultiplier })
         };
         // The request keeps `request:<key>` when free, else the first free serial of it; `requestId` keeps the key.
         let id = `request:${key}`;
@@ -367,6 +371,10 @@ export function createCodexTranslation(options: { readonly retain: boolean }): C
           const eventName = payload.run?.event_name;
           emit({ kind: "hook", payload: { type: inner, ...(eventName ? { event: eventName } : {}) } }, lineKey(record));
           return { ok: true, rec, payload, envelope, parts: recordParts };
+        }
+        if (inner === "thread_settings_applied") {
+          // The settings in force from here on, as the usage rule reads them: a tier left out is the standard one.
+          serviceTier = payload.thread_settings?.service_tier;
         }
         const marker = EVENT_MARKERS.get(inner);
         if (marker) {

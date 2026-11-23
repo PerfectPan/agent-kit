@@ -84,11 +84,15 @@ export interface SessionAdapter {
     options?: LoadOptions
   ): Promise<Result<Transcript, SessionReadError>>;
   /**
-   * A faster pass than folding the loaded transcript, with the same result: no transcript or event payload is kept,
-   * and the state it holds grows with the session's requests, lanes and tool calls, never with its bytes. With
+   * A faster pass than folding the loaded transcript, with the same result: no transcript or event payload is kept
+   * beyond each request's billed fields, and the state it holds grows with the session's requests, lanes and tool
+   * calls, never with its bytes. With
    * `prompts`, the summary also carries the main lane's user prompts under the given caps, by the same rule
    * `sessionPrompts` applies to the loaded transcript — an implementation that leaves them out fails the conformance
-   * suite. The equality covers the summary's numbers and prompts, not the failure modes: the pass may read fewer
+   * suite. The summary also carries `requestUsage`, the billed fields of every request in transcript order, equal to
+   * `sessionRequestUsage` of the loaded transcript; `summarizeSession` passes them on only when asked, and the
+   * conformance suite fails an implementation without them. The equality covers the summary's numbers, prompts and
+   * billed fields, not the failure modes: the pass may read fewer
    * files than `load` (side files the summary's numbers never read) and in its own order, so an IO error on one of
    * those can fail `load` while `summarize` succeeds, or the reverse. An abort rejects with `signal.reason`, as
    * `load` does.

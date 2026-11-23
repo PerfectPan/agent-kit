@@ -1,6 +1,7 @@
 import type {
   SessionPromptsOptions,
   SessionPrompt,
+  SessionRequestUsage,
   SessionSummary,
   SessionSummaryWithPrompts
 } from "../../session/value-objects/session-summary.js";
@@ -30,8 +31,8 @@ export interface SummaryTotals {
   requests: number;
   compactions: number;
   failedTools: number;
-  /** The usage of each request in order; an entry whose counts the record left out stays empty. */
-  usage: { inputTokens?: number; outputTokens?: number }[];
+  /** The billed fields of each request in order; an entry whose fields the record left out stays empty. */
+  usage: SessionRequestUsage[];
   /** The recorded turn durations and the request durations, as `durationMs` prefers them. */
   turnDurations: number[];
   requestDurations: number[];
@@ -42,10 +43,14 @@ export function emptyTotals(): SummaryTotals {
   return { turns: 0, requests: 0, compactions: 0, failedTools: 0, usage: [], turnDurations: [], requestDurations: [] };
 }
 
-/** Counts one request and its usage, which may record no count at all. */
-export function addRequest(totals: SummaryTotals, usage: { inputTokens?: number; outputTokens?: number } = {}): void {
+/**
+ * Counts one request with its billed fields (`requestUsage` of its event), which may record none at all. A pass that
+ * keeps the entry to fill it in later records must leave it equal to the fields of the request event the transcript
+ * ends with.
+ */
+export function addRequest(totals: SummaryTotals, request: SessionRequestUsage = {}): void {
   totals.requests += 1;
-  totals.usage.push(usage);
+  totals.usage.push(request);
 }
 
 /** Counts a recorded turn duration. A duration that was never recorded is absent, and a non-finite one is not charted. */
@@ -65,8 +70,8 @@ export function addRequestDuration(totals: SummaryTotals, durationMs?: number): 
 /** The input tokens of each request in order, for the context shape. */
 function inputPointsOf(totals: SummaryTotals): number[] {
   const points: number[] = [];
-  for (const usage of totals.usage) {
-    if (usage.inputTokens !== undefined) {
+  for (const { usage } of totals.usage) {
+    if (usage?.inputTokens !== undefined) {
       points.push(usage.inputTokens);
     }
   }
@@ -152,8 +157,8 @@ function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: num
   return {
     turns: totals.turns,
     requests: gated(gates.requests, totals.requests),
-    inputTokens: gated(gates.usage, knownSum(totals.usage.map((usage) => usage.inputTokens))),
-    outputTokens: gated(gates.usage, knownSum(totals.usage.map((usage) => usage.outputTokens))),
+    inputTokens: gated(gates.usage, knownSum(totals.usage.map(({ usage }) => usage?.inputTokens))),
+    outputTokens: gated(gates.usage, knownSum(totals.usage.map(({ usage }) => usage?.outputTokens))),
     durationMs: gated(gates.durations, durationOf(totals)),
     compactions: gated(gates.compaction, totals.compactions),
     subagents: gated(gates.subagents, subagents),
@@ -163,14 +168,14 @@ function finishTotals(totals: SummaryTotals, gates: SummaryGates, subagents: num
 }
 
 /** A copy without the absent numbers, so summaries from different sources compare equal. */
-export function summaryOf(summary: SessionSummary): SessionSummary {
-  return Object.fromEntries(Object.entries(summary).filter(([, value]) => value !== undefined)) as SessionSummary;
+export function summaryOf<T extends SessionSummary>(summary: T): T {
+  return Object.fromEntries(Object.entries(summary).filter(([, value]) => value !== undefined)) as T;
 }
 
 /**
  * The summary of a finished pass: the fold rules over the totals behind the capabilities' gates, with the collected
- * prompts. The one assembly `foldTranscript` and the adapters' summarize passes share, so their numbers cannot
- * drift.
+ * prompts and every request's billed fields (`requestUsage`, which `summarizeSession` passes on only when asked).
+ * Its numbers come from `finishTotals`, the assembly `foldTranscript` uses too, so the two cannot drift.
  */
 export function finishPass(
   totals: SummaryTotals,
@@ -178,7 +183,10 @@ export function finishPass(
   subagents: number,
   prompts: SessionPrompt[] | undefined
 ): SessionSummaryWithPrompts {
-  const summary = summaryOf(finishTotals(totals, summaryGates(capabilities), subagents));
+  const summary = {
+    ...summaryOf(finishTotals(totals, summaryGates(capabilities), subagents)),
+    requestUsage: totals.usage
+  };
   return prompts === undefined ? summary : { ...summary, prompts };
 }
 
@@ -275,10 +283,6 @@ export function foldTranscript(transcript: Transcript): SessionSummary {
     }
   }
   totals.turns = promptStarts(transcript, mainAgentId(transcript)).length;
-  return finishPass(
-    totals,
-    transcript.capabilities,
-    transcript.agents.filter((agent) => agent.parentId !== undefined).length,
-    undefined
-  );
+  const subagents = transcript.agents.filter((agent) => agent.parentId !== undefined).length;
+  return summaryOf(finishTotals(totals, summaryGates(transcript.capabilities), subagents));
 }

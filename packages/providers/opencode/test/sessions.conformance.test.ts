@@ -7,7 +7,12 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
-import { foldTranscript, sessionPrompts, type SessionPlatform } from "@rivus/agent-kit-sessions/public";
+import {
+  foldTranscript,
+  sessionPrompts,
+  sessionRequestUsage,
+  type SessionPlatform
+} from "@rivus/agent-kit-sessions/public";
 import { sessionAdapterConformance, type ConformanceSession } from "@rivus/agent-kit-testing/public";
 import { opencodeSessionAdapter } from "../src/sessions.js";
 
@@ -251,7 +256,11 @@ describe("opencode adapter", () => {
     const prompts = { limit: 10, maxChars: 100 };
     expect(await opencodeSessionAdapter.summarize!(platform, ref, { prompts })).toEqual({
       ok: true,
-      value: { ...foldTranscript(transcript), prompts: sessionPrompts(transcript, prompts) }
+      value: {
+        ...foldTranscript(transcript),
+        requestUsage: sessionRequestUsage(transcript),
+        prompts: sessionPrompts(transcript, prompts)
+      }
     });
     expect(foldTranscript(transcript)).toEqual({
       turns: 1,
@@ -343,7 +352,10 @@ describe("opencode adapter", () => {
     if (!summary.ok) {
       return;
     }
-    expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+    expect(summary.value).toStrictEqual({
+      ...foldTranscript(loaded.value),
+      requestUsage: sessionRequestUsage(loaded.value)
+    });
   });
 
   it("rejects with signal.reason when summarize is aborted before or during the pass", async () => {

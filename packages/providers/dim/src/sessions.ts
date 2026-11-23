@@ -582,15 +582,17 @@ export const dimSessionAdapter: SessionAdapter = {
         options.signal?.throwIfAborted();
         const rows = database
           .prepare(
-            "SELECT runId, usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?"
+            "SELECT runId, modelId, usage FROM usage_ledger WHERE sessionId = ? ORDER BY createdAt, rowid LIMIT ? OFFSET ?"
           )
           .all(sessionId, PAGE, offset);
         for (const row of rows as Record<string, unknown>[]) {
-          const usage = dimLedgerUsage(typeof row.usage === "string" ? row.usage : undefined);
+          const parsed = dimLedgerRowOf(row);
+          const usage = dimLedgerUsage(parsed?.usage);
           if (usage !== undefined) {
             seen.add("requests");
             seen.add("usage");
-            addRequest(totals, usage);
+            // The billed fields of the request event `translate` gives the row.
+            addRequest(totals, definedFields({ granularity: "turn" as const, model: parsed?.modelId, usage }));
             const runId = typeof row.runId === "string" ? row.runId : undefined;
             const durationMs = takeRunDuration(runId, runDurations, consumedRuns);
             if (durationMs !== undefined) {
