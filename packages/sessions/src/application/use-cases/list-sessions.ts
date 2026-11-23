@@ -1,9 +1,10 @@
 import { definedFields } from "@rivus/agent-kit-catalog/public";
 import type { AgentHome, CodingAgentId, HomeContext, CodingAgent, ServiceTable } from "@rivus/agent-kit-catalog/public";
-import type { Platform } from "@rivus/agent-kit-platform/public";
+import type { OperatingSystem, Platform } from "@rivus/agent-kit-platform/public";
 
 import type { SessionHead, SessionListFailure } from "../../domain/session/value-objects/session-head.js";
 import { adapterHome, selectAdapters } from "../services/adapter-table.js";
+import { sessionPath } from "../services/files/session-path.js";
 import type { SessionAdapter, SessionPlatform } from "../spi.js";
 import type { SessionProviders } from "../providers.js";
 
@@ -19,14 +20,16 @@ export interface ListSessionsOptions {
 /**
  * The home whose `roots` an adapter lists: the adapter's own home rule, else the catalog's rule for a built-in agent.
  * Throws `capability-unsupported` when there is neither. For a caller that walks an adapter's roots itself, for
- * example to report progress per root, instead of through `listSessions`.
+ * example to report progress per root, instead of through `listSessions`. With `os: "win32"` the home's `\`
+ * separators become `/` (`sessionPath`), so the roots and session refs listed under it use `/` throughout.
  */
 export function sessionAdapterHome(
   adapter: Pick<SessionAdapter, "agent" | "home">,
-  context: HomeContext,
+  context: HomeContext & { readonly os?: OperatingSystem },
   identities: ServiceTable<CodingAgent>
 ): AgentHome {
-  return adapterHome(adapter, context, "session adapter", identities);
+  const home = adapterHome(adapter, context, "session adapter", identities);
+  return { ...home, path: sessionPath(home.path, context.os) };
 }
 
 /**

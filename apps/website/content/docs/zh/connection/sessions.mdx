@@ -38,6 +38,8 @@ for await (const item of listSessions(platform, { agents: ["claude-code", "codex
 
 `loadTranscript` 读取一个会话的每个文件，返回有序的 `events`、子 Agent lane（`agents`），以及跳过的记录。返回的是完整会话。没有跟随文件实时更新的 API。压缩只有在整个会话读完之后，才用 `shadowedBy` 标出被替换的事件。
 
+在 Windows 上（平台的 `os` 为 `win32`），会话路径用 `/` 分隔。`listSessions` 和 `sessionAdapterHome` 给出的路径都是这种写法，用 `\` 写的目标路径读到的也是同一个会话。用量记录的路径写法保持不变。
+
 ## 摘要与提示词
 
 Agent 自带有界摘要过程时，`summarizeSession` 读取该过程。否则它折叠已经加载的 transcript。两种做法得到的数字相同。占用的内存随会话的请求数、lane 数和工具调用数增长，不随文件字节数增长。

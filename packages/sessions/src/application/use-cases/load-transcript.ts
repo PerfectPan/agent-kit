@@ -20,10 +20,14 @@ import { foldTranscript, summaryOf } from "../../domain/transcript/services/fold
 import { sessionPrompts } from "../../domain/transcript/services/turns.js";
 import { type Transcript } from "../../domain/transcript/value-objects/transcript.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
+import { sessionPath } from "../services/files/session-path.js";
 import type { SessionAdapter, SessionPlatform, SessionReadError } from "../spi.js";
 import type { SessionProviders } from "../providers.js";
 
-/** A session to read. Without an `agent` (or with an id that does not parse), every adapter's `detect` decides. */
+/**
+ * A session to read. Without an `agent` (or with an id that does not parse), every adapter's `detect` decides. On a
+ * platform whose `os` is `win32`, `\` in `path` reads as `/`, and the session's ref carries the path in that form.
+ */
 export interface SessionTarget {
   readonly agent?: CodingAgentId;
   readonly path: string;
@@ -42,9 +46,10 @@ export type LoadTranscriptError = SessionReadError | NoAdapterAccepted | Capabil
 
 async function resolveTarget(
   platform: SessionPlatform,
-  target: SessionTarget,
+  given: SessionTarget,
   options: LoadTranscriptOptions
 ): Promise<Result<{ adapter: SessionAdapter; ref: SessionRef }, LoadTranscriptError>> {
+  const target = { ...given, path: sessionPath(given.path, platform.os) };
   const table = options.providers.sessions;
   options.signal?.throwIfAborted();
   const info = await catchIoFailure(platform, target.path, options.signal, (guarded) =>
