@@ -1,8 +1,8 @@
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
+  baseEvent,
   finalizeTranscriptEvents,
   lineId,
-  pushRetainedEvent,
   shadowBefore,
   skipRecord,
   type ParsedTranscript,
@@ -11,7 +11,14 @@ import {
   type TranscriptEventBody,
   type TranscriptSession
 } from "@rivus/agent-kit-sessions/spi";
-import { agyRecordTime, agyStepOf, agyUsageOf } from "../records.js";
+import {
+  agyRecordTime,
+  agyStepOf,
+  agySubagentRoleOf,
+  agySubagentSpawnedOf,
+  agyUsageOf,
+  type AgyToolCallRecord
+} from "../records.js";
 import { AGY_CAPABILITIES } from "./capabilities.js";
 
 interface AgyStep {
@@ -19,26 +26,72 @@ interface AgyStep {
   readonly parts: readonly TranscriptEventBody[];
 }
 
+/** A subagent conversation an `invoke_subagent` result on this lane created, and the call that created it. */
+export interface AgySpawn {
+  readonly conversationId: string;
+  /** The `tool_call` event of the `invoke_subagent` call on this lane. */
+  readonly spawnEventId: string;
+  /** The call's `Role`. */
+  readonly title?: string;
+}
+
+interface AgyPendingCall {
+  readonly callId: string;
+  readonly spawnEventId: string;
+  readonly subagentTitle: string | undefined;
+  readonly spawnsSubagent: boolean;
+}
+
 interface AgyTranslation {
+  /** This lane's events; empty without retain. `finish` finalizes them in place. */
+  readonly events: TranscriptEvent[];
   step(record: SourcedRecord): AgyStep;
+  /** The subagent conversations this lane spawned, in the order their results arrived. */
+  readonly spawns: ReadonlyMap<string, AgySpawn>;
   finish(session: TranscriptSession, agents: ParsedTranscript["agents"]): ParsedTranscript;
 }
 
-export function createAgyTranslation({ retain }: { readonly retain: boolean }): AgyTranslation {
+const INVOKE_SUBAGENT = "invoke_subagent";
+
+export function createAgyTranslation({
+  retain,
+  laneId
+}: {
+  readonly retain: boolean;
+  /** The lane these records belong to; a subagent lane's ids carry it, since lanes share file names and step indexes. */
+  readonly laneId?: string;
+}): AgyTranslation {
   const events: TranscriptEvent[] = [];
   const skipped: ParsedTranscript["skipped"] = [];
-  const pendingCalls: string[] = [];
+  const spawns = new Map<string, AgySpawn>();
+  const pendingCalls: AgyPendingCall[] = [];
+  const idPrefix = laneId === undefined ? "" : `${laneId}:`;
 
+  // A subagent lane's ids carry the lane: the lanes' transcripts share file names and step indexes, so their event
+  // and request ids would collide. `pushRetainedEvent` derives the id from the file alone, so the event is built here.
   const push = (
     record: SourcedRecord,
     partIndex: number,
     body: TranscriptEventBody,
     ts: number,
     requestId?: string
-  ): TranscriptEvent | undefined =>
-    pushRetainedEvent(events, retain, record, partIndex, body, definedFields({ ts, requestId }));
+  ): TranscriptEvent | undefined => {
+    if (!retain) {
+      return undefined;
+    }
+    const event = baseEvent(
+      record,
+      body.kind,
+      body.payload,
+      definedFields({ id: `${idPrefix}${lineId(record, partIndex)}`, ts, requestId, agentId: laneId })
+    );
+    events.push(event);
+    return event;
+  };
 
   return {
+    events,
+    spawns,
     step(record: SourcedRecord): AgyStep {
       const step = agyStepOf(record.value);
       if (step === undefined) {
@@ -50,6 +103,7 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
       const ts = agyRecordTime(step) ?? 0;
       const parts: TranscriptEventBody[] = [];
       let partIndex = 0;
+      const eventId = (): string => `${idPrefix}${lineId(record, partIndex)}`;
       const emit = (body: TranscriptEventBody, requestId?: string): TranscriptEvent | undefined => {
         parts.push(body);
         return push(record, partIndex++, body, ts, requestId);
@@ -60,12 +114,27 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
         if (usage === undefined && step.model === undefined) {
           return undefined;
         }
-        const requestId = step.step_index !== undefined ? String(step.step_index) : lineId(record, 0);
+        const requestId =
+          step.step_index !== undefined ? `${idPrefix}${step.step_index}` : `${idPrefix}${lineId(record, 0)}`;
         emit(
           { kind: "request", payload: definedFields({ granularity: "request" as const, model: step.model, usage }) },
           requestId
         );
         return requestId;
+      };
+
+      const emitToolCall = (toolCall: AgyToolCallRecord, callId: string, requestId: string | undefined): void => {
+        const spawnsSubagent = toolCall.name === INVOKE_SUBAGENT;
+        pendingCalls.push({
+          callId,
+          spawnEventId: eventId(),
+          subagentTitle: spawnsSubagent ? agySubagentRoleOf(toolCall.args) : undefined,
+          spawnsSubagent
+        });
+        emit(
+          { kind: "tool_call", payload: definedFields({ callId, name: toolCall.name, args: toolCall.args }) },
+          requestId
+        );
       };
 
       switch (step.type) {
@@ -86,27 +155,35 @@ export function createAgyTranslation({ retain }: { readonly retain: boolean }): 
             emit({ kind: "assistant", payload: { text: step.content } }, requestId);
           }
           for (const [index, toolCall] of (step.tool_calls ?? []).entries()) {
-            const callId = `${stepKey}:${index}`;
-            pendingCalls.push(callId);
-            emit(
-              { kind: "tool_call", payload: definedFields({ callId, name: toolCall.name, args: toolCall.args }) },
-              requestId
-            );
+            emitToolCall(toolCall, `${stepKey}:${index}`, requestId);
           }
           break;
         }
         case "GENERIC": {
-          const callId = pendingCalls.shift();
-          if (callId !== undefined) {
+          const call = pendingCalls.shift();
+          if (call !== undefined) {
             const isError = step.status === "ERROR" || step.error !== undefined;
             emit({
               kind: "tool_result",
               payload: definedFields({
-                callId,
+                callId: call.callId,
                 output: step.content ?? step.error,
                 ...(isError ? { isError: true } : {})
               })
             });
+            if (call.spawnsSubagent) {
+              const conversationId = agySubagentSpawnedOf(step.content ?? "");
+              if (conversationId !== undefined && !spawns.has(conversationId)) {
+                spawns.set(
+                  conversationId,
+                  definedFields({
+                    conversationId,
+                    spawnEventId: call.spawnEventId,
+                    title: call.subagentTitle
+                  })
+                );
+              }
+            }
           } else if (step.content !== undefined && step.content !== "") {
             emit({ kind: "system", payload: { type: "generic", text: step.content } });
           }
