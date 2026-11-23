@@ -180,6 +180,7 @@ export {
 } from "./domain/transcript/value-objects/source-pointer.js";
 export { type TranscriptStreamPart } from "./domain/transcript/value-objects/stream-part.js";
 export {
+  type CompactionPayload,
   type HookPayload,
   type MessagePayload,
   type PromptSnapshotPayload,

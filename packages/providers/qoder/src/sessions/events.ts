@@ -1,6 +1,8 @@
 import { definedFields } from "@rivus/agent-kit-catalog/spi";
 import {
+  type CompactionPayload,
   finalizeTranscriptEvents,
+  type HookPayload,
   lineId,
   pushRetainedEvent,
   shadowBefore,
@@ -14,7 +16,14 @@ import {
   type TranscriptSession
 } from "@rivus/agent-kit-sessions/spi";
 import { QODER_ID } from "../facts.js";
-import { qoderRecordOf, qoderRecordTime, qoderUsageOf, qoderUsageSize } from "../records.js";
+import {
+  type QoderAttachment,
+  type QoderRecord,
+  qoderRecordOf,
+  qoderRecordTime,
+  qoderUsageOf,
+  qoderUsageSize
+} from "../records.js";
 import { QODER_CAPABILITIES } from "./capabilities.js";
 
 interface QoderStep {
@@ -44,10 +53,58 @@ function mergeRequestPayload(existing: RequestPayload, incoming: RequestPayload)
   });
 }
 
+/** A `compact_boundary`'s trigger and token counts, as its `compactMetadata` records them. */
+function compactionPayload(metadata: QoderRecord["compactMetadata"]): CompactionPayload {
+  const trigger = metadata?.trigger;
+  const preTokens = metadata?.preTokens;
+  const postTokens = metadata?.postTokens;
+  return {
+    ...(trigger === "auto" || trigger === "manual" ? { trigger } : {}),
+    ...(preTokens === undefined ? {} : { preTokens }),
+    ...(postTokens === undefined ? {} : { postTokens })
+  };
+}
+
+/** A `hook_*` attachment: the hook's name, the event it ran for, and its exit code and duration when it has them. */
+function hookPayload(type: string, attachment: QoderAttachment): HookPayload {
+  return {
+    type,
+    ...definedFields({
+      // SessionStart hooks record an empty name, which is no name.
+      name: attachment.hookName === "" ? undefined : attachment.hookName,
+      event: attachment.hookEvent ?? attachment.hookEventName,
+      exitCode: attachment.exitCode,
+      durationMs: attachment.durationMs
+    })
+  };
+}
+
+/**
+ * The record uuids from a compaction's `compactMetadata.preservedSegment.headUuid` through its `tailUuid`: the
+ * messages the compaction kept in the context, which it does not shadow. `undefined` when it kept none.
+ */
+function preservedUuids(
+  recordUuids: readonly string[],
+  metadata: QoderRecord["compactMetadata"]
+): Set<string> | undefined {
+  const head = metadata?.preservedSegment?.headUuid;
+  const tail = metadata?.preservedSegment?.tailUuid;
+  if (head === undefined || tail === undefined) {
+    return undefined;
+  }
+  const start = recordUuids.indexOf(head);
+  const end = start === -1 ? -1 : recordUuids.indexOf(tail, start);
+  return start === -1 || end === -1 ? new Set<string>() : new Set(recordUuids.slice(start, end + 1));
+}
+
 export function createQoderTranslation({ retain }: { readonly retain: boolean }): QoderTranslation {
   const events: TranscriptEvent[] = [];
   const skipped: ParsedTranscript["skipped"] = [];
   const subagents = new Set<string>();
+  /** The uuid of every parsed record, in file order: a compaction's preserved segment names the records it kept. */
+  const recordUuids: string[] = [];
+  /** The record uuid of each retained event, so the shadow pass does not parse the records again. */
+  const eventUuids = new Map<TranscriptEvent, string>();
   // Tracks the request event (in retain mode) or payload (in summarize mode) per assistant request key so streaming
   // fragments merge into one request keeping the largest usage and latest metadata.
   const requestEvents = new Map<string, TranscriptEventOf<"request">>();
@@ -80,6 +137,9 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
       if (agentVersion === undefined && parsed.version !== undefined) {
         agentVersion = parsed.version;
       }
+      if (retain && parsed.uuid !== undefined) {
+        recordUuids.push(parsed.uuid);
+      }
 
       const ts = qoderRecordTime(parsed) ?? 0;
       const rawAgentId = laneAgentId ?? (parsed.isSidechain ? parsed.agentId : undefined);
@@ -92,7 +152,11 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
       let partIndex = 0;
       const emit = (body: TranscriptEventBody, requestId?: string): TranscriptEvent | undefined => {
         parts.push(body);
-        return push(record, partIndex++, body, ts, { requestId, agentId });
+        const event = push(record, partIndex++, body, ts, { requestId, agentId });
+        if (event !== undefined && parsed.uuid !== undefined) {
+          eventUuids.set(event, parsed.uuid);
+        }
+        return event;
       };
 
       switch (parsed.type) {
@@ -201,15 +265,27 @@ export function createQoderTranslation({ retain }: { readonly retain: boolean })
         }
         case "system": {
           if (parsed.subtype === "compact_boundary") {
-            const compaction = emit({
-              kind: "compaction",
-              payload: { trigger: "auto" }
-            });
+            const compaction = emit({ kind: "compaction", payload: compactionPayload(parsed.compactMetadata) });
             if (compaction !== undefined) {
-              shadowBefore(events, compaction);
+              // A boundary that kept no messages replaces the whole context; one with a preserved segment keeps it.
+              const keep = preservedUuids(recordUuids, parsed.compactMetadata);
+              shadowBefore(events, compaction, (event) => {
+                const uuid = eventUuids.get(event);
+                return uuid !== undefined && keep?.has(uuid) === true;
+              });
             }
           } else if (parsed.content !== undefined && parsed.content !== "") {
             emit({ kind: "system", payload: { type: parsed.subtype ?? "system", text: parsed.content } });
+          }
+          break;
+        }
+        case "attachment": {
+          const attachment = parsed.attachment;
+          const attachmentType = attachment?.type ?? "";
+          if (attachment !== undefined && attachmentType.startsWith("hook_")) {
+            emit({ kind: "hook", payload: hookPayload(attachmentType, attachment) });
+          } else if (retain) {
+            skipRecord(skipped, record, `attachment:${attachmentType || "record"}`);
           }
           break;
         }

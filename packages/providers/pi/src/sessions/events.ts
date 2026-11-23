@@ -1,7 +1,8 @@
-import { type Result, err, ok } from "@rivus/agent-kit-catalog/spi";
+import { type Result, definedFields, err, ok } from "@rivus/agent-kit-catalog/spi";
 import {
   type Capability,
   type ParsedTranscript,
+  type PromptSnapshotPayload,
   type RequestPayload,
   type SourcedRecord,
   type TranscriptEvent,
@@ -11,8 +12,11 @@ import {
   createTranslationBuffer,
   detectEventCapabilities,
   joinedPartText,
+  latestSnapshot,
   lineId,
   shadowBefore,
+  snapshotHasSystemPrompt,
+  snapshotHasTools,
   type UnknownFormatGeneration,
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
@@ -22,6 +26,8 @@ import {
   type PiEntryValue,
   type PiHeaderValue,
   type PiContentPart,
+  type PiMessageValue,
+  type PiToolValue,
   piContentParts,
   piEntryOf,
   piHeaderOf,
@@ -53,18 +59,85 @@ function requestOf(entry: PiEntryValue, model: string | undefined): RequestPaylo
   };
 }
 
+/**
+ * The system prompt and tools replayed so far. Pi persists system messages as deltas: the leading one declares the
+ * prompt sections and the tools, and a later one appends `content`, replaces or removes sections by name and adds or
+ * removes tools. Replaying them in file order is Pi's own `getCurrentSystemMessage` / `getCurrentTools`.
+ */
+interface PiPromptState {
+  readonly content: string[];
+  readonly sections: Map<string, string>;
+  readonly tools: Map<string, PiToolValue>;
+  /** Whether a system message so far recorded tool state; until one does, the tool list was not recorded. */
+  toolsRecorded: boolean;
+}
+
+function emptyPromptState(): PiPromptState {
+  return { content: [], sections: new Map(), tools: new Map(), toolsRecorded: false };
+}
+
+/** A system message's instruction text; a content array renders its text parts. */
+function systemContentText(content: unknown): string {
+  return typeof content === "string" ? content : joinedPartText(piContentParts(content));
+}
+
+function applySystemMessage(state: PiPromptState, message: PiMessageValue): void {
+  const text = systemContentText(message.content);
+  if (text !== "") {
+    state.content.push(text);
+  }
+  for (const [name, value] of Object.entries(message.sections ?? {})) {
+    if (value === null) {
+      state.sections.delete(name);
+    } else {
+      state.sections.set(name, value);
+    }
+  }
+  for (const tool of message.toolsRemoved ?? []) {
+    state.tools.delete(tool.name);
+  }
+  for (const tool of message.toolsAdded ?? []) {
+    state.tools.set(tool.name, tool);
+  }
+  if (message.toolsAdded !== undefined || message.toolsRemoved !== undefined) {
+    state.toolsRecorded = true;
+  }
+}
+
+/** The snapshot of a replayed state: the prompt as Pi renders it (`getSystemMessageText`), and the tools when recorded. */
+function snapshotOf(state: PiPromptState): PromptSnapshotPayload {
+  const text = [state.content.join("\n\n"), ...state.sections.values()].filter((part) => part !== "").join("\n\n");
+  return {
+    type: "prompt_snapshot",
+    ...(text !== "" ? { systemPrompt: text } : {}),
+    ...(state.toolsRecorded ? { tools: [...state.tools.values()] } : {})
+  };
+}
+
 /** Everything a Pi session can record. A transcript lists the subset its own records show. */
 export const PI_CAPABILITIES: readonly Capability[] = [
   "requests",
   "usage",
   "reasoning",
   "compaction",
-  "compactionTokens"
+  "compactionTokens",
+  "systemPrompt",
+  "toolSchemas"
 ];
 
-/** What one translated session can show. A session with no usage lists no `usage`, and so on. */
-export function piCapabilities(transcript: Pick<ParsedTranscript, "events">): Capability[] {
-  return detectEventCapabilities(transcript.events);
+/**
+ * What one translated session can show. A session with no usage lists no `usage`, and so on; the prompt and the tools
+ * ride its system messages, so a session lists them only when a snapshot or the session records them.
+ */
+export function piCapabilities(transcript: Pick<ParsedTranscript, "events" | "session">): Capability[] {
+  const out = detectEventCapabilities(transcript.events);
+  if (transcript.session.systemPrompt !== undefined || latestSnapshot(transcript.events, snapshotHasSystemPrompt)) {
+    out.push("systemPrompt");
+  }
+  if (transcript.session.tools !== undefined || latestSnapshot(transcript.events, snapshotHasTools)) {
+    out.push("toolSchemas");
+  }
+  return out;
 }
 
 export interface PiTranslationOptions {
@@ -81,12 +154,18 @@ export type PiTranslation = RecordTranslation;
  * the current leaf. The adapter reads the file in order, so a branch that was left behind still appears; its records
  * are not on the leaf's path, and a `branch_summary` is the agent's own record of coming back from it. Compaction
  * cuts the context at `firstKeptEntryId`: the events before that entry are shadowed by the compaction event.
+ *
+ * System messages replay into `prompt_snapshot` events: each one carries the prompt and tools as Pi would render them
+ * at that point, and a compaction's checkpoint restarts the replay from the state it records.
  */
 export function createPiTranslation(options: PiTranslationOptions): PiTranslation {
   const buffer = createTranslationBuffer(options.retain);
   const { emit, skip } = buffer;
   const lineById = new Map<string, number>();
   const cuts: { event: TranscriptEvent; firstKeptLine: number | undefined }[] = [];
+  let prompt = emptyPromptState();
+  let systemPrompt: string | undefined;
+  let tools: unknown[] | undefined;
   let header: PiHeaderValue | undefined;
   let model: string | undefined;
   let title: string | undefined;
@@ -96,10 +175,29 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
     return emit(baseEvent(record, "user", payload, { ts }));
   }
 
+  /** The snapshot of the replayed state at `record`: the session's prompt and tools come from the latest that records each. */
+  function emitSnapshot(record: SourcedRecord, ts: number, partIndex: number): void {
+    const snapshot = snapshotOf(prompt);
+    if (snapshot.systemPrompt !== undefined) {
+      systemPrompt = snapshot.systemPrompt;
+    }
+    if (snapshot.tools !== undefined) {
+      tools = snapshot.tools;
+    }
+    emit(baseEvent(record, "system", snapshot, { id: lineId(record, partIndex), ts }));
+  }
+
   function emitMessage(record: SourcedRecord, ts: number, entry: PiEntryValue): void {
     const message = entry.message;
     if (message === undefined) {
       skip(record, "message-without-body");
+      return;
+    }
+    if (message.role === "system") {
+      if (options.retain) {
+        applySystemMessage(prompt, message);
+        emitSnapshot(record, ts, 0);
+      }
       return;
     }
     if (message.role === "user") {
@@ -229,6 +327,12 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
           event: compaction,
           firstKeptLine: entry.firstKeptEntryId === undefined ? undefined : lineById.get(entry.firstKeptEntryId)
         });
+        // Pi continues from the checkpoint's system message, so the replay restarts from the state it records.
+        if (options.retain && entry.systemMessage !== undefined) {
+          prompt = emptyPromptState();
+          applySystemMessage(prompt, entry.systemMessage);
+          emitSnapshot(record, ts, 1);
+        }
         return ok([]);
       }
       case "branch_summary":
@@ -320,7 +424,10 @@ export function createPiTranslation(options: PiTranslationOptions): PiTranslatio
   }
 
   function finish(): ParsedTranscript {
-    const session = buffer.session({ id: header?.id, fallbackId: options.sessionId, title, cwd: header?.cwd });
+    const session = buffer.session(
+      { id: header?.id, fallbackId: options.sessionId, title, cwd: header?.cwd },
+      definedFields({ systemPrompt, tools })
+    );
     return buffer.finish(session, () => {
       for (const cut of cuts) {
         shadowBefore(

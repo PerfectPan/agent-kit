@@ -60,7 +60,8 @@ const ALL = [
   "opencode /u/me/.local/share/opencode/storage/message/ses_legacy",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-01T00-00-00-000Z_pi-1.jsonl",
   "pi /u/me/.pi/agent/sessions/--u-me-work--/2026-01-02T00-00-00-000Z_pi-fork.jsonl",
-  "qoder /u/me/.qoder/projects/-u-me-work/s-1.jsonl"
+  "qoder /u/me/.qoder/projects/-u-me-work/s-1.jsonl",
+  "qoder /u/me/.qoder/projects/-u-me-work/s-hooks.jsonl"
 ];
 
 describe("listUsageSources", () => {

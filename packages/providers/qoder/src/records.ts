@@ -33,6 +33,29 @@ interface QoderMessage {
   readonly usage?: QoderRawUsage;
 }
 
+/**
+ * A `compact_boundary` record's `compactMetadata`: why the compaction ran, the token counts around it, and the
+ * messages a partial compaction kept in the context.
+ */
+interface QoderCompactMetadata {
+  readonly trigger?: string;
+  readonly preTokens?: number;
+  readonly postTokens?: number;
+  /** Present only when the compaction kept messages: the uuids of the kept run's first and last records. */
+  readonly preservedSegment?: { readonly headUuid?: string; readonly tailUuid?: string };
+}
+
+/** An `attachment` record's payload. A `hook_*` attachment is one hook's outcome for the model or the transcript. */
+export interface QoderAttachment {
+  readonly type?: string;
+  readonly hookName?: string;
+  readonly hookEvent?: string;
+  /** `hook_output` attachments name the event they ran for this way instead of `hookEvent`. */
+  readonly hookEventName?: string;
+  readonly exitCode?: number;
+  readonly durationMs?: number;
+}
+
 export interface QoderRecord {
   readonly type: string;
   readonly uuid?: string;
@@ -51,6 +74,8 @@ export interface QoderRecord {
   readonly content?: string;
   readonly durationMs?: number;
   readonly message?: QoderMessage;
+  readonly compactMetadata?: QoderCompactMetadata;
+  readonly attachment?: QoderAttachment;
 }
 
 const CacheCreation = z.looseObject({
@@ -91,6 +116,27 @@ const RawMessage = z.looseObject({
   usage: lenient(z.optional(RawUsage))
 });
 
+const PreservedSegment = z.looseObject({
+  headUuid: lenient(z.optional(z.string())),
+  tailUuid: lenient(z.optional(z.string()))
+});
+
+const CompactMetadata = z.looseObject({
+  trigger: lenient(z.optional(z.string())),
+  preTokens: lenient(z.optional(z.number().check(z.nonnegative()))),
+  postTokens: lenient(z.optional(z.number().check(z.nonnegative()))),
+  preservedSegment: lenient(z.optional(PreservedSegment))
+});
+
+const Attachment = z.looseObject({
+  type: lenient(z.optional(z.string())),
+  hookName: lenient(z.optional(z.string())),
+  hookEvent: lenient(z.optional(z.string())),
+  hookEventName: lenient(z.optional(z.string())),
+  exitCode: lenient(z.optional(z.number())),
+  durationMs: lenient(z.optional(z.number().check(z.nonnegative())))
+});
+
 const RawRecord = z.looseObject({
   type: z.string(),
   uuid: lenient(z.optional(z.string())),
@@ -108,7 +154,9 @@ const RawRecord = z.looseObject({
   subtype: lenient(z.optional(z.string())),
   content: lenient(z.optional(z.string())),
   durationMs: lenient(z.optional(z.number())),
-  message: lenient(z.optional(RawMessage))
+  message: lenient(z.optional(RawMessage)),
+  compactMetadata: lenient(z.optional(CompactMetadata)),
+  attachment: lenient(z.optional(Attachment))
 });
 
 function parseBlock(item: unknown): QoderContentBlock | undefined {
