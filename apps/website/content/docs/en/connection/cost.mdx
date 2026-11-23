@@ -51,6 +51,8 @@ A model without a price has no cost (`undefined`, not 0), and a summary's `costU
 
 The records come from [Token usage](/docs/connection/token-usage). A record carries `costUsd` and `costSource: "agent"` when the log has the Agent's own cost, and `pricingMultiplier` for Codex's priority tier.
 
+A transcript's Codex `request` events carry the same `pricingMultiplier`, and `summarizeSession` returns it in `requestUsage` ([Sessions](/docs/connection/sessions)).
+
 ## One record at a time
 
 `priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to buckets of its own, such as hours.

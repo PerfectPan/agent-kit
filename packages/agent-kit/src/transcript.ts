@@ -10,6 +10,7 @@ export type {
   Lane,
   LoadTranscriptError,
   PromptSnapshotPayload,
+  SessionRequestUsage,
   SessionSummary,
   SessionTarget,
   SourcePointer,

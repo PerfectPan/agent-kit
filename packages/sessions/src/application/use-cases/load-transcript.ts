@@ -17,7 +17,7 @@ import type {
 } from "../../domain/session/value-objects/session-summary.js";
 import type { SessionRef } from "../../domain/session/value-objects/session-ref.js";
 import { foldTranscript, summaryOf } from "../../domain/transcript/services/fold-transcript.js";
-import { sessionPrompts } from "../../domain/transcript/services/turns.js";
+import { sessionPrompts, sessionRequestUsage } from "../../domain/transcript/services/turns.js";
 import { type Transcript } from "../../domain/transcript/value-objects/transcript.js";
 import { catchIoFailure } from "../services/files/io-failure.js";
 import { sessionPath } from "../services/files/session-path.js";
@@ -155,12 +155,16 @@ function promptsOption(options: { readonly prompts?: SessionPromptsOptions }): S
  * The adapter's own summary pass when it has one, else `foldTranscript` of the loaded transcript — the same numbers
  * either way, so a cache of summaries cannot tell them apart. With `prompts`, the summary also carries the main
  * lane's user prompts: from the pass for an adapter that implements one, else from the loaded transcript, always by
- * the kit's prompt rule (`sessionPrompts`).
+ * the kit's prompt rule (`sessionPrompts`). With `requestUsage: true`, it also carries each request's billed fields
+ * in transcript order, as `sessionRequestUsage` reads them from the loaded transcript; without it they stay out.
  */
 export async function summarizeSession(
   platform: SessionPlatform,
   target: SessionTarget,
-  options: Omit<LoadTranscriptOptions, "onProgress"> & { readonly prompts?: SessionPromptsOptions }
+  options: Omit<LoadTranscriptOptions, "onProgress"> & {
+    readonly prompts?: SessionPromptsOptions;
+    readonly requestUsage?: boolean;
+  }
 ): Promise<Result<SessionSummaryWithPrompts, LoadTranscriptError>> {
   const prompts = promptsOption(options);
   const resolved = await resolveTargetOrAbort(platform, target, options);
@@ -173,13 +177,22 @@ export async function summarizeSession(
   if (adapter.summarize) {
     const summary = await adapter.summarize(platform, ref, asked);
     options.signal?.throwIfAborted();
-    return summary.ok ? ok(summaryOf(summary.value)) : summary;
+    if (!summary.ok) {
+      return summary;
+    }
+    // An adapter that leaves the billed fields out (the conformance suite fails it) gives none: absent, not empty.
+    const { requestUsage, ...rest } = summaryOf(summary.value);
+    return ok(options.requestUsage === true && requestUsage !== undefined ? { ...rest, requestUsage } : rest);
   }
   const transcript = await adapter.load(platform, ref, signal);
   options.signal?.throwIfAborted();
   if (!transcript.ok) {
     return transcript;
   }
-  const summary = foldTranscript(transcript.value);
-  return ok(prompts === undefined ? summary : { ...summary, prompts: sessionPrompts(transcript.value, prompts) });
+  const summary: SessionSummaryWithPrompts = foldTranscript(transcript.value);
+  return ok({
+    ...summary,
+    ...(prompts === undefined ? {} : { prompts: sessionPrompts(transcript.value, prompts) }),
+    ...(options.requestUsage === true ? { requestUsage: sessionRequestUsage(transcript.value) } : {})
+  });
 }

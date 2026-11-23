@@ -66,6 +66,7 @@ export {
   SESSION_SUMMARY_VERSION,
   type SessionPromptsOptions,
   type SessionPrompt,
+  type SessionRequestUsage,
   type SessionSummary,
   type SessionSummaryWithPrompts
 } from "./domain/session/value-objects/session-summary.js";
@@ -104,7 +105,8 @@ export {
   promptStarts,
   recordKey,
   requestUsage,
-  sessionPrompts
+  sessionPrompts,
+  sessionRequestUsage
 } from "./domain/transcript/services/turns.js";
 export {
   latestSnapshot,

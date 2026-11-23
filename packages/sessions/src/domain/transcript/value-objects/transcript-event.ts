@@ -157,6 +157,11 @@ export interface RequestPayload {
   modelCalls?: number;
   /** The same usage split by model. A total uses `usage` or this split, not the two added together. */
   usageByModel?: Record<string, { usage: Usage; modelCalls?: number }>;
+  /**
+   * A price factor the request was billed with, such as 2 for Codex's priority service tier, as on the `UsageRecord`
+   * of the same request. Absent means 1.
+   */
+  pricingMultiplier?: number;
   [field: string]: unknown;
 }
 

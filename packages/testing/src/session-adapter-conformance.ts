@@ -15,6 +15,7 @@ import {
   type SessionPromptsOptions,
   type SessionRef,
   sessionPrompts,
+  sessionRequestUsage,
   snapshotHasSystemPrompt,
   snapshotHasTools,
   summarizeSession,
@@ -199,11 +200,16 @@ export function sessionAdapterConformance(
     return { found, reads };
   };
 
-  const summarizeOne = async (session: ConformanceSession, prompts?: SessionPromptsOptions): Promise<unknown> =>
+  const summarizeOne = async (
+    session: ConformanceSession,
+    prompts?: SessionPromptsOptions,
+    requestUsage?: boolean
+  ): Promise<unknown> =>
     value(
       await summarizeSession(platform, refOf(session), {
         providers: { sessions: { [adapter.agent]: adapter }, identity: {} },
-        ...(prompts === undefined ? {} : { prompts })
+        ...(prompts === undefined ? {} : { prompts }),
+        ...(requestUsage === undefined ? {} : { requestUsage })
       }),
       `summarize ${session.path}`
     );
@@ -504,6 +510,22 @@ export function sessionAdapterConformance(
           }
           const plain = await summarizeOne(session);
           check(!("prompts" in (plain as object)), `${session.path}: prompts are present without the option`);
+        });
+      }
+    },
+    {
+      name: "returns each request's billed fields like the loaded transcript",
+      run: async () => {
+        await eachTranscript(async (transcript, session) => {
+          check(
+            isEqual(await summarizeOne(session, undefined, true), {
+              ...foldTranscript(transcript),
+              requestUsage: sessionRequestUsage(transcript)
+            }),
+            `${session.path}: requestUsage differs from the requests of the loaded transcript`
+          );
+          const plain = await summarizeOne(session);
+          check(!("requestUsage" in (plain as object)), `${session.path}: requestUsage is present without the option`);
         });
       }
     }

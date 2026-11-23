@@ -1,4 +1,8 @@
-import type { SessionPrompt, SessionPromptsOptions } from "../../session/value-objects/session-summary.js";
+import type {
+  SessionPrompt,
+  SessionPromptsOptions,
+  SessionRequestUsage
+} from "../../session/value-objects/session-summary.js";
 import type { TranscriptEvent, TranscriptEventOf } from "../value-objects/transcript-event.js";
 import type { Transcript } from "../value-objects/transcript.js";
 import { PayloadText } from "../../../lib/payload-text.js";
@@ -62,16 +66,24 @@ export function promptStarts(transcript: Pick<Transcript, "agents" | "events">, 
   return out;
 }
 
-/** The recorded input and output tokens of a `request` event; a count is absent when not recorded. */
-export function requestUsage(event: Pick<TranscriptEventOf<"request">, "payload">): {
-  inputTokens?: number;
-  outputTokens?: number;
-} {
-  const usage = event.payload.usage;
-  return definedFields({
-    inputTokens: usage?.inputTokens,
-    outputTokens: usage?.outputTokens
-  });
+/** What a price table bills for a `request` event: its recorded fields of `SessionRequestUsage`. */
+export function requestUsage(event: Pick<TranscriptEventOf<"request">, "payload">): SessionRequestUsage {
+  const { model, usage, granularity, modelCalls, usageByModel, pricingMultiplier } = event.payload;
+  return definedFields({ model, usage, granularity, modelCalls, usageByModel, pricingMultiplier });
+}
+
+/**
+ * The billed fields of every `request` event of a transcript, in event order: what a summary pass returns as
+ * `requestUsage`, so a host can price a session it only summarized the way it prices the loaded transcript.
+ */
+export function sessionRequestUsage(transcript: Pick<Transcript, "events">): SessionRequestUsage[] {
+  const out: SessionRequestUsage[] = [];
+  for (const event of transcript.events) {
+    if (event.kind === "request") {
+      out.push(requestUsage(event));
+    }
+  }
+  return out;
 }
 
 /**

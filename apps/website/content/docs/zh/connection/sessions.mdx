@@ -54,6 +54,8 @@ Agent 自带有界摘要过程时，`summarizeSession` 读取该过程。否则�
 
 上限不是范围内的整数时，抛出 `code: "invalid-prompts"` 的 `AgentKitError`。
 
+传入 `requestUsage: true` 时还会返回 `requestUsage`：每个请求的计费字段（`SessionRequestUsage`：`model`、`usage`、`granularity`、`modelCalls`、`usageByModel` 和 `pricingMultiplier`），按 transcript 顺序排列，和加载后的 transcript 里 `request` 事件的这些字段相同。宿主只做了摘要时，可以用它们逐个请求计价，长上下文请求按它自己的档位计费，和给加载后的 transcript 计价时一样。不传这个选项时不返回。
+
 ## 事件
 
 事件的 `kind` 决定 `payload` 的类型。`event.kind === "tool_call"` 之后，`event.payload` 是 `TranscriptEventPayloads["tool_call"]`。Agent 在该 kind 的载荷类型之外添加的字段读作 `unknown`。

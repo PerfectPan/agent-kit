@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 // The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
 import { posix } from "node:path";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
-import { foldTranscript } from "@rivus/agent-kit-sessions/public";
+import { foldTranscript, sessionRequestUsage } from "@rivus/agent-kit-sessions/public";
 import { dim } from "../src/identity.js";
 import { dimProbe } from "../src/discovery.js";
 import { dimHookDialect } from "../src/hooks.js";
@@ -296,7 +296,10 @@ describe("dim session root and lastActiveAt", () => {
       if (loaded.ok && summary.ok) {
         expect(loaded.value.capabilities).toEqual(["requests", "usage", "durations"]);
         expect(summary.value.durationMs).toBe(500);
-        expect(summary.value).toStrictEqual(foldTranscript(loaded.value));
+        expect(summary.value).toStrictEqual({
+          ...foldTranscript(loaded.value),
+          requestUsage: sessionRequestUsage(loaded.value)
+        });
       }
 
       // Drop usage_run_stats to verify older schemas keep working without durations.
@@ -310,7 +313,10 @@ describe("dim session root and lastActiveAt", () => {
       if (legacyLoaded.ok && legacySummary.ok) {
         expect(legacyLoaded.value.capabilities).toEqual(["requests", "usage"]);
         expect(legacySummary.value.durationMs).toBeUndefined();
-        expect(legacySummary.value).toStrictEqual(foldTranscript(legacyLoaded.value));
+        expect(legacySummary.value).toStrictEqual({
+          ...foldTranscript(legacyLoaded.value),
+          requestUsage: sessionRequestUsage(legacyLoaded.value)
+        });
       }
     } finally {
       await rm(isolated, { recursive: true, force: true });

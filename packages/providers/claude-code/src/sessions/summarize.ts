@@ -10,12 +10,15 @@ import {
   unknownFormatGeneration
 } from "@rivus/agent-kit-sessions/spi";
 import { addRequest, emptyPrompts, finishPass } from "@rivus/agent-kit-sessions/spi";
-import type { SessionPromptsOptions, SessionSummaryWithPrompts } from "@rivus/agent-kit-sessions/spi";
+import type {
+  SessionPromptsOptions,
+  SessionRequestUsage,
+  SessionSummaryWithPrompts
+} from "@rivus/agent-kit-sessions/spi";
 import { type ClaudeCodeRecordValue, parseClaudeCodeRecord } from "../records/record.js";
 import { CLAUDE_CODE_CAPABILITIES } from "./events.js";
 import { type ClaudeCodeEventPart, claudeCodeLaneOf, classifyClaudeCodeRecord } from "./classify.js";
 import { isPrompt } from "@rivus/agent-kit-sessions/spi";
-import type { Usage } from "@rivus/agent-kit-sessions/spi";
 import { recordText } from "./user-flags.js";
 import { claudeCodeRequestUsage, claudeCodeUsageOf } from "../records/usage.js";
 
@@ -32,18 +35,13 @@ export interface ClaudeCodeSummarizeOptions {
 }
 
 /** What one request key keeps while the pass runs: the usage the translator's event would hold, and the entry of `totals.usage` its counts land in. */
-interface RequestState {
-  usage: Usage | undefined;
-  counts: { inputTokens?: number; outputTokens?: number };
-}
-
 /**
  * The SessionSummary of one Claude Code session, translated straight from its records in `mergeByTimeStream` order
  * with the result `foldTranscript(translateClaudeCodeRecords(...))` gives: the record rules come from
  * `classifyClaudeCodeRecord`, the same dispatch the translation runs, and the request rules from
- * `claudeCodeRequestUsage` and `claudeCodeUsageOf`. Only the running numbers are kept: the usage of each request key
- * and the lanes that emitted an event, so the state grows with requests and subagents, never with the session's
- * bytes.
+ * `claudeCodeRequestUsage` and `claudeCodeUsageOf`. Only the running numbers are kept: the billed fields of each
+ * request key and the lanes that emitted an event, so the state grows with requests and subagents, never with the
+ * session's bytes.
  *
  * The passes after the translation read nothing the summary needs: `resolveParents`, `shadowRemoved` and
  * `applySnapshots` set references and session fields, and `markOrphanToolResults` flags `orphan`, which
@@ -54,26 +52,28 @@ export async function summarizeClaudeCodeRecords(
   options: ClaudeCodeSummarizeOptions = {}
 ): Promise<Result<SessionSummaryWithPrompts, UnknownFormatGeneration>> {
   const totals = emptyTotals();
-  /** One state per request key, in the order the keys were first seen; the counts alias `totals.usage`. */
-  const requests = new Map<string, RequestState>();
+  /** The billed fields per request key, in the order the keys were first seen; each entry aliases `totals.usage`. */
+  const requests = new Map<string, SessionRequestUsage>();
   /** The lanes of the records that translated to an event; each becomes a subagent lane. */
   const lanes = new Set<string>();
   const prompts = emptyPrompts(options.prompts);
 
+  // The fields the translation's `mergeRequest` gives the request event: later records update the usage by
+  // `claudeCodeRequestUsage` and the model by its last recorded name.
   const mergeRequest = (rec: ClaudeCodeRecordValue, key: string): void => {
-    let state = requests.get(key);
-    const chosen = claudeCodeRequestUsage(state?.usage, claudeCodeUsageOf(rec.message?.usage));
-    if (state === undefined) {
+    let entry = requests.get(key);
+    if (entry === undefined) {
       // One request event per key, at its first record: the count is the number of keys.
-      state = { usage: undefined, counts: {} };
-      requests.set(key, state);
-      addRequest(totals, state.counts);
+      entry = {};
+      requests.set(key, entry);
+      addRequest(totals, entry);
     }
-    // Later records update the usage by `claudeCodeRequestUsage`; only its counts land in the entry.
-    state.usage = chosen;
+    const chosen = claudeCodeRequestUsage(entry.usage, claudeCodeUsageOf(rec.message?.usage));
     if (chosen !== undefined) {
-      state.counts.inputTokens = typeof chosen.inputTokens === "number" ? chosen.inputTokens : undefined;
-      state.counts.outputTokens = typeof chosen.outputTokens === "number" ? chosen.outputTokens : undefined;
+      entry.usage = chosen;
+    }
+    if (rec.message?.model) {
+      entry.model = rec.message.model;
     }
   };
 

@@ -54,6 +54,8 @@ It takes `prompts: { limit, maxChars }` to return the main lane's user prompts i
 
 Caps that are not whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`.
 
+With `requestUsage: true` it also returns `requestUsage`: each request's billed fields (`SessionRequestUsage`: `model`, `usage`, `granularity`, `modelCalls`, `usageByModel` and `pricingMultiplier`), in transcript order and equal to those of the loaded transcript's `request` events. A host prices a session it only summarized from them request by request, so a long-context request is charged at its own tier, as when the host prices the loaded transcript. Without the option they stay out.
+
 ## Events
 
 An event's `kind` types its `payload`. After `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an Agent adds beyond its kind's payload type reads as `unknown`.

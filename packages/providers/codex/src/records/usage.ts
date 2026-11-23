@@ -138,7 +138,7 @@ export function codexRecordUsage(
  * The price factor of a Codex service tier, as presence and ccusage bill it: priority processing (`priority`, which
  * the CLI's configuration also calls `fast`) costs twice the standard rate. Any other tier is standard.
  */
-function codexPricingMultiplier(serviceTier: string | undefined): number | undefined {
+export function codexPricingMultiplier(serviceTier: string | undefined): number | undefined {
   return serviceTier === "priority" || serviceTier === "fast" ? 2 : undefined;
 }
 

@@ -2,13 +2,16 @@ import { translateCodexRecords } from "../src/sessions.js";
 import { codexSessionAdapter } from "../src/sessions.js";
 const testSessions = { codex: codexSessionAdapter };
 import { codex } from "../src/identity.js";
+import { codexUsageDecoder } from "../src/usage.js";
 const testIdentity = { codex };
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "@rivus/agent-kit-catalog/public";
 import {
+  decodeUsage,
   foldTranscript,
   isSessionHead,
+  isUsageRecord,
   listSessions,
   loadTranscript,
   type SessionHead,
@@ -183,6 +186,50 @@ describe("codex translation", () => {
       "hooks",
       "compactionTokens"
     ]);
+  });
+
+  it("prices each request with the service tier in force, as the usage records of the same rollout", async () => {
+    const path = "/u/me/.codex/sessions/r.jsonl";
+    const record = (type: string, payload: Record<string, unknown>) =>
+      JSON.stringify({ timestamp: "2026-01-01T00:00:00.000Z", type, payload });
+    const settings = (thread_settings: Record<string, unknown>) =>
+      record("event_msg", { type: "thread_settings_applied", thread_settings });
+    const usage = (response_id: string) =>
+      record("token_usage_record", { response_id, usage: { input_tokens: 1, output_tokens: 1 } });
+    const lines = [
+      record("session_meta", { id: "cx-tier", timestamp: "2026-01-01T00:00:00.000Z" }),
+      record("turn_context", { model: "gpt-test" }),
+      usage("r0"),
+      settings({ service_tier: "priority" }),
+      usage("r1"),
+      settings({ service_tier: "fast" }),
+      usage("r2"),
+      settings({ model: "gpt-test" }),
+      usage("r3")
+    ];
+    const local = createMemoryPlatform({ files: { [path]: `${lines.join("\n")}\n` } });
+    const providers = { sessions: testSessions, identity: testIdentity };
+    const transcript = value(await loadTranscript(local, { agent: "codex", path }, { providers }));
+    const fromRequests = requests(transcript).map((event) => [
+      event.payload.responseId,
+      event.payload.pricingMultiplier
+    ]);
+    expect(fromRequests).toEqual([
+      ["r0", undefined],
+      ["r1", 2],
+      ["r2", 2],
+      ["r3", undefined]
+    ]);
+    const fromUsage: unknown[] = [];
+    for await (const item of decodeUsage(
+      local,
+      "codex",
+      { path },
+      { final: true, providers: { usage: { codex: codexUsageDecoder }, identity: testIdentity } }
+    )) {
+      fromUsage.push(isUsageRecord(item) ? [item.responseId, item.pricingMultiplier] : item);
+    }
+    expect(fromUsage).toEqual(fromRequests);
   });
 
   it("uses token_count before the first token_usage_record, preferring last_token_usage over the totals' increase", async () => {
