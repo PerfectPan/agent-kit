@@ -6,7 +6,8 @@ const testUsage = { opencode: opencodeUsageDecoder };
 const testIdentity = { opencode };
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 
 type PlatformSqlite = NonNullable<UsagePlatform["sqlite"]>;
 import {
@@ -31,7 +32,7 @@ interface MessageRow {
 }
 
 const rows = JSON.parse(await readFile(new URL("fixtures/messages.json", import.meta.url), "utf8")) as MessageRow[];
-const work = await mkdtemp(join(tmpdir(), "agent-kit-opencode-"));
+const work = await mkdtemp(posix.join(tmpdir(), "agent-kit-opencode-"));
 afterAll(() => rm(work, { recursive: true, force: true }));
 const node = createNodePlatform({ home: work, env: {} });
 const sqlite = node.sqlite!;
@@ -39,9 +40,9 @@ let databases = 0;
 
 /** A database as opencode 1.2 creates it, under a data home of its own, holding `seed`. */
 async function database(seed: readonly MessageRow[] = rows): Promise<{ dataHome: string; path: string }> {
-  const dataHome = join(work, `data-${databases++}`);
-  await mkdir(join(dataHome, "opencode"), { recursive: true });
-  const path = join(dataHome, "opencode", "opencode.db");
+  const dataHome = posix.join(work, `data-${databases++}`);
+  await mkdir(posix.join(dataHome, "opencode"), { recursive: true });
+  const path = posix.join(dataHome, "opencode", "opencode.db");
   const db = sqlite.open(path);
   db.exec(
     "CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, time_created INTEGER NOT NULL, " +

@@ -1,0 +1,3 @@
+# LF in every checkout, Windows included: fixtures are read back by byte offset and pinned by snapshot, and the
+# formatter expects LF.
+* text=auto eol=lf

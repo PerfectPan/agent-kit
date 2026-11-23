@@ -3,7 +3,8 @@ import { probeRecipeConformance, usageDecoderConformance } from "@rivus/agent-ki
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
 import { zcode } from "../src/identity.js";
 import { zcodeProbe } from "../src/discovery.js";
@@ -39,13 +40,13 @@ const samples = {
   ]
 };
 
-const work = await mkdtemp(join(tmpdir(), "agent-kit-zcode-conformance-"));
+const work = await mkdtemp(posix.join(tmpdir(), "agent-kit-zcode-conformance-"));
 afterAll(() => rm(work, { recursive: true, force: true }));
 
 // A synthetic database with one finished assistant message, as the usage conformance fixture home holds.
 const node = createNodePlatform({ home: work, env: {} });
-await mkdir(join(work, "storage", "cli", "db"), { recursive: true });
-const database = join(work, "storage", "cli", "db", "db.sqlite");
+await mkdir(posix.join(work, "storage", "cli", "db"), { recursive: true });
+const database = posix.join(work, "storage", "cli", "db", "db.sqlite");
 const db = node.sqlite!.open(database);
 // Like the usage fixture's schema, without the real table's reference to `session(id)`, which no read depends on.
 db.exec(
@@ -63,7 +64,7 @@ db.close();
 
 const fixtures = {
   platform: { fs: node.fs, sqlite: node.sqlite },
-  home: homeFromRule("zcode", zcode.home, { home: work, env: { ZCODE_STORAGE_DIR: join(work, "storage") } }),
+  home: homeFromRule("zcode", zcode.home, { home: work, env: { ZCODE_STORAGE_DIR: posix.join(work, "storage") } }),
   sources: [{ path: database, records: 1 }]
 };
 

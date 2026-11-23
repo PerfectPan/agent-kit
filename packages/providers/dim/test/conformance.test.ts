@@ -8,7 +8,8 @@ import {
 import { homeFromRule } from "@rivus/agent-kit-catalog/spi";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The kit joins with `/`, also onto a Windows temp root, so expected paths are joined the same way.
+import { posix } from "node:path";
 import { createNodePlatform } from "@rivus/agent-kit-platform-node/public";
 import { foldTranscript } from "@rivus/agent-kit-sessions/public";
 import { dim } from "../src/identity.js";
@@ -25,11 +26,11 @@ const samples = {
 };
 
 // A synthetic database with two ledger rows, as the usage conformance fixture home holds.
-const work = await mkdtemp(join(tmpdir(), "agent-kit-dim-conformance-"));
+const work = await mkdtemp(posix.join(tmpdir(), "agent-kit-dim-conformance-"));
 afterAll(() => rm(work, { recursive: true, force: true }));
 const node = createNodePlatform({ home: work, env: {} });
-await mkdir(join(work, "dimcode", "v2"), { recursive: true });
-const database = join(work, "dimcode", "v2", "dimcode.sqlite");
+await mkdir(posix.join(work, "dimcode", "v2"), { recursive: true });
+const database = posix.join(work, "dimcode", "v2", "dimcode.sqlite");
 const db = node.sqlite!.open(database);
 db.exec(
   "CREATE TABLE sessions (sessionId text primary key, cwd text not null default '', title text, status text not null, " +
@@ -126,11 +127,11 @@ db.close();
 
 const usageFixtures = {
   platform: { fs: node.fs, sqlite: node.sqlite },
-  home: homeFromRule("dim", dim.home, { home: work, env: { DIMCODE_HOME: join(work, "dimcode") } }),
+  home: homeFromRule("dim", dim.home, { home: work, env: { DIMCODE_HOME: posix.join(work, "dimcode") } }),
   sources: [{ path: database, records: 2 }]
 };
 
-const sessionRoot = join(work, "dimcode", "v2");
+const sessionRoot = posix.join(work, "dimcode", "v2");
 const sessionChecks = sessionAdapterConformance(dimSessionAdapter, {
   platform: { fs: node.fs, sqlite: node.sqlite },
   root: sessionRoot,
@@ -162,12 +163,12 @@ for (const [service, checks] of [
 
 describe("dim session root and lastActiveAt", () => {
   it("returns the home directory from roots() and takes the latest write across sessions, messages, and usage_ledger", async () => {
-    const home = homeFromRule("dim", dim.home, { home: work, env: { DIMCODE_HOME: join(work, "dimcode") } });
+    const home = homeFromRule("dim", dim.home, { home: work, env: { DIMCODE_HOME: posix.join(work, "dimcode") } });
     expect(dimSessionAdapter.roots(home)).toEqual([sessionRoot]);
 
-    const isolated = await mkdtemp(join(tmpdir(), "agent-kit-dim-last-active-"));
+    const isolated = await mkdtemp(posix.join(tmpdir(), "agent-kit-dim-last-active-"));
     try {
-      const isolatedDbPath = join(isolated, "dimcode.sqlite");
+      const isolatedDbPath = posix.join(isolated, "dimcode.sqlite");
       const isolatedDb = node.sqlite!.open(isolatedDbPath);
       isolatedDb.exec(
         "CREATE TABLE sessions (sessionId text primary key, cwd text not null default '', title text, status text not null, " +
@@ -229,9 +230,9 @@ describe("dim session root and lastActiveAt", () => {
   });
 
   it("deduplicates usage_run_stats durationMs per runId, ignores negative values, and tolerates missing usage_run_stats", async () => {
-    const isolated = await mkdtemp(join(tmpdir(), "agent-kit-dim-durations-"));
+    const isolated = await mkdtemp(posix.join(tmpdir(), "agent-kit-dim-durations-"));
     try {
-      const dbPath = join(isolated, "dimcode.sqlite");
+      const dbPath = posix.join(isolated, "dimcode.sqlite");
       const isolatedDb = node.sqlite!.open(dbPath);
       isolatedDb.exec(
         "CREATE TABLE sessions (sessionId text primary key, cwd text not null default '', title text, status text not null, " +
