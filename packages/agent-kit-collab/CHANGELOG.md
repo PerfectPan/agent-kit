@@ -1,5 +1,19 @@
 # Change Log - @rivus/agent-kit-collab
 
+## 0.27.0
+
+### Minor Changes
+
+- [#309](https://github.com/PerfectPan/agent-kit/pull/309) [`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc) Thanks [@renovate](https://github.com/apps/renovate)! - Update the optional `effect` peer dependency from `4.1.1` to `4.1.4`. Hosts pinning `effect@4.1.1` will fail to install under npm until upgraded to `4.1.4`.
+
+### Patch Changes
+
+- [#336](https://github.com/PerfectPan/agent-kit/pull/336) [`9c39546`](https://github.com/PerfectPan/agent-kit/commit/9c395466a8d69a3cd7dfc02530c9b8a9ec2ba317) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Deduplicate shared provider, session, usage, install, and lock helpers across internal packages and enable the `duplicates` check in the workspace gate.
+
+- [#276](https://github.com/PerfectPan/agent-kit/pull/276) [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24) Thanks [@renovate](https://github.com/apps/renovate)! - Rebuild published bundles with `vite-plus` `1.5.0` (rolldown module comment format update).
+- Updated dependencies [[`40eb7d2`](https://github.com/PerfectPan/agent-kit/commit/40eb7d2744691ab6d32986d769553df5dcc96474), [`9c39546`](https://github.com/PerfectPan/agent-kit/commit/9c395466a8d69a3cd7dfc02530c9b8a9ec2ba317), [`bdf31fb`](https://github.com/PerfectPan/agent-kit/commit/bdf31fb8651a59338fe9199e533989a723d01410), [`abdf805`](https://github.com/PerfectPan/agent-kit/commit/abdf805a564325b34dd1177396508bfa45132430), [`f8263d7`](https://github.com/PerfectPan/agent-kit/commit/f8263d7a0e4a5692b291d0beb3207f7e2b661490), [`c9fd253`](https://github.com/PerfectPan/agent-kit/commit/c9fd2539e531fcf919684106a397809de3102c18), [`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc), [`b58c875`](https://github.com/PerfectPan/agent-kit/commit/b58c87556b2867cec0738931df2c1135523b6b85), [`c523e7e`](https://github.com/PerfectPan/agent-kit/commit/c523e7e8a9487517e50bc6e415ab343039e344cc), [`c142a0d`](https://github.com/PerfectPan/agent-kit/commit/c142a0dd1ff55a90590d8e520775772af8e86e24), [`ed83385`](https://github.com/PerfectPan/agent-kit/commit/ed833852ab28f27195a4150db6046a08af5ad8d4), [`18b205e`](https://github.com/PerfectPan/agent-kit/commit/18b205e1ce18c08526747f89c4e1dc00a0bc660d), [`ef462de`](https://github.com/PerfectPan/agent-kit/commit/ef462deff98c11803e088f3b77c587b7b0926e0b), [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24), [`6d16c92`](https://github.com/PerfectPan/agent-kit/commit/6d16c92220471e2e371852143066026ccc7891c2)]:
+  - @rivus/agent-kit@0.27.0
+
 ## 0.26.0
 
 ### Patch Changes

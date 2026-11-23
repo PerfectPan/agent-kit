@@ -1,5 +1,49 @@
 # Change Log - @rivus/agent-kit
 
+## 0.27.0
+
+### Minor Changes
+
+- [#344](https://github.com/PerfectPan/agent-kit/pull/344) [`40eb7d2`](https://github.com/PerfectPan/agent-kit/commit/40eb7d2744691ab6d32986d769553df5dcc96474) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Codex sessions expose tool schemas (additional_tools snapshots), hook events and the compaction's pre-compaction token count; ZCode sessions expose each conversation's recorded system prompt.
+
+- [#309](https://github.com/PerfectPan/agent-kit/pull/309) [`e71c191`](https://github.com/PerfectPan/agent-kit/commit/e71c191988d145b1794cd09d7aab28b3bf3e0ccc) Thanks [@renovate](https://github.com/apps/renovate)! - Update the optional `effect` peer dependency from `4.1.1` to `4.1.4`. Hosts pinning `effect@4.1.1` will fail to install under npm until upgraded to `4.1.4`.
+
+- [#342](https://github.com/PerfectPan/agent-kit/pull/342) [`b58c875`](https://github.com/PerfectPan/agent-kit/commit/b58c87556b2867cec0738931df2c1135523b6b85) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Read recorded SQLite session durations, deduplicated compactions and token counts, and nested subagent lanes for OpenCode and ZCode, with matching session summaries.
+  
+  Keep ZCode manual forks standalone, count only completed compactions, and recognize reactive overflow recovery as
+  automatic compaction. Lane merging preserves stored event order and tool pairing even when clocks move backwards.
+  Rootless parent cycles retain a discoverable entry, and summary prompt collection respects its bounds while reading.
+  
+  `SESSION_SUMMARY_VERSION` is now 4, so consumers must recompute cached summaries. Conformance fixtures may declare
+  `compactionShadowing: false` for sources whose compaction boundaries do not identify replaced events; any emitted
+  shadow links are still checked.
+
+- [#352](https://github.com/PerfectPan/agent-kit/pull/352) [`18b205e`](https://github.com/PerfectPan/agent-kit/commit/18b205e1ce18c08526747f89c4e1dc00a0bc660d) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Price a session the way its transcript is priced. A Codex `request` event carries the `pricingMultiplier` of the service tier in force (2 for priority processing), as the usage record of the same request does. `summarizeSession` takes `requestUsage: true` and then returns `requestUsage`, each request's billed fields (`SessionRequestUsage`: `model`, `usage`, `granularity`, `modelCalls`, `usageByModel`, `pricingMultiplier`) in transcript order, equal to the loaded transcript's request events; `sessionAdapterConformance` checks it for every adapter, so an adapter's own `summarize` returns these fields with its summary; `summarizeSession` leaves them out for one that does not. `priceRecord` and `costOf` take a `PriceableRecord`, the fields of a `UsageRecord` they read, so a host prices such an entry without making up a source or a timestamp.
+
+- [#350](https://github.com/PerfectPan/agent-kit/pull/350) [`6d16c92`](https://github.com/PerfectPan/agent-kit/commit/6d16c92220471e2e371852143066026ccc7891c2) Thanks [@PerfectPan](https://github.com/PerfectPan)! - On Windows, session paths use `/`: `loadTranscript` and `summarizeSession` read a target path typed with `\` as the same session, so its Claude Code subagents, Codex rollout name and Grok session directory are found, and `listSessions` lists session refs with `/` only. `SessionPlatform` takes an optional `os`, which a Node platform already has. The home `sessionAdapterHome` returns and the paths of usage records keep their spelling, so usage ids do not change.
+
+### Patch Changes
+
+- [#336](https://github.com/PerfectPan/agent-kit/pull/336) [`9c39546`](https://github.com/PerfectPan/agent-kit/commit/9c395466a8d69a3cd7dfc02530c9b8a9ec2ba317) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Deduplicate shared provider, session, usage, install, and lock helpers across internal packages and enable the `duplicates` check in the workspace gate.
+
+- [#343](https://github.com/PerfectPan/agent-kit/pull/343) [`bdf31fb`](https://github.com/PerfectPan/agent-kit/commit/bdf31fb8651a59338fe9199e533989a723d01410) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add DimCode `durations` (from `usage_run_stats.durationMs`, deduplicated per `runId`) and assistant `reasoning` part decoding to `dimSessionAdapter`.
+
+- [#341](https://github.com/PerfectPan/agent-kit/pull/341) [`abdf805`](https://github.com/PerfectPan/agent-kit/commit/abdf805a564325b34dd1177396508bfa45132430) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add DeepSeek Harness `hook/invoked` and `hook/result` transcript event decoding (`hooks` capability) and shared `scan-directory` skill installation (`dshInstallAdapter`, skills only).
+
+- [#338](https://github.com/PerfectPan/agent-kit/pull/338) [`f8263d7`](https://github.com/PerfectPan/agent-kit/commit/f8263d7a0e4a5692b291d0beb3207f7e2b661490) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Read per-request `durationMs` from DeepSeek Harness `step/start` and `assistant/message.stream` timestamps and declare the `durations` capability when timed requests are present ([#321](https://github.com/PerfectPan/agent-kit/issues/321)).
+
+- [#339](https://github.com/PerfectPan/agent-kit/pull/339) [`c9fd253`](https://github.com/PerfectPan/agent-kit/commit/c9fd2539e531fcf919684106a397809de3102c18) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Attach local DeepSeek Harness `subagent/catalog` child sessions as transcript lanes (`subagents` capability), strip inherited turns from forked children using the `session/end-seed` boundary, ignore inherited catalog entries on standalone forks, mark missing or unreadable child logs as `unavailable` lanes (`Lane.unavailable`), and hide `origin: "subagent"` child sessions from top-level discovery ([#322](https://github.com/PerfectPan/agent-kit/issues/322)).
+
+- [#332](https://github.com/PerfectPan/agent-kit/pull/332) [`c523e7e`](https://github.com/PerfectPan/agent-kit/commit/c523e7e8a9487517e50bc6e415ab343039e344cc) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Fix ZCode SQLite session reader on databases without a `time_deleted` column ([#331](https://github.com/PerfectPan/agent-kit/issues/331)) and return DimCode's session directory from `dimSessionAdapter.roots()` with `lastActiveAt` tracking the latest write across `sessions`, `messages`, and `usage_ledger` ([#330](https://github.com/PerfectPan/agent-kit/issues/330)).
+
+- [#345](https://github.com/PerfectPan/agent-kit/pull/345) [`c142a0d`](https://github.com/PerfectPan/agent-kit/commit/c142a0dd1ff55a90590d8e520775772af8e86e24) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Expand Kimi Code CLI sessions to all 10 transcript capabilities: add `reasoning` (`think` content parts), `compaction` and `compactionTokens` (`context.apply_compaction`), `hooks` (`hook_result` messages), and `subagents` (`subagent.spawned` + `agents/<id>/wire.jsonl` lanes).
+
+- [#310](https://github.com/PerfectPan/agent-kit/pull/310) [`ed83385`](https://github.com/PerfectPan/agent-kit/commit/ed833852ab28f27195a4150db6046a08af5ad8d4) Thanks [@renovate](https://github.com/apps/renovate)! - Updated dependency `es-toolkit` to `^1.53.2`.
+
+- [#334](https://github.com/PerfectPan/agent-kit/pull/334) [`ef462de`](https://github.com/PerfectPan/agent-kit/commit/ef462deff98c11803e088f3b77c587b7b0926e0b) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Reject with `signal.reason` when `summarize` on the shared SQLite session adapter (OpenCode, ZCode) is aborted ([#294](https://github.com/PerfectPan/agent-kit/issues/294)).
+
+- [#276](https://github.com/PerfectPan/agent-kit/pull/276) [`a9740e8`](https://github.com/PerfectPan/agent-kit/commit/a9740e88f1f1c3fbc828125131195cd6cfa92b24) Thanks [@renovate](https://github.com/apps/renovate)! - Rebuild published bundles with `vite-plus` `1.5.0` (rolldown module comment format update).
+
 ## 0.26.0
 
 ### Minor Changes
