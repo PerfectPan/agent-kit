@@ -55,7 +55,7 @@ A transcript's Codex `request` events carry the same `pricingMultiplier`, and `s
 
 ## One record at a time
 
-`priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to buckets of its own, such as hours.
+`priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to buckets of its own, such as hours. It reads only the record's `PriceableRecord` fields (`granularity`, `modelCalls`, `model`, `usage`, `usageByModel`, `costUsd`, `costSource` and `pricingMultiplier`), so a request built from a transcript's `request` event or a summary's `requestUsage` entry prices the same way.
 
 - It returns `{ parts }`: one part per model when the record is split by model (`usageByModel`), else one part for the whole record.
 - A part has the `model` (absent when the record names none), its `usage`, its `modelCalls` when it counts them, and its `cost`: `{ costUsd, costSource }`, where `costSource` is `"agent"` for an amount the Agent logged and `"pricing-table"` for one computed from the table.

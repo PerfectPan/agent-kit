@@ -55,7 +55,7 @@ Codex transcript 的 `request` 事件也带同样的 `pricingMultiplier`，`summ
 
 ## 逐条计价
 
-`priceRecord(record, pricing): PricedRecord` 按同样的规则给单条记录计价，适合需要自行分桶（例如按小时汇总）的宿主。
+`priceRecord(record, pricing): PricedRecord` 按同样的规则给单条记录计价，适合需要自行分桶（例如按小时汇总）的宿主。它只读取记录的 `PriceableRecord` 字段（`granularity`、`modelCalls`、`model`、`usage`、`usageByModel`、`costUsd`、`costSource` 和 `pricingMultiplier`），所以用 transcript 的 `request` 事件或摘要的 `requestUsage` 条目构造的请求，也按同样的方式计价。
 
 - 返回 `{ parts }`：记录按模型拆分（`usageByModel`）时，每个模型一个 part；否则整条记录一个 part。
 - 每个 part 包含 `model`（记录没有模型名时缺失）、`usage`、计数时的 `modelCalls`，以及 `cost`：`{ costUsd, costSource }`。Agent 记下的金额，`costSource` 为 `"agent"`；按价格表算出的金额为 `"pricing-table"`。

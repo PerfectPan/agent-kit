@@ -34,7 +34,6 @@ export interface ClaudeCodeSummarizeOptions {
   prompts?: SessionPromptsOptions;
 }
 
-/** What one request key keeps while the pass runs: the usage the translator's event would hold, and the entry of `totals.usage` its counts land in. */
 /**
  * The SessionSummary of one Claude Code session, translated straight from its records in `mergeByTimeStream` order
  * with the result `foldTranscript(translateClaudeCodeRecords(...))` gives: the record rules come from

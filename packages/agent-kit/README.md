@@ -102,7 +102,10 @@ main lane's user prompts in the same read: a record's prompt text joins its own 
 adds beside them, and an image block is the user's own — each trimmed, with a blank line between blocks; a record
 whose blocks are all host-added text is injected and counts no turn, one whose own text is only whitespace counts a
 turn without a prompt; the first `limit` records in transcript order, each capped at `maxChars`. Caps that are not
-whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`. An event's `kind` types its
+whole numbers in range throw an `AgentKitError` with `code: "invalid-prompts"`. With `requestUsage: true` it also
+returns `requestUsage`, each request's billed fields (`SessionRequestUsage`) in transcript order, equal to those of
+the loaded transcript's `request` events, so a host prices a session it only summarized request by request, as it
+prices the loaded transcript. An event's `kind` types its
 `payload`: after `event.kind === "tool_call"`, `event.payload` is a `TranscriptEventPayloads["tool_call"]`, and a field an agent adds
 beyond its kind's payload type reads as `unknown`. Events reference each other through `agentId`, `parentId`,
 `requestId`, `payload.callId` and `shadowedBy`. Usage follows OTel GenAI and the AI
@@ -231,7 +234,8 @@ state = scan.state;
 
 A `UsageRecord` is one model request (`granularity: "request"`), or a turn when the agent logs only turn totals (Grok,
 with `modelCalls` and `usageByModel`); it carries the agent's own cost when the log has one (`costUsd`,
-`costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier. A loaded Grok transcript still shows one
+`costSource: "agent"`) and a `pricingMultiplier` for Codex's priority tier, which the transcript's Codex `request`
+events carry too. A loaded Grok transcript still shows one
 `request` per model call when the session's `events.jsonl` and `chat_history.jsonl` name the calls. Those requests
 carry no usage of their own: the last call of the turn carries the turn's totals (`granularity: "turn"`), and the scan
 reports the same turn record. A request that several files hold (a Claude
@@ -320,7 +324,9 @@ summary's `costUsd` is absent when nothing in it was priced. A Grok turn split b
 model.
 
 `priceRecord(record, pricing): PricedRecord` prices one record by the same rules, for a host that adds records to
-buckets of its own, such as hours. It returns `{ parts }`: one part per model when the record is split by model
+buckets of its own, such as hours. It reads only the record's `PriceableRecord` fields, so a request built from a
+transcript's `request` event or a summary's `requestUsage` entry prices the same way. It returns `{ parts }`: one part
+per model when the record is split by model
 (`usageByModel`), else one part for the whole record. A part has the `model` (absent when the record names none), its
 `usage`, its `modelCalls` when it counts them, and its `cost`: `{ costUsd, costSource }`, where `costSource` is
 `"agent"` for an amount the agent logged and `"pricing-table"` for one computed from the table. A part that nothing

@@ -175,7 +175,7 @@ export function summaryOf<T extends SessionSummary>(summary: T): T {
 /**
  * The summary of a finished pass: the fold rules over the totals behind the capabilities' gates, with the collected
  * prompts and every request's billed fields (`requestUsage`, which `summarizeSession` passes on only when asked).
- * The one assembly `foldTranscript` and the adapters' summarize passes share, so their numbers cannot drift.
+ * Its numbers come from `finishTotals`, the assembly `foldTranscript` uses too, so the two cannot drift.
  */
 export function finishPass(
   totals: SummaryTotals,
