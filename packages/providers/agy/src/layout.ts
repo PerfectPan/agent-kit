@@ -1,5 +1,5 @@
 import type { AgentHome } from "@rivus/agent-kit-catalog/spi";
-import { basenamePath, dirnamePath, joinPath } from "@rivus/agent-kit-sessions/spi";
+import { joinPath } from "@rivus/agent-kit-sessions/spi";
 import { AGY_BRAIN_DIR, AGY_TRANSCRIPT_FILE, AGY_TRANSCRIPT_FULL_REL, AGY_TRANSCRIPT_REL } from "./facts.js";
 
 // Antigravity CLI writes per-conversation JSONL transcripts under
@@ -27,13 +27,16 @@ export function agyConversationLocation(
   if (transcript === undefined) {
     return undefined;
   }
-  const conversationDir = normalized.slice(0, normalized.length - transcript.length - 1);
-  const brainRoot = dirnamePath(conversationDir);
-  const conversationId = basenamePath(conversationDir);
-  if (brainRoot === "/" || brainRoot === "." || conversationId === "") {
+  const convEnd = path.length - transcript.length - 1;
+  const slash = normalized.lastIndexOf("/", convEnd - 1);
+  if (slash <= 0) {
     return undefined;
   }
-  return { brainRoot, conversationId };
+  const conversationId = path.slice(slash + 1, convEnd);
+  if (conversationId === "") {
+    return undefined;
+  }
+  return { brainRoot: path.slice(0, slash), conversationId };
 }
 
 /** The walk for usage scans: matches only the compact `transcript.jsonl` so each conversation is counted once. */

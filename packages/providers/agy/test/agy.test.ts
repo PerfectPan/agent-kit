@@ -72,7 +72,12 @@ describe("agy records and layout edge cases", () => {
       agyConversationLocation(
         "C:\\Users\\me\\.gemini\\antigravity-cli\\brain\\conv-2\\.system_generated\\logs\\transcript.jsonl"
       )
-    ).toEqual({ brainRoot: "C:/Users/me/.gemini/antigravity-cli/brain", conversationId: "conv-2" });
+    ).toEqual({ brainRoot: "C:\\Users\\me\\.gemini\\antigravity-cli\\brain", conversationId: "conv-2" });
+    expect(
+      agyConversationLocation(
+        "C:\\Users\\me\\tmp/antigravity-cli/brain/conv-3/.system_generated/logs/transcript_full.jsonl"
+      )
+    ).toEqual({ brainRoot: "C:\\Users\\me\\tmp/antigravity-cli/brain", conversationId: "conv-3" });
     // A transcript outside the layout, or one whose conversation sits at the file system root, locates no brain
     // root: its spawns cannot be followed.
     expect(agyConversationLocation("/u/me/elsewhere/transcript.jsonl")).toBeUndefined();
