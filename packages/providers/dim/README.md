@@ -17,8 +17,19 @@ bundled into `@rivus/agent-kit`.
   code 2 blocks. Hooks must be trusted through `dim hooks` (content review), which the dialect records as
   `content-hash`.
 - Install writes hooks as grouped `hooks.json` entries (`shared-config`) and skills into `<home>/skills`.
-- Sessions read `sessions`, `messages` (text and assistant `reasoning` parts), `usage_ledger`, and `usage_run_stats`
-  (`durationMs` deduplicated per `runId`), declaring `requests`, `usage`, `durations`, and `reasoning` capabilities.
+- Sessions read `sessions`, `messages` (`text`, assistant `thinking`, assistant `tool_use`, and `tool_result` parts),
+  `usage_ledger`, `usage_run_stats` (`durationMs` deduplicated per `runId`), `compaction_states` (applied compaction
+  checkpoints with `reason`, `summarySnapshot`, and `diagnostics.estimatedInputTokens` /
+  `diagnostics.estimatedPostCompactionTokens`, shadowing events through the cursor message), and `session_relations`
+  (`relationType = 'subagent'`, attaching child sessions as lanes in spawn order with `parentId`, `spawnEventId`, and
+  `title` from `subagentType`, while keeping `branch` relations as top-level sessions). The adapter declares 7
+  capabilities (`requests`, `usage`, `durations`, `reasoning`, `compaction`, `compactionTokens`, `subagents`) and
+  reports the subset present in each session; `summarize` pages messages and ledger rows and folds subagent lanes in
+  the same order as `load`.
+- **Upstream ceiling (0.5.27):** `hooks`, `systemPrompt`, and `toolSchemas` are not persisted in `dimcode.sqlite`:
+  hook runs are not recorded in the session store, and the system prompt and tool definitions are assembled per run and
+  written only when opt-in observability tracing (`dim exec --trace=<dir>` or `agentTraceDir` in `config.json`) is
+  enabled outside the session store.
 - Usage decodes the insert-only `usage_ledger` (one row per settled event: run, provider, model, usage JSON, cost,
   createdAt) through the sessions SPI's append-log SQLite decoder, keyed by session and run id.
 - ACP: `dim acp` (verified on 0.5.27) serves ACP v1 with the session surface, reverse fs/terminal/elicitation, and
@@ -26,6 +37,4 @@ bundled into `@rivus/agent-kit`.
 
 ## Unverified
 
-- Session transcripts (`sessions` + `messages` tables, `parts` JSON) wait for a real capture; the sessions service is
-  not exported yet.
 - The hook payload's per-event tool fields and the exact stdout contract beyond exit 2.
