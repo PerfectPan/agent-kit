@@ -10,6 +10,7 @@ import { dimHookDialect } from "@rivus/agent-kit-provider-dim/hooks";
 import { zcodeHookDialect } from "@rivus/agent-kit-provider-zcode/hooks";
 import { kimiHookDialect } from "@rivus/agent-kit-provider-kimi/hooks";
 import { agyHookDialect } from "@rivus/agent-kit-provider-agy/hooks";
+import { copilotHookDialect } from "@rivus/agent-kit-provider-copilot/hooks";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -26,6 +27,7 @@ export const builtinHookDialects: {
   readonly qoder: typeof qoderHookDialect;
   readonly dim: typeof dimHookDialect;
   readonly agy: typeof agyHookDialect;
+  readonly copilot: typeof copilotHookDialect;
 } = {
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
@@ -38,7 +40,8 @@ export const builtinHookDialects: {
   kimi: kimiHookDialect,
   qoder: qoderHookDialect,
   dim: dimHookDialect,
-  agy: agyHookDialect
+  agy: agyHookDialect,
+  copilot: copilotHookDialect
 };
 
 // sniffSource returns the first dialect, in this order, whose payload marker a payload carries. ZCode and Antigravity

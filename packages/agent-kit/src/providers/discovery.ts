@@ -11,6 +11,7 @@ import { qoderProbe } from "@rivus/agent-kit-provider-qoder/discovery";
 import { dimProbe } from "@rivus/agent-kit-provider-dim/discovery";
 import { kimiProbe } from "@rivus/agent-kit-provider-kimi/discovery";
 import { agyProbe } from "@rivus/agent-kit-provider-agy/discovery";
+import { copilotProbe } from "@rivus/agent-kit-provider-copilot/discovery";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
 
@@ -28,6 +29,7 @@ const builtinProbeRecipes: {
   readonly dim: typeof dimProbe;
   readonly kimi: typeof kimiProbe;
   readonly agy: typeof agyProbe;
+  readonly copilot: typeof copilotProbe;
 } = {
   opencode: opencodeProbe,
   "claude-code": claudeCodeProbe,
@@ -41,7 +43,8 @@ const builtinProbeRecipes: {
   qoder: qoderProbe,
   dim: dimProbe,
   kimi: kimiProbe,
-  agy: agyProbe
+  agy: agyProbe,
+  copilot: copilotProbe
 };
 
 export const discoveryTable = (providers?: readonly Provider[]): ReturnType<typeof mergeService<"discovery">> =>

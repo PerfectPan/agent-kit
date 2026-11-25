@@ -84,7 +84,8 @@ const TURN_START: Record<string, string> = {
   kimi: "UserPromptSubmit",
   qoder: "UserPromptSubmit",
   dim: "UserPromptSubmit",
-  agy: "PreInvocation"
+  agy: "PreInvocation",
+  copilot: "UserPromptSubmit"
 };
 
 const PROVIDER_FIELD: Record<Exclude<TaskKey, "coordinate">, string> = {

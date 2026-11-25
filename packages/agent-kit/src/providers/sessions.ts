@@ -9,6 +9,7 @@ import { dimSessionAdapter } from "@rivus/agent-kit-provider-dim/sessions";
 import { piSessionAdapter } from "@rivus/agent-kit-provider-pi/sessions";
 import { geminiCliSessionAdapter } from "@rivus/agent-kit-provider-gemini-cli/sessions";
 import { agySessionAdapter } from "@rivus/agent-kit-provider-agy/sessions";
+import { copilotSessionAdapter } from "@rivus/agent-kit-provider-copilot/sessions";
 import { qoderSessionAdapter } from "@rivus/agent-kit-provider-qoder/sessions";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
@@ -25,6 +26,7 @@ const builtinSessionAdapters: {
   readonly dim: typeof dimSessionAdapter;
   readonly kimi: typeof kimiSessionAdapter;
   readonly agy: typeof agySessionAdapter;
+  readonly copilot: typeof copilotSessionAdapter;
   readonly qoder: typeof qoderSessionAdapter;
 } = {
   "claude-code": claudeCodeSessionAdapter,
@@ -38,6 +40,7 @@ const builtinSessionAdapters: {
   dim: dimSessionAdapter,
   kimi: kimiSessionAdapter,
   agy: agySessionAdapter,
+  copilot: copilotSessionAdapter,
   qoder: qoderSessionAdapter
 };
 

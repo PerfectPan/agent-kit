@@ -61,9 +61,16 @@ import { agyHookDialect } from "@rivus/agent-kit-provider-agy/hooks";
 import { agyInstallAdapter } from "@rivus/agent-kit-provider-agy/install";
 import { agySessionAdapter } from "@rivus/agent-kit-provider-agy/sessions";
 import { agyUsageDecoder } from "@rivus/agent-kit-provider-agy/usage";
+import { copilot } from "@rivus/agent-kit-provider-copilot/identity";
+import { copilotProbe } from "@rivus/agent-kit-provider-copilot/discovery";
+import { copilotHookDialect } from "@rivus/agent-kit-provider-copilot/hooks";
+import { copilotInstallAdapter } from "@rivus/agent-kit-provider-copilot/install";
+import { copilotSessionAdapter } from "@rivus/agent-kit-provider-copilot/sessions";
+import { copilotUsageDecoder } from "@rivus/agent-kit-provider-copilot/usage";
 export const builtinCodingAgents = {
   "claude-code": claudeCode,
   codex: codex,
+  copilot,
   cursor: cursor,
   "gemini-cli": geminiCli,
   grok: grok,
@@ -85,7 +92,8 @@ export const builtinProbeRecipes = {
   kimi: kimiProbe,
   qoder: qoderProbe,
   dim: dimProbe,
-  agy: agyProbe
+  agy: agyProbe,
+  copilot: copilotProbe
 };
 // ZCode and Antigravity CLI first, as in the shell: both carry Grok's payload marker (`hookEventName`).
 export const builtinHookDialects = {
@@ -93,6 +101,7 @@ export const builtinHookDialects = {
   agy: agyHookDialect,
   "claude-code": claudeCodeHookDialect,
   codex: codexHookDialect,
+  copilot: copilotHookDialect,
   cursor: cursorHookDialect,
   "gemini-cli": geminiCliHookDialect,
   grok: grokHookDialect,
@@ -105,6 +114,7 @@ export const builtinHookDialects = {
 export const builtinInstallAdapters = {
   "claude-code": claudeCodeInstallAdapter,
   codex: codexInstallAdapter,
+  copilot: copilotInstallAdapter,
   cursor: cursorInstallAdapter,
   "gemini-cli": geminiCliInstallAdapter,
   grok: grokInstallAdapter,
@@ -118,6 +128,7 @@ export const builtinInstallAdapters = {
 export const builtinUsageDecoders = {
   "claude-code": claudeCodeUsageDecoder,
   codex: codexUsageDecoder,
+  copilot: copilotUsageDecoder,
   "gemini-cli": geminiCliUsageDecoder,
   grok: grokUsageDecoder,
   opencode: opencodeUsageDecoder,
@@ -131,6 +142,7 @@ export const builtinUsageDecoders = {
 export const builtinSessionAdapters = {
   "claude-code": claudeCodeSessionAdapter,
   codex: codexSessionAdapter,
+  copilot: copilotSessionAdapter,
   grok: grokSessionAdapter,
   dim: dimSessionAdapter,
   kimi: kimiSessionAdapter,

@@ -15,6 +15,7 @@ const HOMED = [
   "agy",
   "claude-code",
   "codex",
+  "copilot",
   "dim",
   "dsh",
   "gemini-cli",
@@ -30,6 +31,7 @@ describe("built-in home rules", () => {
   it.each([
     ["claude-code", "/u/me/.claude"],
     ["codex", "/u/me/.codex"],
+    ["copilot", "/u/me/.copilot"],
     ["gemini-cli", "/u/me/.gemini"],
     ["grok", "/u/me/.grok"],
     ["opencode", "/u/me/.local/share/opencode"],
@@ -51,6 +53,7 @@ describe("built-in home rules", () => {
   it.each([
     ["claude-code", "CLAUDE_CONFIG_DIR", "/cfg/claude", "/cfg/claude"],
     ["codex", "CODEX_HOME", "/cfg/codex", "/cfg/codex"],
+    ["copilot", "COPILOT_HOME", "/cfg/copilot", "/cfg/copilot"],
     ["gemini-cli", "GEMINI_CLI_HOME", "/alt", "/alt/.gemini"],
     ["grok", "GROK_HOME", "/cfg/grok", "/cfg/grok"],
     ["opencode", "XDG_DATA_HOME", "/data", "/data/opencode"],
@@ -121,7 +124,7 @@ describe("built-in home rules", () => {
   it("has a home rule exactly for the verified agents", () => {
     const withHome = Object.values(builtinCodingAgents).filter((agent) => agent.home !== undefined);
     expect(withHome.map((agent) => agent.id).toSorted()).toEqual(HOMED);
-    expect(Object.keys(builtinCodingAgents)).toHaveLength(13);
+    expect(Object.keys(builtinCodingAgents)).toHaveLength(14);
   });
 });
 

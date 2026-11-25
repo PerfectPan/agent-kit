@@ -117,6 +117,7 @@ const PI = "@rivus/agent-kit-provider-pi";
 const QODER = "@rivus/agent-kit-provider-qoder";
 const KIMI = "@rivus/agent-kit-provider-kimi";
 const AGY = "@rivus/agent-kit-provider-agy";
+const COPILOT = "@rivus/agent-kit-provider-copilot";
 const DIM = "@rivus/agent-kit-provider-dim";
 const DSH = "@rivus/agent-kit-provider-dsh";
 const ZCODE = "@rivus/agent-kit-provider-zcode";
@@ -169,6 +170,7 @@ export const boundaries: BoundaryRules = {
     [DIM]: providerRule("dim", { testsOnly: [TESTING, PLATFORM_NODE] }),
     [KIMI]: providerRule("kimi"),
     [AGY]: providerRule("agy"),
+    [COPILOT]: providerRule("copilot"),
     [DSH]: providerRule("dsh", {
       providerServices: ["identity", "discovery", "install", "sessions", "usage", "acp"],
       spiImports: [CATALOG, DISCOVERY, HARNESS, SESSIONS, ACP],
@@ -242,6 +244,7 @@ export const boundaries: BoundaryRules = {
         QODER,
         DIM,
         AGY,
+        COPILOT,
         ACP,
         PLATFORM_NODE
       ],

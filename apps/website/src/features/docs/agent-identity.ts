@@ -108,5 +108,11 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
       en: "ANTIGRAVITY_GEMINI_DIR (names the Gemini dir), ~/.gemini",
       zh: "ANTIGRAVITY_GEMINI_DIR（指向 .gemini 目录本身），~/.gemini"
     }
+  },
+  {
+    id: "copilot",
+    name: "GitHub Copilot CLI",
+    aliases: [],
+    home: { en: "COPILOT_HOME, ~/.copilot", zh: "COPILOT_HOME，~/.copilot" }
   }
 ];

@@ -56,6 +56,7 @@ The ordinary entries share these service objects. Hook commands keep using `buil
 | agy         | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
 | claude-code | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
 | codex       | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
+| copilot     | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
 | cursor      | yes      | yes       | yes                        | yes     | Session storage has no supported reader. | Usage storage has no supported decoder. | yes |
 | dim         | yes      | yes       | yes                        | yes     | yes                                      | yes                                     | yes |
 | dsh         | yes      | yes       | No supported hook dialect. | yes     | yes                                      | yes                                     | yes |
@@ -478,22 +479,23 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 ## Agents
 
-| Agent            | Id                              | Home: override, default                                           |
-| ---------------- | ------------------------------- | ----------------------------------------------------------------- |
-| Antigravity CLI  | `agy`                           | `ANTIGRAVITY_GEMINI_DIR`, `~/.gemini`                             |
-| Claude Code      | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
-| Codex            | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
-| Grok             | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
-| Gemini CLI       | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
-| opencode         | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
-| Pi               | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
-| Cursor           | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
-| DeepSeek Harness | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
-| ZCode            | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
+| Agent              | Id                              | Home: override, default                                           |
+| ------------------ | ------------------------------- | ----------------------------------------------------------------- |
+| Antigravity CLI    | `agy`                           | `ANTIGRAVITY_GEMINI_DIR`, `~/.gemini`                             |
+| GitHub Copilot CLI | `copilot`                       | `COPILOT_HOME`, `~/.copilot`                                      |
+| Claude Code        | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
+| Codex              | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
+| Grok               | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Gemini CLI         | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| opencode           | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi                 | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Cursor             | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
+| DeepSeek Harness   | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
+| ZCode              | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
 Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp`
 has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Cursor (`cursor-agent acp`),
-DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode and Antigravity CLI (`agy acp`); a profile's
+DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode, Antigravity CLI (`agy acp`), and GitHub Copilot CLI (`copilot --acp`); a profile's
 `warnings` name the facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the
 table except Cursor.
 

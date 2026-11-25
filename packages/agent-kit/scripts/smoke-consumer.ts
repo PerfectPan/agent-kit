@@ -98,6 +98,11 @@ const SEEDS: readonly { agent: string; fixture: string; target: string }[] = [
     agent: "qoder",
     fixture: "packages/providers/qoder/test/fixtures/projects/-u-me-work/s-1.jsonl",
     target: ".qoder/projects/-u-me-work/s-1.jsonl"
+  },
+  {
+    agent: "copilot",
+    fixture: "packages/providers/copilot/test/fixtures/session-state/sess-1",
+    target: ".copilot/session-state/sess-1"
   }
 ];
 
