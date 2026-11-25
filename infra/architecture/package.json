@@ -20,7 +20,7 @@
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-boundaries": "7.4.2",
     "oxc-parser": "catalog:",
-    "oxlint-plugin-eslint": "1.93.0",
+    "oxlint-plugin-eslint": "1.94.0",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }
