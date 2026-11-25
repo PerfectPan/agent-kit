@@ -33,6 +33,7 @@ const unsupported: Readonly<Record<BuiltinCodingAgentId, Partial<Record<Exclude<
   kimi: {},
   qoder: {},
   agy: {},
+  copilot: {},
   zcode: {}
 };
 
@@ -99,10 +100,11 @@ it("exports builtinProviders with the same ids and services as the individual ta
   }
 });
 
-it("keeps exactly the thirteen built-in ids and accepts third-party ids in the public type", () => {
+it("keeps exactly the fourteen built-in ids and accepts third-party ids in the public type", () => {
   expectTypeOf<BuiltinCodingAgentId>().toEqualTypeOf<
     | "claude-code"
     | "codex"
+    | "copilot"
     | "cursor"
     | "dsh"
     | "dim"

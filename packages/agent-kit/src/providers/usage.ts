@@ -9,6 +9,7 @@ import { zcodeUsageDecoder } from "@rivus/agent-kit-provider-zcode/usage";
 import { dimUsageDecoder } from "@rivus/agent-kit-provider-dim/usage";
 import { kimiUsageDecoder } from "@rivus/agent-kit-provider-kimi/usage";
 import { agyUsageDecoder } from "@rivus/agent-kit-provider-agy/usage";
+import { copilotUsageDecoder } from "@rivus/agent-kit-provider-copilot/usage";
 import { qoderUsageDecoder } from "@rivus/agent-kit-provider-qoder/usage";
 import { mergeService } from "./merge.js";
 import type { Provider } from "./types.js";
@@ -25,6 +26,7 @@ const builtinUsageDecoders: {
   readonly dim: typeof dimUsageDecoder;
   readonly kimi: typeof kimiUsageDecoder;
   readonly agy: typeof agyUsageDecoder;
+  readonly copilot: typeof copilotUsageDecoder;
   readonly qoder: typeof qoderUsageDecoder;
 } = {
   "claude-code": claudeCodeUsageDecoder,
@@ -38,6 +40,7 @@ const builtinUsageDecoders: {
   dim: dimUsageDecoder,
   kimi: kimiUsageDecoder,
   agy: agyUsageDecoder,
+  copilot: copilotUsageDecoder,
   qoder: qoderUsageDecoder
 };
 

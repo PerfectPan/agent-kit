@@ -10,6 +10,7 @@ import { piAcpProfile } from "@rivus/agent-kit-provider-pi/acp";
 import { qoderAcpProfile } from "@rivus/agent-kit-provider-qoder/acp";
 import { kimiAcpProfile } from "@rivus/agent-kit-provider-kimi/acp";
 import { agyAcpProfile } from "@rivus/agent-kit-provider-agy/acp";
+import { copilotAcpProfile } from "@rivus/agent-kit-provider-copilot/acp";
 import { dimAcpProfile } from "@rivus/agent-kit-provider-dim/acp";
 import { zcodeAcpProfile } from "@rivus/agent-kit-provider-zcode/acp";
 import { mergeService } from "./merge.js";
@@ -28,6 +29,7 @@ const builtinAcpProfiles: AcpProfiles = {
   dim: dimAcpProfile,
   kimi: kimiAcpProfile,
   agy: agyAcpProfile,
+  copilot: copilotAcpProfile,
   zcode: zcodeAcpProfile
 };
 

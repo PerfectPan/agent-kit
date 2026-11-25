@@ -49,6 +49,7 @@ const ALL = [
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-00-00-cx-totals.jsonl",
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-10-00-cx-fork.jsonl",
   "codex /u/me/.codex/sessions/2026/01/01/rollout-2026-01-01T00-20-00-cx-edge.jsonl",
+  "copilot /u/me/.copilot/session-state/sess-1/events.jsonl",
   "dim /u/me/.dimcode/v2/dimcode.sqlite",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/gm-1/sub-1.jsonl",
   "gemini-cli /u/me/.gemini/tmp/projhash/chats/session-2026-01-01T00-00-gm1.jsonl",
@@ -81,7 +82,8 @@ describe("listUsageSources", () => {
       [".pi/agent", "/alt/pi"],
       [".dimcode", "/alt/dim"],
       [".kimi-code", "/alt/kimi"],
-      [".qoder", "/alt/qoder"]
+      [".qoder", "/alt/qoder"],
+      [".copilot", "/alt/copilot"]
     );
     const { sources, failures } = await list(
       files,
@@ -89,6 +91,7 @@ describe("listUsageSources", () => {
       {
         CLAUDE_CONFIG_DIR: "/alt/claude",
         CODEX_HOME: "/alt/codex",
+        COPILOT_HOME: "/alt/copilot",
         GEMINI_CLI_HOME: "/alt/gemini-home",
         ANTIGRAVITY_GEMINI_DIR: "/alt/gemini-home/.gemini",
         GROK_HOME: "/alt/grok",

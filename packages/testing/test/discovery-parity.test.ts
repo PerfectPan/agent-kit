@@ -238,7 +238,8 @@ describe("parity with agent-finder", () => {
       "kimi",
       "qoder",
       "dim",
-      "agy"
+      "agy",
+      "copilot"
     ]);
     expect(cases.map((parityCase) => parityCase.name).toSorted()).toEqual([
       "doctor-config-only",

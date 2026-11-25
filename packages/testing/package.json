@@ -34,6 +34,7 @@
     "@rivus/agent-kit-provider-agy": "workspace:*",
     "@rivus/agent-kit-provider-claude-code": "workspace:*",
     "@rivus/agent-kit-provider-codex": "workspace:*",
+    "@rivus/agent-kit-provider-copilot": "workspace:*",
     "@rivus/agent-kit-provider-cursor": "workspace:*",
     "@rivus/agent-kit-provider-dim": "workspace:*",
     "@rivus/agent-kit-provider-gemini-cli": "workspace:*",
