@@ -1,4 +1,4 @@
-# Authoring Conventions
+# Architecture Conventions
 
 Use this guide when adding or changing code in an agent-kit context. It defines where code goes, how aggregates and use cases are shaped, and which rules apply to plain TS contexts and to Effect contexts. [CONTEXT.md](../../CONTEXT.md) defines the terms. The architecture manifest `infra/architecture/boundaries.ts` and the boundary rules generated from it enforce the dependency rules below (see [Verify At The Owner](#verify-at-the-owner)).
 

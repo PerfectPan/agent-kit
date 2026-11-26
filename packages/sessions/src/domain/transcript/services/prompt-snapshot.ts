@@ -2,7 +2,7 @@ import type { PromptSnapshotPayload, SystemPayload, TranscriptEvent } from "../v
 
 /**
  * A literal comparison on a payload already typed `SystemPayload`, not a check on unknown data, so the shape-guard
- * rule of authoring.md does not apply. A `PromptSnapshotPayload` is exactly a `SystemPayload` whose `type` is
+ * rule of conventions.md does not apply. A `PromptSnapshotPayload` is exactly a `SystemPayload` whose `type` is
  * `prompt_snapshot`, and TypeScript narrows on a field's value only within a union, which `SystemPayload` is not.
  */
 function isPromptSnapshot(payload: SystemPayload): payload is PromptSnapshotPayload {
