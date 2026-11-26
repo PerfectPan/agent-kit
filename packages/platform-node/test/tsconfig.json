@@ -8,7 +8,7 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        // @effect/vitest is tagged @stability unstable; see the API-stability rule in docs/architecture/authoring.md.
+        // @effect/vitest is tagged @stability unstable; see the API-stability rule in docs/architecture/conventions.md.
         "diagnosticSeverity": {
           "unstableApiUsage": "off"
         }

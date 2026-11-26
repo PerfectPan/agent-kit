@@ -145,8 +145,8 @@ pnpm run check   # format, build, lint, knip, knip:production, typecheck, test, 
 pnpm run knip    # unused files, exports or dependencies fail CI
 ```
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): workflow, Spec and Plan rules, required checks.
-- [`docs/architecture/authoring.md`](docs/architecture/authoring.md): how a context package is laid out.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): workflow, Change Design Gate and Plan rules, required checks.
+- [`docs/architecture/conventions.md`](docs/architecture/conventions.md): how a context package is laid out.
 - [`docs/development/adoption.md`](docs/development/adoption.md): migrating an application, verification and rollback.
 - [`docs/development/release.md`](docs/development/release.md): releases.
 - [`CONTEXT.md`](CONTEXT.md): glossary.

@@ -111,13 +111,14 @@ Do not claim implementation work is complete until the relevant commands pass, o
 For non-trivial changes:
 
 1. Understand the requested behavior, affected domain concepts, ownership boundaries, and data flow.
-2. Follow the Spec/Plan selection rules in `CONTRIBUTING.md`. Review required design artifacts before implementation. The Spec states required behavior; the Plan records technical decisions and the ordered tasks, tests, and exit conditions to execute. Do not start a Plan that is blocked on an unresolved decision. Migrate lasting constraints to current-state documentation.
+2. Check the Change Design Gate in `CONTRIBUTING.md`. Bugfixes and routine changes need only a clear PR/MR summary and validation. For larger changes that meet the gate, write or review the active Plan in `docs/plans/` before implementing, and do not start a Plan that is blocked on an unresolved decision.
 3. Keep the implementation scoped to the task and nearby code.
 4. Update tests and documentation when behavior, public contracts, or workflow expectations change.
 5. Ensure local Git hooks are installed for the checkout when practical.
 6. Run repository checks, title checks, and project-specific validation gates.
 7. For a newly created GitHub repository, configure branch protection with `gh repo-checks protect --repo OWNER/REPO --check check --apply` (add `--approvals 0` for a single maintainer) using an admin-authorized account.
-8. Open or update the PR/MR with a summary of what changed and why, the exact validation and skipped gates, and any risks.
+8. If this change completes an active Plan, migrate lasting non-code knowledge to `docs/` (and local `Why:` comments), move unfinished follow-ups to issues, and delete the Plan in the final PR/MR.
+9. Open or update the PR/MR with a summary of what changed and why, the exact validation and skipped gates, and any risks.
 
 ## Releases
 
@@ -136,7 +137,7 @@ For non-trivial changes:
 ## Repository Architecture
 
 - When changing the website, follow the source boundaries in [apps/website/README.md](apps/website/README.md).
-- `docs/architecture/authoring.md` is the authority for context and provider layouts, shared external-format adapters,
+- `docs/architecture/conventions.md` is the authority for context and provider layouts, shared external-format adapters,
   plain TypeScript and Effect rules, and the ban on hand-written shape guards;
   `CONTEXT.md` is the glossary. Change `infra/architecture/boundaries.ts` in the same PR as a new package,
   package dependency or npm import specifier (the allowlist matches exact specifiers such as `zod/mini`).
@@ -150,16 +151,16 @@ For non-trivial changes:
 - JavaScript or TypeScript projects take shared lint, format, and `tsconfig` rules from the `PerfectPan/lint-config` repository; see its README. Extend those shared configs instead of copying them.
 - Do not introduce a shared abstraction unless it removes real duplication, clarifies a boundary, or matches an existing project pattern.
 - When a file starts mixing multiple responsibilities or layers, split by responsibility rather than by arbitrary size.
-- Substantial product behavior uses one Spec plus one detailed Plan. Technical refactors use a Plan. Record technical choices there before implementation.
+- Non-trivial architectural or multi-PR changes use a Plan in `docs/plans/` to record design choices before implementation; routine fixes and localized changes do not.
 
 ## Documentation
 
 - Keep `README.md` focused on orientation, quick start, and current user-facing behavior.
 - Use `CONTRIBUTING.md` for contribution workflow.
-- Use `docs/specs/` for active product behavior and `docs/plans/` for active technical decisions and detailed execution plans. Current-state documentation owns implemented behavior.
-- Use `docs/` for durable current-state knowledge such as architecture, development guides, operational runbooks, references, and onboarding tutorials.
+- Use `docs/plans/` for active implementation plans while non-trivial work is in flight, and retire completed plans when code lands.
+- Use `docs/` (`guides/`, `reference/`, `architecture/`, `development/`) for durable current-state knowledge that code alone cannot express; add local `Why:` comments for localized quirks.
 - Record user-facing changes with changesets (`.changeset/*.md`, written by `pnpm changeset`) in the same PR; do not edit generated changelogs or add a hand-written root `CHANGELOG.md`.
-- When behavior, configuration, commands, APIs, deployment, architecture, or operations change, update the relevant docs in the same PR/MR or explain why no docs changed.
+- When behavior, configuration, commands, APIs, deployment, or architecture change, update the relevant docs in the same PR/MR or explain why no docs changed.
 
 ## AI Delivery Workflow
 
