@@ -17,27 +17,27 @@ ignoreWorkspaceCycles: true
 
 catalogMode: strict
 catalog:
-  '@agentclientprotocol/sdk': 1.9.0
-  '@arethetypeswrong/cli': 0.18.5
-  '@decimalturn/toml-patch': ^3.3.2
-  '@effect/tsgo': 0.68.1
-  '@effect/vitest': 4.1.4
-  '@fontsource-variable/bricolage-grotesque': 5.3.0
-  '@fontsource/jetbrains-mono': 5.3.0
-  '@perfectpan/lint-config': github:PerfectPan/lint-config#v0.9.1
-  '@radix-ui/react-slot': 1.5.0
-  '@radix-ui/react-tabs': 1.2.1
-  '@radix-ui/react-toggle-group': 1.2.1
-  '@size-limit/preset-small-lib': 14.3.0
-  '@tailwindcss/vite': 4.3.5
-  '@tanstack/react-router': 1.170.46
-  '@tanstack/react-start': 1.169.5
-  '@tanstack/router-cli': 1.168.0
-  '@types/mdx': 2.0.14
-  '@types/node': 24.19.2
-  '@types/react': 19.3.0
-  '@types/react-dom': 19.3.0
-  '@vitejs/plugin-react': 6.3.0
+  "@agentclientprotocol/sdk": 1.9.0
+  "@arethetypeswrong/cli": 0.18.5
+  "@decimalturn/toml-patch": ^3.3.2
+  "@effect/tsgo": 0.68.1
+  "@effect/vitest": 4.1.4
+  "@fontsource-variable/bricolage-grotesque": 5.3.0
+  "@fontsource/jetbrains-mono": 5.3.0
+  "@perfectpan/lint-config": github:PerfectPan/lint-config#v0.9.1
+  "@radix-ui/react-slot": 1.5.0
+  "@radix-ui/react-tabs": 1.2.1
+  "@radix-ui/react-toggle-group": 1.2.1
+  "@size-limit/preset-small-lib": 14.3.0
+  "@tailwindcss/vite": 4.3.5
+  "@tanstack/react-router": 1.170.46
+  "@tanstack/react-start": 1.169.5
+  "@tanstack/router-cli": 1.168.0
+  "@types/mdx": 2.0.14
+  "@types/node": 24.19.2
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  "@vitejs/plugin-react": 6.3.0
   class-variance-authority: 0.7.1
   clsx: 2.1.1
   effect: 4.1.4
@@ -59,8 +59,8 @@ catalog:
   typedoc-plugin-markdown: 4.14.1
   typescript: 7.0.2
   # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
-  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
-  vite-plus: 1.5.0
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  vite-plus: 1.7.0
   vitest: 5.1.0
   zod: ^4.6.7
 
@@ -72,8 +72,9 @@ catalogs:
 
 # Redirect whatever declares a `vite` range to the vite-plus core alias, and patch vulnerable minimatch dev ranges.
 overrides:
-  vite@*: 'catalog:'
-  minimatch@>=7.0.0 <11.0.1: '>=11.0.1'
+  vite@*: "catalog:"
+  minimatch@>=7.0.0 <11.0.1: ">=11.0.1"
+  oxlint-tsgolint@>=7.0.2005 <7.0.2007: ">=7.0.2007"
 
 # typedoc@0.28.20 calls Minimatch.matchOne(), removed in minimatch 11; remove once TypeDoc supports minimatch 11.
 patchedDependencies:
