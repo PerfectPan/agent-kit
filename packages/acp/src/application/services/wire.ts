@@ -1,7 +1,7 @@
 // The only module that speaks the ACP SDK. It turns SDK requests into Effects and SDK shapes into the kit's own, so
 // no SDK type reaches the public surface.
 
-import * as acp from "@agentclientprotocol/sdk";
+import * as acp from "@agentclientprotocol/sdk/unstable";
 import { definedFields } from "@rivus/agent-kit-catalog/public";
 import * as Effect from "effect/Effect";
 import * as z from "zod/mini";

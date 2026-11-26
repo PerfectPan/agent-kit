@@ -174,8 +174,8 @@ settings:
 catalogs:
   default:
     '@agentclientprotocol/sdk':
-      specifier: 1.9.0
-      version: 1.9.0
+      specifier: 2.7.0
+      version: 2.7.0
     '@arethetypeswrong/cli':
       specifier: 0.18.5
       version: 0.18.5
@@ -494,7 +494,7 @@ importers:
     dependencies:
       '@agentclientprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.9.0(zod@4.6.7)
+        version: 2.7.0(zod@4.6.7)
       '@rivus/agent-kit-catalog':
         specifier: workspace:*
         version: link:../catalog
@@ -537,7 +537,7 @@ importers:
     dependencies:
       '@agentclientprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.9.0(zod@4.6.7)
+        version: 2.7.0(zod@4.6.7)
       '@decimalturn/toml-patch':
         specifier: 'catalog:'
         version: 3.3.3
@@ -1602,10 +1602,14 @@ importers:
 
 packages:
 
-  '@agentclientprotocol/sdk@1.9.0':
-    resolution: {integrity: sha512-saCOTPYBK1iqWqJFAYHXbg3+zCoFXyZZFoqQAwdTWkbrZZPpAETr80QOnYr2l+dzPwL0jpNhn3eDY8MoEIDbUA==}
+  '@agentclientprotocol/sdk@2.7.0':
+    resolution: {integrity: sha512-oXdQq0plWv3iOg01zJghNZRSuyWeMYxOgWIaSdwg1BZe2ZAC9LRhNDi023lNYxXq1zVIpQjIp8P6AfsxpvxF6g==}
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      '@modelcontextprotocol/server': ^2.4.0
+      zod: ^3.25.76 || ^4.0.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/server':
+        optional: true
 
   '@andrewbranch/untar.js@1.0.4':
     resolution: {integrity: sha512-pVXSwPsLuw8IGLo2Di0EaOfsk+ntVvpkk942J/sHYIkwvtKUakEcPh7HBgZ6tuimgzKSEHgCvO4XgQ05DEbwDw==}
@@ -6296,7 +6300,7 @@ packages:
 
 snapshots:
 
-  '@agentclientprotocol/sdk@1.9.0(zod@4.6.7)':
+  '@agentclientprotocol/sdk@2.7.0(zod@4.6.7)':
     dependencies:
       zod: 4.6.7
 

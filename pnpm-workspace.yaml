@@ -17,7 +17,7 @@ ignoreWorkspaceCycles: true
 
 catalogMode: strict
 catalog:
-  "@agentclientprotocol/sdk": 1.9.0
+  "@agentclientprotocol/sdk": 2.7.0
   "@arethetypeswrong/cli": 0.18.5
   "@decimalturn/toml-patch": ^3.3.3
   "@effect/tsgo": 0.70.0
