@@ -199,7 +199,7 @@ export const cases: Case[] = [
     "acp wire.ts: the SDK behind one module",
     "acp",
     "src/application/services/wire.ts",
-    `export * as CaseSdk from "@agentclientprotocol/sdk";`
+    `export * as CaseSdk from "@agentclientprotocol/sdk/unstable";`
   ),
   allowed(
     "acp application: platform",
@@ -596,14 +596,14 @@ export const cases: Case[] = [
     "acp: the SDK outside wire.ts",
     "acp",
     fresh("src/application/x"),
-    `export * as acp from "@agentclientprotocol/sdk";`,
+    `export * as acp from "@agentclientprotocol/sdk/unstable";`,
     "external-dependency"
   ),
   rejects(
     "acp: the SDK in infra",
     "acp",
     fresh("src/infra/repository/x"),
-    `export * as acp from "@agentclientprotocol/sdk";`,
+    `export * as acp from "@agentclientprotocol/sdk/unstable";`,
     "external-dependency"
   ),
   rejects(
