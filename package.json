@@ -38,6 +38,6 @@
     "@changesets/cli": "3.0.3",
     "@perfectpan/lint-config": "catalog:",
     "jscpd": "5.4.3",
-    "knip": "6.45.1"
+    "knip": "6.46.1"
   }
 }
