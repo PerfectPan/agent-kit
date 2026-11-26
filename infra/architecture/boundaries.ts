@@ -223,8 +223,8 @@ export const boundaries: BoundaryRules = {
       spi: true,
       dependsOn: [CATALOG, PLATFORM, SESSIONS],
       testsOnly: [PLATFORM_NODE],
-      external: ["zod/mini", "@agentclientprotocol/sdk"],
-      externalOnlyIn: { "@agentclientprotocol/sdk": ["src/application/services/wire.ts"] }
+      external: ["zod/mini", "@agentclientprotocol/sdk/unstable"],
+      externalOnlyIn: { "@agentclientprotocol/sdk/unstable": ["src/application/services/wire.ts"] }
     },
     // es-toolkit gives the runner-agnostic conformance checks a deep equality without a test framework.
     "@rivus/agent-kit-testing": {
