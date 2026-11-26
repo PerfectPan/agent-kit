@@ -59,8 +59,8 @@ catalog:
   typedoc-plugin-markdown: 4.14.1
   typescript: 7.0.2
   # Toolchain upgrade procedure: docs/development/release.md#bot-pull-requests.
-  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
-  vite-plus: 1.5.0
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  vite-plus: 1.7.0
   vitest: 5.1.0
   zod: ^4.6.7
 
@@ -74,6 +74,7 @@ catalogs:
 overrides:
   vite@*: "catalog:"
   minimatch@>=7.0.0 <11.0.1: ">=11.0.1"
+  oxlint-tsgolint@>=7.0.2005 <7.0.2007: ">=7.0.2007"
 
 # typedoc@0.28.20 calls Minimatch.matchOne(), removed in minimatch 11; remove once TypeDoc supports minimatch 11.
 patchedDependencies:

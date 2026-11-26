@@ -320,7 +320,7 @@ export const boundaries: BoundaryRules = {
     },
     // Five shared format folders serve harness lifecycle, sessions transcript and usage, cost pricing, and discovery
     // installation. They may use domain concepts and the shared kernel; contexts contain no built-in service tables.
-    // Agent-specific adapters live in providers (see docs/architecture/authoring.md).
+    // Agent-specific adapters live in providers (see docs/architecture/conventions.md).
     adapters: { layers: ["domain", "adapters", "lib"], workspace: "kernel", external: true },
     application: { layers: ["domain", "adapters", "application", "lib"], workspace: "any", external: true },
     infra: { layers: ["domain", "application", "infra", "lib"], workspace: "any", external: true },

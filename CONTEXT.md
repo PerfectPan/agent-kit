@@ -1,6 +1,6 @@
 # agent-kit Language
 
-This glossary defines the terms that code, documentation and reviews in this repository use. Terms are grouped by bounded context: a term means what its context says, and the same word in another context, or in a consuming project, can mean something else (see [Same name, different meaning](#same-name-different-meaning)). Authoring rules are in [docs/architecture/authoring.md](docs/architecture/authoring.md).
+This glossary defines the terms that code, documentation and reviews in this repository use. Terms are grouped by bounded context: a term means what its context says, and the same word in another context, or in a consuming project, can mean something else (see [Same name, different meaning](#same-name-different-meaning)). Architecture and coding rules are in [docs/architecture/conventions.md](docs/architecture/conventions.md).
 
 `@rivus/agent-kit` connects to external coding agents: catalog, discovery, sessions (with transcript), cost, harness, acp, and the redact utility. `@rivus/agent-kit-collab` provides collaboration primitives between agents: lease (with the process lock) and lanes. Platform is a technical port, not a bounded context.
 
@@ -330,7 +330,7 @@ An agent-specific id, alias, home directory or environment name declared in a pr
 The plain data representing an aggregate, entity or value at a boundary. Write-side classes expose it through `toSnapshot()` and restore it where needed; it carries no methods.
 
 **Repository**:
-The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [authoring.md](docs/architecture/authoring.md).
+The port an aggregate is stored through: `load` reads the stored snapshot or `undefined`, and `save` writes only over the revision it is shown, failing with a `RevisionConflict`. Each context declares its own `RevisionConflict`; the shape rules are in [conventions.md](docs/architecture/conventions.md).
 
 **Port adapter**:
 An implementation, under `infra/`, of a port the kit declares itself, such as a format-preserving configuration editor, an aggregate repository, or the session-binding key-value store. Persistence implementations live in `infra/repository/`, stored formats and codecs in `infra/models/`.
