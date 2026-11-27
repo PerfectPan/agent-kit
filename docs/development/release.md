@@ -244,8 +244,7 @@ are not published either.
   alerts and inspect a real hosted run that reads those alerts and handles an actionable finding. Record the
   dependency graph, alert and security-update settings independently, including package and lockfile coverage.
   Then propose a separate, explicit security handoff with one primary PR owner and a rollback path. Leave the
-  existing security settings unchanged until that handoff is approved; this routine-update migration does not
-  change them.
+  existing security settings unchanged until that handoff is approved, independent of routine updates.
 
   Renovate opens a **Dependency Dashboard** issue through `config:recommended`. Use its checkboxes to retry or
   recreate an update and request a pending PR; see the [dashboard controls](https://docs.renovatebot.com/key-concepts/dashboard/).

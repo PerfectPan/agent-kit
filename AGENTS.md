@@ -151,7 +151,6 @@ For non-trivial changes:
 - JavaScript or TypeScript projects take shared lint, format, and `tsconfig` rules from the `PerfectPan/lint-config` repository; see its README. Extend those shared configs instead of copying them.
 - Do not introduce a shared abstraction unless it removes real duplication, clarifies a boundary, or matches an existing project pattern.
 - When a file starts mixing multiple responsibilities or layers, split by responsibility rather than by arbitrary size.
-- Non-trivial architectural or multi-PR changes use a Plan in `docs/plans/` to record design choices before implementation; routine fixes and localized changes do not.
 
 ## Documentation
 
