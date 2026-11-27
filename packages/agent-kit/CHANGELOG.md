@@ -1,5 +1,25 @@
 # Change Log - @rivus/agent-kit
 
+## 0.28.0
+
+### Minor Changes
+
+- [#358](https://github.com/PerfectPan/agent-kit/pull/358) [`4dd9716`](https://github.com/PerfectPan/agent-kit/commit/4dd97160357cfff094db27fe025f63f188dc80af) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add GitHub Copilot CLI provider (copilot) with identity, discovery, hooks, install, sessions (9/10 capabilities), usage, and ACP support.
+
+- [#354](https://github.com/PerfectPan/agent-kit/pull/354) [`d0bfcfd`](https://github.com/PerfectPan/agent-kit/commit/d0bfcfd56a5c4cda0abce55a0011e18d2110efb7) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Read four more transcript capabilities from Pi and Qoder CLI sessions. Pi (`piSessionAdapter`) replays system messages into `prompt_snapshot` events (`systemPrompt`, `toolSchemas`): the prompt as Pi renders its content and named sections, the tool declarations a message adds or removes, and a compaction's checkpoint restarting the replay. Qoder (`qoderSessionAdapter`) reads a compaction boundary's `compactMetadata` (`compactionTokens`: the trigger, the pre and post token counts, and a preserved segment that stays in the context) and turns `hook_*` attachments into `hook` events (`hooks`), skipping the other attachments by type.
+
+- [#357](https://github.com/PerfectPan/agent-kit/pull/357) [`f8393f9`](https://github.com/PerfectPan/agent-kit/commit/f8393f923559e25d9800ebb0f1aea428a5f5fd64) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add compaction, compactionTokens, and subagent lanes to DimCode sessions, and align persisted assistant thinking and tool parts with DimCode 0.5.27.
+
+- [#356](https://github.com/PerfectPan/agent-kit/pull/356) [`87fa571`](https://github.com/PerfectPan/agent-kit/commit/87fa571c4671e6ac615bd0e9b82cab4fb6345825) Thanks [@PerfectPan](https://github.com/PerfectPan)! - Add `subagents` to Antigravity CLI sessions: an `invoke_subagent` result names the conversation it created, whose own transcript under `brain/` loads as a lane after the root lane (`parentId`, `spawnEventId`, `title` from the call's `Role`; missing transcripts are `unavailable` lanes), `discover` lists no spawned conversation as a session, and `summarize` folds the lanes in the load order.
+
+### Patch Changes
+
+- [#349](https://github.com/PerfectPan/agent-kit/pull/349) [`dcf60fb`](https://github.com/PerfectPan/agent-kit/commit/dcf60fb42f85ab13a32a81d267d09e92b1286d79) Thanks [@renovate](https://github.com/apps/renovate)! - Updated dependency `@agentclientprotocol/sdk` to `2.7.0`.
+
+- [#346](https://github.com/PerfectPan/agent-kit/pull/346) [`783f20b`](https://github.com/PerfectPan/agent-kit/commit/783f20b6b256276e400e83952a0b201df036e465) Thanks [@renovate](https://github.com/apps/renovate)! - Updated dependency `@decimalturn/toml-patch` to `^3.3.3`.
+
+- [#353](https://github.com/PerfectPan/agent-kit/pull/353) [`764b18b`](https://github.com/PerfectPan/agent-kit/commit/764b18b68a09d5b9335ff63870a99834110916cb) Thanks [@github-actions](https://github.com/apps/github-actions)! - Update the LiteLLM price snapshot of `/cost/prices` to `2026-11-23+e6573ba350d4893d0578279c0780e0e2ea25f3ed+527a45edc086`.
+
 ## 0.27.0
 
 ### Minor Changes
