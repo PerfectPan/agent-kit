@@ -4,48 +4,23 @@ This guide is for maintainers replacing an application's copy of coding-agent kn
 
 Before adoption, select a verified npm release whose manifest exports the entries you need. Source implementation can precede publication. Install `@rivus/agent-kit` and `@rivus/agent-kit-collab` from the same lockstep release when using collab, and pin the chosen version in the application's lockfile. Placeholder versions are not usable releases. See the [release runbook](release.md) for publication checks.
 
-## Public entry inventory
+## Public entries and provider overrides
 
-The source exports 17 agent-kit entries and three collab entries (20 in total). Imports use public subpaths; there is no root entry or supported deep import into internal context packages.
-
-| Entry | Main API | Calling style |
-| --- | --- | --- |
-| `@rivus/agent-kit/providers` | `Provider`, `builtinProviders` | Plain service descriptors |
-| `@rivus/agent-kit/catalog` | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError` | Plain, pure |
-| `@rivus/agent-kit/platform` | `Platform` (type only) | Plain |
-| `@rivus/agent-kit/node` | `createNodePlatform` | Plain, Node |
-| `@rivus/agent-kit/platform/effect` | `PlatformService` | Effect service |
-| `@rivus/agent-kit/node/effect` | `NodePlatformLive` | Effect Layer, Node |
-| `@rivus/agent-kit/sessions` | `listSessions`, `isSessionHead`, `sessionAdapterHome`, `SessionAdapter` | Plain, platform argument |
-| `@rivus/agent-kit/transcript` | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent` | Plain; IO takes a platform |
-| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord` | Plain, no imports; IO takes a platform |
-| `@rivus/agent-kit/cost` | `createPricing`, `summarize`, `Pricing` | Plain, pure, no imports |
-| `@rivus/agent-kit/cost/prices` | `litellmPrices`, `litellmPricesVersion` | Plain, data, no imports |
-| `@rivus/agent-kit/discovery` | `detectAgents`, `versionFromOutput`, `ProbeRecipe` | Plain, platform argument |
-| `@rivus/agent-kit/harness/events` | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent` | Plain, synchronous, no IO or imports |
-| `@rivus/agent-kit/harness` | `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `discardPlan`, `HarnessLive` and port Layers | Effect |
-| `@rivus/agent-kit/acp` | `connectAgent`, `probeAgent`, `agentEnv`, binding store Layers | Effect; connections and turns use caller Scopes |
-| `@rivus/agent-kit/redact` | `redact`, `redactText` | Plain, pure |
-| `@rivus/agent-kit/testing` | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance` | Test helpers, Node |
-| `@rivus/agent-kit/testing/effect` | `aggregateRepositoryConformance` | Test helpers, Effect |
-| `@rivus/agent-kit-collab/process-lock` | `acquireProcessLock`, `isProcessLockHeld` | Plain, platform argument |
-| `@rivus/agent-kit-collab/lease` | `createLeaseManager`, `LeaseRepository`, `sqliteLeaseRepository`, `fileLeaseRepository`, `memoryLeaseRepository` | Effect |
-| `@rivus/agent-kit-collab/lanes` | `createLanes` | Effect, process-local |
+Imports use public subpaths; there is no root entry or supported deep import into internal context packages. For the authoritative entry list and main exports, see [`@rivus/agent-kit`](../../packages/agent-kit/README.md#entries) (`packages/agent-kit/package.json` `exports`) and [`@rivus/agent-kit-collab`](../../packages/agent-kit-collab/README.md#entries) (`packages/agent-kit-collab/package.json` `exports`).
 
 The packages are ESM only, have no import-time side effects, and require Node.js 22.13 or later for their Node adapters. Repository development uses Node.js `^26.13.1` (26.13.1 or a newer 26.x release). Browser-safe entries still need the caller's implementation of the relevant platform ports; browser bundling does not provide a filesystem or a process runner. `/node`, `/node/effect` and `/testing` are the Node-only exceptions.
 
-Provider overrides use `providers?: readonly Provider[]`, imported from `@rivus/agent-kit/providers` alongside
-`builtinProviders`. Replace `adapters`, `dialects`, `recipes` and `profiles` with descriptors such as
-`{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`. Each service merges independently;
-other services for the same id and all other agents keep their defaults. A supplied identity carries aliases and
-fallback homes. Harness `agents` filters still match exact ids, without alias or case resolution. Conflicting names
-and mismatched identity ids are rejected. Resolve a session or usage service's home with
+Pass provider overrides through `providers?: readonly Provider[]`, imported from `@rivus/agent-kit/providers` alongside
+`builtinProviders` (for example `{ id: "my-agent", sessions: adapter }` or `{ id: "codex", hooks: dialect }`). Each
+service merges independently; other services for the same id and all other agents keep their defaults. A supplied
+identity carries aliases and fallback homes. Harness `agents` filters still match exact ids, without alias or case
+resolution. Conflicting names and mismatched identity ids are rejected. Resolve a session or usage service's home with
 `sessionAdapterHome(service, { home, env }, { providers })`; it uses the service's own home rule or the merged
 identity fallback. Omit the third argument for built-in identities.
-The three service conformance suites come from `/testing`.
-`sessionAdapterConformance(adapter, fixtures)` takes only a session adapter and its fixtures.
+The three service conformance suites come from `/testing`:
+`sessionAdapterConformance(adapter, fixtures)` takes only a session adapter and its fixtures;
 `hookDialectConformance(dialect, fixtures, { providers }?)` binds built-in hooks and accepts provider overrides
-for host-marker checks. `probeRecipeConformance(recipe, samples?, { providers }?)` binds built-in identities
+for host-marker checks; `probeRecipeConformance(recipe, samples?, { providers }?)` binds built-in identities
 and accepts provider overrides for identity checks. `aggregateRepositoryConformance(fixtures)` comes from
 `/testing/effect`, takes repository fixtures and has no provider option.
 
@@ -102,8 +77,8 @@ Harness downgrade order is mandatory: use the new version to `uninstall` its own
 - Ledger writes require `platform.sqlite` with the default `SqliteLedgerLockLive`, or a caller-supplied lock with equivalent ownership guarantees. Unknown ledger versions are refused. Local state directories only; shared configuration writers outside the ledger lock can still race the final write, with no atomic CAS guarantee.
 - Cursor hooks and Claude Code's skills-dir plugin still need real-agent checks. ZCode plugin hooks were verified against ZCode 3.18.2 (engine 0.17.1): installing a `SessionStart` hook with `planInstall`/`applyInstall` registered an enabled, runnable plugin; a real ZCode session ran the hook and emitted a payload that `readHookEvent("zcode", ...)` decoded as `phase: "start"`, `scope: "session"`, `nativeEvent: "SessionStart"`; and `uninstall` removed the plugin directory and restored `~/.zcode/cli/config.json` byte-for-byte. The Cursor permission-gate issue remains application acceptance work. Codex plugin registration/cache upgrades and removal without its CLI have synthetic coverage but still need a real workflow check, including stable trust on upgrade.
 - Multiple agents sharing a skill name are not deduplicated. Review the resulting plan rather than assuming one shared installation.
-- Usage decoding supports Claude Code, Codex, DeepSeek Harness, Gemini CLI, Grok, opencode, Pi and ZCode; full session/transcript adapters cover Claude Code, Codex, Gemini CLI, Grok, Pi, OpenCode, DeepSeek Harness and ZCode. DeepSeek Harness sessions are stored as concatenated Zstandard frames by default, so reading them needs `platform.decompress`; plain `session.v4.jsonl` files need no codec. OpenCode and ZCode sessions need `platform.sqlite`. Cursor has hook support but no usage decoder, and ZCode reads sessions, usage and hook payloads and installs plugins. An installed agent is not evidence of every capability.
-- A running source may keep unfinished usage until it is quiet for 30 minutes; unknown or missing usage stays absent. opencode and ZCode usage need SQLite. Login known only to a system credential store such as Keychain can remain `unknown` in file-based discovery.
+- See the test-checked [built-in support matrix](../../README.md#built-in-support) for the exact per-agent capability coverage (Cursor has no session/usage reader; DeepSeek Harness has no hook dialect). Special platform port requirements: DeepSeek Harness sessions are stored as concatenated Zstandard frames by default, so reading them needs `platform.decompress` (plain `session.v4.jsonl` files need no codec); opencode, ZCode, and DimCode sessions and usage need `platform.sqlite`. An installed agent is not evidence of every capability.
+- A running source may keep unfinished usage until it is quiet for 30 minutes; unknown or missing usage stays absent. opencode, ZCode, and DimCode usage need `platform.sqlite`. Login known only to a system credential store such as Keychain can remain `unknown` in file-based discovery.
 - ACP's Gemini flag and Grok system-prompt `_meta` location have unverified profile warnings. DeepSeek Harness accepts `session/new` without a stored key, so `probeAgent` reports it ready before a login; the key is checked at the first prompt. The live smoke suite is manual; record its results before accepting an upstream program. Tests against a fake agent establish protocol and cleanup behavior, not every upstream program's compatibility.
 - File session bindings are atomically replaced but are not locked across processes. Lanes are process-local and persist no queue. Process locks and leases require local directories on darwin/linux and all contenders to see the same process table; NFS and containers with incompatible PID namespaces are outside their guarantee. The no-SQLite lock-file fallback has documented empty-stamp crash/stall limits ([the collab README's Process lock section](../../packages/agent-kit-collab/README.md#process-lock)).
 - Releases remain 0.x; a minor version can change the API. A source-ready entry must not be adopted from an older published package that does not export it.

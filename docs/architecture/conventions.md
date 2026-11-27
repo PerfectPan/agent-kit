@@ -124,8 +124,8 @@ usage readers of OpenCode's SQLite table layout in sessions, command-hook config
 Add an SPI helper only when a provider imports it. Agent layouts, records and translators stay in the provider;
 cost has no provider consumer and no SPI entry.
 
-Unsupported services and the README support matrix are checked by `packages/agent-kit/test/provider-tables.test.ts`.
-Every built-in agent/service pair has either an implementation or a reason in `src/providers/unsupported.ts`.
+Unsupported services and the README support matrix are checked by `packages/agent-kit/test/provider-tables.test.ts`,
+which requires every built-in agent/service pair to have either an implementation or an explicit unsupported reason.
 Cross-agent conformance stays in testing and harness with complete test tables; provider-local suites use their own
 services. Generic helpers under `testing/test/` may be imported by relative path from provider tests and are not
 production API. Development dependency cycles are permitted by `ignoreWorkspaceCycles`; `testsOnly` dependencies
@@ -253,62 +253,14 @@ export class AcpSession {
 
 An entity is a child of one aggregate: it has a local identity inside that aggregate, but no identity outside it. It is a read-only record in the root's snapshot, it is read only through the root's methods, and it is created and changed only by the root's transitions. It has no store and no lock of its own. An entity with its own lifecycle and its own store is an aggregate; promote it rather than giving it a repository. Harness's Ledger keeps its entries, pending operations and kept artifacts as immutable classes under `domain/ledger/entities/`. The root alone restores these children and replaces them through its transitions; each child validates its own fields, while the Ledger checks locator keys, revisions and uniqueness. Ownership and release are entry methods, and pending operations resolve crash probes. Child snapshots retain the stored record shape; inventory, pending-operation errors and the testing SPI expose those plain snapshots. A save writes the entire Ledger snapshot.
 
-## Harness Write-Side Values
+## Write-Side Value Invariants
 
-Install-plan and bundle keep their own rules on immutable classes: `ArtifactLocator`, `PlanStep`, `Precondition`,
-`Conflict`, `InstallTarget`, `PlanBasis`, `Bundle`, `ArtifactSpec`, `Owner` and `RegistrationState`. Construction keeps
-caller input untouched, including rejected input. ArtifactSpec copies each spec once; Bundle copies its metadata and
-retains the validated spec snapshots. RegistrationState copies its record and installed-copy inputs; ordinary file
-and directory observations keep the read content until a value object retains it. Values and aggregates share the
-pure `lib/deep-freeze.ts` helper. A `PlanStep` owns its field invariants, disk-write decision, precondition checks and
-resulting content. `InstallPlan` checks cross-step and ledger evidence, then stores validated steps; it orders installation before reverse-order
-removal. The install-plan aggregate owns root containment and ledger-basis comparisons; its tests cover rejection reasons and ordering.
+Write-side contexts (`packages/harness`, `packages/acp`, `packages/agent-kit-collab`) enforce these cross-cutting rules on immutable value objects (see each context's `src/**/domain/` and tests for concrete types and field-validation order):
 
-Public and persisted data stay plain. Explicit `Snapshot` types name those shapes internally; public and testing
-SPI exports expose the plain shapes. Provider render requests (`HookSpec`, `SkillSpec`, `McpServerSpec`,
-`InstructionSpec`), rendered `DesiredArtifact`, observed `ObservedArtifact`, `TrustPrompt`, a step's `contentAfter`
-result and the provider's `Strategy` literal union remain boundary data. The install-plan SPI directory holds the
-rendered/observed records and `TrustPromptKind`; `TrustPrompt` belongs to the plan snapshot in `value-objects/`, and
-the `contentAfter` result — declared by `PlanStep.contentAfter`; planning resolves it — lives in planning
-(`plan-install.ts`). `Strategy` lives with the bundle SPI. Registration
-observations are transient and need no additional snapshot type. Every aggregate-to-port or public boundary uses
-plain snapshots.
-
-Cross-object conflict choices, legacy ownership, registration commands and strategy choice live in `services/`; step construction belongs to the install-plan factory. Shared
-install-file rendering also lives in bundle `services/`, retaining its provider SPI exports. Legacy command content
-is parsed with `zod/mini` in the application layer before the domain receives text evidence keyed by each observation;
-locator-based planning selects the last observation, while preserved hooks use their own text. Marker matching
-itself stays a domain rule. The testing SPI applies the same boundary validation to plain fixtures.
-
-## ACP Write-Side Values
-
-`AbsolutePath` parses an absolute spelling, formats it and checks containment by path parts. It preserves `..`
-until the Platform resolves links; rejecting relative input still returns `undefined`. Prefix and append operations
-return immutable paths. The value stays inside the application and domain, so it needs no snapshot type.
-`SessionBinding` copies its typed input and selects the agent that owns it, without adding field validation.
-`SessionBindingSnapshot` retains the plain store and public shape; application writes explicitly call `toSnapshot()`.
-The file store validates and serializes the persisted shape.
-
-`McpServerConfig`, `NameValue` and `PromptBlock` remain plain ACP request data in `value-objects/`; SDK conversion
-belongs to the wire adapter. Session setup, permission selection, client-path verdicts and environment filtering
-span several inputs and live in `services/`. `spi/` holds provider interfaces and their parts; the provider environment
-defaults live beside the ACP profile there. ACP has no shared external-format domain adapter.
-
-## Collab Write-Side Values
-
-Lease and lane rules live on immutable classes. `FencingToken` validates its key and generation, advances the
-fencing generation through Results and checks a resource's highest accepted token. Generation exhaustion returns
-`LeaseRecordInvalid`, mapped to the manager's `invalid-record` failure before saving. `Holder` copies a typed process
-identity and judges liveness without rejecting nonfinite numbers; repository codecs validate persisted identities.
-`LeaseTiming` validates durations and judges the holder's renewal deadline. `LaneLimits` validates capacity and timeouts and owns admission and FIFO
-selection. Lease owns observation, freshness, acquisition and loss; Lane derives wake results from its events.
-
-`HolderSnapshot` and `FencingTokenSnapshot` name boundary data internally; the public `Holder` export remains the
-plain identity shape. Lease snapshots, held errors and handle tokens contain plain data, with explicit conversion
-from values. Lease copies its retained holder before freezing the snapshot, and Lane freezes its own snapshot;
-caller inputs stay untouched. Timing and limits stay inside the application/domain and need no snapshot type.
-Record restoration keeps the key, generation, revision, holder/id and renewal-time validation order.
-Loss classification accepts a raw snapshot to report missing records and inconsistent holder/id pairs. Repository read failures are mapped in the application.
+- **Immutability and defensive copying**: value objects and aggregates share `lib/deep-freeze.ts` and never mutate caller input, including rejected input. Public, persisted, and testing-SPI boundaries expose plain `Snapshot` records through explicit `toSnapshot()` conversions; internal-only values (such as ACP's `AbsolutePath` or collab's timing/limits values) need no snapshot type.
+- **Harness**: `InstallPlan` owns root containment, ledger-basis checks, and ordering (installation before reverse-order removal); cross-object conflict resolution, legacy ownership, registration commands, and strategy selection live in `services/`. Legacy command content is parsed with `zod/mini` in `application/` before domain marker matching; provider render requests and rendered/observed records remain plain boundary data.
+- **ACP**: `AbsolutePath` preserves `..` segments until Platform resolves links and returns `undefined` on relative input. Request DTOs stay plain data; SDK wire conversion belongs in the wire adapter, and ACP has no shared external-format domain adapter.
+- **Collab**: `FencingToken` reports generation exhaustion as `LeaseRecordInvalid` (mapped to `invalid-record` in `application/`). `Holder` preserves nonfinite numbers at the domain layer while repository codecs validate persisted identities. Loss classification operates on raw snapshots so missing records and inconsistent holder/id pairs stay reportable.
 
 ## Aggregates, Entities And Repositories
 

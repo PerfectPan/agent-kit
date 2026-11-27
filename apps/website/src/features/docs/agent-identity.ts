@@ -78,8 +78,8 @@ export const AGENT_IDENTITY: readonly AgentIdentity[] = [
     name: "DimCode",
     aliases: [],
     home: {
-      en: "DIMCODE_HOME (names the v2 dir), ~/.dimcode/v2",
-      zh: "DIMCODE_HOME（指向 v2 目录本身），~/.dimcode/v2"
+      en: "DIMCODE_HOME (appends v2), ~/.dimcode/v2",
+      zh: "DIMCODE_HOME（拼接 v2），~/.dimcode/v2"
     }
   },
   {

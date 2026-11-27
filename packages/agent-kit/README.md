@@ -22,26 +22,26 @@ The entry table describes the source API. Verify the exports of the npm version 
 
 ## Entries
 
-| Entry                               | Main exports                                                                                                     | Runs in                                  |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers                                   | with `effect` and a platform that spawns |
-| `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                   | anywhere                                 |
-| `@rivus/agent-kit/catalog`          | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError`                              | anywhere                                 |
-| `@rivus/agent-kit/cost`             | `createPricing`, `summarize`, `priceRecord`, `Pricing`                                                           | anywhere, no imports                     |
-| `@rivus/agent-kit/cost/prices`      | `litellmPrices`, `litellmPricesVersion`: a LiteLLM price snapshot                                                | anywhere, no imports                     |
-| `@rivus/agent-kit/discovery`        | `detectAgents`, `versionFromOutput`, `ProbeRecipe`                                                               | anywhere, with a platform                |
-| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `HarnessLive` and its ports | anywhere, with `effect` and a platform   |
-| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`                                                         | anywhere, no imports                     |
-| `@rivus/agent-kit/platform`         | `Platform` (type only)                                                                                           | anywhere                                 |
-| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                       | anywhere, no imports                     |
-| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                             | Node                                     |
-| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                           | anywhere, with `effect`                  |
-| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                          | Node, with `effect`                      |
-| `@rivus/agent-kit/sessions`         | `listSessions`, `sessionAdapterHome`, `isSessionHead`, `SessionAdapter`                                          | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent`                                            | anywhere, with a platform                |
-| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`                                                | anywhere, with a platform; no imports    |
-| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`          | Node                                     |
-| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                        | anywhere, with `effect`                  |
+| Entry                               | Main exports                                                                                                                    | Runs in                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `@rivus/agent-kit/acp`              | `connectAgent`, `probeAgent`, `agentEnv`, `SessionBindingStore` and its Layers                                                  | with `effect` and a platform that spawns |
+| `@rivus/agent-kit/providers`        | `Provider`, `builtinProviders`                                                                                                  | anywhere                                 |
+| `@rivus/agent-kit/catalog`          | `isBuiltinCodingAgentId`, `Result`, `ok`, `err`, `AgentKitError`, `isAgentKitError`                                             | anywhere                                 |
+| `@rivus/agent-kit/cost`             | `createPricing`, `summarize`, `priceRecord`, `Pricing`                                                                          | anywhere, no imports                     |
+| `@rivus/agent-kit/cost/prices`      | `litellmPrices`, `litellmPricesVersion`: a LiteLLM price snapshot                                                               | anywhere, no imports                     |
+| `@rivus/agent-kit/discovery`        | `detectAgents`, `versionFromOutput`, `ProbeRecipe`                                                                              | anywhere, with a platform                |
+| `@rivus/agent-kit/harness`          | Effect: `planInstall`, `applyInstall`, `verify`, `uninstall`, `inventory`, `doctor`, `discardPlan`, `HarnessLive` and its ports | anywhere, with `effect` and a platform   |
+| `@rivus/agent-kit/harness/events`   | `readHookEvent`, `builtinHookDialects`, `LifecycleEvent`                                                                        | anywhere, no imports                     |
+| `@rivus/agent-kit/platform`         | `Platform` (type only)                                                                                                          | anywhere                                 |
+| `@rivus/agent-kit/redact`           | `redact`, `redactText`: hide home path spellings and secret-shaped strings                                                      | anywhere, no imports                     |
+| `@rivus/agent-kit/node`             | `createNodePlatform`                                                                                                            | Node                                     |
+| `@rivus/agent-kit/platform/effect`  | `PlatformService`: the `Platform` as an Effect service                                                                          | anywhere, with `effect`                  |
+| `@rivus/agent-kit/node/effect`      | `NodePlatformLive`: a Layer that provides `PlatformService` with `createNodePlatform()`                                         | Node, with `effect`                      |
+| `@rivus/agent-kit/sessions`         | `listSessions`, `sessionAdapterHome`, `isSessionHead`, `SessionAdapter`                                                         | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript`       | `loadTranscript`, `summarizeSession`, `Transcript`, `TranscriptEvent`                                                           | anywhere, with a platform                |
+| `@rivus/agent-kit/transcript/usage` | `scanUsage`, `isUsageRecord`, `noCacheInputTokens`, `UsageRecord`                                                               | anywhere, with a platform; no imports    |
+| `@rivus/agent-kit/testing`          | `createMemoryPlatform`, `sessionAdapterConformance`, `hookDialectConformance`, `probeRecipeConformance`                         | Node                                     |
+| `@rivus/agent-kit/testing/effect`   | `aggregateRepositoryConformance`: the conformance cases every aggregate repository passes                                       | anywhere, with `effect`                  |
 
 `builtinProviders` from `/providers` exposes each agent's `identity`, `discovery`, `install`, `sessions`,
 `usage` and `acp` services when supported. Select a descriptor by `id`, then check the optional service before use.
@@ -272,7 +272,7 @@ if (usage) {
 ```
 
 The decoder's cursor continues a source; `scanUsage` manages those cursors for scans across agents.
-OpenCode's SQLite store needs `platform.sqlite`; without it a scan yields `SqliteUnavailable`.
+SQLite stores (opencode, ZCode and DimCode) need `platform.sqlite`; without it a scan yields `SqliteUnavailable`.
 
 ### Cost
 
@@ -481,28 +481,31 @@ inside the session's directory after links are resolved. `probeAgent` opens one 
 
 | Agent              | Id                              | Home: override, default                                           |
 | ------------------ | ------------------------------- | ----------------------------------------------------------------- |
-| Antigravity CLI    | `agy`                           | `ANTIGRAVITY_GEMINI_DIR`, `~/.gemini`                             |
-| GitHub Copilot CLI | `copilot`                       | `COPILOT_HOME`, `~/.copilot`                                      |
+| Antigravity CLI    | `agy`                           | `ANTIGRAVITY_GEMINI_DIR` (names the `.gemini` dir), `~/.gemini`   |
 | Claude Code        | `claude-code` (alias `claude`)  | `CLAUDE_CONFIG_DIR`, `~/.claude`                                  |
 | Codex              | `codex`                         | `CODEX_HOME`, `~/.codex` (archived sessions included)             |
-| Grok               | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
-| Gemini CLI         | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
-| opencode           | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
-| Pi                 | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
 | Cursor             | `cursor` (alias `cursor-agent`) | none: `CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor`, `~/.cursor` |
 | DeepSeek Harness   | `dsh`                           | `DSH_HOME` (expands `~`), `~/.dsh`                                |
+| DimCode            | `dim`                           | `DIMCODE_HOME` (appends `v2`), `~/.dimcode/v2`                    |
+| Gemini CLI         | `gemini-cli` (alias `gemini`)   | `GEMINI_CLI_HOME` replaces the user's home, `~/.gemini`           |
+| GitHub Copilot CLI | `copilot`                       | `COPILOT_HOME`, `~/.copilot`                                      |
+| Grok               | `grok`                          | `GROK_HOME`, `~/.grok`                                            |
+| Kimi Code          | `kimi`                          | `KIMI_CODE_HOME`, `~/.kimi-code`                                  |
+| opencode           | `opencode`                      | `$XDG_DATA_HOME/opencode`, `~/.local/share/opencode`              |
+| Pi                 | `pi`                            | `PI_CODING_AGENT_DIR` (expands `~`), `~/.pi/agent`                |
+| Qoder CLI          | `qoder`                         | `QODER_CONFIG_DIR`, `~/.qoder`                                    |
 | ZCode              | `zcode`                         | `ZCODE_STORAGE_DIR`, `~/.zcode`                                   |
 
-Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. `/acp`
-has a launch profile for Claude Code (`claude-agent-acp`), Codex (`codex-acp`), Cursor (`cursor-agent acp`),
-DeepSeek Harness (`dsh --profile acp`), Gemini CLI, Grok, opencode, Antigravity CLI (`agy acp`), and GitHub Copilot CLI (`copilot --acp`); a profile's
-`warnings` name the facts not yet checked against the agent. `/transcript/usage` reads the usage of every agent in the
-table except Cursor.
+Every agent in the table except DeepSeek Harness has a hook dialect in `/harness/events`. Every agent in the table has
+an `/acp` launch profile (`agy acp`, `claude-agent-acp`, `codex-acp`, `copilot --acp`, `cursor-agent acp`, `dim acp`,
+`dsh --profile acp`, `gemini --experimental-acp`, `grok agent stdio`, `kimi acp`, `opencode acp`, `pi-acp`,
+`qodercli --acp`, `zcode-acp-server`); a profile's `warnings` name facts not yet verified against the upstream program.
+`/transcript/usage` reads the usage of every agent in the table except Cursor.
 
 Routed functions accept `providers?: readonly Provider[]` (the type and `builtinProviders` come from
 `@rivus/agent-kit/providers`). Descriptors merge over built-ins by id and service: `{ id: "codex", hooks: dialect }`
-changes only Codex hooks. Omitted services and other agents remain available; the old `adapters`, `dialects`,
-`recipes` and `profiles` options are removed. A custom `identity` supplies aliases and a fallback home rule;
+changes only Codex hooks while omitted services and other agents keep their defaults. A custom `identity` supplies
+aliases and a fallback home rule;
 conflicting aliases or an identity whose id differs from its descriptor are rejected. To display an agent name,
 find `builtinProviders.find((provider) => provider.id === id)?.identity?.displayName`. To customize discovery,
 select its `discovery` recipe and pass `providers: [{ id, discovery: { ...recipe, auth: {} } }]`.
